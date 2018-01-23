@@ -7,44 +7,46 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "IntermediateAssets.h"
+#include "IAssetCompiler.h"
 #include "../Utility/Threading/LockFree.h"
 #include <memory>
 #include <thread>
 #include <functional>
 
+namespace Utility { class ThreadPool; }
+
 namespace Assets 
 {
-    class QueuedCompileOperation : public ::Assets::PendingCompileMarker
-    {
-    public:
-        uint64 _typeCode;
-        ::Assets::ResChar _initializer0[MaxPath];
-        ::Assets::ResChar _initializer1[MaxPath];
-
-        const ::Assets::IntermediateAssets::Store* _destinationStore;
-		unsigned _compilerIndex;
-    };
-
     /// <summary>Used by the compiler types to manage background operations</summary>
     class CompilationThread
     {
     public:
-        void Push(std::shared_ptr<QueuedCompileOperation> op);
+        void Push(
+			std::shared_ptr<::Assets::CompileFuture> future,
+			std::function<void(::Assets::CompileFuture&)> operation);
         void StallOnPendingOperations(bool cancelAll);
 
-        CompilationThread(std::function<void(QueuedCompileOperation&)> compileOp);
+        CompilationThread();
         ~CompilationThread();
     protected:
         std::thread _thread;
         XlHandle _events[2];
         volatile bool _workerQuit;
-        using Queue = LockFree::FixedSizeQueue<std::weak_ptr<QueuedCompileOperation>, 256>;
+		struct Element
+		{
+			std::weak_ptr<::Assets::CompileFuture> _future;
+			std::function<void(::Assets::CompileFuture&)> _operation;
+		};
+        using Queue = LockFree::FixedSizeQueue<Element, 256>;
         Queue _queue;
         Queue _delayedQueue;
-        std::function<void(QueuedCompileOperation&)> _compileOp;
 
         void ThreadFunction();
     };
+
+	void QueueCompileOperation(
+		const std::shared_ptr<::Assets::CompileFuture>& future,
+		std::function<void(::Assets::CompileFuture&)>&& operation);
+		
 }
 

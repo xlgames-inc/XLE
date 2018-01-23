@@ -6,14 +6,10 @@
 
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
-#include "InterfaceSignature.h"
-#include "ParameterSignature.h"
 #include "../RenderCore/ShaderLangUtil.h"
-#include "../Assets/IFileSystem.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
 #include "../Core/Exceptions.h"
-#include "../Utility/Streams/FileUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/PtrUtils.h"
@@ -35,7 +31,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    Node::Node(const std::string& archiveName, uint32 nodeId, Type::Enum type)
+    Node::Node(const std::string& archiveName, uint32 nodeId, Type type)
     : _archiveName(archiveName)
     , _nodeId(nodeId)
     , _type(type)
@@ -125,13 +121,14 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeGraph::NodeGraph(const std::string& name) : _name(name) {}
+    NodeGraph::NodeGraph() {}
     NodeGraph::~NodeGraph() {}
 
     void NodeGraph::Add(Node&& a) { _nodes.emplace_back(std::move(a)); }
     void NodeGraph::Add(NodeConnection&& a) { _nodeConnections.emplace_back(std::move(a)); }
     void NodeGraph::Add(ConstantConnection&& a) { _constantConnections.emplace_back(std::move(a)); }
     void NodeGraph::Add(InputParameterConnection&& a) { _inputParameterConnections.emplace_back(std::move(a)); }
+    // void NodeGraph::AddTemplateParameterBinding(const std::string& parameter, const std::string& binding) { _templateParameterBindings.insert({parameter, binding}); }
 
     bool NodeGraph::IsUpstream(uint32 startNode, uint32 searchingForNode)
     {
@@ -267,112 +264,6 @@ namespace ShaderPatcher
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::string LoadSourceFile(StringSection<char> sourceFileName)
-    {
-        TRY {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(sourceFileName.AsString().c_str(), "rb");
-
-            file.Seek(0, FileSeekAnchor::End);
-            size_t size = file.TellP();
-            file.Seek(0, FileSeekAnchor::Start);
-
-            std::string result;
-            result.resize(size, '\0');
-            file.Read(&result.at(0), 1, size);
-            return result;
-
-        } CATCH(const std::exception& ) {
-            return std::string();
-        } CATCH_END
-    }
-
-    std::tuple<std::string, std::string> SplitArchiveName(const std::string& archiveName)
-    {
-        std::string::size_type pos = archiveName.find_first_of(':');
-        if (pos != std::string::npos) {
-            return std::make_tuple(archiveName.substr(0, pos), archiveName.substr(pos+1));
-        } else {
-            return std::make_tuple(std::string(), archiveName);
-        }
-    }
-
-	class ShaderFragment
-	{
-	public:
-		auto GetFunction(const char fnName[]) const -> const ShaderSourceParser::FunctionSignature*;
-		auto GetParameterStruct(const char structName[]) const -> const ShaderSourceParser::ParameterStructSignature*;
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-		ShaderFragment(StringSection<::Assets::ResChar> fn);
-		~ShaderFragment();
-	private:
-		ShaderSourceParser::ShaderFragmentSignature _sig;
-		::Assets::DepValPtr _depVal;
-	};
-
-	auto ShaderFragment::GetFunction(const char fnName[]) const -> const ShaderSourceParser::FunctionSignature*
-	{
-		auto i = std::find_if(
-			_sig._functions.cbegin(), _sig._functions.cend(),
-            [fnName](const ShaderSourceParser::FunctionSignature& signature) { return XlEqString(signature._name, fnName); });
-        if (i!=_sig._functions.cend())
-			return AsPointer(i);
-		return nullptr;
-	}
-
-	auto ShaderFragment::GetParameterStruct(const char structName[]) const -> const ShaderSourceParser::ParameterStructSignature*
-	{
-		auto i = std::find_if(
-			_sig._parameterStructs.cbegin(), _sig._parameterStructs.cend(),
-            [structName](const ShaderSourceParser::ParameterStructSignature& signature) { return XlEqString(signature._name, structName); });
-        if (i!=_sig._parameterStructs.cend())
-			return AsPointer(i);
-		return nullptr;
-	}
-
-	ShaderFragment::ShaderFragment(StringSection<::Assets::ResChar> fn)
-	{
-		auto shaderFile = LoadSourceFile(fn);
-		_sig = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(shaderFile));
-		_depVal = std::make_shared<::Assets::DependencyValidation>();
-		::Assets::RegisterFileDependency(_depVal, fn);
-	}
-
-	ShaderFragment::~ShaderFragment() {}
-
-	const ShaderSourceParser::FunctionSignature& LoadFunctionSignature(const std::tuple<std::string, std::string>& splitName, const ::Assets::DirectorySearchRules& searchRules)
-    {
-        TRY {
-			char resolvedFile[MaxPath];
-			searchRules.ResolveFile(resolvedFile, std::get<0>(splitName).c_str());
-			auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
-			auto* fn = frag.GetFunction(std::get<1>(splitName).c_str());
-			if (fn != nullptr) return *fn;
-        } CATCH (...) {
-        } CATCH_END
-		static ShaderSourceParser::FunctionSignature blank;
-        return blank;
-    }
-
-    const ShaderSourceParser::ParameterStructSignature& LoadParameterStructSignature(const std::tuple<std::string, std::string>& splitName, const ::Assets::DirectorySearchRules& searchRules)
-    {
-        if (!std::get<0>(splitName).empty()) {
-            using namespace ShaderSourceParser;
-            TRY {
-				char resolvedFile[MaxPath];
-				searchRules.ResolveFile(resolvedFile, std::get<0>(splitName).c_str());
-				auto& frag = ::Assets::GetAssetDep<ShaderFragment>(std::get<0>(splitName).c_str());
-				auto* str = frag.GetParameterStruct(std::get<1>(splitName).c_str());
-				if (str != nullptr) return *str;
-            } CATCH (...) {
-            } CATCH_END
-        }
-
-		static ShaderSourceParser::ParameterStructSignature blank;
-        return blank;
-    }
-
-    static bool HasResultValue(const ShaderSourceParser::FunctionSignature& sig) { return !sig._returnType.empty() && sig._returnType != "void"; }
-
 	static void OrderNodes(IteratorRange<uint32*> range)
 	{
 		// We need to sort the upstreams in some way that maintains a
@@ -448,22 +339,27 @@ namespace ShaderPatcher
             result << expression._expression;
     }
 
-    static std::string TypeFromShaderFragment(const std::string& archiveName, const std::string& paramName, const ::Assets::DirectorySearchRules& searchRules, ShaderSourceParser::FunctionSignature::Parameter::Direction direction)
+    static std::string TypeFromShaderFragment(
+        StringSection<> archiveName, StringSection<> paramName, ParameterDirection direction,
+        ISignatureProvider& sigProvider)
     {
             // Go back to the shader fragments to find the current type for the given parameter
-        const auto& sig = LoadFunctionSignature(SplitArchiveName(archiveName), searchRules);
-        if (paramName == s_resultName && HasResultValue(sig))
-            return sig._returnType;
+        auto sigResult = sigProvider.FindSignature(archiveName);
+        if (!sigResult._signature)
+            return std::string();
+            // Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.AsString().c_str()));
+
+        const auto& sig = *sigResult._signature;
 
             // find a parameter with the right direction & name
-        for (const auto& p:sig._parameters)
-            if ((p._direction & direction) != 0 && p._name == paramName)
+        for (const auto& p:sig.GetParameters())
+            if (p._direction == direction && XlEqString(paramName, p._name))
                 return p._type;
 
         return std::string();
     }
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const NodeConnection& connection, FunctionInterface& interf)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const NodeConnection& connection, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
     {
             //      Check to see what kind of connection it is
             //      By default, let's just assume it's a procedure.
@@ -473,7 +369,7 @@ namespace ShaderPatcher
                 // We will load the current type from the shader fragments, overriding what is in the
                 // the connection. The two might disagree if the shader fragment has changed since the
                 // graph was created.
-            auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), nodeGraph.GetSearchRules(), ShaderSourceParser::FunctionSignature::Parameter::Out);
+            auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider);
             if (type.empty()) type = connection.InputType()._name;
             return ExpressionString{OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type};
 
@@ -483,14 +379,14 @@ namespace ShaderPatcher
 
         } else if (!inputNode || inputNode->GetType() == Node::Type::SlotInput) {
 
-			FunctionInterface::Parameter param(connection.InputType()._name, connection.InputParameterName(), "", FunctionInterface::Parameter::In);
+			NodeGraphSignature::Parameter param{connection.InputType()._name, connection.InputParameterName(), ParameterDirection::In};
 			if (param._type.empty() || XlEqStringI(MakeStringSection(param._type), "auto")) {
 				if (inputNode) {
-					auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), nodeGraph.GetSearchRules(), ShaderSourceParser::FunctionSignature::Parameter::In);
+					auto type = TypeFromShaderFragment(inputNode->ArchiveName(), connection.InputParameterName(), ParameterDirection::In, sigProvider);
 					if (!type.empty()) param._type = type;
 				}
 			}
-			interf.AddFunctionParameter(param);
+			interf.AddParameter(param);
 			return ExpressionString{connection.InputParameterName(), connection.InputType()._name};
 
 		} else {
@@ -511,29 +407,29 @@ namespace ShaderPatcher
 		}
 	}
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection, FunctionInterface& interf)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
     {
             //  we have a "constant connection" value here. We either extract the name of
             //  the varying parameter, or we interpret this as pure text...
 		return ExpressionString{StripAngleBracket(connection.Value()).first, std::string()};
     }
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, FunctionInterface& interf)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
     {
 		auto p = StripAngleBracket(connection.InputName());
 		if (p.second) return ExpressionString{p.first, std::string()};
 		return ExpressionString{connection.InputName(), connection.InputType()._name};
     }
 
-	static FunctionInterface::Parameter AsInterfaceParameter(const ConstantConnection& connection)			{ return FunctionInterface::Parameter(std::string(), connection.Value(), std::string()); }
-	static FunctionInterface::Parameter AsInterfaceParameter(const InputParameterConnection& connection)	{ return FunctionInterface::Parameter(connection.InputType()._name, connection.InputName(), std::string(), FunctionInterface::Parameter::In, std::string(), connection.Default()); }
-	static FunctionInterface::Parameter AsInterfaceParameter(const NodeConnection& connection)				{ return FunctionInterface::Parameter(connection.InputType()._name, connection.OutputParameterName(), std::string(), FunctionInterface::Parameter::In); }
+	static NodeGraphSignature::Parameter AsInterfaceParameter(const ConstantConnection& connection)			{ return NodeGraphSignature::Parameter{std::string(), connection.Value()}; }
+	static NodeGraphSignature::Parameter AsInterfaceParameter(const InputParameterConnection& connection)	{ return NodeGraphSignature::Parameter{connection.InputType()._name, connection.InputName(), ParameterDirection::In, std::string(), connection.Default()}; }
+	static NodeGraphSignature::Parameter AsInterfaceParameter(const NodeConnection& connection)				{ return NodeGraphSignature::Parameter{connection.InputType()._name, connection.OutputParameterName(), ParameterDirection::In}; }
 
-    static ExpressionString ParameterExpression(const NodeGraph& nodeGraph, uint32 nodeId, const ShaderSourceParser::FunctionSignature::Parameter& signatureParam, FunctionInterface& interf)
+    static ExpressionString ParameterExpression(const NodeGraph& nodeGraph, uint32 nodeId, const NodeGraphSignature::Parameter& signatureParam, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
     {
         auto i = FindConnection(nodeGraph.GetNodeConnections(), nodeId, signatureParam._name);
         if (i!=nodeGraph.GetNodeConnections().cend()) {
-            auto e = QueryExpression(nodeGraph, *i, interf);
+            auto e = QueryExpression(nodeGraph, *i, interf, sigProvider);
 			if (!e._expression.empty()) return e;
 		}
 
@@ -546,8 +442,8 @@ namespace ShaderPatcher
 				if (paramToAdd._type.empty() || XlEqStringI(MakeStringSection(paramToAdd._type), "auto"))
 					paramToAdd._type = signatureParam._type;
 
-				interf.AddGlobalParameter(paramToAdd);
-				auto e = QueryExpression(nodeGraph, *ci, interf);
+				interf.AddCapturedParameter(paramToAdd);
+				auto e = QueryExpression(nodeGraph, *ci, interf, sigProvider);
 				if (!e._expression.empty()) return e;
 			} else {
 				return ExpressionString{ci->Value(), std::string()};
@@ -566,24 +462,24 @@ namespace ShaderPatcher
             if (paramToAdd._type.empty() || XlEqStringI(MakeStringSection(paramToAdd._type), "auto"))
 				paramToAdd._type = signatureParam._type;
 
-			if (p.second) interf.AddGlobalParameter(paramToAdd);
-			else interf.AddFunctionParameter(paramToAdd);
-            auto e = QueryExpression(nodeGraph, *ti, interf);
+			if (p.second) interf.AddCapturedParameter(paramToAdd);
+			else interf.AddParameter(paramToAdd);
+            auto e = QueryExpression(nodeGraph, *ti, interf, sigProvider);
 			if (!e._expression.empty()) return e;
 		}
 
 		// We must add this request as some kind of input to the function (ie, a parameter input or a global input)
-		FunctionInterface::Parameter param(signatureParam._type, signatureParam._name, "", FunctionInterface::Parameter::In, signatureParam._semantic);
-		interf.AddFunctionParameter(param);
+		NodeGraphSignature::Parameter param{signatureParam._type, signatureParam._name, ParameterDirection::In, signatureParam._semantic};
+		interf.AddParameter(param);
         return ExpressionString{param._name, param._type};
     }
 
-	static std::string UniquifyName(const std::string& name, IteratorRange<const FunctionInterface::Parameter*> existing)
+	static std::string UniquifyName(const std::string& name, IteratorRange<const NodeGraphSignature::Parameter*> existing)
     {
 		std::string testName = name;
 		unsigned suffix = 0;
 		for (;;) {
-			auto i = std::find_if(existing.begin(), existing.end(), [&testName](const FunctionInterface::Parameter&p) { return p._name == testName; } );
+			auto i = std::find_if(existing.begin(), existing.end(), [&testName](const NodeGraphSignature::Parameter&p) { return p._name == testName; } );
 			if (i == existing.end()) {
 				return testName;
 			} else {
@@ -600,22 +496,23 @@ namespace ShaderPatcher
             std::stringstream& result,
             const NodeGraph& graph,
             IteratorRange<const Connection*> range,
-            FunctionInterface& interf)
+            NodeGraphSignature& interf,
+            ISignatureProvider& sigProvider)
     {
         for (const auto& i:range) {
 			auto* destinationNode = graph.GetNode(i.OutputNodeId());
             if (!destinationNode || destinationNode->GetType() == Node::Type::SlotOutput) {
-				ExpressionString expression = QueryExpression(graph, i, interf);
+				ExpressionString expression = QueryExpression(graph, i, interf, sigProvider);
 
 				// This is not connected to anything -- so we just have to add it as a
 				// unique output from the interface.
 				auto param = AsInterfaceParameter(i);
 				auto originalName = param._name;
-				param._direction = FunctionInterface::Parameter::Out;
-				param._name = UniquifyName(param._name, interf.GetFunctionParameters());
+				param._direction = ParameterDirection::Out;
+				param._name = UniquifyName(param._name, interf.GetParameters());
 				if (param._type.empty() || XlEqStringI(MakeStringSection(param._type), "auto"))
 					param._type = expression._type;
-				interf.AddFunctionParameter(param);
+				interf.AddParameter(param);
 				result << "\t" << param._name << " = ";
 
 				if (!expression._expression.empty()) {
@@ -630,10 +527,64 @@ namespace ShaderPatcher
         }
     }
 
-    static std::stringstream GenerateFunctionCall(const Node& node, const NodeGraph& nodeGraph, FunctionInterface& interf)
+    struct ResolvedFunction
     {
-        auto splitName = SplitArchiveName(node.ArchiveName());
+    public:
+        std::string _name;
+        std::string _finalArchiveName;
+        const NodeGraphSignature* _signature = nullptr;
+    };
 
+    static ResolvedFunction ResolveFunction(
+        const std::string& archiveName, 
+        const InstantiationParameters& instantiationParameters, 
+        ISignatureProvider& sigProvider)
+    {
+        ResolvedFunction result;
+
+        // Check to see if this function call is using a template parameter. Templated function names look like this:
+        //      name '<' restriction '>'
+        // Where name is the name of the parameter, and restriction is a function signature we're expecting it to
+        // match.
+        // If the template parameter has not been assigned to anything, we'll use the restriction as a kind of default.
+        auto marker = std::find(archiveName.begin(), archiveName.end(), '<');
+        if (marker != archiveName.end()) {
+            auto parameterName = MakeStringSection(archiveName.begin(), marker);
+            auto restriction = MakeStringSection(marker+1, std::find(archiveName.begin(), archiveName.end(), '>'));
+
+            auto sigProviderResult = sigProvider.FindSignature(restriction);
+            result._signature = sigProviderResult._signature;
+            if (!result._signature)
+                Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", restriction.AsString().c_str()));
+
+            auto i = instantiationParameters._parameterBindings.find(parameterName.AsString());
+            if (i!=instantiationParameters._parameterBindings.end()) {
+                result._name = i->second;
+            } else {
+                result._name = restriction.AsString();
+            }
+            result._finalArchiveName = result._name;
+
+            return result;
+        }
+
+        auto sigProviderResult = sigProvider.FindSignature(archiveName);
+        result._signature = sigProviderResult._signature;
+        if (!result._signature)
+            Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.c_str()));
+        result._name = sigProviderResult._name;
+        result._finalArchiveName = archiveName;
+        return result;
+    }
+
+    static std::stringstream GenerateFunctionCall(
+        NodeGraphSignature& workingInterface,       // this is the interface the output function we're generating. It will be expanded as necessary in this call
+        DependencyTable& workingDependencyTable,    // this is the dependency table into which we'll append this function call
+        const Node& node, 
+        const NodeGraph& nodeGraph,
+        const InstantiationParameters& instantiationParameters,
+        ISignatureProvider& sigProvider)
+    {
             //
             //      Parse the fragment again, to get the correct function
             //      signature at this time.
@@ -651,36 +602,72 @@ namespace ShaderPatcher
             //
 
 
-        auto functionName = std::get<1>(splitName);
-        const auto& sig = LoadFunctionSignature(splitName, nodeGraph.GetSearchRules());
+        auto sigRes = ResolveFunction(node.ArchiveName(), instantiationParameters, sigProvider);
+        auto functionName = sigRes._name;
+        auto& sig = *sigRes._signature;
+
+            //
+            //  There are template parameters in the signature, and if we are passing values
+            //  for those parameters, we must select a specific instantiation of the function
+            //
+        InstantiationParameters callInstantiation;
+        for (const auto& tp:sig.GetTemplateParameters()) {
+            auto connection = std::find_if(
+                nodeGraph.GetConstantConnections().begin(),
+                nodeGraph.GetConstantConnections().end(),
+                [tp, &node](const ConstantConnection& p) {
+                    return p.OutputNodeId() == node.NodeId()
+                        && p.OutputParameterName() == tp._name;
+                });
+            if (connection!=nodeGraph.GetConstantConnections().end()) {
+                callInstantiation._parameterBindings.insert({tp._name, connection->Value()});
+            }
+        }
 
         std::stringstream result, warnings;
+
+        auto callInstHash = callInstantiation.CalculateHash();
+        if (!callInstantiation._parameterBindings.empty()) {
+            for (auto& c:callInstantiation._parameterBindings)
+                result << "\t// Instantiating " << c.first << " with " << c.second << " in call to " << functionName << std::endl;
+            functionName += "_" + std::to_string(callInstHash);
+        }
 
             //      1.  Declare output variable (made unique by node id)
             //      2.  Call the function, assigning the output variable as appropriate
             //          and passing in the parameters (as required)
-        for (const auto& i:sig._parameters)
-            if (i._direction & ShaderSourceParser::FunctionSignature::Parameter::Out)
+        std::string returnType;
+        for (const auto& i:sig.GetParameters())
+            if (i._direction == ParameterDirection::Out) {
+                if (i._name == s_resultName) {
+                    returnType = i._type;
+                    continue;
+                }
                 result << "\t" << i._type << " " << OutputTemporaryForNode(node.NodeId(), i._name) << ";" << std::endl;
+            }
 
-        if (HasResultValue(sig)) {
+        if (!returnType.empty()) {
             auto outputName = OutputTemporaryForNode(node.NodeId(), s_resultName);
-            result << "\t" << sig._returnType << " " << outputName << " = " << functionName << "( ";
+            result << "\t" << returnType << " " << outputName << " = " << functionName << "( ";
         } else {
             result << "\t" << functionName << "( ";
         }
 
-        for (auto p=sig._parameters.cbegin(); p!=sig._parameters.cend(); ++p) {
-            if (p != sig._parameters.cbegin())
-                result << ", ";
+        bool pendingComma = false;
+        for (auto p=sig.GetParameters().cbegin(); p!=sig.GetParameters().cend(); ++p) {
+            if (p->_direction == ParameterDirection::Out && p->_name == s_resultName)
+                continue;
+
+            if (pendingComma) result << ", ";
+            pendingComma = true;
 
                 // note -- problem here for in/out parameters
-            if (p->_direction == ShaderSourceParser::FunctionSignature::Parameter::Out) {
+            if (p->_direction == ParameterDirection::Out) {
                 result << OutputTemporaryForNode(node.NodeId(), p->_name);
                 continue;
             }
 
-            auto expr = ParameterExpression(nodeGraph, node.NodeId(), *p, interf);
+            auto expr = ParameterExpression(nodeGraph, node.NodeId(), *p, workingInterface, sigProvider);
             if (!expr._expression.empty()) {
                 WriteCastExpression(result, expr, p->_type);
             } else {
@@ -695,10 +682,22 @@ namespace ShaderPatcher
             result << warnings.str();
         }
 
-        return std::move(result);
+        // Append the function call to the dependency table
+        DependencyTable::Dependency dep { sigRes._finalArchiveName, std::move(callInstantiation) };
+        auto existing = std::find_if(
+            workingDependencyTable._dependencies.begin(), workingDependencyTable._dependencies.end(),
+            [&dep](const DependencyTable::Dependency& d) 
+                { return d._archiveName == dep._archiveName && d._parameters.CalculateHash(); });
+        if (existing == workingDependencyTable._dependencies.end())
+            workingDependencyTable._dependencies.emplace_back(std::move(dep));
+
+        return result;
     }
 
-    static std::pair<std::string, FunctionInterface> GenerateMainFunctionBody(const NodeGraph& graph)
+    static std::tuple<std::string, NodeGraphSignature, DependencyTable> GenerateMainFunctionBody(
+        const NodeGraph& graph,
+        const InstantiationParameters& instantiationParameters,
+        ISignatureProvider& sigProvider)
     {
         std::stringstream result;
 
@@ -773,27 +772,34 @@ namespace ShaderPatcher
             result << "// Warning! found a cycle in the graph of nodes. Result will be incomplete!" << std::endl;
         }
 
-		FunctionInterface interf;
+		NodeGraphSignature interf;
+        DependencyTable depTable;
 
         for (auto i=sortedNodes.cbegin(); i!=sortedNodes.cend(); ++i) {
             auto i2 = std::find_if( graph.GetNodes().cbegin(),
                                     graph.GetNodes().cend(), [i](const Node& n) { return n.NodeId() == *i; } );
             if (i2 != graph.GetNodes().cend()) {
                 if (i2->GetType() == Node::Type::Procedure) {
-                    result << GenerateFunctionCall(*i2, graph, interf).str();
+                    result << GenerateFunctionCall(interf, depTable, *i2, graph, instantiationParameters, sigProvider).str();
                 }
             }
         }
 
-		FillDirectOutputParameters(result, graph, graph.GetNodeConnections(), interf);
-        FillDirectOutputParameters(result, graph, graph.GetConstantConnections(), interf);
-        FillDirectOutputParameters(result, graph, graph.GetInputParameterConnections(), interf);
+        for (const auto& dep:depTable._dependencies)
+            result << "\t//Dependency: " << dep._archiveName << " inst hash: " << dep._parameters.CalculateHash() << std::endl;
 
-        return std::make_pair(result.str(), interf);
+		FillDirectOutputParameters(result, graph, graph.GetNodeConnections(), interf, sigProvider);
+        FillDirectOutputParameters(result, graph, graph.GetConstantConnections(), interf, sigProvider);
+        FillDirectOutputParameters(result, graph, graph.GetInputParameterConnections(), interf, sigProvider);
+
+        return std::make_tuple(result.str(), std::move(interf), std::move(depTable));
     }
 
     std::string GenerateShaderHeader(const NodeGraph& graph)
     {
+		assert(0);	// todo -- use new DependencyTable functionality for this
+		return std::string();
+#if 0
             //
             //      Generate shader source code for the given input
             //      node graph.
@@ -850,6 +856,7 @@ namespace ShaderPatcher
 
         result << std::endl << std::endl;
         return result.str();
+#endif
     }
 
     bool IsStructType(StringSection<char> typeName)
@@ -901,18 +908,13 @@ namespace ShaderPatcher
         return true;
     }
 
-    bool FunctionInterface::IsCBufferGlobal(unsigned c) const
-    {
-        return CanBeStoredInCBuffer(MakeStringSection(_globalParameters[c]._type));
-    }
-
     static void AddWithExistingCheck(
-        std::vector<FunctionInterface::Parameter>& dst,
-        const FunctionInterface::Parameter& param)
+        std::vector<NodeGraphSignature::Parameter>& dst,
+        const NodeGraphSignature::Parameter& param)
     {
 	    // Look for another parameter with the same name...
 	    auto existing = std::find_if(dst.begin(), dst.end(),
-		    [&param](const FunctionInterface::Parameter& p) { return p._name == param._name; });
+		    [&param](const NodeGraphSignature::Parameter& p) { return p._name == param._name; });
 	    if (existing != dst.end()) {
 		    // If we have 2 parameters with the same name, we're going to expect they
 		    // also have the same type and semantic (otherwise we would need to adjust
@@ -924,22 +926,60 @@ namespace ShaderPatcher
 	    }
     }
 
-	void FunctionInterface::AddFunctionParameter(const Parameter& param) { AddWithExistingCheck(_functionParameters, param); }
-	void FunctionInterface::AddGlobalParameter(const Parameter& param) { AddWithExistingCheck(_globalParameters, param); }
+	void NodeGraphSignature::AddParameter(const Parameter& param) { AddWithExistingCheck(_functionParameters, param); }
+	void NodeGraphSignature::AddCapturedParameter(const Parameter& param) { AddWithExistingCheck(_capturedParameters, param); }
+    void NodeGraphSignature::AddTemplateParameter(const TemplateParameter& param) { return _templateParameters.push_back(param); }
 
-    FunctionInterface::FunctionInterface() {}
-    FunctionInterface::~FunctionInterface() {}
+    NodeGraphSignature::NodeGraphSignature() {}
+    NodeGraphSignature::~NodeGraphSignature() {}
 
     static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-    std::pair<std::string, FunctionInterface> GenerateFunction(const NodeGraph& graph)
+    static std::string GenerateSignature(const NodeGraphSignature& sig, const char name[], bool useReturnType = true)
+	{
+        std::string returnType, returnSemantic;
+
+		std::stringstream mainFunctionDeclParameters;
+		for (const auto& i:sig.GetParameters()) {
+            if (useReturnType && i._name == s_resultName && i._direction == ParameterDirection::Out) {
+                assert(returnType.empty() && returnSemantic.empty());
+                returnType = i._type;
+                returnSemantic = i._semantic;
+                continue;
+            }
+
+			//
+            //      Our graph function is always a "void" function, and all of the output
+            //      parameters are just function parameters with the "out" keyword. This is
+            //      convenient for writing out generated functions
+            //      We don't want to put the "node id" in the name -- because node ids can
+            MaybeComma(mainFunctionDeclParameters);
+			if (i._direction == ParameterDirection::Out) {
+				mainFunctionDeclParameters << "out ";
+			}
+            mainFunctionDeclParameters << i._type << " " << i._name;
+			if (!i._semantic.empty())
+				mainFunctionDeclParameters << " : " << i._semantic;
+        }
+
+        std::stringstream result;
+		if (!returnType.empty()) result << returnType << " ";
+		else result << "void ";
+        result << name << "(" << mainFunctionDeclParameters.str() << ")";
+		if (!returnSemantic.empty())
+			result << " : " << returnSemantic;
+		return result.str();
+	}
+
+    GeneratedFunction GenerateFunction(
+        const NodeGraph& graph, const char name[],
+        const InstantiationParameters& instantiationParameters,
+        ISignatureProvider& sigProvider)
     {
 		std::string mainBody;
-		FunctionInterface interf;
-		std::tie(mainBody, interf) = GenerateMainFunctionBody(graph);
-		interf.SetName(graph.GetName());
-
-        std::stringstream mainFunctionDeclParameters;
+		NodeGraphSignature interf;
+        DependencyTable depTable;
+		std::tie(mainBody, interf, depTable) = GenerateMainFunctionBody(graph, instantiationParameters, sigProvider);
 
 			//
             //      Our graph function is always a "void" function, and all of the output
@@ -949,25 +989,16 @@ namespace ShaderPatcher
             //      change from time to time, and that would invalidate any other shaders calling
             //      this function. But ideally we need some way to guarantee uniqueness.
             //
-        for (const auto& i:interf.GetFunctionParameters()) {
-            MaybeComma(mainFunctionDeclParameters);
-			if (i._direction == FunctionInterface::Parameter::Out)
-				mainFunctionDeclParameters << "out ";
-            mainFunctionDeclParameters << i._type << " " << i._name;
-			if (!i._semantic.empty())
-				mainFunctionDeclParameters << " : " << i._semantic;
-        }
-
-        std::stringstream result;
-        result << "void " << graph.GetName() << "(" << mainFunctionDeclParameters.str() << ")" << std::endl;
+        std::stringstream result;     
+        result << GenerateSignature(interf, name, false) << std::endl;
         result << "{" << std::endl;
 		result << mainBody;
-        result << "}" << std::endl << std::endl;
+        result << "}" << std::endl;
 
-        return std::make_pair(result.str(), interf);
+        return GeneratedFunction{result.str(), std::move(interf), std::move(depTable)};
     }
 
-	std::string GenerateMaterialCBuffer(const FunctionInterface& interf)
+	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf)
 	{
 		std::stringstream result;
 
@@ -977,7 +1008,7 @@ namespace ShaderPatcher
             //      constants together in a single cbuffer called "BasicMaterialConstants"
             //
         bool hasMaterialConstants = false;
-        for(auto i:interf.GetGlobalParameters()) {
+        for(auto i:interf.GetCapturedParameters()) {
             if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
                 result << i._type << " " << i._name << ";" << std::endl;
             } else
@@ -989,7 +1020,7 @@ namespace ShaderPatcher
                 // But it is not assigned to a fixed cbuffer register.
             result << "cbuffer BasicMaterialConstants" << std::endl;
             result << "{" << std::endl;
-            for (const auto& i:interf.GetGlobalParameters())
+            for (const auto& i:interf.GetCapturedParameters())
                 if (CanBeStoredInCBuffer(MakeStringSection(i._type)))
                     result << "\t" << i._type << " " << i._name << ";" << std::endl;
             result << "}" << std::endl;
@@ -999,32 +1030,7 @@ namespace ShaderPatcher
 		return result.str();
 	}
 
-	static std::string GenerateSignature(const ShaderSourceParser::FunctionSignature& sig)
-	{
-		// note -- this is almost identical to the code in GenerateFunction (but that is for FunctionInterface)
-		std::stringstream mainFunctionDeclParameters;
-		for (const auto& i:sig._parameters) {
-            MaybeComma(mainFunctionDeclParameters);
-			if (i._direction == ShaderSourceParser::FunctionSignature::Parameter::Out) {
-				mainFunctionDeclParameters << "out ";
-			} else if (i._direction == (ShaderSourceParser::FunctionSignature::Parameter::In|ShaderSourceParser::FunctionSignature::Parameter::Out)) {
-				mainFunctionDeclParameters << "inout ";
-			}
-            mainFunctionDeclParameters << i._type << " " << i._name;
-			if (!i._semantic.empty())
-				mainFunctionDeclParameters << " : " << i._semantic;
-        }
-
-        std::stringstream result;
-		if (!sig._returnType.empty()) result << sig._returnType << " ";
-		else result << "void ";
-        result << sig._name << "(" << mainFunctionDeclParameters.str() << ")";
-		if (!sig._returnSemantic.empty())
-			result << " : " << sig._returnSemantic;
-		return result.str();
-	}
-
-	std::string GenerateScaffoldFunction(const ShaderSourceParser::FunctionSignature& slotSignature, const FunctionInterface& generatedFunctionSignature)
+	std::string GenerateScaffoldFunction(const NodeGraphSignature& slotSignature, const NodeGraphSignature& generatedFunctionSignature, const char name[])
 	{
 			//
 			//	Generate the scaffolding function that conforms to the given signature in "slotSignature", but that calls the implementation
@@ -1038,34 +1044,35 @@ namespace ShaderPatcher
 		std::stringstream result;
 		result << GenerateMaterialCBuffer(generatedFunctionSignature);
 
-		result << GenerateSignature(slotSignature) << std::endl;
+        result << "/////// Scaffold function for: " << name << " ///////" << std::endl;
+		result << GenerateSignature(slotSignature, name) << std::endl;
 		result << "{" << std::endl;
 
 		// make temporaries for all outputs
-		for (auto& p:generatedFunctionSignature.GetFunctionParameters()) {
-			if (p._direction == FunctionInterface::Parameter::Out) {
+		for (auto& p:generatedFunctionSignature.GetParameters()) {
+			if (p._direction == ParameterDirection::Out) {
 				result << "\t" << p._type << " temp_" << p._name << ";" << std::endl;
 			}
 		}
 
 		std::stringstream paramStream;
-		for (const auto& p:generatedFunctionSignature.GetFunctionParameters()) {
-			MaybeComma(paramStream);
+		for (const auto& p:generatedFunctionSignature.GetParameters()) {
+            MaybeComma(paramStream);
 
-			if (p._direction == FunctionInterface::Parameter::Out) {
-				paramStream << "temp_" << p._name;
+			if (p._direction == ParameterDirection::Out) {
+                paramStream << "temp_" << p._name;
 				continue;
 			}
 
 			// How do we pass a value to this parameter?
 			// first, check to see if this parameter is in "slotSignature"
-			auto i = std::find_if(slotSignature._parameters.begin(), slotSignature._parameters.end(),
-				[&p](const ShaderSourceParser::FunctionSignature::Parameter& test) -> bool
+			auto i = std::find_if(slotSignature.GetParameters().begin(), slotSignature.GetParameters().end(),
+				[&p](const NodeGraphSignature::Parameter& test) -> bool
 				{
-					if (test._direction != ShaderSourceParser::FunctionSignature::Parameter::In) return false;
+					if (test._direction != ParameterDirection::In) return false;
 					return test._name == p._name;
 				});
-			if (i != slotSignature._parameters.end()) {
+			if (i != slotSignature.GetParameters().end()) {
 				WriteCastExpression(paramStream, {i->_name, i->_type}, p._type);
 				continue;
 			}
@@ -1080,23 +1087,31 @@ namespace ShaderPatcher
 			paramStream << "DefaultValue_" << p._type << "()";
 		}
 
-		result << "\t" << generatedFunctionSignature.GetName() << "(" << paramStream.str() << ");" << std::endl;
+		result << "\t" << name << "(" << paramStream.str() << ");" << std::endl;
 
 		// Map the output parameters to their final destination.
-		for (const auto&p:slotSignature._parameters) {
-			if (p._direction != ShaderSourceParser::FunctionSignature::Parameter::Out || p._name == s_resultName)
+        std::string returnType, returnSemantic;
+		for (const auto&p:slotSignature.GetParameters()) {
+			if (p._direction != ParameterDirection::Out)
+                continue;
+            
+            if (p._name == s_resultName) {
+                assert(returnType.empty() && returnSemantic.empty());
+                returnType = p._type;
+                returnSemantic = p._semantic;
 				continue;
+            }
 
 			result << "\t" << p._name << " = ";
 
 			// First, look for an output from the generated function
-			auto i = std::find_if(generatedFunctionSignature.GetFunctionParameters().begin(), generatedFunctionSignature.GetFunctionParameters().end(),
-				[&p](const FunctionInterface::Parameter& test) -> bool
+			auto i = std::find_if(generatedFunctionSignature.GetParameters().begin(), generatedFunctionSignature.GetParameters().end(),
+				[&p](const NodeGraphSignature::Parameter& test) -> bool
 				{
-					if (test._direction != FunctionInterface::Parameter::Out) return false;
+					if (test._direction != ParameterDirection::Out) return false;
 					return test._name == p._name;
 				});
-			if (i != generatedFunctionSignature.GetFunctionParameters().end()) {
+			if (i != generatedFunctionSignature.GetParameters().end()) {
 				WriteCastExpression(result, {std::string("temp_") + i->_name, i->_type}, p._type);
 				result << ";" << std::endl;
 				continue;
@@ -1106,18 +1121,18 @@ namespace ShaderPatcher
 			result << "DefaultValue_" << p._type << "();" << std::endl;
 		}
 
-		if (!slotSignature._returnType.empty()) {
+		if (!returnType.empty()) {
 			result << "\treturn ";
 
 				// First, look for an output from the generated function
-			auto i = std::find_if(generatedFunctionSignature.GetFunctionParameters().begin(), generatedFunctionSignature.GetFunctionParameters().end(),
-				[](const FunctionInterface::Parameter& test) -> bool
-				{ return (test._direction == FunctionInterface::Parameter::Out) && test._name == s_resultName; });
-			if (i != generatedFunctionSignature.GetFunctionParameters().end()) {
-				WriteCastExpression(result, {std::string("temp_") + i->_name, i->_type}, slotSignature._returnType);
+			auto i = std::find_if(generatedFunctionSignature.GetParameters().begin(), generatedFunctionSignature.GetParameters().end(),
+				[](const NodeGraphSignature::Parameter& test) -> bool
+				{ return (test._direction == ParameterDirection::Out) && test._name == s_resultName; });
+			if (i != generatedFunctionSignature.GetParameters().end()) {
+				WriteCastExpression(result, {std::string("temp_") + i->_name, i->_type}, returnType);
 			} else {
 				// Second, just use a default value
-				result << "DefaultValue_" << slotSignature._returnType << "()";
+				result << "DefaultValue_" << returnType << "()";
 			}
 			result << ";" << std::endl;
 		}
@@ -1126,4 +1141,16 @@ namespace ShaderPatcher
 
 		return result.str();
 	}
+
+
+    uint64_t InstantiationParameters::CalculateHash() const
+    {
+        if (_parameterBindings.empty()) return 0;
+        uint64 result = DefaultSeed64;
+        for (const auto&p:_parameterBindings)
+            result = HashCombine(result, HashCombine(Hash64(p.first), Hash64(p.second)));
+        return result;
+    }
+
+    ISignatureProvider::~ISignatureProvider() {}
 }

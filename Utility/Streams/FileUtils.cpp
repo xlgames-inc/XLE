@@ -22,37 +22,6 @@ namespace Utility
 		}
 	}
 
-    namespace RawFS
-	{
-		std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(const char sourceFileName[], size_t* sizeResult)
-		{
-			// Implemented to avoid throwing an exception on a missing file
-			// However, there may be some exception cases where we do actually want to throw an exception
-			//      -- for example, a permissions error or something more complex. In those cases, we
-			//      may want the calling code to take some action. Suppressing all exceptions here
-			//      is too generous!
-			BasicFile file;
-			if (file.TryOpen((const utf8*)sourceFileName, "rb", FileShareMode::Read) == Exceptions::IOException::Reason::Success) {
-				file.Seek(0, FileSeekAnchor::End);
-				size_t size = file.TellP();
-				file.Seek(0);
-				if (size) {
-					std::unique_ptr<uint8[]> result(new uint8[size+1]);
-					file.Read(result.get(), 1, size);
-					result[size] = '\0';
-					if (sizeResult) {
-						*sizeResult = size;
-					}
-					return result;
-				}
-			}
-
-			// on missing file (or failed load), we return the equivalent of an empty file
-			if (sizeResult) { *sizeResult = 0; }
-			return nullptr;
-		}
-	}
-
 	MemoryMappedFile::MemoryMappedFile(void* begin, void* end, CloseFn&& close)
 	: _begin(begin), _end(end), _closeFn(std::move(close)) {}
 

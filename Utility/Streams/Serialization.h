@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <cstdint>
+#include <algorithm>		// (for std::max)
 
 namespace Utility
 {
@@ -195,15 +196,15 @@ namespace Utility
 		{
 			assert(pos >= _begin && pos < _end);
 			assert(OwnsHeapBlock());
-			for (auto i=pos; (i+1)!=_end; ++i) *i = std::move(*(i+1));
+			for (auto i= const_cast<iterator>(pos); (i+1)!=_end; ++i) *i = std::move(*(i+1));
 			--_end;
-			return pos;
+			return const_cast<iterator>(pos);
 		}
 
 		iterator erase(const_iterator first, const_iterator last) 
 		{
-			assert(first >= _begin && first < _end);
-			assert(last >= _begin && last < _end);
+			assert(first >= _begin && first <= _end);
+			assert(last >= _begin && last <= _end);
 			assert(first != last);
 			assert(OwnsHeapBlock());
 			auto cnt = last-first;
@@ -248,7 +249,6 @@ namespace Utility
 			iterator insert(const_iterator pos, InputIt first, InputIt last)
 		{
 			assert(pos >= _begin && pos <= _end);
-			assert(first!=last);
 			auto idx = pos - _begin;
 			auto cnt = std::distance(first, last);
 			if ((_end+cnt) > _capacity) {
@@ -283,6 +283,21 @@ namespace Utility
 			}
 		}
 
+		template<typename Initializer>
+			void resize(size_type newSize, const Initializer& initializer)
+		{
+			if (newSize <= size()) {
+				for (auto i = _begin + newSize; i != _end; ++i) i->~Element();
+				_end = _begin + newSize;
+			}
+			else {
+				reserve(newSize);
+				for (; _end != _begin + newSize; ++_end) {
+					new(_end) Element(initializer);		// (note, we can't do perfect forwarding here, because of course we're going to be using it mutliple times)
+				}
+			}
+		}
+
 		bool OwnsHeapBlock() const { return !(_capacity == nullptr && _begin != nullptr); }
 
 		SerializableVector() : _begin(nullptr), _end(nullptr), _capacity(nullptr) {}
@@ -300,16 +315,30 @@ namespace Utility
 			if (OwnsHeapBlock()) delete (uint8_t*)_begin;
 		}
 
-		SerializableVector(SerializableVector&& moveFrom) : _begin(moveFrom._begin), _end(moveFrom._end), _capacity(moveFrom._capacity) 
+		SerializableVector(SerializableVector&& moveFrom) never_throws : _begin(moveFrom._begin), _end(moveFrom._end), _capacity(moveFrom._capacity) 
 		{
 			moveFrom._begin = moveFrom._end = moveFrom._capacity = nullptr;
 		}
 
-		SerializableVector& operator=(SerializableVector&& moveFrom)
+		SerializableVector& operator=(SerializableVector&& moveFrom) never_throws
 		{
 			SerializableVector temp(std::move(*this));
 			_begin = moveFrom._begin; _end = moveFrom._end; _capacity = moveFrom._capacity;
 			moveFrom._begin = moveFrom._end = moveFrom._capacity = nullptr;
+			return *this;
+		}
+
+		SerializableVector(const SerializableVector& copyFrom)
+			: SerializableVector()
+		{
+			if (!copyFrom.empty())
+				insert(this->end(), copyFrom.begin(), copyFrom.end());
+		}
+
+		SerializableVector& operator=(const SerializableVector& copyFrom)
+		{
+			SerializableVector newVec(copyFrom);
+			*this = std::move(newVec);
 			return *this;
 		}
 

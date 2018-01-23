@@ -21,7 +21,6 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/PreparedScene.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IAnnotator.h"
@@ -35,6 +34,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 
@@ -223,8 +223,8 @@ namespace Sample
     public:
         class Desc {};
 
-        intrusive_ptr<RenderOverlays::Font> _defaultFont0;
-        intrusive_ptr<RenderOverlays::Font> _defaultFont1;
+		std::shared_ptr<RenderOverlays::Font> _defaultFont0;
+		std::shared_ptr<RenderOverlays::Font> _defaultFont1;
 
         UsefulFonts(const Desc&)
         {
@@ -261,7 +261,7 @@ namespace Sample
             overlaySys->RenderToScene(context, lightingParserContext);
         }
 
-        auto& usefulFonts = RenderCore::Techniques::FindCachedBox2<UsefulFonts>();
+        auto& usefulFonts = ConsoleRig::FindCachedBox2<UsefulFonts>();
         DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
 
         if (overlaySys) {

@@ -19,6 +19,7 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Types.h"
@@ -34,6 +35,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/Assets.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Math/Transformations.h"
@@ -116,7 +118,7 @@ namespace Overlays
         std::unique_ptr<DirectoryQuery> _modelFiles;
         std::string     _baseDirectory;
         std::string     _currentDirectory;
-        intrusive_ptr<Font> _headingFont;
+		std::shared_ptr<Font> _headingFont;
         unsigned        _itemDimensions;
         std::string     _fileFilter;
         std::string     _headerName;
@@ -191,7 +193,7 @@ namespace Overlays
         // DrawText(context, rect, 0.f, nullptr, formatting._foreground, manipulatorName);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
+            nullptr, formatting._foreground, TextAlignment::Center, label);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
@@ -236,11 +238,11 @@ namespace Overlays
             interactables.Register(Interactables::Widget(toolBoxLayout.GetMaximumSize(), Id_TotalRect));
 
             const auto headingRect = toolBoxLayout.AllocateFullWidth(25);
-            TextStyle font(*_pimpl->_headingFont);
+            TextStyle font(_pimpl->_headingFont);
             context.DrawText(
                 std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
                 &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
-                    _pimpl->_headerName.c_str(), nullptr);
+                    _pimpl->_headerName.c_str());
         }
 
             //  Write the current directory name
@@ -248,7 +250,7 @@ namespace Overlays
         auto curDirRect = toolBoxLayout.AllocateFullWidth(textHeight);
         context.DrawText(
             std::make_tuple(Float3(float(curDirRect._topLeft[0]), float(curDirRect._topLeft[1]), 0.f), Float3(float(curDirRect._bottomRight[0]), float(curDirRect._bottomRight[1]), 0.f)),
-            nullptr, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str(), nullptr);
+            nullptr, headerColourNormal, TextAlignment::Center, _pimpl->_currentDirectory.c_str());
 
         {
             auto border = toolBoxLayout.AllocateFullWidth(2); // small border to reset current line
@@ -265,7 +267,7 @@ namespace Overlays
                 char utf8Filename[MaxPath], baseName[MaxPath];
                 ucs2_2_utf8(AsPointer(i->_filename.cbegin()), i->_filename.size(), (utf8*)utf8Filename, dimof(utf8Filename));
                 XlBasename(baseName, dimof(baseName), utf8Filename);
-                unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, baseName, nullptr);
+                unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, baseName);
                 auto directoryRect = toolBoxLayout.Allocate(Coord2(textWidth, textHeight));
                 DrawButtonBasic(
                     &context, directoryRect, baseName, 
@@ -274,7 +276,7 @@ namespace Overlays
             }
 
             const char back[] = "<up>";
-            unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, back, nullptr);
+            unsigned textWidth = 20 + (unsigned)context.StringWidth(1.f, nullptr, back);
             auto directoryRect = toolBoxLayout.Allocate(Coord2(textWidth, textHeight));
             DrawButtonBasic(
                 &context, directoryRect, back, 
@@ -372,7 +374,7 @@ namespace Overlays
 
             context.DrawText(
                 std::make_tuple(Float3(float(labelRect._topLeft[0]), float(labelRect._topLeft[1]), 0.f), Float3(float(labelRect._bottomRight[0]), float(labelRect._bottomRight[1]), 0.f)),
-                nullptr, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str(), nullptr);
+                nullptr, ColorB(0xffffffff), TextAlignment::Center, i->first.c_str());
         }
 
             // draw the scroll bar over the top on the right size
@@ -458,6 +460,7 @@ namespace Overlays
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     using RenderCore::Assets::ModelCache;
+	using RenderCore::Assets::ModelCacheModel;
 
     class ModelBrowser::Pimpl
     {
@@ -472,7 +475,7 @@ namespace Overlays
 
     static void RenderModel(
         RenderCore::IThreadContext& context, 
-        ModelCache::Model& model)
+        ModelCacheModel& model)
     {
             // Render the given model. Create a minimal version of the full rendering process:
             //      We need to create a LightingParserContext, and ISceneParser as well.

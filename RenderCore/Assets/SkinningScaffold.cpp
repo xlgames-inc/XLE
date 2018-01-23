@@ -317,197 +317,75 @@ namespace RenderCore { namespace Assets
 
     const SkeletonMachine&   SkeletonScaffold::GetTransformationMachine() const                
     {
-        Resolve(); 
         return *(const SkeletonMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-	void SkeletonScaffold::Resolve() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->GetAssetState();
-			if (state == ::Assets::AssetState::Pending)
-				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
-
-			auto* mutableThis = const_cast<SkeletonScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<SkeletonScaffold>());
-			} else {
-				assert(state == ::Assets::AssetState::Invalid);
-			}
-		}
-		if (!_rawMemoryBlock)
-			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
-	}
-
-	::Assets::AssetState SkeletonScaffold::StallWhilePending() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->StallWhilePending();
-			auto* mutableThis = const_cast<SkeletonScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<SkeletonScaffold>());
-			} // (else fall through);
-		}
-
-		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
-	}
-
-    const SkeletonMachine*   SkeletonScaffold::TryImmutableData() const
-    {
-        if (!_rawMemoryBlock) return nullptr;
-        return (const SkeletonMachine*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
-    }
-
-    static const ::Assets::AssetChunkRequest SkeletonScaffoldChunkRequests[]
+    const ::Assets::AssetChunkRequest SkeletonScaffold::ChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_Skeleton, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
-    SkeletonScaffold::SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+    SkeletonScaffold::SkeletonScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
     {
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(SkeletonScaffoldChunkRequests));
 		assert(chunks.size() == 1);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
-    SkeletonScaffold::SkeletonScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
-	: _deferredConstructor(deferredConstruction)
-	, _depVal(deferredConstruction->GetDependencyValidation())
-    {}
-
-    SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom)
+    SkeletonScaffold::SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
-	, _filename(std::move(moveFrom._filename))
 	, _depVal(std::move(moveFrom._depVal))
     {}
 
-    SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom)
+    SkeletonScaffold& SkeletonScaffold::operator=(SkeletonScaffold&& moveFrom) never_throws
     {
-		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
+		GetTransformationMachine().~SkeletonMachine();
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_deferredConstructor = std::move(moveFrom._deferredConstructor);
-		_filename = std::move(moveFrom._filename);
 		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
     SkeletonScaffold::~SkeletonScaffold()
     {
-        auto* data = TryImmutableData();
-        if (data)
-            data->~SkeletonMachine();
+		GetTransformationMachine().~SkeletonMachine();
     }
-
-	std::shared_ptr<::Assets::DeferredConstruction> SkeletonScaffold::BeginDeferredConstruction(
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		return ::Assets::DefaultBeginDeferredConstruction<SkeletonScaffold>(initializers, initializerCount);
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     const AnimationImmutableData&   AnimationSetScaffold::ImmutableData() const                
     {
-        Resolve(); 
         return *(const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
     }
 
-	void AnimationSetScaffold::Resolve() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->GetAssetState();
-			if (state == ::Assets::AssetState::Pending)
-				Throw(::Assets::Exceptions::PendingAsset(_filename.c_str(), "Pending deferred construction"));
-
-			auto* mutableThis = const_cast<AnimationSetScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<AnimationSetScaffold>());
-			} else {
-				assert(state == ::Assets::AssetState::Invalid);
-			}
-		}
-		if (!_rawMemoryBlock)
-			Throw(::Assets::Exceptions::InvalidAsset(_filename.c_str(), "Missing data"));
-	}
-
-    const AnimationImmutableData*   AnimationSetScaffold::TryImmutableData() const
-    {
-        if (!_rawMemoryBlock) return nullptr;
-        return (const AnimationImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
-    }
-
-	::Assets::AssetState AnimationSetScaffold::StallWhilePending() const
-	{
-		if (_deferredConstructor) {
-			auto state = _deferredConstructor->StallWhilePending();
-			auto* mutableThis = const_cast<AnimationSetScaffold*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			if (state == ::Assets::AssetState::Ready) {
-				*mutableThis = std::move(*constructor->PerformConstructor<AnimationSetScaffold>());
-			} // (else fall through);
-		}
-
-		return _rawMemoryBlock ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
-	}
-
-    static const ::Assets::AssetChunkRequest AnimationSetScaffoldChunkRequests[]
+    const ::Assets::AssetChunkRequest AnimationSetScaffold::ChunkRequests[]
     {
         ::Assets::AssetChunkRequest { "Scaffold", ChunkType_AnimationSet, 0, ::Assets::AssetChunkRequest::DataType::BlockSerializer },
     };
     
-    AnimationSetScaffold::AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile)
-	: _filename(chunkFile.Filename())
-	, _depVal(chunkFile.GetDependencyValidation())
+    AnimationSetScaffold::AnimationSetScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
     {
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(AnimationSetScaffoldChunkRequests));
 		assert(chunks.size() == 1);
 		_rawMemoryBlock = std::move(chunks[0]._buffer);
     }
 
-    AnimationSetScaffold::AnimationSetScaffold(const std::shared_ptr<::Assets::DeferredConstruction>& deferredConstruction)
-	: _deferredConstructor(deferredConstruction)
-	, _depVal(deferredConstruction->GetDependencyValidation())
-	{}
-
-    AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom)
+    AnimationSetScaffold::AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws
     : _rawMemoryBlock(std::move(moveFrom._rawMemoryBlock))
-	, _deferredConstructor(std::move(moveFrom._deferredConstructor))
-	, _filename(std::move(moveFrom._filename))
 	, _depVal(std::move(moveFrom._depVal))
     {}
 
-    AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom)
+    AnimationSetScaffold& AnimationSetScaffold::operator=(AnimationSetScaffold&& moveFrom) never_throws
     {
-		assert(!_rawMemoryBlock);		// (not thread safe to use this operator after we've hit "ready" status
+		ImmutableData().~AnimationImmutableData();
         _rawMemoryBlock = std::move(moveFrom._rawMemoryBlock);
-		_deferredConstructor = std::move(moveFrom._deferredConstructor);
-		_filename = std::move(moveFrom._filename);
 		_depVal = std::move(moveFrom._depVal);
         return *this;
     }
 
     AnimationSetScaffold::~AnimationSetScaffold()
     {
-        auto* data = TryImmutableData();
-        if (data)
-            data->~AnimationImmutableData();
+        ImmutableData().~AnimationImmutableData();
     }
-
-	std::shared_ptr<::Assets::DeferredConstruction> AnimationSetScaffold::BeginDeferredConstruction(
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		return ::Assets::DefaultBeginDeferredConstruction<AnimationSetScaffold>(initializers, initializerCount);
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

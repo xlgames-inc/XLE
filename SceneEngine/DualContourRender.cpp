@@ -13,18 +13,18 @@
 
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Assets/ShaderVariationSet.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
 
 // #include "../RenderCore/Metal/DeviceContextImpl.h"
@@ -44,7 +44,7 @@ namespace SceneEngine
         Format _indexFormat;
         unsigned _indexCount;
 
-        Techniques::TechniqueMaterial _basicMaterial;
+        RenderCore::Assets::ShaderVariationSet _basicMaterial;
         RenderCore::SharedPkt _materialConstants;
 
         std::shared_ptr<::Assets::DependencyValidation> _dependencyValidation;
@@ -203,7 +203,7 @@ namespace SceneEngine
             // }
 
             auto& transparencyTargets = 
-                Techniques::FindCachedBox2<TransparencyTargetsBox>(
+				ConsoleRig::FindCachedBox2<TransparencyTargetsBox>(
                     unsigned(mainViewport.Width), unsigned(mainViewport.Height), false, true);
             OrderIndependentTransparency_ClearAndBind(*context, transparencyTargets, duplicatedDepthBuffer);
             context->Bind(Techniques::CommonResources()._dssReadOnly);  // never write to depth (even for very opaque pixels)
@@ -289,7 +289,7 @@ namespace SceneEngine
         pimpl->_indexCount = (unsigned)ibDataCount;
 
         using namespace Techniques;
-        pimpl->_basicMaterial = TechniqueMaterial(
+        pimpl->_basicMaterial = RenderCore::Assets::ShaderVariationSet(
             GlobalInputLayouts::PN, 
             { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
             ParameterBox());
@@ -321,12 +321,12 @@ namespace SceneEngine
             using namespace RenderCore;
             using namespace RenderCore::Techniques;
 
-            TechniqueMaterial material(
+            RenderCore::Assets::ShaderVariationSet material(
                 GlobalInputLayouts::PN, 
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
-            auto shader = material.FindVariation(parserContext, techniqueIndex, "xleres/techniques/illum.tech");
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "illum");
             if (shader._shader._shaderProgram) {
                 shader._shader.Apply(
                     *context, parserContext, 

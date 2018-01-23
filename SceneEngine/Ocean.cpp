@@ -18,7 +18,6 @@
 #include "Noise.h"
 #include "LightDesc.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
@@ -34,10 +33,12 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Math/Geometry.h"
 #include "../Math/Noise.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/BitUtils.h"
 
@@ -61,7 +62,7 @@ namespace SceneEngine
     void FFT_DoDebugging(RenderCore::Metal::DeviceContext* context)
     {
         const unsigned dimensions = 256;
-        auto& box = Techniques::FindCachedBox2<DeepOceanSim>(dimensions,dimensions, false, true);
+        auto& box = ConsoleRig::FindCachedBox2<DeepOceanSim>(dimensions,dimensions, false, true);
 
         SavedTargets savedTargets(*context);
         ViewportDesc oldViewport(*context);
@@ -584,7 +585,7 @@ namespace SceneEngine
             }
 
         auto texture = GetBufferUploads().Transaction_Immediate(tDesc, pkt.get());
-        _srv = Metal::ShaderResourceView(texture->ShareUnderlying());
+        _srv = std::make_unique<Metal::ShaderResourceView>(texture->ShareUnderlying());
     }
 
         //   ================================================================================   //
@@ -628,7 +629,7 @@ namespace SceneEngine
         } else {
             patchWidth = patchHeight = dimensions;
         }
-        auto& simplePatchBox = Techniques::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(patchWidth, patchHeight, true));
+        auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(patchWidth, patchHeight, true));
         context->Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
 
         //////////////////////////////////////////////////////////////////////////////
@@ -701,9 +702,9 @@ namespace SceneEngine
                 }
 
                 //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
-                auto& surfaceSpecularity = Techniques::FindCachedBox2<WaterNoiseTexture>();
+                auto& surfaceSpecularity = ConsoleRig::FindCachedBox2<WaterNoiseTexture>();
                 const ConstantBuffer* prebuiltBuffers[] = { &oceanMaterialConstants, &oceanGridConstants, &oceanRenderingConstants, &oceanLightingConstants };
-                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, &surfaceSpecularity._srv };
+                const ShaderResourceView* srvs[]        = { &OceanReflectionResource, surfaceSpecularity._srv.get() };
                 variation._boundUniforms->Apply(
                     *context, 
                     parserContext.GetGlobalUniformsStream(),
@@ -737,7 +738,7 @@ namespace SceneEngine
         context->BindPS(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
             // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
-            Techniques::FindCachedBox2<WaterNoiseTexture>()._srv));
+			*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
             shallowWater->BindForOceanRender(*context, OceanBufferCounter);
         }
@@ -745,7 +746,7 @@ namespace SceneEngine
                 //  only need the depth buffer if we're doing refractions
             context->BindPS(MakeResourceList(9, refractionsBox->GetSRV(), depthBufferSRV));
         }
-        auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         context->BindVS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
         context->Bind(Techniques::CommonResources()._dssReadWrite);    // make sure depth read and write are enabled
@@ -783,7 +784,7 @@ namespace SceneEngine
                 //      We need to take a copy of the back buffer for refractions
                 //      we could blur it here -- but is it better blurred or sharp?
             ViewportDesc mainViewportDesc(*context);
-            auto& refractionBox = Techniques::FindCachedBox<RefractionsBuffer>(
+            auto& refractionBox = ConsoleRig::FindCachedBox<RefractionsBuffer>(
                 RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f)));
             refractionBox.Build(*context, parserContext, 1.6f);
 
@@ -800,14 +801,14 @@ namespace SceneEngine
             const bool useDerivativesMap = Tweakable("OceanNormalsBasedOnDerivatives", true);
             const bool doShallowWater = Tweakable("OceanDoShallowWater", false);
             const bool usePipeModel = Tweakable("OceanShallowPipeModel", false);
-            auto& fftBuffer = Techniques::FindCachedBox2<DeepOceanSim>(
+            auto& fftBuffer = ConsoleRig::FindCachedBox2<DeepOceanSim>(
                 settings._gridDimensions, settings._gridDimensions, useDerivativesMap, true);
             ShallowWaterSim* shallowWaterBox = nullptr;
 
             context->Bind(Techniques::CommonResources()._dssReadOnly);   // write disabled
             fftBuffer.Update(context, parserContext, settings, OceanBufferCounter);
             if (doShallowWater && MainSurfaceHeightsProvider) {
-                shallowWaterBox = &Techniques::FindCachedBox<ShallowWaterSim>(
+                shallowWaterBox = &ConsoleRig::FindCachedBox<ShallowWaterSim>(
                     ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false, false, true));
                 shallowWaterBox->ExecuteSim(
                     ShallowWaterSim::SimulationContext(

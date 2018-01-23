@@ -7,14 +7,10 @@
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
-#if defined(HAS_XLE_FULLASSETS)
-    #include "../../Assets/ConfigFileContainer.h"
-#endif
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DepVal.h"
-#if defined(HAS_XLE_CONSOLE_RIG)
 #include "../../ConsoleRig/Log.h"
-#endif
 #include "../../Utility/BitUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringUtils.h"
@@ -25,31 +21,35 @@ namespace RenderCore { namespace Techniques
 {
     PredefinedCBLayout::PredefinedCBLayout(StringSection<::Assets::ResChar> initializer)
     {
-        // Here, we will read a simple configuration file that will define the layout
-        // of a constant buffer. Sometimes we need to get the layout of a constant 
-        // buffer without compiling any shader code, or really touching the HLSL at all.
-        size_t size;
-        auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
-        StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
+		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_validationCallback, initializer);
 
-        #if defined(HAS_XLE_FULLASSETS)
-            // if it's a compound document, we're only going to extra the cb layout part
-            auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
-            if (!compoundDoc.empty()) {
-                auto i = std::find_if(
-                    compoundDoc.cbegin(), compoundDoc.cend(),
-                    [](const ::Assets::TextChunk<char>& chunk)
-                    { return XlEqString(chunk._type, "CBLayout"); });
-                if (i != compoundDoc.cend())
-                    configSection = i->_content;
-            }
-        #endif
+		TRY {
+			// Here, we will read a simple configuration file that will define the layout
+			// of a constant buffer. Sometimes we need to get the layout of a constant 
+			// buffer without compiling any shader code, or really touching the HLSL at all.
+			size_t size;
+			auto file = ::Assets::TryLoadFileAsMemoryBlock(initializer, &size);
+			StringSection<char> configSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
 
-        Parse(configSection);
+			// if it's a compound document, we're only going to extra the cb layout part
+			auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+			if (!compoundDoc.empty()) {
+				auto i = std::find_if(
+					compoundDoc.cbegin(), compoundDoc.cend(),
+					[](const ::Assets::TextChunk<char>& chunk)
+					{ return XlEqString(chunk._type, "CBLayout"); });
+				if (i != compoundDoc.cend())
+					configSection = i->_content;
+			}
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, initializer);
-    }
+			Parse(configSection);
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
+		} CATCH (const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
+		} CATCH_END
+	}
 
     PredefinedCBLayout::PredefinedCBLayout(StringSection<char> source, bool)
     {
@@ -87,9 +87,7 @@ namespace RenderCore { namespace Techniques
 
                 auto size = e._type.GetSize();
                 if (!size) {
-                    #if defined(HAS_XLE_CONSOLE_RIG)
-                        LogWarning << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator);
-                    #endif
+                    Log(Warning) << "Problem parsing type in PredefinedCBLayout. Type size is 0: " << std::string(lineStart, iterator) << std::endl;
                     continue;
                 }
 
@@ -119,18 +117,14 @@ namespace RenderCore { namespace Techniques
                         if (castSuccess) {
                             _defaults.SetParameter(name.c_str(), buffer1, e._type);
                         } else {
-                            #if defined(HAS_XLE_CONSOLE_RIG)
-                                LogWarning << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator);
-                            #endif
+                            Log(Warning) << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
                         }
                     } else {
                         _defaults.SetParameter(name.c_str(), buffer0, defaultType);
                     }
                 }
             } else {
-                #if defined(HAS_XLE_CONSOLE_RIG)
-                    LogWarning << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator);
-                #endif
+                Log(Warning) << "Failed to parse line in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
             }
         }
 
@@ -170,22 +164,8 @@ namespace RenderCore { namespace Techniques
         return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
     }
 
-    PredefinedCBLayout::PredefinedCBLayout() {}
-    PredefinedCBLayout::PredefinedCBLayout(PredefinedCBLayout&& moveFrom) never_throws
-    : _elements(std::move(moveFrom._elements))
-    , _defaults(std::move(moveFrom._defaults))
-    , _cbSize(moveFrom._cbSize)
-    , _validationCallback(std::move(moveFrom._validationCallback))
-    {}
-
-    PredefinedCBLayout& PredefinedCBLayout::operator=(PredefinedCBLayout&& moveFrom) never_throws
-    {
-        _elements = std::move(moveFrom._elements);
-        _defaults = std::move(moveFrom._defaults);
-        _cbSize = moveFrom._cbSize;
-        _validationCallback = std::move(moveFrom._validationCallback);
-        return *this;
-    }
-    
+    PredefinedCBLayout::PredefinedCBLayout() 
+	: _cbSize(0)
+	{}    
     PredefinedCBLayout::~PredefinedCBLayout() {}
 }}

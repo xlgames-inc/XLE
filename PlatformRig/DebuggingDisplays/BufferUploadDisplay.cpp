@@ -5,9 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BufferUploadDisplay.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/OverlayUtils.h"
 #include "../../RenderOverlays/Font.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -151,8 +151,8 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         class Desc {};
-        intrusive_ptr<RenderOverlays::Font> _font;
-        intrusive_ptr<RenderOverlays::Font> _smallFont;
+        std::shared_ptr<RenderOverlays::Font> _font;
+		std::shared_ptr<RenderOverlays::Font> _smallFont;
         FontBox(const Desc&) 
             : _font(RenderOverlays::GetX2Font("OrbitronBlack", 18))
             , _smallFont(RenderOverlays::GetX2Font("Vera", 16)) {}
@@ -228,11 +228,11 @@ namespace PlatformRig { namespace Overlays
             }
 
             TextStyle style(
-                *RenderCore::Techniques::FindCachedBox2<FontBox>()._font,
+                ConsoleRig::FindCachedBox2<FontBox>()._font,
                 DrawTextOptions(false, true));
             context->DrawText(
                 AsPixelCoords(rect), &style, text, 
-                TextAlignment::Center, g.first, nullptr);
+                TextAlignment::Center, g.first);
 
             interactables.Register(Interactables::Widget(rect, hash));
         }
@@ -253,11 +253,11 @@ namespace PlatformRig { namespace Overlays
                     col = ColorB::White;
 
                 TextStyle style(
-                    *RenderCore::Techniques::FindCachedBox2<FontBox>()._smallFont,
+                    ConsoleRig::FindCachedBox2<FontBox>()._smallFont,
                     DrawTextOptions(false, true));
                 context->DrawText(
                     AsPixelCoords(rect), &style, col, 
-                    TextAlignment::Left, name, nullptr);
+                    TextAlignment::Left, name);
 
                 if ((c+1) != dropDown->size())
                     context->DrawLine(ProjectionMode::P2D,
@@ -369,19 +369,19 @@ namespace PlatformRig { namespace Overlays
                 context->DrawText(
                     AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Left,
-                    StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")", nullptr);
+                    StringMeld<256>() << GraphTabs::Names[_graphsMode] << " (" << AsString(UploadDataType::Enum(c)) << ")");
             } else {
                 context->DrawText(
                     AsPixelCoords(labelRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Left,
-                    GraphTabs::Names[_graphsMode], nullptr);
+                    GraphTabs::Names[_graphsMode]);
             }
 
 			if (valuesCount2 > 0) {
 				float mostRecentValue = valuesBuffer[dimof(valuesBuffer) - valuesCount2];
 				context->DrawText(AsPixelCoords(historyRect), nullptr, ColorB(0xffffffffu), 
                     TextAlignment::Top,
-                    XlDynFormatString("%6.3f", mostRecentValue).c_str(), nullptr);
+                    XlDynFormatString("%6.3f", mostRecentValue).c_str());
 			}
 
             DrawHistoryGraph(

@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "DLLInterface.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"    // for AsString
 #include "ConversionConfig.h"
@@ -23,9 +22,9 @@
 
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
-#include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/RawMaterial.h"
 #include "../Assets/CompilerLibrary.h"
-#include "../Assets/NascentChunkArray.h"
+#include "../Assets/NascentChunk.h"
 #include "../Assets/IFileSystem.h"
 
 #include "../Utility/Streams/FileUtils.h"
@@ -38,6 +37,7 @@
 #include "../Utility/StringFormat.h"
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/AttachableLibrary.h"
+#include "../ConsoleRig/AttachableInternal.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
 #include <memory>
@@ -57,10 +57,12 @@ namespace ColladaConversion
         std::shared_ptr<DocumentScaffold> _doc;
         ::ColladaConversion::URIResolveContext _resolveContext;
 		std::vector<TargetDesc> _targets;
+		std::shared_ptr<std::vector<::Assets::DependentFileState>> _dependencies;
 
 		unsigned	TargetCount() const;
 		TargetDesc	GetTarget(unsigned idx) const;
 		::Assets::NascentChunkArray	SerializeTarget(unsigned idx);
+		std::shared_ptr<std::vector<::Assets::DependentFileState>> GetDependencies() const;
 
 		ColladaCompileOp();
 		~ColladaCompileOp();
@@ -239,7 +241,7 @@ namespace ColladaConversion
                 meld << nodes[c].GetName().AsString().c_str();
             }
 
-            Throw(::Assets::Exceptions::FormatError(meld.get()));
+            Throw(::Exceptions::BasicLabel(meld.get()));
         }
 
             // The skeleton joints won't be included in the skeleton
@@ -365,7 +367,7 @@ namespace ColladaConversion
         const auto* scene = model._doc->FindVisualScene(
             GuidReference(model._doc->_visualScene)._id);
         if (!scene)
-            Throw(::Assets::Exceptions::FormatError("No visual scene found"));
+            Throw(::Exceptions::BasicLabel("No visual scene found"));
 
         StringSection<utf8> startingNodeName;
         if (startingNode) startingNodeName = (const utf8*)startingNode;
@@ -392,7 +394,7 @@ namespace ColladaConversion
         const auto* scene = input._doc->FindVisualScene(
             GuidReference(input._doc->_visualScene)._id);
         if (!scene)
-            Throw(::Assets::Exceptions::FormatError("No visual scene found"));
+            Throw(::Exceptions::BasicLabel("No visual scene found"));
 
         SkeletonRegistry jointRefs;
         BuildSkeleton(_skeleton, scene->GetRootNode(), StringSection<utf8>(), jointRefs, true);
@@ -463,9 +465,9 @@ namespace ColladaConversion
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
         return ::Assets::MakeNascentChunkArray({
-			::Assets::NascentChunk(
-                scaffoldChunk, 
-                std::vector<uint8>(strm.GetBuffer().Begin(), strm.GetBuffer().End()))
+			::Assets::NascentChunk{
+				scaffoldChunk,
+				::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()))}
             });
     }
 
@@ -563,6 +565,11 @@ namespace ColladaConversion
 		}
 	}
 
+	std::shared_ptr<std::vector<::Assets::DependentFileState>> ColladaCompileOp::GetDependencies() const
+	{
+		return _dependencies;
+	}
+
 	ColladaCompileOp::ColladaCompileOp() {}
 	ColladaCompileOp::~ColladaCompileOp() {}
 
@@ -575,11 +582,18 @@ namespace ColladaConversion
 		auto split = MakeFileNameSplitter(identifier);
 		auto filePath = split.AllExceptParameters().AsString();
 
+		result->_dependencies = std::shared_ptr<std::vector<::Assets::DependentFileState>>(
+			new std::vector<::Assets::DependentFileState>,
+			[](const void* block) { delete (std::vector<::Assets::DependentFileState>*)block; });
+
+		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
+		result->_dependencies->push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
+
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
-		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(filePath.c_str(), 0, "r", FileShareMode::Read);
+		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
 			MemoryMappedInputStream(
-				result->_fileData.GetData(), 
+				result->_fileData.GetData(),
 				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
 
 		result->_name = identifier.AsString();
@@ -639,17 +653,19 @@ dll_export ConsoleRig::LibVersionDesc GetVersionInformation()
     return result;
 }
 
-static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+// static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
 
 dll_export void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
-    s_attachRef = services.Attach();
+    // s_attachRef = services.GetCrossModule().Attach<ConsoleRig::GlobalServices>();
+	services.AttachCurrentModule();
     LogInfo << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}";
 }
 
 dll_export void DetachLibrary()
 {
-    s_attachRef.Detach();
+    // s_attachRef.Detach();
+	ConsoleRig::GlobalServices::GetInstance().DetachCurrentModule();
     TerminateFileSystemMonitoring();
 }
 

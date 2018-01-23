@@ -35,7 +35,6 @@ namespace Assets
     public:
         static AssetSetManager& GetAssetSets() { return *GetInstance()._assetSets; }
         static CompileAndAsyncManager& GetAsyncMan() { return *GetInstance()._asyncMan; }
-        static InvalidAssetManager* GetInvalidAssetMan() { return s_instance?s_instance->_invalidAssetMan.get():nullptr; }
 
         struct Flags 
         {
@@ -52,9 +51,8 @@ namespace Assets
         Services(const Services&) = delete;
         const Services& operator=(const Services&) = delete;
     protected:
-        std::unique_ptr<AssetSetManager> _assetSets;
+        std::unique_ptr<AssetSetManager>		_assetSets;
         std::unique_ptr<CompileAndAsyncManager> _asyncMan;
-        std::unique_ptr<InvalidAssetManager> _invalidAssetMan;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

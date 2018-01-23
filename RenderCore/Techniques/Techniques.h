@@ -104,8 +104,8 @@ namespace RenderCore { namespace Techniques
 
         TechniqueInterface();
         TechniqueInterface(const InputLayout& vertexInputLayout);
-        TechniqueInterface(TechniqueInterface&& moveFrom);
-        TechniqueInterface&operator=(TechniqueInterface&& moveFrom);
+        TechniqueInterface(TechniqueInterface&& moveFrom) never_throws;
+        TechniqueInterface&operator=(TechniqueInterface&& moveFrom) never_throws;
         ~TechniqueInterface();
 
     private:

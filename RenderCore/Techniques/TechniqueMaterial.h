@@ -7,44 +7,61 @@
 #pragma once
 
 #include "Techniques.h"
-#include "../../Assets/AssetsCore.h"
-#include "../../Utility/ParameterBox.h"
+#include "RenderStateResolver.h"
 
 namespace RenderCore { namespace Techniques
 {
-    class PredefinedCBLayout;
 
-    class TechniqueMaterial
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	#pragma pack(push)
+    #pragma pack(1)
+
+    /// <summary>Common material settings</summary>
+    /// Material parameters and settings are purposefully kept fairly
+    /// low-level. These parameters are settings that can be used during
+    /// the main render step (rather than some higher level, CPU-side
+    /// operation).
+    ///
+    /// Typically, material parameters effect these shader inputs:
+    ///     Resource bindings (ie, textures assigned to shader resource slots)
+    ///     Shader constants
+    ///     Some state settings (like blend modes, etc)
+    ///
+    /// Material parameters can also effect the shader selection through the 
+    /// _matParams resource box.
+    class Material
     {
     public:
-        ParameterBox _materialParameters;
-        ParameterBox _geometryParameters;
-        TechniqueInterface _techniqueInterface;
+        ParameterBox		_bindings;				// shader resource bindings
+        ParameterBox		_matParams;				// material parameters used for selecting the appropriate shader variation
+        RenderStateSet		_stateSet;				// used by the RenderStateResolver for selecting render state settings (like depth read/write settings, blend modes)
+        ParameterBox		_constants;				// values typically passed to shader constants
+        ::Assets::ResChar	_techniqueConfig[32];	// root technique config file
 
-        class Variation
-        {
-        public:
-            ResolvedShader      _shader;
-            const PredefinedCBLayout* _cbLayout;
-        };
+        template<typename Serializer>
+            void Serialize(Serializer& serializer) const;
 
-        Variation FindVariation(
-            ParsingContext& parsingContext,
-            unsigned techniqueIndex,
-            StringSection<::Assets::ResChar> techniqueConfig) const;
-
-        const PredefinedCBLayout& GetCBLayout(StringSection<::Assets::ResChar> techniqueConfig);
-
-        TechniqueMaterial(
-            const InputLayout& inputLayout,
-            const std::initializer_list<uint64>& objectCBs,
-            ParameterBox materialParameters);
-        TechniqueMaterial();
-        TechniqueMaterial(TechniqueMaterial&& moveFrom);
-        const TechniqueMaterial& operator=(TechniqueMaterial&& moveFrom);
-        ~TechniqueMaterial();
+        Material();
+		Material(Material&& moveFrom) never_throws;
+		Material& operator=(Material&& moveFrom) never_throws;
+		Material(const Material&) = delete;
+		Material& operator=(const Material&) = delete;
     };
 
-    ParameterBox TechParams_SetGeo(const InputLayout& inputLayout);
+    #pragma pack(pop)
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<typename Serializer>
+        void Material::Serialize(Serializer& serializer) const
+    {
+        ::Serialize(serializer, _bindings);
+        ::Serialize(serializer, _matParams);
+        ::Serialize(serializer, _stateSet.GetHash());
+        ::Serialize(serializer, _constants);
+        serializer.SerializeRaw(_techniqueConfig);
+    }
+
 }}
 

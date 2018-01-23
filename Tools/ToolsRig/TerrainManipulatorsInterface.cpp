@@ -12,7 +12,7 @@
 #include "../../Tools/ToolsRig/ManipulatorsUtil.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/OverlayUtils.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/IntrusivePtr.h"
 
 namespace ToolsRig
@@ -48,7 +48,8 @@ namespace ToolsRig
 
     void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
     {
-        if (auto a = GetActiveManipulator())
+		auto a = GetActiveManipulator();
+        if (a)
             a->Render(context, parserContext);
     }
 
@@ -146,7 +147,7 @@ namespace ToolsRig
     public:
         class Desc {};
 
-        intrusive_ptr<RenderOverlays::Font> _headingFont;
+		std::shared_ptr<RenderOverlays::Font> _headingFont;
         WidgetResources(const Desc&);
     };
 
@@ -173,7 +174,7 @@ namespace ToolsRig
         auto boolParameters = manipulator.GetBoolParameters();
         auto statusText = manipulator.GetStatusText();
 
-        auto& res = RenderCore::Techniques::FindCachedBox<WidgetResources>(WidgetResources::Desc());
+        auto& res = ConsoleRig::FindCachedBox<WidgetResources>(WidgetResources::Desc());
 
         unsigned parameterCount = unsigned(1 + floatParameters.second + boolParameters.second); // (+1 for the selector control)
         if (!statusText.empty()) { ++parameterCount; }
@@ -192,12 +193,12 @@ namespace ToolsRig
         DrawRectangleOutline(&context, Rect(controlsRect._topLeft + Coord2(2,2), controlsRect._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
         interactables.Register(Interactables::Widget(controlsRect, Id_TotalRect));
 
-        TextStyle font(*res._headingFont);
+        TextStyle font(res._headingFont);
         const auto headingRect = internalLayout.AllocateFullWidth(25);
         context.DrawText(
             std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
             &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
-            title, nullptr);
+            title);
 
             //
             //      Draw controls for parameters. Starting with the float parameters
@@ -231,7 +232,7 @@ namespace ToolsRig
             _snprintf_s(buffer, _TRUNCATE, "%s = %5.1f", parameter._name, *p);
             context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
+                nullptr, formatting._foreground, TextAlignment::Center, buffer);
             
             DrawAndRegisterLeftRight(&context, interactables, interfaceState, rect, Id_CurFloatParametersLeft+c, Id_CurFloatParametersRight+c);
         }
@@ -257,7 +258,7 @@ namespace ToolsRig
 
             context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                nullptr, formatting._foreground, TextAlignment::Center, buffer, nullptr);
+                nullptr, formatting._foreground, TextAlignment::Center, buffer);
         }
 
             //
@@ -268,7 +269,7 @@ namespace ToolsRig
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
             context.DrawText(
                 std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)),
-                nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str(), nullptr);
+                nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str());
         }
 
             //

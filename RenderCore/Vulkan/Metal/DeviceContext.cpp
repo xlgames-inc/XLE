@@ -525,7 +525,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         IThreadContextVulkan* vulkanContext = 
             (IThreadContextVulkan*)threadContext.QueryInterface(
-                __uuidof(IThreadContextVulkan));
+                typeid(IThreadContextVulkan).hash_code());
         if (vulkanContext)
             return vulkanContext->GetMetalContext();
         return nullptr;

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Utility/StringUtils.h"
 #include "../Core/Prefix.h"
 #include <memory>
 
@@ -31,7 +32,7 @@ namespace ConsoleRig
 
         typedef char CharType;
 
-        AttachableLibrary(const CharType filename[]);
+        AttachableLibrary(StringSection<CharType> filename);
         ~AttachableLibrary();
 
 		AttachableLibrary(AttachableLibrary&&) never_throws;

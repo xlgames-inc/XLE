@@ -12,13 +12,13 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../ConsoleRig/ResourceBox.h"
 
 namespace SceneEngine
 {
@@ -239,7 +239,7 @@ namespace SceneEngine
             Metal::GeometryShader::StreamOutputInitializers(
                 eles, dimof(eles), strides, dimof(strides)));
 
-        _pimpl->_res = &Techniques::FindCachedBox<ModelIntersectionResources>(
+        _pimpl->_res = &ConsoleRig::FindCachedBox<ModelIntersectionResources>(
             ModelIntersectionResources::Desc(sizeof(ResultEntry), s_maxResultCount));
 
             // the only way to clear these things is copy from another buffer...

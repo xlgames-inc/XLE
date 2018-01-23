@@ -20,7 +20,6 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
@@ -41,6 +40,8 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -94,7 +95,10 @@ namespace Sample
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
+		assetServices->AttachCurrentModule();
+		ConsoleRig::GlobalServices::GetCrossModule().Publish(*assetServices);
         auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice);
+		renderAssetServices->AttachCurrentModule();
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
@@ -220,10 +224,10 @@ namespace Sample
         mainScene.reset();
 
         assetServices->GetAssetSets().Clear();
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
 
-        renderAssetServices.reset();
+		renderAssetServices.reset();
+		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*assetServices);
         assetServices.reset();
         TerminateFileSystemMonitoring();
     }
@@ -269,7 +273,7 @@ namespace Sample
         bool hasPendingResources = false;
         {
             RenderCore::Techniques::RenderPassInstance rpi(
-                context, {{RenderCore::SubpassDesc({0})}},
+                context, RenderCore::FrameBufferDesc{{RenderCore::SubpassDesc{{0}}}},
                 0u, namedRes);
 
                 //  If we need to, we can render outside of the lighting parser.
@@ -282,7 +286,7 @@ namespace Sample
                 //  during the render. Here, we can render them as a short list...
             hasPendingResources = lightingParserContext.HasPendingAssets();
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+            DrawPendingResources(context, lightingParserContext, defaultFont0);
 
             if (overlaySys) {
                 overlaySys->RenderWidgets(context, lightingParserContext);
@@ -301,7 +305,7 @@ namespace Sample
             debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
         }
         debugSys.Register(
-            std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+            std::make_shared<PlatformRig::Overlays::HierarchicalProfilerDisplay>(&g_cpuProfiler),
             "[Profiler] CPU Profiler");
     }
 }

@@ -148,7 +148,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom)
+    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
     {
         for (unsigned s=0; s<dimof(_reflection); ++s)
             _reflection[s] = std::move(moveFrom._reflection[s]);
@@ -163,7 +163,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _isComputeShader = moveFrom._isComputeShader;
     }
 
-    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom)
+    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
     {
         for (unsigned s=0; s<dimof(_reflection); ++s)
             _reflection[s] = std::move(moveFrom._reflection[s]);

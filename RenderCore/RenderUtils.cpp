@@ -67,7 +67,7 @@ namespace RenderCore
         if (pkt.begin()) {
             XlCopyMemory(pkt.begin(), begin, size);
         }
-        return std::move(pkt);
+        return pkt;
     }
 
     MiniHeap& SharedPkt::GetHeap()
@@ -180,7 +180,7 @@ namespace RenderCore
         InputLayout PNTT = MakeIteratorRange(Detail::PNTT_Elements);
     }
 
-    unsigned CalculateVertexStride(IteratorRange<const InputElementDesc*> range, unsigned slot)
+    unsigned CalculateVertexStrideForSlot(IteratorRange<const InputElementDesc*> range, unsigned slot)
     {
             // note --  Assuming vertex elements are densely packed (which
             //          they usually are).

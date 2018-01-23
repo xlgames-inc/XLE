@@ -8,7 +8,6 @@
 
 #include "EntityInterface.h"
 #include "../../Utility/ParameterBox.h"
-#include "../../Assets/Assets.h"        // for rstring
 #include <string>
 #include <vector>
 #include <functional>

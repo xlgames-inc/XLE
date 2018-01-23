@@ -5,9 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompilationThread.h"
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif
+#include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/GlobalServices.h"
+#include "../Utility/Threading/CompletionThreadPool.h"
 
 namespace Assets 
 {
@@ -20,10 +20,12 @@ namespace Assets
         }
     }
     
-    void CompilationThread::Push(std::shared_ptr<QueuedCompileOperation> op)
+    void CompilationThread::Push(
+		std::shared_ptr<::Assets::CompileFuture> future,
+		std::function<void(::Assets::CompileFuture&)> operation)
     {
         if (!_workerQuit) {
-            _queue.push_overflow(std::move(op));
+			_queue.push_overflow(Element{future, std::move(operation)});
             XlSetEvent(_events[0]);
         }
     }
@@ -31,13 +33,15 @@ namespace Assets
     void CompilationThread::ThreadFunction()
     {
         while (!_workerQuit) {
-            std::weak_ptr<QueuedCompileOperation>* op;
+			Element* op = nullptr;
             if (_queue.try_front(op)) {
-                auto o = op->lock();
+                auto future = op->_future.lock();
+				auto fn = std::move(op->_operation);
+				_queue.pop();
+
                 TRY
                 {
-                    if (o) _compileOp(*o);
-                    _queue.pop();
+                    fn(*future);
                 }
                 CATCH (const ::Assets::Exceptions::PendingAsset&)
                 {
@@ -45,20 +49,26 @@ namespace Assets
                     // All we can do is delay the request, and try again later.
                     // Let's move the request into a separate queue, so that
                     // new request get processed first.
-                    _queue.pop();
-                    _delayedQueue.push(o);
+                    _delayedQueue.push(Element{future, std::move(fn)});
                 }
+				CATCH (const ::Assets::Exceptions::ConstructionError& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
                 CATCH (const std::exception& e)
                 {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogWarning << "Got exception while in asset compilation thread" << std::endl;
-                        LogWarning << "Asset: " << o->Initializer() << std::endl;
-                        LogWarning << "    " << e.what() << std::endl;
-                    #endif
-                    _queue.pop();
-					(void)e;
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
                 }
+				CATCH (...)
+				{
+					future->SetState(::Assets::AssetState::Invalid);
+				}
                 CATCH_END
+
             } else if (_delayedQueue.try_front(op)) {
                 
                     // do a short sleep first, do avoid too much
@@ -66,11 +76,13 @@ namespace Assets
                     // that if any new request comes in during this Sleep,
                     // then we won't handle that request in a prompt manner.
                 Threading::Sleep(1);
-                auto o = op->lock();
+				auto future = op->_future.lock();
+				auto fn = std::move(op->_operation);
+				_delayedQueue.pop();
+
                 TRY
                 {
-                    if (o) _compileOp(*o);
-                    _delayedQueue.pop();
+					fn(*future);
                 }
                 CATCH (const ::Assets::Exceptions::PendingAsset&)
                 {
@@ -78,20 +90,26 @@ namespace Assets
                     // All we can do is delay the request, and try again later.
                     // Let's move the request into a separate queue, so that
                     // new request get processed first.
-                    _delayedQueue.pop();
-                    _delayedQueue.push(o);
+					_delayedQueue.push(Element{ future, std::move(fn) });
                 }
-                CATCH (const std::exception& e)
-                {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogWarning << "Got exception while in asset compilation thread" << std::endl;
-                        LogWarning << "Asset: " << o->Initializer() << std::endl;
-                        LogWarning << "    " << e.what() << std::endl;
-                    #endif
-                    _delayedQueue.pop();
-					(void)e;
-                }
+				CATCH (const ::Assets::Exceptions::ConstructionError& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH (const std::exception& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH (...)
+				{
+					future->SetState(::Assets::AssetState::Invalid);
+				}
                 CATCH_END
+
             } else {
                 XlWaitForMultipleSyncObjects(
                     2, this->_events,
@@ -100,8 +118,7 @@ namespace Assets
         }
     }
 
-    CompilationThread::CompilationThread(std::function<void(QueuedCompileOperation&)> compileOp)
-    : _compileOp(std::move(compileOp))
+    CompilationThread::CompilationThread()
     {
         _events[0] = XlCreateEvent(false);
         _events[1] = XlCreateEvent(true);
@@ -116,6 +133,37 @@ namespace Assets
         XlCloseSyncObject(_events[0]);
         XlCloseSyncObject(_events[1]);
     }
+
+	void QueueCompileOperation(
+		const std::shared_ptr<::Assets::CompileFuture>& future,
+		std::function<void(::Assets::CompileFuture&)>&& operation)
+	{
+		auto fn = std::move(operation);
+		ConsoleRig::GlobalServices::GetLongTaskThreadPool().EnqueueBasic(
+			[future, fn]() {
+				TRY
+				{
+					fn(*future);
+				}
+				CATCH(const ::Assets::Exceptions::ConstructionError& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(e.GetActualizationLog(), e.GetDependencyValidation());
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH(const std::exception& e)
+				{
+					auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(::Assets::AsBlob(e), nullptr);
+					future->AddArtifact("exception", artifact);
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH(...)
+				{
+					future->SetState(::Assets::AssetState::Invalid);
+				}
+				CATCH_END
+		});
+	}
 
 }
 

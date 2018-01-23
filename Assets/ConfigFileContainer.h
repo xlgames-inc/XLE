@@ -6,8 +6,8 @@
 
 #pragma once
 
-#include "InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/AssetsCore.h"		// (for ResChar)
 #include "../Utility/Streams/StreamFormatter.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -17,7 +17,7 @@
 
 namespace Assets
 {
-    class PendingCompileMarker;
+    class CompileFuture;
 
     /// <summary>Container file with with one child that is initialized via InputStreamFormatter</summary>
     ///
@@ -61,13 +61,13 @@ namespace Assets
 		static std::unique_ptr<ConfigFileContainer> CreateNew(StringSection<ResChar> initialiser);
 
         ConfigFileContainer(StringSection<ResChar> initializer);
+		ConfigFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar> = {});
         ~ConfigFileContainer();
 
         const std::shared_ptr<DependencyValidation>& GetDependencyValidation() const   { return _validationCallback; }
     protected:
-        std::shared_ptr<DependencyValidation> _validationCallback;
-		std::unique_ptr<uint8[]> _fileData;
-		size_t _fileSize;
+		Blob _fileData; 
+		std::shared_ptr<DependencyValidation> _validationCallback;		
     };
 
     template<typename CharType>

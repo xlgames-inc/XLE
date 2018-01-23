@@ -178,8 +178,8 @@ private:
 };
 
 
-typedef std::map<FontDef, FTFontGroup*, FontDefLessPred> UiFontGroupMap;     // awkwardly, these can't use smart ptrs... because these objects are removed from the maps in their destructors
-typedef std::map<FontDef, FTFont*, FontDefLessPred> UiFontMap;
+typedef std::map<FontDef, std::shared_ptr<FTFontGroup>, FontDefLessPred> UiFontGroupMap;     // awkwardly, these can't use smart ptrs... because these objects are removed from the maps in their destructors
+typedef std::map<FontDef, std::shared_ptr<FTFont>, FontDefLessPred> UiFontMap;
 
 static UiFontGroupMap   fontGroupMap;
 static UiFontGroupMap   damageDisplayFontGroupMap;
@@ -245,46 +245,6 @@ static void CheckTextureValidate(FT_Face face, int size, FontChar *fc, FontTexKi
     }
 }
 
-static void Register(const FontDef& def, FTFont* font)
-{
-    fontMap.insert(UiFontMap::value_type(def, font));
-}
-
-static void Deregister(FTFont* font)
-{
-    for (UiFontMap::const_iterator i=fontMap.cbegin(); i!=fontMap.cend(); ++i) {
-        if (i->second == font) {
-            fontMap.erase(i);
-            return;
-        }
-    }
-}
-
-static void Register(const FontDef& def, FTFontGroup* fontGroup)
-{
-    if (fontGroup->GetTexKind() == FTK_DAMAGEDISPLAY) {
-        damageDisplayFontGroupMap.insert(UiFontGroupMap::value_type(def, fontGroup));
-    } else {
-        fontGroupMap.insert(UiFontGroupMap::value_type(def, fontGroup));
-    }
-}
-
-static void Deregister(FTFontGroup* fontGroup)
-{
-    for (UiFontGroupMap::const_iterator i=fontGroupMap.cbegin(); i!=fontGroupMap.cend(); ++i) {
-        if (i->second == fontGroup) {
-            fontGroupMap.erase(i);
-            return;
-        }
-    }
-    for (UiFontGroupMap::const_iterator i=damageDisplayFontGroupMap.cbegin(); i!=damageDisplayFontGroupMap.cend(); ++i) {
-        if (i->second == fontGroup) {
-            damageDisplayFontGroupMap.erase(i);
-            return;
-        }
-    }
-}
-
 FTFont::FTFont(FontTexKind kind)
 {
     _ascend = 0;
@@ -296,7 +256,6 @@ FTFont::FTFont(FontTexKind kind)
 FTFont::~FTFont()
 {
     NotifyDeletingFont(this, _texKind);
-    Deregister(this);
 
     if (_face) {
         FT_Done_Face(_face);
@@ -310,8 +269,6 @@ FTFont::~FTFont()
 
 bool FTFont::Init(const FontDef& fontDef)
 {
-    Deregister(this);
-
     FT_Error error;
 
     XlCopyString(_path, fontDef.path.c_str());
@@ -365,8 +322,6 @@ bool FTFont::Init(const FontDef& fontDef)
 
     FT_GlyphSlot slot = _face->glyph;
     _ascend = slot->bitmap_top;
-
-    Register(fontDef, this);
 
     return true;
 }
@@ -514,7 +469,6 @@ FTFontGroup::FTFontGroup(FontTexKind kind)
 
 FTFontGroup::~FTFontGroup()
 {
-    Deregister(this);
 }
 
 bool FTFontGroup::CheckMyFace(FT_Face face)
@@ -524,9 +478,8 @@ bool FTFontGroup::CheckMyFace(FT_Face face)
     } else {
         SubFTFontInfoMap::iterator it_begin = _subFTFontInfoMap.begin();
         SubFTFontInfoMap::iterator it_end = _subFTFontInfoMap.end();
-        FTFont* subFTFont = NULL;
         for (; it_begin != it_end; ++it_begin) {
-            subFTFont = (FTFont*)(it_begin->first);
+            const auto& subFTFont = it_begin->first;
             if (subFTFont && subFTFont->GetFace() == face)
                 return true;
         }
@@ -535,7 +488,7 @@ bool FTFontGroup::CheckMyFace(FT_Face face)
     return false;
 }
 
-intrusive_ptr<FTFont> FTFontGroup::FindFTFontByChar(ucs4 ch) const
+std::shared_ptr<FTFont> FTFontGroup::FindFTFontByChar(ucs4 ch) const
 {
     size_t size = 0;
     FTFontRange range;
@@ -553,7 +506,7 @@ intrusive_ptr<FTFont> FTFontGroup::FindFTFontByChar(ucs4 ch) const
     SubFTFontInfoMap::const_iterator it_end = _subFTFontInfoMap.end();
     FTFontRanges ranges;
     for (; it_begin != it_end; ++it_begin) {
-        FTFont* subFTFont = it_begin->first;
+        const auto& subFTFont = it_begin->first;
         ranges = (FTFontRanges)(it_begin->second);
         if (subFTFont) {
             size = ranges.size();
@@ -589,13 +542,15 @@ bool FTFontGroup::LoadDefaultFTFont(FTFontNameInfo &info, int size)
     if (it != fontMap.end()) {
         _defaultFTFont = it->second;
     } else {
-        _defaultFTFont = make_intrusive<FTFont>(_texKind);
+        _defaultFTFont = std::make_shared<FTFont>(_texKind);
 
         if (!_defaultFTFont->Init(fd)) {
             _defaultFTFont.reset();
             // GameWarning("Failed to create freetype font '%s'", fd.path.c_str());
             return false;
         }
+
+		fontMap.insert(std::make_pair(fd, _defaultFTFont));
     }
 
     if (_defaultFTFont) {
@@ -608,7 +563,7 @@ bool FTFontGroup::LoadDefaultFTFont(FTFontNameInfo &info, int size)
 void FTFontGroup::LoadSubFTFont(FTFontNameInfo &info, int size)
 {
     FontDef fd;
-    intrusive_ptr<FTFont> font;
+    std::shared_ptr<FTFont> font;
     FTFontInfoMap::iterator it_begin = info.subFTFontInfo.begin();
     FTFontInfoMap::iterator it_end = info.subFTFontInfo.end();
     for (; it_begin != it_end; ++it_begin) {
@@ -620,11 +575,13 @@ void FTFontGroup::LoadSubFTFont(FTFontNameInfo &info, int size)
         if (it != fontMap.end()) {
             font = it->second;
         } else {
-            font = make_intrusive<FTFont>(_texKind);
+            font = std::make_shared<FTFont>(_texKind);
             if (!font->Init(fd)) {
                 font = nullptr;
                 // GameWarning("Failed to create freetype font '%s'", fd.path.c_str());
-            }
+			} else {
+				fontMap.insert(std::make_pair(fd, font));
+			}
         }
         
         if (font) {
@@ -635,7 +592,7 @@ void FTFontGroup::LoadSubFTFont(FTFontNameInfo &info, int size)
 
 std::pair<const FontChar*, const FontTexture2D*> FTFontGroup::GetChar(ucs4 ch) const
 {
-    intrusive_ptr<FTFont> font = FindFTFontByChar(ch);
+    auto font = FindFTFontByChar(ch);
     if (font) {
         return font->GetChar(ch);
     }
@@ -654,7 +611,7 @@ FT_Face FTFontGroup::GetFace()
 
 FT_Face FTFontGroup::GetFace(ucs4 ch)
 {
-    intrusive_ptr<FTFont> font = FindFTFontByChar(ch);
+    auto font = FindFTFontByChar(ch);
     if (font) {
         return font->GetFace();
     }
@@ -691,7 +648,7 @@ float FTFontGroup::LineHeight() const
 
 Float2 FTFontGroup::GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const
 {
-    intrusive_ptr<FTFont> font = FindFTFontByChar(ch);
+    auto font = FindFTFontByChar(ch);
     if (font) {
         return font->GetKerning(prevGlyph, ch, curGlyph);
     }
@@ -709,7 +666,6 @@ bool FTFontGroup::Init(const FontDef& def)
         FTFontNameInfo info = (FTFontNameInfo)it->second;
         if (LoadDefaultFTFont(info, _size)) {
             LoadSubFTFont(info, _size);
-            Register(def, this);
             return true;
         }
     } else {
@@ -719,7 +675,6 @@ bool FTFontGroup::Init(const FontDef& def)
         fontNameInfo.insert(FTFontNameMap::value_type(_path, info));
         if (LoadDefaultFTFont(info, _size)) {
             LoadSubFTFont(info, _size);
-            Register(def, this);
             return true;
         }
     }
@@ -729,7 +684,7 @@ bool FTFontGroup::Init(const FontDef& def)
 
 FontCharID FTFontGroup::CreateFontChar(ucs4 ch)
 {
-    intrusive_ptr<FTFont> font = FindFTFontByChar(ch);
+	auto font = FindFTFontByChar(ch);
     if (font) {
         return font->CreateFontChar(ch);
     }
@@ -739,7 +694,7 @@ FontCharID FTFontGroup::CreateFontChar(ucs4 ch)
 
 float FTFontGroup::GetKerning(ucs4 prev, ucs4 ch) const
 {
-    intrusive_ptr<FTFont> font = FindFTFontByChar(ch);
+	auto font = FindFTFontByChar(ch);
     if (font) {
         return font->GetKerning(prev, ch);
     }
@@ -748,16 +703,16 @@ float FTFontGroup::GetKerning(ucs4 prev, ucs4 ch) const
 }
 
     // DavidJ -- hack! subvert massive virtual call overload by putting in some quick overloads
-intrusive_ptr<const Font> FTFontGroup::GetSubFont(ucs4 ch) const 
+std::shared_ptr<const Font> FTFontGroup::GetSubFont(ucs4 ch) const
 {
     return FindFTFontByChar(ch);      // DavidJ -- warning -- lots of redundant AddRef/Releases involved with this call
 }
 
 bool FTFontGroup::IsMultiFontAdapter() const { return true; }
 
-static intrusive_ptr<FTFontGroup> LoadFTFont(const FontDef& def, FontTexKind kind)
+static std::shared_ptr<FTFontGroup> LoadFTFont(const FontDef& def, FontTexKind kind)
 {
-    intrusive_ptr<FTFontGroup> fontGroup = make_intrusive<FTFontGroup>(kind);
+    auto fontGroup = std::make_shared<FTFontGroup>(kind);
     if (!fontGroup->Init(def)) {
         fontGroup = nullptr;
         // GameWarning("Failed to create freetype font '%s'", path);
@@ -766,7 +721,7 @@ static intrusive_ptr<FTFontGroup> LoadFTFont(const FontDef& def, FontTexKind kin
     return fontGroup;
 }
 
-intrusive_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind)
+std::shared_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind)
 {
     FontDef fd;
     fd.path = path;
@@ -789,7 +744,9 @@ intrusive_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind)
         return it->second;
     }
 
-    return LoadFTFont(fd, kind);
+	auto result = LoadFTFont(fd, kind);
+	curFontGroupMap->insert(std::make_pair(fd, result));
+	return result;
 }
 
 bool InitFTFontSystem()
@@ -928,9 +885,9 @@ bool LoadFontConfigFile()
 
 void CleanupFTFontSystem()
 {
-    assert(fontGroupMap.empty());
-    assert(damageDisplayFontGroupMap.empty());
-    assert(fontMap.empty());
+	fontGroupMap.clear();
+	damageDisplayFontGroupMap.clear();
+	fontMap.clear();
 
     fontTexMgr = nullptr;
     damageDisplayFontTexMgr = nullptr;
@@ -984,10 +941,9 @@ int GetFTFontCount(FontTexKind kind)
         {
             UiFontGroupMap::iterator it_begin = damageDisplayFontGroupMap.begin();
             UiFontGroupMap::iterator it_end = damageDisplayFontGroupMap.end();
-            FTFontGroup* fontGroup = NULL;
             int count = 0;
             for (; it_begin != it_end; ++it_begin) {
-                fontGroup = (FTFontGroup*)(it_begin->second);
+                const auto& fontGroup = it_begin->second;
                 if (fontGroup) {
                     count += fontGroup->GetFTFontCount();
                 }
@@ -999,10 +955,9 @@ int GetFTFontCount(FontTexKind kind)
         {
             UiFontGroupMap::iterator it_begin = fontGroupMap.begin();
             UiFontGroupMap::iterator it_end = fontGroupMap.end();
-            FTFontGroup* fontGroup = NULL;
             int count = 0;
             for (; it_begin != it_end; ++it_begin) {
-                fontGroup = (FTFontGroup*)(it_begin->second);
+                const auto& fontGroup = it_begin->second;
                 if (fontGroup) {
                     count += fontGroup->GetFTFontCount();
                 }

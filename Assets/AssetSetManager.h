@@ -9,38 +9,27 @@
 #include "../Core/Types.h"
 #include <memory>
 #include <string>
+#include <vector>
 
 namespace Assets
 {
-    class IAssetSet
-    {
-    public:
-        virtual void            Clear() = 0;
-        virtual void            LogReport() const = 0;
-        virtual uint64          GetTypeCode() const = 0;
-        virtual const char*     GetTypeName() const = 0;
-        virtual unsigned        GetDivergentCount() const = 0;
-        virtual uint64          GetDivergentId(unsigned index) const = 0;
-        virtual bool            DivergentHasChanges(unsigned index) const = 0;
-        virtual std::string     GetAssetName(uint64 id) const = 0;
-        virtual ~IAssetSet();
-    };
-
-    namespace Internal { template <typename AssetType> class AssetSet; }
+	class IDefaultAssetHeap;
+	class AssetHeapRecord;
+    template <typename AssetType> class DefaultAssetHeap;
 
     class AssetSetManager
     {
     public:
         template<typename Type>
-            Internal::AssetSet<Type>* GetSetForType();
+			DefaultAssetHeap<Type>& GetSetForType();
 
         void Clear();
-        void LogReport();
-        unsigned BoundThreadId() const;
-        bool IsBoundThread() const;
+        std::vector<AssetHeapRecord> LogRecords() const;
 
         unsigned GetAssetSetCount();
-        const IAssetSet* GetAssetSet(unsigned index);
+        const IDefaultAssetHeap* GetAssetSet(unsigned index);
+
+		void OnFrameBarrier();
 
         void Lock();
         void Unlock();
@@ -51,12 +40,14 @@ namespace Assets
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        IAssetSet* GetSetForTypeCode(size_t typeCode);
-        void Add(size_t typeCode, std::unique_ptr<IAssetSet>&& set);
+		IDefaultAssetHeap* GetSetForTypeCode(size_t typeCode);
+        void Add(size_t typeCode, std::unique_ptr<IDefaultAssetHeap>&& set);
     };
 
+	AssetSetManager& GetAssetSetManager();
+
     template<typename Type>
-        Internal::AssetSet<Type>* AssetSetManager::GetSetForType()
+		DefaultAssetHeap<Type>& AssetSetManager::GetSetForType()
     {
             // The lock here is frustratingly redundant in 99% of cases. But 
             // we still need it for the rest of the cases. If we could force the
@@ -67,13 +58,13 @@ namespace Assets
         auto existing = GetSetForTypeCode(typeid(Type).hash_code());
         if (existing) {
             Unlock();
-            return static_cast<Internal::AssetSet<Type>*>(existing);
+            return *static_cast<DefaultAssetHeap<Type>*>(existing);
         }
 
-        Internal::AssetSet<Type>* result = nullptr;
+		DefaultAssetHeap<Type>* result = nullptr;
         try 
         {
-            auto newPtr = std::make_unique<Internal::AssetSet<Type>>();
+            auto newPtr = std::make_unique<DefaultAssetHeap<Type>>();
             result = newPtr.get();
             Add(typeid(Type).hash_code(), std::move(newPtr));
         } catch (...) {
@@ -81,7 +72,7 @@ namespace Assets
             throw;
         }
         Unlock();
-        return result;
+        return *result;
     }
 
 }

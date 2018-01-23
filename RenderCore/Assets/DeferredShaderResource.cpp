@@ -15,7 +15,8 @@
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/DepVal.h"
+#include "../../Assets/IntermediateAssets.h"	// (for MakeIntermediateName)
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
@@ -24,7 +25,7 @@
 #include "../../Utility/Threading/CompletionThreadPool.h"
 #include "../../Foreign/tinyxml2-master/tinyxml2.h"
 
-#include "../Techniques/ResourceBox.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include <utility>
 
 #include "../../Core/WinAPI/IncludeWindows.h"
@@ -35,7 +36,7 @@ namespace RenderCore { namespace Assets
 
     enum class SourceColorSpace { SRGB, Linear, Unspecified };
 
-    class MetadataLoadMarker : public ::Assets::PendingOperationMarker, public ::Assets::AsyncLoadOperation
+    class MetadataLoadMarker : public ::Assets::GenericFuture, public ::Assets::AsyncLoadOperation
     {
     public:
         SourceColorSpace _colorSpace;
@@ -222,14 +223,14 @@ namespace RenderCore { namespace Assets
                 Services::GetBufferUploads().Transaction_End(_pimpl->_transaction);
     }
 
-    DeferredShaderResource::DeferredShaderResource(DeferredShaderResource&& moveFrom)
+    DeferredShaderResource::DeferredShaderResource(DeferredShaderResource&& moveFrom) never_throws
     : _pimpl(std::move(moveFrom._pimpl))
     , _validationCallback(std::move(moveFrom._validationCallback))
     {
         DEBUG_ONLY(XlCopyString(_initializer, moveFrom._initializer));
     }
 
-    DeferredShaderResource& DeferredShaderResource::operator=(DeferredShaderResource&& moveFrom)
+    DeferredShaderResource& DeferredShaderResource::operator=(DeferredShaderResource&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
         _validationCallback = std::move(moveFrom._validationCallback);
@@ -241,17 +242,17 @@ namespace RenderCore { namespace Assets
     {
         if (!_pimpl->_srv.IsGood()) {
             if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
-                Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
+				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));
 
             auto& bu = Services::GetBufferUploads();
             if (!bu.IsCompleted(_pimpl->_transaction))
-                Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
+                Throw(::Assets::Exceptions::PendingAsset(Initializer()));
 
             auto state = TryResolve();
             if (state == ::Assets::AssetState::Invalid) {
-                Throw(::Assets::Exceptions::InvalidAsset(Initializer(), "Unknown error during loading"));
+				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));
             } else if (state == ::Assets::AssetState::Pending)
-                Throw(::Assets::Exceptions::PendingAsset(Initializer(), ""));
+				Throw(::Assets::Exceptions::PendingAsset(Initializer()));
 
             assert(_pimpl->_srv.IsGood());
         }
@@ -396,7 +397,7 @@ namespace RenderCore { namespace Assets
             //  right srgb mode when creating a shader resource view
 
         if (!result)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while attempting to load texture immediately"));
+            Throw(::Assets::Exceptions::ConstructionError(::Assets::Exceptions::ConstructionError::Reason::Unknown, nullptr, "Failure while attempting to load texture immediately"));
 
         auto desc = Metal::ExtractDesc(result->GetUnderlying());
         assert(desc._type == BufferDesc::Type::Texture);
@@ -457,7 +458,7 @@ namespace RenderCore { namespace Assets
     {
         if (textureName.IsEmpty()) return false;
 
-        auto& cache = Techniques::FindCachedBox<CachedTextureFormats>(
+        auto& cache = ConsoleRig::FindCachedBox<CachedTextureFormats>(
             CachedTextureFormats::Desc());
 
         typedef CachedTextureFormats::Header Hdr;

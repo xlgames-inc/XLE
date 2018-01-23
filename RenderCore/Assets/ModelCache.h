@@ -19,36 +19,36 @@ namespace RenderCore { namespace Assets
     class MaterialScaffold;
     class SharedStateSet;
 
+	class ModelCacheModel
+    {
+    public:
+		ModelRenderer*  _renderer;
+        SharedStateSet* _sharedStateSet;
+		ModelScaffold*  _model;
+        std::pair<Float3, Float3> _boundingBox;
+        uint64          _hashedModelName;
+        uint64          _hashedMaterialName;
+        unsigned        _selectedLOD;
+        unsigned        _maxLOD;
+
+		ModelCacheModel()
+        : _renderer(nullptr), _sharedStateSet(nullptr)
+        , _hashedModelName(0), _hashedMaterialName(0)
+        , _selectedLOD(0), _maxLOD(0) {}
+    };
+
+	class ModelCacheScaffolds
+    {
+    public:
+		ModelScaffold*      _model = nullptr;
+		MaterialScaffold*   _material = nullptr;
+        uint64              _hashedModelName = 0;
+        uint64              _hashedMaterialName = 0;
+    };
+
     class ModelCache
     {
     public:
-        class Model
-        {
-        public:
-            ModelRenderer*  _renderer;
-            SharedStateSet* _sharedStateSet;
-            ModelScaffold*  _model;
-            std::pair<Float3, Float3> _boundingBox;
-            uint64          _hashedModelName;
-            uint64          _hashedMaterialName;
-            unsigned        _selectedLOD;
-            unsigned        _maxLOD;
-
-            Model()
-            : _renderer(nullptr), _sharedStateSet(nullptr)
-            , _hashedModelName(0), _hashedMaterialName(0)
-            , _selectedLOD(0), _maxLOD(0) {}
-        };
-
-        class Scaffolds
-        {
-        public:
-            ModelScaffold*      _model;
-            MaterialScaffold*   _material;
-            uint64              _hashedModelName;
-            uint64              _hashedMaterialName;
-        };
-
         class Config
         {
         public:
@@ -65,12 +65,12 @@ namespace RenderCore { namespace Assets
         using SupplementGUID = uint64;
         using SupplementRange = IteratorRange<const SupplementGUID*>;
 
-        Model GetModel(
+		ModelCacheModel GetModel(
             StringSection<ResChar> modelFilename, 
             StringSection<ResChar> materialFilename,
             SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0);
-        Scaffolds GetScaffolds(
+        ModelCacheScaffolds GetScaffolds(
             StringSection<ResChar> modelFilename, 
             StringSection<ResChar> materialFilename);
         ::Assets::AssetState PrepareModel(
@@ -79,7 +79,7 @@ namespace RenderCore { namespace Assets
             SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0); 
 
-        ModelScaffold*      GetModelScaffold(StringSection<ResChar> modelFilename);
+        auto				GetModelScaffold(StringSection<ResChar> modelFilename) -> ::Assets::FuturePtr<ModelScaffold>;
         SharedStateSet&     GetSharedStateSet();
 
         uint32              GetReloadId();

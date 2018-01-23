@@ -6,13 +6,14 @@
 
 #include "NativeEngineDevice.h"
 #include "DivergentAssetList.h"
+#include "EngineDevice.h"
 #include "ExportedNativeTypes.h"
+#include "../ToolsRig/DivergentAsset.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/DivergentAsset.h"
-#include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/AssetSetManager.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamTypes.h"
@@ -21,44 +22,16 @@
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Conversion.h"
 #include "MarshalString.h"
+#include "CLIXAutoPtr.h"
 
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
+#include <sstream>
 
 using namespace System::Collections::Generic;
 
 namespace GUILayer
 {
-    public ref class AssetItem
-    {
-    public:
-        property virtual System::String^ Label;
-
-        const Assets::IAssetSet* _set; 
-        uint64 _id;
-
-        PendingSaveList::Entry^ _pendingSave;
-        property virtual PendingSaveList::Action Action
-        {
-			PendingSaveList::Action get()
-            { 
-                return _pendingSave ? _pendingSave->_action : PendingSaveList::Action::Ignore;
-            }
-            void set(PendingSaveList::Action action)
-            {
-                if (_pendingSave) {
-                    _pendingSave->_action = action; 
-                }
-            }
-        }
-
-        AssetItem(const Assets::IAssetSet& set, uint64 id) : _set(&set), _id(id)
-        {
-            Label = clix::marshalString<clix::E_UTF8>(set.GetAssetName(id));
-            _pendingSave = nullptr;
-        }
-    };
-
-	static String^ GetAssetTypeName(uint64 typeCode)
+	static String^ GetAssetTypeName(uint64_t typeCode)
 	{
 		using MatType = RenderCore::Assets::RawMaterial;
 		if (typeCode == typeid(MatType).hash_code()) {
@@ -73,7 +46,7 @@ namespace GUILayer
 		static System::Drawing::Image^ s_materialImage = nullptr;
 	};
 
-	static System::Drawing::Image^ GetAssetTypeImage(uint64 typeCode)
+	static System::Drawing::Image^ GetAssetTypeImage(uint64_t typeCode)
 	{
 		using MatType = RenderCore::Assets::RawMaterial;
 		if (typeCode == typeid(MatType).hash_code()) {
@@ -86,13 +59,44 @@ namespace GUILayer
 		return nullptr;
 	}
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    public ref class AssetItem
+    {
+    public:
+        property virtual System::String^ Label;
+		PendingSaveList::Entry^ _pendingSave; 
+		uint64_t _idInAssetHeap;
+        
+        property virtual PendingSaveList::Action Action
+        {
+			PendingSaveList::Action get()
+            { 
+                return _pendingSave ? _pendingSave->_action : PendingSaveList::Action::Ignore;
+            }
+            void set(PendingSaveList::Action action)
+            {
+                if (_pendingSave) {
+                    _pendingSave->_action = action; 
+                }
+            }
+        }
+
+        AssetItem(const ::ToolsRig::DivergentAssetManager::Record& record, PendingSaveList::Entry^ pendingSave) 
+		: _idInAssetHeap(record._idInAssetHeap)
+		, _pendingSave(pendingSave)
+        {
+            Label = clix::marshalString<clix::E_UTF8>(record._identifier);
+        }
+    };
+
     public ref class AssetTypeItem
     {
     public:
         property virtual System::String^ Label;
 		property virtual System::Drawing::Image^ Icon;
 
-        const Assets::IAssetSet* _set;
+		uint64_t _typeCode;
         List<AssetItem^>^ _children;
 
 		PendingSaveList::Action _action;
@@ -115,23 +119,27 @@ namespace GUILayer
             }
         }
 
-        AssetTypeItem(const Assets::IAssetSet& set) : _set(&set)
-        { 
-            _children = nullptr;
-			Label = GetAssetTypeName(set.GetTypeCode());
+        AssetTypeItem(uint64_t typeCode)
+		: _typeCode(typeCode)
+        {
+            _children = gcnew List<AssetItem^>();
+			Label = GetAssetTypeName(typeCode);
 			if (String::IsNullOrEmpty(Label))
-				Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
-			Icon = GetAssetTypeImage(set.GetTypeCode());
+				// Label = clix::marshalString<clix::E_UTF8>(set.GetTypeName());
+				Label = Convert::ToString(typeCode);
+			Icon = GetAssetTypeImage(typeCode);
             _action = PendingSaveList::Action::Save;
         }
     };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     public ref class TransactionItem
     {
     public:
         property virtual System::String^ Label;
 
-        TransactionItem(const Assets::ITransaction& transaction)
+        TransactionItem(const ToolsRig::IDivergentTransaction& transaction)
         {
             Label = clix::marshalString<clix::E_UTF8>(transaction.GetName());
         }
@@ -153,17 +161,23 @@ namespace GUILayer
 
             auto result = gcnew List<AssetTypeItem^>();
 
-                // root node should be the list of asset types that have divergent assets
-            auto count = _assetSets->GetAssetSetCount();
-            for (unsigned c = 0; c < count; ++c) {
-                const auto* set = _assetSets->GetAssetSet(c);
-                if (!set) continue;
+			auto divAssets = ToolsRig::DivergentAssetManager::GetInstance().GetAssets();
+			for (const auto&d:divAssets) {
+				if (!d._hasChanges) continue;
 
-                auto divCount = set->GetDivergentCount();
-                if (divCount > 0) {
-                    result->Add(gcnew AssetTypeItem(*set));
-                }
-            }
+				AssetTypeItem^ item = nullptr;
+				for each (AssetTypeItem^ i in result) {
+					if (i->_typeCode == d._typeCode) {
+						item = i;
+						break;
+					}
+				}
+				if (!item) {
+					item = gcnew AssetTypeItem(d._typeCode);
+					result->Add(item);
+				}
+				item->_children->Add(gcnew AssetItem(d, _saveList->GetEntry(d._typeCode, d._idInAssetHeap)));
+			}
 
             return result;
 
@@ -173,29 +187,11 @@ namespace GUILayer
             {
                 auto item = dynamic_cast<AssetTypeItem^>(lastItem);
                 if (item) {
-                    if (!item->_children) {
-                            // expecting the list of divergent assets of this type
-                        item->_children = gcnew List<AssetItem^>();
-                        auto divCount = item->_set->GetDivergentCount();
-                        for (unsigned d = 0; d < divCount; ++d) {
-                            if (!item->_set->DivergentHasChanges(d)) continue;
-
-                            auto assetId = item->_set->GetDivergentId(d);
-                            auto assetItem = gcnew AssetItem(*item->_set, assetId);
-
-                                // if we have a "pending save" for this item
-                                // then we have to hook it up
-                            assetItem->_pendingSave = _saveList->GetEntry(*item->_set, assetId);
-
-                            item->_children->Add(assetItem);
-                        }
-                    }
-
-
-                    return item->_children;
+					return item->_children;
                 }
             }
 
+#if 0
             if (_undoQueue) {
                 auto item = dynamic_cast<AssetItem^>(lastItem);
                 if (item) {
@@ -218,6 +214,7 @@ namespace GUILayer
                     return result;
                 }
             }
+#endif
 
         }
 
@@ -242,25 +239,25 @@ namespace GUILayer
  
 
 
-    void PendingSaveList::Add(const Assets::IAssetSet& set, uint64 id, Entry^ entry)
+    void PendingSaveList::Add(uint64_t typeCode, uint64_t id, Entry^ entry)
     {
         for each(auto e in _entries)
-            if (e._assetSet == &set && e._id == id) {
+            if (e._typeCode == typeCode && e._id == id) {
                 assert(0);
                 return;
             }
         
         auto e = gcnew E();
-        e->_assetSet = &set;
+        e->_typeCode = typeCode;
         e->_id = id;
         e->_entry = entry;
         _entries->Add(*e);
     }
 
-    auto PendingSaveList::GetEntry(const Assets::IAssetSet& set, uint64 id) -> Entry^
+    auto PendingSaveList::GetEntry(uint64_t typeCode, uint64_t id) -> Entry^
     {
         for each(auto e in _entries)
-            if (e._assetSet == &set && e._id == id) {
+            if (e._typeCode == typeCode && e._id == id) {
                 return e._entry;
             }
 
@@ -275,36 +272,30 @@ namespace GUILayer
     PendingSaveList::~PendingSaveList()
     {}
 
-    static array<Byte>^ LoadOriginalFileAsByteArray(const char filename[])
-    {
-        TRY {
-            auto file = ::Assets::MainFileSystem::OpenBasicFile(filename, "rb");
+	static ::Assets::Blob TryLoadOriginalFileAsBlob(StringSection<> filename)
+	{
+		TRY{
+			auto file = ::Assets::MainFileSystem::OpenFileInterface(filename, "rb");
 
-            file.Seek(0, FileSeekAnchor::End);
-            size_t size = file.TellP();
-            file.Seek(0);
+			file->Seek(0, FileSeekAnchor::End);
+			size_t size = file->TellP();
+			file->Seek(0);
 
-            auto block = gcnew array<Byte>(int(size));
-            {
-                pin_ptr<unsigned char> pinned = &block[0];
-                file.Read((uint8*)pinned, 1, size);
-            }
-            return block;
-        } CATCH(const std::exception& e) {
-			auto builder = gcnew System::Text::StringBuilder();
-			builder->Append("Error while opening input file ");
-			builder->Append(clix::marshalString<clix::E_UTF8>(filename));
-			builder->AppendLine(". Exception message follows:");
-			builder->AppendLine(clix::marshalString<clix::E_UTF8>(e.what()));
-			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
-        } CATCH(...) {
-			auto builder = gcnew System::Text::StringBuilder();
-			builder->Append("Error while opening input file ");
-			builder->Append(clix::marshalString<clix::E_UTF8>(filename));
-			builder->AppendLine(". Unknown exception type.");
-			return System::Text::Encoding::UTF8->GetBytes(builder->ToString());
+			auto result = std::make_shared<std::vector<uint8_t>>(size);
+			file->Read(result->data(), size);
+			return result;
+		} CATCH(const std::exception& e) {
+			std::stringstream str;
+			str << "Error while opening input file " << filename.AsString() << ". Exception message follows: " << e.what();
+			auto s = str.str();
+			return ::Assets::AsBlob(MakeIteratorRange(s));
+		} CATCH(...) {
+			std::stringstream str;
+			str << "Error while opening input file " << filename.AsString() << ". Unknown exception type.";
+			auto s = str.str();
+			return ::Assets::AsBlob(MakeIteratorRange(s));
 		} CATCH_END
-    }
+	}
 
     array<Byte>^ AsByteArray(const uint8* begin, const uint8* end)
     {
@@ -314,6 +305,11 @@ namespace GUILayer
         Marshal::Copy(IntPtr(const_cast<uint8*>(begin)), result, 0, result->Length);
         return result;
     }
+
+	array<Byte>^ AsByteArray(const ::Assets::Blob& blob)
+	{
+		return AsByteArray((const uint8*)AsPointer(blob->begin()), (const uint8*)AsPointer(blob->end()));
+	}
 
     static auto DeserializeAllMaterials(InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules)
         -> std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>>
@@ -361,7 +357,7 @@ namespace GUILayer
 
     static void MergeAndSerialize(
         OutputStreamFormatter& output,
-        array<Byte>^ originalFile,
+        IteratorRange<const void*> originalFile,
         StringSection<::Assets::ResChar> filename,
         StringSection<::Assets::ResChar> section,
         const RenderCore::Assets::RawMaterial& mat)
@@ -372,11 +368,9 @@ namespace GUILayer
         using namespace RenderCore::Assets;
 
         std::vector<std::pair<::Assets::rstring, RenderCore::Assets::RawMaterial>> preMats;
-        if (originalFile->Length) {
+        if (!originalFile.empty()) {
             auto searchRules = ::Assets::DefaultDirectorySearchRules(filename);
-            pin_ptr<uint8> pinnedAddress(&originalFile[0]);
-            InputStreamFormatter<utf8> formatter(
-                MemoryMappedInputStream((const char*)pinnedAddress, PtrAdd((const char*)pinnedAddress, originalFile->Length)));
+            InputStreamFormatter<utf8> formatter(originalFile);
             preMats = DeserializeAllMaterials(formatter, searchRules);
         }
 
@@ -394,6 +388,39 @@ namespace GUILayer
         SerializeAllMaterials(output, preMats);
     }
 
+	struct AssetSaveEntry
+	{
+		::Assets::Blob		_originalFile;
+		::Assets::Blob		_newFile;
+		::Assets::rstring	_name;
+	};
+
+	template<typename Asset>
+		const std::shared_ptr<Asset>& GetWorkingCopy(const ToolsRig::IDivergentAsset& divAsset)
+		{
+			return checked_cast<const ToolsRig::DivergentAsset<Asset>*>(&divAsset)->GetWorkingAsset();
+		}
+
+	static AssetSaveEntry BuildAssetSaveEntry(uint64_t typeCode, const StringSection<::Assets::ResChar> identifier, const ToolsRig::IDivergentAsset& divAsset)
+	{
+		// HACK -- special case for RawMaterial objects!
+		if (typeCode == typeid(RenderCore::Assets::RawMaterial).hash_code()) {
+			auto splitName = MakeFileNameSplitter(identifier);
+			auto originalFile = TryLoadOriginalFileAsBlob(splitName.AllExceptParameters());
+
+			MemoryOutputStream<utf8> strm;
+			OutputStreamFormatter fmtter(strm);
+			MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile),
+				splitName.AllExceptParameters(), splitName.Parameters(),
+				*GetWorkingCopy<RenderCore::Assets::RawMaterial>(divAsset));
+			auto newFile = ::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()));
+
+			return AssetSaveEntry { std::move(originalFile), std::move(newFile), splitName.AllExceptParameters().AsString() };
+		}
+
+		return AssetSaveEntry {};
+	}
+
     PendingSaveList^ PendingSaveList::Create()
     {
         auto result = gcnew PendingSaveList();
@@ -406,122 +433,88 @@ namespace GUILayer
             //  should serialise quickly... But if we have many large
             //  assets, this could get expensive quickly!
 
-        #if defined(ASSETS_STORE_DIVERGENT)
+		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
+		for (const auto&d : divAssetMan.GetAssets()) {
+			if (!d._hasChanges) continue;
 
-                    // HACK -- special case for RawMaterial objects!
-            using namespace RenderCore::Assets;
-            auto materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
-            for (const auto& a:materials->_divergentAssets) {
-                auto asset = a.second;
-                auto hash = a.first;
-                if (!asset->HasChanges()) continue;
-            
-                auto targetFilename = asset->GetIdentifier()._targetFilename;
-                auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = LoadOriginalFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
+			auto asset = divAssetMan.GetAsset(d._typeCode, d._idInAssetHeap);
+			auto saveEntry = BuildAssetSaveEntry(d._typeCode, MakeStringSection(d._identifier), *asset);
+			if (!saveEntry._newFile || saveEntry._newFile->empty()) continue;
 
-                MemoryOutputStream<utf8> strm;
-                OutputStreamFormatter fmtter(strm);
-                MergeAndSerialize(fmtter, originalFile, 
-                    splitName.AllExceptParameters(), splitName.Parameters(), 
-                    asset->GetAsset());
-                auto newFile = AsByteArray(strm.GetBuffer().Begin(), strm.GetBuffer().End());
-
-                result->Add(
-                    *materials, hash,
-                    gcnew PendingSaveList::Entry(
-                        clix::marshalString<clix::E_UTF8>(splitName.AllExceptParameters()), 
-                        originalFile, newFile));
-            }
-
-        #endif
+			result->Add(
+				d._typeCode, d._idInAssetHeap,
+				gcnew PendingSaveList::Entry(
+					clix::marshalString<clix::E_UTF8>(saveEntry._name),
+					AsByteArray(saveEntry._originalFile),
+					AsByteArray(saveEntry._newFile)));
+		}
 
         return result;
     }
 
     auto PendingSaveList::Commit() -> CommitResult^
     {
-        #if defined(ASSETS_STORE_DIVERGENT)
+		std::stringstream errorMessages;
 
-			auto errorMessages = gcnew System::Text::StringBuilder;
+		using namespace RenderCore::Assets;
+		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
+		for (const auto&d : divAssetMan.GetAssets()) {
+			if (!d._hasChanges) continue;
 
-            using namespace RenderCore::Assets;
-            auto materials = ::Assets::Internal::GetAssetSet<RawMaterial>();
-			for (const auto& a:materials->_divergentAssets) {
-                auto asset = a.second;
-                auto hash = a.first;
-				if (!asset->HasChanges()) continue;
+			// only RawMaterial objects supported here currently
+			if (d._typeCode != typeid(RawMaterial).hash_code())
+				continue;
 
-                auto entry = GetEntry(*materials, hash);
-                if (!entry || entry->_action == Action::Ignore) continue;
+            auto entry = GetEntry(d._typeCode, d._idInAssetHeap);
+            if (!entry || entry->_action == Action::Ignore) continue;
 
-				if (entry->_action == Action::Abandon) {
-					asset->AbandonChanges();
-					continue;
-				}
+			auto asset = divAssetMan.GetAsset(d._typeCode, d._idInAssetHeap);
+			if (entry->_action == Action::Abandon) {
+				asset->AbandonChanges();
+				continue;
+			}
 
-				assert(entry->_action == Action::Save);
+			assert(entry->_action == Action::Save);
             
-                    //  Sometimes mutliple assets will write to different parts of the same
-                    //  file. It's a bit wierd, but we want the before and after parts to
-                    //  only show changes related to this particular asset
-                auto targetFilename = asset->GetIdentifier()._targetFilename;
-                auto splitName = MakeFileNameSplitter(targetFilename);
-                auto originalFile = LoadOriginalFileAsByteArray(splitName.AllExceptParameters().AsString().c_str());
+                //  Sometimes mutliple assets will write to different parts of the same
+                //  file. It's a bit wierd, but we want the before and after parts to
+                //  only show changes related to this particular asset
+			auto filename = MakeStringSection(d._identifier);
+            auto splitName = MakeFileNameSplitter(filename);
+            auto originalFile = TryLoadOriginalFileAsBlob(splitName.AllExceptParameters());
             
-                MemoryOutputStream<utf8> strm;
-                OutputStreamFormatter fmtter(strm);
-                MergeAndSerialize(fmtter, originalFile, 
-                    splitName.AllExceptParameters(), splitName.Parameters(), 
-                    asset->GetAsset());
+            MemoryOutputStream<utf8> strm;
+            OutputStreamFormatter fmtter(strm);
+            MergeAndSerialize(fmtter, MakeIteratorRange(*originalFile), 
+                splitName.AllExceptParameters(), splitName.Parameters(), 
+				*GetWorkingCopy<RawMaterial>(*asset));
 
-				auto dstFile = splitName.AllExceptParameters().AsString();
-                TRY
-                {
-					{
-						auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(dstFile.c_str(), "wb");
-						outputFile.Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
-					}
+			auto dstFile = splitName.AllExceptParameters().AsString();
+            TRY
+            {
+				auto outputFile = ::Assets::MainFileSystem::OpenFileInterface(dstFile.c_str(), "wb");
+				outputFile->Write(strm.GetBuffer().Begin(), 1, size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin()));
 
-					// abandon changes now to allow us to reload the asset from disk
-					asset->AbandonChanges();
-					continue;
-                } CATCH(const std::exception& e) {
-					errorMessages->Append("Error while writing to file: ");
-					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
-					errorMessages->AppendLine(". Exception message follows:");
-					errorMessages->AppendLine(clix::marshalString<clix::E_UTF8>(e.what()));
-				} CATCH (...) {
-					errorMessages->Append("Error while writing to file: ");
-					errorMessages->Append(clix::marshalString<clix::E_UTF8>(dstFile));
-					errorMessages->AppendLine(". Unknown exception type.");
-                } CATCH_END
-            }
+				// abandon changes now to allow us to reload the asset from disk
+				// asset->AbandonChanges();
+            } CATCH(const std::exception& e) {
+				errorMessages << "Error while opening input file " << filename << ". Exception message follows: " << std::endl << e.what() << std::endl;
+			} CATCH (...) {
+				errorMessages << "Error while opening input file " << filename.AsString() << ". Unknown exception type." << std::endl;
+            } CATCH_END
+        }
 
-			auto result = gcnew CommitResult;
-			result->ErrorMessages = errorMessages->ToString();
-			return result;
-
-		#else
-
-			auto result = gcnew CommitResult;
-			result->ErrorMessages = "Divergent asset behaviour is disabled in this build.";
-			return result;
-
-        #endif
+		auto result = gcnew CommitResult;
+		result->ErrorMessages = clix::marshalString<clix::E_UTF8>(errorMessages.str());
+		return result;
     }
 
-    bool PendingSaveList::HasModifiedAssets()
+	bool PendingSaveList::HasModifiedAssets()
     {
-        #if defined(ASSETS_STORE_DIVERGENT)
-
-            auto materials = ::Assets::Internal::GetAssetSet<RenderCore::Assets::RawMaterial>();
-            for (const auto&a:materials->_divergentAssets)
-                if (a.second->HasChanges()) return true;
-
-        #endif
-
-        return true;
+		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
+		for (const auto&d : divAssetMan.GetAssets())
+			if (!d._hasChanges) return true;
+		return false;
     }
 }
 

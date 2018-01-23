@@ -283,7 +283,7 @@ namespace Serialization
         size_t size = Block_GetSize(block);
         std::unique_ptr<uint8[]> result = std::make_unique<uint8[]>(size);
         XlCopyMemory(result.get(), block, size);
-        return std::move(result);
+        return result;
     }
 
 

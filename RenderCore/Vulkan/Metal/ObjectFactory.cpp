@@ -538,8 +538,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		// if we can't fit in the marker, it is a fatal error. We can't safely through an exception from here
 		// because this function is frequently called from a smart pointer destructor -- which could be triggered
 		// during stack unwinding, or some other case that is not safe for exceptions
-		if (!success)
-			LogAlwaysFatal << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation";
+		if (!success) {
+			LogAlwaysError << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation";
+			std::terminate();
+		}
 
 		q._objects.push_back(obj);
     }

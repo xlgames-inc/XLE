@@ -19,7 +19,7 @@
 #include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/GeoProc/GeoProcUtil.h"
 
-#include "../RenderCore/Assets/Material.h"  // for MakeMaterialGuid
+#include "../RenderCore/Assets/MaterialScaffold.h"  // for MakeMaterialGuid
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/MemoryUtils.h"
@@ -282,7 +282,7 @@ namespace ColladaConversion
                         // Some collada files can actually have multiple instance_material elements for
                         // the same binding symbol. Let's throw an exception in this case (but only
                         // if the bindings don't agree)
-                    Throw(::Assets::Exceptions::FormatError("Single material binding symbol is bound to multiple different materials in geometry instantiation"));
+                    Throw(::Exceptions::BasicLabel("Single material binding symbol is bound to multiple different materials in geometry instantiation"));
                 }
 
                 materialGuids[index] = newMaterialGuid;
@@ -317,7 +317,7 @@ namespace ColladaConversion
 
             if (geo == ~unsigned(0x0)) {
                 if (!scaffoldGeo)
-                    Throw(::Assets::Exceptions::FormatError("Could not found geometry object to instantiate (%s)",
+                    Throw(::Exceptions::BasicLabel("Could not found geometry object to instantiate (%s)",
                         instGeo._reference.AsString().c_str()));
 
                 auto convertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
@@ -329,7 +329,7 @@ namespace ColladaConversion
                     assert(convertedMesh._matBindingSymbols.empty());
                     assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
                 
-                    Throw(::Assets::Exceptions::FormatError(
+                    Throw(::Exceptions::BasicLabel(
                         "Geometry object is empty (%s)", instGeo._reference.AsString().c_str()));
                 }
 
@@ -395,14 +395,14 @@ namespace ColladaConversion
         NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
         auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
         if (!scaffoldController)
-            Throw(::Assets::Exceptions::FormatError("Could not find controller object to instantiate (%s)",
+            Throw(::Exceptions::BasicLabel("Could not find controller object to instantiate (%s)",
                 instGeo._reference.AsString().c_str()));
 
         auto controller = Convert(*scaffoldController, resolveContext, cfg);
 
         auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, jointToTransformMarker);
         if (!jointMatrices.size() || !jointMatrices.get())
-            Throw(::Assets::Exceptions::FormatError("Skin controller object has no joints. Cannot instantiate as skinned object. (%s)",
+            Throw(::Exceptions::BasicLabel("Skin controller object has no joints. Cannot instantiate as skinned object. (%s)",
                 instGeo._reference.AsString().c_str()));
 
             // If the the raw geometry object is already converted, then we should use it. Otherwise
@@ -417,7 +417,7 @@ namespace ColladaConversion
                     GuidReference(controller._sourceRef._objectId, controller._sourceRef._namespaceId),
                     resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
                 if (!scaffoldGeo)
-                    Throw(::Assets::Exceptions::FormatError("Could not find geometry object to instantiate (%s)",
+                    Throw(::Exceptions::BasicLabel("Could not find geometry object to instantiate (%s)",
                         instGeo._reference.AsString().c_str()));
                 tempBuffer = Convert(*scaffoldGeo, Identity<Float4x4>(), resolveContext, cfg);
                 source = &tempBuffer;

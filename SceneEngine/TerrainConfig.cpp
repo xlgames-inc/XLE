@@ -10,7 +10,6 @@
 #include "TerrainScaffold.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AssetServices.h"
-#include "../Assets/InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
 #include "../Math/Transformations.h"
 #include "../Utility/Streams/StreamFormatter.h"
@@ -208,15 +207,15 @@ namespace SceneEngine
     Float4x4 TerrainCoordinateSystem::CellBasedToWorld() const
     {
         return AsFloat4x4(
-            ScaleTranslation(
-                Float3(_cellSizeInMeters, _cellSizeInMeters, 1.f), _terrainOffset));
+            ScaleTranslation{
+                Float3(_cellSizeInMeters, _cellSizeInMeters, 1.f), _terrainOffset});
     }
 
     Float4x4 TerrainCoordinateSystem::WorldToCellBased() const
     {
         return AsFloat4x4(
-            ScaleTranslation(
-                Float3(1.f/_cellSizeInMeters, 1.f/_cellSizeInMeters, 1.f), -_terrainOffset/_cellSizeInMeters));
+            ScaleTranslation{
+                Float3(1.f/_cellSizeInMeters, 1.f/_cellSizeInMeters, 1.f), -_terrainOffset/_cellSizeInMeters});
     }
 
     Float3      TerrainCoordinateSystem::TerrainOffset() const { return _terrainOffset; }

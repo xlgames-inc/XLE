@@ -11,18 +11,36 @@
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../ToolsRig/DivergentAsset.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/ModelCache.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Metal/State.h"
-#include "../../Assets/DivergentAsset.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/InvalidAssetManager.h"
+#include "../../Assets/AssetSetManager.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
+
+namespace Assets
+{
+	// hack -- duplicate this from AssetHeap.h (because we can't include that due to <mutex> problem with C++/CLR
+	class AssetHeapRecord
+	{
+	public:
+		rstring		_initializer;
+		AssetState	_state;
+		DepValPtr	_depVal;
+		Blob		_actualizationLog;
+		uint64_t	_typeCode;
+		uint64_t	_idInAssetHeap;
+	};
+}
 
 namespace GUILayer
 {
@@ -169,7 +187,7 @@ namespace GUILayer
         if (scaffolds._material) {
             TRY {
                 auto nativeName = scaffolds._material->GetMaterialName(materialGuid);
-                if (nativeName)
+                if (!nativeName.IsEmpty())
                     return clix::marshalString<clix::E_UTF8>(nativeName);
             }
             CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
@@ -321,7 +339,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_materialParameterBox) {
-            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetAsset()._matParamBox);
+            _materialParameterBox = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_matParamBox);
             _materialParameterBox->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -336,7 +354,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_shaderConstants) {
-            _shaderConstants = BindingConv::AsBindingList(_underlying->GetAsset()._constants);
+            _shaderConstants = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_constants);
             _shaderConstants->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ParameterBox_Changed);
@@ -351,7 +369,7 @@ namespace GUILayer
         if (!_underlying) { return nullptr; }
 		CheckBindingInvalidation();
         if (!_resourceBindings) {
-            _resourceBindings = BindingConv::AsBindingList(_underlying->GetAsset()._resourceBindings);
+            _resourceBindings = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_resourceBindings);
             _resourceBindings->ListChanged += 
                 gcnew ListChangedEventHandler(
                     this, &RawMaterial::ResourceBinding_Changed);
@@ -433,7 +451,7 @@ namespace GUILayer
     System::String^ RawMaterial::BuildInheritanceList()
     {
         if (!!_underlying) {
-            auto& asset = _underlying->GetAsset();
+            auto& asset = *_underlying->GetWorkingAsset();
             auto searchRules = ::Assets::DefaultDirectorySearchRules(
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
             
@@ -448,14 +466,11 @@ namespace GUILayer
         return nullptr;
     }
 
-    void RawMaterial::Resolve(RenderCore::Assets::ResolvedMaterial& destination)
+    void RawMaterial::Resolve(RenderCore::Techniques::Material& destination)
     {
         if (!!_underlying) {
-            auto searchRules = Assets::DefaultDirectorySearchRules(
-                MakeStringSection(clix::marshalString<clix::E_UTF8>(Filename)));
-            auto state = _underlying->GetAsset().TryResolve(destination, searchRules);
-			assert(state == ::Assets::AssetState::Ready);
-			(void)state;
+			::Assets::DirectorySearchRules searchRules;
+			RenderCore::Assets::MergeIn_Stall(destination, *_underlying->GetWorkingAsset(), searchRules);
         }
     }
 
@@ -482,15 +497,15 @@ namespace GUILayer
 
     const RenderCore::Assets::RawMaterial* RawMaterial::GetUnderlying() 
     { 
-        return (!!_underlying) ? &_underlying->GetAsset() : nullptr; 
+        return (!!_underlying) ? _underlying->GetWorkingAsset().get() : nullptr; 
     }
 
-    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetAsset()._techniqueConfig); }
+    String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetWorkingAsset()->_techniqueConfig); }
 
     void RawMaterial::TechniqueConfig::set(String^ value)
     {
         auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
-        if (_underlying->GetAsset()._techniqueConfig != native) {
+        if (_underlying->GetWorkingAsset()->_techniqueConfig != native) {
 			CheckBindingInvalidation();
             auto transaction = _underlying->Transaction_Begin("Technique Config");
             if (transaction) {
@@ -539,13 +554,13 @@ namespace GUILayer
 		// If our transaction id doesn't match what we find in the divergent asset, it means
 		// that the the asset may have been modified from some other place. When this happens, 
 		// we have to dump the cached values in our BindingLists
-		auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
+		/*auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
 		if (underlyingTransId != _transId) {
 			_materialParameterBox = nullptr;
 			_shaderConstants = nullptr;
 			_resourceBindings = nullptr;
 			_transId = underlyingTransId;
-		}
+		}*/
 	}
 
     RawMaterial::RawMaterial(System::String^ initialiser)
@@ -553,7 +568,7 @@ namespace GUILayer
 		_transId = 0;
         _initializer = initialiser;
         auto nativeInit = clix::marshalString<clix::E_UTF8>(initialiser);
-        _underlying = RenderCore::Assets::RawMaterial::GetDivergentAsset(nativeInit.c_str());
+        _underlying = ToolsRig::CreateDivergentAsset<RenderCore::Assets::RawMaterial>(MakeStringSection(nativeInit));
         _renderStateSet = gcnew RenderStateSet(_underlying.GetNativePtr());
     }
 
@@ -567,7 +582,7 @@ namespace GUILayer
 
     auto RenderStateSet::DoubleSided::get() -> CheckState
     {
-        auto& stateSet = _underlying->GetAsset()._stateSet;
+        auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::DoubleSided) {
             if (stateSet._doubleSided) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -591,7 +606,7 @@ namespace GUILayer
 
     CheckState RenderStateSet::Wireframe::get()
     {
-        auto& stateSet = _underlying->GetAsset()._stateSet;
+        auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::Wireframe) {
             if (stateSet._wireframe) return CheckState::Checked;
             else return CheckState::Unchecked;
@@ -687,7 +702,7 @@ namespace GUILayer
 
     auto RenderStateSet::StandardBlendMode::get() -> StandardBlendModes
     {
-        const auto& underlying = _underlying->GetAsset();
+        const auto& underlying = *_underlying->GetWorkingAsset();
         return AsStandardBlendMode(underlying._stateSet);
     }
     
@@ -758,41 +773,31 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void InvokeChangeEvent(gcroot<InvalidAssetList^> ptr)
+	InvalidAssetList::InvalidAssetList()
     {
-        return ptr->RaiseChangeEvent();
-    }
-
-    InvalidAssetList::InvalidAssetList()
-    {
-        _eventId = 0;
-
-            // get the list of assets from the underlying manager
-        if (::Assets::Services::GetInvalidAssetMan()) {
-            auto& man = *::Assets::Services::GetInvalidAssetMan();
-            gcroot<InvalidAssetList^> ptrToThis = this;
-            _eventId = man.AddOnChangeEvent(std::bind(InvokeChangeEvent, ptrToThis));
-        }
     }
 
     InvalidAssetList::~InvalidAssetList()
     {
-        if (::Assets::Services::GetInvalidAssetMan())
-            ::Assets::Services::GetInvalidAssetMan()->RemoveOnChangeEvent(_eventId);
     }
 
     IEnumerable<Tuple<String^, String^>^>^ InvalidAssetList::AssetList::get() 
     { 
         auto result = gcnew List<Tuple<String^, String^>^>();
-        result->Clear();
-        if (::Assets::Services::GetInvalidAssetMan()) {
-            auto list = ::Assets::Services::GetInvalidAssetMan()->GetAssets();
-            for (const auto& i : list) {
-                result->Add(gcnew Tuple<String^, String^>(
-                    clix::marshalString<clix::E_UTF8>(i._name),
-                    clix::marshalString<clix::E_UTF8>(i._errorString)));
-            }
+
+		auto records = ::Assets::Services::GetAssetSets().LogRecords();
+        for (const auto& i : records) {
+			if (i._state != ::Assets::AssetState::Invalid) continue;
+
+			std::string logStr(
+				(const char*)AsPointer(i._actualizationLog->begin()),
+				(const char*)AsPointer(i._actualizationLog->end()));
+
+            result->Add(gcnew Tuple<String^, String^>(
+                clix::marshalString<clix::E_UTF8>(i._initializer),
+                clix::marshalString<clix::E_UTF8>(logStr)));
         }
+
         return result;
     }
 
@@ -803,7 +808,8 @@ namespace GUILayer
 
     bool InvalidAssetList::HasInvalidAssets()
     {
-        return ::Assets::Services::GetInvalidAssetMan() ? ::Assets::Services::GetInvalidAssetMan()->HasInvalidAssets() : false;
+		// no way to check if there are actually invalid assets now
+		return true;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

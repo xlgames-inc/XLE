@@ -282,5 +282,16 @@ namespace Utility
 
 }
 
+namespace std
+{
+	template<typename CharType>
+		basic_ostream<CharType>& operator<<(basic_ostream<CharType>& stream, Utility::StringSection<CharType> section)
+	{
+		using Demoted = typename Utility::Internal::DemoteCharType<CharType>::Value;
+		stream.write((const Demoted*)section.begin(), section.size());
+		return stream;
+	}
+}
+
 using namespace Utility;
 

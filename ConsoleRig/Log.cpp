@@ -1,453 +1,354 @@
-// Copyright 2015 XLGAMES Inc.
-//
-// Distributed under the MIT License (See
-// accompanying file "LICENSE" or the website
-// http://www.opensource.org/licenses/mit-license.php)
-
 #include "Log.h"
-#include "LogStartup.h"
-#include "OutputStream.h"
-#include "GlobalServices.h"
-#include "../Utility/Streams/FileUtils.h"
-#include "../Utility/Streams/Stream.h"
-#include "../Utility/FunctionUtils.h"
-#include "../Utility/MemoryUtils.h"
-#include "../Utility/SystemUtils.h"
+#include "../Assets/IFileSystem.h"
+#include "../Assets/AssetUtils.h"
+#include "../Assets/DepVal.h"
 #include "../Utility/StringFormat.h"
-#include <assert.h>
-
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-    #include "../Core/WinAPI/IncludeWindows.h"
-    #include "../Foreign/StackWalker/StackWalker.h"
-#endif
-
-    // We can't use the default initialisation method for easylogging++
-    // because is causes a "LoaderLock" exception when used with C++/CLI dlls.
-    // It also doesn't work well when sharing a single log file across dlls.
-    // Anyway, the default behaviour isn't great for our needs.
-    // So, we need to use "INITIALIZE_NULL" here, and manually construct
-    // a "GlobalStorage" object below...
-INITIALIZE_NULL_EASYLOGGINGPP
-
-#if defined(_DEBUG)
-    #define REDIRECT_COUT
-#endif
-
-#pragma warning(disable:4592)
-
-//////////////////////////////////
-
-static auto Fn_GetStorage = ConstHash64<'getl', 'ogst', 'orag', 'e'>::Value;
-static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
-static auto Fn_LogMainModule = ConstHash64<'logm', 'ainm', 'odul', 'e'>::Value;
-static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
-static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/StreamDOM.h"
+#include "../Foreign/fmt/format.h"
+#include <iostream>
 
 namespace ConsoleRig
 {
-    #if defined(REDIRECT_COUT)
-        template <typename CharType>
-            class StdCToXLEStreamAdapter : public std::basic_streambuf<CharType>
-        {
-        public:
-            void Reset(std::shared_ptr<Utility::OutputStream> chain) { _chain = chain; }
-            StdCToXLEStreamAdapter(std::shared_ptr<Utility::OutputStream> chain);
-            ~StdCToXLEStreamAdapter();
-        protected:
-            std::shared_ptr<Utility::OutputStream> _chain;
-
-            virtual std::streamsize xsputn(const CharType* s, std::streamsize count);
-            virtual int sync();
-        };
-
-        template <typename CharType>
-            StdCToXLEStreamAdapter<CharType>::StdCToXLEStreamAdapter(std::shared_ptr<Utility::OutputStream> chain) : _chain(chain) {}
-        template <typename CharType>
-            StdCToXLEStreamAdapter<CharType>::~StdCToXLEStreamAdapter() {}
-
-        template <typename CharType>
-            std::streamsize StdCToXLEStreamAdapter<CharType>::xsputn(const CharType* s, std::streamsize count)
-        {
-            assert(_chain);
-            _chain->Write(s, int(sizeof(CharType) * count));
-            return count;
+    template<typename CharType, typename CharTraits>
+        std::streamsize MessageTarget<CharType, CharTraits>::FormatAndOutput(
+            StringSection<char> msg,
+            const std::string& fmtTemplate,
+            const SourceLocation& sourceLocation)
+    {
+        if (!fmtTemplate.empty()) {
+            auto fmt = fmt::format(
+                fmtTemplate,
+                fmt::arg("file", sourceLocation._file),
+                fmt::arg("line", sourceLocation._line));
+            _chain->sputn(fmt.data(), fmt.size());
         }
+        return _chain->sputn(msg.begin(), msg.size());       // (note; don't include the length of the formatted section; because it will confuse the caller when it is a basic_ostream
+    }
 
-        template <typename CharType>
-            int StdCToXLEStreamAdapter<CharType>::sync()
-        {
-            _chain->Flush();
+    template<typename CharType, typename CharTraits>
+        std::streamsize MessageTarget<CharType, CharTraits>::xsputn(const CharType* s, std::streamsize count)
+    {
+        if (_cfg._enabledSinks & MessageTargetConfiguration::Sink::Console) {
+            auto result = FormatAndOutput(
+                MakeStringSection(s, s + count),
+                _sourceLocationPrimed ? _cfg._template : std::string(),
+                _pendingSourceLocation);
+            _sourceLocationPrimed = false;
+            return result;
+        } else {
             return 0;
         }
-
-        std::shared_ptr<Utility::OutputStream>      GetSharedDebuggerWarningStream();
-
-        static StdCToXLEStreamAdapter<char> s_coutAdapter(nullptr);
-        static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
-    #endif
-
-    static void SendExceptionToLogger(const ::Exceptions::BasicLabel&);
-
-    void Logging_Startup(const char configFile[], const char logFileName[])
-    {
-        auto currentModule = GetCurrentModuleId();
-        auto& serv = GlobalServices::GetCrossModule()._services;
-
-            // It can be handy to redirect std::cout to the debugger output
-            // window in Visual Studio (etc)
-            // We can do this with an adapter to connect out DebufferWarningStream
-            // object to a c++ std::stream_buf
-        #if defined(REDIRECT_COUT)
-            
-            bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
-            if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
-                s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
-                s_oldCoutStreamBuf = std::cout.rdbuf();
-                std::cout.rdbuf(&s_coutAdapter);
-
-                serv.Add(Fn_CoutRedirectModule, [=](){ return currentModule; });
-            }
-
-        #endif
-
-        using StoragePtr = decltype(el::Helpers::storage());
-
-            //
-            //  Check to see if there is an existing logging object in the
-            //  global services. If there is, it will have been created by
-            //  another module.
-            //  If it's there, we can just re-use it. Otherwise we need to
-            //  create a new one and set it up...
-            //
-        if (!serv.Has<StoragePtr()>(Fn_GetStorage)) {
-
-            el::Helpers::setStorage(
-                std::make_shared<el::base::Storage>(
-                    el::LogBuilderPtr(new el::base::DefaultLogBuilder())));
-
-            if (!logFileName) { logFileName = "int/log.txt"; }
-            el::Configurations c;
-            c.setToDefault();
-            c.setGlobally(el::ConfigurationType::Filename, logFileName);
-
-                // if a configuration file exists, 
-            if (configFile) {
-                size_t configFileLength = 0;
-                auto configFileData = RawFS::TryLoadFileAsMemoryBlock(configFile, &configFileLength);
-                if (configFileData && configFileLength) {
-                    c.parseFromText(std::string(configFileData.get(), &configFileData[configFileLength]));
-                }
-            }
-
-            el::Loggers::reconfigureAllLoggers(c);
-
-            serv.Add(Fn_GetStorage, el::Helpers::storage);
-            serv.Add(Fn_LogMainModule, [=](){ return currentModule; });
-
-            auto& onThrow = GlobalOnThrowCallback();
-            if (!onThrow)
-                onThrow = &SendExceptionToLogger;
-
-        } else {
-
-            auto storage = serv.Call<StoragePtr>(Fn_GetStorage);
-            el::Helpers::setStorage(storage);
-
-        }
     }
 
-    void Logging_Shutdown()
+    template<typename CharType, typename CharTraits>
+        auto MessageTarget<CharType, CharTraits>::overflow(int_type ch) -> int_type
     {
-        auto& serv = GlobalServices::GetCrossModule()._services;
-        auto currentModule = GetCurrentModuleId();
-
-        el::Loggers::flushAll();
-        el::Helpers::setStorage(nullptr);
-
-            // this will throw an exception if no module has successfully initialised
-            // logging
-        if (serv.Call<ModuleId>(Fn_LogMainModule) == currentModule) {
-            serv.Remove(Fn_GetStorage);
-            serv.Remove(Fn_LogMainModule);
-        }
-
-        #if defined(REDIRECT_COUT)
-            ModuleId testModule = 0;
-            if (serv.TryCall<ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
-                if (s_oldCoutStreamBuf)
-                    std::cout.rdbuf(s_oldCoutStreamBuf);
-                serv.Remove(Fn_CoutRedirectModule);
-            }
-        #endif
-    }
-
-    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-        class StackWalkerToLog : public StackWalker
-        {
-        protected:
-            virtual void OnOutput(LPCSTR) {}
-
-            void OnCallstackEntry(CallstackEntryType eType, int frameNumber, CallstackEntry &entry)
-            {
-                    // We should normally have 3 entries on the callstack ahead of what we want:
-                    //  StackWalker::ShowCallstack
-                    //  ConsoleRig::SendExceptionToLogger
-                    //  Utility::Throw
-                if ((frameNumber >= 3) && (eType != lastEntry) && (entry.offset != 0)) {
-                    if (entry.lineFileName[0] == 0) {
-                        LogAlwaysError 
-                            << std::hex << entry.offset << std::dec
-                            << " (" << entry.moduleName << "): "
-                            << entry.name;
-                    } else {
-                        LogAlwaysError 
-                            << entry.lineFileName << " (" << entry.lineNumber << "): "
-                            << ((entry.undFullName[0] != 0) ? entry.undFullName : ((entry.undName[0] != 0) ? entry.undName : entry.name))
-                            ;
-                    }
-                }
-            }
-        };
-    #endif
-
-    static void SendExceptionToLogger(const ::Exceptions::BasicLabel& e)
-    {
-        TRY
-        {
-            if (!e.CustomReport()) {
-                #if FEATURE_RTTI
-                    LogAlwaysError << "Throwing Exception -- " << typeid(e).name() << ". Extra information follows:";
-                #else
-                    LogAlwaysError << "Throwing Exception. Extra information follows:";
-                #endif
-                LogAlwaysError << e.what();
-
-                    // report this exception to the logger (including callstack information)
-                #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-                    static StackWalkerToLog walker;
-                    walker.ShowCallstack(7);
-                #endif
-            }
-        } CATCH (...) {
-            // Encountering another exception at this point would be trouble.
-            // We have to suppress any exception that happen during reporting,
-            // and allow the exception, 'e' to be handled
-        } CATCH_END
-    }
-
-    namespace Internal
-    {
-        static LogLevel AsLogLevel(el::Level level)
-        {
-            switch (level) {
-            case el::Level::Fatal: return LogLevel::Fatal; 
-
-            default:
-            case el::Level::Global:
-            case el::Level::Debug:
-            case el::Level::Trace:
-            case el::Level::Error: return LogLevel::Error; 
-            case el::Level::Warning: return LogLevel::Warning; 
-            case el::Level::Verbose: return LogLevel::Verbose; 
-            case el::Level::Info: return LogLevel::Info; 
+        if (std::basic_streambuf<CharType, CharTraits>::traits_type::not_eof(ch)) {
+            if (_cfg._enabledSinks & MessageTargetConfiguration::Sink::Console) {
+                _chain->sputc((CharType)ch);
+                _sourceLocationPrimed |= std::basic_streambuf<CharType, CharTraits>::traits_type::eq_int_type(ch, (int_type)'\n');
+                static_assert(0!=std::basic_streambuf<CharType, CharTraits>::traits_type::eof(), "Expecting char traits EOF character to be something other than 0");
+                return 0;   // (anything other than traits_type::eof() signifies success)
             }
         }
 
-        class LogHelper : public el::LogDispatchCallback
+        return std::basic_streambuf<CharType, CharTraits>::overflow(ch);
+    }
+
+    template<typename CharType, typename CharTraits>
+        int MessageTarget<CharType, CharTraits>::sync() { return _chain->pubsync(); }
+
+    template<>
+        std::basic_streambuf<char>& MessageTarget<char>::DefaultChain()
+    {
+        return *std::cout.rdbuf();
+    }
+
+    template class MessageTarget<>;
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+#if defined(CONSOLERIG_ENABLE_LOG)
+
+    class LogConfigurationSet
+    {
+    public:
+        MessageTargetConfiguration ResolveConfig(StringSection<> name) const;
+        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _depVal; }
+        
+        void Set(StringSection<> id, MessageTargetConfiguration& cfg);
+
+        LogConfigurationSet();
+        LogConfigurationSet(
+            InputStreamFormatter<char>& formatter,
+            const ::Assets::DirectorySearchRules&,
+			const std::shared_ptr<::Assets::DependencyValidation>& depVal);
+        ~LogConfigurationSet();
+    private:
+        class Config
         {
         public:
-            void SetUpstream(std::shared_ptr<LogCallback> upstream);
-            LogHelper();
-            ~LogHelper();
-        private:
-            virtual void handle(const el::LogDispatchData* handlePtr);
-            std::weak_ptr<LogCallback> _upstream;
+            std::vector<std::string> _inherit;
+            MessageTargetConfiguration _cfg;
         };
 
-        void LogHelper::handle(const el::LogDispatchData* handlePtr)
-        {
-            auto l = _upstream.lock();
-            if (l) {
-                LogLevel level = AsLogLevel(handlePtr->logMessage()->level());
-                l->OnDispatch(level, handlePtr->logMessage()->message());
+        std::vector<std::pair<std::string, Config>> _configs;
+        std::shared_ptr<::Assets::DependencyValidation> _depVal;
+
+        Config LoadConfig(InputStreamFormatter<char>& formatter);
+    };
+
+    static void MergeIn(MessageTargetConfiguration& dst, const MessageTargetConfiguration& src)
+    {
+        if (!src._template.empty())
+            dst._template = src._template;
+        dst._enabledSinks |= src._enabledSinks;
+        dst._enabledSinks &= ~src._disabledSinks;
+    }
+
+    MessageTargetConfiguration LogConfigurationSet::ResolveConfig(StringSection<> name) const
+    {
+        MessageTargetConfiguration result;
+        auto i = std::find_if(_configs.begin(), _configs.end(),
+            [name](const std::pair<std::string, Config>&p) { return XlEqString(MakeStringSection(p.first), name); });
+        if (i == _configs.end()) return result;
+
+        const auto& src = i->second;
+        for (const auto&inherit:src._inherit)
+            MergeIn(result, ResolveConfig(inherit));
+        MergeIn(result, src._cfg);
+        return result;
+    }
+
+    void LogConfigurationSet::Set(StringSection<> id, MessageTargetConfiguration& cfg)
+    {
+        auto str = id.AsString();
+        auto existing = std::find_if(
+            _configs.begin(), _configs.end(),
+            [str](const std::pair<std::string, Config>& p) { return p.first == str; });
+        if (existing != _configs.end()) {
+            existing->second = {{}, cfg};
+        } else {
+            _configs.emplace_back(std::make_pair(str, Config{{}, cfg}));
+        }
+    }
+
+    LogConfigurationSet::LogConfigurationSet() {}
+    LogConfigurationSet::LogConfigurationSet(
+        InputStreamFormatter<char>& formatter,
+        const ::Assets::DirectorySearchRules&,
+        const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+    : _depVal(depVal)
+    {
+        for (;;) {
+            using Blob = InputStreamFormatter<char>::Blob;
+            switch (formatter.PeekNext()) {
+            case Blob::AttributeName:
+            case Blob::AttributeValue:
+                break;
+
+            case Blob::BeginElement:
+                {
+                    InputStreamFormatter<char>::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+
+                    auto cfg = LoadConfig(formatter);
+                    _configs.emplace_back(std::make_pair(eleName.AsString(), std::move(cfg)));
+
+                    if (!formatter.TryEndElement())
+                        Throw(FormatException("Expecting end element", formatter.GetLocation()));
+                    break;
+                }
+
+            case Blob::EndElement:
+            case Blob::None:
+                return;
             }
         }
-        void LogHelper::SetUpstream(std::shared_ptr<LogCallback> upstream)
+    }
+
+    auto LogConfigurationSet::LoadConfig(InputStreamFormatter<char>& formatter) -> Config
+    {
+        Document<InputStreamFormatter<char>> doc(formatter);
+        Config cfg;
+        if (doc.Attribute("OutputToConsole")) {
+            bool outputToConsole = doc.Attribute("OutputToConsole", false);
+            cfg._cfg._enabledSinks = (outputToConsole ? MessageTargetConfiguration::Sink::Console : 0u);
+            cfg._cfg._disabledSinks = ((!outputToConsole) ? MessageTargetConfiguration::Sink::Console : 0u);
+        }
+        cfg._cfg._template = doc.Attribute("Template").Value().AsString();
+
+        auto inheritList = doc.Element("Inherit").FirstAttribute();
+        while (inheritList) {
+            cfg._inherit.push_back(inheritList.Name().AsString());
+            inheritList = inheritList.Next();
+        }
+
+        return cfg;
+    }
+
+    LogConfigurationSet::~LogConfigurationSet() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static std::shared_ptr<LogConfigurationSet> LoadConfigSet(StringSection<> fn)
+    {
+        size_t fileSize = 0;
+        auto file = ::Assets::TryLoadFileAsMemoryBlock(fn, &fileSize);
+        if (!file.get() || !fileSize)
+            return nullptr;
+        
+        InputStreamFormatter<char> fmtr(MemoryMappedInputStream(file.get(), PtrAdd(file.get(), fileSize)));
+        auto depVal = std::make_shared<::Assets::DependencyValidation>();
+        ::Assets::RegisterFileDependency(depVal, fn);
+        return std::make_shared<LogConfigurationSet>(fmtr, ::Assets::DirectorySearchRules(), depVal);
+    }
+
+#endif
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class LogCentral::Pimpl
+    {
+    public:
+        struct Target
         {
-            _upstream = upstream;
-        }
-        LogHelper::LogHelper() {}
-        LogHelper::~LogHelper() {}
+            std::string _id;
+            MessageTarget<>* _target;
+        };
+        std::vector<std::pair<uint64_t, Target>> _activeTargets;
+
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            std::shared_ptr<LogConfigurationSet> _activeCfgSet;
+        #endif
+    };
+
+    LogCentral& LogCentral::GetInstance()
+    {
+        static LogCentral instance;
+        return instance;
     }
 
-    void LogCallback::Enable()
+    void LogCentral::Register(MessageTarget<>& target, StringSection<> id)
     {
-        auto storage = el::Helpers::storage();
-        if (storage) {
-            std::string guid = (StringMeld<64>() << _guid).AsString();
-            auto* helper = storage->logDispatchCallback<Internal::LogHelper>(guid);
-            if (!helper) {
-                storage->installLogDispatchCallback<Internal::LogHelper>(guid);
-                helper = storage->logDispatchCallback<Internal::LogHelper>(guid);
-                assert(helper);
-                helper->SetUpstream(shared_from_this());
+        assert(!id.IsEmpty());      // empty id's are not supported -- without the id, there's no way to assign a configuration
+
+        auto hash = Hash64(id);
+        auto i = LowerBound(_pimpl->_activeTargets, hash);
+
+        // If you hit the following assert, it means there are 2 message targets with the same name
+        // This could happen if a target is copied from one place to another, or if it's defined in
+        // a header, instead of a source file.
+        assert(i == _pimpl->_activeTargets.end() || i->first != hash);
+
+        _pimpl->_activeTargets.insert(i, std::make_pair(hash, Pimpl::Target{id.AsString(), &target}));
+
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            // Set the initial configuration
+            if (_pimpl->_activeCfgSet)
+                target.SetConfiguration(_pimpl->_activeCfgSet->ResolveConfig(id));
+        #endif
+    }
+
+    void LogCentral::Deregister(MessageTarget<>& target)
+    {
+        auto i = std::find_if(_pimpl->_activeTargets.begin(), _pimpl->_activeTargets.end(),
+            [&target](const std::pair<uint64_t, Pimpl::Target>& p) { return p.second._target == &target; });
+        assert(i!=_pimpl->_activeTargets.end());
+        _pimpl->_activeTargets.erase(i);
+    }
+
+    void LogCentral::SetConfiguration(const std::shared_ptr<LogConfigurationSet>& cfgs)
+    {
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            _pimpl->_activeCfgSet = cfgs;
+            if (cfgs) {
+                for (const auto&t:_pimpl->_activeTargets)
+                    t.second._target->SetConfiguration(cfgs->ResolveConfig(t.second._id));
+            } // else reset to default?
+        #endif
+    }
+
+    LogCentral::LogCentral()
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        // We can't load the config set here, because we will frequently get here during static initialization
+        // before the file system has been properly initialized
+    }
+
+    LogCentral::~LogCentral() 
+    {
+        snprintf(buffer, dimof(buffer), format, args);
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void LogCentralConfiguration::Set(StringSection<> id, MessageTargetConfiguration& cfg)
+    {
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            _cfgSet->Set(id, cfg);
+
+            // Reapply all configurations to the LogCentral in the local module
+            LogCentral::GetInstance().SetConfiguration(_cfgSet);
+            /*
+            auto& central = LogCentral::GetInstance();
+            auto hash = Hash64(id);
+            auto i = LowerBound(central._pimpl->_activeTargets, hash);
+            if (i!=central._pimpl->_activeTargets.end() && i->first == hash)
+                i->second._target->SetConfiguration(cfg);
+            */
+        #endif
+    }
+
+    void LogCentralConfiguration::CheckHotReload()
+    {
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            if (!_cfgSet || !_cfgSet->GetDependencyValidation() || _cfgSet->GetDependencyValidation()->GetValidationIndex() > 0) {
+                _cfgSet = LoadConfigSet("log.dat");
+                LogCentral::GetInstance().SetConfiguration(_cfgSet);
             }
-        }
+        #endif
     }
 
-    void LogCallback::Disable()
+    void LogCentralConfiguration::AttachCurrentModule()
     {
-        auto storage = el::Helpers::storage();
-        if (storage) {
-            storage->uninstallLogDispatchCallback<Internal::LogHelper>(
-                std::string(StringMeld<64>() << _guid));
-        }
+        assert(s_instance == nullptr);
+        s_instance = this;
+        LogCentral::GetInstance().SetConfiguration(_cfgSet);
     }
 
-    LogCallback::LogCallback()
+    void LogCentralConfiguration::DetachCurrentModule()
     {
-        auto& serv = GlobalServices::GetCrossModule()._services;
-        _guid = serv.Call<uint64>(Fn_GuidGen);
+        assert(s_instance == this);
+        s_instance = nullptr;
+         #if defined(CONSOLERIG_ENABLE_LOG)
+            LogCentral::GetInstance().SetConfiguration(nullptr);
+        #endif
     }
 
-    LogCallback::~LogCallback()
+    LogCentralConfiguration* LogCentralConfiguration::s_instance = nullptr;
+
+    LogCentralConfiguration::LogCentralConfiguration()
     {
-        Disable();
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            _cfgSet = LoadConfigSet("log.dat");
+        #endif
     }
+
+    LogCentralConfiguration::~LogCentralConfiguration() 
+    {
+    }
+
+
 }
 
-namespace LogUtilMethods
-{
+ConsoleRig::MessageTarget<> Error("Error");
+ConsoleRig::MessageTarget<> Warning("Warning");
+ConsoleRig::MessageTarget<> Debug("Debug");
+ConsoleRig::MessageTarget<> Verbose("Verbose");
 
-        //  note that we can't pass a printf style string to easylogging++ easily.
-        //  but we do have some utility functions (like PrintFormatV) that can
-        //  handle long printf's.
-    static const unsigned LogStringMaxLength = 2048;
-
-    void LogVerboseF(unsigned level, const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogVerbose(level) << buffer;
-    }
-
-    void LogInfoF(const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogInfo << buffer;
-    }
-
-    void LogWarningF(const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogWarning << buffer;
-    }
-    
-    void LogAlwaysVerboseF(unsigned level, const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogAlwaysVerbose(level) << buffer;
-    }
-
-    void LogAlwaysInfoF(const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogAlwaysInfo << buffer;
-    }
-
-    void LogAlwaysWarningF(const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogAlwaysWarning << buffer;
-    }
-
-    void LogAlwaysErrorF(const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogAlwaysError << buffer;
-    }
-
-    void LogAlwaysFatalF(const char format[], ...)
-    {
-        char buffer[LogStringMaxLength];
-        va_list args;
-        va_start(args, format);
-        snprintf(buffer, dimof(buffer), format, args);
-        va_end(args);
-
-        LogAlwaysFatal << buffer;
-    }
-}
-
-
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-
-#include "../Core/WinAPI/IncludeWindows.h"
-
-namespace el { namespace base { namespace utils
-{
-#define _ELPP_OS_WINDOWS 1
-#define ELPP_COMPILER_MSVC 1
-
-#if _ELPP_OS_WINDOWS
-    void DateTime::gettimeofday(struct timeval *tv) {
-        if (tv != nullptr) {
-#   if ELPP_COMPILER_MSVC || defined(_MSC_EXTENSIONS)
-            const unsigned __int64 delta_ = 11644473600000000Ui64;
-#   else
-            const unsigned __int64 delta_ = 11644473600000000ULL;
-#   endif  // ELPP_COMPILER_MSVC || defined(_MSC_EXTENSIONS)
-            const double secOffSet = 0.000001;
-            const unsigned long usecOffSet = 1000000;
-            FILETIME fileTime;
-            GetSystemTimeAsFileTime(&fileTime);
-            unsigned __int64 present = 0;
-            present |= fileTime.dwHighDateTime;
-            present = present << 32;
-            present |= fileTime.dwLowDateTime;
-            present /= 10;  // mic-sec
-           // Subtract the difference
-            present -= delta_;
-            tv->tv_sec = static_cast<long>(present * secOffSet);
-            tv->tv_usec = static_cast<long>(present % usecOffSet);
-        }
-    }
-#endif // _ELPP_OS_WINDOWS
-}}}
 
 #elif PLATFORMOS_TARGET == PLATFORMOS_LINUX
 

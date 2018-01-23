@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
+
 #include "FluidAdvection.h"
 #include "../Math/RegularNumberField.h"
 

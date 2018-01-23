@@ -15,10 +15,10 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Metal/InputLayout.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../BufferUploads/IBufferUploads.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
@@ -111,7 +111,7 @@ namespace SceneEngine
         // We can use a downsampled translucency buffer here -- when the loss of resolution doesn't
         // matter.
         Metal::ViewportDesc viewport(*_context);
-        auto& box = Techniques::FindCachedBox2<DepthWeightedTransparencyBox>(
+        auto& box = ConsoleRig::FindCachedBox2<DepthWeightedTransparencyBox>(
             unsigned(viewport.Width), unsigned(viewport.Height));
 
         _context->Clear(box._accumulationBuffer.RTV(), Float4(0.f, 0.f, 0.f, 0.f));

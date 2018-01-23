@@ -13,9 +13,10 @@
 #include "../Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/DepVal.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../ConsoleRig/Log.h"
@@ -122,12 +123,12 @@ namespace RenderCore { namespace Techniques
     TechniqueInterface::~TechniqueInterface()
     {}
 
-    TechniqueInterface::TechniqueInterface(TechniqueInterface&& moveFrom)
+    TechniqueInterface::TechniqueInterface(TechniqueInterface&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
     }
 
-    TechniqueInterface&TechniqueInterface::operator=(TechniqueInterface&& moveFrom)
+    TechniqueInterface&TechniqueInterface::operator=(TechniqueInterface&& moveFrom) never_throws
     {
         _pimpl = std::move(moveFrom._pimpl);
         return *this;
@@ -456,8 +457,6 @@ namespace RenderCore { namespace Techniques
 		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal)
     {
-		// todo -- register in ::Assets::Services::GetInvalidAssetMan() if we 
-		//		get a parse failure
 		std::vector<::Assets::DepValPtr> inherited;
             
             //  each top-level entry is a "Setting", which can contain parameter
@@ -652,56 +651,50 @@ namespace RenderCore { namespace Techniques
 
     ShaderType::ShaderType(StringSection<::Assets::ResChar> resourceName)
     {
-        size_t sourceFileSize = 0;
-        auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(resourceName, &sourceFileSize);
+		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_validationCallback, resourceName);
 
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_validationCallback, resourceName);
+		TRY {
+			size_t sourceFileSize = 0;
+			auto sourceFile = ::Assets::TryLoadFileAsMemoryBlock(resourceName, &sourceFileSize);
         
-        if (sourceFile && sourceFileSize) {
-            auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
-            std::vector<std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
+			if (sourceFile && sourceFileSize) {
+				auto searchRules = ::Assets::DefaultDirectorySearchRules(resourceName);
+				std::vector<std::shared_ptr<::Assets::DependencyValidation>> inheritedAssets;
 
-            StringSection<char> configSection(
-                (const char*)sourceFile.get(), 
-                (const char*)PtrAdd(sourceFile.get(), sourceFileSize));
+				StringSection<char> configSection(
+					(const char*)sourceFile.get(), 
+					(const char*)PtrAdd(sourceFile.get(), sourceFileSize));
 
-            auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
-            if (!compoundDoc.empty()) {
-                auto i = std::find_if(
-                    compoundDoc.cbegin(), compoundDoc.cend(),
-                    [](const ::Assets::TextChunk<char>& chunk)
-                    { return XlEqString(chunk._type, "TechniqueConfig"); });
+				auto compoundDoc = ::Assets::ReadCompoundTextDocument(configSection);
+				if (!compoundDoc.empty()) {
+					auto i = std::find_if(
+						compoundDoc.cbegin(), compoundDoc.cend(),
+						[](const ::Assets::TextChunk<char>& chunk)
+						{ return XlEqString(chunk._type, "TechniqueConfig"); });
 
-                if (i != compoundDoc.cend())
-                    configSection = i->_content;
-            }
+					if (i != compoundDoc.cend())
+						configSection = i->_content;
+				}
 
-            TRY
-            {
 				Formatter formatter(MemoryMappedInputStream(configSection.begin(), configSection.end()));
-                ParseConfigFile(formatter, resourceName, searchRules, inheritedAssets);
-                if (::Assets::Services::GetInvalidAssetMan())
-                    ::Assets::Services::GetInvalidAssetMan()->MarkValid(resourceName);
-            }
-            CATCH (const FormatException& e)
-            {
-                if (::Assets::Services::GetInvalidAssetMan())
-                    ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(resourceName, e.what());
-                Throw(::Assets::Exceptions::InvalidAsset(resourceName, e.what()));
-            }
-			CATCH_END
+				ParseConfigFile(formatter, resourceName, searchRules, inheritedAssets);
 
-				// Do some patch-up after parsing...
-				// we want to replace <.> with the name of the asset
-				// This allows the asset to reference itself (without complications
-				// for related to directories, etc)
-			for (unsigned c=0; c<dimof(_techniques); ++c)
-				_techniques[c]._technique.ReplaceSelfReference(resourceName);
+					// Do some patch-up after parsing...
+					// we want to replace <.> with the name of the asset
+					// This allows the asset to reference itself (without complications
+					// for related to directories, etc)
+				for (unsigned c=0; c<dimof(_techniques); ++c)
+					_techniques[c]._technique.ReplaceSelfReference(resourceName);
 
-            for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
-                ::Assets::RegisterAssetDependency(_validationCallback, *i);
-        }
+				for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
+					::Assets::RegisterAssetDependency(_validationCallback, *i);
+			}
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
+		} CATCH(const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _validationCallback));
+		} CATCH_END
     }
 
     ShaderType::~ShaderType()

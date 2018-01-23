@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING		// silence warning due to removed functions in C++17 (from Eigen library)
+
 #include "PoissonSolver.h"
 #include "PoissonSolverDetail.h"
 #include "RegularNumberField.h"
@@ -973,7 +975,7 @@ namespace XLEMath
                         sparseMatrix(i, j) = 0.f;
                     }
                 }
-            return std::move(sparseMatrix);
+            return sparseMatrix;
 
         } else {
 
@@ -1125,7 +1127,7 @@ namespace XLEMath
                 }
             }
 
-            return std::move(sparseMatrix);
+            return sparseMatrix;
 
         }
         
@@ -1282,7 +1284,7 @@ namespace XLEMath
             }
         }
 
-        return std::move(sparseMatrix);
+        return sparseMatrix;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1434,7 +1436,7 @@ namespace XLEMath
                 AsPointer(result->_bands.cbegin()), (unsigned)result->_bands.size());
         }
 
-        return std::move(result);
+        return result;
     }
 
     auto PoissonSolver::PrepareDivergenceMatrix(Method method, unsigned wrapEdgesFlags) const -> std::shared_ptr<PreparedMatrix>
@@ -1523,7 +1525,7 @@ namespace XLEMath
                 AsPointer(result->_bands.cbegin()), (unsigned)result->_bands.size());
         }
 
-        return std::move(result);
+        return result;
     }
 
     PoissonSolver::PoissonSolver(PoissonSolver&& moveFrom)

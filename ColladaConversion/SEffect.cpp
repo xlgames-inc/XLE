@@ -7,7 +7,7 @@
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
 #include "ConversionConfig.h"
-#include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/RawMaterial.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Conversion.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -120,7 +120,7 @@ namespace ColladaConversion
             // bind the texture in the "common" effects part
         auto* profile = effect.FindProfile(u("COMMON"));
         if (!profile)
-            Throw(::Assets::Exceptions::FormatError("Missing common profile in effect (%s)", AsString(effect.GetName()).c_str()));
+            Throw(::Exceptions::BasicLabel("Missing common profile in effect (%s)", AsString(effect.GetName()).c_str()));
 
         for (const auto& t:profile->_values) {
             auto& value = t.second;

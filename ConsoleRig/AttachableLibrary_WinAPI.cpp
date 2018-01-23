@@ -93,11 +93,11 @@ namespace ConsoleRig
         return (*Windows::Fn_GetProcAddress)(_pimpl->_library, name);
     }
 
-    AttachableLibrary::AttachableLibrary(const CharType filename[])
+    AttachableLibrary::AttachableLibrary(StringSection<CharType> filename)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_attachCount = 0;
-        _pimpl->_filename = filename;
+        _pimpl->_filename = filename.AsString();
         _pimpl->_library = LibraryHandle_Invalid;
         _pimpl->_dllVersion = LibVersionDesc { "Unknown", "Unknown" };
         _pimpl->_versionInfoValid = false;

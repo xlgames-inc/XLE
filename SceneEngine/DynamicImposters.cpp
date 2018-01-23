@@ -16,12 +16,12 @@
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
-#include "../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
+#include "../RenderCore/Assets/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -215,7 +215,7 @@ namespace SceneEngine
         ImposterSpriteAtlas             _atlas;
 
             //// //// //// //// Rendering //// //// //// ////
-        Techniques::TechniqueMaterial   _material;
+        RenderCore::Assets::ShaderVariationSet   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
         std::shared_ptr<Techniques::IStateSetResolver> _stateRes;
@@ -332,7 +332,7 @@ namespace SceneEngine
                         ++_overflowCounter;
                         _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
                     }
-                } CATCH(const ::Assets::Exceptions::AssetException&e) {
+                } CATCH(const ::Assets::Exceptions::RetrievalError&e) {
                     parserContext.Process(e);
                     ++_pendingCounter;
                     _preparedSpritesHeap.Deallocate(newIndex<<4, 1<<4);
@@ -760,7 +760,7 @@ namespace SceneEngine
         const Float4x4& cameraToProjection) const
     {
         StringMeldAppend(parserContext._stringHelpers->_errorString)
-            << "Building dynamic imposter: (" << ob._scaffold->Filename() << ") angle (" << ob._XYangle << ")\n";
+            << "Building dynamic imposter: (" << /*ob._scaffold->Filename() <<*/ ") angle (" << ob._XYangle << ")\n";
 
         context.Clear(_atlas._tempDSV.DSV(), Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0u);
 
@@ -1005,7 +1005,7 @@ namespace SceneEngine
         _pimpl->_evictionCounter = 0;
         _pimpl->_frameCounter = 0;
 
-        _pimpl->_material = Techniques::TechniqueMaterial(
+        _pimpl->_material = RenderCore::Assets::ShaderVariationSet(
             InputLayout(s_inputLayout, dimof(s_inputLayout)),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();
@@ -1049,17 +1049,17 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::DynamicImposters::Con
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("ThresholdDistance"), DefaultGet(Obj, _thresholdDistance),  DefaultSet(Obj, _thresholdDistance));
-        props.Add(u("AngleQuant"), DefaultGet(Obj, _angleQuant),  DefaultSet(Obj, _angleQuant));
-        props.Add(u("CalibrationDistance"), DefaultGet(Obj, _calibrationDistance),  DefaultSet(Obj, _calibrationDistance));
-        props.Add(u("CalibrationFov"), 
+        props.Add("ThresholdDistance", DefaultGet(Obj, _thresholdDistance),  DefaultSet(Obj, _thresholdDistance));
+        props.Add("AngleQuant", DefaultGet(Obj, _angleQuant),  DefaultSet(Obj, _angleQuant));
+        props.Add("CalibrationDistance", DefaultGet(Obj, _calibrationDistance),  DefaultSet(Obj, _calibrationDistance));
+        props.Add("CalibrationFov", 
             [](const Obj& obj) { return Rad2Deg(obj._calibrationFov); }, 
             [](Obj& obj, float value) { obj._calibrationFov = Deg2Rad(value); });
-        props.Add(u("CalibrationPixels"), DefaultGet(Obj, _calibrationPixels),  DefaultSet(Obj, _calibrationPixels));
-        props.Add(u("MinDims"), DefaultGet(Obj, _minDims),  DefaultSet(Obj, _minDims));
-        props.Add(u("MaxDims"), DefaultGet(Obj, _maxDims),  DefaultSet(Obj, _maxDims));
-        props.Add(u("AltasSize"), DefaultGet(Obj, _altasSize),  DefaultSet(Obj, _altasSize));
-        props.Add(u("MaxSpriteCount"), DefaultGet(Obj, _maxSpriteCount),  DefaultSet(Obj, _maxSpriteCount));
+        props.Add("CalibrationPixels", DefaultGet(Obj, _calibrationPixels),  DefaultSet(Obj, _calibrationPixels));
+        props.Add("MinDims", DefaultGet(Obj, _minDims),  DefaultSet(Obj, _minDims));
+        props.Add("MaxDims", DefaultGet(Obj, _maxDims),  DefaultSet(Obj, _maxDims));
+        props.Add("AltasSize", DefaultGet(Obj, _altasSize),  DefaultSet(Obj, _altasSize));
+        props.Add("MaxSpriteCount", DefaultGet(Obj, _maxSpriteCount),  DefaultSet(Obj, _maxSpriteCount));
 
         init = true;
     }

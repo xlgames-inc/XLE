@@ -16,10 +16,10 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
 #include "../Math/Vector.h"
 #include "../Utility/StringFormat.h"
@@ -79,12 +79,12 @@ namespace SceneEngine
         const Float2 calmWindVector = oceanSettings._windVelocity[0] * Float2(XlCos(oceanSettings._windAngle[0]), XlSin(oceanSettings._windAngle[0]));
         const Float2 strongWindVector = oceanSettings._windVelocity[1] * Float2(XlCos(oceanSettings._windAngle[1]), XlSin(oceanSettings._windAngle[1]));
 
-        auto& calmSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
+        auto& calmSpectrum = ConsoleRig::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(
                 dimensions, dimensions, physicalDimensions, 
                 calmWindVector, oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0],
                 oceanSettings._spectrumMin, oceanSettings._spectrumMax));
-        auto& strongSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
+        auto& strongSpectrum = ConsoleRig::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(
                 dimensions, dimensions, physicalDimensions, 
                 strongWindVector, oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1],
@@ -212,11 +212,11 @@ namespace SceneEngine
         const Float2 calmWindVector     = oceanSettings._windVelocity[0] * Float2(XlCos(oceanSettings._windAngle[0]), XlSin(oceanSettings._windAngle[0]));
         const Float2 strongWindVector   = oceanSettings._windVelocity[1] * Float2(XlCos(oceanSettings._windAngle[1]), XlSin(oceanSettings._windAngle[1]));
 
-        auto& calmSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
+        auto& calmSpectrum = ConsoleRig::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, calmWindVector, 
                                         oceanSettings._scaleAgainstWind[0], oceanSettings._suppressionFactor[0],
                                         oceanSettings._spectrumMin, oceanSettings._spectrumMax));
-        auto& strongSpectrum = Techniques::FindCachedBox<StartingSpectrumBox>(
+        auto& strongSpectrum = ConsoleRig::FindCachedBox<StartingSpectrumBox>(
             StartingSpectrumBox::Desc(  dimensions,dimensions, physicalDimensions, strongWindVector, 
                                         oceanSettings._scaleAgainstWind[1], oceanSettings._suppressionFactor[1],
                                         oceanSettings._spectrumMin, oceanSettings._spectrumMax));

@@ -20,6 +20,8 @@ namespace Utility
         template<class Fn, class... Args>
             void Enqueue(Fn&& fn, Args&&... args);
 
+		void EnqueueBasic(std::function<void()>&& task);
+
         CompletionThreadPool(unsigned threadCount);
         ~CompletionThreadPool();
 
@@ -36,14 +38,12 @@ namespace Utility
 
         XlHandle _events[2];
         volatile bool _workerQuit;
-
-        void EnqueueInternal(PendingTask&& task);
     };
 
     template<class Fn, class... Args>
         void CompletionThreadPool::Enqueue(Fn&& fn, Args&&... args)
         {
-            EnqueueInternal(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
+			EnqueueBasic(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
         }
 
     class ThreadPool
@@ -51,6 +51,8 @@ namespace Utility
     public:
         template<class Fn, class... Args>
             void Enqueue(Fn&& fn, Args&&... args);
+
+		void EnqueueBasic(std::function<void()>&& task);
 
         ThreadPool(unsigned threadCount);
         ~ThreadPool();
@@ -68,14 +70,12 @@ namespace Utility
         LockFree::FixedSizeQueue<PendingTask, 256> _pendingTasks;
 
         volatile bool _workerQuit;
-
-        void EnqueueInternal(PendingTask&& task);
     };
 
     template<class Fn, class... Args>
         void ThreadPool::Enqueue(Fn&& fn, Args&&... args)
         {
-            EnqueueInternal(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
+			EnqueueBasic(std::bind(std::forward<Fn>(fn), std::forward<Args>(args)...));
         }
 }
 

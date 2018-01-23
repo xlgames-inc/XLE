@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LevelEditorScene.h"
-#include "ObjectPlaceholders.h"
 #include "MarshalString.h"
 #include "GUILayerUtil.h"
 #include "IOverlaySystem.h"
@@ -24,6 +23,7 @@
 #include "../ToolsRig/PlacementsManipulators.h"     // just needed for destructors referenced in PlacementGobInterface.h
 #include "../ToolsRig/TerrainManipulators.h"        // for TerrainManipulatorContext
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/ObjectPlaceholders.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainFormat.h"
@@ -33,6 +33,7 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -87,7 +88,7 @@ namespace GUILayer
         _volumeFogManager = std::make_shared<SceneEngine::VolumetricFogManager>();
         _shallowSurfaceManager = std::make_shared<SceneEngine::ShallowSurfaceManager>();
         _flexObjects = std::make_shared<EntityInterface::RetainedEntities>();
-        _placeholders = std::make_shared<ObjectPlaceholders>(_flexObjects);
+        _placeholders = std::make_shared<ToolsRig::ObjectPlaceholders>(_flexObjects);
         _dynamicImposters = std::make_shared<SceneEngine::DynamicImposters>(modelCache->GetSharedStateSet());
         _placementsManager->GetRenderer()->SetImposters(_dynamicImposters);
         _currentTime = 0.f;
@@ -244,6 +245,7 @@ namespace GUILayer
         EditorSceneManager::ExportResult PerformExport(System::Uri^ destFile) override
         {
             EditorSceneManager::ExportResult result;
+			result._success = false;
             TRY
             {
                 auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);
@@ -368,6 +370,7 @@ namespace GUILayer
         EditorSceneManager::ExportResult PerformExport(System::Uri^ destFile) override
         {
             EditorSceneManager::ExportResult result;
+			result._success = false;
             TRY
             {
                 auto nativeDestFile = clix::marshalString<clix::E_UTF8>(destFile->LocalPath);

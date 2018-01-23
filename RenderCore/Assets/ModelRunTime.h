@@ -10,6 +10,7 @@
 #include "../IThreadContext_Forward.h"
 
 #include "../../Assets/AssetsCore.h"
+#include "../../Assets/ChunkFileContainer.h"
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/MemoryUtils.h"
@@ -17,9 +18,10 @@
 #include "../../Core/Types.h"
 #include "../../Core/SelectConfiguration.h"
 #include <vector>
+#include <memory>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; class DeferredConstruction; class ChunkFileContainer; }
+namespace Assets { class DirectorySearchRules; class ICompileMarker; class DependencyValidation; class ChunkFileContainer; class IFileInterface; }
 
 namespace RenderCore { namespace Assets
 {
@@ -75,39 +77,27 @@ namespace RenderCore { namespace Assets
     class ModelScaffold
     {
     public:
-        unsigned                        LargeBlocksOffset() const;
         const ModelCommandStream&       CommandStream() const;
         const ModelImmutableData&       ImmutableData() const;
-        const SkeletonMachine&    EmbeddedSkeleton() const;
+        const SkeletonMachine&			EmbeddedSkeleton() const;
         std::pair<Float3, Float3>       GetStaticBoundingBox(unsigned lodIndex = 0) const;
         unsigned                        GetMaxLOD() const;
 
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
-		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
-		::Assets::AssetState			TryResolve() const;
-		::Assets::AssetState			StallWhilePending() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
 
         static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[2];
 
-        ModelScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-        ModelScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
+        ModelScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         ModelScaffold(ModelScaffold&& moveFrom) never_throws;
         ModelScaffold& operator=(ModelScaffold&& moveFrom) never_throws;
         ~ModelScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-        unsigned                    _largeBlocksOffset;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
-		::Assets::DepValPtr			_depVal;
-
-        const ModelImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+        std::unique_ptr<uint8[], PODAlignedDeletor>		_rawMemoryBlock;
+		::Assets::AssetChunkReopenFunction				_largeBlocksReopen;
+		::Assets::DepValPtr								_depVal;
     };
     
     class PreparedAnimation;
@@ -249,28 +239,22 @@ namespace RenderCore { namespace Assets
     public:
         unsigned LargeBlocksOffset() const;
         const ModelSupplementImmutableData& ImmutableData() const;
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
-		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
 
-        ModelSupplementScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		ModelSupplementScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
+		std::shared_ptr<::Assets::IFileInterface>	OpenLargeBlocks() const;
+
+        ModelSupplementScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         ModelSupplementScaffold(ModelSupplementScaffold&& moveFrom) never_throws;
         ModelSupplementScaffold& operator=(ModelSupplementScaffold&& moveFrom) never_throws;
         ~ModelSupplementScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		static const auto CompileProcessType = ConstHash64<'Mode', 'l'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[2];
 
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-        unsigned                    _largeBlocksOffset;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
-		::Assets::DepValPtr			_depVal;
-
-		const ModelSupplementImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+        std::unique_ptr<uint8[], PODAlignedDeletor>	_rawMemoryBlock;
+		::Assets::AssetChunkReopenFunction			_largeBlocksReopen;
+		::Assets::DepValPtr							_depVal;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
@@ -304,32 +288,21 @@ namespace RenderCore { namespace Assets
     class SkeletonScaffold
     {
     public:
-        const SkeletonMachine&		GetTransformationMachine() const;
-		const ::Assets::rstring&	Filename() const				{ return _filename; }
-		const ::Assets::DepValPtr&	GetDependencyValidation() const { return _depVal; }
+        const SkeletonMachine&			GetTransformationMachine() const;
 
-		::Assets::AssetState		StallWhilePending() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal;  }
 
         static const auto CompileProcessType = ConstHash64<'Skel', 'eton'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        SkeletonScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		SkeletonScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
+        SkeletonScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         SkeletonScaffold(SkeletonScaffold&& moveFrom) never_throws;
         SkeletonScaffold& operator=(SkeletonScaffold&& moveFrom) never_throws;
         ~SkeletonScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-        
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
-		::Assets::DepValPtr			_depVal;
-
-		const SkeletonMachine*		TryImmutableData() const;
-		void Resolve() const;
+        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
+		::Assets::DepValPtr _depVal;
     };
 
     /// <summary>Structural data for animation</summary>
@@ -343,31 +316,20 @@ namespace RenderCore { namespace Assets
     {
     public:
         const AnimationImmutableData&   ImmutableData() const;
-		const ::Assets::rstring&		Filename() const				{ return _filename; }
-		const ::Assets::DepValPtr&		GetDependencyValidation() const	{ return _depVal; }
 
-		::Assets::AssetState AnimationSetScaffold::StallWhilePending() const;
+		const ::Assets::DepValPtr&					GetDependencyValidation() const { return _depVal; }
 
         static const auto CompileProcessType = ConstHash64<'Anim', 'Set'>::Value;
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        AnimationSetScaffold(const ::Assets::ChunkFileContainer& chunkFile);
-		AnimationSetScaffold(const std::shared_ptr<::Assets::DeferredConstruction>&);
+        AnimationSetScaffold(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         AnimationSetScaffold(AnimationSetScaffold&& moveFrom) never_throws;
         AnimationSetScaffold& operator=(AnimationSetScaffold&& moveFrom) never_throws;
         ~AnimationSetScaffold();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-
     private:
-        std::unique_ptr<uint8[]>    _rawMemoryBlock;
-
-		std::shared_ptr<::Assets::DeferredConstruction> _deferredConstructor;
-		::Assets::rstring			_filename;
-		::Assets::DepValPtr			_depVal;
-
-		const AnimationImmutableData*   TryImmutableData() const;
-		void Resolve() const;
+        std::unique_ptr<uint8[], PODAlignedDeletor>    _rawMemoryBlock;
+		::Assets::DepValPtr _depVal;
     };
 
     /// <summary>Bind together a model, animation set and skeleton for rendering</summary>

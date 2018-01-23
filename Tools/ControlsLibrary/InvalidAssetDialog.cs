@@ -38,7 +38,7 @@ namespace ControlsLibrary
         private void RebuildList()
         {
             if (InvokeRequired) {
-                Invoke(new Action(() => this.RebuildList()));
+                BeginInvoke(new Action(() => this.RebuildList()));
                 return;
             }
 

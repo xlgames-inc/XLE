@@ -109,6 +109,7 @@ namespace Utility
             SearchI searchStart, SearchI searchEnd,
             CompareI compareBegin, CompareI compareEnd)
         {
+            if (searchStart == searchEnd) return searchEnd;
             auto i = searchEnd-1;
             while (i >= searchStart) {
                 if (std::find(compareBegin, compareEnd, *i) != compareEnd)
@@ -123,6 +124,7 @@ namespace Utility
             SearchI searchStart, SearchI searchEnd,
             CompareI compare)
         {
+            if (searchStart == searchEnd) return searchEnd;
             auto i = searchEnd-1;
             while (i >= searchStart) {
                 if (*i == compare)
@@ -204,6 +206,12 @@ namespace Utility
         {
             return IteratorRange<ArrayElement*>(&c[0], &c[Count]);
         }
+
+	template<typename ArrayElement>
+		IteratorRange<const ArrayElement*> MakeIteratorRange(std::initializer_list<ArrayElement> initializers)
+		{
+			return IteratorRange<const ArrayElement*>(initializers.begin(), initializers.end());
+		}
 
 #pragma warning(push)
 #pragma warning(disable:4789)       // buffer '' of size 12 bytes will be overrun; 4 bytes will be written starting at offset 12

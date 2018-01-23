@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
+
 #include "TestDisplays.h"
 #include "../../RenderCore/Format.h"
 #include "../../Math/Geometry.h"
@@ -312,7 +314,7 @@ namespace PlatformRig { namespace Overlays
             Eigen::JacobiSVD<Eigen::MatrixXf> svd(A, Eigen::ComputeFullU | Eigen::ComputeFullV);
 
             Eigen::MatrixXf x(2, 1);
-            svd.solve(B).evalTo(x);
+            x = svd.solve(B).eval();
 
                 // that's our basic solution...
             return Float2(x(0, 0), x(1, 0));
@@ -345,7 +347,7 @@ namespace PlatformRig { namespace Overlays
             Eigen::JacobiSVD<Eigen::MatrixXf> svd(Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
 
             Eigen::MatrixXf x(2, 1);
-            svd.solve(Bhat).evalTo(x);
+            x = svd.solve(Bhat).eval();
 
             return Float2(x(0, 0), x(1, 0));
 
@@ -390,7 +392,7 @@ namespace PlatformRig { namespace Overlays
             if (useTranspose) {
                 auto AhatTranspose = Ahat.transpose();
                 Eigen::JacobiSVD<Eigen::MatrixXf> svd(AhatTranspose * Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-                svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).evalTo(x);
+                x = svd.solve(AhatTranspose * Bhat - AhatTranspose * Ahat * massPointVec).eval();
             } else {
                     //  note that if we know the mass point when we're calculating Ahat, we can probably
                     //  just take into account the mass point then. However, if we're using a marching
@@ -398,7 +400,7 @@ namespace PlatformRig { namespace Overlays
                     //  element multiple times, we might not be able to calculate the mass point until 
                     //  after AHat has been fully built. But we can compensate during the solution, as so ---
                 Eigen::JacobiSVD<Eigen::MatrixXf> svd(Ahat, Eigen::ComputeFullU | Eigen::ComputeFullV);
-                svd.solve(Bhat - Ahat * massPointVec).evalTo(x);
+                x = svd.solve(Bhat - Ahat * massPointVec).eval();
             }
 
             auto result = Float2(x(0, 0) + massPoint[0], x(1, 0) + massPoint[1]);
@@ -643,7 +645,7 @@ namespace PlatformRig { namespace Overlays
         DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            nullptr, formatting._foreground, TextAlignment::Center, label, nullptr);
+            nullptr, formatting._foreground, TextAlignment::Center, label);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)
@@ -728,8 +730,8 @@ namespace PlatformRig { namespace Overlays
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Assets/Assets.h"
 
 namespace PlatformRig { namespace Overlays
@@ -774,7 +776,9 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext& context, Layout& layout, 
         Interactables&interactables, InterfaceState& interfaceState)
     {
-        auto& box = Techniques::FindCachedBox2<CRTBox>();
+		assert(0);		// can no longer get the device context from IOverlayContext
+#if 0
+        auto& box = ConsoleRig::FindCachedBox2<CRTBox>();
         auto metalContext = Metal::DeviceContext::Get(*context.GetDeviceContext());
 
         //
@@ -940,6 +944,7 @@ namespace PlatformRig { namespace Overlays
 
         metalContext->BindPS(MakeResourceList(commonResources._linearClampSampler));
         metalContext->Bind(commonResources._blendStraightAlpha);
+#endif
     }
 
     bool    ConservativeRasterTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)

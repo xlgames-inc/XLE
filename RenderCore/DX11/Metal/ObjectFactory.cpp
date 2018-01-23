@@ -18,7 +18,7 @@ namespace RenderCore { namespace Metal_DX11
 {
 	static intrusive_ptr<ID3D::Device> ExtractUnderlyingDevice(RenderCore::IDevice& device)
 	{
-		auto* dx11Device = (RenderCore::IDeviceDX11*)device.QueryInterface(__uuidof(RenderCore::IDeviceDX11));
+		auto* dx11Device = (RenderCore::IDeviceDX11*)device.QueryInterface(typeid(RenderCore::IDeviceDX11).hash_code());
 		if (dx11Device) {
 			return dx11Device->GetUnderlyingDevice();
 		}
@@ -376,8 +376,3 @@ namespace RenderCore { namespace Metal_DX11
 	}
 	
 }}
-
-namespace ConsoleRig
-{
-	template class Attachable<RenderCore::Metal_DX11::ObjectFactory>;
-}

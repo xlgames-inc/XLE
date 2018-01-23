@@ -21,6 +21,8 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext& context, Layout& layout, Interactables& interactables, 
         InterfaceState& interfaceState)
     {
+		assert(0);		// cannot access the DeviceContext from IOverlayContext
+#if 0
         auto man = _manager.lock();
         if (!man) return;
 
@@ -124,6 +126,7 @@ namespace PlatformRig { namespace Overlays
                 }
             }
         }
+#endif
     }
 
     bool DynamicImpostersDisplay::ProcessInput(

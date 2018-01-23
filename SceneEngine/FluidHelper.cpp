@@ -4,8 +4,11 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
+
 #include "FluidHelper.h"
 #include "../RenderCore/Format.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 
 namespace SceneEngine

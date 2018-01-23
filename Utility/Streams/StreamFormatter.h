@@ -10,6 +10,7 @@
 #include "../UTFUtils.h"
 #include "../StringUtils.h"
 #include "../PtrUtils.h"
+#include "../IteratorUtils.h"
 #include "../../Core/Exceptions.h"
 #include <vector>
 #include <assert.h>
@@ -94,6 +95,7 @@ namespace Utility
         const void* End() const { return _end; }
 
         MemoryMappedInputStream(const void* start, const void* end);
+		MemoryMappedInputStream(IteratorRange<const void*> range);
         ~MemoryMappedInputStream();
     protected:
         const void* _start;

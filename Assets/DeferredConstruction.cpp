@@ -2,6 +2,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0
+
 #include "DeferredConstruction.h"
 #include "AssetUtils.h"
 
@@ -27,3 +29,6 @@ namespace Assets
 
 	DeferredConstruction::~DeferredConstruction() {}
 }
+
+#endif
+

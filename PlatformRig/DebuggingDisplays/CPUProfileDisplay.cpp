@@ -5,10 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CPUProfileDisplay.h"
-#if defined(HAS_XLE_FONTS)
-    #include "../../RenderOverlays/Font.h"
-    #include "../../RenderCore/Techniques/ResourceBox.h"
-#endif
+#include "../../RenderOverlays/Font.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
@@ -79,14 +77,13 @@ namespace PlatformRig { namespace Overlays
         }
     };
 
-#if defined(HAS_XLE_FONTS)
     class DrawProfilerResources
     {
     public:
         class Desc {};
-        intrusive_ptr<RenderOverlays::Font> _leftFont;
-        intrusive_ptr<RenderOverlays::Font> _middleFont;
-        intrusive_ptr<RenderOverlays::Font> _rightFont;
+		std::shared_ptr<RenderOverlays::Font> _leftFont;
+		std::shared_ptr<RenderOverlays::Font> _middleFont;
+		std::shared_ptr<RenderOverlays::Font> _rightFont;
 
         DrawProfilerResources(const Desc& desc)
         {
@@ -95,7 +92,6 @@ namespace PlatformRig { namespace Overlays
             _rightFont = RenderOverlays::GetX2Font("PoiretOne", 24);
         }
     };
-#endif
 
     static void DrawProfilerBar(
         const ProfilerTableSettings& settings,
@@ -165,14 +161,10 @@ namespace PlatformRig { namespace Overlays
         Float3 dividingLines[256];
         Float3* divingLinesIterator = dividingLines;
 
-#if defined(HAS_XLE_FONTS)
-        auto& res = RenderCore::Techniques::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
-        TextStyle leftStyle(*res._leftFont); leftStyle._options.shadow = 0;
-        TextStyle middleStyle(*res._middleFont); middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
-        TextStyle rightStyle(*res._rightFont);
-#else
-        TextStyle leftStyle, middleStyle, rightStyle;
-#endif
+        auto& res = ConsoleRig::FindCachedBox<DrawProfilerResources>(DrawProfilerResources::Desc());
+        TextStyle leftStyle(res._leftFont); leftStyle._options.shadow = 0;
+        TextStyle middleStyle(res._middleFont); middleStyle._options.outline = 1; middleStyle._options.shadow = 0;
+        TextStyle rightStyle(res._rightFont);
 
         while (!items.empty()) {
             unsigned treeDepth = items.top().second;

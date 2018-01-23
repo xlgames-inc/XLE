@@ -374,7 +374,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB:
         case Format::RGB_ETC1_UNORM_SRGB:
 
-        default:
             break;
         }
 

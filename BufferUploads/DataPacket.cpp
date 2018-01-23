@@ -421,7 +421,7 @@ namespace BufferUploads
                     if (   (this->_texMetadata.mipLevels <= 1) && (this->_texMetadata.arraySize <= 1) 
                         && (this->_flags & TextureLoadFlags::GenerateMipmaps) && !loadedDDSFormat) {
 
-						LogInfo << "Building mipmaps for texture: " << filename;
+						Log(Verbose) << "Building mipmaps for texture: " << filename;
                         DirectX::ScratchImage newImage;
                         auto mipmapHresult = GenerateMipMaps(*this->_image.GetImage(0,0,0), (DWORD)TEX_FILTER_DEFAULT, 0, newImage);
                         if (SUCCEEDED(mipmapHresult)) {

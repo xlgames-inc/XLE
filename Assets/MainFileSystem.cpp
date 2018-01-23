@@ -129,7 +129,7 @@ namespace Assets
 				assert(candidateObject._fileSystem);
 				auto res = candidateObject._fileSystem->TryGetDesc(candidateObject._marker);
 				if (res._state != FileDesc::State::DoesNotExist)
-					return std::move(res);
+					return res;
 			}
 
 			if (s_defaultFileSystem)
@@ -204,7 +204,7 @@ namespace Assets
 		auto ioRes = TryOpen(result, filename, openMode, shareMode);
 		if (ioRes != IOReason::Success)
 			Throw(Utility::Exceptions::IOException(ioRes, "Failure while opening file (%s) in mode (%s)", std::string((const char*)filename.begin(), (const char*)filename.end()).c_str(), openMode));
-		return std::move(result);
+		return result;
 	}
 
 	MemoryMappedFile MainFileSystem::OpenMemoryMappedFile(StringSection<utf8> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode)
@@ -213,7 +213,7 @@ namespace Assets
 		auto ioRes = TryOpen(result, filename, size, openMode, shareMode);
 		if (ioRes != IOReason::Success)
 			Throw(Utility::Exceptions::IOException(ioRes, "Failure while opening file (%s) in mode (%s)", std::string((const char*)filename.begin(), (const char*)filename.end()).c_str(), openMode));
-		return std::move(result);
+		return result;
 	}
 
 	std::unique_ptr<IFileInterface> MainFileSystem::OpenFileInterface(StringSection<utf8> filename, const char openMode[], FileShareMode::BitField shareMode)
@@ -222,7 +222,7 @@ namespace Assets
 		auto ioRes = TryOpen(result, filename, openMode, shareMode);
 		if (ioRes != IOReason::Success)
 			Throw(Utility::Exceptions::IOException(ioRes, "Failure while opening file (%s) in mode (%s)", std::string((const char*)filename.begin(), (const char*)filename.end()).c_str(), openMode));
-		return std::move(result);
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -295,9 +295,8 @@ namespace Assets
 			size_t size = file->TellP();
 			file->Seek(0);
 			if (size) {
-				auto result = std::make_unique<uint8[]>(size+1);
+				auto result = std::make_unique<uint8[]>(size);
 				file->Read(result.get(), 1, size);
-				result[size] = '\0';
 				if (sizeResult) {
 					*sizeResult = size;
 				}
@@ -307,6 +306,23 @@ namespace Assets
 
 		// on missing file (or failed load), we return the equivalent of an empty file
 		if (sizeResult) { *sizeResult = 0; }
+		return nullptr;
+	}
+
+	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName)
+	{
+		std::unique_ptr<IFileInterface> file;
+		if (MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read) == IFileSystem::IOReason::Success) {
+			file->Seek(0, FileSeekAnchor::End);
+			size_t size = file->TellP();
+			file->Seek(0);
+			if (size) {
+				auto result = std::make_shared<std::vector<uint8_t>>(size);
+				file->Read(result->data(), 1, size);
+				return result;
+			}
+		}
+
 		return nullptr;
 	}
 

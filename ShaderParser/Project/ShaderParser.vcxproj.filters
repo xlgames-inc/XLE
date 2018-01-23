@@ -33,6 +33,7 @@
     <ClCompile Include="..\Grammar\ShaderTreeWalk.c">
       <Filter>Generated</Filter>
     </ClCompile>
+    <ClCompile Include="..\SignatureProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -60,6 +61,7 @@
     <ClInclude Include="..\Grammar\ShaderTreeWalk.h">
       <Filter>Generated</Filter>
     </ClInclude>
+    <ClInclude Include="..\SignatureProvider.h" />
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">

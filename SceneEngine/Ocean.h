@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/TextureView.h"
+#include "../RenderCore/Metal/Forward.h"
 #include "../Math/Matrix.h"
 
 namespace Utility { class ParameterBox; }
@@ -66,7 +65,7 @@ namespace SceneEngine
             Desc();
         };
 
-        RenderCore::Metal::ShaderResourceView _srv;
+        std::unique_ptr<RenderCore::Metal::ShaderResourceView> _srv;
 
         WaterNoiseTexture(const Desc& desc);
     };

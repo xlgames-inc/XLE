@@ -15,7 +15,7 @@
 #include <regex>
 #include <tuple>
 
-#include "plustasche/template.hpp"
+#include "plustache/template.hpp"
 
 namespace ShaderPatcher
 {
@@ -67,10 +67,10 @@ namespace ShaderPatcher
     class ParameterMachine
     {
     public:
-        auto GetBuildInterpolator(const FunctionInterface::Parameter& param) const
+        auto GetBuildInterpolator(const NodeGraphSignature::Parameter& param) const
             -> std::pair<std::string, VaryingParamsFlags::BitField>;
 
-        auto GetBuildSystem(const FunctionInterface::Parameter& param) const -> std::string;
+        auto GetBuildSystem(const NodeGraphSignature::Parameter& param) const -> std::string;
 
         ParameterMachine();
         ~ParameterMachine();
@@ -78,7 +78,7 @@ namespace ShaderPatcher
         ShaderSourceParser::ShaderFragmentSignature _systemHeader;
     };
 
-    auto ParameterMachine::GetBuildInterpolator(const FunctionInterface::Parameter& param) const
+    auto ParameterMachine::GetBuildInterpolator(const NodeGraphSignature::Parameter& param) const
         -> std::pair<std::string, VaryingParamsFlags::BitField>
     {
         std::string searchName = "BuildInterpolator_" + param._semantic;
@@ -121,7 +121,7 @@ namespace ShaderPatcher
         return std::make_pair(std::string(), 0);
     }
 
-    auto ParameterMachine::GetBuildSystem(const FunctionInterface::Parameter& param) const -> std::string
+    auto ParameterMachine::GetBuildSystem(const NodeGraphSignature::Parameter& param) const -> std::string
     {
         std::string searchName = "BuildSystem_" + param._type;
         auto i = std::find_if(
@@ -150,14 +150,14 @@ namespace ShaderPatcher
         std::string VSInitExpression(unsigned index);
         std::string PSExpression(unsigned index, const char vsOutputName[], const char varyingParameterStruct[]) const;
         bool IsGlobalResource(unsigned index) const;
-        const FunctionInterface::Parameter& Param(unsigned index) const { return _parameters[index]; }
+        const NodeGraphSignature::Parameter& Param(unsigned index) const { return _parameters[index]; }
 
         bool IsInitializedBySystem(unsigned index) const { return !_buildSystemFunctions[index].empty(); }
 
-        ParameterGenerator(const FunctionInterface& interf, const PreviewOptions& previewOptions);
+        ParameterGenerator(const NodeGraphSignature& interf, const PreviewOptions& previewOptions);
         ~ParameterGenerator();
     private:
-        std::vector<FunctionInterface::Parameter>  _parameters;
+        std::vector<NodeGraphSignature::Parameter>  _parameters;
         std::vector<std::string>            _buildSystemFunctions;
         std::string                         _vsOutputMember;
         ParameterMachine                    _paramMachine;
@@ -274,10 +274,10 @@ namespace ShaderPatcher
         return !CanBeStoredInCBuffer(MakeStringSection(_parameters[index]._type));
     }
 
-    ParameterGenerator::ParameterGenerator(const FunctionInterface& interf, const PreviewOptions& previewOptions)
+    ParameterGenerator::ParameterGenerator(const NodeGraphSignature& interf, const PreviewOptions& previewOptions)
     {
-		for (const auto&p:interf.GetFunctionParameters())
-			if (p._direction == FunctionInterface::Parameter::In)
+		for (const auto&p:interf.GetParameters())
+			if (p._direction == ParameterDirection::In)
 				_parameters.push_back(p);
         for (auto i=_parameters.cbegin(); i!=_parameters.cend(); ++i)
             _buildSystemFunctions.push_back(_paramMachine.GetBuildSystem(*i));
@@ -287,7 +287,7 @@ namespace ShaderPatcher
     ParameterGenerator::~ParameterGenerator() {}
 
     std::string         GenerateStructureForPreview(
-        const StringSection<char> graphName, const FunctionInterface& interf,
+        const StringSection<char> graphName, const NodeGraphSignature& interf,
 		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions)
     {
@@ -350,8 +350,8 @@ namespace ShaderPatcher
             //
         result << "struct NE_" << graphName.AsString() << "_Output" << std::endl << "{" << std::endl;
         unsigned svTargetCounter = 0;
-        for (const auto& i:interf.GetFunctionParameters())
-			if (i._direction == FunctionInterface::Parameter::Out)
+        for (const auto& i:interf.GetParameters())
+			if (i._direction == ParameterDirection::Out)
 				result << "\t" << i._type << " " << i._name << ": SV_Target" << (svTargetCounter++) << ";" << std::endl;
         result << "};" << std::endl << std::endl;
 
@@ -393,8 +393,8 @@ namespace ShaderPatcher
         }
 
             //  Also pass each output as a parameter to the main function
-        for (const auto& i:interf.GetFunctionParameters()) {
-			if (i._direction == FunctionInterface::Parameter::Out) {
+        for (const auto& i:interf.GetParameters()) {
+			if (i._direction == ParameterDirection::Out) {
 				if (!parametersToMainFunctionCall.empty())
 					parametersToMainFunctionCall += ", ";
 				parametersToMainFunctionCall += "functionResult." + i._name;
@@ -423,34 +423,37 @@ namespace ShaderPatcher
                 } else {
                     // Find all of the scalar values written out from main function,
                     // including searching through parameter strructures.
-                    for (const auto& i:interf.GetFunctionParameters()) {
-						if (i._direction != FunctionInterface::Parameter::Out) continue;
+                    for (const auto& i:interf.GetParameters()) {
+						if (i._direction != ParameterDirection::Out) continue;
 
-                        const auto& signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName), searchRules);
-                        if (!signature._name.empty()) {
-                            for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
-                                    // todo -- what if this is also a parameter struct?
-								auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(p->_type));
-								auto dim = type._arrayCount;
+                        assert(0);
+                        #if 0
+                            const auto& signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName), searchRules);
+                            if (!signature._name.empty()) {
+                                for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
+                                        // todo -- what if this is also a parameter struct?
+                                    auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(p->_type));
+                                    auto dim = type._arrayCount;
+                                    for (unsigned c=0; c<dim; ++c) {
+                                        std::stringstream str;
+                                        str << i._name << "." << p->_name;
+                                        if (dim != 1) str << "[" << c << "]";
+                                        chartLines.push_back(
+                                            PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
+                                    }
+                                }
+                            } else {
+                                auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
+                                auto dim = type._arrayCount;
                                 for (unsigned c=0; c<dim; ++c) {
                                     std::stringstream str;
-                                    str << i._name << "." << p->_name;
+                                    str << i._name;
                                     if (dim != 1) str << "[" << c << "]";
                                     chartLines.push_back(
                                         PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
                                 }
                             }
-                        } else {
-							auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
-							auto dim = type._arrayCount;
-                            for (unsigned c=0; c<dim; ++c) {
-                                std::stringstream str;
-                                str << i._name;
-                                if (dim != 1) str << "[" << c << "]";
-                                chartLines.push_back(
-                                    PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
-                            }
-                        }
+                        #endif
                     }
                 }
 
@@ -488,12 +491,12 @@ namespace ShaderPatcher
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-	std::string GenerateStructureForTechniqueConfig(const FunctionInterface& interf, const char graphName[])
+	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, const char graphName[])
 	{
 		std::stringstream mainFunctionParameterSignature;
 		std::stringstream forwardMainParameters;
-		for (const auto& p:interf.GetFunctionParameters()) {
-			if (p._direction != FunctionInterface::Parameter::In) continue;
+		for (const auto& p:interf.GetParameters()) {
+			if (p._direction != ParameterDirection::In) continue;
 
 			MaybeComma(mainFunctionParameterSignature);
 			mainFunctionParameterSignature << p._type << " " << p._name;

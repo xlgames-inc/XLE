@@ -4,140 +4,130 @@
 
 #pragma once
 
-#include "AssetsCore.h"
-// #include "Assets.h"
-// #include "AssetsInternal.h"
-#include "IntermediateAssets.h"
-#include "../Utility/FunctionUtils.h"
-#include "../Utility/Streams/FileUtils.h"
+#include "AssetsInternal.h"
+#include "AssetFuture.h"
+#include "AssetTraits.h"
+#include "IAssetCompiler.h"
 #include <memory>
 
 namespace Assets
 {
-	class PendingOperationMarker;
-    class ICompileMarker;
-    namespace Internal
-    {
-        template <typename AssetType> class AssetTraits;
-        std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
-    }
-
-	class DeferredConstruction
-	{
-	public:
-		template<typename Type>
-			std::unique_ptr<Type> PerformConstructor();
-
-		AssetState GetAssetState() const;
-		AssetState StallWhilePending() const;
-		const DepValPtr& GetDependencyValidation() const { return _depVal; }
-
-		const VariantFunctions& GetVariants() const { return _fns; }
-		VariantFunctions& GetVariants() { return _fns; }
-
-		template<typename Type>
-			DeferredConstruction(
-				const std::shared_ptr<PendingOperationMarker>& upstream, 
-				const DepValPtr& depVal,
-				std::function<std::unique_ptr<Type>()>&& constructor);
-		~DeferredConstruction();
-	private:
-		VariantFunctions _fns;
-		std::shared_ptr<PendingOperationMarker> _upstreamMarker;
-		DepValPtr _depVal;
-	};
-
-	template<typename Type>
-		std::unique_ptr<Type> DeferredConstruction::PerformConstructor() { return _fns.Call<std::unique_ptr<Type>>(typeid(Type).hash_code()); }
-
-	template<typename Type>
-		DeferredConstruction::DeferredConstruction(
-			const std::shared_ptr<PendingOperationMarker>& upstream, 
-			const DepValPtr& depVal,
-			std::function<std::unique_ptr<Type>()>&& constructor)
-			: _upstreamMarker(upstream), _depVal(depVal) 
-		{
-			if (!_depVal)
-				_depVal = std::make_shared<DependencyValidation>();
-			_fns.Add<std::unique_ptr<Type>()>(typeid(Type).hash_code(), std::move(constructor));
-		}
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
 	namespace Internal 
 	{
-		template<	typename AssetType, 
-					typename... Args,
-					typename std::enable_if<std::is_constructible<AssetType, const IArtifact&, Args...>::value>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, Args... args)
-			{
-				return std::make_unique<AssetType>(locator, std::forward<Args>(args)...);
-			}
+		std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+	}
 
-		template<typename AssetType, typename std::enable_if<!Internal::AssetTraits<AssetType>::Constructor_IntermediateAssetLocator>::type* = nullptr>
-			static std::unique_ptr<AssetType> ConstructFromIntermediateAssetLocator(const IArtifact& locator, StringSection<ResChar> initializer)
-			{
-				/*return AutoConstructAsset<AssetType>(locator._sourceID0);*/
-                assert(false);
-                return nullptr;
-			}
+	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
+
+	namespace Internal
+	{
+		// Note -- here's a useful pattern that can turn any expression in a SFINAE condition
+		// Taken from stack overflow -- https://stackoverflow.com/questions/257288/is-it-possible-to-write-a-template-to-check-for-a-functions-existence
+		// If the expression in the first decltype() is invalid, we will trigger SFINAE and fall back to std::false_type
+		template<typename T, typename... Params>
+			static auto HasDirectAutoConstructAsset_Helper(int) -> decltype(AutoConstructAsset<T>(std::declval<Params>()...), std::true_type{});
+
+		template<typename...>
+			static auto HasDirectAutoConstructAsset_Helper(...) -> std::false_type;
+
+		template<typename... Params>
+			struct HasDirectAutoConstructAsset : decltype(HasDirectAutoConstructAsset_Helper<Params...>(0)) {};
+	}
+	
+	// If we can construct an AssetType directly from the given parameters, then enable an implementation of
+	// AutoConstructToFuture to do exactly that.
+	// The compile operation version can work for any given initializer arguments, but the direct construction
+	// version will only work when the arguments match one of the asset type's constructors. So, we need to avoid 
+	// ambiguities between these implementations when they overlap.
+	// To achieve this, we either need to use namespace tricks, or to use SFINAE to disable the implementation 
+	// we don't need.
+	template<
+		typename AssetType, typename... Params, 
+		typename std::enable_if<Internal::HasDirectAutoConstructAsset<AssetType, Params...>::value>::type* = nullptr>
+		void AutoConstructToFutureDirect(AssetFuture<AssetType>& future, Params... initialisers)
+	{
+		TRY {
+			auto asset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
+			future.SetAsset(std::move(asset), {});
+		} CATCH (const Exceptions::ConstructionError& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH (const std::exception& e) {
+			future.SetInvalidAsset(nullptr, AsBlob(e));
+		} CATCH_END
 	}
 
 	template<typename AssetType>
-		static std::shared_ptr<DeferredConstruction> DefaultBeginDeferredConstruction(
+		static void DefaultCompilerConstruction(
+			AssetFuture<AssetType>& future,
 			const StringSection<ResChar> initializers[], unsigned initializerCount,
-			uint64 compileTypeCode = GetCompileProcessType<AssetType>())
+			uint64 compileTypeCode = AssetType::CompileProcessType)
 	{
 		// Begin a compilation operation via the registered compilers for this type.
 		// Our deferred constructor will wait for the completion of that compilation operation,
 		// and then construct the final asset from the result
 
 		auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
-		std::basic_string<ResChar> init0 = initializers[0].AsString();
+		// std::basic_string<ResChar> init0 = initializers[0].AsString();
 
-		// Attempt to load the existing asset immediate. If we get an unsupported version error, we will attempt a recompile
+		// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
+		// version number is bad). We could attempt to push this into a background thread, also
 
-		auto existingLoc = marker->GetExistingAsset();
-		if (existingLoc->GetDependencyValidation() && existingLoc->GetDependencyValidation()->GetValidationIndex()==0) {
+		auto existingArtifact = marker->GetExistingAsset();
+		if (existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
+			bool doRecompile = false;
+			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
+			if (!doRecompile) return;
+		}
 
-			std::unique_ptr<AssetType> asset = nullptr;
-			// Attempt recompile if we catch InvalidAsset or a FormatError with UnsupportedVersion or an IOException with FileNotFound
-			TRY {
-				asset = Internal::ConstructFromIntermediateAssetLocator<AssetType>(existingLoc, MakeStringSection(init0));
-			} CATCH (const Exceptions::InvalidAsset&) {
-			} CATCH (const Exceptions::FormatError& e) {
-				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
-					throw;
-			} CATCH(const Utility::Exceptions::IOException& e) {
-				if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
-					throw;
-			} CATCH_END
+		TRY { 
+			auto pendingCompile = marker->InvokeCompile();
 
-			if (asset) {
-				// (awkward shared_ptr wrapper required here to get around difficulties moving variables into lambdas and move-only std::function<> objects
-				std::shared_ptr<std::unique_ptr<AssetType>> wrapper = std::make_shared<std::unique_ptr<AssetType>>(std::move(asset));
-				std::function<std::unique_ptr<AssetType>()> constructorCallback([wrapper]() -> std::unique_ptr<AssetType> { return std::move(*wrapper.get()); });
-				return std::make_shared<DeferredConstruction>(nullptr, existingLoc->GetDependencyValidation(), std::move(constructorCallback));
-			}
+			// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're
+			// still going to end up constructing the asset in the main thread.
+			future.SetPollingFunction(
+				[pendingCompile](AssetFuture<AssetType>& thatFuture) -> bool {
+					auto state = pendingCompile->GetAssetState();
+					if (state == AssetState::Pending) return true;
 
-			// If we didn't get a valid asset, we will fall through and attempt recompile...
+					if (state == AssetState::Invalid) {
+						auto artifacts = pendingCompile->GetArtifacts();
+						if (!artifacts.empty()) {
+							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetBlob());
+						} else {
+							thatFuture.SetInvalidAsset(nullptr, nullptr);
+						}
+						return false;
+					}
 
-		} ////////////////////////////////////////////////////////////////////////////////////////////////
-
-		// no existing asset (or out-of-date) -- we must invoke a compile
-		auto pendingCompile = marker->InvokeCompile();
-		std::function<std::unique_ptr<AssetType>()> constructorCallback(
-			[pendingCompile, init0]() -> std::unique_ptr<AssetType> {
-				auto state = pendingCompile->GetAssetState();
-				if (state == AssetState::Pending)
-					Throw(Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
-				if (state == AssetState::Invalid)
-					Throw(Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
-				assert(state == AssetState::Ready);
-				return Internal::ConstructFromIntermediateAssetLocator<AssetType>(*pendingCompile->GetArtifacts()[0].second, MakeStringSection(init0));
-			});
-        assert(0);      // todo - need to set the dependncy validation to something reasonable -- 
-		return std::make_shared<DeferredConstruction>(pendingCompile, nullptr, std::move(constructorCallback));
+					assert(state == AssetState::Ready);
+					auto& artifact = *pendingCompile->GetArtifacts()[0].second;
+					AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
+					return false;
+				});
+		} CATCH(const Exceptions::ConstructionError& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH(const std::exception& e) {
+			future.SetInvalidAsset(nullptr, AsBlob(e));
+		} CATCH_END
 	}
+
+	template<
+		typename AssetType, typename... Params, 
+		ENABLE_IF(Internal::AssetTraits<AssetType>::HasCompileProcessType)>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
+	{
+		StringSection<ResChar> inits[] = { initialisers... };
+		DefaultCompilerConstruction<AssetType>(future, inits, dimof(inits));
+	}
+
+	template<
+		typename AssetType, typename... Params, 
+		ENABLE_IF(!Internal::AssetTraits<AssetType>::HasCompileProcessType)>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
+	{
+		AutoConstructToFutureDirect(future, std::forward<Params>(initialisers)...);
+	}
+
+	#undef ENABLE_IF
 }
 

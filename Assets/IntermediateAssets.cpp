@@ -7,14 +7,12 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "IntermediateAssets.h"
+#include "IAssetCompiler.h"
 #include "IFileSystem.h"
+#include "DepVal.h"
+#include "AssetUtils.h"
 
-#include "CompileAndAsyncManager.h"     // for ~PendingCompileMarker -- remove
-
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif
-#include "../Assets/AssetUtils.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/Data.h"
 #include "../Utility/Streams/PathUtils.h"
@@ -26,6 +24,8 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/ExceptionLogging.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/StringFormat.h"
+#include "../Utility/Streams/PathUtils.h"
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     #include "../Core/WinAPI/IncludeWindows.h"
@@ -66,13 +66,24 @@ namespace Assets { namespace IntermediateAssets
     }
 
     template <int DestCount>
-        static void MakeDepFileName(ResChar (&destination)[DestCount], const ResChar baseDirectory[], const ResChar depFileName[])
+        static void MakeDepFileName(ResChar (&destination)[DestCount], StringSection<ResChar> baseDirectory, StringSection<ResChar> depFileName)
         {
                 //  if the prefix of "baseDirectory" and "intermediateFileName" match, we should skip over that
-            const ResChar* f = depFileName, *b = baseDirectory;
-            while (ConvChar(*f) == ConvChar(*b) && *f != '\0') { ++f; ++b; }
-            while (ConvChar(*f) == '/') { ++f; }
-            std::snprintf(destination, dimof(destination), "%s/.deps/%s", baseDirectory, f);
+            const ResChar* f = depFileName.begin(), *b = baseDirectory.begin();
+
+            while (f != depFileName.end() && b != baseDirectory.end() && ConvChar(*f) == ConvChar(*b)) { ++f; ++b; }
+            while (f != depFileName.end() && ConvChar(*f) == '/') { ++f; }
+
+			static_assert(DestCount > 0);
+			auto* dend = &destination[DestCount-1];
+			auto* d = destination;
+			auto* s = baseDirectory.begin();
+			while (d != dend && s != baseDirectory.end()) *d++ = *s++;
+			s = "/.deps/";
+			while (d != dend && *s != '\0') *d++ = *s++;
+			s = f;
+			while (d != dend && s != depFileName.end()) *d++ = *s++;
+			*d = '\0';
         }
 
     class RetainedFileRecord : public DependencyValidation
@@ -124,7 +135,7 @@ namespace Assets { namespace IntermediateAssets
 				return i->second;		
 
             RetainedRecords.insert(i, std::make_pair(hash, newRecord));
-            return std::move(newRecord);
+            return newRecord;
         }
     }
 
@@ -149,7 +160,7 @@ namespace Assets { namespace IntermediateAssets
         record->OnChange();
     }
 
-    std::shared_ptr<DependencyValidation> Store::MakeDependencyValidation(const ResChar intermediateFileName[]) const
+    std::shared_ptr<DependencyValidation> Store::MakeDependencyValidation(StringSection<ResChar> intermediateFileName) const
     {
             //  When we process a file, we write a little text file to the
             //  ".deps" directory. This contains a list of dependency files, and
@@ -159,7 +170,7 @@ namespace Assets { namespace IntermediateAssets
             //  must be recompiled.
 
         ResChar buffer[MaxPath];
-        MakeDepFileName(buffer, _baseDirectory.c_str(), intermediateFileName);
+        MakeDepFileName(buffer, MakeStringSection(_baseDirectory), intermediateFileName);
         if (MainFileSystem::TryGetDesc(buffer)._state != FileDesc::State::Normal) return nullptr;
 
         Data data;
@@ -196,18 +207,14 @@ namespace Assets { namespace IntermediateAssets
                 }
 
                 if (!record->_state._timeMarker) {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogInfo
-                            << "Asset (" << intermediateFileName 
-                            << ") is invalidated because of missing dependency (" << depName << ")";
-                    #endif
+                    Log(Verbose)
+                        << "Asset (" << intermediateFileName 
+                        << ") is invalidated because of missing dependency (" << depName << ")" << std::endl;
                     return nullptr;
                 } else if (record->_state._timeMarker != ((uint64(dateHigh) << 32ull) | uint64(dateLow))) {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogInfo
-                            << "Asset (" << intermediateFileName 
-                            << ") is invalidated because of file data on dependency (" << depName << ")";
-                    #endif
+					Log(Verbose)
+                        << "Asset (" << intermediateFileName 
+                        << ") is invalidated because of file data on dependency (" << depName << ")" << std::endl;
                     return nullptr;
                 }
             }
@@ -217,7 +224,7 @@ namespace Assets { namespace IntermediateAssets
     }
 
     std::shared_ptr<DependencyValidation> Store::WriteDependencies(
-        const ResChar intermediateFileName[], 
+        StringSection<ResChar> intermediateFileName, 
         StringSection<ResChar> baseDir,
         IteratorRange<const DependentFileState*> deps,
         bool makeDepValidation) const
@@ -316,7 +323,7 @@ namespace Assets { namespace IntermediateAssets
 							if (XlEqString(compareVersion, (const utf8*)versionString)) {
 								// this branch is already present, and is good... so use it
 								goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-                                _markerFile = std::move(markerFile);
+                                _markerFile = std::make_unique<BasicFile>(std::move(markerFile));
 								break;
 							}
 
@@ -346,8 +353,8 @@ namespace Assets { namespace IntermediateAssets
 
                         // Opening without sharing to prevent other instances of XLE apps from using
                         // the same directory.
-                    _markerFile = MainFileSystem::OpenBasicFile(buffer, "wb", 0);
-					auto stream = OpenFileOutput(_markerFile);
+                    _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
+					auto stream = OpenFileOutput(*_markerFile);
                     OutputStreamFormatter formatter(*stream);
                     formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);
                     formatter.Flush();
@@ -375,108 +382,108 @@ namespace Assets { namespace IntermediateAssets
         temp.swap(RetainedRecords);
     }
 
-    ////////////////////////////////////////////////////////////////////////////////////////
+	class CompilerSet::Pimpl
+	{
+	public:
+		std::vector<std::pair<uint64, std::shared_ptr<IAssetCompiler>>> _compilers;
+	};
 
-    class CompilerSet::Pimpl 
-    {
-    public:
-        std::vector<std::pair<uint64, std::shared_ptr<IAssetCompiler>>> _compilers;
-    };
+	void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor)
+	{
+		auto i = LowerBound(_pimpl->_compilers, typeCode);
+		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+			i->second = processor;
+		}
+		else {
+			_pimpl->_compilers.insert(i, std::make_pair(typeCode, processor));
+		}
+	}
 
-    void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor)
-    {
-        auto i = LowerBound(_pimpl->_compilers, typeCode);
-        if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
-            i->second = processor;
-        } else {
-            _pimpl->_compilers.insert(i, std::make_pair(typeCode, processor));
-        }
-    }
+	std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
+		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
+		Store& store)
+	{
+		// look for a "processor" object with the given type code, and rebuild the file
+		// write the .deps file containing dependencies information
+		//  Note that there's a slight race condition type problem here. We are querying
+		//  the dependency files for their state after the processing has completed. So
+		//  if the dependency file changes state during processing, we might not recognize
+		//  that change properly. It's probably ignorable, however.
 
-    std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
-        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-        Store& store)
-    {
-            // look for a "processor" object with the given type code, and rebuild the file
-            // write the .deps file containing dependencies information
-            //  Note that there's a slight race condition type problem here. We are querying
-            //  the dependency files for their state after the processing has completed. So
-            //  if the dependency file changes state during processing, we might not recognize
-            //  that change properly. It's probably ignorable, however.
+		// note that ideally we want to be able to schedule this in the background
+		auto i = LowerBound(_pimpl->_compilers, typeCode);
+		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+			return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
+		}
+		else {
+			assert(0);  // couldn't find a processor for this asset type
+		}
 
-            // note that ideally we want to be able to schedule this in the background
-        auto i = LowerBound(_pimpl->_compilers, typeCode);
-        if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
-            return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
-        } else {
-            assert(0);  // couldn't find a processor for this asset type
-        }
+		return nullptr;
+	}
 
-        return nullptr;
-    }
+	void CompilerSet::StallOnPendingOperations(bool cancelAll)
+	{
+		for (auto i = _pimpl->_compilers.cbegin(); i != _pimpl->_compilers.cend(); ++i)
+			i->second->StallOnPendingOperations(cancelAll);
+	}
 
-    void CompilerSet::StallOnPendingOperations(bool cancelAll)
-    {
-        for (auto i=_pimpl->_compilers.cbegin(); i!=_pimpl->_compilers.cend(); ++i)
-            i->second->StallOnPendingOperations(cancelAll);
-    }
+	CompilerSet::CompilerSet()
+	{
+		auto pimpl = std::make_unique<Pimpl>();
+		_pimpl = std::move(pimpl);
+	}
 
-    CompilerSet::CompilerSet()
-    {
-        auto pimpl = std::make_unique<Pimpl>();
-        _pimpl = std::move(pimpl);
-    }
+	CompilerSet::~CompilerSet()
+	{
+	}
 
-    CompilerSet::~CompilerSet()
-    {
-    }
-
-    IAssetCompiler::~IAssetCompiler() {}
 }}
 
             ////////////////////////////////////////////////////////////
 
 namespace Assets
 {
-    /*IntermediateAssetLocator::IntermediateAssetLocator()
-    {
-        _sourceID0[0] = '\0';
-        _sourceID1 = 0;
-    }
-    IntermediateAssetLocator::~IntermediateAssetLocator() {}*/
-
+	IAssetCompiler::~IAssetCompiler() {}
 	IArtifact::~IArtifact() {}
 
-	void PendingCompileMarker::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
+	void CompileFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
 	{
 		_artifacts.push_back(std::make_pair(name, artifact));
 	}
 
-	PendingCompileMarker::PendingCompileMarker() {}
-    PendingCompileMarker::~PendingCompileMarker()  {}
+	CompileFuture::CompileFuture() {}
+    CompileFuture::~CompileFuture()  {}
 
 
 	auto FileArtifact::GetBlob() const -> Blob
 	{
-		auto file = ::Assets::MainFileSystem::OpenFileInterface(MakeStringSection(_filename), "rb");
+		auto splitter = MakeFileNameSplitter(_filename);
+		auto file = ::Assets::MainFileSystem::OpenFileInterface(splitter.AllExceptParameters(), "rb");
 		auto size = file->GetDesc()._size;
 		auto result = std::make_shared<std::vector<uint8>>(size);
 		file->Read(AsPointer(result->begin()), result->size());
 		return result;
 	}
 
-	auto FileArtifact::GetErrors() const -> Blob { return nullptr; }
 	::Assets::DepValPtr FileArtifact::GetDependencyValidation() const { return _depVal; }
+	StringSection<ResChar>	FileArtifact::GetRequestParameters() const { return MakeFileNameSplitter(_filename).Parameters(); }
 	FileArtifact::FileArtifact(const ::Assets::rstring& filename, const ::Assets::DepValPtr& depVal)
 	: _filename(filename), _depVal(depVal) {}
 	FileArtifact::~FileArtifact() {}
 
 
 	auto BlobArtifact::GetBlob() const -> Blob { return _blob; }
-	auto BlobArtifact::GetErrors() const -> Blob  { return _errors;  }
 	::Assets::DepValPtr BlobArtifact::GetDependencyValidation() const { return _depVal; }
-	BlobArtifact::BlobArtifact(const Blob& blob, const Blob& errors, const ::Assets::DepValPtr& depVal) 
-	: _blob(blob), _errors(errors), _depVal(depVal) {}
+	StringSection<ResChar>	BlobArtifact::GetRequestParameters() const { return MakeStringSection(_requestParams); }
+	BlobArtifact::BlobArtifact(const Blob& blob, const ::Assets::DepValPtr& depVal, const rstring& requestParams)
+	: _blob(blob), _depVal(depVal), _requestParams(requestParams) {}
 	BlobArtifact::~BlobArtifact() {}
+
+	auto CompilerExceptionArtifact::GetBlob() const -> ::Assets::Blob { return _log; }
+	::Assets::DepValPtr CompilerExceptionArtifact::GetDependencyValidation() const { return _depVal; }
+	StringSection<::Assets::ResChar>	CompilerExceptionArtifact::GetRequestParameters() const { return {}; }
+	CompilerExceptionArtifact::CompilerExceptionArtifact(const ::Assets::Blob& log, const ::Assets::DepValPtr& depVal) : _log(log), _depVal(depVal) {}
+	CompilerExceptionArtifact::~CompilerExceptionArtifact() {}
 
 }

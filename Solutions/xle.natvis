@@ -16,7 +16,28 @@
       </ArrayItems>
     </Expand>
   </Type>
+
+  <Type Name="Utility::IteratorRange&lt;*&gt;">
+    <Expand>
+      <Item Name="[size]">second-first</Item>
+      <ArrayItems>
+        <Size>second-first</Size>
+        <ValuePointer>first</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
   
+  <Type Name="Utility::SerializableVector&lt;*&gt;">
+    <Expand>
+      <Item Name="[size]">_end-_begin</Item>
+      <Item Name="[capacity]">_capacity-_begin</Item>
+      <ArrayItems>
+        <Size>_end-_begin</Size>
+        <ValuePointer>_begin</ValuePointer>
+      </ArrayItems>
+    </Expand>
+  </Type>
+
   <Type Name="cml::vector&lt;*, cml::fixed&lt;2,*&gt;&gt;">
     <DisplayString>{m_data[0]}, {m_data[1]}</DisplayString>
   </Type>

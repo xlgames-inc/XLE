@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MinimalShaderSource.h"
-#include "../Assets/IntermediateAssets.h"
+#include "../Assets/IAssetCompiler.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -15,16 +15,8 @@
 namespace RenderCore
 {
 
-	static ::Assets::DepValPtr AsDepValPtr(IteratorRange<const ::Assets::DependentFileState*> deps)
-	{
-		auto result = std::make_shared<::Assets::DependencyValidation>();
-		for (const auto& i:deps)
-			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
-		return result;
-	}
-
 #if 0
-	class MinimalShaderSource::PendingMarker : public ::Assets::PendingCompileMarker
+	class MinimalShaderSource::PendingMarker : public ::Assets::CompileFuture
 	{
 	public:
 		using Payload = std::shared_ptr<std::vector<uint8>>;
@@ -95,9 +87,9 @@ namespace RenderCore
     auto MinimalShaderSource::Compile(
         const void* shaderInMemory, size_t size,
         const ShaderService::ResId& resId,
-		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
-        using Payload = std::shared_ptr<std::vector<uint8>>;
+        using Payload = ::Assets::Blob;
         Payload payload, errors;
         std::vector<::Assets::DependentFileState> deps;
 
@@ -105,17 +97,18 @@ namespace RenderCore
             payload, errors, deps,
             shaderInMemory, size, resId, definesTable);
 
-		auto result = std::make_shared<::Assets::PendingCompileMarker>();
-        auto depVal = AsDepValPtr(MakeIteratorRange(deps));
-		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(errors, payload, std::move(depVal)));
+		auto result = std::make_shared<::Assets::CompileFuture>();
+        auto depVal = AsDepVal(MakeIteratorRange(deps));
+		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(payload, std::move(depVal)));
+		result->AddArtifact("log", std::make_shared<Assets::BlobArtifact>(errors, std::move(depVal)));
 		result->SetState(success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid);
-		return std::move(result);
+		return result;
     }
 
     auto MinimalShaderSource::CompileFromFile(
 		StringSection<::Assets::ResChar> resource, 
 		StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::PendingCompileMarker>
+        -> std::shared_ptr<::Assets::CompileFuture>
     {
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
 
@@ -127,7 +120,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromMemory(
 		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::PendingCompileMarker>
+        -> std::shared_ptr<::Assets::CompileFuture>
     {
         return Compile(
             shaderInMemory.begin(), shaderInMemory.size(),

@@ -29,7 +29,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     template <>
         void    NascentSkeletonMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
     {
-        outputSerializer.SerializeSubBlock(AsPointer(_commandStream.begin()), AsPointer(_commandStream.end()));
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_commandStream));
         outputSerializer.SerializeValue(_commandStream.size());
         outputSerializer.SerializeValue(_outputMatrixCount);
 	}
@@ -122,18 +122,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class NascentSkeletonInterface::Joint
+	class NascentSkeletonInterface::CompareJointName
 	{
 	public:
-		std::string     _name;
-
-		class CompareName
-		{
-		public:
-			bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
-			bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
-			bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
-		};
+		bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
+		bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
+		bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
 	};
 
 	static const char* AsString(AnimSamplerType value)
@@ -206,14 +200,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				}
 			}
 		}
-		outputSerializer.SerializeSubBlock(AsPointer(runTimeInputInterface.begin()), AsPointer(runTimeInputInterface.end()));
+		outputSerializer.SerializeSubBlock(MakeIteratorRange(runTimeInputInterface));
 		outputSerializer.SerializeValue(runTimeInputInterface.size());
 
 		//
 		//      Now, output interface...
 		//
 		std::vector<uint64> jointHashNames= GetOutputInterface();
-		outputSerializer.SerializeSubBlock(AsPointer(jointHashNames.cbegin()), AsPointer(jointHashNames.cend()));
+		outputSerializer.SerializeSubBlock(MakeIteratorRange(jointHashNames));
 		outputSerializer.SerializeValue(jointHashNames.size());
 	}
 
@@ -375,7 +369,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto nameAsString = name.AsString();
         auto insertionPoint = std::lower_bound(
             _jointTags.begin(), _jointTags.end(), 
-			nameAsString, Joint::CompareName());
+			nameAsString, CompareJointName());
         if (insertionPoint != _jointTags.end() && insertionPoint->_name==nameAsString)
             return false;
 

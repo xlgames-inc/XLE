@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Assets/AssetsCore.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/UTFUtils.h"
 #include "../Core/Types.h"
@@ -24,7 +25,7 @@ namespace Assets
     class ArchiveCache
     {
     public:
-        typedef std::shared_ptr<std::vector<uint8>> BlockAndSize;
+        using BlockAndSize = ::Assets::Blob;
 
         void            Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush);
         BlockAndSize    TryOpenFromCache(uint64 id);

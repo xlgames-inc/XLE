@@ -32,10 +32,10 @@ namespace Serialization
         
         template<typename Type> void    SerializeSubBlock(const Type* type);
         template<typename Type, typename std::enable_if< !std::is_pod<Type>::value >::type* = nullptr>
-            void    SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+            void    SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
 
         template<typename Type, typename std::enable_if< std::is_pod<Type>::value >::type* = nullptr>
-            void    SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
+            void    SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
 
         void    SerializeSubBlock(NascentBlockSerializer& subBlock, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
         void    SerializeRawSubBlock(IteratorRange<const void*> range, SpecialBuffer::Enum specialBuffer = SpecialBuffer::Unknown);
@@ -68,7 +68,10 @@ namespace Serialization
 		template<typename Type>
             void    SerializeRaw    ( const SerializableVector<Type>& value );
 
-        template<typename Type>
+		template<typename Type, size_t Count>
+			void    SerializeRaw	( Type      (&type)[Count] ); 
+			
+		template<typename Type>
             void    SerializeRaw    ( Type      type );
 
         std::unique_ptr<uint8[]>        AsMemoryBlock() const;
@@ -187,7 +190,7 @@ namespace Serialization
         ////////////////////////////////////////////////////
 
     template<typename Type, typename std::enable_if< !std::is_pod<Type>::value >::type*>
-        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer)
+        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer)
     {
         NascentBlockSerializer temporaryBlock;
         for (const auto& i:range) ::Serialize(temporaryBlock, i);
@@ -195,7 +198,7 @@ namespace Serialization
     }
 
     template<typename Type, typename std::enable_if< std::is_pod<Type>::value >::type*>
-        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<const Type*> range, SpecialBuffer::Enum specialBuffer)
+        void    NascentBlockSerializer::SerializeSubBlock(IteratorRange<Type*> range, SpecialBuffer::Enum specialBuffer)
     {
         SerializeRawSubBlock(IteratorRange<const void*>((const void*)range.begin(), (const void*)range.end()), specialBuffer);
     }
@@ -221,6 +224,12 @@ namespace Serialization
             // serialize the vector using just a raw copy of the contents
         SerializeRawSubBlock(MakeIteratorRange(vector), Serialization::NascentBlockSerializer::SpecialBuffer::Vector);
     }
+
+	template<typename Type, size_t Count>
+		void    NascentBlockSerializer::SerializeRaw(Type(&type)[Count])
+	{
+		PushBackRaw(type, sizeof(Type)*Count);
+	}
 
     template<typename Type>
         void    NascentBlockSerializer::SerializeRaw(Type      type)

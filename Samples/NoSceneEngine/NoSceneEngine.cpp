@@ -20,7 +20,6 @@
 #include "../../RenderCore/GPUProfiler.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -31,6 +30,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -368,7 +368,7 @@ namespace Sample
 				vkContext->Draw((unsigned)cubeGeo.size());
 			}
         }
-        CATCH(const ::Assets::Exceptions::AssetException&) {}
+        CATCH(const ::Assets::Exceptions::RetrievalError&) {}
         CATCH_END
     }
 
@@ -513,7 +513,7 @@ namespace Sample
                 horizBlur.GetCompiledPixelShader().GetByteCode();
                 horizBlur.GetCompiledVertexShader().GetByteCode();
 
-                auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
+                auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
 
                 auto captureMarker = box._sharedStateSet->CaptureState(
                     *metalContext, 
@@ -531,7 +531,7 @@ namespace Sample
 
             }
         }
-        CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::RetrievalError& e) { parserContext.Process(e); }
         CATCH_END
     }
 
@@ -627,10 +627,10 @@ namespace Sample
             SubpassDesc subpasses[] = 
             {
                 // render to fbuffer
-                SubpassDesc({GBufferDiffuse, GBufferNormals, GBufferParams}, MainDepthStencil),
+				SubpassDesc{{GBufferDiffuse, GBufferNormals, GBufferParams}, MainDepthStencil},
                 // resolve lighting & resolve
-                SubpassDesc({LightingResolve}, SubpassDesc::Unused, {GBufferDiffuse, GBufferNormals, GBufferParams}, {}, {PresentationTarget})
-                // SubpassDesc({PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget})
+				SubpassDesc{{LightingResolve}, SubpassDesc::Unused, {GBufferDiffuse, GBufferNormals, GBufferParams}, {}, {PresentationTarget}}
+                // SubpassDesc{{PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget}}
             };
 
             FrameBufferDesc fbLayout(
@@ -652,7 +652,7 @@ namespace Sample
 
                 // First, render gbuffer subpass
                 {
-                    auto& box = RenderCore::Techniques::FindCachedBoxDep2<ModelTestBox>();
+                    auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
                         *metalContext, 
                         parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
@@ -678,7 +678,7 @@ namespace Sample
             }
 
         }
-        CATCH(const ::Assets::Exceptions::AssetException& e) { parserContext.Process(e); }
+        CATCH(const ::Assets::Exceptions::RetrievalError& e) { parserContext.Process(e); }
         CATCH_END
     }
 

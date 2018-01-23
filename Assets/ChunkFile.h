@@ -18,8 +18,8 @@ namespace Assets { class IFileInterface; }
 
 namespace Serialization { namespace ChunkFile
 {
-    typedef uint64 TypeIdentifier;
-    typedef uint32 SizeType;
+    using TypeIdentifier = uint64_t;
+    using SizeType = uint32_t;
 
     static const TypeIdentifier TypeIdentifier_Unknown = 0;
 
@@ -43,7 +43,7 @@ namespace Serialization { namespace ChunkFile
         }
 
         ChunkHeader(TypeIdentifier type, unsigned version, 
-                    const char name[], SizeType size)
+                    const char name[], SizeType size = 0)
         {
             _type = type;
             _chunkVersion = version;
@@ -57,13 +57,13 @@ namespace Serialization { namespace ChunkFile
 	#endif
 	;
 
-    static const unsigned MagicHeader = uint32('X') | (uint32('L') << 8) | (uint32('E') << 16) | (uint32('~') << 24);
+    static const unsigned MagicHeader = uint32_t('X') | (uint32_t('L') << 8) | (uint32_t('E') << 16) | (uint32_t('~') << 24);
     static const unsigned ChunkFileVersion = 0;
 
     class ChunkFileHeader
     {
     public:
-        uint32      _magic;
+        uint32_t      _magic;
         unsigned    _fileVersionNumber;
         char        _buildVersion[64];
         char        _buildDate[64];

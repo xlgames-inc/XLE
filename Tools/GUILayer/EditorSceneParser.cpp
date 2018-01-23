@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LevelEditorScene.h"
-#include "ObjectPlaceholders.h"
 #include "EditorInterfaceUtils.h"
 #include "IOverlaySystem.h"
 #include "MarshalString.h"
@@ -16,6 +15,7 @@
 
 #include "../ToolsRig/VisualisationUtils.h"     // for AsCameraDesc
 #include "../ToolsRig/ManipulatorsRender.h"
+#include "../ToolsRig/ObjectPlaceholders.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../PlatformRig/Screenshot.h"
 
@@ -29,6 +29,7 @@
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/PreparedScene.h"
 
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
 #include "../../ConsoleRig/Console.h"

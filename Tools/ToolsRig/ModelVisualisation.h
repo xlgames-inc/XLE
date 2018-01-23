@@ -7,9 +7,8 @@
 #pragma once
 
 #include "../../PlatformRig/OverlaySystem.h"
-#include "../../Assets/Assets.h"
-#include "../../RenderCore/Assets/ModelCache.h"
 #include <functional>
+#include <memory>
 
 namespace RenderCore { namespace Assets 
 {
@@ -17,6 +16,8 @@ namespace RenderCore { namespace Assets
     class SharedStateSet;
     class ModelScaffold;
     class MaterialScaffold;
+	class ModelCache;
+	class ModelCacheModel;
 }}
 
 namespace RenderCore { namespace Techniques 
@@ -28,6 +29,7 @@ namespace RenderCore { namespace Techniques
 
 namespace SceneEngine { class ISceneParser; class IntersectionTestScene; }
 namespace RenderOverlays { class IOverlayContext; }
+namespace Utility { class OnChangeCallback; }
 
 namespace ToolsRig
 {
@@ -37,7 +39,7 @@ namespace ToolsRig
     class ChangeEvent
     {
     public:
-        std::vector<std::shared_ptr<OnChangeCallback>> _callbacks;
+        std::vector<std::shared_ptr<Utility::OnChangeCallback>> _callbacks;
         void Trigger();
         ~ChangeEvent();
     };
@@ -168,7 +170,7 @@ namespace ToolsRig
         OverlayFn _overlayFn;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const RenderCore::Assets::ModelCache::Model& model);
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const RenderCore::Assets::ModelCacheModel& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
         std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<RenderCore::Assets::ModelCache> cache);
 }

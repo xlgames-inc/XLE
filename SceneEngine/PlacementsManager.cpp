@@ -9,23 +9,17 @@
 #include "DynamicImposters.h"
 #include "PreparedScene.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
-#include "../RenderCore/Assets/Material.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Assets/ModelRunTime.h"
-
-#include "../Assets/CompileAndAsyncManager.h"
-#include "../Assets/IntermediateAssets.h"
-
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/ModelCache.h"
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 
-#include "../Assets/ChunkFileContainer.h"
-#include "../Assets/ChunkFile.h"
-#include "../Assets/DeferredConstruction.h"
-#include "../Assets/AssetUtils.h"
-#include "../Assets/InvalidAssetManager.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/AssetTraits.h"
+#include "../Assets/DepVal.h"
+#include "../Assets/Assets.h"
 
 #include "../RenderCore/RenderUtils.h"
 
@@ -62,6 +56,7 @@ namespace SceneEngine
     using RenderCore::Assets::ModelScaffold;
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::ModelCache;
+	using RenderCore::Assets::ModelCacheModel;
     using RenderCore::Assets::DelayedDrawCall;
     using RenderCore::Assets::DelayedDrawCallSet;
 
@@ -97,8 +92,9 @@ namespace SceneEngine
         void LogDetails(const char title[]) const;
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const	{ return _dependencyValidation; }
+		static const ::Assets::AssetChunkRequest ChunkRequests[1];
 
-        Placements(const ::Assets::ChunkFileContainer& chunkFile);
+        Placements(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal);
         Placements();
         ~Placements();
     protected:
@@ -245,7 +241,7 @@ namespace SceneEngine
         }
     }
 
-    static const ::Assets::AssetChunkRequest PlacementsChunkRequests[]
+    const ::Assets::AssetChunkRequest Placements::ChunkRequests[]
     {
         ::Assets::AssetChunkRequest
         {
@@ -254,10 +250,9 @@ namespace SceneEngine
         }
     };
 
-    Placements::Placements(const ::Assets::ChunkFileContainer& chunkFile)
-	: _dependencyValidation(chunkFile.GetDependencyValidation())
+    Placements::Placements(IteratorRange<::Assets::AssetChunkResult*> chunks, const ::Assets::DepValPtr& depVal)
+	: _dependencyValidation(depVal)
     {
-		auto chunks = chunkFile.ResolveRequests(MakeIteratorRange(PlacementsChunkRequests));
         assert(chunks.size() == 1);
 
             //
@@ -295,7 +290,7 @@ namespace SceneEngine
 
         #if defined(_DEBUG)
             if (!_objects.empty())
-                LogDetails(chunkFile.Filename().c_str());
+                LogDetails("<<unknown>>");
         #endif
     }
 
@@ -374,7 +369,7 @@ namespace SceneEngine
     void PlacementsCache::Item::Reload()
     {
         _placements.reset();
-        _placements = std::make_unique<Placements>(MakeStringSection(_filename));
+        _placements = ::Assets::AutoConstructAsset<Placements>(MakeStringSection(_filename));
     }
 
     PlacementsCache::PlacementsCache() {}
@@ -390,12 +385,13 @@ namespace SceneEngine
         auto model = modelCache.GetModelScaffold(modelFilename);
         if (!model) return ::Assets::AssetState::Invalid;
 
-        ::Assets::AssetState state;
-        if (stallWhilePending)  { state = model->StallWhilePending(); } 
-        else                    { state = model->TryResolve(); }
-        if (state != ::Assets::AssetState::Ready) return state;
+		::Assets::AssetState state = model->GetAssetState();
+		if (stallWhilePending)
+			state = model->StallWhilePending();
 
-        result = model->GetStaticBoundingBox(LOD);
+		if (state != ::Assets::AssetState::Ready) return state;
+
+        result = model->Actualize()->GetStaticBoundingBox(LOD);
         return ::Assets::AssetState::Ready;
     }
 
@@ -669,7 +665,7 @@ namespace SceneEngine
         protected:
             uint64 _currentModel, _currentMaterial;
             unsigned _currentSupplements;
-            ModelCache::Model _current;
+            ModelCacheModel _current;
             float _maxDistanceSq;
             bool _currentModelRendered;
             DynamicImposters* _imposters;
@@ -1695,7 +1691,7 @@ namespace SceneEngine
                         TransformPoint(worldToCell, rayEnd)), 
                     predicate);
             } 
-            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH (const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 
@@ -1719,7 +1715,7 @@ namespace SceneEngine
             auto cellToProjection = Combine(i->_cellToWorld, worldToProjection);
 
             TRY { _pimpl->Find_FrustumIntersection(cellSet, result, *i, cellToProjection, predicate); } 
-            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH (const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 
@@ -1763,7 +1759,7 @@ namespace SceneEngine
                 //  override placements associated with this cell. It's a little awkward
                 //  Note that we could use the quad tree to acceleration these tests.
             TRY { _pimpl->Find_BoxIntersection(cellSet, result, *i, cellSpaceBB, predicate); } 
-            CATCH (const ::Assets::Exceptions::AssetException&) {} 
+            CATCH (const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 
@@ -1859,14 +1855,14 @@ namespace SceneEngine
     {
             // get the local bounding box for a model
             // ... but stall waiting for any pending resources
-        auto* model = _editorPimpl->_modelCache->GetModelScaffold(filename);
+        auto model = _editorPimpl->_modelCache->GetModelScaffold(filename);
         auto state = model->StallWhilePending();
         if (state != ::Assets::AssetState::Ready) {
             result = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
             return false;
         }
 
-        result = model->GetStaticBoundingBox();
+        result = model->Actualize()->GetStaticBoundingBox();
         return true;
     }
 
@@ -1903,8 +1899,7 @@ namespace SceneEngine
             _objects[objectIndex]._model.c_str(), _objects[objectIndex]._material.c_str());
         if (!scaff._material) return std::string();
 
-        auto res = scaff._material->GetMaterialName(materialGuid);
-        return res ? std::string(res) : std::string();
+        return scaff._material->GetMaterialName(materialGuid).AsString();
     }
 
     void    Transaction::SetObject(unsigned index, const ObjTransDef& newState)

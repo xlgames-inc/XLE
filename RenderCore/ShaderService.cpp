@@ -6,16 +6,8 @@
 
 #include "ShaderService.h"
 #include "Types.h"	// For PS_DefShaderModel
-#include "../Assets/Assets.h"
-#include "../Assets/IntermediateAssets.h"
-#include "../Assets/ArchiveCache.h"
-#include "../Assets/DeferredConstruction.h"
-/*#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif*/
-#include "../Utility/StringUtils.h"
-#include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include <assert.h>
 
 namespace RenderCore
@@ -39,265 +31,53 @@ namespace RenderCore
 
     ShaderStage ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
-    CompiledShaderByteCode::CompiledShaderByteCode(const std::shared_ptr<::Assets::DeferredConstruction>& construction)
-	: _deferredConstructor(construction)
-    {
-        _stage = ShaderStage::Null;
-        #if defined(STORE_SHADER_INITIALIZER)
-            _initializer[0] = '\0';
-        #endif
-
-		if (_deferredConstructor) {
-			_validationCallback = _deferredConstructor->GetDependencyValidation();
-			auto shaderStageFn = ConstHash64<'Shad','erSt','age'>::Value;
-			if (_deferredConstructor->GetVariants().Has<ShaderStage()>(shaderStageFn))
-				_stage = _deferredConstructor->GetVariants().CallDefault<>(shaderStageFn, _stage);
-			assert(_stage != ShaderStage::Null);
-		} else
-			_validationCallback = std::make_shared<Assets::DependencyValidation>();
-    }
-
-	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::IArtifact& locator, ShaderStage stage, StringSection<::Assets::ResChar> initializer)
-	: _shader(locator.GetBlob())
-	, _validationCallback(locator.GetDependencyValidation())
-	, _stage(stage)
-	{
-		assert(_validationCallback);
-        #if defined(STORE_SHADER_INITIALIZER)
-			XlCopyString(_initializer, initializer);
-        #endif
-	}
-
-	CompiledShaderByteCode::CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>& shader, ShaderStage stage, const ::Assets::DepValPtr& depVal) 
+	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::Blob& shader, const ::Assets::DepValPtr& depVal, StringSection<Assets::ResChar>)
 	: _shader(shader)
-	, _validationCallback(depVal)
-	, _stage(stage)
+	, _depVal(depVal)
 	{
-		#if defined(STORE_SHADER_INITIALIZER)
-			_initializer[0] = '\0';
-		#endif
+		if (_shader && !_shader->empty()) {
+			if (_shader->size() < sizeof(ShaderService::ShaderHeader))
+				Throw(::Exceptions::BasicLabel("Shader byte code is too small for shader header"));
+			const auto& hdr = *(const ShaderService::ShaderHeader*)_shader->data();
+			if (hdr._version != ShaderService::ShaderHeader::Version)
+				Throw(::Exceptions::BasicLabel("Unexpected version in shader header. Found (%i), expected (%i)", hdr._version, ShaderService::ShaderHeader::Version));
+		}
 	}
 
 	CompiledShaderByteCode::CompiledShaderByteCode()
 	{
-		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
-		#if defined(STORE_SHADER_INITIALIZER)
-			_initializer[0] = '\0';
-		#endif
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
 	}
 
-	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
-		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable)
+    CompiledShaderByteCode::~CompiledShaderByteCode() {}
+
+	IteratorRange<const void*> CompiledShaderByteCode::GetByteCode() const
 	{
-		return nullptr;
+		if (!_shader || _shader->empty()) return {};
+		return MakeIteratorRange(
+			PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader)), 
+			AsPointer(_shader->end()));
 	}
-
-	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
-		StringSection<::Assets::ResChar> initializer, 
-		StringSection<::Assets::ResChar> definesTable)
-    {
-		const StringSection<::Assets::ResChar> initializers[] = { initializer, definesTable };
-		auto marker = ::Assets::Internal::BeginCompileOperation(
-			::Assets::GetCompileProcessType<CompiledShaderByteCode>(), 
-			initializers, dimof(initializers));
-		if (!marker) return nullptr;
-
-		auto existingAsset = marker->GetExistingAsset();
-        auto stage = ShaderService::MakeResId(initializer).AsShaderStage();
-
-        auto existingDepVal = existingAsset->GetDependencyValidation();
-		if (existingDepVal && existingDepVal->GetValidationIndex()==0) {
-
-			std::unique_ptr<CompiledShaderByteCode> asset = nullptr;
-			TRY {
-				asset = ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(*existingAsset, stage, initializer);
-			} CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-			} CATCH (const ::Assets::Exceptions::FormatError& e) {
-				if (e.GetReason() != ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion)
-					throw;
-			} CATCH(const Utility::Exceptions::IOException& e) {
-				if (e.GetReason() != Utility::Exceptions::IOException::Reason::FileNotFound)
-					throw;
-			} CATCH_END
-
-			if (asset) {
-				auto wrapper = std::make_shared<std::unique_ptr<CompiledShaderByteCode>>(std::move(asset));
-				std::function<std::unique_ptr<CompiledShaderByteCode>()> constructorCallback(
-					[wrapper]() -> std::unique_ptr<CompiledShaderByteCode> { return std::move(*wrapper.get()); });
-				auto result = std::make_shared<::Assets::DeferredConstruction>(
-					nullptr, existingDepVal, std::move(constructorCallback));
-				result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });
-				return result;
-			}
-		}
-
-		auto init0 = initializer.AsString();
-		auto pendingCompile = marker->InvokeCompile();
-		std::function<std::unique_ptr<CompiledShaderByteCode>()> constructorCallback(
-			[pendingCompile, init0, stage]() -> std::unique_ptr<CompiledShaderByteCode> {
-				auto state = pendingCompile->GetAssetState();
-				if (state == ::Assets::AssetState::Pending)
-					Throw(::Assets::Exceptions::PendingAsset(init0.c_str(), "Pending compilation operation"));
-				if (state == ::Assets::AssetState::Invalid)
-					Throw(::Assets::Exceptions::InvalidAsset(init0.c_str(), "Failure during compilation operation"));
-				assert(state == ::Assets::AssetState::Ready);
-                auto artifacts = pendingCompile->GetArtifacts();
-                assert(artifacts.size() == 1);
-				return ::Assets::Internal::ConstructFromIntermediateAssetLocator<CompiledShaderByteCode>(
-					*artifacts[0].second, stage, MakeStringSection(init0));
-			});
-        #if defined(TEMP_HACK)
-            assert(0);      // todo - need to set the dependency validation to something reasonable --
-        #endif
-		auto result = std::make_shared<::Assets::DeferredConstruction>(
-			pendingCompile, nullptr, std::move(constructorCallback));
-		result->GetVariants().Add(ConstHash64<'Shad','erSt','age'>::Value, [stage](){ return stage; });
-		return result;
-    }
-
-	std::shared_ptr<::Assets::DeferredConstruction> CompiledShaderByteCode::BeginDeferredConstruction(
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
-	{
-		if (initializerCount == 1 || initializerCount == 2) {
-			return BeginDeferredConstruction(initializers[0], (initializerCount>=2)?initializers[1]:StringSection<::Assets::ResChar>());
-		} else if (initializerCount == 3 || initializerCount == 4) {
-			return BeginDeferredConstruction(
-				initializers[0], initializers[1], 
-				initializers[2], (initializerCount>= 4)?initializers[3]:StringSection<::Assets::ResChar>());
-		}
-		return nullptr;
-	}
-
-    CompiledShaderByteCode::~CompiledShaderByteCode()
-    {
-    }
-
-	void CompiledShaderByteCode::Resolve() const
-	{
-		if (!_shader && _deferredConstructor) {
-			auto state = _deferredConstructor->GetAssetState();
-			if (state == ::Assets::AssetState::Pending)
-				Throw(Assets::Exceptions::PendingAsset(Initializer(), "Marker is still pending while resolving shader code"));
-
-			if (state == ::Assets::AssetState::Ready) {
-				auto* mutableThis = const_cast<CompiledShaderByteCode*>(this);
-				auto constructor = std::move(mutableThis->_deferredConstructor);
-				assert(!mutableThis->_deferredConstructor);
-				*mutableThis = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
-				if (_shader && _shader->empty()) 
-					_shader.reset();
-			}
-		}
-
-		if (!_shader) {
-			_shader.reset();
-			Throw(Assets::Exceptions::InvalidAsset(Initializer(), "CompiledShaderByteCode invalid"));
-		}
-	}
-
-    ::Assets::AssetState CompiledShaderByteCode::TryResolve() const
-    {
-        if (_shader)
-            return ::Assets::AssetState::Ready;
-
-        if (_deferredConstructor) {
-			auto state = _deferredConstructor->GetAssetState();
-			if (state != ::Assets::AssetState::Ready)
-				return state;
-
-			auto* mutableThis = const_cast<CompiledShaderByteCode*>(this);
-			auto constructor = std::move(mutableThis->_deferredConstructor);
-			assert(!mutableThis->_deferredConstructor);
-			*mutableThis = std::move(*constructor->PerformConstructor<CompiledShaderByteCode>());
-		
-			if (_shader && !_shader->empty())
-				return ::Assets::AssetState::Ready;
-
-			_shader.reset();
-		}
-
-        return ::Assets::AssetState::Invalid;
-    }
-
-	std::pair<const void*, size_t> CompiledShaderByteCode::GetByteCode() const
-	{
-		Resolve();
-		return std::make_pair(
-			PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader)),
-			_shader->size() - sizeof(ShaderService::ShaderHeader));
-	}
-
-    ::Assets::AssetState CompiledShaderByteCode::TryGetByteCode(
-        void const*& byteCode, size_t& size)
-    {
-        auto state = TryResolve();
-        if (state != ::Assets::AssetState::Ready) return state;
-
-        assert(_shader && !_shader->empty());
-        byteCode = PtrAdd(AsPointer(_shader->begin()), sizeof(ShaderService::ShaderHeader));
-        size = _shader->size() - sizeof(ShaderService::ShaderHeader);
-        return ::Assets::AssetState::Ready;
-    }
-
-    std::shared_ptr<std::vector<uint8>> CompiledShaderByteCode::GetErrors() const
-    {
-        return std::shared_ptr<std::vector<uint8>>();
-    }
-
-    ::Assets::AssetState CompiledShaderByteCode::StallWhilePending() const
-    {
-        if (_shader)
-            return ::Assets::AssetState::Ready;
-
-        if (_deferredConstructor)
-            return _deferredConstructor->StallWhilePending();
-
-        return ::Assets::AssetState::Invalid;
-    }
 
     bool CompiledShaderByteCode::DynamicLinkingEnabled() const
     {
-        if (_stage == ShaderStage::Null) return false;
+        if (!_shader || _shader->empty()) return false;
 
-        Resolve();
-        if (_shader->size() < sizeof(ShaderService::ShaderHeader)) return false;
-        auto* hdr = (const ShaderService::ShaderHeader*)AsPointer(_shader->begin());
-        assert(hdr->_version == ShaderService::ShaderHeader::Version);
-        return hdr->_dynamicLinkageEnabled != 0;
+		assert(_shader->size() >= sizeof(ShaderService::ShaderHeader));
+        auto& hdr = *(const ShaderService::ShaderHeader*)AsPointer(_shader->begin());
+        assert(hdr._version == ShaderService::ShaderHeader::Version);
+        return hdr._dynamicLinkageEnabled != 0;
     }
 
-    const char* CompiledShaderByteCode::Initializer() const
-    {
-        #if defined(STORE_SHADER_INITIALIZER)
-            return _initializer;
-        #else
-            return "<<unknown shader>>";
-        #endif
-    }
+	ShaderStage		CompiledShaderByteCode::GetStage() const
+	{
+		if (!_shader || _shader->empty()) return ShaderStage::Null;
 
-    CompiledShaderByteCode::CompiledShaderByteCode(CompiledShaderByteCode&& moveFrom)
-    : _shader(std::move(moveFrom._shader))
-    , _stage(moveFrom._stage)
-    , _validationCallback(std::move(moveFrom._validationCallback))
-    , _deferredConstructor(std::move(moveFrom._deferredConstructor))
-    {
-        #if defined(STORE_SHADER_INITIALIZER)
-            XlCopyString(_initializer, moveFrom._initializer);
-        #endif
-    }
-
-    CompiledShaderByteCode& CompiledShaderByteCode::operator=(CompiledShaderByteCode&& moveFrom)
-    {
-        _shader = std::move(moveFrom._shader);
-        _stage = moveFrom._stage;
-        _validationCallback = std::move(moveFrom._validationCallback);
-		_deferredConstructor = std::move(moveFrom._deferredConstructor);
-        #if defined(STORE_SHADER_INITIALIZER)
-            XlCopyString(_initializer, moveFrom._initializer);
-        #endif
-        return *this;
-    }
+		assert(_shader->size() >= sizeof(ShaderService::ShaderHeader));
+		auto& hdr = *(const ShaderService::ShaderHeader*)AsPointer(_shader->begin());
+		assert(hdr._version == ShaderService::ShaderHeader::Version);
+		return AsShaderStage(hdr._shaderModel);
+	}
 
     const uint64 CompiledShaderByteCode::CompileProcessType = ConstHash64<'Shad', 'erCo', 'mpil', 'e'>::Value;
 
@@ -359,12 +139,12 @@ namespace RenderCore
         if (compiler)
             compiler->AdaptShaderModel(shaderId._shaderModel, dimof(shaderId._shaderModel), shaderId._shaderModel);
 
-        return std::move(shaderId);
+        return shaderId;
     }
 
     auto ShaderService::CompileFromFile(
         StringSection<::Assets::ResChar> resId, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromFile(resId, definesTable);
@@ -376,7 +156,7 @@ namespace RenderCore
     auto ShaderService::CompileFromMemory(
         StringSection<char> shaderInMemory, 
         StringSection<char> entryPoint, StringSection<char> shaderModel, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);
@@ -406,5 +186,13 @@ namespace RenderCore
 
     ShaderService::IShaderSource::~IShaderSource() {}
     ShaderService::ILowLevelCompiler::~ILowLevelCompiler() {}
+
+
+	ShaderService::ShaderHeader::ShaderHeader(StringSection<char> shaderModel, bool dynamicLinkageEnabled)
+	: _version(Version)
+	, _dynamicLinkageEnabled(unsigned(dynamicLinkageEnabled))
+	{
+		XlCopyString(_shaderModel, shaderModel);
+	}
 }
 

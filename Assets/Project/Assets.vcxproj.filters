@@ -1,61 +1,123 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
-    <ClInclude Include="..\Assets.h" />
     <ClInclude Include="..\AssetUtils.h" />
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
-    <ClInclude Include="..\CompileAndAsyncManager.h" />
     <ClInclude Include="..\ArchiveCache.h" />
-    <ClInclude Include="..\DivergentAsset.h" />
-    <ClInclude Include="..\AssetsCore.h" />
     <ClInclude Include="..\AssetServices.h" />
-    <ClInclude Include="..\AssetSetManager.h" />
-    <ClInclude Include="..\InvalidAssetManager.h" />
     <ClInclude Include="..\AsyncLoadOperation.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
-    <ClInclude Include="..\CompilerHelper.h" />
-    <ClInclude Include="..\AssetsInternal.h" />
-    <ClInclude Include="..\AssetSetInternal.h" />
-    <ClInclude Include="..\CompilerLibrary.h" />
-    <ClInclude Include="..\NascentChunkArray.h" />
-    <ClInclude Include="..\MountingTree.h" />
-    <ClInclude Include="..\OSFileSystem.h" />
-    <ClInclude Include="..\IFileSystem.h" />
-    <ClInclude Include="..\AssetTraits.h" />
-    <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\ChunkFileContainer.h" />
-    <ClInclude Include="..\CompilationThread.h" />
+    <ClInclude Include="..\AssetHeap.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetsCore.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetSetInternal.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetSetManager.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetsInternal.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetTraits.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CompileAndAsyncManager.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CompilerHelper.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CompilerLibrary.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\CompilationThread.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DeferredConstruction.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\OSFileSystem.h">
+      <Filter>FileSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MountingTree.h">
+      <Filter>FileSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\IFileSystem.h">
+      <Filter>FileSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AssetFuture.h">
+      <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MemoryFile.h">
+      <Filter>FileSystems</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NascentChunk.h" />
+    <ClInclude Include="..\IAssetCompiler.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GenericFuture.h" />
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Assets.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
-    <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ArchiveCache.cpp" />
-    <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
-    <ClCompile Include="..\AssetSetManager.cpp" />
-    <ClCompile Include="..\InvalidAssetManager.cpp" />
-    <ClCompile Include="..\AsyncLoadOperation.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
-    <ClCompile Include="..\NascentChunkArray.cpp" />
-    <ClCompile Include="..\MountingTree.cpp" />
-    <ClCompile Include="..\MainFileSystem.cpp" />
-    <ClCompile Include="..\OSFileSystem_WinAPI.cpp">
-      <Filter>WinAPI</Filter>
-    </ClCompile>
-    <ClCompile Include="..\AssetTraits.cpp" />
-    <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
-    <ClCompile Include="..\CompilationThread.cpp" />
+    <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
+    <ClCompile Include="..\Assets.cpp">
+      <Filter>AssetHeaps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\AssetSetManager.cpp">
+      <Filter>AssetHeaps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\AssetTraits.cpp">
+      <Filter>AssetHeaps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CompileAndAsyncManager.cpp">
+      <Filter>CompileAndAsync</Filter>
+    </ClCompile>
+    <ClCompile Include="..\CompilationThread.cpp">
+      <Filter>CompileAndAsync</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DeferredConstruction.cpp">
+      <Filter>AssetHeaps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\OSFileSystem.cpp">
+      <Filter>FileSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MainFileSystem.cpp">
+      <Filter>FileSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MountingTree.cpp">
+      <Filter>FileSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\MemoryFile.cpp">
+      <Filter>FileSystems</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NascentChunk.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <Filter Include="WinAPI">
-      <UniqueIdentifier>{05b881a3-726f-4192-ac6a-76cd7d5d96d7}</UniqueIdentifier>
+    <Filter Include="AssetHeaps">
+      <UniqueIdentifier>{303b7c11-d183-4bbe-a1b6-5593c7513b38}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="CompileAndAsync">
+      <UniqueIdentifier>{6c96e72b-d787-479d-bca1-1d3ccdfae7ba}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="FileSystems">
+      <UniqueIdentifier>{8c2ecc26-dfc5-4ff1-8ff9-ce8cdedc6587}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
 </Project>

@@ -7,7 +7,9 @@
 #pragma once
 
 #include "../Assets/AssetsCore.h"
+#include "../Assets/DepVal.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
@@ -18,13 +20,9 @@
 namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
-	class PendingCompileMarker; class ICompileMarker; 
-	class DeferredConstruction; class IArtifact;
+	class CompileFuture; class ICompileMarker; 
+	class IArtifact;
 }
-
-// We need to store the shader initializer in order to get the "pending assets" type 
-// messages while shaders are compiling. But it shouldn't be required in the normal game run-time.
-#define STORE_SHADER_INITIALIZER
 
 namespace RenderCore
 {
@@ -60,19 +58,23 @@ namespace RenderCore
         class ShaderHeader
         {
         public:
-            static const auto Version = 0u;
-            unsigned _version;
-            unsigned _dynamicLinkageEnabled;
+            static const auto Version = 1u;
+            unsigned _version = Version;
+			char _shaderModel[8];
+            unsigned _dynamicLinkageEnabled = false;
+
+			ShaderHeader() {}
+			ShaderHeader(StringSection<char> shaderModel, bool dynamicLinkageEnabled = false);
         };
 
         class IShaderSource
         {
         public:
-            virtual std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
+            virtual std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
                 StringSection<::Assets::ResChar> resId, 
                 StringSection<::Assets::ResChar> definesTable) const = 0;
             
-            virtual std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
+            virtual std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
                 StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 				StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const = 0;
 
@@ -82,7 +84,7 @@ namespace RenderCore
         class ILowLevelCompiler
         {
         public:
-            using Payload = std::shared_ptr<std::vector<uint8>>;
+            using Payload = ::Assets::Blob;
 
             virtual void AdaptShaderModel(
                 ResChar destination[], 
@@ -103,11 +105,11 @@ namespace RenderCore
             virtual ~ILowLevelCompiler();
         };
 
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
 
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, 
             StringSection<char> entryPoint, StringSection<char> shaderModel, 
             StringSection<::Assets::ResChar> definesTable) const;
@@ -162,54 +164,27 @@ namespace RenderCore
     class CompiledShaderByteCode
     {
     public:
-        std::pair<const void*, size_t>  GetByteCode() const;
-        ::Assets::AssetState            TryGetByteCode(void const*& byteCode, size_t& size);
-        ::Assets::AssetState            StallWhilePending() const;
-        ::Assets::AssetState            TryResolve() const;
+        IteratorRange<const void*>  GetByteCode() const;
         
-        ShaderStage		GetStage() const                { return _stage; }
+		ShaderStage		GetStage() const;
         bool            DynamicLinkingEnabled() const;
 
-        std::shared_ptr<std::vector<uint8>> GetErrors() const;
-
-		CompiledShaderByteCode(const std::shared_ptr<::Assets::DeferredConstruction>&);
-		CompiledShaderByteCode(const std::shared_ptr<std::vector<uint8>>&, ShaderStage stage, const ::Assets::DepValPtr&);
-		CompiledShaderByteCode(const ::Assets::IArtifact&, ShaderStage stage, StringSection<::Assets::ResChar> initializer);
+		CompiledShaderByteCode(const ::Assets::Blob&, const ::Assets::DepValPtr&, StringSection<::Assets::ResChar>);
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			StringSection<::Assets::ResChar> initializer, 
-			StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
-		static std::shared_ptr<::Assets::DeferredConstruction> BeginDeferredConstruction(
-			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable=StringSection<::Assets::ResChar>());
-
-        CompiledShaderByteCode(const CompiledShaderByteCode&) = delete;
+		CompiledShaderByteCode(const CompiledShaderByteCode&) = delete;
         CompiledShaderByteCode& operator=(const CompiledShaderByteCode&) = delete;
         CompiledShaderByteCode(CompiledShaderByteCode&&);
         CompiledShaderByteCode& operator=(CompiledShaderByteCode&&);
 
-        auto        GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
-        const char* Initializer() const;
+        auto        GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _depVal; }
 
         static const uint64 CompileProcessType;
 
     private:
-        mutable std::shared_ptr<std::vector<uint8>>			_shader;
-
-		std::shared_ptr<::Assets::DeferredConstruction>		_deferredConstructor;
-		std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
-		ShaderStage											_stage;
-
-        #if defined(STORE_SHADER_INITIALIZER)
-            char _initializer[512];
-        #endif
-
-		void Resolve() const;
-		// void ResolveFromCompileMarker() const;
+		::Assets::Blob			_shader;
+		::Assets::DepValPtr		_depVal;
     };
 }
 

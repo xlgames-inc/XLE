@@ -9,17 +9,19 @@
 #include "OverlayContext.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Techniques/ResourceBox.h"       // for FindCachedBox
 */
+#include "../RenderOverlays/Font.h"
 #if defined(HAS_XLE_CONSOLE_RIG)
     #include "../ConsoleRig/Console.h"
 #endif
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
+#include "../ConsoleRig/ResourceBox.h"       // for FindCachedBox
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
+#include "../Utility/IntrusivePtr.h"
 #include <stdarg.h>
 #include <assert.h>
 #include <string.h>
@@ -580,13 +582,12 @@ namespace RenderOverlays { namespace DebuggingDisplay
         context->DrawLines(ProjectionMode::P2D, AsPointer(pixelCoords.begin()), lineCount*2, lineColours);
     }
 
-#if defined(HAS_XLE_FONTS)
     class TableFontBox
     {
     public:
         class Desc {};
-        intrusive_ptr<RenderOverlays::Font> _headerFont;
-        intrusive_ptr<RenderOverlays::Font> _valuesFont;
+        std::shared_ptr<RenderOverlays::Font> _headerFont;
+		std::shared_ptr<RenderOverlays::Font> _valuesFont;
         TableFontBox(const Desc&) 
             : _headerFont(RenderOverlays::GetX2Font("DosisExtraBold", 20))
             , _valuesFont(RenderOverlays::GetX2Font("Raleway", 20)) {}
@@ -608,7 +609,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style(
-            *RenderCore::Techniques::FindCachedBox2<TableFontBox>()._headerFont,
+            ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
             DrawTextOptions(false, true));
 
         Layout tempLayout(rect);
@@ -626,10 +627,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 r._topLeft[0] += 8;
 
                 const ColorB colour = HeaderTextColor;
-                context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, i->first.c_str(), nullptr);
+                context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, MakeStringSection(i->first));
 
                 if (interactables)
-                    interactables->Register(Interactables::Widget(r, InteractableId_Make(i->first.c_str())));
+                    interactables->Register(Interactables::Widget(r, InteractableId_Make(MakeStringSection(i->first))));
             }
         }
     }
@@ -652,7 +653,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
         TextStyle style(
-            *RenderCore::Techniques::FindCachedBox2<TableFontBox>()._valuesFont,
+            ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
             DrawTextOptions(true, false));
 
         Layout tempLayout(rect);
@@ -673,12 +674,11 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
                     const ColorB colour = TextColor;
                     // DrawRectangle(context, r, s->second._bkColour);
-                    context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, s->second._label.c_str(), nullptr);
+                    context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, MakeStringSection(s->second._label));
                 }
             }
         }
     }
-#endif
 
     ///////////////////////////////////////////////////////////////////////////////////
     static void SetQuadPts(Float3 destination[], const Float3& A, const Float3& B, const Float3& C, const Float3& D)
@@ -920,7 +920,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             }
 
             Rect nameRect = buttonsLayout.Allocate(Coord2(nameSize, buttonSize));
-            DrawText(context, nameRect, nullptr, ColorB(0xffffffffu), name.c_str());
+            DrawText(context, nameRect, nullptr, ColorB(0xffffffffu), MakeStringSection(name));
 
                 //
                 //      If the mouse is over the name rect, we get a drop list list
@@ -947,7 +947,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                     if (mouseOver) {
                         DrawRectangle(context, partRect, ColorB(180, 200, 255, 64));
                     }
-                    DrawText(context, partRect, nullptr, ColorB(0xffffffffu), i->_name.c_str());
+                    DrawText(context, partRect, nullptr, ColorB(0xffffffffu), MakeStringSection(i->_name));
                     y += buttonSize + buttonPadding;
                     interactables.Register(Interactables::Widget(partRect, thisId));
                 }

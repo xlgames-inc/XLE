@@ -10,6 +10,7 @@
 #include "CLIXAutoPtr.h"
 #include "MarshalString.h"
 #include "../ToolsRig/ModelVisualisation.h"
+#include "../ToolsRig/DivergentAsset.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -20,12 +21,8 @@ using namespace System::Windows::Forms;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
-namespace RenderCore { namespace Assets { class RawMaterial; class ResolvedMaterial; }}
-namespace Assets
-{
-    template<typename Type, typename Formatter>
-        class ConfigFileListContainer;
-}
+namespace RenderCore { namespace Assets { class RawMaterial; } }
+namespace RenderCore { namespace Techniques { class Material; } }
 
 namespace GUILayer
 {
@@ -318,7 +315,7 @@ namespace GUILayer
 
         virtual event System::ComponentModel::PropertyChangedEventHandler^ PropertyChanged;
 
-        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
+        using NativeConfig = ToolsRig::DivergentAsset<RenderCore::Assets::RawMaterial>;
         RenderStateSet(std::shared_ptr<NativeConfig> underlying);
         ~RenderStateSet();
     protected:
@@ -352,7 +349,7 @@ namespace GUILayer
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         String^ BuildInheritanceList();
-        void Resolve(RenderCore::Assets::ResolvedMaterial& destination);
+        void Resolve(RenderCore::Techniques::Material& destination);
 
         void AddInheritted(String^);
         void RemoveInheritted(String^);
@@ -365,7 +362,7 @@ namespace GUILayer
 
         ~RawMaterial();
     private:
-        using NativeConfig = ::Assets::DivergentAsset<RenderCore::Assets::RawMaterial>;
+        using NativeConfig = ToolsRig::DivergentAsset<RenderCore::Assets::RawMaterial>;
         clix::shared_ptr<NativeConfig> _underlying;
 
         RenderStateSet^ _renderStateSet;
@@ -394,15 +391,12 @@ namespace GUILayer
             IEnumerable<Tuple<String^, String^>^>^ get();
         }
 
-        static bool HasInvalidAssets();
-
-        delegate void OnChange();
-        event OnChange^ _onChange;
-        void RaiseChangeEvent();
+        static bool			HasInvalidAssets();
+        delegate void		OnChange();
+        event OnChange^		_onChange;
+        void				RaiseChangeEvent();
 
         InvalidAssetList();
         ~InvalidAssetList();
-    protected:
-        unsigned _eventId;
     };
 }

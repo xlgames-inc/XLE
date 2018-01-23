@@ -22,7 +22,7 @@ Font::~Font()
 }
 
     // DavidJ -- hack! subvert massive virtual call overload by putting in some quick overloads
-intrusive_ptr<const Font> Font::GetSubFont(ucs4) const { return this; }
+std::shared_ptr<const Font> Font::GetSubFont(ucs4) const { return shared_from_this(); }
 bool Font::IsMultiFontAdapter() const { return false; }
 
 float Font::StringWidth(const ucs4* text, int maxLen, float spaceExtra, bool outline)
@@ -43,7 +43,7 @@ float Font::StringWidth(const ucs4* text, int maxLen, float spaceExtra, bool out
             if( ch == '\n') continue;
 
             int curGlyph;
-            intrusive_ptr<const Font> subFont = GetSubFont(ch);
+            auto subFont = GetSubFont(ch);
             if (subFont) {
                 x += subFont->GetKerning(prevGlyph, ch, &curGlyph)[0];
 
@@ -235,7 +235,7 @@ FontChar::FontChar(int ich)
     needTexUpdate = false;
 }
 
-intrusive_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind)
+std::shared_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind)
 {
     switch (kind) {
     case FTK_DAMAGEDISPLAY: 

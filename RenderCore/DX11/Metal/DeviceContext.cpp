@@ -368,7 +368,7 @@ namespace RenderCore { namespace Metal_DX11
 
     std::shared_ptr<DeviceContext>  DeviceContext::Get(IThreadContext& threadContext)
     {
-        auto tc = (IThreadContextDX11*)threadContext.QueryInterface(__uuidof(IThreadContextDX11));
+        auto tc = (IThreadContextDX11*)threadContext.QueryInterface(typeid(IThreadContextDX11).hash_code());
         if (tc) {
             return tc->GetUnderlying();
         }

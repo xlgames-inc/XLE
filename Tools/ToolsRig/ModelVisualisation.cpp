@@ -26,7 +26,9 @@
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
@@ -55,6 +57,7 @@ namespace ToolsRig
     using RenderCore::Assets::MaterialScaffold;
     using RenderCore::Assets::SharedStateSet;
     using RenderCore::Assets::ModelCache;
+	using RenderCore::Assets::ModelCacheModel;
     using RenderCore::Assets::SkeletonMachine;
     using RenderCore::Assets::DelayedDrawCallSet;
 
@@ -213,7 +216,7 @@ namespace ToolsRig
         DelayedDrawCallSet _delayedDrawCalls;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCache::Model& model)
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCacheModel& model)
     {
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
@@ -225,7 +228,7 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ModelCache::Model GetModel(
+    static ModelCacheModel GetModel(
         ModelCache& cache,
         ModelVisSettings& settings)
     {
@@ -244,8 +247,8 @@ namespace ToolsRig
         }
 
         return cache.GetModel(
-            settings._modelName.c_str(), 
-            settings._materialName.c_str(),
+            MakeStringSection(settings._modelName), 
+			MakeStringSection(settings._materialName),
             MakeIteratorRange(supplements),
             settings._levelOfDetail);
     }
@@ -257,7 +260,7 @@ namespace ToolsRig
         std::shared_ptr<ModelVisSettings> _settings;
         std::shared_ptr<VisEnvSettings> _envSettings;
 
-        ModelCache::Model GetModel() { return ToolsRig::GetModel(*_cache, *_settings); }
+        ModelCacheModel GetModel() { return ToolsRig::GetModel(*_cache, *_settings); }
     };
 
     auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -290,7 +293,7 @@ namespace ToolsRig
         const auto* envSettings = _pimpl->_envSettings.get();
         if (!envSettings)
             envSettings = &::Assets::GetAssetDep<VisEnvSettings>(
-                _pimpl->_settings->_envSettingsFile.c_str());
+                MakeStringSection(_pimpl->_settings->_envSettingsFile));
 
         ModelSceneParser sceneParser(
             *_pimpl->_settings, *envSettings,
@@ -357,7 +360,7 @@ namespace ToolsRig
         if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
 
             Techniques::RenderPassInstance rpi(
-                context, FrameBufferDesc({RenderCore::SubpassDesc({0u}, 2u)}),
+                context, FrameBufferDesc({RenderCore::SubpassDesc{{0u}, 2u}}),
                 0u, parserContext.GetNamedResources());
 
             if (_pimpl->_settings->_drawWireframe) {
@@ -430,7 +433,7 @@ namespace ToolsRig
 
                 {
                     Techniques::RenderPassInstance rpi(
-                        context, FrameBufferDesc({SubpassDesc({0u})}),
+                        context, FrameBufferDesc({SubpassDesc{{0u}}}),
                         0u, parserContext.GetNamedResources());
                     ExecuteHighlightByStencil(
                         context, parserContext.GetNamedResources(), 

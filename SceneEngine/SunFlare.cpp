@@ -17,10 +17,10 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Assets/Assets.h"
 #include "../Core/Exceptions.h"
@@ -236,7 +236,7 @@ namespace SceneEngine
             const unsigned resX = Tweakable("SunFlareResX", 64);
             const unsigned resY = Tweakable("SunFlareResY", 32);
 
-            const auto& res = Techniques::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
+            const auto& res = ConsoleRig::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
             if (!doDirectBlur) {
                 context->Bind(Techniques::CommonResources()._blendOpaque);
                 context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));

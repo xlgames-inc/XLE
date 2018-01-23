@@ -81,9 +81,10 @@
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\..\RenderCore\Assets\Material.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\ModelScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\RawAnimationCurve.cpp" />
+    <ClCompile Include="..\..\RenderCore\Assets\RawMaterial.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\..\RenderCore\Assets\TransformationCommands.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.cpp" />
@@ -108,8 +109,9 @@
     <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\..\RenderCore\Assets\Material.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h" />
     <ClInclude Include="..\..\RenderCore\Assets\RawAnimationCurve.h" />
+    <ClInclude Include="..\..\RenderCore\Assets\RawMaterial.h" />
     <ClInclude Include="..\..\RenderCore\Assets\TransformationCommands.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\GeoProcUtil.h" />
@@ -124,7 +126,6 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h" />
     <ClInclude Include="..\ConversionConfig.h" />
-    <ClInclude Include="..\DLLInterface.h" />
     <ClInclude Include="..\ScaffoldParsingUtil.h" />
     <ClInclude Include="..\SAnimation.h" />
     <ClInclude Include="..\Scaffold.h" />

@@ -5,26 +5,16 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RawMaterial.h"
-#include "Material.h"
 #include "../Types.h"
-#if defined(HAS_XLE_FULLASSETS)
-    #include "../../Assets/Assets.h"
-    #include "../../Assets/IntermediateAssets.h"
-    #include "../../Assets/DeferredConstruction.h"
-#endif
-// #include "../../Assets/ConfigFileContainer.h"
+#include "../Techniques/TechniqueMaterial.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
+#include "../../Assets/DeferredConstruction.h"
+#include "../../Assets/ConfigFileContainer.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/StringFormat.h"
-
-#if defined(HAS_XLE_FULLASSETS)
-namespace Assets
-{
-    template<> uint64 GetCompileProcessType<::RenderCore::Assets::RawMaterial>() 
-        { return ConstHash64<'RawM', 'at'>::Value; }
-}
-#endif
 
 namespace RenderCore { namespace Assets
 {
@@ -260,27 +250,6 @@ namespace RenderCore { namespace Assets
 
     RawMaterial::RawMaterial() {}
 
-    void ResolveMaterialFilename(
-        ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
-        const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
-    {
-        if (baseMatName.begin() != resolvedFile)
-            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
-        if (!XlExtension(resolvedFile))
-            XlCatString(resolvedFile, resolvedFileCount, ".material");
-        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
-    }
-
-    uint64 MakeMaterialGuid(StringSection<utf8> name)
-    {
-            //  If the material name is just a number, then we will use that
-            //  as the guid. Otherwise we hash the name.
-        const char* parseEnd = nullptr;
-        uint64 hashId = XlAtoI64((const char*)name.begin(), &parseEnd, 16);
-        if (!parseEnd || parseEnd != (const char*)name.end()) { hashId = Hash64(name.begin(), name.end()); }
-        return hashId;
-    }
-
     std::vector<::Assets::rstring> 
         DeserializeInheritList(InputStreamFormatter<utf8>& formatter)
     {
@@ -315,7 +284,7 @@ namespace RenderCore { namespace Assets
     RawMaterial::RawMaterial(
 		InputStreamFormatter<utf8>& formatter, 
 		const ::Assets::DirectorySearchRules& searchRules, 
-		const std::shared_ptr<::Assets::DependencyValidation>& depVal)
+		const ::Assets::DepValPtr& depVal)
 	: _depVal(depVal), _searchRules(searchRules)
     {
         for (;;) {
@@ -406,7 +375,7 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void RawMaterial::MergeInto(ResolvedMaterial& dest) const
+    void RawMaterial::MergeInto(Techniques::Material& dest) const
     {
         dest._matParams.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
@@ -421,6 +390,17 @@ namespace RenderCore { namespace Assets
 
             XlCopyString(dest._techniqueConfig, _techniqueConfig);
         }
+    }
+
+	void ResolveMaterialFilename(
+        ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
+        const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
+    {
+        if (baseMatName.begin() != resolvedFile)
+            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
+        if (!XlExtension(resolvedFile))
+            XlCatString(resolvedFile, resolvedFileCount, ".material");
+        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
     }
 
     auto RawMaterial::ResolveInherited(
@@ -448,111 +428,68 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-#if defined(HAS_XLE_FULLASSETS)
     static void AddDep(
-        std::vector<::Assets::DependentFileState>& deps, 
-        StringSection<::Assets::ResChar> filename)
+        std::vector<::Assets::DependentFileState>& deps,
+        StringSection<::Assets::ResChar> newDep)
     {
             // we need to call "GetDependentFileState" first, because this can change the
             // format of the filename. String compares alone aren't working well for us here
-        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(filename);
-        auto existing = std::find_if(deps.cbegin(), deps.cend(),
-            [&](const ::Assets::DependentFileState& test) 
-            {
-                return !XlCompareStringI(test._filename.c_str(), depState._filename.c_str());
-            });
+        auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(newDep);
+        auto existing = std::find_if(
+            deps.cbegin(), deps.cend(),
+            [&](const ::Assets::DependentFileState& test) { return test._filename == depState._filename; });
         if (existing == deps.cend())
             deps.push_back(depState);
     }
-#endif
 
-    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
-    
-    auto RawMaterial::GetAsset(StringSection<::Assets::ResChar> initializer) -> const RawMaterial& 
-    {
-#if defined(HAS_XLE_FULLASSETS)
-        // There are actually 2 paths here... Normally the requested file is a
-        // .material file -- in which case we can load it with a  
-        // ::Assets::ConfigFileListContainer.
-        //
-        // However, it could alternatively be a model file. For a model file, we
-        // invoke the model compiler to create the "rawmat" file... And then we 
-        // can load the rawmat file using ::Assets::ConfigFileListContainer.
-        //
-        // How can we tell which one it is...? Well, it would be nice if there was
-        // some good way to do this -- but all we can do is check the extension
-        // currently.
-        //
-        // Note that when loading from a model file, we can throw "pending". But
-        // loading from a .material file should never be pending
-
-        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetAssetComp<RawMaterial>(initializer);
-        } else {
-            return ::Assets::GetAsset<RawMaterial>(initializer);
-        }
-#else
-        return *(const RawMaterial*)nullptr;
-#endif
-    }
-
-#if defined(HAS_XLE_FULLASSETS)
-    auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
-        -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
-    {
-
-        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
-        } else {
-            return ::Assets::GetDivergentAsset<RawMaterial>(initializer);
-        }
-    }
-#endif
-
-	std::unique_ptr<RawMaterial> RawMaterial::CreateNew(StringSection<::Assets::ResChar> initialiser)
-	{
-		return std::make_unique<RawMaterial>();
-	}
-
-    ::Assets::AssetState RawMaterial::TryResolve(
-        ResolvedMaterial& result,
+	void MergeIn_Stall(
+		Techniques::Material& result,
+		StringSection<> sourceMaterialName,
         const ::Assets::DirectorySearchRules& searchRules,
-        std::vector<::Assets::DependentFileState>* deps) const
+        std::vector<::Assets::DependentFileState>& deps)
     {
 
             // resolve all of the inheritance options and generate a final 
             // ResolvedMaterial object. We need to start at the bottom of the
             // inheritance tree, and merge in new parameters as we come across them.
 
-		::Assets::DirectorySearchRules newSearchRules = _searchRules;
-		newSearchRules.Merge(searchRules);
+			// we still need to add a dependency, even if it's a missing file
+		AddDep(deps, MakeFileNameSplitter(sourceMaterialName).AllExceptParameters());
 
-        auto inheritted = ResolveInherited(searchRules);
-        for (auto i=inheritted.cbegin(); i!=inheritted.cend(); ++i) {
-            FileNameSplitter<::Assets::ResChar> splitName(i->c_str());
-            
-#if defined(HAS_XLE_FULLASSETS)
-                // we still need to add a dependency, even if it's a missing file
-            if (deps) AddDep(*deps, splitName.FullFilename());
-#endif
+		auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(sourceMaterialName);
+		auto state = dependencyMat->StallWhilePending();
+		if (state == ::Assets::AssetState::Ready) {
+			auto source = dependencyMat->Actualize();
 
-            auto& rawParams = GetAsset(i->c_str());
-            auto state = rawParams.TryResolve(result, newSearchRules, deps);
-			if (state == ::Assets::AssetState::Pending)
-				return ::Assets::AssetState::Pending;
-        }
+			auto childSearchRules = source->GetDirectorySearchRules();
+			childSearchRules.Merge(searchRules);
 
-        MergeInto(result);
-		return ::Assets::AssetState::Ready;
+			for (const auto& child: source->ResolveInherited(searchRules))
+				MergeIn_Stall(result, child, childSearchRules, deps);
+
+			source->MergeInto(result);
+		}
     }
 
-#if defined(HAS_XLE_FULLASSETS)
-	std::shared_ptr<::Assets::DeferredConstruction> RawMaterial::BeginDeferredConstruction(
-		const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
+	void MergeIn_Stall(
+		RenderCore::Techniques::Material& result,
+		const RenderCore::Assets::RawMaterial& src,
+		const ::Assets::DirectorySearchRules& searchRules)
 	{
-		return ::Assets::DefaultBeginDeferredConstruction<RawMaterial>(initializers, initializerCount);
+		auto childSearchRules = searchRules;
+		childSearchRules.Merge(src.GetDirectorySearchRules());
+
+		for (const auto& child : src.ResolveInherited(childSearchRules)) {
+			auto dependencyMat = ::Assets::MakeAsset<RenderCore::Assets::RawMaterial>(child);
+			auto state = dependencyMat->StallWhilePending();
+			if (state == ::Assets::AssetState::Ready) {
+				MergeIn_Stall(result, *dependencyMat->Actualize(), childSearchRules);
+			}
+		}
+
+		src.MergeInto(result);
 	}
-#endif
+
 
 }}
 

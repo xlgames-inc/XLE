@@ -5,6 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderReflection.h"
+
+#if defined(HAS_SPIRV_HEADERS)
+
 #include "../../../Utility/MemoryUtils.h"
 
 // Vulkan SDK includes -- 
@@ -12,15 +15,11 @@
 #undef new
 #include <glslang/SPIRV/spirv.hpp>
 #include <glslang/SPIRV/doc.h>
-
-// #include <glslang/SPIRV/disassemble.h>
-// #include <sstream>
 #pragma pop_macro("new")
 
 namespace RenderCore { namespace Metal_Vulkan
 {
 
-    
     template<typename Id>
         void FillInBinding(
             std::vector<std::pair<Id, SPIRVReflection::Binding>>& bindings,
@@ -68,14 +67,14 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    SPIRVReflection::SPIRVReflection(IteratorRange<const uint32*> byteCode)
+    SPIRVReflection::SPIRVReflection(IteratorRange<const void*> byteCode)
     {
         _entryPoint._id = ~0x0u;
 
         using namespace spv;
         // spv::Parameterize();
 
-        auto* i = byteCode.begin() + 5;
+        auto* i = ((const uint32_t*)byteCode.begin()) + 5;
         while (i < byteCode.end()) {
             // Instruction wordCount and opcode
             unsigned int firstWord = *i;
@@ -303,78 +302,19 @@ namespace RenderCore { namespace Metal_Vulkan
         // (void)d;
     }
 
-    SPIRVReflection::SPIRVReflection(std::pair<const void*, size_t> byteCode)
-    : SPIRVReflection(
-        IteratorRange<const uint32*>(
-            (const uint32*)byteCode.first, 
-            (const uint32*)PtrAdd(byteCode.first, byteCode.second)))
-    {}
-
-
     SPIRVReflection::SPIRVReflection() {}
     SPIRVReflection::~SPIRVReflection() {}
 
-    SPIRVReflection::SPIRVReflection(const SPIRVReflection& cloneFrom)
-    : _names(cloneFrom._names)
-    , _memberNames(cloneFrom._memberNames)
-    , _bindings(cloneFrom._bindings)
-    , _memberBindings(cloneFrom._memberBindings)
-    , _uniformQuickLookup(cloneFrom._uniformQuickLookup)
-    , _basicTypes(cloneFrom._basicTypes)
-    , _vectorTypes(cloneFrom._vectorTypes)
-    , _pointerTypes(cloneFrom._pointerTypes)
-    , _variables(cloneFrom._variables)
-    , _entryPoint(cloneFrom._entryPoint)
-    , _inputInterfaceQuickLookup(cloneFrom._inputInterfaceQuickLookup)
-    {
-    }
-
-    SPIRVReflection& SPIRVReflection::operator=(const SPIRVReflection& cloneFrom)
-    {
-        _names = cloneFrom._names;
-        _memberNames = cloneFrom._memberNames;
-        _bindings = cloneFrom._bindings;
-        _memberBindings = cloneFrom._memberBindings;
-        _uniformQuickLookup = cloneFrom._uniformQuickLookup;
-        _basicTypes = cloneFrom._basicTypes;
-        _vectorTypes = cloneFrom._vectorTypes;
-        _pointerTypes = cloneFrom._pointerTypes;
-        _variables = cloneFrom._variables;
-        _entryPoint = cloneFrom._entryPoint;
-        _inputInterfaceQuickLookup = cloneFrom._inputInterfaceQuickLookup;
-        return *this;
-    }
-
-    SPIRVReflection::SPIRVReflection(SPIRVReflection&& moveFrom)
-    : _names(std::move(moveFrom._names))
-    , _memberNames(std::move(moveFrom._memberNames))
-    , _bindings(std::move(moveFrom._bindings))
-    , _memberBindings(std::move(moveFrom._memberBindings))
-    , _uniformQuickLookup(std::move(moveFrom._uniformQuickLookup))
-    , _basicTypes(std::move(moveFrom._basicTypes))
-    , _vectorTypes(std::move(moveFrom._vectorTypes))
-    , _pointerTypes(std::move(moveFrom._pointerTypes))
-    , _variables(std::move(moveFrom._variables))
-    , _entryPoint(std::move(moveFrom._entryPoint))
-    , _inputInterfaceQuickLookup(std::move(moveFrom._inputInterfaceQuickLookup))
-    {
-    }
-
-    SPIRVReflection& SPIRVReflection::operator=(SPIRVReflection&& moveFrom)
-    {
-        _names = std::move(moveFrom._names);
-        _memberNames = std::move(moveFrom._memberNames);
-        _bindings = std::move(moveFrom._bindings);
-        _memberBindings = std::move(moveFrom._memberBindings);
-        _uniformQuickLookup = std::move(moveFrom._uniformQuickLookup);
-        _basicTypes = std::move(moveFrom._basicTypes);
-        _vectorTypes = std::move(moveFrom._vectorTypes);
-        _pointerTypes = std::move(moveFrom._pointerTypes);
-        _variables = std::move(moveFrom._variables);
-        _entryPoint = std::move(moveFrom._entryPoint);
-        _inputInterfaceQuickLookup = std::move(moveFrom._inputInterfaceQuickLookup);
-        return *this;
-    }
-
-
 }}
+
+#else
+
+namespace RenderCore { namespace Metal_Vulkan
+{
+
+    SPIRVReflection::SPIRVReflection(IteratorRange<const void*> byteCode) {}
+    SPIRVReflection::SPIRVReflection() {}
+    SPIRVReflection::~SPIRVReflection() {}
+}}
+
+#endif

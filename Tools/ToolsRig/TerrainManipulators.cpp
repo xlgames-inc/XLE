@@ -21,7 +21,6 @@
 
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/State.h"
@@ -33,6 +32,7 @@
 #include "../../Math/Geometry.h"
 #include "../../Utility/TimeUtils.h"
 #include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/ResourceBox.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 

@@ -5,6 +5,31 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Font.h"
+
+namespace RenderOverlays
+{
+	TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options) : _font(font), _options(options) {}
+	TextStyle::~TextStyle() {}
+
+	float TextStyle::Draw(RenderCore::IThreadContext& threadContext,
+		float x, float y, const ucs4 text[], int maxLen,
+		float spaceExtra, float scale, float mx, float depth,
+		unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const 
+	{
+		return 0.f;
+	}
+
+	Float2		TextStyle::AlignText(const Quad& q, UiAlign align, const ucs4* text, int maxLen) { return Zero<Float2>(); }
+	Float2		TextStyle::AlignText(const Quad& q, UiAlign align, float width, float indent) { return Zero<Float2>(); }
+	float       TextStyle::StringWidth(const ucs4* text, int maxlen) { return 0.f; }
+	int         TextStyle::CharCountFromWidth(const ucs4* text, float width) { return 0; }
+	float       TextStyle::SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width) { return 0.f; }
+	float       TextStyle::CharWidth(ucs4 ch, ucs4 prev) { return 0.f; }
+}
+
+#if 0
+
+#include "Font.h"
 #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
@@ -30,7 +55,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
+#include "../ConsoleRig/ResourceBox.h"
 
 namespace RenderOverlays
 {
@@ -287,7 +312,7 @@ float   TextStyle::Draw(
         // VertexShader& vshader    = GetResource<VertexShader>(vertexShaderSource);
         // PixelShader& pshader     = GetResource<PixelShader>(pixelShaderSource);
 
-        auto& res = RenderCore::Techniques::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
+        auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
         renderer->Bind(res._boundInputLayout);     // have to bind a standard P2CT input layout
         renderer->Bind(*res._shaderProgram);
         renderer->Bind(Topology::TriangleList);
@@ -602,8 +627,8 @@ float TextStyle::CharWidth(ucs4 ch, ucs4 prev)
     return _font->CharWidth(ch, prev);
 }
 
-TextStyle::TextStyle(Font& font, const DrawTextOptions& options) 
-: _font(&font), _options(options)
+TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options)
+: _font(font), _options(options)
 {
 }
     
@@ -612,4 +637,6 @@ TextStyle::~TextStyle()
 }
 
 }
+
+#endif
 

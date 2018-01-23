@@ -878,11 +878,9 @@ namespace Utility
                 i2->second += valueSize;
             }
 
-            if (valueSize) {
-                _values.insert(
-                    _values.cbegin()+dstOffsets.second, 
-                    (uint8*)value, (uint8*)PtrAdd(value, valueSize));
-            }
+            _values.insert(
+                _values.cbegin()+dstOffsets.second, 
+                (uint8*)value, (uint8*)PtrAdd(value, valueSize));
             _names.insert(
                 _names.cbegin()+dstOffsets.first, 
                 name, &name[nameLength]);

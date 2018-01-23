@@ -24,7 +24,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         if (compiledShader.GetStage() != ShaderStage::Null) {
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
         }
     }
 
@@ -48,7 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Vertex);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
     }
 
     VertexShader::VertexShader(const CompiledShaderByteCode& compiledShader)
@@ -76,7 +76,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Pixel);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
     }
 
     PixelShader::PixelShader(const CompiledShaderByteCode& compiledShader)
@@ -103,22 +103,22 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
         if (soInitializers._outputBufferCount != 0)
-            Throw(Exceptions::BasicLabel("Unimplemented"));
+            Throw(::Exceptions::BasicLabel("Unimplemented"));
 
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Geometry);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
     }
 
     GeometryShader::GeometryShader(const CompiledShaderByteCode& compiledShader, const StreamOutputInitializers& soInitializers)
     {
         if (soInitializers._outputBufferCount != 0)
-            Throw(Exceptions::BasicLabel("Unimplemented"));
+            Throw(::Exceptions::BasicLabel("Unimplemented"));
 
         assert(compiledShader.GetStage() == ShaderStage::Geometry);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
     }
 
     GeometryShader::GeometryShader() {}
@@ -146,7 +146,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Compute);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -177,7 +177,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Domain);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
     }
 
     DomainShader::DomainShader(const CompiledShaderByteCode& compiledShader)
@@ -199,7 +199,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Hull);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = ObjectFactory().CreateShaderModule(byteCode.first, byteCode.second);
+        _underlying = ObjectFactory().CreateShaderModule(byteCode.begin(), byteCode.size());
     }
 
     HullShader::HullShader(const CompiledShaderByteCode& compiledShader)

@@ -9,11 +9,12 @@
 #include "ObjectFactory.h"
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
-#include "../../../Assets/IntermediateAssets.h"
+#include "../../../Assets/IAssetCompiler.h"
 #include "../../../Assets/AssetUtils.h"
-#include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Assets/ConfigFileContainer.h"
 #include "../../../Assets/AssetServices.h"
+#include "../../../Assets/Assets.h"
+#include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/StringUtils.h"
@@ -22,10 +23,11 @@
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Conversion.h"
 #include "../../../ConsoleRig/Log.h"
-#include "../../../Foreign/plustasche/template.hpp"
+#include "../../../Foreign/plustache/template.hpp"
 
 #include <regex> // used for parsing parameter definition
 #include <set>
+#include <sstream>
 
 #include "../../../Utility/WinAPI/WinAPIWrapper.h"
 #include "IncludeDX11.h"
@@ -315,29 +317,8 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////
 
-    #define RECORD_INVALID_ASSETS
-    #if defined(RECORD_INVALID_ASSETS)
-
-        static void RegisterInvalidAsset(const ::Assets::ResChar assetName[], const std::basic_string<::Assets::ResChar>& errorString)
-        {
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(assetName, errorString);
-        }
-
-        static void RegisterValidAsset(const ::Assets::ResChar assetName[])
-        {
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkValid(assetName);
-        }
-
-    #else
-
-        static void RegisterInvalidAsset(const ResChar resourceName[], const std::basic_string<ResChar>& errorString) {}
-        static void RegisterValidAsset(const ResChar resourceName[]) {}
-
-    #endif
-
-    static const char* AsString(HRESULT reason)
+    /*
+	static const char* AsString(HRESULT reason)
     {
         switch (reason) {
         case D3D11_ERROR_FILE_NOT_FOUND: return "File not found";
@@ -345,41 +326,11 @@ namespace RenderCore { namespace Metal_DX11
         default: return "General failure";
         }
     }
-
-    static void MarkInvalid(
-        const ShaderService::ResId& shaderPath,
-        HRESULT hresult,
-        const ShaderService::ILowLevelCompiler::Payload& errorsBlob)
-    {
-        StringMeld<MaxPath, ::Assets::ResChar> initializer;
-        initializer << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel;
-
-        std::basic_stringstream<::Assets::ResChar> stream;
-        stream << "Encountered errors while compiling shader: " << initializer << " (" << AsString(hresult) << ")" << std::endl;
-
-        if (errorsBlob && !errorsBlob->empty()) {
-            const auto* errors = (const char*)AsPointer(errorsBlob->cbegin());
-            stream << "Errors as follows:" << std::endl;
-            stream << errors;
-
-            LogInfo << "Shader errors while compiling (" << shaderPath._filename << ":" << shaderPath._entryPoint << ")";
-            LogInfo << errors;
-        } else {
-            stream << "(no extra data)" << std::endl;
-        }
-
-        RegisterInvalidAsset(initializer, stream.str());
-    }
-  
-    static void MarkValid(const ShaderService::ResId& shaderPath)
-    {
-        RegisterValidAsset(
-            StringMeld<MaxPath, ::Assets::ResChar>() << shaderPath._filename << ':' << shaderPath._entryPoint << ':' << shaderPath._shaderModel);
-    }
+	*/
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<std::vector<uint8>> MakeBlob(StringSection<char> stringSection)
+    ::Assets::Blob MakeBlob(StringSection<char> stringSection)
     {
         auto result = std::make_shared<std::vector<uint8>>((const uint8*)stringSection.begin(), (const uint8*)stringSection.end());
         result->push_back(0);
@@ -387,8 +338,8 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     static void CreatePayloadFromBlobs(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         ID3DBlob* payloadBlob,
         ID3DBlob* errorsBlob,
         const ShaderService::ShaderHeader& hdr)
@@ -566,21 +517,22 @@ namespace RenderCore { namespace Metal_DX11
         //      Also, there is a potential chance that the source shader code could change twice in rapid succession, which
         //      could cause the CompilerShaderByteCode object to be destroyed while we still have a pointer to it. Actually,
         //      this case of one compiled asset being dependent on another compile asset introduces a lot of complications!
-        auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(initializer, defines);
-        auto state = byteCode.StallWhilePending();
+        auto future = ::Assets::MakeAsset<CompiledShaderByteCode>(initializer, defines);
+        auto state = future->StallWhilePending();
         if (state != ::Assets::AssetState::Ready)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Shader compile failure while building function linking module"));
-        auto code = byteCode.GetByteCode();
+            Throw(::Exceptions::BasicLabel("Shader compile failure while building function linking module (%s)", initializer));
+		auto byteCode = future->Actualize();
+        auto code = byteCode->GetByteCode();
 
         ID3D11Module* rawModule = nullptr;
         auto compiler = D3DShaderCompiler::GetInstance(); 
-        auto hresult = compiler->D3DLoadModule_Wrapper(code.first, code.second, &rawModule);
+        auto hresult = compiler->D3DLoadModule_Wrapper(code.begin(), code.size(), &rawModule);
         _module = moveptr(rawModule);
         if (!SUCCEEDED(hresult))
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Failure while creating shader module from compiled shader byte code"));
+            Throw(::Exceptions::BasicLabel("Failure while creating shader module from compiled shader byte code (%s)", initializer));
 
         ID3D11LibraryReflection* reflectionRaw = nullptr;
-        compiler->D3DReflectLibrary_Wrapper(code.first, code.second, IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
+        compiler->D3DReflectLibrary_Wrapper(code.begin(), code.size(), IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
         _reflection = moveptr(reflectionRaw);
     }
 
@@ -614,8 +566,8 @@ namespace RenderCore { namespace Metal_DX11
         ID3D11FunctionLinkingGraph* GetUnderlying() { return _graph.get(); }
 
         bool TryLink(
-            std::shared_ptr<std::vector<uint8>>& payload,
-            std::shared_ptr<std::vector<uint8>>& errors,
+			::Assets::Blob& payload,
+			::Assets::Blob& errors,
             std::vector<::Assets::DependentFileState>& dependencies,
             const char shaderModel[]);
 
@@ -715,8 +667,8 @@ namespace RenderCore { namespace Metal_DX11
     FunctionLinkingGraph::~FunctionLinkingGraph() {}
 
     bool FunctionLinkingGraph::TryLink(
-        std::shared_ptr<std::vector<uint8>>& payload,
-        std::shared_ptr<std::vector<uint8>>& errors,
+		::Assets::Blob& payload,
+		::Assets::Blob& errors,
         std::vector<::Assets::DependentFileState>& dependencies,
         const char shaderModel[])
     {
@@ -812,7 +764,7 @@ namespace RenderCore { namespace Metal_DX11
 
         CreatePayloadFromBlobs(
             payload, errors, resultBlob.get(), errorsBlob1.get(), 
-            ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false });
+            ShaderService::ShaderHeader { shaderModel });
 
         dependencies.insert(dependencies.end(), _depFiles.begin(), _depFiles.end());
         return true;
@@ -1228,8 +1180,8 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     bool D3DShaderCompiler::DoLowLevelCompile(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
@@ -1307,10 +1259,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
             
                 FunctionLinkingGraph flg(finalSection, shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
-                bool linkResult = flg.TryLink(payload, errors, dependencies, shaderModel);
-                if (linkResult) { MarkValid(shaderPath); }
-                else            { MarkInvalid(shaderPath, S_FALSE, errors); }
-                return linkResult;
+                return flg.TryLink(payload, errors, dependencies, shaderModel);
 
             } catch (const std::exception& e) {
 
@@ -1318,7 +1267,6 @@ namespace RenderCore { namespace Metal_DX11
                     // step. We can get parsing errors here, as well as linking errors
                 auto* what = e.what();
                 errors = std::make_shared<std::vector<uint8>>(what, XlStringEnd(what)+1);
-                MarkInvalid(shaderPath, S_FALSE, errors);
                 return false;
 
             }
@@ -1346,15 +1294,12 @@ namespace RenderCore { namespace Metal_DX11
             CreatePayloadFromBlobs(
                 payload, errors, codeResult, errorResult, 
                 ShaderService::ShaderHeader {
-                    ShaderService::ShaderHeader::Version, shaderPath._dynamicLinkageEnabled
+                    shaderPath._shaderModel, shaderPath._dynamicLinkageEnabled
                 });
 
             dependencies = includeHandler.GetIncludeFiles();
             dependencies.push_back(
                 ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));   // also need a dependency for the base file
-
-            if (SUCCEEDED(hresult)) { MarkValid(shaderPath); }
-            else                    { MarkInvalid(shaderPath, hresult, errors); }
 
             return SUCCEEDED(hresult);
 
@@ -1419,7 +1364,7 @@ namespace RenderCore { namespace Metal_DX11
             return E_NOINTERFACE;
         }
 
-        LogAlwaysInfo << "Performing D3D shader compile on: " << (pSourceName ? pSourceName : "<<unnamed>>") << ":" << (pEntrypoint?pEntrypoint:"<<unknown entry point>>") << "(" << (pTarget?pTarget:"<<unknown shader model>>") << ")";
+        Log(Verbose) << "Performing D3D shader compile on: " << (pSourceName ? pSourceName : "<<unnamed>>") << ":" << (pEntrypoint?pEntrypoint:"<<unknown entry point>>") << "(" << (pTarget?pTarget:"<<unknown shader model>>") << ")";
 
         typedef HRESULT WINAPI D3DCompile_Fn(
             LPCVOID, SIZE_T, LPCSTR,
@@ -1622,10 +1567,9 @@ namespace RenderCore { namespace Metal_DX11
         auto byteCode = shaderCode.GetByteCode();
 
         ID3D::ShaderReflection* reflectionTemp = nullptr;
-        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.first, byteCode.second, s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
+        HRESULT hresult = compiler->D3DReflect_Wrapper(byteCode.begin(), byteCode.size(), s_shaderReflectionInterfaceGuid, (void**)&reflectionTemp);
         if (!SUCCEEDED(hresult) || !reflectionTemp)
-            Throw(::Assets::Exceptions::InvalidAsset(
-                shaderCode.Initializer(), "Error while invoking low-level shader reflection"));
+            Throw(::Exceptions::BasicLabel("Error while invoking low-level shader reflection"));
         return moveptr(reflectionTemp);
     }
 

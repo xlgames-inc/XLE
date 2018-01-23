@@ -20,9 +20,9 @@
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -34,7 +34,6 @@
 #include "../../Core/Types.h"
 #include <vector>
 
-#include "../../Assets/Assets.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/LightingParserContext.h"
 
@@ -124,12 +123,12 @@ namespace GUILayer
             const auto techniqueIndex = 0u;
 
             static ParameterBox materialParameters({std::make_pair((const utf8*)"MAT_SKIP_LIGHTING_SCALE", "1")});
-            Techniques::TechniqueMaterial material(
+            RenderCore::Assets::ShaderVariationSet material(
                 vf._inputLayout,
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
                 materialParameters);
 
-            auto variation = material.FindVariation(parsingContext, techniqueIndex, "xleres/techniques/illum.tech");
+            auto variation = material.FindVariation(parsingContext, techniqueIndex, "illum");
             if (variation._shader._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
@@ -311,7 +310,7 @@ namespace GUILayer
             auto& threadContext = context->GetThreadContext();
             if (highlight == nullptr) {
                 CATCH_ASSETS_BEGIN
-                    ToolsRig::BinaryHighlight highlight(threadContext, context->GetParsingContext().GetNamedResources());
+                    ToolsRig::BinaryHighlight highlightRenderer(threadContext, context->GetParsingContext().GetNamedResources());
                     ToolsRig::Placements_RenderFiltered(
                         threadContext, context->GetParsingContext(), 
                         RenderCore::Techniques::TechniqueIndex::Forward,
@@ -321,7 +320,7 @@ namespace GUILayer
                     const Float3 highlightCol(.75f, .8f, 0.4f);
                     const unsigned overlayCol = 2;
 
-                    highlight.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
+					highlightRenderer.FinishWithOutlineAndOverlay(threadContext, highlightCol, overlayCol);
                 CATCH_ASSETS_END(context->GetParsingContext())
 
             } else {

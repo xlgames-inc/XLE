@@ -73,7 +73,7 @@ namespace RenderCore { namespace ImplDX11
     class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11
     {
     public:
-        virtual void*       QueryInterface(const GUID& guid);
+        virtual void*       QueryInterface(size_t guid);
         std::shared_ptr<Metal_DX11::DeviceContext>&  GetUnderlying();
         ID3D::Device* ThreadContextDX11::GetUnderlyingDevice();
 
@@ -116,7 +116,7 @@ namespace RenderCore { namespace ImplDX11
     class DeviceDX11 : public Device, public Base_DeviceDX11
     {
     public:
-        virtual void*           QueryInterface(const GUID& guid);
+        virtual void*           QueryInterface(size_t guid);
         ID3D::Device*           GetUnderlyingDevice();
         ID3D::DeviceContext*    GetImmediateDeviceContext();
         

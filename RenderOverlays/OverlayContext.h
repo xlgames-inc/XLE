@@ -7,13 +7,15 @@
 #pragma once
 
 #include "IOverlayContext.h"
-#include "../RenderCore/Metal/DeviceContext.h"
-#include "../RenderCore/Metal/InputLayout.h"        // for ConstantBufferPacket
+#include "../RenderCore/RenderUtils.h"			// for SharedPkt
+#include "../RenderCore/Metal/InputLayout.h"	// for UniformsStream
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Types_Forward.h"
 #include "../Math/Matrix.h"
+#include "../Utility/MemoryUtils.h"
 #include "Font.h"
 #include <vector>
+#include <memory>
 
 #pragma warning(disable:4324)
 
@@ -41,13 +43,13 @@ namespace RenderOverlays
                                 ColorB color0, ColorB color1,
                                 const Float2& minTex0, const Float2& maxTex0, 
                                 const Float2& minTex1, const Float2& maxTex1,
-                                const std::string& pixelShader);
+								StringSection<char> pixelShader);
 
         void    DrawQuad(
             ProjectionMode::Enum proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
-            const std::string& pixelShader);
+            StringSection<char> pixelShader);
 
         void    DrawTexturedQuad(
             ProjectionMode::Enum proj, 
@@ -55,8 +57,8 @@ namespace RenderOverlays
             const std::string& texture,
             ColorB color, const Float2& minTex0, const Float2& maxTex0);
 
-        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, const char text[], va_list args);
-        float   StringWidth    (float scale, TextStyle* textStyle, const char text[], va_list args);
+        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char> text);
+        float   StringWidth    (float scale, TextStyle* textStyle, StringSection<char> text);
         float   TextHeight     (TextStyle* textStyle);
 
         void CaptureState();
@@ -83,11 +85,10 @@ namespace RenderOverlays
 		unsigned					_workingBufferSize;
 		unsigned					_writePointer;
 
-        intrusive_ptr<Font>     _font;
         TextStyle               _defaultTextStyle;
 
-        RenderCore::Metal::ConstantBufferPacket _viewportConstantBuffer;
-        RenderCore::Metal::ConstantBufferPacket _globalTransformConstantBuffer;
+        RenderCore::SharedPkt _viewportConstantBuffer;
+        RenderCore::SharedPkt _globalTransformConstantBuffer;
         RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::Techniques::ProjectionDesc _projDesc;
@@ -122,6 +123,12 @@ namespace RenderOverlays
         unsigned                VertexSize(VertexFormat format);
         void                    PushDrawCall(const DrawCall& drawCall);
     };
+
+	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
+		MakeImmediateOverlayContext(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::NamedResources* namedRes = nullptr,
+			const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 }
 
 

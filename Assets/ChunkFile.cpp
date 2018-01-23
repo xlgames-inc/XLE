@@ -15,8 +15,6 @@
 
 namespace Serialization { namespace ChunkFile
 {
-    using Assets::Exceptions::FormatError;
-
     ChunkFileHeader MakeChunkFileHeader(unsigned chunkCount, const char buildVersionString[], const char buildDateString[])
     {
         ChunkFileHeader header;
@@ -33,22 +31,22 @@ namespace Serialization { namespace ChunkFile
     {
         ChunkFileHeader fileHeader;
         if (file.Read(&fileHeader, sizeof(ChunkFileHeader), 1) != 1) {
-            throw FormatError("Incomplete file header");
+            throw ::Exceptions::BasicLabel("Incomplete file header");
         }
 
         if (fileHeader._magic != MagicHeader) {
-            throw FormatError("Unrecognised format");
+            throw ::Exceptions::BasicLabel("Unrecognised format");
         }
 
         if (fileHeader._fileVersionNumber != ChunkFileVersion) {
-            throw FormatError("Bad chunk file format");
+            throw ::Exceptions::BasicLabel("Bad chunk file format");
         }
 
         std::vector<ChunkHeader> result;
         result.resize(fileHeader._chunkCount);
         auto readCount = file.Read(AsPointer(result.begin()), sizeof(ChunkHeader), fileHeader._chunkCount);
         if (readCount != fileHeader._chunkCount) {
-            throw FormatError("Incomplete file header");
+            throw ::Exceptions::BasicLabel("Incomplete file header");
         }
 
         return result;
@@ -69,11 +67,11 @@ namespace Serialization { namespace ChunkFile
         }
 
         if (!scaffoldChunk._fileOffset) {
-            throw FormatError("Missing could not find chunk in chunk file: %s", filename);
+            throw ::Exceptions::BasicLabel("Missing could not find chunk in chunk file: %s", filename);
         }
 
         if (scaffoldChunk._chunkVersion != expectedVersion) {
-            throw FormatError("Incorrect chunk version: %s", filename);
+            throw ::Exceptions::BasicLabel("Incorrect chunk version: %s", filename);
         }
 
         return scaffoldChunk;
@@ -91,7 +89,7 @@ namespace Serialization { namespace ChunkFile
         auto rawMemoryBlock = std::make_unique<uint8[]>(scaffoldChunk._size);
         file->Seek(scaffoldChunk._fileOffset);
         file->Read(rawMemoryBlock.get(), 1, scaffoldChunk._size);
-        return std::move(rawMemoryBlock);
+        return rawMemoryBlock;
     }
 
 

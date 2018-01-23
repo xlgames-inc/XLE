@@ -5,15 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelCompiler.h"
-#include "../../ColladaConversion/DLLInterface.h"
 #include "../../Assets/AssetUtils.h"
-#include "../../Assets/CompilerHelper.h"
-#include "../../Assets/InvalidAssetManager.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/NascentChunkArray.h"
+#include "../../Assets/NascentChunk.h"
 #include "../../Assets/CompilerLibrary.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/CompilationThread.h"
+#include "../../Assets/MemoryFile.h"
+#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/DepVal.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -35,7 +35,8 @@ namespace RenderCore { namespace Assets
 	public:
 		void PerformCompile(
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-			::Assets::PendingCompileMarker& compileMarker,
+			StringSection<::Assets::ResChar> destinationFile,
+			::Assets::CompileFuture& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
 
@@ -48,8 +49,9 @@ namespace RenderCore { namespace Assets
 		}
 
 		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
-			: _library(libraryName.AsString().c_str())
+			: _library(libraryName)
 		{
+			_libraryName = libraryName.AsString();
 			_createCompileOpFunction = nullptr;
 			_isAttached = _attemptedAttach = false;
 		}
@@ -76,11 +78,7 @@ namespace RenderCore { namespace Assets
 		bool								_discoveryDone;
 		::Assets::DirectorySearchRules		_librarySearchRules;
 
-        Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
-        std::unique_ptr<::Assets::CompilationThread>	_thread;
-
 		void DiscoverLibraries();
-		void PerformCompile(::Assets::QueuedCompileOperation& op);
 
 		Pimpl() : _discoveryDone(false) {}
 		Pimpl(const Pimpl&) = delete;
@@ -89,141 +87,126 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void BuildChunkFile(
-        BasicFile& file,
-        IteratorRange<::Assets::NascentChunk*>& chunks,
-        const ConsoleRig::LibVersionDesc& versionInfo,
-        std::function<bool(const ::Assets::NascentChunk&)> predicate)
-    {
-        unsigned chunksForMainFile = 0;
-		for (const auto& c:chunks)
-            if (predicate(c))
-                ++chunksForMainFile;
-
-        using namespace Serialization::ChunkFile;
-        auto header = MakeChunkFileHeader(
-            chunksForMainFile, 
-            versionInfo._versionString, versionInfo._buildDateString);
-        file.Write(&header, sizeof(header), 1);
-
-        unsigned trackingOffset = unsigned(file.TellP() + sizeof(ChunkHeader) * chunksForMainFile);
-        for (const auto& c:chunks)
-            if (predicate(c)) {
-                auto hdr = c._hdr;
-                hdr._fileOffset = trackingOffset;
-                file.Write(&hdr, sizeof(c._hdr), 1);
-                trackingOffset += hdr._size;
-            }
-
-        for (const auto& c:chunks)
-            if (predicate(c))
-                file.Write(AsPointer(c._data.begin()), c._data.size(), 1);
-    }
-
     static const auto ChunkType_Metrics = ConstHash64<'Metr', 'ics'>::Value;
 
     static void SerializeToFile(
+		::Assets::IFileInterface& mainFile,
 		IteratorRange<::Assets::NascentChunk*> chunks,
-        const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
-            // Create the directory if we need to...
-        RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFilename).DriveAndPath());
-
             // We need to separate out chunks that will be written to
             // the main output file from chunks that will be written to
             // a metrics file.
 
-        {
-            auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
-            BuildChunkFile(outputFile, chunks, versionInfo,
-                [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
-        }
+        ::Assets::BuildChunkFile(mainFile, chunks, versionInfo,
+            [](const ::Assets::NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+	}
 
+	static void WriteMetrics(
+		StringSection<::Assets::ResChar> destinationFile,
+		IteratorRange<::Assets::NascentChunk*> chunks)
+	{
         for (const auto& c:chunks)
             if (c._hdr._type == ChunkType_Metrics) {
-                auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(
-                    StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
-                    "wb");
-                outputFile.Write((const void*)AsPointer(c._data.cbegin()), 1, c._data.size());
+				auto metricsFile = ::Assets::MainFileSystem::OpenFileInterface(
+					StringMeld<MaxPath>() << destinationFile << "-" << c._hdr._name,
+					"wb");
+				metricsFile->Write((const void*)AsPointer(c._data->cbegin()), 1, c._data->size());
             }
     }
 
     static void SerializeToFileJustChunk(
+		::Assets::IFileInterface& mainFile,
 		IteratorRange<::Assets::NascentChunk*> chunks,
-        const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
-        auto outputFile = ::Assets::MainFileSystem::OpenBasicFile(destinationFilename, "wb");
 		for (const auto& c:chunks)
-            outputFile.Write(AsPointer(c._data.begin()), c._data.size(), 1);
+			mainFile.Write(AsPointer(c._data->begin()), c._data->size(), 1);
     }
+
+	static ::Assets::DepValPtr MakeDepVal(
+		IteratorRange<const ::Assets::DependentFileState*> deps,
+		StringSection<::Assets::ResChar> initializer,
+		StringSection<::Assets::ResChar> libraryName)
+	{
+		::Assets::DepValPtr depVal;
+		if (!deps.empty()) {
+			depVal = ::Assets::AsDepVal(deps);
+		} else {
+			depVal = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
+		}
+		::Assets::RegisterFileDependency(depVal, libraryName);
+		return depVal;
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void CompilerLibrary::PerformCompile(
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-		::Assets::PendingCompileMarker& compileMarker,
+		StringSection<::Assets::ResChar> destinationFile,
+		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
-        TRY
-        {
-            AttachLibrary();
+        AttachLibrary();
 
-            ConsoleRig::LibVersionDesc libVersionDesc;
-            _library.TryGetVersion(libVersionDesc);
+        ConsoleRig::LibVersionDesc libVersionDesc;
+        _library.TryGetVersion(libVersionDesc);
 
+		std::vector<::Assets::DependentFileState> deps;
+
+		TRY
+		{
 			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
-            if (!requiresMerge) {
+			if (!requiresMerge) {
 
-                TRY 
-                {
-                    const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
-                    ::Assets::ResChar temp[MaxPath];
-                    if (typeCode == ModelCompiler::Type_RawMat) {
-                            // When building rawmat, a material name could be on the op._sourceID0
-                            // string. But we need to remove it from the path to find the real output
-                            // name.
-                        XlCopyString(temp, MakeFileNameSplitter(compileMarker.GetLocator()._sourceID0).AllExceptParameters());
-                        destinationFile = temp;
-                    }
+				auto model = (*_createCompileOpFunction)(initializer);
+				if (!model)
+					Throw(::Exceptions::BasicLabel("Compiler library returned null to compile request on %s", initializer.AsString().c_str()));
 
-                    auto model = (*_createCompileOpFunction)(initializer);
-						
-					// look for the first target of the correct type
-					auto targetCount = model->TargetCount();
-					bool foundTarget = false;
-					for (unsigned t=0; t<targetCount; ++t)
-						if (model->GetTarget(t)._type == typeCode) {
-							auto chunks = model->SerializeTarget(t);
-							if (typeCode != ModelCompiler::Type_RawMat) {
-								SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
-							} else 
-								SerializeToFileJustChunk(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
-							foundTarget = true;
-							break;
-						}
+				deps = *model->GetDependencies();
 
-					if (!foundTarget)
-						Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
+			
+				auto mainBlob = std::make_shared<std::vector<uint8_t>>();
+				auto mainFile = ::Assets::CreateMemoryFile(mainBlob);
 
-                        // write new dependencies
-					auto splitName = MakeFileNameSplitter(initializer);
-                    std::vector<::Assets::DependentFileState> deps;
-                    deps.push_back(destinationStore.GetDependentFileState(splitName.AllExceptParameters()));
-					compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
-        
-					compileMarker.SetState(::Assets::AssetState::Ready);
+				// Create the directory if we need to...
+				RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(destinationFile).DriveAndPath());
 
-                } CATCH(...) {
-                    if (!compileMarker.GetLocator()._dependencyValidation) {
-						compileMarker.GetLocator()._dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-                        ::Assets::RegisterFileDependency(compileMarker.GetLocator()._dependencyValidation, MakeFileNameSplitter(initializer).AllExceptParameters());
-                    }
-                    throw;
-                } CATCH_END
+				// look for the first target of the correct type
+				auto targetCount = model->TargetCount();
+				bool foundTarget = false;
+				for (unsigned t=0; t<targetCount; ++t)
+					if (model->GetTarget(t)._type == typeCode) {
+						auto chunks = model->SerializeTarget(t);
+						if (typeCode != ModelCompiler::Type_RawMat) {
+							SerializeToFile(*mainFile, MakeIteratorRange(*chunks), libVersionDesc);
+						} else 
+							SerializeToFileJustChunk(*mainFile, MakeIteratorRange(*chunks), libVersionDesc);
+						WriteMetrics(destinationFile, MakeIteratorRange(*chunks));
+						foundTarget = true;
+						break;
+					}
 
-            }  else {
+				if (!foundTarget)
+					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
+
+				{
+					auto dst = ::Assets::MainFileSystem::OpenFileInterface(destinationFile, "wb");
+					dst->Write(mainBlob->data(), mainBlob->size());
+				}
+
+				auto depVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
+				::Assets::rstring requestParams;
+				if (typeCode == ModelCompiler::Type_RawMat)
+					requestParams = MakeFileNameSplitter(initializer).Parameters().AsString();
+				compileMarker.AddArtifact(
+					"main",
+					std::make_shared<::Assets::BlobArtifact>(mainBlob, depVal, requestParams));
+
+				compileMarker.SetState(::Assets::AssetState::Ready);
+
+			}  else {
 
 				assert(0);	// broken when generalizing animation set serialization functionality.
 							// We now need to do the merging in this module; just serialize animations from single
@@ -232,56 +215,56 @@ namespace RenderCore { namespace Assets
 				if (!_extractAnimationsFn || !_serializeAnimationSetFn || !_createAnimationSetFn)
 					Throw(::Exceptions::BasicLabel("Could not execute animation conversion operation because this compiler library doesn't provide an interface for animations"));
 
-                    //  source for the animation set should actually be a directory name, and
-                    //  we'll use all of the dae files in that directory as animation inputs
-                auto sourceFiles = RawFS::FindFiles(initializer.AsString() + "/*.dae");
-                std::vector<::Assets::DependentFileState> deps;
+					//  source for the animation set should actually be a directory name, and
+					//  we'll use all of the dae files in that directory as animation inputs
+				auto sourceFiles = RawFS::FindFiles(initializer.AsString() + "/*.dae");
+				std::vector<::Assets::DependentFileState> deps;
 
-                auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
-                for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
-                    char baseName[MaxPath]; // get the base name of the file (without the extension)
-                    XlBasename(baseName, dimof(baseName), i->c_str());
-                    XlChopExtension(baseName);
+				auto mergedAnimationSet = (*_createAnimationSetFn)("mergedanim");
+				for (auto i=sourceFiles.begin(); i!=sourceFiles.end(); ++i) {
+					char baseName[MaxPath]; // get the base name of the file (without the extension)
+					XlBasename(baseName, dimof(baseName), i->c_str());
+					XlChopExtension(baseName);
 
-                    TRY {
-                            //
-                            //      First; load the animation file as a model
-                            //          note that this will do geometry processing; etc -- but all that geometry
-                            //          information will be ignored.
-                            //
-                        auto model = (*_createCompileOpFunction)(i->c_str());
+					TRY {
+							//
+							//      First; load the animation file as a model
+							//          note that this will do geometry processing; etc -- but all that geometry
+							//          information will be ignored.
+							//
+						auto model = (*_createCompileOpFunction)(i->c_str());
 
-                            //
-                            //      Now, merge the animation data into 
-                        (*_extractAnimationsFn)(*mergedAnimationSet.get(), *model.get(), baseName);
-                    } CATCH (const std::exception& e) {
-                            // on exception, ignore this animation file and move on to the next
-                        LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
-                    } CATCH_END
+							//
+							//      Now, merge the animation data into 
+						(*_extractAnimationsFn)(*mergedAnimationSet.get(), *model.get(), baseName);
+					} CATCH (const std::exception& e) {
+							// on exception, ignore this animation file and move on to the next
+						LogAlwaysError << "Exception while processing animation: (" << baseName << "). Exception is: (" << e.what() << ")";
+					} CATCH_END
 
-                    deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
-                }
+					deps.push_back(destinationStore.GetDependentFileState(i->c_str()));
+				}
 
 				auto chunks = (*_serializeAnimationSetFn)(*mergedAnimationSet);
-                SerializeToFile(MakeIteratorRange(*chunks), compileMarker.GetLocator()._sourceID0, libVersionDesc);
+				SerializeToFile(MakeIteratorRange(*chunks), compileMarker.GetLocator()._sourceID0, libVersionDesc);
 
 				compileMarker.GetLocator()._dependencyValidation = destinationStore.WriteDependencies(compileMarker.GetLocator()._sourceID0, splitName.DriveAndPath(), MakeIteratorRange(deps));
-                if (::Assets::Services::GetInvalidAssetMan())
-                    ::Assets::Services::GetInvalidAssetMan()->MarkValid(initializer);
+				if (::Assets::Services::GetInvalidAssetMan())
+					::Assets::Services::GetInvalidAssetMan()->MarkValid(initializer);
 				compileMarker.SetState(::Assets::AssetState::Ready);
 #endif
-            }
-        } CATCH(const std::exception& e) {
-            LogAlwaysError << "Caught exception while performing Collada conversion. Exception details as follows:";
-            LogAlwaysError << e.what();
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
-			compileMarker.SetState(::Assets::AssetState::Invalid);
-        } CATCH(...) {
-            if (::Assets::Services::GetInvalidAssetMan())
-                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
-			compileMarker.SetState(::Assets::AssetState::Invalid);
-        } CATCH_END
+
+			}
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(_libraryName))));
+		} CATCH(const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(_libraryName))));
+		} CATCH(...) {
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::Unknown,
+				MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(_libraryName)),
+				"%s", "unknown exception"));
+		} CATCH_END
     }
 
 	void CompilerLibrary::AttachLibrary()
@@ -318,7 +301,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -342,7 +325,7 @@ namespace RenderCore { namespace Assets
             _store->MakeIntermediateName(
                 destination, (unsigned)count, MakeFileNameSplitter(_requestName).AllExceptParameters());
         } else {
-            _store->MakeIntermediateName(destination, (unsigned)count, _requestName.c_str());
+            _store->MakeIntermediateName(destination, (unsigned)count, MakeStringSection(_requestName));
         }
 
         switch (_typeCode) {
@@ -357,15 +340,24 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::IArtifact> ModelCompiler::Marker::GetExistingAsset() const
     {
-        ::Assets::IntermediateAssetLocator result;
-        MakeIntermediateName(result._sourceID0, dimof(result._sourceID0));
-        result._dependencyValidation = _store->MakeDependencyValidation(result._sourceID0);
-        if (_typeCode == Type_RawMat)
-            XlCatString(result._sourceID0, MakeFileNameSplitter(_requestName).ParametersWithDivider());
-        return result;
+		auto splitRequest = MakeFileNameSplitter(_requestName);
+		if (_typeCode == ModelCompiler::Type_RawMat) {
+			if (XlEqStringI(splitRequest.Extension(), "material")) {
+				auto depVal = std::make_shared<::Assets::DependencyValidation>();
+				RegisterFileDependency(depVal, splitRequest.AllExceptParameters());
+				return std::make_shared<::Assets::FileArtifact>(_requestName, depVal);
+			}
+		}
+
+		::Assets::ResChar intermediateName[MaxPath];
+        MakeIntermediateName(intermediateName, dimof(intermediateName));
+		auto depVal = _store->MakeDependencyValidation(intermediateName);
+		if (_typeCode == ModelCompiler::Type_RawMat)
+			XlCatString(intermediateName, splitRequest.ParametersWithDivider());
+		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::PendingCompileMarker> ModelCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> ModelCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
@@ -390,25 +382,29 @@ namespace RenderCore { namespace Assets
             //
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
-        auto backgroundOp = std::make_shared<::Assets::QueuedCompileOperation>();
+        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
-        XlCopyString(backgroundOp->_initializer0, _requestName);
-        MakeIntermediateName(backgroundOp->GetLocator()._sourceID0, dimof(backgroundOp->GetLocator()._sourceID0));
-        if (_typeCode == Type_RawMat)
-            XlCatString(backgroundOp->GetLocator()._sourceID0, splitRequest.ParametersWithDivider());
-        backgroundOp->_destinationStore = _store;
-        backgroundOp->_typeCode = _typeCode;
-		backgroundOp->_compilerIndex = compilerIndex;
 
-        {
-            ScopedLock(c->_pimpl->_threadLock);
-            if (!c->_pimpl->_thread) {
-                auto* p = c->_pimpl.get();
-                c->_pimpl->_thread = std::make_unique<::Assets::CompilationThread>(
-                    [p](::Assets::QueuedCompileOperation& op) { p->PerformCompile(op); });
-            }
-        }
-        c->_pimpl->_thread->Push(backgroundOp);
+		::Assets::ResChar intermediateName[MaxPath];
+		MakeIntermediateName(intermediateName, dimof(intermediateName));
+
+		::Assets::rstring destinationFile = intermediateName;
+		auto requestName = _requestName;
+		auto typeCode = _typeCode;
+		auto* store = _store;
+		auto compiler = _compiler;
+		QueueCompileOperation(
+			backgroundOp,
+			[compilerIndex, compiler, typeCode, requestName, destinationFile, store](::Assets::CompileFuture& op) {
+				auto c = compiler.lock();
+				if (!c) {
+					op.SetState(::Assets::AssetState::Invalid);
+					return;
+				}
+
+				assert(compilerIndex < c->_pimpl->_compilers.size());
+				c->_pimpl->_compilers[compilerIndex].PerformCompile(typeCode, MakeStringSection(requestName), destinationFile, op, *store);
+			});
         
         return std::move(backgroundOp);
     }
@@ -437,11 +433,6 @@ namespace RenderCore { namespace Assets
 
     void ModelCompiler::StallOnPendingOperations(bool cancelAll)
     {
-        {
-            ScopedLock(_pimpl->_threadLock);
-            if (!_pimpl->_thread) return;
-        }
-        _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
 	void ModelCompiler::AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules& directories)
@@ -463,12 +454,6 @@ namespace RenderCore { namespace Assets
 			MakeFileNameSplitter(processPath).DriveAndPath());
 	}
     ModelCompiler::~ModelCompiler() {}
-
-	void ModelCompiler::Pimpl::PerformCompile(::Assets::QueuedCompileOperation& op)
-	{
-		assert(op._compilerIndex < _compilers.size());
-		_compilers[op._compilerIndex].PerformCompile(op._typeCode, op._initializer0, op, *op._destinationStore);
-	}
 
 	void ModelCompiler::Pimpl::DiscoverLibraries()
 	{

@@ -15,6 +15,7 @@
 #include "../Types.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/LogUtil.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/MemoryUtils.h"
@@ -23,8 +24,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    using ::Assets::Exceptions::FormatError;
-
     static const bool SkinNormals = true;
 
     NascentBoundSkinnedGeometry BindController(
@@ -117,7 +116,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             bucketStart[b] = bucketEnd[b] = indexAccumulator;
         }
         if (indexAccumulator != unifiedVertexCount) {
-            Throw(FormatError("Vertex count mismatch in node (%s)", nodeName));
+            Throw(::Exceptions::BasicLabel("Vertex count mismatch in node (%s)", nodeName));
         }
 
             //
@@ -157,7 +156,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned animatedVertexStride    = CalculateVertexSize(AsPointer(animatedVertexLayout.begin()), AsPointer(animatedVertexLayout.end()));
 
         if (!animatedVertexStride) {
-            Throw(FormatError("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
+            Throw(::Exceptions::BasicLabel("Could not find any animated vertex elements in skinning controller in node (%s). There must be a problem with vertex input semantics.", nodeName));
         }
                             
             //      Copy out those parts of the vertex buffer that are unanimated and animated
@@ -194,7 +193,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 (uint8*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint8 inputIndex) -> uint8 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
         } else {
-            Throw(FormatError("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
+            Throw(::Exceptions::BasicLabel("Unrecognised index format when instantiating skin controller in node (%s).", nodeName));
         }
                                 
             //      We have to define the draw calls that perform the pre-skinning step
@@ -243,7 +242,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         if (destinationWeightVertexStride) {
             unsigned alignedDestinationWeightVertexStride = (unsigned)std::max(destinationWeightVertexStride, size_t(4));
             if (alignedDestinationWeightVertexStride != destinationWeightVertexStride) {
-                LogAlwaysWarningF("LogAlwaysWarningF -- vertex buffer had to be expanded for vertex alignment restrictions in node (%s). This will leave some wasted space in the vertex buffer. This can be caused when using skinning when only 1 weight is really required.\n", nodeName);
+                LogLine(Warning, "vertex buffer had to be expanded for vertex alignment restrictions in node {}. This will leave some wasted space in the vertex buffer. This can be caused when using skinning when only 1 weight is really required.\n", nodeName);
                 destinationWeightVertexStride = alignedDestinationWeightVertexStride;
             }
         }
@@ -434,7 +433,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             RenderCore::Assets::VertexData 
                 { _preskinningIA, unsigned(vbOffset2), unsigned(vbSize2) });
 
-        outputSerializer.SerializeSubBlock(_inverseBindMatrices.begin(), _inverseBindMatrices.end());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_inverseBindMatrices));
         outputSerializer.SerializeValue(_inverseBindMatrices.size());
 
         DynamicArray<Float4x4> inverseBindByBindShape = DynamicArray<Float4x4>::Copy(_inverseBindMatrices);
@@ -443,14 +442,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 _bindShapeMatrix,
                 inverseBindByBindShape[c]);
         }
-        outputSerializer.SerializeSubBlock(inverseBindByBindShape.begin(), inverseBindByBindShape.end());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(inverseBindByBindShape.cbegin(), inverseBindByBindShape.cend()));
         outputSerializer.SerializeValue(inverseBindByBindShape.size());
-        outputSerializer.SerializeSubBlock(_jointMatrices.begin(), _jointMatrices.end());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_jointMatrices));
         outputSerializer.SerializeValue(_jointMatrices.size());
         
         ::Serialize(outputSerializer, _bindShapeMatrix);
 
-        outputSerializer.SerializeSubBlock(AsPointer(_preskinningDrawCalls.cbegin()), AsPointer(_preskinningDrawCalls.cend()));
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_preskinningDrawCalls));
         outputSerializer.SerializeValue(_preskinningDrawCalls.size());
 
         ::Serialize(outputSerializer, _localBoundingBox.first);
@@ -521,7 +520,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
     UnboundSkinController::Bucket::Bucket() { _weightCount = 0; _vertexBufferSize = 0; }
-    UnboundSkinController::Bucket::Bucket(Bucket&& moveFrom)
+    UnboundSkinController::Bucket::Bucket(Bucket&& moveFrom) never_throws
     :       _vertexInputLayout(std::move(moveFrom._vertexInputLayout))
     ,       _weightCount(moveFrom._weightCount)
     ,       _vertexBufferData(std::move(moveFrom._vertexBufferData))
@@ -589,7 +588,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     :       _source(std::move(moveFrom._source))
     {}
 
-    UnboundMorphController& UnboundMorphController::operator=(UnboundMorphController&& moveFrom)
+    UnboundMorphController& UnboundMorphController::operator=(UnboundMorphController&& moveFrom) never_throws
     {
         _source = std::move(moveFrom._source);
         return *this;

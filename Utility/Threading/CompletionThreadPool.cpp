@@ -5,15 +5,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompletionThreadPool.h"
-#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../../ConsoleRig/Log.h"
-#endif
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Core/Exceptions.h"
 
 namespace Utility
 {
-    void CompletionThreadPool::EnqueueInternal(PendingTask&& task)
+    void CompletionThreadPool::EnqueueBasic(PendingTask&& task)
     {
         _pendingTasks.push_overflow(std::forward<PendingTask>(task));
 
@@ -59,14 +57,10 @@ namespace Utility
                             {
                                 task();
                             } CATCH(const std::exception& e) {
-                                #if defined(HAS_XLE_CONSOLE_RIG)
-                                    LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
-                                #endif
+                                Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
 								(void)e;
                             } CATCH(...) {
-                                #if defined(HAS_XLE_CONSOLE_RIG)
-                                    LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
-                                #endif
+                                Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
                             } CATCH_END
 
                                 // That that when using completion routines, we want to attempt to
@@ -103,7 +97,7 @@ namespace Utility
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void ThreadPool::EnqueueInternal(PendingTask&& task)
+    void ThreadPool::EnqueueBasic(PendingTask&& task)
     {
         _pendingTasks.push_overflow(std::forward<PendingTask>(task));
         _pendingTaskVariable.notify_one();
@@ -144,14 +138,10 @@ namespace Utility
                         {
                             task();
                         } CATCH(const std::exception& e) {
-                            #if defined(HAS_XLE_CONSOLE_RIG)
-                                LogAlwaysError << "Suppressing exception in thread pool thread: " << e.what();
-                            #endif
+                            Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
                             (void)e;
                         } CATCH(...) {
-                            #if defined(HAS_XLE_CONSOLE_RIG)
-                                LogAlwaysError << "Suppressing unknown exception in thread pool thread.";
-                            #endif
+                            Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
                         } CATCH_END
                     }
                 }

@@ -29,10 +29,11 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/VegetationSpawn.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <stack>
@@ -65,14 +66,14 @@ namespace GUILayer
 
         {
             RenderCore::Techniques::RenderPassInstance rpi(
-                context, {{RenderCore::SubpassDesc({0})}},
+                context, {{RenderCore::SubpassDesc{{0}}}},
                 0u, *pimpl._namedResources);
 
             ///////////////////////////////////////////////////////////////////////
             bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
             if (hasPendingMessage) {
                 auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-                DrawPendingResources(context, lightingParserContext, defaultFont0.get());
+                DrawPendingResources(context, lightingParserContext, defaultFont0);
             }
             ///////////////////////////////////////////////////////////////////////
 
@@ -185,17 +186,17 @@ namespace GUILayer
         RenderOverlays::IOverlayContext& context,
         const ToolsRig::VisMouseOver& mouseOver,
         std::shared_ptr<ToolsRig::ModelVisSettings> modelSettings,
-        std::shared_ptr<RenderCore::Assets::ModelCache> modelCache)
+        std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
+		unsigned viewportWidth, unsigned viewportHeight)
     {
         using namespace RenderOverlays::DebuggingDisplay;
-        auto viewportDims = context.GetDeviceContext()->GetStateDesc()._viewportDimensions;
 
         auto textHeight = (int)context.TextHeight(nullptr);
         String^ matName = VisMouseOver::DescriptiveMaterialName(
             VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));
         DrawText(
             &context,
-            Rect(Coord2(3, viewportDims[1]-textHeight-3), Coord2(viewportDims[0]-3, viewportDims[1]-3)),
+            Rect(Coord2(3, viewportHeight -textHeight-3), Coord2(viewportWidth-3, viewportHeight -3)),
             nullptr, RenderOverlays::ColorB(0xffafafaf),
             StringMeld<512>() 
                 << "Material: {Color:7f3faf}" << clix::marshalString<clix::E_UTF8>(matName)
@@ -237,6 +238,8 @@ namespace GUILayer
             overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
         }
 
+		auto viewportDims = immContext->GetStateDesc()._viewportDimensions;
+
         using namespace std::placeholders;
         overlaySet.AddSystem(
             std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
@@ -244,7 +247,7 @@ namespace GUILayer
                 immContext,
                 _pimpl->_globalTechniqueContext,
                 settings->Camera->GetUnderlying(), intersectionScene,
-                std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr())));
+                std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr(), viewportDims[0], viewportDims[1])));
     }
 
     VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources)

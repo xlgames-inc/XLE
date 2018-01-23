@@ -12,7 +12,7 @@
 #include <vector>
 #include <memory>
 
-namespace Assets { namespace Exceptions { class AssetException; }}
+namespace Assets { namespace Exceptions { class RetrievalError; }}
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
@@ -65,7 +65,7 @@ namespace RenderCore { namespace Techniques
             StringHelpers();
         };
         std::unique_ptr<StringHelpers> _stringHelpers;
-        void Process(const ::Assets::Exceptions::AssetException& e);
+        void Process(const ::Assets::Exceptions::RetrievalError& e);
         bool HasPendingAssets() const { return _stringHelpers->_pendingAssets[0] != '\0'; }
         bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
         bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
@@ -109,7 +109,7 @@ namespace RenderCore { namespace Techniques
     /// </example>
     /// @{
     #define CATCH_ASSETS(parserContext)                                                             \
-        CATCH(const ::Assets::Exceptions::AssetException& e) { (parserContext).Process(e); }        \
+        CATCH(const ::Assets::Exceptions::RetrievalError& e) { (parserContext).Process(e); }        \
         /**/
 
     #define CATCH_ASSETS_BEGIN TRY {

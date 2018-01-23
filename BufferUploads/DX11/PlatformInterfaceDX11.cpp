@@ -343,7 +343,7 @@
             moveFrom._pitches = TexturePitches();
         }
 
-        const MappedBuffer& MappedBuffer::operator=(MappedBuffer&& moveFrom)
+        const MappedBuffer& MappedBuffer::operator=(MappedBuffer&& moveFrom) never_throws
         {
             if (_sourceContext && _data) {
                 Unmap(*_sourceContext, *_resource, _subResourceIndex);
@@ -431,7 +431,7 @@
 
             if (!renderCoreContext.IsImmediate()) {
 				auto dev = renderCoreContext.GetDevice();
-				IDeviceDX11* devDX11 = (IDeviceDX11*)dev->QueryInterface(__uuidof(IDeviceDX11));
+				IDeviceDX11* devDX11 = (IDeviceDX11*)dev->QueryInterface(typeid(IDeviceDX11).hash_code());
 				if (devDX11) {
 						//
 						//  See D3D documentation for "ID3D11DeviceContext::UpdateSubresource'

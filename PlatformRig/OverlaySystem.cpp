@@ -6,7 +6,9 @@
 
 #include "OverlaySystem.h"
 #include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
+#include "../../RenderOverlays/OverlayContext.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../RenderCore/IThreadContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -208,7 +210,9 @@ namespace PlatformRig
         RenderCore::IThreadContext& device, 
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        _screens->Render(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+		auto viewportDims = device.GetStateDesc()._viewportDimensions;
+		_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
     }
 
     void ConsoleOverlaySystem::RenderToScene(

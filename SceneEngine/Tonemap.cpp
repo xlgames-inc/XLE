@@ -10,7 +10,6 @@
 #include "SceneParser.h"
 #include "LightDesc.h"
 #include "GestaltResource.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -26,7 +25,9 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringFormat.h"
@@ -401,15 +402,14 @@ namespace SceneEngine
             const auto SRVLayout = Metal::ImageLayout::ShaderReadOnlyOptimal;
 
             // currently making no assumptions about starting or ending layouts
-            ResourceBarriers barriers(
-                context,
-                {{ resources._bloomTempBuffer._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }});
+			SceneEngine::ResourceBarriers::Resource resList[] = {{ resources._bloomTempBuffer._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }};
+            ResourceBarriers barriers(context, MakeIteratorRange(resList));
             for (unsigned c=0; c<(unsigned)resources._luminanceBuffers.size(); ++c)
-                barriers.AddResources({{resources._luminanceBuffers[c].Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }});
+                barriers.AddResources(MakeIteratorRange<ResourceBarriers::Resource>({{resources._luminanceBuffers[c].Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }}));
             for (unsigned c=0; c<(unsigned)resources._bloomBuffers.size(); ++c)
-                barriers.AddResources({{resources._bloomBuffers[c]._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }});
+                barriers.AddResources(MakeIteratorRange<ResourceBarriers::Resource>({{resources._bloomBuffers[c]._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }}));
 
-            barriers.SetBarrier({{lumianceBuffersId+0, UAVLayout}, {bloomBuffersId+0, UAVLayout}});
+            barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+0, UAVLayout}, {bloomBuffersId+0, UAVLayout}}));
             context.Bind(resources._sampleInitialLuminance);
             context.BindCS(MakeResourceList(sourceTexture));
             context.BindCS(MakeResourceList(resources._luminanceBuffers[0].UAV(), resources._bloomBuffers[0]._bloomBuffer.UAV(), resources._propertiesBuffer.UAV()));
@@ -418,7 +418,7 @@ namespace SceneEngine
 
             context.Bind(*resources._luminanceStepDown);
             for (unsigned c=1; c<(unsigned)resources._luminanceBuffers.size(); ++c) {
-                barriers.SetBarrier({{lumianceBuffersId+c-1, SRVLayout}, {lumianceBuffersId+0, UAVLayout}});
+                barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+c-1, SRVLayout}, {lumianceBuffersId+0, UAVLayout}}));
                 context.BindCS(MakeResourceList(resources._luminanceBuffers[c-1].SRV()));
                 context.BindCS(MakeResourceList(resources._luminanceBuffers[c].UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
@@ -427,7 +427,7 @@ namespace SceneEngine
 
             context.Bind(*resources._brightPassStepDown);
             for (unsigned c=1; c<(unsigned)resources._bloomBuffers.size(); ++c) {
-                barriers.SetBarrier({{bloomBuffersId+c-1, SRVLayout}, {bloomBuffersId+c, UAVLayout}});
+                barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+c-1, SRVLayout}, {bloomBuffersId+c, UAVLayout}}));
 
                 context.BindCS(MakeResourceList(resources._bloomBuffers[c-1]._bloomBuffer.SRV()));
                 context.BindCS(MakeResourceList(1, resources._bloomBuffers[c]._bloomBuffer.UAV()));
@@ -442,7 +442,7 @@ namespace SceneEngine
                 //      frame's values to produce the new value for this frame...
                 //
 
-            barriers.SetBarrier({{lumianceBuffersId+(unsigned)resources._luminanceBuffers.size()-1, SRVLayout}});
+            barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+(unsigned)resources._luminanceBuffers.size()-1, SRVLayout}}));
             context.BindCS(MakeResourceList(resources._luminanceBuffers[resources._luminanceBuffers.size()-1].SRV()));
             if (doAdapt)    context.Bind(*resources._updateOverallLuminance);
             else            context.Bind(*resources._updateOverallLuminanceNoAdapt);
@@ -497,14 +497,14 @@ namespace SceneEngine
                     float clampingWindow[] = { 0.f, 0.f, (float)i->_width - 1.f, (float)i->_height - 1.f };
                     clampingWindowCB.Update(context, &clampingWindow, sizeof(clampingWindow));
 
-                    barriers.SetBarrier({{bloomBuffersId+bloomBufferIndex, SRVLayout}, {bloomTempBufferId, UAVLayout}});
+                    barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+bloomBufferIndex, SRVLayout}, {bloomTempBufferId, UAVLayout}}));
                     context.BindCS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.UAV()));
                     context.BindCS(MakeResourceList(i->_bloomBuffer.SRV()));
                     context.Bind(horizBlur);
                     context.Dispatch(i->_width/16, i->_height/16);
                     context.UnbindCS<Metal::ShaderResourceView>(0, 1);
 
-                    barriers.SetBarrier({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomTempBufferId, SRVLayout}});
+                    barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomTempBufferId, SRVLayout}}));
                     context.BindCS(MakeResourceList(i->_bloomBuffer.UAV()));
                     context.BindCS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.SRV()));
                     context.Bind(vertBlur);
@@ -517,7 +517,7 @@ namespace SceneEngine
                         break;
 
                     // blend into the next step
-                    barriers.SetBarrier({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomBuffersId+bloomBufferIndex+1, SRVLayout}});
+                    barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomBuffersId+bloomBufferIndex+1, SRVLayout}}));
                     context.BindCS(MakeResourceList(i->_bloomBuffer.UAV()));
                     context.BindCS(MakeResourceList(oldi->_bloomBuffer.SRV()));
                     context.Bind(copyShader);
@@ -529,7 +529,7 @@ namespace SceneEngine
             }
 
             // We will read from bloom buffer 0 later down the pipeline...
-            barriers.SetBarrier({{bloomBuffersId+0, SRVLayout}});
+            barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+0, SRVLayout}}));
 
             return true;
         }
@@ -561,7 +561,7 @@ namespace SceneEngine
         }
         auto desc = Metal::ExtractDesc(inputResource);
         auto sampleCount = desc._textureDesc._samples._sampleCount;
-        return Techniques::FindCachedBoxDep2<ToneMappingResources>(
+        return ConsoleRig::FindCachedBoxDep2<ToneMappingResources>(
             desc._textureDesc._width, desc._textureDesc._height, bloomBufferFormat, sampleCount, sampleCount>1);
     }
 
@@ -702,7 +702,7 @@ namespace SceneEngine
                         auto colorGradingSettings = BuildColorGradingShaderConstants(ColorGradingSettings());
 
                         bool enableBloom = !!(settings._flags & ToneMapSettings::Flags::EnableBloom) && Tweakable("DoBloom", true);
-                        auto& box = Techniques::FindCachedBoxDep2<ToneMapShaderBox>(
+                        auto& box = ConsoleRig::FindCachedBoxDep2<ToneMapShaderBox>(
                             Tweakable("ToneMapOperator", 1), enableBloom,
                             hardwareSRGBEnabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
                             !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
@@ -909,7 +909,7 @@ namespace SceneEngine
                 //  
             unsigned blurBufferWidth = unsigned(viewport.Width/2);
             unsigned blurBufferHeight = unsigned(viewport.Height/2);
-            auto& resources = Techniques::FindCachedBoxDep2<AtmosphereBlurResources>(
+            auto& resources = ConsoleRig::FindCachedBoxDep2<AtmosphereBlurResources>(
                 blurBufferWidth, blurBufferHeight, Format::R16G16B16A16_FLOAT);
 
             Metal::ViewportDesc newViewport(0, 0, float(blurBufferWidth), float(blurBufferHeight), 0.f, 1.f);
@@ -1057,17 +1057,17 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ToneMapSettings>()
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Flags"),                   DefaultGet(Obj, _flags),                    DefaultSet(Obj, _flags));
-        props.Add(u("BloomThreshold"),          DefaultGet(Obj, _bloomThreshold),           DefaultSet(Obj, _bloomThreshold));
-        props.Add(u("BloomRampingFactor"),      DefaultGet(Obj, _bloomRampingFactor),       DefaultSet(Obj, _bloomRampingFactor));
-        props.Add(u("BloomDesaturationFactor"), DefaultGet(Obj, _bloomDesaturationFactor),  DefaultSet(Obj, _bloomDesaturationFactor));
-        props.Add(u("SceneKey"),                DefaultGet(Obj, _sceneKey),                 DefaultSet(Obj, _sceneKey));
-        props.Add(u("LuminanceMin"),            DefaultGet(Obj, _luminanceMin),             DefaultSet(Obj, _luminanceMin));
-        props.Add(u("LuminanceMax"),            DefaultGet(Obj, _luminanceMax),             DefaultSet(Obj, _luminanceMax));
-        props.Add(u("WhitePoint"),              DefaultGet(Obj, _whitepoint),               DefaultSet(Obj, _whitepoint));
-        props.Add(u("BloomBlurStdDev"),         DefaultGet(Obj, _bloomBlurStdDev),          DefaultSet(Obj, _bloomBlurStdDev));
-        props.Add(u("BloomBrightness"),         DefaultGet(Obj, _bloomBrightness),          DefaultSet(Obj, _bloomBrightness));
-        props.Add(u("BloomScale"), 
+        props.Add("Flags",                   DefaultGet(Obj, _flags),                    DefaultSet(Obj, _flags));
+        props.Add("BloomThreshold",          DefaultGet(Obj, _bloomThreshold),           DefaultSet(Obj, _bloomThreshold));
+        props.Add("BloomRampingFactor",      DefaultGet(Obj, _bloomRampingFactor),       DefaultSet(Obj, _bloomRampingFactor));
+        props.Add("BloomDesaturationFactor", DefaultGet(Obj, _bloomDesaturationFactor),  DefaultSet(Obj, _bloomDesaturationFactor));
+        props.Add("SceneKey",                DefaultGet(Obj, _sceneKey),                 DefaultSet(Obj, _sceneKey));
+        props.Add("LuminanceMin",            DefaultGet(Obj, _luminanceMin),             DefaultSet(Obj, _luminanceMin));
+        props.Add("LuminanceMax",            DefaultGet(Obj, _luminanceMax),             DefaultSet(Obj, _luminanceMax));
+        props.Add("WhitePoint",              DefaultGet(Obj, _whitepoint),               DefaultSet(Obj, _whitepoint));
+        props.Add("BloomBlurStdDev",         DefaultGet(Obj, _bloomBlurStdDev),          DefaultSet(Obj, _bloomBlurStdDev));
+        props.Add("BloomBrightness",         DefaultGet(Obj, _bloomBrightness),          DefaultSet(Obj, _bloomBrightness));
+        props.Add("BloomScale", 
             [](const Obj& obj)              { return SceneEngine::AsPackedColor(obj._bloomColor); },
             [](Obj& obj, unsigned value)    { obj._bloomColor = SceneEngine::AsFloat3Color(value); });
         

@@ -6,6 +6,7 @@
 
 #pragma once
 
+/*
 #include "AssetSetInternal.h"
 #include "AssetsCore.h"
 #include "AssetTraits.h"
@@ -15,14 +16,57 @@
 #include "../Core/Types.h"
 #include <vector>
 #include <utility>
-#include <string>
-#include <sstream>
 
 #if defined(ASSETS_STORE_DIVERGENT)
 	#include "DivergentAsset.h"
 #endif
 
 namespace Assets { class ICompileMarker; }
+*/
+
+#include "AssetsCore.h"		// (for ResChar)
+#include "../Utility/MemoryUtils.h"
+#include <string>
+#include <sstream>
+
+namespace Assets 
+{
+    namespace Internal
+    {
+        template <typename Object>
+			inline void StreamCommaSeparated(std::basic_stringstream<ResChar>& result, const Object& obj)
+		{
+			result << ", " << obj;
+		}
+
+		template <typename P0, typename... Params>
+			std::basic_string<ResChar> AsString(P0 p0, Params... initialisers)
+		{
+			std::basic_stringstream<ResChar> result;
+            result << p0;
+			int dummy[] = { 0, (StreamCommaSeparated(result, initialisers), 0)... };
+			(void)dummy;
+			return result.str();
+		}
+
+		template <typename... Params>
+			uint64_t BuildHash(Params... initialisers)
+        { 
+                //  Note Hash64 is a relatively expensive hash function
+                //      ... we might get away with using a simpler/quicker hash function
+                //  Note that if we move over to variadic template initialisers, it
+                //  might not be as easy to build the hash value (because they would
+                //  allow some initialisers to be different types -- not just strings).
+                //  If we want to support any type as initialisers, we need to either
+                //  define some rules for hashing arbitrary objects, or think of a better way
+                //  to build the hash.
+			uint64_t result = DefaultSeed64;
+			int dummy[] = { 0, (result = Hash64(initialisers, result), 0)... };
+			(void)dummy;
+            return result;
+        }
+    }
+}
 
 namespace Assets { namespace Internal
 {
@@ -37,6 +81,8 @@ namespace Assets { namespace Internal
 	{
 		return Internal::AsString(initialisers...);
 	}
+
+#if 0
 
 	template<typename Asset>
 		std::basic_string<ResChar> BuildTargetFilename()
@@ -65,34 +111,6 @@ namespace Assets { namespace Internal
     std::basic_string<ResChar> AsString();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
-    template <int BoBackgroundCompile> struct ConstructAsset {};
-    template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
-    template<> struct ConstructAsset<0>
-    { 
-        template<typename AssetType, typename... Params> 
-			static Ptr<AssetType> Create(Params... initialisers)
-		{
-			return AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
-		}
-    };
-
-    template<> struct ConstructAsset<1>
-    {
-		template<typename AssetType, typename... Params> 
-			static Ptr<AssetType> Create(Params... initialisers)
-		{
-			return AutoConstructAssetDeferred<AssetType>(std::forward<Params>(initialisers)...);
-		}
-    };
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    // #pragma managed(push, off)
-    //  Can't work for the moment because upstream assets aren't handled.
-    // template<typename AssetType, typename std::enable_if<AssetTraits<AssetType>::HasGetAssetState>::type* = nullptr>
-    //     inline bool ReadyForReplacement(const AssetType& asset) { return asset.GetAssetState() != AssetState::Pending; }
-	template<typename AssetType>
-		inline bool ReadyForReplacement(const AssetType& asset) { return true; }
-    #pragma managed(pop)
 
 	template<bool DoCheckDependancy, bool DoBackgroundCompile, typename AssetType, typename... Params>
 		const AssetType& GetAsset(AssetSetPtr<AssetType>& assetSet, Params... initialisers)
@@ -134,11 +152,11 @@ namespace Assets { namespace Internal
                         //  locked for awhile. Or, even worse, we could try for a recursive lock on the same
                         //  asset set.
                     cnt._pendingReplacement.reset();
-                    cnt._pendingReplacement = ConstructAsset<DoBackgroundCompile>::template Create<AssetType>(std::forward<Params>(initialisers)...);
+                    cnt._pendingReplacement = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
                 }
 
                 // note that this will sometimes replace a "valid" asset with an "invalid" one
-                if (!cnt._active || (cnt._pendingReplacement /*&& ReadyForReplacement(*cnt._pendingReplacement)*/))
+                if (!cnt._active || cnt._pendingReplacement)
                     cnt._active = std::move(cnt._pendingReplacement);
 
                 return *cnt._active;
@@ -148,7 +166,7 @@ namespace Assets { namespace Internal
                 auto name = AsString(initialisers...);  // (have to do this before constructor (incase constructor does std::move operations)
             #endif
 
-            auto newAsset = ConstructAsset<DoBackgroundCompile>::template Create<AssetType>(std::forward<Params>(initialisers)...);
+            auto newAsset = AutoConstructAsset<AssetType>(std::forward<Params>(initialisers)...);
             #if defined(ASSETS_STORE_NAMES)
                     // This is extra functionality designed for debugging and profiling
                     // attach a name to this hash value, so we can query the contents
@@ -325,5 +343,7 @@ namespace Assets { namespace Internal
                 return s_errorName;
             #endif
         }
+#endif
+
 }}
 

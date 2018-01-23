@@ -8,6 +8,7 @@
 #include "BlockSerializer.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
+#include "MemoryFile.h"
 #include "../Utility/StringFormat.h"
 #include "../Core/Exceptions.h"
 
@@ -16,9 +17,17 @@ namespace Assets
     std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
         IteratorRange<const AssetChunkRequest*> requests) const
     {
-		auto file = MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
+		auto file = OpenFile();
         return ResolveRequests(*file, requests);
     }
+
+	std::shared_ptr<IFileInterface> ChunkFileContainer::OpenFile() const
+	{
+		std::shared_ptr<IFileInterface> result;
+		if (_blob)
+			return CreateMemoryFile(_blob);
+		return MainFileSystem::OpenFileInterface(_filename.c_str(), "rb");
+	}
 
     std::vector<AssetChunkResult> ChunkFileContainer::ResolveRequests(
         IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const
@@ -36,12 +45,15 @@ namespace Assets
                 chunks.begin(), chunks.end(), 
                 [&r](const ChunkHeader& c) { return c._type == r._type; });
             if (i == chunks.end())
-                Throw(::Assets::Exceptions::FormatError(
+                Throw(Exceptions::ConstructionError(
+					Exceptions::ConstructionError::Reason::MissingFile,
+					_validationCallback,
                     StringMeld<128>() << "Missing chunk (" << r._name << ")", _filename.c_str()));
 
             if (i->_chunkVersion != r._expectedVersion)
-                Throw(::Assets::Exceptions::FormatError(
-                    ::Assets::Exceptions::FormatError::Reason::UnsupportedVersion,
+                Throw(::Assets::Exceptions::ConstructionError(
+					Exceptions::ConstructionError::Reason::UnsupportedVersion,
+					_validationCallback,
                     StringMeld<256>() 
                         << "Data chunk is incorrect version for chunk (" 
                         << r._name << ") expected: " << r._expectedVersion << ", got: " << i->_chunkVersion, 
@@ -55,10 +67,8 @@ namespace Assets
             assert(i != chunks.end());
 
             AssetChunkResult chunkResult;
-            chunkResult._offset = i->_fileOffset;
-            chunkResult._size = i->_size;
-
-            if (r._dataType != AssetChunkRequest::DataType::DontLoad) {
+            if (	r._dataType == AssetChunkRequest::DataType::BlockSerializer
+				||	r._dataType == AssetChunkRequest::DataType::Raw) {
                 uint8* mem = (uint8*)XlMemAlign(i->_size, sizeof(uint64_t));
                 chunkResult._buffer = std::unique_ptr<uint8[], PODAlignedDeletor>(mem);
                 file.Seek(i->_fileOffset);
@@ -67,7 +77,25 @@ namespace Assets
                 // initialize with the block serializer (if requested)
                 if (r._dataType == AssetChunkRequest::DataType::BlockSerializer)
                     Serialization::Block_Initialize(chunkResult._buffer.get());
-            }
+            } else if (r._dataType == AssetChunkRequest::DataType::ReopenFunction) {
+				auto offset = i->_fileOffset;
+				auto blobCopy = _blob;
+				auto filenameCopy = _filename;
+				auto depValCopy = _validationCallback;
+				chunkResult._reopenFunction = [offset, blobCopy, filenameCopy, depValCopy]() -> std::shared_ptr<IFileInterface> {
+					TRY {
+						std::shared_ptr<IFileInterface> result;
+						if (blobCopy) {
+							result = CreateMemoryFile(blobCopy);
+						} else 
+							result = MainFileSystem::OpenFileInterface(filenameCopy.c_str(), "rb");
+						result->Seek(offset);
+						return result;
+					} CATCH (const std::exception& e) {
+						Throw(Exceptions::ConstructionError(e, depValCopy));
+					} CATCH_END
+				};
+			}
 
             result.emplace_back(std::move(chunkResult));
         }
@@ -84,6 +112,13 @@ namespace Assets
 		RegisterFileDependency(_validationCallback, MakeStringSection(_filename));
     }
 
+	ChunkFileContainer::ChunkFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>)
+	: _filename("<<in memory>>")
+	, _blob(blob), _validationCallback(depVal)
+	{			
+	}
+
+	ChunkFileContainer::ChunkFileContainer() {}
     ChunkFileContainer::~ChunkFileContainer() {}
 
 }

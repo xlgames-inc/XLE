@@ -10,7 +10,8 @@
 #include "InputLayout.h"
 #include "../../RenderUtils.h"
 #include "../../Format.h"
-#include "../../../Assets/IntermediateAssets.h"
+#include "../../../Assets/IAssetCompiler.h"
+#include "../../../Assets/Assets.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Core/Exceptions.h"
@@ -39,7 +40,7 @@ namespace RenderCore { namespace Metal_DX11
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Vertex);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateVertexShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateVertexShader(byteCode.begin(), byteCode.size());
     }
 
     VertexShader::VertexShader(const CompiledShaderByteCode& compiledShader)
@@ -51,7 +52,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Vertex);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = objFactory.CreateVertexShader(byteCode.first, byteCode.second, _classLinkage.get());
+            _underlying = objFactory.CreateVertexShader(byteCode.begin(), byteCode.size(), _classLinkage.get());
         }
     }
 
@@ -76,7 +77,7 @@ namespace RenderCore { namespace Metal_DX11
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
         assert(compiledShader.GetStage() == ShaderStage::Pixel);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreatePixelShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreatePixelShader(byteCode.begin(), byteCode.size());
     }
 
     PixelShader::PixelShader(const CompiledShaderByteCode& compiledShader)
@@ -88,7 +89,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Pixel);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = objFactory.CreatePixelShader(byteCode.first, byteCode.second, _classLinkage.get());
+            _underlying = objFactory.CreatePixelShader(byteCode.begin(), byteCode.size(), _classLinkage.get());
         }
     }
 
@@ -138,7 +139,7 @@ namespace RenderCore { namespace Metal_DX11
 			const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
             assert(compiledShader.GetStage() == ShaderStage::Geometry);
             auto byteCode = compiledShader.GetByteCode();
-            underlying = GetObjectFactory().CreateGeometryShader(byteCode.first, byteCode.second);
+            underlying = GetObjectFactory().CreateGeometryShader(byteCode.begin(), byteCode.size());
 
         } else {
 
@@ -153,7 +154,7 @@ namespace RenderCore { namespace Metal_DX11
             assert(compiledShader.GetStage() == ShaderStage::Geometry);
             auto byteCode = compiledShader.GetByteCode();
             underlying = objFactory.CreateGeometryShaderWithStreamOutput( 
-                byteCode.first, byteCode.second,
+				byteCode.begin(), byteCode.size(),
                 nativeDeclaration, delcCount,
                 soInitializers._outputBufferStrides, soInitializers._outputBufferCount,
                     //      Note --     "NO_RASTERIZED_STREAM" is only supported on feature level 11. For other feature levels
@@ -176,7 +177,7 @@ namespace RenderCore { namespace Metal_DX11
             intrusive_ptr<ID3D::GeometryShader> underlying;
             if (soInitializers._outputBufferCount == 0) {
 
-                underlying = GetObjectFactory().CreateGeometryShader(byteCode.first, byteCode.second);
+                underlying = GetObjectFactory().CreateGeometryShader(byteCode.begin(), byteCode.size());
 
             } else {
 
@@ -187,7 +188,7 @@ namespace RenderCore { namespace Metal_DX11
                 auto& objFactory = GetObjectFactory();
                 auto featureLevel = objFactory.GetUnderlying()->GetFeatureLevel();
                 underlying = objFactory.CreateGeometryShaderWithStreamOutput( 
-                    byteCode.first, byteCode.second,
+					byteCode.begin(), byteCode.size(),
                     nativeDeclaration, delcCount,
                     soInitializers._outputBufferStrides, soInitializers._outputBufferCount,
                         //      Note --     "NO_RASTERIZED_STREAM" is only supported on feature level 11. For other feature levels
@@ -239,7 +240,7 @@ namespace RenderCore { namespace Metal_DX11
         const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Compute);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateComputeShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateComputeShader(byteCode.begin(), byteCode.size());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -250,7 +251,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Compute);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory().CreateComputeShader(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateComputeShader(byteCode.begin(), byteCode.size());
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
@@ -274,7 +275,7 @@ namespace RenderCore { namespace Metal_DX11
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Domain);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateDomainShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateDomainShader(byteCode.begin(), byteCode.size());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -285,7 +286,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Domain);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory().CreateDomainShader(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateDomainShader(byteCode.begin(), byteCode.size());
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
@@ -307,7 +308,7 @@ namespace RenderCore { namespace Metal_DX11
 		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
         assert(compiledShader.GetStage() == ShaderStage::Hull);
         auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateHullShader(byteCode.first, byteCode.second);
+        _underlying = GetObjectFactory().CreateHullShader(byteCode.begin(), byteCode.size());
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
@@ -318,7 +319,7 @@ namespace RenderCore { namespace Metal_DX11
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Hull);
             auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory().CreateHullShader(byteCode.first, byteCode.second);
+            _underlying = GetObjectFactory().CreateHullShader(byteCode.begin(), byteCode.size());
         }
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();

@@ -29,7 +29,6 @@
 
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IThreadContext.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
@@ -40,7 +39,9 @@
 #include "../RenderCore/Metal/QueryPool.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/FunctionUtils.h"
@@ -94,7 +95,7 @@ namespace SceneEngine
         }
     };
 
-    StateSetResolvers& GetStateSetResolvers() { return Techniques::FindCachedBox2<StateSetResolvers>(); }
+    StateSetResolvers& GetStateSetResolvers() { return ConsoleRig::FindCachedBox2<StateSetResolvers>(); }
 
     class StateSetChangeMarker
     {
@@ -150,7 +151,7 @@ namespace SceneEngine
         context.BindCS_G(RenderCore::MakeResourceList(14, normalsFittingResource));
 
             // perlin noise resources in standard slots
-        auto& perlinNoiseRes = Techniques::FindCachedBox2<PerlinNoiseResources>();
+        auto& perlinNoiseRes = ConsoleRig::FindCachedBox2<PerlinNoiseResources>();
         context.BindPS_G(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
@@ -311,7 +312,7 @@ namespace SceneEngine
 
 		auto metalContext = Metal::DeviceContext::Get(context);
         Metal::ViewportDesc mainViewportDesc(*metalContext);
-        auto& refractionBox = Techniques::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
+        auto& refractionBox = ConsoleRig::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*metalContext, parserContext, 4.f);
         metalContext->BindPS_G(MakeResourceList(12, refractionBox.GetSRV()));
 
@@ -736,11 +737,11 @@ namespace SceneEngine
             _createGBuffer = FrameBufferDesc(
                 {
                     // render first to the gbuffer
-                    SubpassDesc(
-                        {IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters}, 
-                        IMainTargets::MultisampledDepth)
+					SubpassDesc{
+						{IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals, IMainTargets::GBufferParameters},
+						IMainTargets::MultisampledDepth}
                 },
-                MakeIteratorRange(gbufferAttaches));
+				std::vector<AttachmentViewDesc>{&gbufferAttaches[0], &gbufferAttaches[4]});
             
         } else {
 
@@ -748,9 +749,9 @@ namespace SceneEngine
             _createGBuffer = FrameBufferDesc(
                 {
                     // render first to the gbuffer
-                    SubpassDesc({IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth)
+					SubpassDesc{{IMainTargets::GBufferDiffuse, IMainTargets::GBufferNormals}, IMainTargets::MultisampledDepth}
                 },
-                MakeIteratorRange(gbufferAttaches, &gbufferAttaches[3]));
+				std::vector<AttachmentViewDesc>{&gbufferAttaches[0], &gbufferAttaches[3]});
         }
     }
 
@@ -877,7 +878,7 @@ namespace SceneEngine
                 //      Bind the gbuffer, begin the render pass
                 //
 
-            auto& fbDescBox = Techniques::FindCachedBox2<FrameBufferDescBox>(
+            auto& fbDescBox = ConsoleRig::FindCachedBox2<FrameBufferDescBox>(
                 mainTargets.GetSampling(), precisionTargets, mainTargets.GetGBufferType());
 
             parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(fbDescBox._attachments));
@@ -993,7 +994,7 @@ namespace SceneEngine
 
             const bool hardwareSRGBDisabled = Tweakable("Tonemap_DisableHardwareSRGB", true);
             FrameBufferDesc applyToneMapping(
-                { SubpassDesc({IMainTargets::PresentationTarget_ToneMapWrite}) },
+				{ SubpassDesc{{IMainTargets::PresentationTarget_ToneMapWrite}} },
                 {
                     // We want to reuse the presentation target texture, except with the format modified for SRGB/Linear
                     {   IMainTargets::PresentationTarget, IMainTargets::PresentationTarget_ToneMapWrite,
@@ -1061,14 +1062,14 @@ namespace SceneEngine
             frustum._rasterDepthBias, frustum._depthBiasClamp, frustum._slopeScaledBias);
         RenderCore::Techniques::RSDepthBias doubleSidedBias(
             frustum._dsRasterDepthBias, frustum._dsDepthBiasClamp, frustum._dsSlopeScaledBias);
-        auto& resources = Techniques::FindCachedBox2<ShadowWriteResources>(
+        auto& resources = ConsoleRig::FindCachedBox2<ShadowWriteResources>(
             singleSidedBias, doubleSidedBias, unsigned(frustum._windingCull));
 
             /////////////////////////////////////////////
 
         metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
-        parserContext.GetNamedResources().DefineAttachments(
+        AttachmentDesc attachments[] =
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
                     AttachmentDesc::DimensionsMode::Absolute, float(frustum._width), float(frustum._height),
@@ -1076,10 +1077,12 @@ namespace SceneEngine
                     AsTypelessFormat(frustum._format),
                     TextureViewWindow::DepthStencil,
                     AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil }
-            });
+            };
+
+		parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(attachments));
 
         FrameBufferDesc resolveLighting(
-            { SubpassDesc({}, IMainTargets::ShadowDepthMap + shadowFrustumIndex) },
+			{ SubpassDesc{{}, IMainTargets::ShadowDepthMap + shadowFrustumIndex} },
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
                     TextureViewWindow(),
@@ -1190,7 +1193,7 @@ namespace SceneEngine
         if (sceneParser)
             LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
 
-        auto& metricsBox = Techniques::FindCachedBox2<MetricsBox>();
+        auto& metricsBox = ConsoleRig::FindCachedBox2<MetricsBox>();
         context.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
         parserContext.SetMetricsBox(&metricsBox);
 

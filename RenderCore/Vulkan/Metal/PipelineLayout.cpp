@@ -7,7 +7,8 @@
 #include "PipelineLayout.h"
 #include "ObjectFactory.h"
 #include "IncludeVulkan.h"
-#include "../../../Assets/IntermediateAssets.h"
+#include "../../../Assets/DepVal.h"
+#include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"
 #include "../../../Utility/Streams/StreamDOM.h"
 #include "../../../Utility/Streams/StreamFormatter.h"
@@ -362,29 +363,37 @@ namespace RenderCore { namespace Metal_Vulkan
 
     RootSignature::RootSignature(StringSection<::Assets::ResChar> filename)
     {
-        // attempt to load the source file and extract the root signature
-        size_t fileSize = 0;
-        auto block = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
-        if (!block || !fileSize)
-            Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename));
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_depVal, filename);
 
-        _dependentFileState = Assets::IntermediateAssets::Store::GetDependentFileState(filename);
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterFileDependency(_depVal, filename);
+		TRY {
+			// attempt to load the source file and extract the root signature
+			size_t fileSize = 0;
+			auto block = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
+			if (!block || !fileSize)
+				Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename));
 
-        InputStreamFormatter<char> formatter(
-            MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
-        Document<InputStreamFormatter<char>> doc(formatter);
+			_dependentFileState = Assets::IntermediateAssets::Store::GetDependentFileState(filename);
+        
 
-        std::vector<StringSection<>> rootSig;
-        for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
-            auto name = a.Name();
-            if (XlEqString(name, "Set")) {
-                _descriptorSets.emplace_back(ReadDescSet(a));
-            } else if (XlEqString(name, "PushConstants")) {
-                _pushConstantRanges.emplace_back(ReadPushConstRange(a));
-            }
-        }
+			InputStreamFormatter<char> formatter(
+				MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
+			Document<InputStreamFormatter<char>> doc(formatter);
+
+			std::vector<StringSection<>> rootSig;
+			for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
+				auto name = a.Name();
+				if (XlEqString(name, "Set")) {
+					_descriptorSets.emplace_back(ReadDescSet(a));
+				} else if (XlEqString(name, "PushConstants")) {
+					_pushConstantRanges.emplace_back(ReadPushConstRange(a));
+				}
+			}
+		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _depVal));
+		} CATCH(const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _depVal));
+		} CATCH_END
     }
 
     RootSignature::~RootSignature() {}

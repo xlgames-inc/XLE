@@ -21,11 +21,12 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Buffer.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../RenderCore/IAnnotator.h"
+#include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
 
@@ -159,7 +160,7 @@ namespace SceneEngine
 
         GPUAnnotation anno(context, "Prepare-RTShadows");
 
-        auto& box = Techniques::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
+        auto& box = ConsoleRig::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
         auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
         
         static const InputElementDesc soVertex[] = 

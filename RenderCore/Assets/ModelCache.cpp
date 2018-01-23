@@ -6,14 +6,16 @@
 
 #include "ModelCache.h"
 #include "ModelRunTime.h"
-#include "Material.h"
+#include "MaterialScaffold.h"
 #include "SharedStateSet.h"
 #include "Services.h"
+#include "../../Assets/Assets.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/AssetTraits.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/StringFormat.h"
 #include <map>
 
 namespace RenderCore { namespace Assets
@@ -24,8 +26,8 @@ namespace RenderCore { namespace Assets
     public:
         std::map<uint64, BoundingBox> _boundingBoxes;
 
-        LRUCache<ModelScaffold>     _modelScaffolds;
-        LRUCache<MaterialScaffold>  _materialScaffolds;
+        LRUCache<::Assets::AssetFuture<ModelScaffold>>     _modelScaffolds;
+        LRUCache<::Assets::AssetFuture<MaterialScaffold>>  _materialScaffolds;
         LRUCache<ModelRenderer>     _modelRenderers;
 
         std::unique_ptr<SharedStateSet> _sharedStateSet;
@@ -35,7 +37,8 @@ namespace RenderCore { namespace Assets
         Pimpl(const ModelCache::Config& cfg);
         ~Pimpl();
 
-        LRUCache<ModelSupplementScaffold>   _supplements;
+        LRUCache<::Assets::AssetFuture<ModelSupplementScaffold>>   _supplements;
+
         std::vector<const ModelSupplementScaffold*> 
             LoadSupplementScaffolds(
                 StringSection<ResChar> modelFilename, 
@@ -54,12 +57,12 @@ namespace RenderCore { namespace Assets
 
     namespace Internal
     {
-        static std::shared_ptr<ModelScaffold> CreateModelScaffold(StringSection<::Assets::ResChar> filename)
+        static ::Assets::FuturePtr<ModelScaffold> CreateModelScaffold(StringSection<::Assets::ResChar> filename)
         {
-            return ::Assets::AutoConstructAssetDeferred<ModelScaffold>(filename);
+            return ::Assets::MakeAsset<ModelScaffold>(filename);
         }
 
-        static std::shared_ptr<MaterialScaffold> CreateMaterialScaffold(
+        static ::Assets::FuturePtr<MaterialScaffold> CreateMaterialScaffold(
             StringSection<::Assets::ResChar> model, 
             StringSection<::Assets::ResChar> material)
         {
@@ -74,7 +77,7 @@ namespace RenderCore { namespace Assets
                 model = temp;
             }
 
-            return ::Assets::AutoConstructAssetDeferred<MaterialScaffold>(material, model);
+            return ::Assets::MakeAsset<MaterialScaffold>(material, model);
         }
     }
 
@@ -82,42 +85,46 @@ namespace RenderCore { namespace Assets
 
     auto ModelCache::GetScaffolds(
         StringSection<ResChar> modelFilename, 
-        StringSection<ResChar> materialFilename) -> Scaffolds
+        StringSection<ResChar> materialFilename) -> ModelCacheScaffolds
     {
-        Scaffolds result;
+		ModelCacheScaffolds result;
         result._hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
-        result._model = _pimpl->_modelScaffolds.Get(result._hashedModelName).get();
-        if (!result._model || result._model->GetDependencyValidation()->GetValidationIndex() > 0) {
-            auto model = Internal::CreateModelScaffold(modelFilename);
-            auto insertType = _pimpl->_modelScaffolds.Insert(result._hashedModelName, model);
+        auto modelFuture = _pimpl->_modelScaffolds.Get(result._hashedModelName);
+        if (!modelFuture || modelFuture->IsOutOfDate()) {
+			modelFuture = Internal::CreateModelScaffold(modelFilename);
+            auto insertType = _pimpl->_modelScaffolds.Insert(result._hashedModelName, modelFuture);
                 // we upload the "_reloadId" value when change one of our pointers from a previous
                 // valid value to something new
-            if (result._model || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
-            result._model = model.get();
+            if (modelFuture || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
         }
 
         result._hashedMaterialName = HashCombine(Hash64(materialFilename.begin(), materialFilename.end()), result._hashedModelName);
         auto matNamePtr = materialFilename;
 
-        result._material = _pimpl->_materialScaffolds.Get(result._hashedMaterialName).get();
-        if (!result._material || result._material->GetDependencyValidation()->GetValidationIndex() > 0) {
-            auto mat = Internal::CreateMaterialScaffold(modelFilename, matNamePtr);
-            auto insertType = _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, mat);
-            if (result._material || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
-            result._material = mat.get();
+        auto materialFuture = _pimpl->_materialScaffolds.Get(result._hashedMaterialName);
+        if (!materialFuture || materialFuture->IsOutOfDate()) {
+			materialFuture = Internal::CreateMaterialScaffold(modelFilename, matNamePtr);
+            auto insertType = _pimpl->_materialScaffolds.Insert(result._hashedMaterialName, materialFuture);
+            if (materialFuture || insertType == LRUCacheInsertType::EvictAndReplace) ++_pimpl->_reloadId;
         }
+
+		if (modelFuture)
+			result._model = modelFuture->TryActualize().get();
+
+		if (materialFuture)
+			result._material = materialFuture->TryActualize().get();
 
         return result;
     }
 
     namespace Internal
     {
-        static std::shared_ptr<ModelSupplementScaffold> CreateSupplement(
+        static ::Assets::FuturePtr<ModelSupplementScaffold> CreateSupplement(
             uint64 compilerHash,
             StringSection<::Assets::ResChar> modelFilename,
             StringSection<::Assets::ResChar> materialFilename)
         {
-            return ::Assets::AutoConstructAssetDeferred<ModelSupplementScaffold>(
+            return ::Assets::MakeAsset<ModelSupplementScaffold>(
 				MakeStringSection((const ::Assets::ResChar*)&compilerHash, (const ::Assets::ResChar*)PtrAdd(&compilerHash, sizeof(compilerHash))),
 				modelFilename, materialFilename);
         }
@@ -131,7 +138,7 @@ namespace RenderCore { namespace Assets
         for (auto s=supplements.cbegin(); s!=supplements.cend(); ++s) {
             auto hashName = HashCombine(HashCombine(Hash64(modelFilename.begin(), modelFilename.end()), Hash64(materialFilename.begin(), materialFilename.end())), *s);
             auto supp = _supplements.Get(hashName);
-            if (!supp || supp->GetDependencyValidation()->GetValidationIndex() > 0) {
+            if (!supp || supp->IsOutOfDate()) {
                 if (supp) { ++_reloadId; }
                 supp = Internal::CreateSupplement(*s, modelFilename, materialFilename);
                 if (supp) {
@@ -139,8 +146,8 @@ namespace RenderCore { namespace Assets
                     if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_reloadId; }
                 }
             }
-            if (supp)
-                result.push_back(supp.get());
+			const auto* actual = supp->TryActualize().get();
+            if (actual) result.push_back(actual);
         }
         return std::move(result);
     }
@@ -148,11 +155,12 @@ namespace RenderCore { namespace Assets
     auto ModelCache::GetModel(
         StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         IteratorRange<const SupplementGUID*> supplements,
-        unsigned LOD) -> Model
+        unsigned LOD) -> ModelCacheModel
     {
         auto scaffold = GetScaffolds(modelFilename, materialFilename);
-        if (!scaffold._model || !scaffold._material)
-            Throw(::Assets::Exceptions::PendingAsset(modelFilename, "Scaffolds still pending in ModelCache"));
+		if (!scaffold._model || !scaffold._material)
+			// Throw(::Assets::Exceptions::PendingAsset(modelFilename));
+			return ModelCacheModel{};
 
         auto maxLOD = scaffold._model->GetMaxLOD();
         LOD = std::min(LOD, maxLOD);
@@ -162,37 +170,31 @@ namespace RenderCore { namespace Assets
             hashedModel = HashCombine(hashedModel, *s);
 
 		BoundingBox boundingBox = std::make_pair(Zero<Float3>(), Zero<Float3>());
-		std::shared_ptr<ModelRenderer> renderer;
+		auto renderer = _pimpl->_modelRenderers.Get(hashedModel);
+		if (!renderer || renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
+			auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
+			searchRules.AddSearchDirectoryFromFilename(materialFilename);
+			auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);
+			if (renderer) { ++_pimpl->_reloadId; }
+			renderer = std::make_shared<ModelRenderer>(
+				std::ref(*scaffold._model), std::ref(*scaffold._material), 
+				MakeIteratorRange(suppScaff),
+				std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
 
-		if (	scaffold._model->TryResolve() == ::Assets::AssetState::Ready
-			&&	scaffold._material->TryResolve() == ::Assets::AssetState::Ready) {
-
-			renderer = _pimpl->_modelRenderers.Get(hashedModel);
-			if (!renderer || renderer->GetDependencyValidation()->GetValidationIndex() > 0) {
-				auto searchRules = ::Assets::DefaultDirectorySearchRules(modelFilename);
-				searchRules.AddSearchDirectoryFromFilename(materialFilename);
-				auto suppScaff = _pimpl->LoadSupplementScaffolds(modelFilename, materialFilename, supplements);
-				if (renderer) { ++_pimpl->_reloadId; }
-				renderer = std::make_shared<ModelRenderer>(
-					std::ref(*scaffold._model), std::ref(*scaffold._material), 
-					MakeIteratorRange(suppScaff),
-					std::ref(*_pimpl->_sharedStateSet), &searchRules, LOD);
-
-				auto insertType = _pimpl->_modelRenderers.Insert(hashedModel, renderer);
-				if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
-			}
-
-				// cache the bounding box, because it's an expensive operation to recalculate
-			auto boundingBoxI = _pimpl->_boundingBoxes.find(scaffold._hashedModelName);
-			if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
-				boundingBox = scaffold._model->GetStaticBoundingBox(0);
-				_pimpl->_boundingBoxes.insert(std::make_pair(scaffold._hashedModelName, boundingBox));
-			} else {
-				boundingBox = boundingBoxI->second;
-			}
+			auto insertType = _pimpl->_modelRenderers.Insert(hashedModel, renderer);
+			if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
 		}
 
-        Model result;
+			// cache the bounding box, because it's an expensive operation to recalculate
+		auto boundingBoxI = _pimpl->_boundingBoxes.find(scaffold._hashedModelName);
+		if (boundingBoxI== _pimpl->_boundingBoxes.end()) {
+			boundingBox = scaffold._model->GetStaticBoundingBox(0);
+			_pimpl->_boundingBoxes.insert(std::make_pair(scaffold._hashedModelName, boundingBox));
+		} else {
+			boundingBox = boundingBoxI->second;
+		}
+
+        ModelCacheModel result;
         result._renderer = renderer.get();
         result._sharedStateSet = _pimpl->_sharedStateSet.get();
         result._model = scaffold._model;
@@ -215,18 +217,17 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    ModelScaffold* ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
+    ::Assets::FuturePtr<ModelScaffold> ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
     {
         auto hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
-        auto* result = _pimpl->_modelScaffolds.Get(hashedModelName).get();
-        if (!result || result->GetDependencyValidation()->GetValidationIndex() > 0) {
-            auto model = Internal::CreateModelScaffold(modelFilename);
-            if (result) { ++_pimpl->_reloadId; }
-            auto insertType = _pimpl->_modelScaffolds.Insert(hashedModelName, model);
+        auto modelFuture = _pimpl->_modelScaffolds.Get(hashedModelName);
+        if (!modelFuture) {
+			modelFuture = Internal::CreateModelScaffold(modelFilename);
+            if (modelFuture) { ++_pimpl->_reloadId; }
+            auto insertType = _pimpl->_modelScaffolds.Insert(hashedModelName, modelFuture);
             if (insertType == LRUCacheInsertType::EvictAndReplace) { ++_pimpl->_reloadId; }
-            result = model.get();
         }
-        return result;
+        return modelFuture;
     }
 
     SharedStateSet& ModelCache::GetSharedStateSet() { return *_pimpl->_sharedStateSet; }

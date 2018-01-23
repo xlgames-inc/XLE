@@ -102,6 +102,7 @@ namespace RenderCore { namespace Metal_DX11
 			return FrameId_Invalid;
 		}
 		if (b._pendingReset) {
+			assert(b._queryEnd != ~0u);
 			if (b._queryEnd < b._queryStart) {
 				_allocatedCount -= _queryCount - b._queryStart;
 				_allocatedCount -= b._queryEnd;
@@ -114,9 +115,11 @@ namespace RenderCore { namespace Metal_DX11
 			_nextFree = b._queryEnd;
 			b._frameId = FrameId_Invalid;
 		}
+		assert(!b._pendingReadback);
 		assert(b._frameId == FrameId_Invalid);
 		b._frameId = _nextFrameId;
 		b._queryStart = _nextAllocation;
+		b._queryEnd = ~0u;
 		BeginQuery(context, *b._disjointQuery);
 		++_nextFrameId;
 		return b._frameId;
@@ -139,6 +142,8 @@ namespace RenderCore { namespace Metal_DX11
 			auto& b = _buffers[c];
 			if (b._frameId != id || !b._pendingReadback)
 				continue;
+
+			assert(b._queryEnd != ~0u);
 
 			// If we can get the disjoint data, we can assume that we can also get
 			// the timestamp query data.
@@ -163,6 +168,7 @@ namespace RenderCore { namespace Metal_DX11
 						}
 					}
 				}
+				assert(!gotFailureReadingQuery);
 
 				// Now we can release all of the allocated queries.
 				// (actually, we could release them here -- but to follow the pattern used with the Vulkan implementation,
@@ -195,7 +201,7 @@ namespace RenderCore { namespace Metal_DX11
 			_buffers[c]._frameId = FrameId_Invalid;
 			_buffers[c]._pendingReadback = false;
 			_buffers[c]._pendingReset = false;
-			_buffers[c]._queryStart = _buffers[c]._queryEnd = 0;
+			_buffers[c]._queryStart = _buffers[c]._queryEnd = ~0u;
 			_buffers[c]._disjointQuery = CreateQuery(factory, true);
 		}
 	}

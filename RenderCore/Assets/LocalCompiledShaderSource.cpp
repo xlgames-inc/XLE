@@ -9,17 +9,16 @@
 
 #include "../IDevice.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ArchiveCache.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/IntermediateAssets.h"
 
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../../ConsoleRig/Log.h"
-#endif
+#include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -43,23 +42,20 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class ShaderCompileMarker : public ::Assets::PendingCompileMarker
+    class ShaderCompileMarker : public ::Assets::CompileFuture
         #if defined(TEMP_HACK)
             , public ::Assets::AsyncLoadOperation
         #endif
     {
     public:
-        using Payload = std::shared_ptr<std::vector<uint8>>;
+        using Payload = ::Assets::Blob;
         using ChainFn = std::function<void(
 			const ResId& shaderPath, const ::Assets::rstring& definesTable,
             ::Assets::AssetState, const Payload& payload, const Payload& errors,
             IteratorRange<const ::Assets::DependentFileState*>)>;
 
-        const Payload& Resolve(StringSection<::Assets::ResChar> initializer, const ::Assets::DepValPtr& depVal = nullptr) const;
-        ::Assets::AssetState TryResolve(Payload& result, const ::Assets::DepValPtr& depVal) const;
         Payload GetErrors() const;
 
-        ::Assets::AssetState StallWhilePending() const;
 		ShaderStage GetStage() const { return _shaderPath.AsShaderStage(); }
 
         const std::vector<::Assets::DependentFileState>& GetDependencies() const;
@@ -79,7 +75,6 @@ namespace RenderCore { namespace Assets
     protected:
         virtual void Complete(const void* buffer, size_t bufferSize, IteratorRange<const ::Assets::DependentFileState*> preprocessorDeps);
 		virtual void OnFailure();
-        void CommitToArchive();
 
         Payload _payload;
         std::vector<::Assets::DependentFileState> _deps;
@@ -186,7 +181,7 @@ namespace RenderCore { namespace Assets
             return;
         }
 
-		TRY {
+		// TRY {
 			Payload errors;
 			_payload.reset();
 			_deps.clear();
@@ -206,65 +201,17 @@ namespace RenderCore { namespace Assets
 				// object. We need to call chain explicitly in order to release
 				// this object (otherwise we end up with a cyclic reference that
 				// doesn't get broken, and a leak)
-			if (_chain) {
-				TRY {
-					_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
-				} CATCH (const std::bad_function_call& e) {
-					#if defined(XLE_HAS_CONSOLE_RIG)
-                        LogWarning
-                            << "Chain function call failed in ShaderCompileMarker::Complete (with bad_function_call: " << e.what() << ")" // << std::endl
-                            << "This may prevent the shader from being flushed to disk in it's compiled form. But the shader should still be useable";
-                    #endif
-				} CATCH_END
-			}
+			if (_chain)
+				_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
 
-			SetState(result);
-		} CATCH(...) {
-			SetState(::Assets::AssetState::Invalid);
-			throw;
-		} CATCH_END
-    }
-
-    auto ShaderCompileMarker::Resolve(
-        StringSection<::Assets::ResChar> initializer, 
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> const Payload&
-    {
-        auto state = GetAssetState();
-        if (state == ::Assets::AssetState::Invalid)
-            Throw(::Assets::Exceptions::InvalidAsset(initializer, "Invalid shader code while resolving"));
-
-        if (state == ::Assets::AssetState::Pending) 
-            Throw(::Assets::Exceptions::PendingAsset(initializer, "Pending shader code while resolving"));
-
-        if (depVal)
-            for (const auto& i:_deps)
-                RegisterFileDependency(depVal, MakeStringSection(i._filename));
-
-        return _payload;
-    }
-
-    auto ShaderCompileMarker::TryResolve(
-        Payload& result,
-        const std::shared_ptr<::Assets::DependencyValidation>& depVal) const -> ::Assets::AssetState
-    {
-        auto state = GetAssetState();
-        if (state != ::Assets::AssetState::Ready)
-            return state;
-
-        if (depVal)
-            for (const auto& i:_deps)
-                RegisterFileDependency(depVal, MakeStringSection(i._filename));
-
-        result = _payload;
-        return ::Assets::AssetState::Ready;
+			// SetState(result);
+		// } CATCH(...) {
+		//	SetState(::Assets::AssetState::Invalid);
+		//	throw;
+		// } CATCH_END
     }
 
     auto ShaderCompileMarker::GetErrors() const -> Payload { return Payload(); }
-
-    ::Assets::AssetState ShaderCompileMarker::StallWhilePending() const
-    {
-        return ::Assets::PendingOperationMarker::StallWhilePending();
-    }
 
         ////////////////////////////////////////////////////////////
 
@@ -311,13 +258,12 @@ namespace RenderCore { namespace Assets
 
     void ShaderCacheSet::LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore)
     {
-#if defined(XLE_HAS_CONSOLE_RIG)
             // log statistics information for all shaders in all archive caches
         uint64 totalShaderSize = 0; // in bytes
         uint64 totalAllocationSpace = 0;
 
         char baseDir[MaxPath];
-        intermediateStore.MakeIntermediateName(baseDir, dimof(baseDir), _baseFolderName.c_str());
+        intermediateStore.MakeIntermediateName(baseDir, dimof(baseDir), MakeStringSection(_baseFolderName));
         auto baseDirLen = XlStringLen(baseDir);
         assert(&baseDir[baseDirLen] == XlStringEnd(baseDir));
         std::deque<std::string> dirs;
@@ -348,8 +294,8 @@ namespace RenderCore { namespace Assets
         std::regex extractShaderDetails("\\[([^\\]]*)\\]\\s*\\[([^\\]]*)\\]\\s*\\[([^\\]]*)\\]");
         std::regex extractIntructionCount("Instruction Count:\\s*(\\d+)");
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "    Shader cache readout";
+        Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "    Shader cache readout" << std::endl;
 
         std::vector<std::pair<std::string, std::string>> extendedInfo;
         std::vector<std::pair<unsigned, std::string>> orderedByInstructionCount;
@@ -375,7 +321,7 @@ namespace RenderCore { namespace Assets
                 // write a short list of all shader objects stored in this archive
             float wasted = 0.f;
             if (totalAllocationSpace) { wasted = 1.f - (float(metrics._usedSpace) / float(metrics._allocatedFileSize)); }
-            LogInfo << " <<< Archive --- " << buffer << " (" << totalShaderSize / 1024 << "k, " << unsigned(100.f * wasted) << "% wasted) >>>";
+			Log(Verbose) << " <<< Archive --- " << buffer << " (" << totalShaderSize / 1024 << "k, " << unsigned(100.f * wasted) << "% wasted) >>>" << std::endl;
 
             for (auto b = metrics._blocks.cbegin(); b!=metrics._blocks.cend(); ++b) {
                 
@@ -385,7 +331,7 @@ namespace RenderCore { namespace Assets
                 std::smatch match;
                 bool a = std::regex_match(b->_attachedString, match, extractShaderDetails);
                 if (a && match.size() >= 4) {
-                    LogInfo << "    [" << b->_size/1024 << "k] [" << match[1] << "] [" << match[2] << "]";
+					Log(Verbose) << "    [" << b->_size/1024 << "k] [" << match[1] << "] [" << match[2] << "]" << std::endl;
 
                     auto idString = std::string("[") + match[1].str() + "][" + match[2].str() + "]";
                     extendedInfo.push_back(std::make_pair(idString, match[3]));
@@ -398,33 +344,32 @@ namespace RenderCore { namespace Assets
                         orderedByInstructionCount.push_back(std::make_pair(instructionCount, idString));
                     }
                 } else {
-                    LogInfo << "    [" << b->_size/1024 << "k] Unknown block";
+					Log(Verbose) << "    [" << b->_size/1024 << "k] Unknown block" << std::endl;
                 }
             }
         }
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "    Ordered by instruction count";
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "    Ordered by instruction count" << std::endl;
         std::sort(orderedByInstructionCount.begin(), orderedByInstructionCount.end(), CompareFirst<unsigned, std::string>());
         for (auto e=orderedByInstructionCount.cbegin(); e!=orderedByInstructionCount.cend(); ++e) {
-            LogInfo << "    " << e->first << " " << e->second;
+			Log(Verbose) << "    " << e->first << " " << e->second << std::endl;
         }
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "    Shader cache extended info";
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "    Shader cache extended info" << std::endl;
         for (auto e=extendedInfo.cbegin(); e!=extendedInfo.cend(); ++e) {
-            LogInfo << e->first;
-            LogInfo << e->second;
+			Log(Verbose) << e->first << std::endl;
+			Log(Verbose) << e->second << std::endl;
         }
 
-        LogInfo << "------------------------------------------------------------------------------------------";
-        LogInfo << "Total shader size: " << totalShaderSize;
-        LogInfo << "Total allocated space: " << totalAllocationSpace;
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+		Log(Verbose) << "Total shader size: " << totalShaderSize << std::endl;
+		Log(Verbose) << "Total allocated space: " << totalAllocationSpace << std::endl;
         if (totalAllocationSpace > 0) {
-            LogInfo << "Wasted part: " << 100.f * (1.0f - float(totalShaderSize) / float(totalAllocationSpace)) << "%";
+			Log(Verbose) << "Wasted part: " << 100.f * (1.0f - float(totalShaderSize) / float(totalAllocationSpace)) << "%" << std::endl;
         }
-        LogInfo << "------------------------------------------------------------------------------------------";
-#endif
+		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
     }
 
     ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc)
@@ -438,12 +383,15 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
+	using Blob = ::Assets::Blob;
+
 	class ArchivedFileArtifact : public ::Assets::IArtifact
 	{
 	public:
 		Blob	GetBlob() const;
 		Blob	GetErrors() const;
 		::Assets::DepValPtr GetDependencyValidation() const;
+		StringSection<Assets::ResChar> GetRequestParameters() const { return {}; }
 		ArchivedFileArtifact(
 			const std::shared_ptr<::Assets::ArchiveCache>& archive, uint64 fileID, const ::Assets::DepValPtr& depVal,
 			const Blob& blob, const Blob& errors);
@@ -457,7 +405,7 @@ namespace RenderCore { namespace Assets
 
 	auto ArchivedFileArtifact::GetBlob() const -> Blob
 	{
-		if (!_blob) return _blob;
+		if (_blob) return _blob;
 		return _archive->TryOpenFromCache(_fileID);
 	}
 
@@ -477,7 +425,7 @@ namespace RenderCore { namespace Assets
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::PendingCompileMarker> InvokeCompile() const;
+        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -509,6 +457,9 @@ namespace RenderCore { namespace Assets
     {
         auto c = _compiler.lock();
         if (!c || CancelAllShaderCompiles) return nullptr;
+
+		if (XlEqString(_res._filename, "null"))
+			return std::make_shared<::Assets::BlobArtifact>(nullptr, std::make_shared<::Assets::DependencyValidation>());
 
         ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
         auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName));
@@ -542,20 +493,12 @@ namespace RenderCore { namespace Assets
         }
     }
 
-	static ::Assets::DepValPtr AsDepValPtr(IteratorRange<const ::Assets::DependentFileState*> deps)
-	{
-		auto result = std::make_shared<::Assets::DependencyValidation>();
-		for (const auto& i:deps)
-			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
-		return result;
-	}
-
-    std::shared_ptr<::Assets::PendingCompileMarker> LocalCompiledShaderSource::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::CompileFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c || CancelAllShaderCompiles) return nullptr;
 
-        auto marker = std::make_shared<::Assets::PendingCompileMarker>();
+        auto marker = std::make_shared<::Assets::CompileFuture>();
 
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 //  When we have archive attachments enabled, we can write
@@ -626,14 +569,19 @@ namespace RenderCore { namespace Assets
                 }
 
 					// Create the artifact and add it to the compile marker
-				auto depVal = AsDepValPtr(deps);
-				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, errors, depVal);
+				auto depVal = AsDepVal(deps);
+				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, depVal);
 				marker->AddArtifact("main", artifact);
+				marker->AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
 
-                    // give the PendingCompileMarker object the same state
+                    // give the CompileFuture object the same state
                 marker->SetState(newState);
 
                 c->RemoveCompileOperation(*tempPtr);
+
+				if (newState == ::Assets::AssetState::Invalid)
+					Throw(::Assets::Exceptions::ConstructionError(
+						::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, depVal, errors));
             });
 
         return std::move(marker);
@@ -690,17 +638,12 @@ namespace RenderCore { namespace Assets
 
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
-
-            // for a "null" shader, we must return nullptr
-        if (initializers[0].IsEmpty() || XlEqString(shaderId._filename, "null"))
-            return nullptr;
-
         return std::make_shared<Marker>(initializers[0], shaderId, definesTable, destinationStore, shared_from_this());
     }
 
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
-        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
@@ -710,7 +653,7 @@ namespace RenderCore { namespace Assets
             
     auto LocalCompiledShaderSource::CompileFromMemory(
         StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::PendingCompileMarker>
+        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
         auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 

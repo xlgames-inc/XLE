@@ -9,7 +9,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IAnnotator.h"

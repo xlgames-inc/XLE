@@ -405,15 +405,19 @@ namespace Utility
 
 	namespace RawFS
 	{
-		bool DoesFileExist(const char filename[])
+		bool DoesFileExist(StringSection<char> filename)
 		{
-			DWORD dwAttrib = GetFileAttributes(filename);
+			char buffer[MAX_PATH];
+			XlCopyString(buffer, filename);	// copy to get the null terminator
+			DWORD dwAttrib = GetFileAttributes(buffer);
 			return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
 
-		bool DoesDirectoryExist(const char filename[])
+		bool DoesDirectoryExist(StringSection<char> filename)
 		{
-			DWORD dwAttrib = GetFileAttributes(filename);
+			char buffer[MAX_PATH];
+			XlCopyString(buffer, filename);	// copy to get the null terminator
+			DWORD dwAttrib = GetFileAttributes(buffer);
 			return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
 
@@ -441,35 +445,46 @@ namespace Utility
 			}
 		}
 
-		void CreateDirectoryRecursive(const StringSection<char> filename)
+		void CreateDirectoryRecursive(StringSection<char> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
 		}
 
-		void CreateDirectoryRecursive(const StringSection<utf8> filename)
+		void CreateDirectoryRecursive(StringSection<utf8> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
 		}
 
-		void CreateDirectoryRecursive(const StringSection<utf16> filename)
+		void CreateDirectoryRecursive(StringSection<utf16> filename)
 		{
 			CreateDirectoryRecursive_Int(filename);
 		}
 
-		uint64 GetFileModificationTime(const char filename[])
+		static uint64 AsUInt64(FILETIME ft) { return (uint64(ft.dwHighDateTime) << 32ull) | uint64(ft.dwLowDateTime); }
+
+		static FileAttributes AsFileAttributes(const WIN32_FILE_ATTRIBUTE_DATA& attribs)
 		{
-			WIN32_FILE_ATTRIBUTE_DATA attribData;
-			auto result = GetFileAttributesEx(filename, GetFileExInfoStandard, &attribData);
-			if (!result) return 0ull;
-			return (uint64(attribData.ftLastWriteTime.dwHighDateTime) << 32ull) | uint64(attribData.ftLastWriteTime.dwLowDateTime);
+			return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
 		}
 
-		uint64 GetFileSize(const char filename[])
+		std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
 		{
-			WIN32_FILE_ATTRIBUTE_DATA attribData;
-			auto result = GetFileAttributesEx(filename, GetFileExInfoStandard, &attribData);
-			if (!result) return 0ull;
-			return (uint64(attribData.nFileSizeHigh) << 32ull) | uint64(attribData.nFileSizeLow);
+			WIN32_FILE_ATTRIBUTE_DATA attribs;
+			auto result = GetFileAttributesExA(
+				(const char*)filename, 
+				GetFileExInfoStandard,
+				&attribs);
+			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
+		}
+
+		std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[])
+		{
+			WIN32_FILE_ATTRIBUTE_DATA attribs;
+			auto result = GetFileAttributesExW(
+				(const wchar_t*)filename, 
+				GetFileExInfoStandard,
+				&attribs);
+			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
 		}
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
@@ -549,7 +564,7 @@ namespace Utility
 
 		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
 			const utf8 filename[], uint64 size, const char openMode[], 
-			FileShareMode::BitField shareMode)
+			FileShareMode::BitField shareMode) never_throws
 		{
 			assert(_begin == nullptr && _end == nullptr && !_closeFn);
 
@@ -597,7 +612,7 @@ namespace Utility
 
 		Exceptions::IOException::Reason MemoryMappedFile::TryOpen(
 			const utf16 filename[], uint64 size, const char openMode[],
-			FileShareMode::BitField shareMode)
+			FileShareMode::BitField shareMode) never_throws
 		{
 			assert(_begin == nullptr && _end == nullptr && !_closeFn);
 

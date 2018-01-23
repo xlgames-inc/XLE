@@ -12,7 +12,6 @@
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
 #include "../../../Assets/AssetServices.h"
-#include "../../../Assets/InvalidAssetManager.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Utility/StringUtils.h"
 
@@ -21,6 +20,8 @@
 // HLSL cross compiler includes --
 #define EXCLUDE_PSTDINT
 #include "hlslcc.hpp"
+
+#if defined(HAS_SPIRV_HEADERS)
 
 // Vulkan SDK includes -- 
 #pragma push_macro("new")
@@ -32,6 +33,8 @@
 // #include <glslang/SPIRV/disassemble.h>
 // #include <sstream>
 #pragma pop_macro("new")
+
+#endif
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -107,6 +110,8 @@ namespace RenderCore { namespace Metal_Vulkan
         if (destination != inputShaderModel.begin()) 
             XlCopyString(destination, destinationCount, inputShaderModel);
     }
+
+#if defined(HAS_SPIRV_HEADERS)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -244,7 +249,7 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     static void AppendErrors(
-        std::shared_ptr<std::vector<uint8>>& errors,
+        ::Assets::Blob& errors,
         glslang::TShader& shader)
     {
         auto infoLog = shader.getInfoLog();
@@ -264,8 +269,8 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     static bool GLSLtoSPV(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         EShLanguage shaderType,
         const char glslSource[]) 
     {
@@ -429,20 +434,23 @@ namespace RenderCore { namespace Metal_Vulkan
         return 0;
     }
 
+#endif
+
     bool HLSLToSPIRVCompiler::DoLowLevelCompile(
-        /*out*/ std::shared_ptr<std::vector<uint8>>& payload,
-        /*out*/ std::shared_ptr<std::vector<uint8>>& errors,
+        /*out*/ ::Assets::Blob& payload,
+        /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
         StringSection<::Assets::ResChar> definesTable) const
     {
+#if defined(HAS_SPIRV_HEADERS)
         // So, this is a complex process for converting from HLSL source code into SPIR-V.
         // In time, hopefully there will be better solutions for this problem.
         // But, let's go HLSL -> HLSL bytecode -> GLSL -> SPIR-V
 
         // First, attempt to compile the HLSL code into byte code (using D3D compilers)
-        std::shared_ptr<std::vector<uint8>> hlslBytecode;
+		::Assets::Blob hlslBytecode;
         bool hlslGood = _hlslCompiler->DoLowLevelCompile(
             hlslBytecode, errors, dependencies,
             sourceCode, sourceCodeLength, shaderPath, definesTable);
@@ -470,6 +478,7 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned hlslccFlags = HLSLCC_FLAG_UNIFORM_BUFFER_OBJECT | HLSLCC_FLAG_INOUT_SEMANTIC_NAMES;
         if (tolower(shaderPath._shaderModel[0]) == 'g')
             hlslccFlags &= ~HLSLCC_FLAG_INOUT_SEMANTIC_NAMES;
+
         auto* bytecodeStart = (const char*)PtrAdd(AsPointer(hlslBytecode->begin()), sizeof(ShaderService::ShaderHeader));
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
@@ -486,6 +495,9 @@ namespace RenderCore { namespace Metal_Vulkan
             glslShader.sourceCode);
 
         return spvRes;
+#else
+		return false;
+#endif
     }
 
     std::string HLSLToSPIRVCompiler::MakeShaderMetricsString(const void* data, size_t dataSize) const
@@ -503,17 +515,21 @@ namespace RenderCore { namespace Metal_Vulkan
     , _graphicsPipelineLayout(graphicsPipelineLayout)
     , _computePipelineLayout(computePipelineLayout)
     {
-        bool initResult = glslang::InitializeProcess();
-        if (!initResult)
-            Throw(::Exceptions::BasicLabel("Failed while initializing glsl to spirv shader compiler"));
+		#if defined(HAS_SPIRV_HEADERS)
+			bool initResult = glslang::InitializeProcess();
+			if (!initResult)
+				Throw(::Exceptions::BasicLabel("Failed while initializing glsl to spirv shader compiler"));
+		#endif
     }
 
     HLSLToSPIRVCompiler::~HLSLToSPIRVCompiler()
     {
-        // it feels like these are intended to be called during DLL detach -- 
-        glslang::FreeGlobalPools();
-        glslang::FreePoolIndex();
-        glslang::FinalizeProcess();
+		#if defined(HAS_SPIRV_HEADERS)
+			// it feels like these are intended to be called during DLL detach -- 
+			glslang::FreeGlobalPools();
+			glslang::FreePoolIndex();
+			glslang::FinalizeProcess();
+		#endif
     }
 
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
@@ -521,7 +537,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto result = HLSLToSPIRVCompiler::s_instance.lock();
         if (result) return std::move(result);
 
-        auto* vulkanDevice = (IDeviceVulkan*)device.QueryInterface(__uuidof(IDeviceVulkan));
+        auto* vulkanDevice = (IDeviceVulkan*)device.QueryInterface(typeid(IDeviceVulkan).hash_code());
         if (!vulkanDevice) return nullptr;
         
         auto hlslCompiler = Metal_DX11::CreateVulkanPrecompiler();

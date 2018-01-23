@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define _SCL_SECURE_NO_WARNINGS
+#pragma warning(disable:4244)		// '=': conversion from 'const unsigned int' to 'unsigned short', possible loss of data
 
 #include "SRawGeometry.h"
 #include "Scaffold.h"
@@ -36,7 +37,7 @@ namespace ColladaConversion
 
     const NativeVBSettings NativeSettings = { true };       // use 16 bit floats
 
-    std::shared_ptr<std::vector<uint8>> GetParseDataSource();
+    ::Assets::Blob GetParseDataSource();
 
     class VertexSourceData : public IVertexSourceData
     {
@@ -60,7 +61,7 @@ namespace ColladaConversion
         FormatHint::BitField _formatHint;
         ProcessingFlags::BitField _processingFlags;
 
-        std::shared_ptr<std::vector<uint8>> _rawData;
+        ::Assets::Blob _rawData;
     };
 
     const void* VertexSourceData::GetData() const
@@ -614,15 +615,15 @@ namespace ColladaConversion
             //      source for positions, one for normals, etc)
             //
 
-        for (size_t c=0; c<mesh.GetPrimitivesCount(); ++c) {
-            const auto& geoPrim = mesh.GetPrimitives(c);
+        for (size_t prim=0; prim<mesh.GetPrimitivesCount(); ++prim) {
+            const auto& geoPrim = mesh.GetPrimitives(prim);
             
             WorkingPrimitive workingPrim;
             workingPrim._primitiveStride = 0;
 
             auto inputCount = geoPrim.GetInputCount();
-            for (size_t c=0; c<inputCount; ++c) {
-                const auto& input = geoPrim.GetInput(c);
+            for (size_t q=0; q<inputCount; ++q) {
+                const auto& input = geoPrim.GetInput(q);
 
                     // the "source" can be either a DataFlow::Source, or
                     // it can be a VertexInputs
@@ -630,23 +631,23 @@ namespace ColladaConversion
                 bool boundSource = false;
                     
                 GuidReference ref(input._source);
-                const auto* file = pubEles.FindFile(ref._fileHash);
-                if (file) {
+                const auto* f = pubEles.FindFile(ref._fileHash);
+                if (f) {
 
-                    const auto* source = file->FindSource(ref._id);
-                    if (source) {
+                    const auto* dataSource = f->FindSource(ref._id);
+                    if (dataSource) {
 
                         workingPrim._inputs.push_back(
                             WorkingPrimitive::EleRef
                             {
-                                composingVertex.FindOrCreateElement(*source, input._semantic, input._semanticIndex),
+                                composingVertex.FindOrCreateElement(*dataSource, input._semantic, input._semanticIndex),
                                 input._indexInPrimitive
                             });
                         boundSource = true;
 
                     } else {
 
-                        const auto* extraInputs = file->FindVertexInputs(ref._id);
+                        const auto* extraInputs = f->FindVertexInputs(ref._id);
                         if (extraInputs) {
                             for (size_t c=0; c<extraInputs->GetCount(); ++c) {
                                 const auto& refInput = extraInputs->GetInput(c);
@@ -821,6 +822,7 @@ namespace ColladaConversion
         if (constant_expression<generateMissingTangentsAndNormals>::result()) {
             GenerateNormalsAndTangents(
                 *database, 0,
+				1e-3f,
                 finalIndexBuffer.get(), finalIndexCount, indexFormat);
         }
 
@@ -1300,15 +1302,16 @@ namespace ColladaConversion
 
             if (influenceCount >= 3) {
                 if (influenceCount > 4) {
-                    LogAlwaysWarning 
+                    Log(Warning)
                         << "Warning -- Exceeded maximum number of joints affecting a single vertex in skinning controller " 
                         << controller.GetLocation() 
-                        << ". Only 4 joints can affect any given single vertex.";
+                        << ". Only 4 joints can affect any given single vertex."
+						<< std::endl;
 
                         // (When this happens, only use the first 4, and ignore the others)
-                    LogAlwaysWarningF("After filtering:\n");
+					Log(Warning) << "After filtering:" << std::endl;
                     for (size_t c=0; c<influenceCount; ++c) {
-                        LogAlwaysWarningF("  [%i] Weight: %i Joint: %i", c, normalizedWeights[c], jointIndices[c]);
+						Log(Warning) << "  [" << c << "] Weight: " << normalizedWeights[c] << " Joint: " << jointIndices[c] << std::endl;
                     }
                 }
 

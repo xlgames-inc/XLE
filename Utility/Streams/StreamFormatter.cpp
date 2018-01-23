@@ -24,6 +24,11 @@ namespace Utility
         _end = end;
     }
 
+	MemoryMappedInputStream::MemoryMappedInputStream(IteratorRange<const void*> range)
+	: MemoryMappedInputStream(range.begin(), range.end())
+	{
+	}
+
     MemoryMappedInputStream::~MemoryMappedInputStream() {}
 
     static const unsigned TabWidth = 4;

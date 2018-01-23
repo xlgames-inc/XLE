@@ -13,7 +13,7 @@
 #include "../Utility/ParameterBox.h"        // for ImpliedTyping::TypeDesc
 #include "../Utility/PtrUtils.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Assets/Assets.h"
+#include "../Assets/AssetsCore.h"
 #include "../Math/Vector.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Core/Types.h"

@@ -10,23 +10,27 @@
 #include "ChunkFile.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/MemoryUtils.h"
+#include <functional>
+#include <memory>
 
 namespace Assets
 {
-    class PendingCompileMarker;
+    class CompileFuture;
     class DependencyValidation;
     class ICompileMarker;
+
+	using AssetChunkReopenFunction = std::function<std::shared_ptr<IFileInterface>()>;
 
     class AssetChunkRequest
     {
     public:
-        const char*     _name;
+		const char*		_name;		// for debugging purposes, to make it easier to track requests
         Serialization::ChunkFile::TypeIdentifier _type;
         unsigned        _expectedVersion;
         
         enum class DataType
         {
-            DontLoad, Raw, BlockSerializer
+            ReopenFunction, Raw, BlockSerializer
         };
         DataType        _dataType;
     };
@@ -34,23 +38,8 @@ namespace Assets
     class AssetChunkResult
     {
     public:
-        Serialization::ChunkFile::SizeType  _offset;
         std::unique_ptr<uint8[], PODAlignedDeletor> _buffer;
-        size_t _size;
-
-        AssetChunkResult() : _offset(0), _size(0) {}
-        AssetChunkResult(AssetChunkResult&& moveFrom)
-        : _offset(moveFrom._offset)
-        , _buffer(std::move(moveFrom._buffer))
-        , _size(moveFrom._size)
-        {}
-        AssetChunkResult& operator=(AssetChunkResult&& moveFrom)
-        {
-            _offset = moveFrom._offset;
-            _buffer = std::move(moveFrom._buffer);
-            _size = moveFrom._size;
-            return *this;
-        }
+		AssetChunkReopenFunction					_reopenFunction;
     };
 
     /// <summary>Utility for building asset objects that load from chunk files (sometimes asychronously)</summary>
@@ -66,13 +55,20 @@ namespace Assets
 		std::vector<AssetChunkResult> ResolveRequests(IteratorRange<const AssetChunkRequest*> requests) const;
         std::vector<AssetChunkResult> ResolveRequests(IFileInterface& file, IteratorRange<const AssetChunkRequest*> requests) const;
 
+		std::shared_ptr<IFileInterface> OpenFile() const;
+
 		ChunkFileContainer(StringSection<ResChar> assetTypeName);
+		ChunkFileContainer(const Blob& blob, const DepValPtr& depVal, StringSection<ResChar>);
+		ChunkFileContainer();
         ~ChunkFileContainer();
 
-		ChunkFileContainer(const ChunkFileContainer&) = delete;
-		ChunkFileContainer& operator=(const ChunkFileContainer&) = delete;
+		ChunkFileContainer(const ChunkFileContainer&) = default;
+		ChunkFileContainer& operator=(const ChunkFileContainer&) = default;
+		ChunkFileContainer(ChunkFileContainer&&) never_throws = default;
+		ChunkFileContainer& operator=(ChunkFileContainer&&) never_throws = default;
     private:
         rstring			_filename;
+		Blob			_blob;
 		DepValPtr		_validationCallback;
     };
 

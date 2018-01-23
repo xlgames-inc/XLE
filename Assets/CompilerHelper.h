@@ -7,12 +7,12 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "IntermediateAssets.h"
 #include <memory>
 
 namespace Assets
 {
-    class PendingCompileMarker;
+    class CompileFuture;
+	class DependentFileState;
 
     /// <summary>Utilities helpful when implementing asset compilers</summary>
     class CompilerHelper
@@ -21,8 +21,8 @@ namespace Assets
         class CompileResult
         {
         public:
-            std::vector<::Assets::DependentFileState> _dependencies;
-            ::Assets::rstring _baseDir;
+            std::vector<DependentFileState> _dependencies;
+            rstring _baseDir;
         };
     };
 }

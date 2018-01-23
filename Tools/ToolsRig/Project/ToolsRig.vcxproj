@@ -81,11 +81,13 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\BasicManipulators.cpp" />
+    <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\GenerateAO.cpp" />
     <ClCompile Include="..\ManipulatorsRender.cpp" />
     <ClCompile Include="..\MaterialBinder.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\ModelVisualisation.cpp" />
+    <ClCompile Include="..\ObjectPlaceholders.cpp" />
     <ClCompile Include="..\PlacementsManipulators.cpp" />
     <ClCompile Include="..\TerrainConversion.cpp" />
     <ClCompile Include="..\TerrainManipulators.cpp" />
@@ -98,6 +100,7 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicManipulators.h" />
+    <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\GenerateAO.h" />
     <ClInclude Include="..\IManipulator.h" />
     <ClInclude Include="..\ManipulatorsRender.h" />
@@ -105,6 +108,7 @@
     <ClInclude Include="..\MaterialBinder.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
+    <ClInclude Include="..\ObjectPlaceholders.h" />
     <ClInclude Include="..\PlacementsManipulators.h" />
     <ClInclude Include="..\TerrainConversion.h" />
     <ClInclude Include="..\TerrainManipulators.h" />

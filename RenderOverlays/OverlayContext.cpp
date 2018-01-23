@@ -16,11 +16,12 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/CommonResources.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/StringUtils.h"
 
@@ -212,14 +213,14 @@ namespace RenderOverlays
         ColorB color0, ColorB color1,
         const Float2& minTex0, const Float2& maxTex0, 
         const Float2& minTex1, const Float2& maxTex1,
-        const std::string& pixelShader)
+        StringSection<char> pixelShader)
     {
         typedef Vertex_PCCTT Vertex;
         if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
-        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader.AsString()));
         auto col0 = HardwareColor(color0);
         auto col1 = HardwareColor(color1);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col0, col1, Float2(minTex0[0], minTex0[1]), Float2(minTex1[0], minTex1[1])); _writePointer += sizeof(Vertex);
@@ -234,14 +235,14 @@ namespace RenderOverlays
             ProjectionMode::Enum proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
-            const std::string& pixelShader = std::string())
+            StringSection<char> pixelShader)
     {
         typedef Vertex_PC Vertex;
         if ((_writePointer + 6 * sizeof(Vertex)) > _workingBufferSize) {
             Flush();
         }
 
-        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader));
+        PushDrawCall(DrawCall(Topology::TriangleList, _writePointer, 6, AsVertexFormat<Vertex>(), proj, pixelShader.AsString()));
         auto col = HardwareColor(color);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], mins[1], mins[2]), col); _writePointer += sizeof(Vertex);
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(mins[0], maxs[1], mins[2]), col); _writePointer += sizeof(Vertex);
@@ -289,7 +290,7 @@ namespace RenderOverlays
     }
 
     float ImmediateOverlayContext::DrawText      (  const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, 
-                                                    TextAlignment::Enum alignment, const char text[], va_list args)
+                                                    TextAlignment::Enum alignment, StringSection<char> text)
     {
             //
             //      Because _textStyle.Draw() will draw immediately, we need to flush out
@@ -297,19 +298,8 @@ namespace RenderOverlays
             //
         Flush();
 
-        ucs4 unicharBuffer[4096];
-
-        utf8 buffer[dimof(unicharBuffer)];
-        if (args) {
-            xl_vsnprintf((char*)buffer, dimof(buffer), text, args);
-
-                //  this conversion doesn't really make sense. Either we should
-                //  do the whole thing in ucs2 or ucs4 or just utf8
-        
-            utf8_2_ucs4(buffer, XlStringLen(buffer), unicharBuffer, dimof(unicharBuffer));
-        } else {
-            utf8_2_ucs4((const utf8*)text, XlStringLen((const utf8*)text), unicharBuffer, dimof(unicharBuffer));
-        }
+		ucs4 unicharBuffer[4096];
+        utf8_2_ucs4((const utf8*)text.begin(), text.size(), unicharBuffer, dimof(unicharBuffer));
 
         if (!textStyle)
             textStyle = &_defaultTextStyle;
@@ -327,21 +317,10 @@ namespace RenderOverlays
             col.AsUInt32(), UI_TEXT_STATE_NORMAL, true, nullptr); // &q);
     }
 
-    float ImmediateOverlayContext::StringWidth    (float scale, TextStyle* textStyle, const char text[], va_list args)
+    float ImmediateOverlayContext::StringWidth    (float scale, TextStyle* textStyle, StringSection<char> text)
     {
         ucs4 unicharBuffer[4096];
-
-        utf8 buffer[dimof(unicharBuffer)];
-        if (args) {
-            xl_vsnprintf((char*)buffer, dimof(buffer), text, args);
-
-                //  this conversion doesn't really make sense. Either we should
-                //  do the whole thing in ucs2 or ucs4 or just utf8
-        
-            utf8_2_ucs4(buffer, XlStringLen(buffer), unicharBuffer, dimof(unicharBuffer));
-        } else {
-            utf8_2_ucs4((const utf8*)text, XlStringLen((const utf8*)text), unicharBuffer, dimof(unicharBuffer));
-        }
+        utf8_2_ucs4((const utf8*)text.begin(), text.size(), unicharBuffer, dimof(unicharBuffer));
 
         if (!textStyle)
             textStyle = &_defaultTextStyle;
@@ -587,7 +566,7 @@ namespace RenderOverlays
     {
                 // \todo --     we should cache the input layout result
                 //              (since it's just the same every time)
-        auto& box = Techniques::FindCachedBoxDep<ShaderBox>(
+        auto& box = ConsoleRig::FindCachedBoxDep<ShaderBox>(
             ShaderBox::Desc(topology, format, projMode, pixelShaderName));
 
         if (box._shaderProgram) {
@@ -630,7 +609,7 @@ namespace RenderOverlays
     {
     public:
         class Desc {};
-        intrusive_ptr<Font> _font;
+        std::shared_ptr<Font> _font;
         DefaultFontBox(const Desc&) : _font(GetX2Font("Raleway", 16)) {}
     };
 
@@ -638,8 +617,7 @@ namespace RenderOverlays
         IThreadContext& threadContext, 
         RenderCore::Techniques::NamedResources* namedRes,
         const Techniques::ProjectionDesc& projDesc)
-    : _font(Techniques::FindCachedBox2<DefaultFontBox>()._font)
-    , _defaultTextStyle(*_font.get())
+    : _defaultTextStyle(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
     , _projDesc(projDesc)
     , _deviceContext(&threadContext)
     , _namedResources(namedRes)
@@ -669,6 +647,21 @@ namespace RenderOverlays
     }
 
 
+	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
+		MakeImmediateOverlayContext(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::NamedResources* namedRes,
+			const RenderCore::Techniques::ProjectionDesc& projDesc)
+	{
+		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(
+			(ImmediateOverlayContext*)XlMemAlign(sizeof(ImmediateOverlayContext), 16));
+		#pragma push_macro("new")
+		#undef new
+			new(overlayContext.get()) ImmediateOverlayContext(threadContext, namedRes, projDesc);
+		#pragma pop_macro("new")
+		return overlayContext;
+	}
+
     IOverlayContext::~IOverlayContext() {}
 
 
@@ -681,10 +674,10 @@ namespace RenderOverlays
     const ColorB ColorB::Zero(0x0, 0x0, 0x0, 0x0);
 }
 
-namespace RenderCore { namespace Techniques
+namespace ConsoleRig
 {
     template<> uint64 CalculateCachedBoxHash(const RenderOverlays::ImmediateOverlayContext::ShaderBox::Desc& desc)
     {
         return (uint64(desc._format) << 32) ^ (uint64(desc._projMode) << 16) ^ uint64(desc._topology) ^ Hash64(desc._pixelShaderName);
     }
-}}
+}

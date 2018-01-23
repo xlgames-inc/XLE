@@ -79,14 +79,13 @@ namespace RenderCore { namespace Metal_Vulkan
         };
         std::vector<std::pair<uint64, InputInterfaceElement>> _inputInterfaceQuickLookup;
 
-        SPIRVReflection(IteratorRange<const uint32*> byteCode);
-        SPIRVReflection(std::pair<const void*, size_t> byteCode);
+        SPIRVReflection(IteratorRange<const void*> byteCode);
         SPIRVReflection();
         ~SPIRVReflection();
 
-        SPIRVReflection(const SPIRVReflection& cloneFrom);
-        SPIRVReflection& operator=(const SPIRVReflection& cloneFrom);
-        SPIRVReflection(SPIRVReflection&& moveFrom) never_throws;
-        SPIRVReflection& operator=(SPIRVReflection&& moveFrom) never_throws;
+        SPIRVReflection(const SPIRVReflection& cloneFrom) = default;
+        SPIRVReflection& operator=(const SPIRVReflection& cloneFrom) = default;
+        SPIRVReflection(SPIRVReflection&& moveFrom) never_throws = default;
+        SPIRVReflection& operator=(SPIRVReflection&& moveFrom) never_throws = default;
     };
 }}

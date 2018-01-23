@@ -44,6 +44,8 @@
   <PropertyGroup />
   <ItemGroup>
     <ClInclude Include="..\ArchiveCache.h" />
+    <ClInclude Include="..\AssetFuture.h" />
+    <ClInclude Include="..\AssetHeap.h" />
     <ClInclude Include="..\Assets.h" />
     <ClInclude Include="..\AssetsCore.h" />
     <ClInclude Include="..\AssetSetInternal.h" />
@@ -61,13 +63,14 @@
     <ClInclude Include="..\CompilerLibrary.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
-    <ClInclude Include="..\DivergentAsset.h" />
     <ClInclude Include="..\AssetServices.h" />
+    <ClInclude Include="..\GenericFuture.h" />
+    <ClInclude Include="..\IAssetCompiler.h" />
     <ClInclude Include="..\IFileSystem.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
-    <ClInclude Include="..\InvalidAssetManager.h" />
+    <ClInclude Include="..\MemoryFile.h" />
     <ClInclude Include="..\MountingTree.h" />
-    <ClInclude Include="..\NascentChunkArray.h" />
+    <ClInclude Include="..\NascentChunk.h" />
     <ClInclude Include="..\OSFileSystem.h" />
   </ItemGroup>
   <ItemGroup>
@@ -76,7 +79,7 @@
     <ClCompile Include="..\AssetSetManager.cpp" />
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
-    <ClCompile Include="..\AsyncLoadOperation.cpp" />
+    <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />
@@ -84,14 +87,13 @@
     <ClCompile Include="..\CompileAndAsyncManager.cpp" />
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
-    <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
-    <ClCompile Include="..\InvalidAssetManager.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />
-    <ClCompile Include="..\NascentChunkArray.cpp" />
-    <ClCompile Include="..\OSFileSystem_WinAPI.cpp" />
+    <ClCompile Include="..\NascentChunk.cpp" />
+    <ClCompile Include="..\OSFileSystem.cpp" />
+    <ClCompile Include="..\MemoryFile.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

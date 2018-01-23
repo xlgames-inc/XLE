@@ -6,11 +6,14 @@
 
 #include "AssetUtils.h"
 #include "CompilerLibrary.h"
+#include "AssetFuture.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
-#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif
+#include "NascentChunk.h"		// (for AsBlob)
+#include "AssetServices.h"
+#include "CompileAndAsyncManager.h"
+#include "IntermediateAssets.h"		// (used in BeginCompileOperation)
+#include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
@@ -242,7 +245,7 @@ namespace Assets
 		return RawFS::FindFiles(searchPath.AsString(), filter);
 	}
 
-    void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, const ResChar baseName[]) const
+    void DirectorySearchRules::ResolveFile(ResChar destination[], unsigned destinationCount, StringSection<ResChar> baseName) const
     {
         ResChar tempBuffer[MaxPath];
 
@@ -265,8 +268,9 @@ namespace Assets
                 // We want to support the case were destination == baseName
                 // But that cases requires another temporary buffer, because we
                 // don't want to trash "baseName" while searching for matches
-            ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
-            unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
+            bool baseNameOverlapsDestination = !(baseName.end() <= destination || baseName.begin() >= &destination[destinationCount]);
+            ResChar* workingBuffer = (!baseNameOverlapsDestination) ? destination : tempBuffer;
+            unsigned workingBufferSize = (!baseNameOverlapsDestination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
                 XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], 
@@ -291,14 +295,14 @@ namespace Assets
             }
         }
 
-        if (baseName != destination)
+        if (baseName.begin() != destination)
             XlCopyString(destination, destinationCount, baseName);
         SplitPath<ResChar>(destination).Simplify().Rebuild(destination, destinationCount);
     }
 
     void DirectorySearchRules::ResolveDirectory(
             ResChar destination[], unsigned destinationCount, 
-            const ResChar baseName[]) const
+            StringSection<ResChar> baseName) const
     {
             //  We have a problem with basic paths (like '../')
             //  These will match for most directories -- which means that
@@ -313,14 +317,13 @@ namespace Assets
                 b = AsPointer(_bufferOverflow.begin());
             }
 
-            const auto* baseEnd = XlStringEnd(baseName);
-            
             ResChar tempBuffer[MaxPath];
-            ResChar* workingBuffer = (baseName!=destination) ? destination : tempBuffer;
-            unsigned workingBufferSize = (baseName!=destination) ? destinationCount : unsigned(dimof(tempBuffer));
+            bool baseNameOverlapsDestination = !(baseName.end() <= destination || baseName.begin() >= &destination[destinationCount]);
+            ResChar* workingBuffer = (!baseNameOverlapsDestination) ? destination : tempBuffer;
+            unsigned workingBufferSize = (!baseNameOverlapsDestination) ? destinationCount : unsigned(dimof(tempBuffer));
 
             for (unsigned c=0; c<_startPointCount; ++c) {
-                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName, baseEnd);
+                XlConcatPath(workingBuffer, workingBufferSize, &b[_startOffsets[c]], baseName.begin(), baseName.end());
                 if (RawFS::DoesDirectoryExist(workingBuffer)) {
                     if (workingBuffer != destination)
                         XlCopyString(destination, destinationCount, workingBuffer);
@@ -329,7 +332,7 @@ namespace Assets
             }
         }
 
-        if (baseName != destination)
+        if (baseName.begin() != destination)
             XlCopyString(destination, destinationCount, baseName);
     }
 
@@ -363,7 +366,7 @@ namespace Assets
 			result.insert(result.end(), partialRes.begin(), partialRes.end());
 		}
 		
-		return std::move(result);
+		return result;
 	}
 
     DirectorySearchRules::DirectorySearchRules()
@@ -431,34 +434,32 @@ namespace Assets
 
     namespace Exceptions
     {
-        AssetException::AssetException(StringSection<ResChar> initializer, const char what[])
-        : ::Exceptions::BasicLabel(what) 
+		RetrievalError::RetrievalError(StringSection<ResChar> initializer) never_throws
         {
             XlCopyString(_initializer, dimof(_initializer), initializer); 
         }
 
-        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const char what[]) 
-        : AssetException(initializer, what) 
+        InvalidAsset::InvalidAsset(StringSection<ResChar> initializer, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
+        : RetrievalError(initializer)
+		, _depVal(depVal)
+		, _actualizationLog(actualizationLog)
         {
-                // Highlight cases where parameters are not filled in
-                // We particularly want to include a lot of debugging information
-                // with InvalidAsset exceptions -- because the user almost always
-                // needs to do something in response to them.
-            // assert(initializer[0] && what[0]);
         }
 
         bool InvalidAsset::CustomReport() const
         {
-            #if defined(HAS_XLE_CONSOLE_RIG)
-                LogAlwaysError << "Invalid asset (" << Initializer() << "):" << what();
-            #endif
+			if (_actualizationLog) {
+				Log(Error) << "Invalid asset (" << Initializer() << "):" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
+			} else {
+				Log(Error) << "Invalid asset (" << Initializer() << std::endl;
+			}
             return true;
         }
 
         auto InvalidAsset::State() const -> AssetState { return AssetState::Invalid; }
 
-        PendingAsset::PendingAsset(StringSection<ResChar> initializer, const char what[]) 
-        : AssetException(initializer, what) 
+        PendingAsset::PendingAsset(StringSection<ResChar> initializer) never_throws
+        : RetrievalError(initializer)
         {}
 
         bool PendingAsset::CustomReport() const
@@ -471,35 +472,74 @@ namespace Assets
 
         auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
 
-        FormatError::FormatError(const char format[], ...) never_throws
-        : _reason(Reason::FormatNotUnderstood)
-        {
-            va_list args;
-            va_start(args, format);
-            XlFormatStringV(_buffer, dimof(_buffer), format, args);
-            va_end(args);
-        }
+		bool ConstructionError::CustomReport() const
+		{
+			if (_actualizationLog) {
+				Log(Error) << "Error during asset construction:" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
+			}
+			else {
+				Log(Error) << "Error during asset construction (unspecified)" << std::endl;
+			}
+			return true;
+		}
 
-        FormatError::FormatError(Reason reason, const char format[], ...) never_throws
-        : _reason(reason)
-        {
-            va_list args;
-            va_start(args, format);
-            XlFormatStringV(_buffer, dimof(_buffer), format, args);
-            va_end(args);
-        }
+		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
+		: _reason(reason), _depVal(depVal)
+		, _actualizationLog(actualizationLog)
+		{
+		}
+
+		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const char format[], ...) never_throws
+		: _reason(reason), _depVal(depVal)
+		{
+			char buffer[512];
+			va_list args;
+			va_start(args, format);
+			std::vsnprintf(buffer, dimof(buffer), format, args);
+			va_end(args);
+
+			_actualizationLog = AsBlob(MakeIteratorRange(buffer, XlStringEnd(buffer)));
+		}
+
+		ConstructionError::ConstructionError(const std::exception& e, const DepValPtr& depVal) never_throws
+		: _reason(Reason::Unknown)
+		, _depVal(depVal)
+		, _actualizationLog(AsBlob(e))
+		{}
+
+		ConstructionError::ConstructionError(const ConstructionError& copyFrom, const DepValPtr& depVal) never_throws
+		: _reason(copyFrom._reason)
+		, _depVal(copyFrom._depVal)
+		, _actualizationLog(copyFrom._actualizationLog)
+		{
+			// merge the depvals by creating a tree
+			if (_depVal && depVal && _depVal != depVal) {
+				auto parentDepVal = std::make_shared<DependencyValidation>();
+				RegisterAssetDependency(parentDepVal, _depVal);
+				RegisterAssetDependency(parentDepVal, depVal);
+				_depVal = std::move(parentDepVal);
+			} else if (depVal) {
+				_depVal = depVal;
+			}
+		}
     }
 
+	Blob AsBlob(const std::exception& e)
+	{
+		const char* w = e.what();
+		return AsBlob(MakeIteratorRange(w, XlStringEnd(w)));
+	}
 
-    PendingOperationMarker::PendingOperationMarker(AssetState state) 
+
+    GenericFuture::GenericFuture(AssetState state) 
     : _state(state)
     {
         DEBUG_ONLY(_initializer[0] = '\0');
     }
 
-    PendingOperationMarker::~PendingOperationMarker() {}
+    GenericFuture::~GenericFuture() {}
 
-    const char* PendingOperationMarker::Initializer() const
+    const char* GenericFuture::Initializer() const
     {
         #if defined(_DEBUG)
             return _initializer;
@@ -508,17 +548,17 @@ namespace Assets
         #endif
     }
 
-    void PendingOperationMarker::SetInitializer(const char initializer[])
+    void GenericFuture::SetInitializer(const char initializer[])
     {
         DEBUG_ONLY(XlCopyString(_initializer, initializer));
     }
 
-    void PendingOperationMarker::SetState(AssetState newState)
+    void GenericFuture::SetState(AssetState newState)
     {
         _state = newState;
     }
 
-    AssetState PendingOperationMarker::StallWhilePending() const
+    AssetState GenericFuture::StallWhilePending() const
     {
             // Stall until the _state variable changes
             // in another thread.
@@ -536,6 +576,8 @@ namespace Assets
 
         return *state;
     }
+
+	IAsyncMarker::~IAsyncMarker() {}
 
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -598,9 +640,28 @@ namespace Assets
                 (const ::Assets::ResChar*)src.end()));
     }
 
+	DepValPtr AsDepVal(IteratorRange<const DependentFileState*> deps)
+	{
+		auto result = std::make_shared<DependencyValidation>();
+		for (const auto& i : deps)
+			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
+		return result;
+	}
 
 	ICompileOperation::~ICompileOperation() {}
 	ICompilerDesc::~ICompilerDesc() {}
+
+	namespace Internal
+	{
+		std::shared_ptr<ICompileMarker> BeginCompileOperation(
+			uint64_t typeCode, const StringSection<ResChar> initializers[],
+			unsigned initializerCount)
+		{
+			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
+			auto& store = Services::GetAsyncMan().GetIntermediateStore();
+			return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
+		}
+	}
 
 }
 

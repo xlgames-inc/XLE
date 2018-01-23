@@ -10,12 +10,18 @@
 #include "../../Core/Exceptions.h"
 #include "../../Core/Types.h"
 #include "../StringUtils.h" // for StringSection
-#include "../Mixins.h"
 #include <memory>       // for std::unique_ptr
 
 #include <vector>
 #include <string>
 #include <functional>
+
+#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+	#include <optional>
+#else
+	#include <experimental/optional>
+	namespace std { template <typename T> using optional = experimental::optional<T>; }
+#endif
 
 namespace Utility 
 {
@@ -136,15 +142,23 @@ namespace Utility
 			MemoryMappedFile();
 		};
 
-		XL_UTILITY_API bool DoesFileExist(const char filename[]);
-		XL_UTILITY_API uint64 GetFileModificationTime(const char filename[]);
-		XL_UTILITY_API uint64 GetFileSize(const char filename[]);
-		XL_UTILITY_API bool DoesDirectoryExist(const char filename[]);
-		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<char> filename);
-		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<utf8> filename);
-		XL_UTILITY_API void CreateDirectoryRecursive(const StringSection<utf16> filename);
+		class FileAttributes
+		{
+		public:
+			uint64_t _size;
+			uint64_t _lastWriteTime;
+			uint64_t _lastAccessTime;
+		};
 
-		std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(const char sourceFileName[], size_t* sizeResult);
+		XL_UTILITY_API bool DoesFileExist(StringSection<char> filename);
+		XL_UTILITY_API bool DoesDirectoryExist(StringSection<char> filename);
+
+		XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
+		XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
+		
+		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<char> filename);
+		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf8> filename);
+		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf16> filename);
 
 		namespace FindFilesFilter
 		{

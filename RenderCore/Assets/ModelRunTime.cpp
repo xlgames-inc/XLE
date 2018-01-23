@@ -8,17 +8,17 @@
 #include "ModelRendererInternal.h"
 #include "DelayedDrawCall.h"
 #include "ModelImmutableData.h"
-#include "Material.h"
+#include "MaterialScaffold.h"
 #include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
 #include "DeferredShaderResource.h"
 #include "AssetUtils.h" // for IsDXTNormalMap
 
 #include "../Techniques/Techniques.h"
-#include "../Techniques/ResourceBox.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonResources.h"
 #include "../Techniques/PredefinedCBLayout.h"
+#include "../Techniques/TechniqueMaterial.h"
 
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
@@ -29,6 +29,7 @@
 #include "../Format.h"
 
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/IteratorUtils.h"
@@ -36,6 +37,7 @@
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Core/Exceptions.h"
 
 #include <string>
@@ -139,7 +141,7 @@ namespace RenderCore { namespace Assets
             return false;       // didn't find any draw calls with good material information. This whole geo object can be ignored.
         }
 
-        static void LoadBlock(BasicFile& file, uint8 destination[], size_t fileOffset, size_t readSize)
+        static void LoadBlock(::Assets::IFileInterface& file, uint8 destination[], size_t fileOffset, size_t readSize)
         {
             file.Seek(fileOffset);
             file.Read(destination, 1, readSize);
@@ -447,7 +449,7 @@ namespace RenderCore { namespace Assets
 
         static void ReadImmediately(
             std::vector<uint8>& nascentBuffer,
-            BasicFile& file, unsigned largeBlocksOffset,
+            ::Assets::IFileInterface& file, size_t largeBlocksOffset,
             IteratorRange<PendingGeoUpload*> uploads, unsigned supplementIndex = ~0u)
         {
             for (auto u=uploads.cbegin(); u!=uploads.cend(); ++u)
@@ -651,14 +653,16 @@ namespace RenderCore { namespace Assets
         nascentIB.resize(workingBuffers._ibSize);
 
         {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(scaffold.Filename(), "rb");
-            ReadImmediately(nascentIB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._ibUploads));
-            ReadImmediately(nascentVB, file, scaffold.LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads));
+			auto file = scaffold.OpenLargeBlocks();
+			auto largeBlocksOffset = file->TellP();
+            ReadImmediately(nascentIB, *file, largeBlocksOffset, MakeIteratorRange(workingBuffers._ibUploads));
+            ReadImmediately(nascentVB, *file, largeBlocksOffset, MakeIteratorRange(workingBuffers._vbUploads));
         }
 
         for (unsigned s=0; s<supplements.size(); ++s) {
-			auto file = ::Assets::MainFileSystem::OpenBasicFile(supplements[s]->Filename(), "rb");
-            ReadImmediately(nascentVB, file, supplements[s]->LargeBlocksOffset(), MakeIteratorRange(workingBuffers._vbUploads), s);
+			auto file = supplements[s]->OpenLargeBlocks();
+			auto largeBlocksOffset = file->TellP();
+            ReadImmediately(nascentVB, *file, largeBlocksOffset, MakeIteratorRange(workingBuffers._vbUploads), s);
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -1026,7 +1030,7 @@ namespace RenderCore { namespace Assets
             const MeshToModel&  transforms,
             PreparedAnimation*  preparedAnimation) const
     {
-        auto& box = Techniques::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
+        auto& box = ConsoleRig::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
         const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
 
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
@@ -1542,7 +1546,7 @@ namespace RenderCore { namespace Assets
 
     void ModelRenderer::LogReport() const
     {
-        LogInfo << "---<< Model Renderer: " << _pimpl->_scaffold->Filename() << " (LOD: " << _pimpl->_levelOfDetail << ") >>---";
+        LogInfo << "---<< Model Renderer (LOD: " << _pimpl->_levelOfDetail << ") >>---";
         LogInfo << "  [" << _pimpl->_meshes.size() << "] meshes";
         LogInfo << "  [" << _pimpl->_skinnedMeshes.size() << "] skinned meshes";
         LogInfo << "  [" << _pimpl->_constantBuffers.size() << "] constant buffers";

@@ -24,8 +24,8 @@ namespace EntityInterface
 
             auto material = CreateFromParameters<VegetationSpawnConfig::Material>(child->_properties);
 
-            for (auto cid:child->_children) {
-                const auto* objType = sys.GetEntity(obj._doc, cid);
+            for (auto cid2:child->_children) {
+                const auto* objType = sys.GetEntity(obj._doc, cid2);
                 if (!objType) continue;
 
                 auto objTypeBucket = CreateFromParameters<VegetationSpawnConfig::ObjectType>(objType->_properties);

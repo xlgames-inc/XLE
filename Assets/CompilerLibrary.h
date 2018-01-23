@@ -13,6 +13,7 @@ namespace Assets
 {
 	class NascentChunk;
 	using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
+	class DependentFileState;
 
 	class ICompilerDesc
 	{
@@ -43,6 +44,7 @@ namespace Assets
 		virtual unsigned			TargetCount() const = 0;
 		virtual TargetDesc			GetTarget(unsigned idx) const = 0;
 		virtual NascentChunkArray	SerializeTarget(unsigned idx) = 0;
+		virtual std::shared_ptr<std::vector<DependentFileState>> GetDependencies() const = 0;
 
 		virtual ~ICompileOperation();
 	};

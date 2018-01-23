@@ -22,11 +22,14 @@
     <Filter Include="StamSimpleFluid">
       <UniqueIdentifier>{7f199cf2-efff-41d7-94b2-8578cc9b9bd9}</UniqueIdentifier>
     </Filter>
-    <Filter Include="plustasche">
-      <UniqueIdentifier>{cb08e698-b2c9-4601-9cc5-d21822b43a21}</UniqueIdentifier>
-    </Filter>
     <Filter Include="LibTIFF\Lua">
       <UniqueIdentifier>{3ae209b4-7742-4528-8b36-2f9575855b5f}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="plustache">
+      <UniqueIdentifier>{cb08e698-b2c9-4601-9cc5-d21822b43a21}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="fmt">
+      <UniqueIdentifier>{4e4c0675-1a41-49d8-8fe9-ff8a63bd7c58}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>
@@ -270,11 +273,23 @@
     <ClCompile Include="..\StamSimpleFluid\solver.c">
       <Filter>StamSimpleFluid</Filter>
     </ClCompile>
-    <ClCompile Include="..\plustasche\context.cpp">
-      <Filter>plustasche</Filter>
+    <ClCompile Include="..\plustache\context.cpp">
+      <Filter>plustache</Filter>
     </ClCompile>
-    <ClCompile Include="..\plustasche\template.cpp">
-      <Filter>plustasche</Filter>
+    <ClCompile Include="..\plustache\template.cpp">
+      <Filter>plustache</Filter>
+    </ClCompile>
+    <ClCompile Include="..\fmt\ostream.cc">
+      <Filter>fmt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\fmt\posix.cc">
+      <Filter>fmt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\fmt\printf.cc">
+      <Filter>fmt</Filter>
+    </ClCompile>
+    <ClCompile Include="..\fmt\format.cc">
+      <Filter>fmt</Filter>
     </ClCompile>
   </ItemGroup>
   <ItemGroup>
@@ -413,14 +428,49 @@
     <ClInclude Include="..\StackWalker\StackWalker.h">
       <Filter>StackWalker</Filter>
     </ClInclude>
-    <ClInclude Include="..\plustasche\context.hpp">
-      <Filter>plustasche</Filter>
+    <ClInclude Include="..\plustache\context.hpp">
+      <Filter>plustache</Filter>
     </ClInclude>
-    <ClInclude Include="..\plustasche\plustache_types.hpp">
-      <Filter>plustasche</Filter>
+    <ClInclude Include="..\plustache\plustache_types.hpp">
+      <Filter>plustache</Filter>
     </ClInclude>
-    <ClInclude Include="..\plustasche\template.hpp">
-      <Filter>plustasche</Filter>
+    <ClInclude Include="..\plustache\template.hpp">
+      <Filter>plustache</Filter>
     </ClInclude>
+    <ClInclude Include="..\fmt\ostream.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fmt\posix.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fmt\printf.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fmt\string.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fmt\time.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fmt\container.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+    <ClInclude Include="..\fmt\format.h">
+      <Filter>fmt</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="..\fmt\README.rst">
+      <Filter>fmt</Filter>
+    </None>
+    <None Include="..\fmt\ChangeLog.rst">
+      <Filter>fmt</Filter>
+    </None>
+    <None Include="..\fmt\CONTRIBUTING.rst">
+      <Filter>fmt</Filter>
+    </None>
+    <None Include="..\fmt\LICENSE.rst">
+      <Filter>fmt</Filter>
+    </None>
   </ItemGroup>
 </Project>

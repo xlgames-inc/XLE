@@ -14,16 +14,17 @@
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
+#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderOverlays/HighlightEffects.h"
+#include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
+#include "../../ConsoleRig/ResourceBox.h"
 
 #include "../../RenderCore/DX11/Metal/DX11Utils.h"
 
@@ -243,7 +244,7 @@ namespace ToolsRig
 
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
-        Techniques::TechniqueMaterial _materialGenCylinder;
+        RenderCore::Assets::ShaderVariationSet _materialGenCylinder;
 
         ManipulatorResBox(const Desc&);
     private:
@@ -264,7 +265,7 @@ namespace ToolsRig
         Float3 origin, Float3 axis, float radius)
     {
         CATCH_ASSETS_BEGIN
-            auto& box = Techniques::FindCachedBoxDep2<ManipulatorResBox>();
+            auto& box = ConsoleRig::FindCachedBoxDep2<ManipulatorResBox>();
             auto localToWorld = Identity<Float4x4>();
             SetTranslation(localToWorld, origin);
             SetUp(localToWorld, axis);
@@ -280,7 +281,7 @@ namespace ToolsRig
 
             auto shader = box._materialGenCylinder.FindVariation(
                 parserContext, Techniques::TechniqueIndex::Forward, 
-                "xleres/ui/objgen/arealight.tech");
+                "xleres/ui/objgen/arealight");
             
             if (shader._shader._shaderProgram) {
                 auto& metalContext = *Metal::DeviceContext::Get(threadContext);

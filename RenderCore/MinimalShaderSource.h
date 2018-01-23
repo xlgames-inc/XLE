@@ -40,11 +40,11 @@ namespace RenderCore
         };
 #endif
 
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
 			StringSection<::Assets::ResChar> resId, 
 			StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
 			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
@@ -54,7 +54,7 @@ namespace RenderCore
     protected:
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
 
-        std::shared_ptr<::Assets::PendingCompileMarker> Compile(
+        std::shared_ptr<::Assets::CompileFuture> Compile(
             const void* shaderInMemory, size_t size,
             const ShaderService::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;

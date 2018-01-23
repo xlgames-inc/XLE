@@ -19,6 +19,7 @@
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/Overlays/Browser.h"
 #include "../../RenderOverlays/OverlayUtils.h"
+#include "../../RenderCore/IThreadContext.h"
 
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -1388,7 +1389,9 @@ namespace ToolsRig
                 const auto temp = centre - Coord2(previewSize/2, previewSize/2);
                 const Rect previewRect(temp, temp + Coord2(previewSize, previewSize));
 
-                if (_browser) {
+				assert(0);		// depreciated because we can't get the device context from IOverlayContext anymore
+                /*
+				if (_browser) {
                     auto* devContext = context.GetDeviceContext();
                     const RenderCore::Metal::ShaderResourceView* srv = nullptr;
                 
@@ -1416,6 +1419,7 @@ namespace ToolsRig
                             FormatButton(interfaceState, Id_SelectedModel));
                     }
                 }
+				*/
 
                 interactables.Register(Interactables::Widget(previewRect, Id_SelectedModel));
             }
@@ -1574,7 +1578,9 @@ namespace ToolsRig
     void PlacementsManipulatorsManager::RenderWidgets(
         RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parsingContext)
     {
-        _pimpl->_screens->Render(device, &parsingContext.GetNamedResources(), parsingContext.GetProjectionDesc());
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device);
+		auto viewportDims = device.GetStateDesc()._viewportDimensions;
+		_pimpl->_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
     }
 
     void PlacementsManipulatorsManager::RenderToScene(

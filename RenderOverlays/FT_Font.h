@@ -11,6 +11,7 @@
 #include "../Utility/StringUtils.h"
 #include <map>
 #include <vector>
+#include <memory>
 
 namespace RenderOverlays
 {
@@ -33,7 +34,7 @@ class FTFont;
 class FTFontGroup;
 
 typedef std::vector<FTFontRange> FTFontRanges;
-typedef std::map<FTFont*, FTFontRanges> SubFTFontInfoMap;       // (DavidJ -- can't use intrusive_ptr as the first member of a map)
+typedef std::map<std::shared_ptr<FTFont>, FTFontRanges> SubFTFontInfoMap;
 
 struct FontDef {
     std::string path;
@@ -89,7 +90,7 @@ public:
     virtual ~FTFontGroup();
 
     bool CheckMyFace(FT_Face face);
-    intrusive_ptr<FTFont> FindFTFontByChar(ucs4 ch) const;
+    std::shared_ptr<FTFont> FindFTFontByChar(ucs4 ch) const;
     int GetFTFontCount();
     bool LoadDefaultFTFont(FTFontNameInfo &info, int size);
     void LoadSubFTFont(FTFontNameInfo &info, int size);
@@ -107,14 +108,14 @@ public:
     virtual bool Init(const FontDef& def);
     // virtual bool SacrificeChar(int ch);
 
-    virtual intrusive_ptr<const Font> GetSubFont(ucs4 ch) const;
+    virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
     virtual bool IsMultiFontAdapter() const;
 
 private:
     virtual FontCharID CreateFontChar(ucs4 ch);
     virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
-    intrusive_ptr<FTFont> _defaultFTFont;
+	std::shared_ptr<FTFont> _defaultFTFont;
     FTFontRanges _defaultFTFontRanges;
     SubFTFontInfoMap _subFTFontInfoMap;
 
@@ -129,7 +130,7 @@ void    CheckResetFTFontSystem();
 int     GetFTFontCount(FontTexKind kind);
 int     GetFTFontFileCount();
 
-intrusive_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind = FTK_GENERAL);
+std::shared_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind = FTK_GENERAL);
 
 }
 

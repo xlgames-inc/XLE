@@ -14,10 +14,11 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Format.h"
+#include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include <tuple>
 #include <type_traits>
@@ -186,7 +187,7 @@ namespace SceneEngine
         #endif
         const auto enablePrimitiveIds = Tweakable("Stochastic_PrimIds", false);
         const auto enableOpacity = Tweakable("Stochastic_Opacity", false);
-        auto& box = Techniques::FindCachedBox2<StochasticTransparencyBox>(
+        auto& box = ConsoleRig::FindCachedBox2<StochasticTransparencyBox>(
             unsigned(viewport.Width), unsigned(viewport.Height), 
             enablePrimitiveIds, enableOpacity, enableMetrics);
 

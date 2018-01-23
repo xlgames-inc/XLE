@@ -8,7 +8,8 @@
 #include "ExportedNativeTypes.h"
 #include "EditorInterfaceUtils.h"
 #include "../ToolsRig/VisualisationUtils.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -48,26 +49,14 @@ namespace GUILayer
         auto& resMat = visObject->_parameters;
         auto& searchRules = visObject->_searchRules;
         
-        if (_config) {
+		auto previewModel = clix::marshalString<clix::E_UTF8>(_previewModel);
+		searchRules.AddSearchDirectoryFromFilename(MakeStringSection(previewModel));
+
+        if (_config)
             for each(auto c in _config)
-                searchRules.AddSearchDirectoryFromFilename(
-                    MakeStringSection(clix::marshalString<clix::E_UTF8>(c->Filename)));
-
-                // also grab the directory with the preview model in it
-            searchRules.AddSearchDirectoryFromFilename(clix::marshalString<clix::E_UTF8>(_previewModel).c_str());
-
-            for each(auto c in _config) {
-                auto state = c->GetUnderlying()->TryResolve(resMat, searchRules);
-				assert(state == ::Assets::AssetState::Ready); (void)state;
-			}
-        }
+				RenderCore::Assets::MergeIn_Stall(resMat, *c->GetUnderlying(), searchRules);
 
         const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
-        ::Assets::ResChar resolvedShader[MaxPath];
-        XlCopyString(resolvedShader, shader);
-        XlCatString(resolvedShader, ".tech");
-        RenderCore::Assets::Services::GetTechniqueConfigDirs().ResolveFile(resolvedShader, resolvedShader);
-
         visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);
         visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
         visObject->_previewMaterialBinding = _materialBinding;

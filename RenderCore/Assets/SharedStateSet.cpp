@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SharedStateSet.h"
-#include "Material.h"
 #include "../Types.h"
 #include "../Techniques/Techniques.h"
 #include "../Techniques/CommonResources.h"
@@ -18,7 +17,8 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
 #include "../Metal/State.h"
-#include "../Techniques/ResourceBox.h"
+#include "../../ConsoleRig/ResourceBox.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/StringUtils.h"

@@ -11,7 +11,6 @@
 #include "LightInternal.h"
 #include "ShaderLightDesc.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -31,6 +30,8 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
 
+#include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/BitUtils.h"
@@ -557,10 +558,10 @@ namespace SceneEngine
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
-            auto& fogRes = Techniques::FindCachedBox2<VolumetricFogResources>(
+            auto& fogRes = ConsoleRig::FindCachedBox2<VolumetricFogResources>(
                 rendererCfg, shadowFrustum._frustumCount, 
                 UseESMShadowMaps(), GetHighPrecisionResources());
-            auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
+            auto& fogShaders = ConsoleRig::FindCachedBoxDep2<VolumetricFogShaders>(
                 1, useMsaaSamplers, false, UseESMShadowMaps(), 
                 cfg._material._noiseThicknessScale > 0.f,
                 GetShadowCascadeMode(shadowFrustum),
@@ -639,7 +640,7 @@ namespace SceneEngine
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
-            auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+            auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context->BindCS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context->BindCS(MakeResourceList(9, 
                 ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(
@@ -696,14 +697,14 @@ namespace SceneEngine
         VolumetricFogResources* fogRes = nullptr;
         bool doShadows = shadowFrustum && (cfg._material._flags & unsigned(VolumetricFogMaterial::Flags::EnableShadows));
         if (doShadows) {
-            fogRes = &Techniques::FindCachedBox2<VolumetricFogResources>(
+            fogRes = &ConsoleRig::FindCachedBox2<VolumetricFogResources>(
                 rendererCfg, shadowFrustum->_frustumCount, 
                 UseESMShadowMaps(), GetHighPrecisionResources());
             shadowCascadeMode = GetShadowCascadeMode(*shadowFrustum);
             shadowMapRTVs = unsigned(fogRes->_shadowMapRTVs.size());
         }
 
-        auto& fogShaders = Techniques::FindCachedBoxDep2<VolumetricFogShaders>(
+        auto& fogShaders = ConsoleRig::FindCachedBoxDep2<VolumetricFogShaders>(
             samplingCount, useMsaaSamplers, flipDirection, UseESMShadowMaps(), 
             cfg._material._noiseThicknessScale > 0.f,
             shadowCascadeMode,

@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ShaderService.h"
-#include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Threading/Mutex.h"
 #include <vector>
@@ -42,7 +42,7 @@ namespace RenderCore { namespace Assets
     };
 
     class LocalCompiledShaderSource 
-        : public ::Assets::IntermediateAssets::IAssetCompiler
+        : public ::Assets::IAssetCompiler
         , public ShaderService::IShaderSource
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
@@ -51,11 +51,11 @@ namespace RenderCore { namespace Assets
             uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
             const ::Assets::IntermediateAssets::Store& destinationStore);
 
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromFile(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<::Assets::PendingCompileMarker> CompileFromMemory(
+        std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 

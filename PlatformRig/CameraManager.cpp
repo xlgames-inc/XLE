@@ -7,6 +7,7 @@
 #include "CameraManager.h"
 #include "UnitCamera.h"
 #include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../Math/Transformations.h"
 
 namespace PlatformRig { namespace Camera

@@ -17,7 +17,6 @@
 #include "VolumetricFog.h"
 #include "RayTracedShadows.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -33,7 +32,9 @@
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
 
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 
@@ -197,12 +198,12 @@ namespace SceneEngine
         metalContext.BindPS(MakeResourceList(3, *shadowSRV));
 
         auto samplingCount = 1; // ...?
-        auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
+        auto& resolveRes = ConsoleRig::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
         metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
         metalContext.BindPS(MakeResourceList(11, 
             dominantLight._resolveParametersCB,
-            Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32));
+			ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32));
 
         parsingContext.SetGlobalCB(
             metalContext, Techniques::TechniqueContext::CB_ShadowProjection, 
@@ -290,7 +291,7 @@ namespace SceneEngine
         //     uint8(std::max(mainTargets.GetQualitySettings()._samplingCount, 1u)), 
         //     uint8(mainTargets.GetQualitySettings()._samplingQuality));
 
-        auto& resolveRes = Techniques::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
+        auto& resolveRes = ConsoleRig::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
 
             //
             //    Our inputs is the prepared gbuffer 
@@ -369,17 +370,20 @@ namespace SceneEngine
             // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
             // separately the "aspects" so the DSV has stencil, and the SRV has depth.
             // Perhaps we need an input attachment for the depth buffer in the second pass?
-            parserContext.GetNamedResources().DefineAttachments(
+            
+			AttachmentDesc attachments[] =
                 {{  IMainTargets::LightResolve, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
                     TextureViewWindow::Aspect::ColorLinear,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }});
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }};
+			
+			parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(attachments));
 
             FrameBufferDesc resolveLighting(
                 {
-                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth),
-                    SubpassDesc({IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil)
+					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth},
+					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil}
                 },
                 {
                     {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewWindow(),
@@ -441,7 +445,7 @@ namespace SceneEngine
 
                         //-------- ambient light shader --------
                     auto& ambientResolveShaders = 
-                        Techniques::FindCachedBoxDep2<AmbientResolveShaders>(
+						ConsoleRig::FindCachedBoxDep2<AmbientResolveShaders>(
                             mainTargets.GetGBufferType(),
                             (c==0)?samplingCount:1, useMsaaSamplers, c==1,
                             lightingResolveContext._ambientOcclusionResult.IsGood(),
@@ -582,7 +586,7 @@ namespace SceneEngine
         const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(srvs)==SR::Max, "Shader resource array incorrect size");
         
-        prebuiltConstantBuffers[CB::ShadowParam] = &Techniques::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
+        prebuiltConstantBuffers[CB::ShadowParam] = &ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
         Metal::ConstantBuffer debuggingCB;
         if (debugging) {
@@ -599,7 +603,7 @@ namespace SceneEngine
             ////////////////////////////////////////////////////////////////////////
 
         auto& lightingResolveShaders = 
-            Techniques::FindCachedBoxDep2<LightingResolveShaders>(
+			ConsoleRig::FindCachedBoxDep2<LightingResolveShaders>(
                 resolveContext.GetMainTargets().GetGBufferType(),
                 (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                 resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel,

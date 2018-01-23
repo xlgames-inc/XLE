@@ -14,7 +14,6 @@
 #include "LightDesc.h"
 #include "Sky.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -22,7 +21,9 @@
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
@@ -123,7 +124,7 @@ namespace SceneEngine
         Metal::ViewportDesc mainViewport(metalContext);
 
         const auto checkInfiniteLoop = Tweakable("OITransCheckInfinite", true);
-        auto& transparencyTargets = Techniques::FindCachedBox<TransparencyTargetsBox>(
+        auto& transparencyTargets = ConsoleRig::FindCachedBox<TransparencyTargetsBox>(
             TransparencyTargetsBox::Desc(
             unsigned(mainViewport.Width), unsigned(mainViewport.Height), true, checkInfiniteLoop));
 
@@ -144,7 +145,7 @@ namespace SceneEngine
         // auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
         // context->BindPS(MakeResourceList(8, box12, box34, box5));
 
-        // auto& perlinNoiseRes = Techniques::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+        // auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
         // context->BindPS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             //

@@ -17,9 +17,9 @@
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../ConsoleRig/ResourceBox.h"
 
 namespace GUILayer 
 {
@@ -34,7 +34,7 @@ namespace GUILayer
             unsigned _fontSize;
             Desc(unsigned fontSize) : _fontSize(fontSize) {}
         };
-        intrusive_ptr<RenderOverlays::Font> _font;
+		std::shared_ptr<RenderOverlays::Font> _font;
         RenderPostSceneResources(const Desc& desc);
     };
 
@@ -55,14 +55,14 @@ namespace GUILayer
             contextStateDesc._viewportDimensions[1], RenderCore::TextureSamples::Create()});
         namedRes.Bind(0u, presentationResource);
         RenderCore::Techniques::RenderPassInstance rpi(
-            context, {{RenderCore::SubpassDesc({0})}},
+            context, {{RenderCore::SubpassDesc{{0}}}},
             0u, namedRes);
 
         const char text[] = "Hello World!... It's me, XLE!";
         
         using namespace RenderOverlays;
-        auto& res = RenderCore::Techniques::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
-        TextStyle style(*res._font);
+        auto& res = ConsoleRig::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
+        TextStyle style(res._font);
         ColorB col(0xffffffff);
         
             //      Render text using a IOverlayContext
@@ -79,7 +79,7 @@ namespace GUILayer
             std::make_tuple(
                 Float3(0.f, 0.f, 0.f), 
                 Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
-            &style, col, TextAlignment::Center, text, nullptr);
+            &style, col, TextAlignment::Center, text);
 
         return PlatformRig::FrameRig::RenderResult(false);
     }

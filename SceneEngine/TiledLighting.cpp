@@ -11,7 +11,6 @@
 #include "SceneParser.h"
 #include "LightDesc.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -23,8 +22,10 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Assets/Assets.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 
 #include "../Utility/StringFormat.h"
@@ -166,7 +167,7 @@ namespace SceneEngine
 				auto tDesc = Metal::ExtractDesc(depthsSRV);
                 unsigned width = tDesc._textureDesc._width, height = tDesc._textureDesc._height, sampleCount = tDesc._textureDesc._samples._sampleCount;
 
-                auto& tileLightingResources = Techniques::FindCachedBox<TileLightingResources>(
+                auto& tileLightingResources = ConsoleRig::FindCachedBox<TileLightingResources>(
                     TileLightingResources::Desc(width, height, 16));
 
                 auto worldToView = InvertOrthonormalTransform(
@@ -353,7 +354,7 @@ namespace SceneEngine
                     return;
                 }
 
-                auto& tileLightingResources = Techniques::FindCachedBox<TileLightingResources>(
+                auto& tileLightingResources = ConsoleRig::FindCachedBox<TileLightingResources>(
                     TileLightingResources::Desc(mainViewportWidth, mainViewportHeight, 16));
 
                 bool isShadowsPass = techniqueIndex == TechniqueIndex_ShadowGen;

@@ -222,7 +222,7 @@ namespace ShaderPatcherLayer
         try
         {
             auto nativeGraph = graph->ConvertToNative(name);
-            ShaderPatcher::FunctionInterface interf;
+            ShaderPatcher::NodeGraphSignature interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
             return marshalString<E_UTF8>(ShaderPatcher::GenerateShaderHeader(nativeGraph) + shaderBody);
@@ -233,7 +233,7 @@ namespace ShaderPatcherLayer
         }
     }
     
-    static std::string GenerateCBLayoutInt(ShaderPatcher::FunctionInterface& interf)
+    static std::string GenerateCBLayoutInt(ShaderPatcher::NodeGraphSignature& interf)
     {
         std::stringstream str;
             // Input parameters that can be stored in a cbuffer become
@@ -258,7 +258,7 @@ namespace ShaderPatcherLayer
         try
         {
             auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
-			ShaderPatcher::FunctionInterface interf;
+			ShaderPatcher::NodeGraphSignature interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
 
@@ -302,7 +302,7 @@ namespace ShaderPatcherLayer
         try
         {
             auto nativeGraph = graph->ConvertToNative("temp");
-			ShaderPatcher::FunctionInterface interf;
+			ShaderPatcher::NodeGraphSignature interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
             return clix::marshalString<clix::E_UTF8>(GenerateCBLayoutInt(interf));
@@ -316,13 +316,13 @@ namespace ShaderPatcherLayer
 	NodeGraph::Interface^	NodeGraph::GetInterface(NodeGraph^ graph)
 	{
 		auto nativeGraph = graph->ConvertToNative("graph");
-        ShaderPatcher::FunctionInterface interf;
+        ShaderPatcher::NodeGraphSignature interf;
 		std::string shaderBody;
 		std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
 
 		auto variables = gcnew List<Interface::Item>();
 		for (const auto& i:interf.GetFunctionParameters()) {
-			if (i._direction != ShaderPatcher::FunctionInterface::Parameter::Direction::In)
+			if (i._direction != ShaderPatcher::NodeGraphSignature::Parameter::Direction::In)
 				continue;
 
 			Interface::Item item;
@@ -576,7 +576,7 @@ namespace ShaderPatcherLayer
 				// get at the MainFunctionParameters object
 				try {
 					auto nativeGraph = nodeGraph->ConvertToNative(graphName);
-					ShaderPatcher::FunctionInterface interf;
+					ShaderPatcher::NodeGraphSignature interf;
 					std::string shaderBody;
 					std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
 					auto str = ShaderPatcher::GenerateStructureForTechniqueConfig(interf, nativeGraph.GetName().c_str());

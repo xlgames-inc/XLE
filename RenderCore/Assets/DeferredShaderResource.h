@@ -8,7 +8,7 @@
 
 #include "../Types_Forward.h"
 #include "../Metal/Forward.h"
-#include "../../Assets/Assets.h"
+#include "../../Assets/AssetsCore.h"
 
 namespace RenderCore { namespace Assets 
 {

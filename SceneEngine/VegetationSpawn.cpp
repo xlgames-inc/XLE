@@ -11,7 +11,6 @@
 #include "SceneParser.h"
 #include "Noise.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -28,6 +27,8 @@
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
 
+#include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
@@ -224,7 +225,7 @@ namespace SceneEngine
         auto oldCamera = parserContext.GetProjectionDesc();
 
         CATCH_ASSETS_BEGIN
-            auto& perlinNoiseRes = Techniques::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
+            auto& perlinNoiseRes = ConsoleRig::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
             metalContext->BindGS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             metalContext->BindGS(MakeResourceList(Metal::SamplerState()));
 
@@ -631,7 +632,7 @@ namespace SceneEngine
                     RenderCore::Assets::MeshToModel(*model._model));
                 ModelRenderer::Sort(_drawCallSets[b]);
                 _drawCallSetDepVals[b] = model._renderer->GetDependencyValidation();
-            } CATCH(const ::Assets::Exceptions::AssetException&) {}
+            } CATCH(const ::Assets::Exceptions::RetrievalError&) {}
             CATCH_END
         }
 

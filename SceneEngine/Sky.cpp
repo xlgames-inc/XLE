@@ -9,7 +9,6 @@
 #include "SceneParser.h"
 #include "LightDesc.h"
 #include "../RenderCore/Techniques/Techniques.h"
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -17,6 +16,8 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/TextureView.h"
+#include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/StringUtils.h"
 
 #pragma warning(disable:4702)       // warning C4702: unreachable code
@@ -195,7 +196,7 @@ namespace SceneEngine
             SkyTextureParts textureParts = globalDesc;
             if (!textureParts.IsGood()) return;
 
-            auto& res = Techniques::FindCachedBoxDep2<SkyShaderRes>(textureParts._projectionType, blendFog, CurrentSkyGeometryType);
+            auto& res = ConsoleRig::FindCachedBoxDep2<SkyShaderRes>(textureParts._projectionType, blendFog, CurrentSkyGeometryType);
 
             struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalDesc._skyBrightness };
             RenderCore::SharedPkt pkts[] = { MakeSharedPkt(settings) };
@@ -231,7 +232,7 @@ namespace SceneEngine
             SkyTextureParts textureParts(globalDesc);
             if (!textureParts.IsGood()) return;
 
-            auto& res = Techniques::FindCachedBoxDep2<SkyShaderRes>(
+            auto& res = ConsoleRig::FindCachedBoxDep2<SkyShaderRes>(
                 textureParts._projectionType, false, CurrentSkyGeometryType);
             if (!res._postFogShader)
                 return;

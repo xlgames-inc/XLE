@@ -44,6 +44,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         uint32_t _maxVertexAttributes;
     };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class DeviceContext;
+    using ConstantBufferPacket = SharedPkt;
+    class ConstantBuffer;
+    class ShaderResourceView;
+        ////////////////////////////////////////////////////////////////////////////////////////////////
     class BoundUniforms
     {
     public:

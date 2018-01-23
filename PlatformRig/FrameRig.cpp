@@ -14,17 +14,22 @@
 #include "../RenderOverlays/Font.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 
+#include "../RenderOverlays/OverlayContext.h"
+
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/AssetServices.h"
+#include "../Assets/AssetSetManager.h"
+
+#include "../ConsoleRig/ResourceBox.h"
 
 #include "../Utility/TimeUtils.h"
 #include "../Utility/IntrusivePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Profiling/CPUProfiler.h"
+#include "../Utility/Threading/ThreadingUtils.h"
 
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/Console.h"
@@ -104,9 +109,9 @@ namespace PlatformRig
     public:
         class Desc {};
 
-        intrusive_ptr<RenderOverlays::Font> _frameRateFont;
-        intrusive_ptr<RenderOverlays::Font> _smallFrameRateFont;
-        intrusive_ptr<RenderOverlays::Font> _tabHeadingFont;
+		std::shared_ptr<RenderOverlays::Font> _frameRateFont;
+		std::shared_ptr<RenderOverlays::Font> _smallFrameRateFont;
+		std::shared_ptr<RenderOverlays::Font> _tabHeadingFont;
 
         FrameRigResources(const Desc&);
     };
@@ -143,7 +148,9 @@ namespace PlatformRig
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _debugScreensSystem->Render(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto viewportDims = device.GetStateDesc()._viewportDimensions;
+			_debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
         void SetActivationState(bool) {}
@@ -214,10 +221,10 @@ namespace PlatformRig
         {
             if (Tweakable("FrameRigStats", false) && (_pimpl->_frameRenderCount % 64) == (64-1)) {
                 auto f = _pimpl->_frameRate.GetPerformanceStats();
-                LogInfo << "Ave FPS: " << 1000.f / std::get<0>(f);
+                Log(Verbose) << "Ave FPS: " << 1000.f / std::get<0>(f) << std::endl;
                     // todo -- we should get a rolling average of these values
                 if (_pimpl->_prevFrameAllocationCount._allocationCount) {
-                    LogInfo << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ").";
+					Log(Verbose) << "(" << _pimpl->_prevFrameAllocationCount._freeCount << ") frees and (" << _pimpl->_prevFrameAllocationCount._allocationCount << ") allocs during frame. Ave alloc: (" << _pimpl->_prevFrameAllocationCount._allocationsSize / _pimpl->_prevFrameAllocationCount._allocationCount << ")." << std::endl;
                 }
             }
         }
@@ -244,10 +251,12 @@ namespace PlatformRig
         }
 
         if (renderRes._hasPendingResources) {
-            Sleep(16);  // slow down while we're building pending resources
+            ::Threading::Sleep(16);  // slow down while we're building pending resources
         } else {
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
         }
+
+		::Assets::GetAssetSetManager().OnFrameBarrier();
 
         FrameResult result;
         result._elapsedTime = frameElapsedTime;
@@ -287,15 +296,15 @@ namespace PlatformRig
 
         _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
 
-        LogInfo << "---- Beginning FrameRig ------------------------------------------------------------------";
+		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();
         if (accAlloc) {
             auto acc = accAlloc->GetAndClear();
             if (acc._allocationCount)
-                LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ").";
+                LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ")." << std::endl;
             auto metrics = accAlloc->GetCurrentHeapMetrics();
             if (metrics._blockCount)
-                LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ").";
+                LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
         }
 
         if (isMainFrameRig) {
@@ -384,7 +393,7 @@ namespace PlatformRig
     void    FrameRigDisplay::Render(IOverlayContext& context, Layout& layout, 
                                     Interactables&interactables, InterfaceState& interfaceState)
     {
-        auto& res = RenderCore::Techniques::FindCachedBox<FrameRigResources>(FrameRigResources::Desc());
+        auto& res = ConsoleRig::FindCachedBox<FrameRigResources>(FrameRigResources::Desc());
 
         using namespace RenderOverlays;
         using namespace RenderOverlays::DebuggingDisplay;
@@ -418,12 +427,12 @@ namespace PlatformRig
 
         auto f = _frameRate->GetPerformanceStats();
 
-        TextStyle bigStyle(*res._frameRateFont);
+        TextStyle bigStyle(res._frameRateFont);
         DrawFormatText(
             &context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
             &bigStyle, ColorB(0xffffffff), "%.1f", 1000.f / std::get<0>(f));
 
-        TextStyle smallStyle(*res._smallFrameRateFont);
+        TextStyle smallStyle(res._smallFrameRateFont);
         DrawFormatText(
             &context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
             &smallStyle, ColorB(0xffffffff), "%.1f-%.1f", 1000.f / std::get<2>(f), 1000.f / std::get<1>(f));
@@ -438,7 +447,7 @@ namespace PlatformRig
 
         interactables.Register(Interactables::Widget(displayRect, Id_FrameRigDisplayMain));
 
-        TextStyle tabHeader(*res._tabHeadingFont);
+        TextStyle tabHeader(res._tabHeadingFont);
         // tabHeader._options.shadow = 0;
         // tabHeader._options.outline = 1;
 
@@ -460,7 +469,7 @@ namespace PlatformRig
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
 
                             //  Draw the text name for this icon under the icon
-                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c], nullptr);
+                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c]);
                         rect = Rect(
                             pt - Coord2(std::max(iconSize[0], nameWidth), 0),
                             pt + Coord2(0, Coord(iconSize[1] + tabHeader._font->LineHeight())));
@@ -507,7 +516,7 @@ namespace PlatformRig
                 const auto screens = ds->GetWidgets();
                 for (auto i=screens.cbegin(); i!=screens.cend(); ++i) {
                     if (i->_name.find(categories[_subMenuOpen-1]) != std::string::npos) {
-                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, i->_name.c_str(), nullptr);
+                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, MakeStringSection(i->_name));
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
 

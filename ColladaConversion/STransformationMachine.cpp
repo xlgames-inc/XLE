@@ -235,9 +235,7 @@ namespace ColladaConversion
 
             } else {
 
-                LogAlwaysWarningF(
-                    "Warning -- unsupported transformation type found in node (%s) -- type (%i)\n", 
-                    nodeName, (unsigned)(type));
+				Log(Warning) << "Warning -- unsupported transformation type found in node (" << nodeName << ") -- type (" << (unsigned)type << ")" << std::endl;
 
             }
         }

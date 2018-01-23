@@ -14,9 +14,9 @@
 #include "LightingParserContext.h"
 #include "LightDesc.h"
 
-#include "../RenderCore/Techniques/ResourceBox.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/Metal/State.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Exceptions.h"
 
@@ -52,7 +52,7 @@ namespace SceneEngine
         if (Tweakable("DoAO", true)) {
             const bool useNormals = Tweakable("AO_UseNormals", true);
             auto& mainTargets = resolveContext.GetMainTargets();
-            auto& aoRes = Techniques::FindCachedBox2<AmbientOcclusionResources>(
+            auto& aoRes = ConsoleRig::FindCachedBox2<AmbientOcclusionResources>(
                 mainTargets.GetDimensions()[0], mainTargets.GetDimensions()[1], Format::R8_UNORM,
                 useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
             ViewportDesc mainViewportDesc(context);

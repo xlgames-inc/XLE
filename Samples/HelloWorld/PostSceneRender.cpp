@@ -6,8 +6,10 @@
 
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/ResourceBox.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/ResourceList.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringUtils.h"
 
 namespace Sample
@@ -56,7 +58,7 @@ namespace Sample
             unsigned _fontSize;
             Desc(unsigned fontSize) : _fontSize(fontSize) {}
         };
-        intrusive_ptr<RenderOverlays::Font> _font;
+		std::shared_ptr<RenderOverlays::Font> _font;
         RenderPostSceneResources(const Desc& desc);
     };
 
@@ -80,8 +82,8 @@ namespace Sample
         const bool textRenderingMethod = 1;
 
         using namespace RenderOverlays;
-        auto& res = RenderCore::Techniques::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
-        TextStyle style(*res._font);
+        auto& res = ConsoleRig::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
+        TextStyle style(res._font);
         ColorB col(0xffffffff);
 
         auto contextStateDesc = context.GetStateDesc();
@@ -94,7 +96,7 @@ namespace Sample
                 std::make_tuple(
                     Float3(0.f, 0.f, 0.f), 
                     Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
-                &style, col, TextAlignment::Center, text, nullptr);
+                &style, col, TextAlignment::Center, text);
 
         } else {
 

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define _SCL_SECURE_NO_WARNINGS
+#define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
 
 #include "Fluid.h"
 #include "FluidAdvection.h"
@@ -680,9 +681,9 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::ReferenceFluidSolver2
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("DeltaTime"), DefaultGet(Obj, _deltaTime),  DefaultSet(Obj, _deltaTime));
-        props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
-        props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
+        props.Add("DeltaTime", DefaultGet(Obj, _deltaTime),  DefaultSet(Obj, _deltaTime));
+        props.Add("Viscosity", DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
+        props.Add("DiffusionRate", DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
         init = true;
     }
     return props;
@@ -694,19 +695,19 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver2D::Settin
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
-        props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
-        props.Add(u("TempDiffusionRate"), DefaultGet(Obj, _tempDiffusion),  DefaultSet(Obj, _tempDiffusion));
-        props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
-        props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
-        props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
-        props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
-        props.Add(u("BouyancyAlpha"), DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
-        props.Add(u("BouyancyBeta"), DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
-        props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
-        props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
-        props.Add(u("BorderX"), DefaultGet(Obj, _borderX),  DefaultSet(Obj, _borderX));
-        props.Add(u("BorderY"), DefaultGet(Obj, _borderY),  DefaultSet(Obj, _borderY));
+        props.Add("Viscosity", DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
+        props.Add("DiffusionRate", DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
+        props.Add("TempDiffusionRate", DefaultGet(Obj, _tempDiffusion),  DefaultSet(Obj, _tempDiffusion));
+        props.Add("DiffusionMethod", DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
+        props.Add("AdvectionMethod", DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
+        props.Add("AdvectionSteps", DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
+        props.Add("EnforceIncompressibility", DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
+        props.Add("BouyancyAlpha", DefaultGet(Obj, _buoyancyAlpha),  DefaultSet(Obj, _buoyancyAlpha));
+        props.Add("BouyancyBeta", DefaultGet(Obj, _buoyancyBeta),  DefaultSet(Obj, _buoyancyBeta));
+        props.Add("VorticityConfinement", DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        props.Add("InterpolationMethod", DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
+        props.Add("BorderX", DefaultGet(Obj, _borderX),  DefaultSet(Obj, _borderX));
+        props.Add("BorderY", DefaultGet(Obj, _borderY),  DefaultSet(Obj, _borderY));
         init = true;
     }
     return props;
@@ -718,16 +719,16 @@ template<> const ClassAccessors& GetAccessors<SceneEngine::FluidSolver3D::Settin
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Viscosity"), DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
-        props.Add(u("DiffusionRate"), DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
-        props.Add(u("DiffusionMethod"), DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
+        props.Add("Viscosity", DefaultGet(Obj, _viscosity),  DefaultSet(Obj, _viscosity));
+        props.Add("DiffusionRate", DefaultGet(Obj, _diffusionRate),  DefaultSet(Obj, _diffusionRate));
+        props.Add("DiffusionMethod", DefaultGet(Obj, _diffusionMethod),  DefaultSet(Obj, _diffusionMethod));
 
-        props.Add(u("AdvectionMethod"), DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
-        props.Add(u("AdvectionSteps"), DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
-        props.Add(u("InterpolationMethod"), DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
+        props.Add("AdvectionMethod", DefaultGet(Obj, _advectionMethod),  DefaultSet(Obj, _advectionMethod));
+        props.Add("AdvectionSteps", DefaultGet(Obj, _advectionSteps),  DefaultSet(Obj, _advectionSteps));
+        props.Add("InterpolationMethod", DefaultGet(Obj, _interpolationMethod),  DefaultSet(Obj, _interpolationMethod));
 
-        props.Add(u("EnforceIncompressibility"), DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
-        props.Add(u("VorticityConfinement"), DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
+        props.Add("EnforceIncompressibility", DefaultGet(Obj, _enforceIncompressibilityMethod),  DefaultSet(Obj, _enforceIncompressibilityMethod));
+        props.Add("VorticityConfinement", DefaultGet(Obj, _vorticityConfinement),  DefaultSet(Obj, _vorticityConfinement));
         
         init = true;
     }

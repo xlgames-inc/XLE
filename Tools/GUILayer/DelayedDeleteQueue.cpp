@@ -5,12 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DelayedDeleteQueue.h"
+#include "../../ConsoleRig/Log.h"
 #include <msclr\lock.h>
-
-namespace LogUtilMethods
-{
-    void LogInfoF(const char format[], ...);
-}
 
 namespace GUILayer
 {
@@ -33,7 +29,7 @@ namespace GUILayer
 
         auto count = flip->Count;
         if (count > 0) {
-            LogUtilMethods::LogInfoF("Destroying native objects that were released indeterministically from cli code: %i", count);
+            Log(Verbose) << "Destroying native objects that were released indeterministically from cli code: " << count << std::endl;
             for each(auto i in flip)
                 (i->Item2)(i->Item1.ToPointer());
             flip->Clear();

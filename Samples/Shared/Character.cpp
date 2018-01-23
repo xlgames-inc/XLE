@@ -452,9 +452,9 @@ template<> const ClassAccessors& GetAccessors<Sample::CharacterInputFiles>()
     static ClassAccessors props(typeid(Obj).hash_code());
     static bool init = false;
     if (!init) {
-        props.Add(u("Skin"),            DefaultGet(Obj, _skin),          DefaultSet(Obj, _skin));
-        props.Add(u("AnimationSet"),    DefaultGet(Obj, _animationSet),  DefaultSet(Obj, _animationSet));
-        props.Add(u("Skeleton"),        DefaultGet(Obj, _skeleton),      DefaultSet(Obj, _skeleton));
+        props.Add("Skin",            DefaultGet(Obj, _skin),          DefaultSet(Obj, _skin));
+        props.Add("AnimationSet",    DefaultGet(Obj, _animationSet),  DefaultSet(Obj, _animationSet));
+        props.Add("Skeleton",        DefaultGet(Obj, _skeleton),      DefaultSet(Obj, _skeleton));
         init = true;
     }
     return props;
