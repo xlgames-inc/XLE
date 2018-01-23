@@ -221,7 +221,6 @@ namespace RenderCore
         // note -- following alignment rules suggested by Apple in OpenGL ES guide
         //          each element should be aligned to a multiple of 4 bytes (or a multiple of
         //          it's component size, whichever is larger).
-        //          Note that this must affect the entire vertex stride, because we want the
         //
         if (elements.empty()) return 0;
 		unsigned result = 0;

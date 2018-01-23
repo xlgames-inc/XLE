@@ -25,12 +25,6 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    void GraphicsPipeline::Bind(const VertexBufferView& vb, const BoundInputLayout& inputLayout)
-    {
-        glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*vb._resource));
-        inputLayout.Apply((const void*)(size_t)vb._offset);
-    }
-
     static GLenum AsGLIndexBufferType(Format idxFormat)
     {
         GLenum glFormat = GL_UNSIGNED_SHORT;

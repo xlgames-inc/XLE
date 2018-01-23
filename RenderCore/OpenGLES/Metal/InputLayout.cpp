@@ -11,6 +11,7 @@
 #include "ShaderResource.h"
 #include "PipelineLayout.h"
 #include "State.h"
+#include "Resource.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -40,62 +41,74 @@ namespace RenderCore { namespace Metal_OpenGLES
         _bindings.reserve(elementsCount);
         _attributeState = 0;
 
-        size_t vertexStride = 0;
-        {
-            unsigned lastElementEnd = 0;
-            for (size_t c=0; c<elementsCount; ++c) {
-                const unsigned elementSize  = BitsPerPixel(elements[c]._nativeFormat) / 8;
-                const unsigned elementStart = 
-                    (elements[c]._alignedByteOffset != ~unsigned(0x0))?elements[c]._alignedByteOffset:lastElementEnd;
-                vertexStride = std::max(vertexStride, size_t(elementStart + elementSize));
-                lastElementEnd = elementStart + elementSize;
-            }
-        }
+        unsigned vbMax = 0;
+        for (const auto&l:layout)
+            vbMax = std::max(l._inputSlot, vbMax);
 
         auto programIndex = program.GetUnderlying();
-
         int maxVertexAttributes;
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes);
 
-        unsigned lastElementEnd = 0;
-        for (size_t c=0; c<elementsCount; ++c) {
-            char buffer[64];
-            XlCopyString(buffer, elements[c]._semanticName.c_str());
-            XlCatString(buffer, dimof(buffer), char('0' + elements[c]._semanticIndex));
-            GLint attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), buffer);
+        for (unsigned vbIndex = 0; vbIndex <= vbMax; ++vbIndex) {
+            auto bindingStart = _bindings.size();
+            size_t vertexStride = 0;
+            {
+                unsigned lastElementEnd = 0;
+                for (size_t c=0; c<elementsCount; ++c) {
+                    if (elements[c]._inputSlot != vbIndex) continue;
 
-            const unsigned elementSize      = BitsPerPixel(elements[c]._nativeFormat) / 8;
-            const unsigned elementStart     = (elements[c]._alignedByteOffset != ~unsigned(0x0)) ? elements[c]._alignedByteOffset : lastElementEnd;
-
-                //
-                //  The index can be left off the string for the first
-                //  one
-                //
-            if (attribute == -1 && elements[c]._semanticIndex == 0) {
-                attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), elements[c]._semanticName.c_str());
+                    const unsigned elementSize  = BitsPerPixel(elements[c]._nativeFormat) / 8;
+                    const unsigned elementStart =
+                        (elements[c]._alignedByteOffset != ~unsigned(0x0))?elements[c]._alignedByteOffset:lastElementEnd;
+                    vertexStride = std::max(vertexStride, size_t(elementStart + elementSize));
+                    lastElementEnd = elementStart + elementSize;
+                }
             }
 
-            if (attribute < 0 || attribute >= maxVertexAttributes) {
-                    //  Binding failure! Write a warning, but ignore it. The binding is 
-                    //  still valid even if one or more attributes fail
-                #if defined(XLE_HAS_CONSOLE_RIG)
-                    LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
-                #endif
-            } else {
-                const auto componentType = GetComponentType(elements[c]._nativeFormat);
-                _bindings.push_back({
-                        unsigned(attribute),
-                        GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
-                        (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
-                        unsigned(vertexStride),
-                        elementStart
-                    });
+            unsigned lastElementEnd = 0;
+            for (size_t c=0; c<elementsCount; ++c) {
+                if (elements[c]._inputSlot != vbIndex) continue;
 
-                assert(!(_attributeState & 1<<unsigned(attribute)));
-                _attributeState |= 1<<unsigned(attribute);
+                char buffer[64];
+                XlCopyString(buffer, elements[c]._semanticName.c_str());
+                XlCatString(buffer, dimof(buffer), char('0' + elements[c]._semanticIndex));
+                GLint attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), buffer);
+
+                const unsigned elementSize      = BitsPerPixel(elements[c]._nativeFormat) / 8;
+                const unsigned elementStart     = (elements[c]._alignedByteOffset != ~unsigned(0x0)) ? elements[c]._alignedByteOffset : lastElementEnd;
+
+                    //
+                    //  The index can be left off the string for the first
+                    //  one
+                    //
+                if (attribute == -1 && elements[c]._semanticIndex == 0) {
+                    attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), elements[c]._semanticName.c_str());
+                }
+
+                if (attribute < 0 || attribute >= maxVertexAttributes) {
+                        //  Binding failure! Write a warning, but ignore it. The binding is
+                        //  still valid even if one or more attributes fail
+                    #if defined(XLE_HAS_CONSOLE_RIG)
+                        LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
+                    #endif
+                } else {
+                    const auto componentType = GetComponentType(elements[c]._nativeFormat);
+                    _bindings.push_back({
+                            unsigned(attribute),
+                            GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
+                            (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
+                            unsigned(vertexStride),
+                            elementStart
+                        });
+
+                    assert(!(_attributeState & 1<<unsigned(attribute)));
+                    _attributeState |= 1<<unsigned(attribute);
+                }
+
+                lastElementEnd = elementStart + elementSize;
             }
 
-            lastElementEnd = elementStart + elementSize;
+            _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
     }
 
@@ -147,20 +160,33 @@ namespace RenderCore { namespace Metal_OpenGLES
             assert(!(_attributeState & 1<<unsigned(a)));
             _attributeState |= 1<<unsigned(a);
         }
+
+        // all bindings are in VB 0 in this form
+        _bindingsByVertexBuffer.push_back((unsigned)_bindings.size());
+
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_maxVertexAttributes);
     }
 
-    void BoundInputLayout::Apply(const void* vertexBufferStart) const never_throws
+    void BoundInputLayout::Apply(DeviceContext&, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
-        for(auto i=_bindings.begin(); i!=_bindings.end(); ++i)
-            glVertexAttribPointer( 
-                i->_attributeIndex, i->_size, i->_type, i->_isNormalized, 
-                i->_stride,
-                PtrAdd(vertexBufferStart, i->_offset));
+        unsigned attributeIterator = 0;
+        for (unsigned b=0; b<unsigned(_bindingsByVertexBuffer.size()); ++b) {
+            auto bindingCount = _bindingsByVertexBuffer[b];
+            assert(b < vertexBuffers.size());
+            if (!bindingCount) continue;
+            const auto& vb = vertexBuffers[b];
+            glBindBuffer(GL_ARRAY_BUFFER, GetBufferRawGLHandle(*vb._resource));
+            for(auto ai=attributeIterator; ai<(attributeIterator+bindingCount); ++ai) {
+                const auto& i = _bindings[ai];
+                glVertexAttribPointer(
+                    i._attributeIndex, i._size, i._type, i._isNormalized,
+                    i._stride,
+                    (const void*)(size_t)(vb._offset + i._offset));
+            }
+        }
 
         // set enable/disable flags --
         // Note that this method cannot support more than 32 vertex attributes
-        int maxVertexAttributes;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes);
 
         int firstActive = xl_ctz4(_attributeState);
         int lastActive = 32u - xl_clz4(_attributeState);
@@ -174,7 +200,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             } else {
                 glDisableVertexAttribArray(c);
             }
-        for (; c<maxVertexAttributes; ++c)
+        for (; c<_maxVertexAttributes; ++c)
             glDisableVertexAttribArray(c);
     }
 

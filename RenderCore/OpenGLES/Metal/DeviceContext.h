@@ -50,7 +50,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         template<int Count> void Bind(const ResourceList<VertexBufferView, Count>& VBs);
         void Bind(const IndexBufferView& IB);
-        void Bind(const VertexBufferView& vb, const BoundInputLayout& inputLayout);
 
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
@@ -109,11 +108,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     #pragma warning(push)
     #pragma warning(disable:4127)       // conditional expression is constant
 
-    static RawGLHandle GetBufferRawGLHandle(const IResource& resource)
-    {
-        return static_cast<const Resource&>(resource).GetBuffer()->AsRawGLHandle();
-    }
-    
     template<int Count> void GraphicsPipeline::Bind(const ResourceList<VertexBufferView, Count>& VBs)
     {
         static_assert(Count <= 1, "Cannot bind more than one vertex buffer in OpenGLES 2.0");

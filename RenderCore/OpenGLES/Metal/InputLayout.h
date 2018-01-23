@@ -11,6 +11,8 @@
 #include "../../../Utility/IteratorUtils.h"
 #include <vector>
 
+namespace RenderCore { class VertexBufferView; }
+
 namespace RenderCore { namespace Metal_OpenGLES
 {
     class ShaderProgram;
@@ -19,7 +21,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BoundInputLayout
     {
     public:
-        void Apply(const void* vertexBufferStart = nullptr) const never_throws;
+        void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
 
         BoundInputLayout() : _attributeState(0) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
@@ -36,7 +38,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             unsigned    _offset;
         };
         std::vector<Binding> _bindings;
+        std::vector<unsigned> _bindingsByVertexBuffer;
         uint32_t _attributeState;
+
+        uint32_t _maxVertexAttributes;
     };
 
     class BoundUniforms

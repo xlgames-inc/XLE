@@ -44,6 +44,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     GLenum AsBufferTarget(BindFlag::BitField bindFlags);
     GLenum AsUsageMode(CPUAccess::BitField cpuAccess, GPUAccess::BitField gpuAccess);
+
+    inline RawGLHandle GetBufferRawGLHandle(const IResource& resource)
+    {
+        return static_cast<const Resource&>(resource).GetBuffer()->AsRawGLHandle();
+    }
 }}
 
 
