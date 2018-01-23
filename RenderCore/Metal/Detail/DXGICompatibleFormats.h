@@ -144,6 +144,16 @@ _EXP( B8G8R8X8,       TYPELESS,   None,               8*4 )
 _EXP( B8G8R8X8,       UNORM,      None,               8*4 )
 _EXP( B8G8R8X8,       UNORM_SRGB, None,               8*4 )
 
+_EXP( R8G8B8,       TYPELESS,   None,       8*3 )
+_EXP( R8G8B8,       UNORM,      None,       8*3 )
+_EXP( R8G8B8,       UNORM_SRGB, None,       8*3 )
+_EXP( R8G8B8,       UINT,       None,       8*3 )
+_EXP( R8G8B8,       SNORM,      None,       8*3 )
+_EXP( R8G8B8,       SINT,       None,       8*3 )
+
+_EXP( R4G4B4A4,       UNORM,      None,               16 )
+
+
     //
     //      Some less common types
     //

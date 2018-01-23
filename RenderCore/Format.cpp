@@ -38,6 +38,7 @@ namespace RenderCore
             R9G9B9E5, R8G8_B8G8, G8R8_G8B8,
             BC1, BC2, BC3, BC4, BC5, BC6H, BC7,
             B5G6R5, B5G5R5A1, B8G8R8A8, B8G8R8X8,
+            R8G8B8, R4G4B4A4,
 
             RGB_PVRTC1_2BPP, RGB_PVRTC1_4BPP, RGBA_PVRTC1_2BPP, RGBA_PVRTC1_4BPP,
             RGBA_PVRTC2_2BPP, RGBA_PVRTC2_4BPP,
@@ -78,11 +79,13 @@ namespace RenderCore
         case R8G8B8A8:
         case R10G10B10A2:
         case R16G16B16A16:
-        case R32G32B32A32:      return FormatComponents::RGBAlpha;
+        case R32G32B32A32:
+        case R4G4B4A4:          return FormatComponents::RGBAlpha;
         case B5G6R5:
         case B8G8R8X8:
         case R11G11B10:
-        case R32G32B32:         return FormatComponents::RGB;
+        case R32G32B32:
+        case R8G8B8:            return FormatComponents::RGB;
 
         case R9G9B9E5:          return FormatComponents::RGBE;
             
@@ -326,6 +329,8 @@ namespace RenderCore
         switch (inputFormat) {
         case Format::R8G8B8A8_TYPELESS:
         case Format::R8G8B8A8_UNORM_SRGB: return Format::R8G8B8A8_UNORM;
+        case Format::R8G8B8_TYPELESS:
+        case Format::R8G8B8_UNORM_SRGB: return Format::R8G8B8_UNORM;
         case Format::BC1_TYPELESS:
         case Format::BC1_UNORM_SRGB: return Format::BC1_UNORM;
         case Format::BC2_TYPELESS:
@@ -386,6 +391,8 @@ namespace RenderCore
         switch (inputFormat) {
         case Format::R8G8B8A8_UNORM:
         case Format::R8G8B8A8_UNORM_SRGB: return Format::R8G8B8A8_TYPELESS;
+        case Format::R8G8B8_UNORM:
+        case Format::R8G8B8_UNORM_SRGB: return Format::R8G8B8_TYPELESS;
         case Format::BC1_UNORM:
         case Format::BC1_UNORM_SRGB: return Format::BC1_TYPELESS;
         case Format::BC2_UNORM:
@@ -500,6 +507,9 @@ namespace RenderCore
         case Format::R8G8B8A8_UNORM:
         case Format::R8G8B8A8_UNORM_SRGB:
         case Format::R8G8B8A8_TYPELESS:
+        case Format::R8G8B8_UNORM:
+        case Format::R8G8B8_UNORM_SRGB:
+        case Format::R8G8B8_TYPELESS:
         case Format::BC1_UNORM:
         case Format::BC1_UNORM_SRGB: 
         case Format::BC1_TYPELESS:
@@ -571,12 +581,14 @@ namespace RenderCore
             case ImpliedTyping::TypeCat::Int8:
                 if (type._arrayCount == 1) return Format::R8_SINT;
                 if (type._arrayCount == 2) return Format::R8G8_SINT;
+                if (type._arrayCount == 3) return Format::R8G8B8_SINT;
                 if (type._arrayCount == 4) return Format::R8G8B8A8_SINT;
                 break;
 
             case ImpliedTyping::TypeCat::UInt8:
                 if (type._arrayCount == 1) return Format::R8_UINT;
                 if (type._arrayCount == 2) return Format::R8G8_UINT;
+                if (type._arrayCount == 3) return Format::R8G8B8_UINT;
                 if (type._arrayCount == 4) return Format::R8G8B8A8_UINT;
                 break;
 
@@ -611,12 +623,14 @@ namespace RenderCore
             case ImpliedTyping::TypeCat::Int8:
                 if (type._arrayCount == 1) return Format::R8_SNORM;
                 if (type._arrayCount == 2) return Format::R8G8_SNORM;
+                if (type._arrayCount == 3) return Format::R8G8B8_SNORM;
                 if (type._arrayCount == 4) return Format::R8G8B8A8_SNORM;
                 break;
 
             case ImpliedTyping::TypeCat::UInt8:
                 if (type._arrayCount == 1) return Format::R8_UNORM;
                 if (type._arrayCount == 2) return Format::R8G8_UNORM;
+                if (type._arrayCount == 3) return Format::R8G8B8_UNORM;
                 if (type._arrayCount == 4) return Format::R8G8B8A8_UNORM;
                 break;
 
@@ -657,9 +671,11 @@ namespace RenderCore
 
 		case Format::R8_SINT: return TypeDesc(TypeCat::Int8, 1);
 		case Format::R8G8_SINT: return TypeDesc(TypeCat::Int8, 2);
+        case Format::R8G8B8_SINT: return TypeDesc(TypeCat::Int8, 3);
 		case Format::R8G8B8A8_SINT: return TypeDesc(TypeCat::Int8, 4);
 		case Format::R8_UINT: return TypeDesc(TypeCat::UInt8, 1);
 		case Format::R8G8_UINT: return TypeDesc(TypeCat::UInt8, 2);
+        case Format::R8G8B8_UINT: return TypeDesc(TypeCat::UInt8, 3);
 		case Format::R8G8B8A8_UINT: return TypeDesc(TypeCat::UInt8, 4);
 		case Format::R16_SINT: return TypeDesc(TypeCat::Int16, 1);
 		case Format::R16G16_SINT: return TypeDesc(TypeCat::Int16, 2);
@@ -677,9 +693,11 @@ namespace RenderCore
 		case Format::R32G32B32A32_UINT: return TypeDesc(TypeCat::UInt32, 4);
 
 		case Format::R8G8_SNORM: return TypeDesc(TypeCat::Int8, 2);
+        case Format::R8G8B8_SNORM: return TypeDesc(TypeCat::Int8, 3);
 		case Format::R8G8B8A8_SNORM: return TypeDesc(TypeCat::Int8, 4);
 		case Format::R8_UNORM: return TypeDesc(TypeCat::UInt8, 1);
 		case Format::R8G8_UNORM: return TypeDesc(TypeCat::UInt8, 2);
+        case Format::R8G8B8_UNORM: return TypeDesc(TypeCat::UInt8, 3);
 		case Format::R8G8B8A8_UNORM: return TypeDesc(TypeCat::UInt8, 4);
 		case Format::R16_SNORM: return TypeDesc(TypeCat::Int16, 1);
 		case Format::R16G16_SNORM: return TypeDesc(TypeCat::Int16, 2);

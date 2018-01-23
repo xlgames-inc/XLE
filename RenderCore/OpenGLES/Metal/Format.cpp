@@ -20,6 +20,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         R9G9B9E5, R8G8_B8G8, G8R8_G8B8,
         BC1, BC2, BC3, BC4, BC5, BC6H, BC7,
         B5G6R5, B5G5R5A1, B8G8R8A8, B8G8R8X8,
+        R8G8B8, R4G4B4A4,
 
         RGB_PVRTC1_2BPP, RGB_PVRTC1_4BPP, RGBA_PVRTC1_2BPP, RGBA_PVRTC1_4BPP,
         RGBA_PVRTC2_2BPP, RGBA_PVRTC2_4BPP,
@@ -315,6 +316,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::R32_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_INT, GL_R32UI};
         case Format::R32_SINT: return {GL_RED_INTEGER, GL_INT, GL_R32I};
 
+        case Format::R8G8B8_UNORM: return {GL_RGB, GL_UNSIGNED_BYTE, GL_RGB8};
+        case Format::R8G8B8_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_BYTE, GL_RGB8UI};
+        case Format::R8G8B8_SNORM: return {GL_RGB, GL_BYTE, GL_RGB8_SNORM};
+        case Format::R8G8B8_SINT: return {GL_RGB_INTEGER, GL_BYTE, GL_RGB8I};
+
         case Format::R8G8_UNORM: return {GL_RG, GL_UNSIGNED_BYTE, GL_RG8};
         case Format::R8G8_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_BYTE, GL_RG8UI};
         case Format::R8G8_SNORM: return {GL_RG, GL_BYTE, GL_RG8_SNORM};
@@ -336,11 +342,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::R9G9B9E5_SHAREDEXP: return {GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, GL_RGB9_E5};
         case Format::B5G6R5_UNORM: return {GL_RGB, GL_UNSIGNED_SHORT_5_6_5, GL_RGB565};
         case Format::B5G5R5A1_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, GL_RGB5_A1};
+        case Format::R4G4B4A4_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4};
 
         case Format::D24_UNORM_S8_UINT: return {GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH24_STENCIL8};
         case Format::D32_SFLOAT_S8_UINT: return {GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_DEPTH32F_STENCIL8};
 
         case Format::R8G8B8A8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGBA8_SNORM};
+        case Format::R8G8B8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGB8_SNORM};
 
         case Format::RGB_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG};
         case Format::RGBA_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG};
@@ -450,16 +458,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         case GL_RG32UI: return Format::R32G32_UINT;
         case GL_RG32I: return Format::R32G32_SINT;
 
-        // case GL_RGB8: return Format::R8G8B8_UNORM;
-        // case GL_SRGB8: return Format::R8G8B8_UNORM_SRGB;
+        case GL_RGB8: return Format::R8G8B8_UNORM;
+        case GL_SRGB8: return Format::R8G8B8_UNORM_SRGB;
         // case GL_RGB565: return Format::R5G6B5_UNORM;
-        // case GL_RGB8_SNORM: return Format::R8G8B8_SNORM;
+        case GL_RGB8_SNORM: return Format::R8G8B8_SNORM;
         case GL_R11F_G11F_B10F: return Format::R11G11B10_FLOAT;
-        // case GL_RGB9_E5: return Format::R9G9B9E5_SHAREDEXP;
+        case GL_RGB9_E5: return Format::R9G9B9E5_SHAREDEXP;
         // case GL_RGB16F: return Format::R16G16B16_FLOAT;
         case GL_RGB32F: return Format::R32G32B32_FLOAT;
-        // case GL_RGB8UI: return Format::R8G8B8_UINT;
-        // case GL_RGB8I: return Format::R8G8B8_SINT;
+        case GL_RGB8UI: return Format::R8G8B8_UINT;
+        case GL_RGB8I: return Format::R8G8B8_SINT;
         // case GL_RGB16UI: return Format::R16G16B16_UINT;
         // case GL_RGB16I: return Format::R16G16B16_SINT;
         case GL_RGB32UI: return Format::R32G32B32_UINT;
@@ -469,7 +477,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         case GL_SRGB8_ALPHA8: return Format::R8G8B8A8_UNORM_SRGB;
         case GL_RGBA8_SNORM: return Format::R8G8B8A8_SNORM;
         case GL_RGB5_A1: return Format::B5G5R5A1_UNORM;
-        // case GL_RGBA4: return Format::R4G4B4A4_UNORM;
+        case GL_RGBA4: return Format::R4G4B4A4_UNORM;
         case GL_RGB10_A2: return Format::R10G10B10A2_UNORM;
         case GL_RGBA16F: return Format::R16G16B16A16_FLOAT;
         case GL_RGBA32F: return Format::R32G32B32A32_FLOAT;

@@ -91,6 +91,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         const IDevice::ResourceInitializer& initializer)
     : _desc(desc)
     {
+        checkError();
+
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
             auto initData = initializer({0,0});
             if (desc._bindFlags & BindFlag::ConstantBuffer) {
@@ -111,14 +113,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         } else {
 
-            checkError();
-
             auto fmt = AsTexelFormatType(desc._textureDesc._format);
 
             _underlyingTexture = factory.CreateTexture();
 
             if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D
                 ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+                ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D
                 ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
                 auto bindTarget = GL_TEXTURE_2D;
@@ -138,11 +139,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 GLint prevTexture;
                 glGetIntegerv(AsBindingQuery(bindTarget), &prevTexture);
-
-                checkError();
-
                 glBindTexture(bindTarget, _underlyingTexture->AsRawGLHandle());
-                checkError();
 
                 if (!initializer && useTexStorage) {
                     (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
@@ -187,7 +184,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                                         (GLsizei)subRes._data.size(),
                                         subRes._data.begin());
                                 }
-                                checkError();
                             }
                         } else  {
                             assert(fmt._type != 0);
@@ -200,27 +196,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                                     mipWidth, mipHeight, 0,
                                     fmt._format, fmt._type,
                                     nullptr);
-                                checkError();
                             }
                         }
                     }
 
                 }
 
-                glTexParameteri(bindTarget, GL_TEXTURE_MIN_FILTER, (desc._textureDesc._mipCount > 1) ? GL_LINEAR_MIPMAP_NEAREST : GL_LINEAR);
-                glTexParameteri(bindTarget, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-                glTexParameteri(bindTarget, GL_TEXTURE_WRAP_S, GL_REPEAT);
-                glTexParameteri(bindTarget, GL_TEXTURE_WRAP_T, GL_REPEAT);
-                glTexParameteri(bindTarget, GL_TEXTURE_WRAP_R, GL_REPEAT);
                 glBindTexture(bindTarget, prevTexture);
-
-                checkError();
-
-            } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
-                assert(0);  // not supported yet
             }
 
         }
+
+        checkError();
     }
 
     Resource::Resource() {}
