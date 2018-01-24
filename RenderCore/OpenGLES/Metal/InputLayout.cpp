@@ -46,8 +46,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             vbMax = std::max(l._inputSlot, vbMax);
 
         auto programIndex = program.GetUnderlying();
-        int maxVertexAttributes;
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxVertexAttributes);
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_maxVertexAttributes);
 
         for (unsigned vbIndex = 0; vbIndex <= vbMax; ++vbIndex) {
             auto bindingStart = _bindings.size();
@@ -85,7 +84,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), elements[c]._semanticName.c_str());
                 }
 
-                if (attribute < 0 || attribute >= maxVertexAttributes) {
+                if (attribute < 0 || attribute >= _maxVertexAttributes) {
                         //  Binding failure! Write a warning, but ignore it. The binding is
                         //  still valid even if one or more attributes fail
                     #if defined(XLE_HAS_CONSOLE_RIG)
@@ -183,6 +182,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i._stride,
                     (const void*)(size_t)(vb._offset + i._offset));
             }
+            attributeIterator += bindingCount;
         }
 
         // set enable/disable flags --
