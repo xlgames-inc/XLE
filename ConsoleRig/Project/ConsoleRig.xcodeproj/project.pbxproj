@@ -221,19 +221,20 @@
 /* Begin XCBuildConfiguration section */
 		8FA52D8D1FD9D3900039B229 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8FA52DB21FD9D3CB0039B229 /* CoreDebug.xcconfig */;
 			buildSettings = {
 			};
 			name = Debug;
 		};
 		8FA52D8E1FD9D3900039B229 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */;
 			buildSettings = {
 			};
 			name = Release;
 		};
 		8FA52D901FD9D3900039B229 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8FA52DB21FD9D3CB0039B229 /* CoreDebug.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -251,7 +252,6 @@
 		};
 		8FA52D911FD9D3900039B229 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */;
 			buildSettings = {
 				HEADER_SEARCH_PATHS = (
 					"$(inherited)",
@@ -270,6 +270,14 @@
 		8FA52DBA1FD9D42E0039B229 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../..",
+					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/eigen",
+					"$(PROJECT_DIR)/../../Foreign/Lua/src",
+					"$(PROJECT_DIR)/../../Foreign/LuaBridge/Source/LuaBridge",
+				);
 				INSTALL_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
@@ -278,6 +286,14 @@
 		8FA52DBB1FD9D42E0039B229 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../..",
+					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/eigen",
+					"$(PROJECT_DIR)/../../Foreign/Lua/src",
+					"$(PROJECT_DIR)/../../Foreign/LuaBridge/Source/LuaBridge",
+				);
 				INSTALL_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 			};

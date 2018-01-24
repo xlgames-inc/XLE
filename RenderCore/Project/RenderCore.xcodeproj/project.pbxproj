@@ -386,19 +386,20 @@
 /* Begin XCBuildConfiguration section */
 		8F2D1ABA1FD619910028A531 /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F2D1AC81FD619FC0028A531 /* CoreDebug.xcconfig */;
 			buildSettings = {
 			};
 			name = Debug;
 		};
 		8F2D1ABB1FD619910028A531 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8F2D1AC61FD619FC0028A531 /* CoreRelease.xcconfig */;
 			buildSettings = {
 			};
 			name = Release;
 		};
 		8F2D1ABD1FD619910028A531 /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8F2D1AC81FD619FC0028A531 /* CoreDebug.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -408,7 +409,6 @@
 		};
 		8F2D1ABE1FD619910028A531 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8F2D1AC61FD619FC0028A531 /* CoreRelease.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
