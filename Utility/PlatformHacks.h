@@ -6,6 +6,8 @@
 
 #pragma once
 
+#include <stdint.h>
+
 // iOS vs macOS
 #if __IPHONE_OS_VERSION_MAX_ALLOWED
     #define HACK_PLATFORM_IOS 1
@@ -18,7 +20,22 @@
 
 // ES3-only definitions
 #if !HACK_GLES_3
+
+#if defined(__cplusplus)
+    extern "C" {
+#endif
+
 extern void glTexStorage2D (uint32_t target, int32_t levels, uint32_t internalformat, int32_t width, int32_t height);
+extern void* glMapBufferRange (uint32_t target, intptr_t offset, intptr_t length, uint32_t access);
+extern void glBindSampler (uint32_t unit, uint32_t sampler);
+extern void glSamplerParameteri (int32_t sampler, uint32_t pname, int32_t param);
+extern void glGenSamplers (int32_t count, uint32_t* samplers);
+extern void glDeleteSamplers (int32_t count, const uint32_t* samplers);
+extern uint8_t glIsSampler (uint32_t sampler);
+
+#if defined(__cplusplus)
+    }
+#endif
 
 #define GL_TEXTURE_2D_ARRAY                              0x8C1A
 #define GL_TEXTURE_BINDING_2D_ARRAY                      0x8C1D
@@ -64,6 +81,11 @@ extern void glTexStorage2D (uint32_t target, int32_t levels, uint32_t internalfo
 #define GL_RGBA32I                                       0x8D82
 #define GL_RGBA32UI                                      0x8D70
 
+#define GL_RGBA4                                         0x8056
+#define GL_RGB5_A1                                       0x8057
+#define GL_RGB565                                        0x8D62
+#define GL_RGB_INTEGER                                   0x8D98
+
 #define GL_COMPRESSED_R11_EAC                            0x9270
 #define GL_COMPRESSED_SIGNED_R11_EAC                     0x9271
 #define GL_COMPRESSED_RG11_EAC                           0x9272
@@ -74,4 +96,18 @@ extern void glTexStorage2D (uint32_t target, int32_t levels, uint32_t internalfo
 #define GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2     0x9277
 #define GL_COMPRESSED_RGBA8_ETC2_EAC                     0x9278
 #define GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC              0x9279
+#define GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG                      0x8C00
+#define GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG                      0x8C01
+#define GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG                     0x8C02
+#define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG                     0x8C03
+
+#define GL_COMPARE_REF_TO_TEXTURE                        0x884E
+
+#define GL_MAP_READ_BIT                                  0x0001
+#define GL_MAP_WRITE_BIT                                 0x0002
+#define GL_MAP_INVALIDATE_RANGE_BIT                      0x0004
+#define GL_MAP_INVALIDATE_BUFFER_BIT                     0x0008
+#define GL_MAP_FLUSH_EXPLICIT_BIT                        0x0010
+#define GL_MAP_UNSYNCHRONIZED_BIT                        0x0020
+
 #endif // !HACK_GLES_3
