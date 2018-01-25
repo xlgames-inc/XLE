@@ -1,5 +1,5 @@
 
-#include "Device_EAGL.h"
+#include "Device_CGL.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/IndexedGLType.h"
 #include "Metal/Resource.h"
@@ -10,18 +10,29 @@
 #include <type_traits>
 #include <iostream>
 #include <assert.h>
-#include "IncludeGLES.h"
 
-#include <OpenGLES/EAGL.h>
-
-@protocol EAGLDrawable;
+#include <OpenGL/OpenGL.h>
+#include <AppKit/NSOpenGL.h>
 
 namespace RenderCore { namespace ImplOpenGLES
 {
 
-    IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain) { return nullptr; }
+    IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
+    {
+        assert(!_activeTargetContext);
+        auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
+        _activeTargetContext = presChain.GetUnderlying();
+        [_activeTargetContext.get() makeCurrentContext];
+        return nullptr;     // the target is always render buffer 0
+    }
 
-    void        ThreadContext::Present(IPresentationChain& presentationChain) {}
+    void        ThreadContext::Present(IPresentationChain& presentationChain)
+    {
+        auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
+        assert(presChain.GetUnderlying() == _activeTargetContext);
+        [_activeTargetContext.get() flushBuffer];
+        _activeTargetContext = nullptr;
+    }
 
     bool                        ThreadContext::IsImmediate() const { return false; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
@@ -34,7 +45,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            _annotator = CreateAnnotator(*d);
+            _annotator = RenderCore::CreateAnnotator(*d);
         }
         return *_annotator;
     }
@@ -72,8 +83,6 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Device::Device()
     {
-        auto* t = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
-        _eaglContext = TBC::moveptr(t);
         _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
     }
 
@@ -85,7 +94,6 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         return std::make_unique<PresentationChain>(
             *_objectFactory,
-            _eaglContext.get(),
             platformValue, width, height);
     }
 
@@ -149,14 +157,35 @@ namespace RenderCore { namespace ImplOpenGLES
 
     PresentationChain::PresentationChain(
         Metal_OpenGLES::ObjectFactory& objFactory,
-        EAGLContext* eaglContext,
         const void* platformValue, unsigned width, unsigned height)
     {
-        auto mainColorBuffer = objFactory.CreateRenderBuffer();
-        auto eaglDrawable = (id<EAGLDrawable>)platformValue;
-        auto res = [eaglContext renderbufferStorage: GL_RENDERBUFFER fromDrawable: eaglDrawable];
-        if (!res)
-            Throw(std::runtime_error("Failed to allocate renderbuffer storage for EAGL drawable in PresentationChain::PresentationChain"));
+        /*CGLPixelFormatAttribute*/
+        unsigned pixelAttrs[] = {
+            kCGLPFADoubleBuffer,
+            kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_3_2_Core,
+            kCGLPFAColorSize, 24,
+            kCGLPFAAlphaSize, 8,
+            kCGLPFADepthSize, 24,
+            kCGLPFAStencilSize, 8,
+            kCGLPFASampleBuffers, 0,
+            0,
+        };
+
+        int virtualScreenCount;
+        CGLPixelFormatObj pixelFormat;
+        auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &pixelFormat, &virtualScreenCount);
+        assert(!error);
+        assert(pixelFormat);
+        (void)virtualScreenCount;
+
+        CGLContextObj context;
+        error = CGLCreateContext(pixelFormat, NULL, &context);
+        assert(!error);
+        assert(context);
+
+        _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
+
+        _nsContext.get().view = (NSView*)platformValue;
     }
 
     PresentationChain::~PresentationChain()

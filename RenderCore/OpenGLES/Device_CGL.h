@@ -11,9 +11,9 @@
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
 
-@class EAGLContext;
-
 namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; }}
+
+@class NSOpenGLContext;
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -24,16 +24,15 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        EAGLContext*        GetUnderlying() { return _eaglContext.get(); }
+        const TBC::OCPtr<NSOpenGLContext>& GetUnderlying() { return _nsContext; }
 
         PresentationChain(
             Metal_OpenGLES::ObjectFactory& objFactory,
-            EAGLContext* eaglContext,
             const void* platformValue, unsigned width, unsigned height);
         ~PresentationChain();
 
     private:
-        TBC::OCPtr<EAGLContext> _eaglContext;
+        TBC::OCPtr<NSOpenGLContext> _nsContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -60,6 +59,8 @@ namespace RenderCore { namespace ImplOpenGLES
     private:
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         std::unique_ptr<IAnnotator> _annotator;
+
+        TBC::OCPtr<NSOpenGLContext> _activeTargetContext;
     };
 
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
@@ -94,7 +95,6 @@ namespace RenderCore { namespace ImplOpenGLES
     protected:
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
-        TBC::OCPtr<EAGLContext> _eaglContext;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
