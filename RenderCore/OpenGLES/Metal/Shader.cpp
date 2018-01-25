@@ -106,7 +106,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto definesPreambleStr = definesPreamble.str();
 
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
-        const GLchar* versionDecl = isFragmentShader ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#version 300 es\n#define NEW_UNIFORM_API 1\n";
+        // const GLchar* versionDecl = isFragmentShader ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#version 300 es\n#define NEW_UNIFORM_API 1\n";
+        const GLchar* versionDecl = isFragmentShader ? "#version 410\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#version 410\n#define NEW_UNIFORM_API 1\n";
         const GLchar* shaderSourcePointers[3] { versionDecl, definesPreambleStr.data(), (const GLchar*)sourceCode };
         GLint shaderSourceLengths[3] = { (GLint)std::strlen(versionDecl), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
 

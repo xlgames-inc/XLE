@@ -71,8 +71,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static void checkError()
     {
-        auto error = glGetError();
-        assert(error == GL_NO_ERROR);
+        /*auto error = glGetError();
+        assert(error == GL_NO_ERROR);*/
     }
 
     static GLenum AsBindingQuery(GLenum binding)

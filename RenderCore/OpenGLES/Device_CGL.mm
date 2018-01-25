@@ -110,7 +110,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     DeviceDesc Device::GetDesc()
     {
-        return DeviceDesc { "OpenGLES-EAGL", "", "" };
+        return DeviceDesc { "OpenGLES-CGL", "", "" };
     }
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
@@ -162,7 +162,7 @@ namespace RenderCore { namespace ImplOpenGLES
         /*CGLPixelFormatAttribute*/
         unsigned pixelAttrs[] = {
             kCGLPFADoubleBuffer,
-            kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_3_2_Core,
+            kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
             kCGLPFAColorSize, 24,
             kCGLPFAAlphaSize, 8,
             kCGLPFADepthSize, 24,
