@@ -93,7 +93,7 @@ namespace Assets
         return *this;
     }
 
-    ArchiveCache::PendingCommit::PendingCommit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush)
+    ArchiveCache::PendingCommit::PendingCommit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush)
         : _id(id)
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
         , _attachedString(attachedString)
@@ -103,19 +103,19 @@ namespace Assets
         _data = std::move(data);
     }
 
-    void ArchiveCache::Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush)
+    void ArchiveCache::Commit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush)
     {
             // for for an existing pending commit, and replace it if it exists
         ScopedLock(_pendingBlocksLock);
         auto i = std::lower_bound(_pendingBlocks.begin(), _pendingBlocks.end(), id, ComparePendingCommit());
         if (i!=_pendingBlocks.end() && i->_id == id) {
-            i->_data = std::forward<BlockAndSize>(data);
+            i->_data = data;
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 i->_attachedString = attachedString;
             #endif
             i->_onFlush = std::forward<std::function<void()>>(onFlush);
         } else {
-            _pendingBlocks.insert(i, PendingCommit(id, std::forward<BlockAndSize>(data), attachedString, std::forward<std::function<void()>>(onFlush)));
+            _pendingBlocks.insert(i, PendingCommit(id, data, attachedString, std::forward<std::function<void()>>(onFlush)));
         }
     }
 

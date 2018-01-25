@@ -27,7 +27,7 @@ namespace Assets
     public:
         using BlockAndSize = ::Assets::Blob;
 
-        void            Commit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush);
+        void            Commit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush);
         BlockAndSize    TryOpenFromCache(uint64 id);
         bool            HasItem(uint64 id) const;
         void            FlushToDisk();
@@ -73,7 +73,7 @@ namespace Assets
             #endif
 
             PendingCommit() {}
-            PendingCommit(uint64 id, BlockAndSize&& data, const std::string& attachedString, std::function<void()>&& onFlush);
+            PendingCommit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush);
             PendingCommit(PendingCommit&& moveFrom);
             PendingCommit& operator=(PendingCommit&& moveFrom);
 

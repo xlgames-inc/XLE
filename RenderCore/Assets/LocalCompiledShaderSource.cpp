@@ -17,6 +17,7 @@
 #include "../../Assets/AsyncLoadOperation.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/CompilationThread.h"
 
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -32,187 +33,9 @@
 
 namespace RenderCore { namespace Assets 
 {
-    #if defined(TEMP_HACK)
-        static const bool CompileInBackground = true;
-    #else
-        static const bool CompileInBackground = false;
-    #endif
+    static const bool CompileInBackground = false;
     using ::Assets::ResChar;
     using ResId = ShaderService::ResId;
-
-        ////////////////////////////////////////////////////////////
-
-    class ShaderCompileMarker : public ::Assets::CompileFuture
-        #if defined(TEMP_HACK)
-            , public ::Assets::AsyncLoadOperation
-        #endif
-    {
-    public:
-        using Payload = ::Assets::Blob;
-        using ChainFn = std::function<void(
-			const ResId& shaderPath, const ::Assets::rstring& definesTable,
-            ::Assets::AssetState, const Payload& payload, const Payload& errors,
-            IteratorRange<const ::Assets::DependentFileState*>)>;
-
-        Payload GetErrors() const;
-
-		ShaderStage GetStage() const { return _shaderPath.AsShaderStage(); }
-
-        const std::vector<::Assets::DependentFileState>& GetDependencies() const;
-
-        void Enqueue(
-            const ResId& shaderPath, const ::Assets::rstring& definesTable, 
-            ChainFn chain = nullptr);
-        void Enqueue(
-            StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-            StringSection<char> shaderModel, StringSection<ResChar> definesTable);
-
-        ShaderCompileMarker(std::shared_ptr<ShaderService::ILowLevelCompiler>, std::shared_ptr<ISourceCodePreprocessor> preprocessor);
-        ~ShaderCompileMarker();
-
-        ShaderCompileMarker(ShaderCompileMarker&) = delete;
-        ShaderCompileMarker& operator=(const ShaderCompileMarker&) = delete;
-    protected:
-        virtual void Complete(const void* buffer, size_t bufferSize, IteratorRange<const ::Assets::DependentFileState*> preprocessorDeps);
-		virtual void OnFailure();
-
-        Payload _payload;
-        std::vector<::Assets::DependentFileState> _deps;
-        ::Assets::rstring _definesTable;
-        std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
-        std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
-
-        ChainFn _chain;
-        ResId _shaderPath;
-    };
-
-    auto ShaderCompileMarker::GetDependencies() const 
-        -> const std::vector<::Assets::DependentFileState>&
-    {
-        return _deps;
-    }
-
-    void ShaderCompileMarker::Enqueue(
-        const ResId& shaderPath, const ::Assets::rstring& definesTable, 
-        ChainFn chain)
-    {
-        _shaderPath = shaderPath;
-        _definesTable = definesTable;
-        _chain = std::move(chain);
-
-        if (constant_expression<CompileInBackground>::result()) {
-
-                // invoke a background load and compile...
-                // note that Enqueue can't be called from a constructor, because it
-                // calls shared_from_this()
-            assert(0);
-            /*
-            AsyncLoadOperation::Enqueue(
-				std::static_pointer_cast<ShaderCompileMarker>(shared_from_this()),
-                _shaderPath._filename,
-                ConsoleRig::GlobalServices::GetLongTaskThreadPool());
-            */
-
-        } else {
-
-                // push file load & compile into this (foreground) thread
-            if (_preprocessor) {
-                auto preprocessedOutput = _preprocessor->RunPreprocessor(_shaderPath._filename);
-                if (!preprocessedOutput._processedSource.empty()) {
-                    static_assert(sizeof(decltype(preprocessedOutput._processedSource)::value_type) == 1, "Expecting single byte character for size calculation");
-                    Complete(
-                        preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(),
-                        MakeIteratorRange(preprocessedOutput._dependencies));
-                } else {
-                    OnFailure();
-                }
-            } else {
-                auto depState = ::Assets::IntermediateAssets::Store::GetDependentFileState(_shaderPath._filename);
-                size_t fileSize = 0;
-                auto fileData = ::Assets::TryLoadFileAsMemoryBlock(_shaderPath._filename, &fileSize);
-                if (fileData.get() && fileSize) {
-                    Complete(fileData.get(), fileSize, MakeIteratorRange(&depState, &depState+1));
-                } else {
-                    OnFailure();
-                }
-            }
-
-        }
-    }
-
-    void ShaderCompileMarker::Enqueue(
-        StringSection<char> shaderInMemory, 
-        StringSection<char> entryPoint, StringSection<char> shaderModel, StringSection<ResChar> definesTable)
-    {
-        _shaderPath = ResId(
-            StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory.begin(), shaderInMemory.end()), 
-            entryPoint, shaderModel);
-        _definesTable = definesTable.AsString();
-        _chain = nullptr;
-
-        if (constant_expression<CompileInBackground>::result()) {
-            assert(0);
-            /*auto sharedToThis = std::static_pointer_cast<ShaderCompileMarker>(shared_from_this());
-            std::string sourceCopy = shaderInMemory.AsString();
-            ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
-                [sourceCopy, sharedToThis]() { sharedToThis->Complete(AsPointer(sourceCopy.cbegin()), sourceCopy.size(), {}); });*/
-        } else {
-            Complete(shaderInMemory.begin(), shaderInMemory.size(), {});
-        }
-    }
-
-    ShaderCompileMarker::ShaderCompileMarker(
-        std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
-        std::shared_ptr<ISourceCodePreprocessor> preprocessor)
-    : _compiler(compiler), _preprocessor(preprocessor) {}
-    ShaderCompileMarker::~ShaderCompileMarker() {}
-
-    static bool CancelAllShaderCompiles = false;
-
-	void ShaderCompileMarker::OnFailure()
-	{
-		_chain(_shaderPath, _definesTable, ::Assets::AssetState::Invalid, nullptr, nullptr, IteratorRange<const ::Assets::DependentFileState*>());
-		SetState(::Assets::AssetState::Invalid);
-	}
-
-    void ShaderCompileMarker::Complete(const void* buffer, size_t bufferSize, IteratorRange<const ::Assets::DependentFileState*> preprocessorDeps)
-    {
-        if (CancelAllShaderCompiles) {
-			OnFailure();
-            return;
-        }
-
-		// TRY {
-			Payload errors;
-			_payload.reset();
-			_deps.clear();
-            _deps.insert(_deps.end(), preprocessorDeps.begin(), preprocessorDeps.end());
-
-			auto success = _compiler->DoLowLevelCompile(
-				_payload, errors, _deps,
-				buffer, bufferSize, _shaderPath,
-				_definesTable.c_str());
-
-				// before we can finish the "complete" step, we need to commit
-				// to archive output
-			auto result = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
-        
-				// We need to call "_chain" on either failure or success
-				// this is important because _chain can hold a reference to this
-				// object. We need to call chain explicitly in order to release
-				// this object (otherwise we end up with a cyclic reference that
-				// doesn't get broken, and a leak)
-			if (_chain)
-				_chain(_shaderPath, _definesTable, result, _payload, errors, MakeIteratorRange(_deps));
-
-			// SetState(result);
-		// } CATCH(...) {
-		//	SetState(::Assets::AssetState::Invalid);
-		//	throw;
-		// } CATCH_END
-    }
-
-    auto ShaderCompileMarker::GetErrors() const -> Payload { return Payload(); }
 
         ////////////////////////////////////////////////////////////
 
@@ -457,7 +280,7 @@ namespace RenderCore { namespace Assets
     std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
     {
         auto c = _compiler.lock();
-        if (!c || CancelAllShaderCompiles) return nullptr;
+        if (!c) return nullptr;
 
 		if (XlEqString(_res._filename, "null"))
 			return std::make_shared<::Assets::BlobArtifact>(nullptr, std::make_shared<::Assets::DependencyValidation>());
@@ -471,121 +294,127 @@ namespace RenderCore { namespace Assets
             nullptr, nullptr);
     }
 
-	void LocalCompiledShaderSource::AddCompileOperation(const std::shared_ptr<ShaderCompileMarker>& marker)
-	{
-		Interlocked::Increment(&_activeCompileCount);
-        {
-                // unfortunately we need to lock this... because we search through it in
-                // a background thread
-            ScopedLock(_activeCompileOperationsLock);
-            _activeCompileOperations.push_back(marker);
-        }
-	}
-
-	void LocalCompiledShaderSource::RemoveCompileOperation(ShaderCompileMarker& marker)
-	{
-        ScopedLock(_activeCompileOperationsLock);
-        auto i = std::find_if(
-            _activeCompileOperations.begin(), _activeCompileOperations.end(), 
-            [&marker](std::shared_ptr<ShaderCompileMarker>& test) { return test.get() == &marker; });
-        if (i != _activeCompileOperations.end()) {
-            _activeCompileOperations.erase(i);
-            Interlocked::Decrement(&_activeCompileCount);
-        }
-    }
-
     std::shared_ptr<::Assets::CompileFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
-        auto c = _compiler.lock();
-        if (!c || CancelAllShaderCompiles) return nullptr;
+        if (!_compiler.lock()) return nullptr;
 
-        auto marker = std::make_shared<::Assets::CompileFuture>();
+        auto futureRes = std::make_shared<::Assets::CompileFuture>();
 
-        #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                //  When we have archive attachments enabled, we can write
-                //  some information to help identify this shader object
-                //  We'll start with something to define the object...
-            std::stringstream builder;
-            builder 
-                << "[" << _res._filename
-                << ":" << _res._entryPoint
-                << ":" << _res._shaderModel
-                << "] [" << _definesTable << "]";
-            auto archiveCacheAttachment = builder.str();
-        #else
-            int archiveCacheAttachment;
-        #endif
-
-        using Payload = ShaderCompileMarker::Payload;
-
-        auto compileHelper = std::make_shared<ShaderCompileMarker>(c->_compiler, c->_preprocessor);
-
-        auto tempPtr = compileHelper.get();
         auto store = _store;
-        compileHelper->Enqueue(
-            _res, _definesTable,
-            [marker, archiveCacheAttachment, store, tempPtr, c]
-            (   const ShaderService::ResId& resId, const std::string& definesTable,
-				::Assets::AssetState newState, const Payload& payload, const Payload& errors,
-                IteratorRange<const ::Assets::DependentFileState*> deps)
-            {
-				::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
-				auto archiveId = GetTarget(
-					resId, definesTable,
-					archiveName, dimof(archiveName), 
-					depName, dimof(depName));
-				auto archive = c->_shaderCacheSet->GetArchive(archiveName, *store);
+        auto compiler = _compiler;
+        auto definesTable = _definesTable;
+        auto resId = _res;
 
-                if (newState == ::Assets::AssetState::Ready && archive) {
-                    assert(payload.get() && payload->size() > 0);
+        std::function<void(::Assets::CompileFuture&)> operation =
+            [store, compiler, definesTable, resId] (::Assets::CompileFuture& future) {
 
-                    #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                        auto metricsString = 
-                            c->_compiler->MakeShaderMetricsString(
-                                AsPointer(payload->cbegin()), payload->size());
-                    #endif
+            auto c = compiler.lock();
+            if (!c)
+                Throw(std::runtime_error("Low level shader compiler has been destroyed before compile operation completed"));
 
-                    std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
-                    auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
-					auto depNameAsString = std::string(depName);
+            Blob errors, payload;
+            bool success = false;
+            std::vector<::Assets::DependentFileState> deps;
+            if (c->_preprocessor) {
+                auto preprocessedOutput = c->_preprocessor->RunPreprocessor(resId._filename);
+                if (preprocessedOutput._processedSource.empty())
+                    Throw(std::runtime_error("Preprocessed output is empty"));
 
-                    archive->Commit(
-                        archiveId, Payload(payload),
-                        #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                            (archiveCacheAttachment + " [" + metricsString + "]"),
-                        #else
-                            std::string(),
-                        #endif
+                deps = std::move(preprocessedOutput._dependencies);
 
-                                // on flush, we need to write out the dependencies file
-                                // note that delaying the call to WriteDependencies requires
-                                // many small annoying allocations! It's much simplier if we
-                                // can just write them now -- but it causes problems if we a
-                                // crash or use End Debugging before we flush the archive
-                        [depsAsVector, depNameAsString, baseDirAsString, store]()
-                        { store->WriteDependencies(
-                            depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString), 
-                            MakeIteratorRange(depsAsVector), false); });
-                    (void)archiveCacheAttachment;
-                }
+                success = c->_compiler->DoLowLevelCompile(
+                    payload, errors, deps,
+                    preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(), resId,
+                    definesTable.c_str());
 
-					// Create the artifact and add it to the compile marker
-				auto depVal = AsDepVal(deps);
-				auto artifact = std::make_shared<::Assets::BlobArtifact>(payload, depVal);
-				marker->AddArtifact("main", artifact);
-				marker->AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+            } else {
+                deps.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resId._filename));
+                size_t fileSize = 0;
+                auto fileData = ::Assets::TryLoadFileAsMemoryBlock(resId._filename, &fileSize);
+                if (!fileData.get() || !fileSize)
+                    Throw(std::runtime_error("Shader source file is empty or missing"));
 
-                    // give the CompileFuture object the same state
-                marker->SetState(newState);
+                success = c->_compiler->DoLowLevelCompile(
+                    payload, errors, deps,
+                    fileData.get(), fileSize, resId,
+                    definesTable.c_str());
+            }
 
-                c->RemoveCompileOperation(*tempPtr);
+            auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+            auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
+            if (newState == ::Assets::AssetState::Invalid)
+                Throw(::Assets::Exceptions::ConstructionError(
+                    ::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, depVal, errors));
 
-				if (newState == ::Assets::AssetState::Invalid)
-					Throw(::Assets::Exceptions::ConstructionError(
-						::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, depVal, errors));
-            });
+                // before we can finish the "complete" step, we need to commit
+                // to archive output
+            ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
+            auto archiveId = GetTarget(
+                resId, definesTable,
+                archiveName, dimof(archiveName),
+                depName, dimof(depName));
+            auto archive = c->_shaderCacheSet->GetArchive(archiveName, *store);
 
-        return marker;
+            assert(payload.get() && payload->size() > 0);
+
+            #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+                auto metricsString =
+                    c->_compiler->MakeShaderMetricsString(
+                        AsPointer(payload->cbegin()), payload->size());
+            #endif
+
+            std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
+            auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
+            auto depNameAsString = std::string(depName);
+
+            #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+                    //  When we have archive attachments enabled, we can write
+                    //  some information to help identify this shader object
+                    //  We'll start with something to define the object...
+                std::stringstream builder;
+                builder
+                    << "[" << resId._filename
+                    << ":" << resId._entryPoint
+                    << ":" << resId._shaderModel
+                    << "] [" << definesTable << "]";
+                auto archiveCacheAttachment = builder.str();
+            #endif
+
+            archive->Commit(
+                archiveId, payload,
+                #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+                    (archiveCacheAttachment + " [" + metricsString + "]"),
+                #else
+                    std::string(),
+                #endif
+
+                        // on flush, we need to write out the dependencies file
+                        // note that delaying the call to WriteDependencies requires
+                        // many small annoying allocations! It's much simplier if we
+                        // can just write them now -- but it causes problems if we a
+                        // crash or use End Debugging before we flush the archive
+                [depsAsVector, depNameAsString, baseDirAsString, store]()
+                { store->WriteDependencies(
+                    depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString),
+                    MakeIteratorRange(depsAsVector), false); });
+            (void)archiveCacheAttachment;
+
+                // Create the artifact and add it to the compile marker
+            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
+            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+
+                // give the CompileFuture object the same state
+            assert(future.GetArtifacts().size() != 0);
+            future.SetState(newState);
+        };
+
+        if (CompileInBackground) {
+            ::Assets::QueueCompileOperation(futureRes, std::move(operation));
+        } else {
+            operation(*futureRes);
+        }
+
+        return futureRes;
     }
 
     StringSection<::Assets::ResChar> LocalCompiledShaderSource::Marker::Initializer() const
@@ -633,10 +462,6 @@ namespace RenderCore { namespace Assets
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
 
-        if (CancelAllShaderCompiles) {
-            return nullptr; // can't start a new compile now. Probably we're shutting down
-        }
-
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
         return std::make_shared<Marker>(initializers[0], shaderId, definesTable, destinationStore, shared_from_this());
@@ -646,31 +471,27 @@ namespace RenderCore { namespace Assets
         StringSection<ResChar> resource, 
         StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
-        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
+        /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
         compileHelper->Enqueue(resId, definesTable.AsString(), nullptr);
-        return compileHelper;
+        return compileHelper;*/
+        assert(0);
+        return nullptr;
     }
             
     auto LocalCompiledShaderSource::CompileFromMemory(
         StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
         StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
     {
-        auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
+        /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 
-        return compileHelper;
+        return compileHelper;*/
+        assert(0);
+        return nullptr;
     }
 
     void LocalCompiledShaderSource::StallOnPendingOperations(bool cancelAll)
     {
-        if (cancelAll) CancelAllShaderCompiles = true;
-
-            // Stall until all pending operations have finished.
-            // We don't have a safe way to cancel active operations...
-            //  though perhaps we could prevent new operations from starting
-        while (Interlocked::Load(&_activeCompileCount) != 0) {
-            Threading::Pause();
-        }
     }
 
     LocalCompiledShaderSource::LocalCompiledShaderSource(
@@ -680,19 +501,11 @@ namespace RenderCore { namespace Assets
     : _compiler(std::move(compiler))
     , _preprocessor(std::move(preprocessor))
     {
-        CancelAllShaderCompiles = false;
         _shaderCacheSet = std::make_unique<ShaderCacheSet>(devDesc);
-        Interlocked::Exchange(&_activeCompileCount, 0);
     }
 
     LocalCompiledShaderSource::~LocalCompiledShaderSource()
     {
-        if (Interlocked::Load(&_activeCompileCount) != 0) {
-            #if defined(XLE_HAS_CONSOLE_RIG)
-                LogWarning << "Shader compile operations still pending while attempt to shutdown LocalCompiledShaderSource! Stalling until finished";
-            #endif
-            StallOnPendingOperations(true);
-        }
     }
 
 }}

@@ -8,8 +8,6 @@
 
 #include "../ShaderService.h"
 #include "../../Assets/IAssetCompiler.h"
-#include "../../Utility/Threading/ThreadingUtils.h"
-#include "../../Utility/Threading/Mutex.h"
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -63,9 +61,6 @@ namespace RenderCore { namespace Assets
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 
-		void AddCompileOperation(const std::shared_ptr<ShaderCompileMarker>& marker);
-		void RemoveCompileOperation(ShaderCompileMarker& marker);
-
         LocalCompiledShaderSource(
             std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
             std::shared_ptr<ISourceCodePreprocessor> preprocessor,
@@ -73,9 +68,6 @@ namespace RenderCore { namespace Assets
         ~LocalCompiledShaderSource();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
-        std::vector<std::shared_ptr<ShaderCompileMarker>> _activeCompileOperations;
-        mutable Interlocked::Value _activeCompileCount;
-        Threading::Mutex _activeCompileOperationsLock;
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
         std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
 
