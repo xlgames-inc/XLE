@@ -13,6 +13,7 @@
 
 #include <OpenGL/OpenGL.h>
 #include <AppKit/NSOpenGL.h>
+#include <AppKit/NSOpenGLView.h>
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -159,33 +160,44 @@ namespace RenderCore { namespace ImplOpenGLES
         Metal_OpenGLES::ObjectFactory& objFactory,
         const void* platformValue, unsigned width, unsigned height)
     {
-        /*CGLPixelFormatAttribute*/
-        unsigned pixelAttrs[] = {
-            kCGLPFADoubleBuffer,
-            kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
-            kCGLPFAColorSize, 24,
-            kCGLPFAAlphaSize, 8,
-            kCGLPFADepthSize, 24,
-            kCGLPFAStencilSize, 8,
-            kCGLPFASampleBuffers, 0,
-            0,
-        };
+        id objCObj = (id)platformValue;
+        if ([objCObj isKindOfClass:NSOpenGLView.class]) {
+            _nsContext = ((NSOpenGLView*)objCObj).openGLContext;
+        } else {
+            /*CGLPixelFormatAttribute*/
+            unsigned pixelAttrs[] = {
+                kCGLPFADoubleBuffer,
+                // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
+                kCGLPFAColorSize, 24,
+                kCGLPFAAlphaSize, 8,
+                kCGLPFADepthSize, 24,
+                kCGLPFAStencilSize, 8,
+                kCGLPFASampleBuffers, 0,
+                0,
+            };
 
-        int virtualScreenCount;
-        CGLPixelFormatObj pixelFormat;
-        auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &pixelFormat, &virtualScreenCount);
-        assert(!error);
-        assert(pixelFormat);
-        (void)virtualScreenCount;
+            int virtualScreenCount;
+            CGLPixelFormatObj pixelFormat;
+            auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &pixelFormat, &virtualScreenCount);
+            assert(!error);
+            assert(pixelFormat);
+            (void)virtualScreenCount;
 
-        CGLContextObj context;
-        error = CGLCreateContext(pixelFormat, NULL, &context);
-        assert(!error);
-        assert(context);
+            CGLContextObj context;
+            error = CGLCreateContext(pixelFormat, NULL, &context);
+            assert(!error);
+            assert(context);
+            CGLReleasePixelFormat(pixelFormat);
 
-        _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
+            _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
+            CGLReleaseContext(context);
 
-        _nsContext.get().view = (NSView*)platformValue;
+            _nsContext.get().view = (NSView*)platformValue;
+        }
+
+        // We must set the context to active, because we must set at least one context active before
+        // we can use the core opengl functions
+        [_nsContext.get() makeCurrentContext];
     }
 
     PresentationChain::~PresentationChain()
