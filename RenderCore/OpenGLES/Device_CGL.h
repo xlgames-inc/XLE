@@ -14,6 +14,7 @@
 namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; }}
 
 @class NSOpenGLContext;
+typedef struct _CGLContextObject       *CGLContextObj;
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -28,6 +29,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
         PresentationChain(
             Metal_OpenGLES::ObjectFactory& objFactory,
+            CGLContextObj sharedContext,
             const void* platformValue, unsigned width, unsigned height);
         ~PresentationChain();
 
@@ -53,14 +55,18 @@ namespace RenderCore { namespace ImplOpenGLES
 
         IAnnotator&                 GetAnnotator();
 
-        ThreadContext(const std::shared_ptr<Device>& device);
+        CGLContextObj               GetSharedContext() { return _sharedContext; }
+        CGLContextObj               GetActiveFrameContext() { return _activeFrameContext; }
+
+        ThreadContext(CGLContextObj sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContext();
 
     private:
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         std::unique_ptr<IAnnotator> _annotator;
 
-        TBC::OCPtr<NSOpenGLContext> _activeTargetContext;
+        CGLContextObj _activeFrameContext;
+        CGLContextObj _sharedContext;
     };
 
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
@@ -68,7 +74,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying();
         virtual void*       QueryInterface(size_t guid);
-        ThreadContextOpenGLES(const std::shared_ptr<Device>& device);
+        ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
     private:
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
@@ -95,6 +101,7 @@ namespace RenderCore { namespace ImplOpenGLES
     protected:
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
+        CGLContextObj _sharedContext;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES

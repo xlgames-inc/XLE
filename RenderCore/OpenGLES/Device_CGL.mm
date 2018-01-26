@@ -20,19 +20,29 @@ namespace RenderCore { namespace ImplOpenGLES
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
-        assert(!_activeTargetContext);
+        assert(!_activeFrameContext);
+        if (_activeFrameContext) {
+            CGLReleaseContext(_activeFrameContext);
+            _activeFrameContext = nullptr;
+        }
+
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
-        _activeTargetContext = presChain.GetUnderlying();
-        [_activeTargetContext.get() makeCurrentContext];
+        _activeFrameContext = presChain.GetUnderlying().get().CGLContextObj;
+        CGLRetainContext(_activeFrameContext);
+        CGLSetCurrentContext(_activeFrameContext);
         return nullptr;     // the target is always render buffer 0
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
     {
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
-        assert(presChain.GetUnderlying() == _activeTargetContext);
-        [_activeTargetContext.get() flushBuffer];
-        _activeTargetContext = nullptr;
+        assert(presChain.GetUnderlying().get().CGLContextObj == _activeFrameContext);
+        if (_activeFrameContext) {
+            CGLFlushDrawable(_activeFrameContext);
+            CGLReleaseContext(_activeFrameContext);
+            _activeFrameContext = nullptr;
+        }
+        CGLSetCurrentContext(_sharedContext);
     }
 
     bool                        ThreadContext::IsImmediate() const { return false; }
@@ -51,11 +61,25 @@ namespace RenderCore { namespace ImplOpenGLES
         return *_annotator;
     }
 
-    ThreadContext::ThreadContext(const std::shared_ptr<Device>& device)
+    ThreadContext::ThreadContext(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
     : _device(device)
-    {}
+    , _sharedContext(sharedContext)
+    , _activeFrameContext(nullptr)
+    {
+        CGLRetainContext(_sharedContext);
+    }
 
-    ThreadContext::~ThreadContext() {}
+    ThreadContext::~ThreadContext()
+    {
+        if (_activeFrameContext) {
+            CGLReleaseContext(_activeFrameContext);
+            _activeFrameContext = nullptr;
+        }
+        if (_sharedContext) {
+            CGLReleaseContext(_sharedContext);
+            _sharedContext = nullptr;
+        }
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -72,8 +96,8 @@ namespace RenderCore { namespace ImplOpenGLES
         return nullptr;
     }
 
-    ThreadContextOpenGLES::ThreadContextOpenGLES(const std::shared_ptr<Device>& device)
-    : ThreadContext(device)
+    ThreadContextOpenGLES::ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
+    : ThreadContext(sharedContext, device)
     {
         _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>();
     }
@@ -85,16 +109,40 @@ namespace RenderCore { namespace ImplOpenGLES
     Device::Device()
     {
         _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
+
+        /*CGLPixelFormatAttribute*/
+        unsigned pixelAttrs[] = {
+            // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
+            0,
+        };
+
+        int virtualScreenCount;
+        CGLPixelFormatObj pixelFormat;
+        auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &pixelFormat, &virtualScreenCount);
+        assert(!error);
+        assert(pixelFormat);
+        (void)virtualScreenCount;
+
+        error = CGLCreateContext(pixelFormat, nullptr, &_sharedContext);
+        CGLReleasePixelFormat(pixelFormat);
+
+        assert(!error);
+        assert(_sharedContext);
+
+        CGLSetCurrentContext(_sharedContext);
     }
 
     Device::~Device()
     {
+        CGLSetCurrentContext(nullptr);
+        CGLReleaseContext(_sharedContext);
     }
 
     std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
     {
         return std::make_unique<PresentationChain>(
             *_objectFactory,
+            _sharedContext,
             platformValue, width, height);
     }
 
@@ -116,13 +164,13 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
-        return std::make_unique<ThreadContextOpenGLES>(shared_from_this());
+        return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
     }
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()
     {
         if (!_immediateContext)
-            _immediateContext = std::make_shared<ThreadContextOpenGLES>(shared_from_this());
+            _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
         return _immediateContext;
     }
 
@@ -158,6 +206,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     PresentationChain::PresentationChain(
         Metal_OpenGLES::ObjectFactory& objFactory,
+        CGLContextObj sharedContext,
         const void* platformValue, unsigned width, unsigned height)
     {
         id objCObj = (id)platformValue;
@@ -170,9 +219,6 @@ namespace RenderCore { namespace ImplOpenGLES
                 // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
                 kCGLPFAColorSize, 24,
                 kCGLPFAAlphaSize, 8,
-                kCGLPFADepthSize, 24,
-                kCGLPFAStencilSize, 8,
-                kCGLPFASampleBuffers, 0,
                 0,
             };
 
@@ -184,7 +230,7 @@ namespace RenderCore { namespace ImplOpenGLES
             (void)virtualScreenCount;
 
             CGLContextObj context;
-            error = CGLCreateContext(pixelFormat, NULL, &context);
+            error = CGLCreateContext(pixelFormat, sharedContext, &context);
             assert(!error);
             assert(context);
             CGLReleasePixelFormat(pixelFormat);
@@ -194,10 +240,6 @@ namespace RenderCore { namespace ImplOpenGLES
 
             _nsContext.get().view = (NSView*)platformValue;
         }
-
-        // We must set the context to active, because we must set at least one context active before
-        // we can use the core opengl functions
-        [_nsContext.get() makeCurrentContext];
     }
 
     PresentationChain::~PresentationChain()
