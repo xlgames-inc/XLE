@@ -142,6 +142,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             (const void*)(size_t)(_indexFormatBytes * startIndexLocation));
     }
 
+#if HACK_PLATFORM_IOS
     void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
@@ -151,6 +152,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
             instanceCount);
     }
+#endif
 
 #if 0
     DeviceContext::DeviceContext(EGLDisplay display, EGLContext underlyingContext)
