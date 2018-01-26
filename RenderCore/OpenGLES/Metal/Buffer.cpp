@@ -73,12 +73,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             "buf");
     }
 
-    Resource MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
     {
-        return Resource(
+        return Buffer(
             factory,
             BuildDesc(BindFlag::VertexBuffer, data.size(), true),
-            SubResourceInitData { data, {0u, 0u, 0u} });
+            data.begin(),
+            data.size());
     }
     
     Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
