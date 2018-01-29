@@ -7,6 +7,7 @@
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "IDeviceOpenGLES.h"
+#include "IndexedGLType.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
@@ -24,16 +25,19 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        EAGLContext*        GetUnderlying() { return _eaglContext.get(); }
+        EAGLContext*        GetEAGLContext() { return _eaglContext.get(); }
+
+        const intrusive_ptr<OpenGL::RenderBuffer>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
 
         PresentationChain(
             Metal_OpenGLES::ObjectFactory& objFactory,
-            EAGLContext* eaglContext,
+            EAGLContext* sharedContext,
             const void* platformValue, unsigned width, unsigned height);
         ~PresentationChain();
 
     private:
         TBC::OCPtr<EAGLContext> _eaglContext;
+        intrusive_ptr<OpenGL::RenderBuffer> _frameRenderbuffer;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -54,12 +58,18 @@ namespace RenderCore { namespace ImplOpenGLES
 
         IAnnotator&                 GetAnnotator();
 
-        ThreadContext(const std::shared_ptr<Device>& device);
+        ThreadContext(EAGLContext* sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContext();
 
     private:
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         std::unique_ptr<IAnnotator> _annotator;
+
+        TBC::OCPtr<EAGLContext> _activeFrameContext;
+        TBC::OCPtr<EAGLContext> _sharedContext;
+
+        intrusive_ptr<OpenGL::RenderBuffer> _activeFrameRenderbuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
     };
 
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
@@ -67,7 +77,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying();
         virtual void*       QueryInterface(size_t guid);
-        ThreadContextOpenGLES(const std::shared_ptr<Device>& device);
+        ThreadContextOpenGLES(EAGLContext* sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
     private:
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
@@ -94,7 +104,7 @@ namespace RenderCore { namespace ImplOpenGLES
     protected:
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
-        TBC::OCPtr<EAGLContext> _eaglContext;
+        TBC::OCPtr<EAGLContext> _sharedContext;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
