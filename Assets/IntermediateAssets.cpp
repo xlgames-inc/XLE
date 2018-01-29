@@ -276,10 +276,8 @@ namespace Assets { namespace IntermediateAssets
             //  We want a directory that isn't currently being used, and
             //  that matches the version string.
 
-		ResChar buffer[MaxPath];
-
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-
+        ResChar buffer[MaxPath];
 		if (!universal) {
 			_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", baseDirectory, configString);
 

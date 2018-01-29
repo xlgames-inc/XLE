@@ -77,6 +77,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         case Format::R8_UNORM:              return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), 0.f, 0.f, 1.f);
         
         case Format::B8G8R8X8_UNORM:        return Float4(UNormAsFloat32(((const unsigned char*)rawData)[0]), UNormAsFloat32(((const unsigned char*)rawData)[1]), UNormAsFloat32(((const unsigned char*)rawData)[2]), 1.f);
+            
+        default:
+                assert(0);
         }
 
         assert(0);
