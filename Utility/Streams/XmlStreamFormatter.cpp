@@ -169,7 +169,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        auto XmlInputStreamFormatter<CharType>::PeekNext(bool allowCharacterData) -> Blob
+        auto XmlInputStreamFormatter<CharType>::PeekNext() -> Blob
     {
         if (_primed != Blob::None) return _primed;
 
@@ -201,13 +201,14 @@ namespace Utility
                 } else break;
             }
 
+            _marker = mark;
             _pendingHeader = false;
         }
 
         auto scopeType = _scopeStack.top()._type;
         if (scopeType == Scope::Type::None || scopeType == Scope::Type::Element) {
 
-            if (allowCharacterData && mark.Remaining() >= 1 && *mark != '<') {
+            if (_allowCharacterData && mark.Remaining() >= 1 && *mark != '<') {
                 return _primed = Blob::CharacterData;
             }
             
@@ -286,7 +287,7 @@ namespace Utility
                 ++mark;
                 _marker = mark;
                 _scopeStack.top()._type = Scope::Type::Element;
-                return PeekNext(allowCharacterData);
+                return PeekNext();
             } else {
                 Throw(FormatException("Bad character in attribute list", mark.GetLocation()));
             }
@@ -299,7 +300,7 @@ namespace Utility
     }
 
     template<typename CharType>
-        bool XmlInputStreamFormatter<CharType>::TryBeginElement(InteriorSection& name)
+        bool XmlInputStreamFormatter<CharType>::    TryBeginElement(InteriorSection& name)
         {
             if (PeekNext() != Blob::BeginElement) return false;
 
@@ -426,7 +427,8 @@ namespace Utility
     template<typename CharType>
         bool XmlInputStreamFormatter<CharType>::TryCharacterData(InteriorSection& cdata)
     {
-        if (PeekNext(true) != Blob::CharacterData) return false;
+        assert(_allowCharacterData);
+        if (PeekNext() != Blob::CharacterData) return false;
 
         cdata._start = _marker.Pointer();
 

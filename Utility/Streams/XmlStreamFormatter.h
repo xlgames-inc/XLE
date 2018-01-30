@@ -53,7 +53,7 @@ namespace Utility
     {
     public:
         enum class Blob { BeginElement, EndElement, AttributeName, AttributeValue, CharacterData, None };
-        Blob PeekNext(bool allowCharacterData=false);
+        Blob PeekNext();
 
         using InteriorSection = StringSection<CharType>;
 
@@ -67,6 +67,8 @@ namespace Utility
         StreamLocation GetLocation() const;
 
         using value_type = CharType;
+
+        bool _allowCharacterData = false;
 
         XmlInputStreamFormatter(const TextStreamMarker<CharType>& marker);
         ~XmlInputStreamFormatter();
