@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "../IDevice.h"
-#include "../../Utility/IntrusivePtr.h"
+#include <memory>
 
 namespace RenderCore
 {
@@ -28,7 +27,7 @@ namespace RenderCore
     class IThreadContextOpenGLES
     {
     public:
-        virtual std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying() = 0;
+        virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() = 0;
         ~IThreadContextOpenGLES();
     };
 

@@ -76,7 +76,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         unsigned FeatureLevel() const { return 300u; }
 
-        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
+        static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
         DeviceContext();
         DeviceContext(const DeviceContext&) = delete;

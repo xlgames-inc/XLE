@@ -91,7 +91,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         // EGL::Context        GetUnderlying() { return _underlyingContext; }
 
-        static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
+        static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
         DeviceContext();
         DeviceContext(const DeviceContext&) = delete;

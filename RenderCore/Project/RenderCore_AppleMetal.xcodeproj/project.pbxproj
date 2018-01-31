@@ -83,6 +83,7 @@
 		8F46A0BE202140290003948C /* Format.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Format.h; sourceTree = "<group>"; };
 		8F46A0C0202140290003948C /* IncludeAppleMetal.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = IncludeAppleMetal.h; sourceTree = "<group>"; };
 		8F46A0F3202149980003948C /* Types.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = Types.h; sourceTree = "<group>"; };
+		8F46A0F8202167110003948C /* IDeviceAppleMetal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = IDeviceAppleMetal.h; path = ../AppleMetal/IDeviceAppleMetal.h; sourceTree = "<group>"; };
 		8F7B6C59202129EF006D0079 /* libRenderCoreAppleMetalMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreAppleMetalMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F7B6C6520212A51006D0079 /* libRenderCoreAppleMetalIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libRenderCoreAppleMetalIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F7B6C6620212AC9006D0079 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
@@ -118,6 +119,7 @@
 				8F7B6C5020212950006D0079 /* Config */,
 				8F7B6C6B20212AEC006D0079 /* Device.h */,
 				8F7B6C6A20212AEC006D0079 /* Device.mm */,
+				8F46A0F8202167110003948C /* IDeviceAppleMetal.h */,
 				8F7B6C8820212D23006D0079 /* Metal */,
 				8F7B6C5A202129EF006D0079 /* Products */,
 			);

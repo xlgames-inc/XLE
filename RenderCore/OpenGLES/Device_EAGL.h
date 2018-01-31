@@ -71,7 +71,7 @@ namespace RenderCore { namespace ImplOpenGLES
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
     {
     public:
-        std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying();
+        const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
         virtual void*       QueryInterface(size_t guid);
         ThreadContextOpenGLES(EAGLContext* sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();

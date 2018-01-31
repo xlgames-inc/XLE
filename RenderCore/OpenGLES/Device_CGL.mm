@@ -83,7 +83,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<Metal_OpenGLES::DeviceContext>&  ThreadContextOpenGLES::GetUnderlying()
+    const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  ThreadContextOpenGLES::GetDeviceContext()
     {
         return _deviceContext;
     }

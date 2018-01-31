@@ -8,6 +8,7 @@
 #include "InputLayout.h"
 #include "Buffer.h"
 #include "Format.h"
+#include "../IDeviceAppleMetal.h"
 #include "../../IThreadContext.h"
 
 #include <assert.h>
@@ -84,10 +85,12 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     }
 
-    std::shared_ptr<DeviceContext> DeviceContext::Get(IThreadContext& threadContext)
+    const std::shared_ptr<DeviceContext>& DeviceContext::Get(IThreadContext& threadContext)
     {
-        assert(0);
-        return nullptr;
+        static std::shared_ptr<DeviceContext> dummy;
+        auto* tc = (IThreadContextAppleMetal*)threadContext.QueryInterface(typeid(IThreadContextAppleMetal).hash_code());
+        if (tc) return tc->GetDeviceContext();
+        return dummy;
     }
 
     static ObjectFactory* s_objectFactory_instance = nullptr;

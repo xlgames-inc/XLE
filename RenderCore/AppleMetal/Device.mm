@@ -70,7 +70,14 @@ namespace RenderCore { namespace ImplAppleMetal
 
     void*                       ThreadContext::QueryInterface(size_t guid)
     {
+        if (guid == typeid(IThreadContextAppleMetal).hash_code())
+            return (IThreadContextAppleMetal*)this;
         return nullptr;
+    }
+
+    const std::shared_ptr<Metal_AppleMetal::DeviceContext>&  ThreadContext::GetDeviceContext()
+    {
+        return _devContext;
     }
 
     ThreadContext::ThreadContext(
@@ -92,12 +99,21 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    Device::Device()
+    static id<MTLDevice> CreateUnderlyingDevice()
     {
-        _underlying = MTLCreateSystemDefaultDevice();
-        if (!_underlying)
+        auto underlying = MTLCreateSystemDefaultDevice();
+        if (!underlying)
             Throw(::Exceptions::BasicLabel("Could not initialize Apple Metal, because the API isn't supported on this device"));
+        return underlying;
+    }
 
+    Device::Device() : Device(CreateUnderlyingDevice())
+    {
+    }
+
+    Device::Device(id<MTLDevice> underlying)
+    {
+        _underlying = underlying;
         _immediateCommandQueue = [_underlying.get() newCommandQueue];
     }
 
@@ -195,10 +211,17 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    render_dll_export std::shared_ptr<IDevice> CreateDevice()
+    render_dll_export std::shared_ptr<IDevice> TryCreateDevice()
     {
-        return std::make_shared<Device>();
+        auto* underlyingDevice = MTLCreateSystemDefaultDevice();
+        if (!underlyingDevice)
+            return nullptr;
+        return std::make_shared<Device>(underlyingDevice);
     }
 
 }}
+
+namespace RenderCore {
+    IThreadContextAppleMetal::~IThreadContextAppleMetal() {}
+}
 

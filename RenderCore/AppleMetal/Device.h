@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "IDeviceAppleMetal.h"
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"
@@ -19,6 +20,7 @@
 namespace RenderCore { namespace Metal_AppleMetal
 {
     class ObjectFactory;
+    class DeviceContext;
 }}
 
 namespace RenderCore { namespace ImplAppleMetal
@@ -47,7 +49,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
     class Device;
 
-    class ThreadContext : public Base_ThreadContext
+    class ThreadContext : public Base_ThreadContext, public IThreadContextAppleMetal
     {
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
@@ -61,6 +63,8 @@ namespace RenderCore { namespace ImplAppleMetal
         void                        InvalidateCachedState() const;
 
         IAnnotator&                 GetAnnotator();
+
+        const std::shared_ptr<Metal_AppleMetal::DeviceContext>&  GetDeviceContext();
 
         ThreadContext(
             id<MTLCommandQueue> immediateCommandQueue,
@@ -78,6 +82,8 @@ namespace RenderCore { namespace ImplAppleMetal
         TBC::OCPtr<id> _commandBuffer;              // (id<MTLCommandBuffer>)
 
         std::shared_ptr<IAnnotator> _annotator;
+
+        std::shared_ptr<Metal_AppleMetal::DeviceContext> _devContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -99,6 +105,7 @@ namespace RenderCore { namespace ImplAppleMetal
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 
         Device();
+        explicit Device(id<MTLDevice> underlying);
         ~Device();
 
     protected:
