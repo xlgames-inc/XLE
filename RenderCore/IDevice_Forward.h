@@ -9,29 +9,21 @@
 #include "../Core/Prefix.h"
 #include <memory>
 
-        // // // //      Flexible interfaces configuration      // // // //
-#define FLEX_USE_VTABLE_PresentationChain    1
-#define FLEX_USE_VTABLE_Device               1
-#define FLEX_USE_VTABLE_Resource_            1
-
 namespace RenderCore
 {
-    #define FLEX_INTERFACE PresentationChain
-#include "FlexForward.h"
-    #undef FLEX_INTERFACE
-    #define FLEX_INTERFACE Device
-#include "FlexForward.h"
-    #undef FLEX_INTERFACE
-    #define FLEX_INTERFACE Resource_
-#include "FlexForward.h"
-    #undef FLEX_INTERFACE
+    class IPresentationChain;
+    class IDevice;
+    class IResource;
 
-	using Resource = IResource_;
-    using IResource = IResource_;
+	using Resource = IResource;
 	using ResourcePtr = std::shared_ptr<IResource>;
     using IResourcePtr = std::shared_ptr<IResource>;
 	class ResourceDesc;
 	class SubResourceInitData;
 	class PresentationChainDesc;
 	class SubResourceId;
+
+    using Base_PresentationChain = IPresentationChain;
+    using Base_Device = IDevice;
+    using Base_Resource = IResource;
 }

@@ -9,6 +9,10 @@
 #include "Types.h"
 #include "Format.h"
 
+#include "IDevice.h"
+#include "IThreadContext.h"
+#include "IAnnotator.h"
+
 #if defined(HAS_XLE_CONSOLE_RIG)
     #include "../ConsoleRig/GlobalServices.h"
 #endif
@@ -240,6 +244,12 @@ namespace RenderCore
         }
         return result / 8;
 	}
+
+    IDevice::~IDevice() {}
+    IThreadContext::~IThreadContext() {}
+    IPresentationChain::~IPresentationChain() {}
+    IResource::~IResource() {}
+    IAnnotator::~IAnnotator() {}
 
 }
 

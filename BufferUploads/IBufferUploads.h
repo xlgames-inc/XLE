@@ -93,9 +93,6 @@ namespace BufferUploads
 
         /////////////////////////////////////////////////
 
-#define FLEX_INTERFACE Manager
-/*-----------------*/ #include "../RenderCore/FlexBegin.h" /*-----------------*/
-
         /// <summary>Main interface for BufferUploads</summary>
         /// BufferUploads::IManager is used as the main interface for uploading
         /// data to the GPU.
@@ -121,7 +118,7 @@ namespace BufferUploads
         ///         }
         ///     \endcode</code>
         /// </example>
-    class ICLASSNAME(Manager) : noncopyable
+    class IManager
     {
     public:
             /// \name Upload Data to an existing transaction
@@ -131,7 +128,7 @@ namespace BufferUploads
             /// Upload data for buffer uploads can be provided either to the Transaction_Begin
             /// call, or to UploadData. Use UploadData when you want to update an existing resource,
             /// or change the data that's already present.
-        IMETHOD void            UpdateData  (TransactionID id, DataPacket* rawData, const PartialResource& = PartialResource()) IPURE;
+        virtual void            UpdateData  (TransactionID id, DataPacket* rawData, const PartialResource& = PartialResource()) = 0;
             /// @}
 
             /// \name Begin and End transactions
@@ -140,20 +137,20 @@ namespace BufferUploads
             /// <summary>Begin a new transaction</summary>
             /// Begin a new transaction, either by creating a new resource, or by attaching
             /// to an existing resource.
-        IMETHOD TransactionID   Transaction_Begin    (const BufferDesc& desc, DataPacket* initialisationData = nullptr, TransactionOptions::BitField flags=0) IPURE;
-        IMETHOD TransactionID   Transaction_Begin    (intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) IPURE;
+        virtual TransactionID   Transaction_Begin    (const BufferDesc& desc, DataPacket* initialisationData = nullptr, TransactionOptions::BitField flags=0) = 0;
+        virtual TransactionID   Transaction_Begin    (intrusive_ptr<ResourceLocator> & locator, TransactionOptions::BitField flags=0) = 0;
 
             /// <summary>Ends a transaction</summary>
             /// Ends a transaction started with Transaction_Begin. Internally, this updates
             /// a reference count. So every call to Transaction_Begin must be balanced with
             /// a call to Transaction_End.
             /// Be sure to end all transactions before destroying the buffer uploads manager.
-        IMETHOD void            Transaction_End      (TransactionID id) IPURE;
+        virtual void            Transaction_End      (TransactionID id) = 0;
 
             /// <summary>Validates a transaction</summary>
             /// This is a tool for debugging. Checks a transaction for common problems.
             /// Only implemented in _DEBUG builds. Errors will invoke an assert.
-        IMETHOD void            Transaction_Validate (TransactionID id) IPURE;
+        virtual void            Transaction_Validate (TransactionID id) = 0;
             /// @}
 
             /// \name Immediate creation
@@ -163,9 +160,9 @@ namespace BufferUploads
             /// Creates a new resource synchronously. All creating objects will
             /// execute in the current thread, and a new resource will be returned from
             /// the call. Use these methods when uploads can't be delayed.
-        IMETHOD intrusive_ptr<ResourceLocator>
+        virtual intrusive_ptr<ResourceLocator>
             Transaction_Immediate(  const BufferDesc& desc, DataPacket* initialisationData = nullptr, 
-                                    const PartialResource& = PartialResource()) IPURE;
+                                    const PartialResource& = PartialResource()) = 0;
             /// @}
 
             /// \name Transaction management
@@ -176,11 +173,11 @@ namespace BufferUploads
             /// resource is getting cloned.
             /// Should be balanced with a call to Transaction_End
             /// <seealso cref="Transaction_End"/>
-        IMETHOD void            AddRef      (TransactionID id) IPURE;
+        virtual void            AddRef      (TransactionID id) = 0;
 
             /// <summary>Checks for completion</summary>
             /// Returns true iff the given transaction has been completed.
-        IMETHOD bool            IsCompleted (TransactionID id) IPURE;
+        virtual bool            IsCompleted (TransactionID id) = 0;
 
             /// <summary>Gets the resource from a completed transaction</summary>
             /// After a transaction has been completed, get the resource with
@@ -188,28 +185,28 @@ namespace BufferUploads
             /// Note that the reference count for the returned resource is 
             /// incremented by one in this method. The caller must balance 
             /// that with a call to Resource_Release().
-        IMETHOD intrusive_ptr<ResourceLocator>         GetResource (TransactionID id) IPURE;
+        virtual intrusive_ptr<ResourceLocator>         GetResource (TransactionID id) = 0;
             /// @}
 
             /// \name Event queue
             /// @{
 
         typedef uint32 EventListID;
-        IMETHOD EventListID     EventList_GetLatestID   () IPURE;
-        IMETHOD void            EventList_Get           (EventListID id, Event_ResourceReposition*&begin, Event_ResourceReposition*&end) IPURE;
-        IMETHOD void            EventList_Release       (EventListID id) IPURE;
+        virtual EventListID     EventList_GetLatestID   () = 0;
+        virtual void            EventList_Get           (EventListID id, Event_ResourceReposition*&begin, Event_ResourceReposition*&end) = 0;
+        virtual void            EventList_Release       (EventListID id) = 0;
             /// @}
 
             /// \name Resource references
             /// @{
-        IMETHOD void            Resource_Validate           (const ResourceLocator& locator) IPURE;
+        virtual void            Resource_Validate           (const ResourceLocator& locator) = 0;
             /// <summary>Read back data from a resource</summary>
             /// Read data back from a resource. Sometimes this may require copying data from
             /// the GPU onto the CPU. Note that this can have a significant effect on performance!
             /// If the resource is currently in use by the GPU, it can result in a store.
             /// Whenever possible, it's recommended to avoid using this method. It's provided for
             /// compatibility and debugging.
-        IMETHOD intrusive_ptr<DataPacket>  Resource_ReadBack           (const ResourceLocator& locator) IPURE;
+        virtual intrusive_ptr<DataPacket>  Resource_ReadBack           (const ResourceLocator& locator) = 0;
             /// @}
 
             /// \name Frame management
@@ -220,7 +217,7 @@ namespace BufferUploads
             /// <param name="preserveRenderState">Set to true to preserve the render state in the 
             ///     immediate context. When set to false, sometimes the render state will be reset
             ///     to the default (See DirectX documentation for ExecuteCommandList)</param>
-        IMETHOD void                    Update  (RenderCore::IThreadContext& immediateContext, bool preserveRenderState) IPURE;
+        virtual void                    Update  (RenderCore::IThreadContext& immediateContext, bool preserveRenderState) = 0;
             /// @}
 
             /// \name Utilities, profiling & debugging
@@ -228,7 +225,7 @@ namespace BufferUploads
 
             /// <summary>Stalls until all work queues are empty</summary>
             /// Normally should only be used during shutdown and loading.
-        IMETHOD void                    Flush                   () IPURE;
+        virtual void                    Flush                   () = 0;
             /// <summary>Gets performance metrics</summary>
             /// Gets the latest performance metrics. Internally the system
             /// maintains a queue of performance metrics. Every frame, a new
@@ -236,40 +233,30 @@ namespace BufferUploads
             /// it's maximum size).
             /// PopMetrics() will remove the next item from the queue. If there
             /// no more items, "_commitTime" will be 0.
-        IMETHOD CommandListMetrics      PopMetrics              () IPURE;
+        virtual CommandListMetrics      PopMetrics              () = 0;
             /// <summary>Returns the size of a buffer</summary>
             /// Calculates the size of a buffer from a description. This can be
             /// used to estimate the amount of GPU memory that will be used.
-        IMETHOD size_t                  ByteCount               (const BufferDesc& desc) const IPURE;
+        virtual size_t                  ByteCount               (const BufferDesc& desc) const = 0;
             /// <summary>Returns metrics about pool memory</summary>
             /// Returns some profiling metrics related to the resource pooling
             /// buffers maintained by the system. Used by the BufferUploadDisplay
             /// for presenting profiling information.
-        IMETHOD PoolSystemMetrics       CalculatePoolMetrics    () const IPURE;
+        virtual PoolSystemMetrics       CalculatePoolMetrics    () const = 0;
             /// <summary>Sets a barrier for frame priority operations</summary>
             /// Sets a barrier, which determines the "end of frame" point for
             /// frame priority operations. This will normally be called from the same
             /// thread that begins most upload operations.
-        IMETHOD void                    FramePriority_Barrier   () IPURE;
+        virtual void                    FramePriority_Barrier   () = 0;
             /// @}
 
-        IDESTRUCTOR
+        ~IManager();
     };
-
-    #if !defined(FLEX_CONTEXT_Manager)
-        #define FLEX_CONTEXT_Manager     FLEX_CONTEXT_INTERFACE
-    #endif
-
-    #if defined(DOXYGEN)
-        typedef IManager Base_Manager;
-    #endif
 
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice& renderDevice);
 
     buffer_upload_dll_export void AttachLibrary(ConsoleRig::GlobalServices&);
     buffer_upload_dll_export void DetachLibrary();
-
-/*-----------------*/ #include "../RenderCore/FlexEnd.h" /*-----------------*/
 
 }
 

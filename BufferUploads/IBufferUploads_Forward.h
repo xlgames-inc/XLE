@@ -6,17 +6,8 @@
 
 #pragma once
 
-    // // // //      Flexible interfaces configuration      // // // //
-    #if defined(_DEBUG)
-                #define FLEX_USE_VTABLE_Manager     1
-    #else
-                #define FLEX_USE_VTABLE_Manager     0
-    #endif
-
 namespace BufferUploads
 {
-    #define FLEX_INTERFACE Manager
-        #include "../RenderCore/FlexForward.h"
-    #undef FLEX_INTERFACE
+    class IManager;
 }
 

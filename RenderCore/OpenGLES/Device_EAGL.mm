@@ -241,3 +241,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
 }}
 
+namespace RenderCore
+{
+    IDeviceOpenGLES::~IDeviceOpenGLES() {}
+    IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
+}
+

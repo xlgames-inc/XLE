@@ -12,19 +12,14 @@
 #include <memory>
 #include <functional>
 
-#define FLEX_USE_VTABLE_Annotator   1
-
-namespace RenderCore 
+namespace RenderCore
 {
 
-#define FLEX_INTERFACE Annotator
-/*-----------------*/ #include "FlexBegin.h" /*-----------------*/
-
-	class ICLASSNAME(Annotator)
+	class IAnnotator
 	{
 	public:
-		IMETHOD void	Frame_Begin(IThreadContext& primaryContext, unsigned frameID) IPURE;
-		IMETHOD void	Frame_End(IThreadContext& primaryContext) IPURE;
+		virtual void	Frame_Begin(IThreadContext& primaryContext, unsigned frameID) = 0;
+		virtual void	Frame_End(IThreadContext& primaryContext) = 0;
 
 		struct EventTypes
 		{
@@ -35,69 +30,57 @@ namespace RenderCore
 			};
 			using BitField = unsigned;
 		};
-		IMETHOD void	Event(IThreadContext& context, const char name[], EventTypes::BitField types) IPURE;
+		virtual void	Event(IThreadContext& context, const char name[], EventTypes::BitField types) = 0;
 
 		using EventListener = std::function<void(const void* eventBufferBegin, const void* eventBufferEnd)>;
-		IMETHOD unsigned	AddEventListener(const EventListener& callback) IPURE;
-		IMETHOD void		RemoveEventListener(unsigned listenerId) IPURE;
+		virtual unsigned	AddEventListener(const EventListener& callback) = 0;
+		virtual void		RemoveEventListener(unsigned listenerId) = 0;
 
-		IDESTRUCTOR
+		virtual ~IAnnotator();
 	};
-
-	#if !defined(FLEX_CONTEXT_Annotator)
-		#define FLEX_CONTEXT_Annotator     FLEX_CONTEXT_INTERFACE
-	#endif
-
-	#if defined(DOXYGEN)
-		typedef IAnnotator Base_Annotator;
-	#endif
-
-/*-----------------*/ #include "FlexEnd.h" /*-----------------*/
 
 	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice&);
 
-	#if FLEX_CONTEXT_Annotator != FLEX_CONTEXT_CONCRETE
-		class GPUProfilerBlock
-		{
-		public:
-			GPUProfilerBlock(IThreadContext& context, const char name[])
-			: _name(name), _context(&context)
-			{
-				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileBegin);
-			}
+    class GPUProfilerBlock
+    {
+    public:
+        GPUProfilerBlock(IThreadContext& context, const char name[])
+        : _name(name), _context(&context)
+        {
+            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileBegin);
+        }
 
-			~GPUProfilerBlock()
-			{
-				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileEnd);
-			}
+        ~GPUProfilerBlock()
+        {
+            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileEnd);
+        }
 
-			GPUProfilerBlock(const GPUProfilerBlock&) = delete;
-			GPUProfilerBlock& operator=(const GPUProfilerBlock&) = delete;
-		private:
-			IThreadContext*		_context;
-			const char*			_name;
-		};
+        GPUProfilerBlock(const GPUProfilerBlock&) = delete;
+        GPUProfilerBlock& operator=(const GPUProfilerBlock&) = delete;
+    private:
+        IThreadContext*		_context;
+        const char*			_name;
+    };
 
-		class GPUAnnotation
-		{
-		public:
-			GPUAnnotation(IThreadContext& context, const char name[])
-			: _name(name), _context(&context)
-			{
-				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerBegin);
-			}
+    class GPUAnnotation
+    {
+    public:
+        GPUAnnotation(IThreadContext& context, const char name[])
+        : _name(name), _context(&context)
+        {
+            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerBegin);
+        }
 
-			~GPUAnnotation()
-			{
-				_context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerEnd);
-			}
+        ~GPUAnnotation()
+        {
+            _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerEnd);
+        }
 
-			GPUAnnotation(const GPUAnnotation&) = delete;
-			GPUAnnotation& operator=(const GPUAnnotation&) = delete;
-		private:
-			IThreadContext*		_context;
-			const char*			_name;
-		};
-	#endif
+        GPUAnnotation(const GPUAnnotation&) = delete;
+        GPUAnnotation& operator=(const GPUAnnotation&) = delete;
+    private:
+        IThreadContext*		_context;
+        const char*			_name;
+    };
 }
 

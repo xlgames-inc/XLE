@@ -176,16 +176,6 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #if !FLEX_USE_VTABLE_Device
-        namespace Detail
-        {
-            void* Ignore_Device::QueryInterface(size_t guid)
-            {
-                return nullptr;
-            }
-        }
-    #endif
-
     void* DeviceOpenGLES::QueryInterface(size_t guid)
     {
         if (guid == typeid(IDeviceOpenGLES).hash_code()) {
@@ -264,4 +254,10 @@ namespace RenderCore { namespace ImplOpenGLES
     }
 
 }}
+
+namespace RenderCore
+{
+    IDeviceOpenGLES::~IDeviceOpenGLES() {}
+    IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
+}
 

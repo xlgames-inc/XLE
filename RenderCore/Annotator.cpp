@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#define FLEX_CONTEXT_Annotator				FLEX_CONTEXT_CONCRETE
-
 #include "IAnnotator.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Core/Types.h"

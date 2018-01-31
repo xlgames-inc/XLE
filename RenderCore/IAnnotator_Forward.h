@@ -6,12 +6,9 @@
 
 #include "../Core/Prefix.h"
 
-// // // //      Flexible interfaces configuration      // // // //
-#define FLEX_USE_VTABLE_Annotator   1
-
 namespace RenderCore
 {
-#define FLEX_INTERFACE Annotator
-#include "FlexForward.h"
-#undef FLEX_INTERFACE
+    class IAnnotator;
+
+    using Base_Annotator = IAnnotator;
 }

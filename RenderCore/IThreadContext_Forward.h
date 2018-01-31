@@ -8,12 +8,9 @@
 
 #include "../Core/Prefix.h"
 
-        // // // //      Flexible interfaces configuration      // // // //
-#define FLEX_USE_VTABLE_ThreadContext   1
-
 namespace RenderCore
 {
-    #define FLEX_INTERFACE ThreadContext
-#include "FlexForward.h"
-    #undef FLEX_INTERFACE
+    class IThreadContext;
+
+    using Base_ThreadContext = IThreadContext;
 }

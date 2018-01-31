@@ -12,12 +12,6 @@
 #include "../Utility/IteratorUtils.h"
 #include <memory>
 
-#if OUTPUT_DLL
-    #define render_dll_export       dll_export
-#else
-    #define render_dll_export
-#endif
-
 namespace RenderCore
 {
     class ThreadContextStateDesc
@@ -27,8 +21,6 @@ namespace RenderCore
         unsigned _frameId;
     };
 
-#define FLEX_INTERFACE ThreadContext
-/*-----------------*/ #include "FlexBegin.h" /*-----------------*/
 
     ///
     /// <summary>Represents the context state of a particular thread while rendering</summary>
@@ -56,7 +48,7 @@ namespace RenderCore
     /// DeviceContext is a low-level "Metal" layer object. We need a higher level "RenderCore"
     /// object to wrap it.
     ///
-    class ICLASSNAME(ThreadContext)
+    class IThreadContext
     {
     public:
 		/// <summary>Begins rendering of a new frame</summary>
@@ -64,7 +56,7 @@ namespace RenderCore
 		/// You must pass a presentationChain. This defines how the frame will be presented to the user.
 		/// Note that rendering to offscreen surfaces can happen outside of the BeginFrame/Present boundaries.
 		/// <seealso cref="RenderCore::IThreadContext::Present"/>
-		IMETHOD ResourcePtr     BeginFrame(IPresentationChain& presentationChain) IPURE;
+		virtual IResourcePtr     BeginFrame(IPresentationChain& presentationChain) = 0;
 
 		/// <summary>Finishes a frame, and presents it to the user</summary>
 		/// Present() is used to finish a frame, and present it to the user. 
@@ -91,20 +83,18 @@ namespace RenderCore
 		///
 		///   But in theory we can call Present at any time.
 		/// </example>
-		IMETHOD void			Present(IPresentationChain& presentationChain) IPURE;
+		virtual void			Present(IPresentationChain& presentationChain) = 0;
 
-        IMETHOD virtual void*   QueryInterface(size_t guid) IPURE;
-        IMETHOD bool            IsImmediate() const IPURE;
-        IMETHOD auto			GetDevice() const -> std::shared_ptr<IDevice> IPURE;
-		IMETHOD void			InvalidateCachedState() const IPURE;
+        virtual void*           QueryInterface(size_t guid) = 0;
+        virtual bool            IsImmediate() const = 0;
+        virtual auto			GetDevice() const -> std::shared_ptr<IDevice> = 0;
+		virtual void			InvalidateCachedState() const = 0;
 
-		IMETHOD IAnnotator&		GetAnnotator() IPURE;
+		virtual IAnnotator&		GetAnnotator() = 0;
 
-        IMETHOD ThreadContextStateDesc  GetStateDesc() const IPURE;
-        IDESTRUCTOR
+        virtual ThreadContextStateDesc  GetStateDesc() const = 0;
+        virtual ~IThreadContext();
     };
-
-/*-----------------*/ #include "FlexEnd.h" /*-----------------*/
 
 }
 

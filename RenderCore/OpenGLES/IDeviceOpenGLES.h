@@ -9,60 +9,30 @@
 #include "../IDevice.h"
 #include "../../Utility/IntrusivePtr.h"
 
-#define FLEX_USE_VTABLE_DeviceOpenGLES FLEX_USE_VTABLE_Device
-#define FLEX_USE_VTABLE_ThreadContextOpenGLES FLEX_USE_VTABLE_Device
-
 namespace RenderCore
 {
     namespace Metal_OpenGLES { class DeviceContext; }
 
     ////////////////////////////////////////////////////////////////////////////////
 
-#define FLEX_INTERFACE DeviceOpenGLES
-/*-----------------*/ #include "../FlexBegin.h" /*-----------------*/
+    /// <summary>IDevice extension for OpenGLES</summary>
+    /// Use IDevice::QueryInterface for query for this type from a
+    /// plain IDevice.
+    class IDeviceOpenGLES
+    {
+    public:
+        virtual Metal_OpenGLES::DeviceContext * GetImmediateDeviceContext() = 0;
+        ~IDeviceOpenGLES();
+    };
 
-        /// <summary>IDevice extension for OpenGLES</summary>
-        /// Use IDevice::QueryInterface for query for this type from a
-        /// plain IDevice.
-        class ICLASSNAME(DeviceOpenGLES)
-        {
-        public:
-            IMETHOD Metal_OpenGLES::DeviceContext * GetImmediateDeviceContext()   IPURE;
-            IDESTRUCTOR
-        };
+    class IThreadContextOpenGLES
+    {
+    public:
+        virtual std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying() = 0;
+        ~IThreadContextOpenGLES();
+    };
 
-        #if !defined(FLEX_CONTEXT_DeviceOpenGLES)
-            #define FLEX_CONTEXT_DeviceOpenGLES     FLEX_CONTEXT_INTERFACE
-        #endif
-
-        #if defined(DOXYGEN)
-            typedef IDeviceOpenGLES Base_DeviceOpenGLES;
-        #endif
-
-/*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
-
-    ////////////////////////////////////////////////////////////////////////////////
-
-#define FLEX_INTERFACE ThreadContextOpenGLES
-/*-----------------*/ #include "../FlexBegin.h" /*-----------------*/
-
-        class ICLASSNAME(ThreadContextOpenGLES)
-        {
-        public:
-            IMETHOD std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetUnderlying() IPURE;
-            IDESTRUCTOR
-        };
-
-        #if !defined(FLEX_CONTEXT_ThreadContextOpenGLES)
-            #define FLEX_CONTEXT_ThreadContextOpenGLES     FLEX_CONTEXT_INTERFACE
-        #endif
-
-        #if defined(DOXYGEN)
-            typedef IThreadContextOpenGLES Base_ThreadContextOpenGLES;
-        #endif
-
-/*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
-
-    ////////////////////////////////////////////////////////////////////////////////
+    using Base_DeviceOpenGLES = IDeviceOpenGLES;
+    using Base_ThreadContextOpenGLES = IThreadContextOpenGLES;
 
 }

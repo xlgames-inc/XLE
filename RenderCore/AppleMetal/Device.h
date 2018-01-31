@@ -4,9 +4,6 @@
 
 #pragma once
 
-#define FLEX_CONTEXT_Device             FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_PresentationChain  FLEX_CONTEXT_CONCRETE
-
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../IAnnotator.h"

@@ -2665,6 +2665,8 @@ namespace BufferUploads
         }
         void DetachLibrary() {}
     #endif
+
+    IManager::~IManager() {}
 }
 
 
