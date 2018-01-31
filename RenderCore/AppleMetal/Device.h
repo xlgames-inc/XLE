@@ -38,7 +38,7 @@ namespace RenderCore { namespace ImplAppleMetal
         CAMetalLayer* GetUnderlyingLayer() const { return _layer; }
 
         PresentationChain(
-            Metal_AppleMetal::ObjectFactory& objFactory,
+            id<MTLDevice> device,
             const void* platformValue, unsigned width, unsigned height);
         ~PresentationChain();
 

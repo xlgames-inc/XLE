@@ -8,7 +8,12 @@
 
 #include "Metal/IncludeAppleMetal.h"
 #include <QuartzCore/CAMetalLayer.h>
-#include <UIKit/UIView.h>
+
+#if PLATFORMOS_TARGET == PLATFORMOS_OSX
+    #include <AppKit/NSView.h>
+#else
+    #include <UIKit/UIView.h>
+#endif
 
 namespace RenderCore { namespace ImplAppleMetal
 {
@@ -104,7 +109,7 @@ namespace RenderCore { namespace ImplAppleMetal
         const void* platformValue, unsigned width, unsigned height)
     {
         return std::make_unique<PresentationChain>(
-            *_objectFactory,
+            _underlying.get(),
             platformValue, width, height);
     }
 
@@ -144,13 +149,21 @@ namespace RenderCore { namespace ImplAppleMetal
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     PresentationChain::PresentationChain(
-        Metal_AppleMetal::ObjectFactory& objFactory,
+        id<MTLDevice> device,
         const void* platformValue, unsigned width, unsigned height)
     {
-        if (![((NSObject*)platformValue) isKindOfClass:UIView.class])
-            Throw(std::runtime_error("Platform value in PresentationChain::PresentationChain is not a UIView"));
+        #if PLATFORMOS_TARGET == PLATFORMOS_OSX
+            if (![((NSObject*)platformValue) isKindOfClass:NSView.class])
+                Throw(std::runtime_error("Platform value in PresentationChain::PresentationChain is not a NSView"));
 
-        auto* view = (UIView*)platformValue;
+            auto* view = (NSView*)platformValue;
+        #else
+            if (![((NSObject*)platformValue) isKindOfClass:UIView.class])
+                Throw(std::runtime_error("Platform value in PresentationChain::PresentationChain is not a UIView"));
+
+            auto* view = (UIView*)platformValue;
+        #endif
+
         if (![view.layer isKindOfClass:CAMetalLayer.class])
             Throw(std::runtime_error("Layer in UIView passed to PresentationChain::PresentationChain is not of type CAMetalLayer"));
 
@@ -159,6 +172,7 @@ namespace RenderCore { namespace ImplAppleMetal
         metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
         metalLayer.framebufferOnly = YES;
         metalLayer.drawableSize = CGSizeMake(width, height);
+        metalLayer.device = device;
         // metalLayer.colorSpace = nil;     <-- only OSX?
 
         _layer = metalLayer;
