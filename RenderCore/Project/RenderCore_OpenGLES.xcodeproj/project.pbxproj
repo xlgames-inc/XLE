@@ -362,7 +362,6 @@
 		};
 		8F2D1B4A1FD628270028A531 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8F2D1B531FD628830028A531 /* Core.xcconfig */;
 			buildSettings = {
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;

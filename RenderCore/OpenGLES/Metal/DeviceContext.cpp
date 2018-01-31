@@ -15,14 +15,6 @@
 #include "IncludeGLES.h"
 #include <assert.h>
 
-#define COMPOSITOR_EGL      1
-#define COMPOSITOR_EAGL     2
-#define COMPOSITOR COMPOSITOR_EAGL
-
-#if COMPOSITOR == COMPOSITOR_EGL
-    #include <EGL/egl.h>            // (brings in windows.h on Win32)
-#endif
-
 namespace RenderCore { namespace Metal_OpenGLES
 {
     static GLenum AsGLIndexBufferType(Format idxFormat)
@@ -175,20 +167,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     DeviceContext::~DeviceContext()
     {
-        #if COMPOSITOR == COMPOSITOR_EGL
-            eglDestroyContext(_display, _underlyingContext);
-        #endif
     }
 
     void                            DeviceContext::BeginCommandList()
     {   
-            //
-            //      Bind this context to the current thread, so we can
-            //      start using it.
-            //
-        #if COMPOSITOR == COMPOSITOR_EGL
-            eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, _underlyingContext);
-        #endif
     }
 
     intrusive_ptr<CommandList>         DeviceContext::ResolveCommandList()

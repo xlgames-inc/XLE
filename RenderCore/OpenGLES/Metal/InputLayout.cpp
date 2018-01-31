@@ -232,8 +232,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (const auto&srv:_srvs) {
             if (srv._stream != streamIdx) continue;
             assert(srv._slot < stream._resources.size());
-            const auto& res = *stream._resources[srv._slot];
-            const auto& sampler = *stream._samplers[srv._slot];
+            const auto& res = *(ShaderResourceView*)stream._resources[srv._slot];
+            const auto& sampler = *(SamplerState*)stream._samplers[srv._slot];
 
             glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
             GLenum otherTarget = (srv._dimensionality == GL_TEXTURE_2D) ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
