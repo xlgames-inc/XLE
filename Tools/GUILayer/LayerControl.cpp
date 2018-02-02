@@ -335,7 +335,7 @@ namespace GUILayer
         _pimpl.reset(new LayerControlPimpl());
         _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-        _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::NamedResources>();
+        _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::NamedAttachments>();
         _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
         _pimpl->_activePaint = false;
     }

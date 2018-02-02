@@ -48,7 +48,7 @@ namespace GUILayer
         RenderCore::IThreadContext& context, 
         const RenderCore::ResourcePtr& presentationResource)
     {
-        RenderCore::Techniques::NamedResources namedRes;
+        RenderCore::Techniques::NamedAttachments namedRes;
         auto contextStateDesc = context.GetStateDesc();
         namedRes.Bind(RenderCore::FrameBufferProperties{
             contextStateDesc._viewportDimensions[0], 

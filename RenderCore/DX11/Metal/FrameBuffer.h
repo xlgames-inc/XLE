@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView;
     class DeviceContext;
 
-    class INamedResources
+    class INamedAttachments
     {
     public:
         virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const ShaderResourceView* = 0;
@@ -38,7 +38,7 @@ namespace RenderCore { namespace Metal_DX11
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            const INamedResources& namedResources);
+            const INamedAttachments& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
@@ -76,7 +76,7 @@ namespace RenderCore { namespace Metal_DX11
             const FrameBufferDesc& desc,
             const FrameBufferProperties& props,
             IteratorRange<const AttachmentDesc*> attachmentResources,
-            const INamedResources& namedResources,
+            const INamedAttachments& namedResources,
             uint64 hashName);
 
         FrameBufferCache();

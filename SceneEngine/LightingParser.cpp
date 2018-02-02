@@ -1268,7 +1268,7 @@ namespace SceneEngine
 
     LightingParserContext::LightingParserContext(
         const Techniques::TechniqueContext& techniqueContext, 
-        Techniques::NamedResources* namedResources)
+        Techniques::NamedAttachments* namedResources)
     : ParsingContext(techniqueContext, namedResources)
     , _sceneParser(nullptr)
     {

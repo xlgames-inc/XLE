@@ -22,7 +22,7 @@ namespace RenderCore { namespace Techniques
         Metal::EndRenderPass(*_attachedContext);
     }
 
-    class NamedResourcesWrapper : public Metal::INamedResources
+    class NamedAttachmentsWrapper : public Metal::INamedAttachments
     {
     public:
         virtual auto GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*;
@@ -30,41 +30,41 @@ namespace RenderCore { namespace Techniques
         virtual auto GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*;
         virtual auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
-        NamedResourcesWrapper(NamedResources& namedRes);
-        ~NamedResourcesWrapper();
+        NamedAttachmentsWrapper(NamedAttachments& namedRes);
+        ~NamedAttachmentsWrapper();
     private:
-        NamedResources* _namedRes;
+        NamedAttachments* _namedRes;
     };
 
-    auto NamedResourcesWrapper::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*
+    auto NamedAttachmentsWrapper::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*
     {
         return _namedRes->GetSRV(viewName, resName, window);
     }
 
-    auto NamedResourcesWrapper::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*
+    auto NamedAttachmentsWrapper::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*
     {
         return _namedRes->GetRTV(viewName, resName, window);
     }
 
-    auto NamedResourcesWrapper::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*
+    auto NamedAttachmentsWrapper::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*
     {
         return _namedRes->GetDSV(viewName, resName, window);
     }
 
-    auto NamedResourcesWrapper::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    auto NamedAttachmentsWrapper::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
     {
         return _namedRes->GetDesc(resName);
     }
 
-    NamedResourcesWrapper::NamedResourcesWrapper(NamedResources& namedRes)
+    NamedAttachmentsWrapper::NamedAttachmentsWrapper(NamedAttachments& namedRes)
     : _namedRes(&namedRes) {}
-    NamedResourcesWrapper::~NamedResourcesWrapper() {}
+    NamedAttachmentsWrapper::~NamedAttachmentsWrapper() {}
 
     RenderPassInstance::RenderPassInstance(
         Metal::DeviceContext& context,
         const FrameBufferDesc& layout,
         uint64 hashName,
-        NamedResources& namedResources,
+        NamedAttachments& namedResources,
         const RenderPassBeginDesc& beginInfo)
     {
         // We need to allocate the particular frame buffer we're going to use
@@ -88,7 +88,7 @@ namespace RenderCore { namespace Techniques
             context.GetFactory(), layout, 
             namedResources.GetFrameBufferProperties(),
             namedResources.GetDescriptions(),
-            NamedResourcesWrapper(namedResources),
+            NamedAttachmentsWrapper(namedResources),
             hashName);
         assert(_frameBuffer);
 
@@ -100,7 +100,7 @@ namespace RenderCore { namespace Techniques
         IThreadContext& context,
         const FrameBufferDesc& layout,
         uint64 hashName,
-        NamedResources& namedResources,
+        NamedAttachments& namedResources,
         const RenderPassBeginDesc& beginInfo)
     : RenderPassInstance(
         *Metal::DeviceContext::Get(context),
@@ -136,7 +136,7 @@ namespace RenderCore { namespace Techniques
 
     static const unsigned s_maxBoundTargets = 64;
 
-    class NamedResources::Pimpl
+    class NamedAttachments::Pimpl
     {
     public:
         Metal::ShaderResourceView   _srv[s_maxBoundTargets];
@@ -165,7 +165,7 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    bool NamedResources::Pimpl::BuildAttachment(AttachmentName attach)
+    bool NamedAttachments::Pimpl::BuildAttachment(AttachmentName attach)
     {
         assert(attach<s_maxBoundTargets);
         _resources[attach].reset();
@@ -230,7 +230,7 @@ namespace RenderCore { namespace Techniques
         return true;
     }
 
-    void NamedResources::Pimpl::InvalidateAttachment(AttachmentName name)
+    void NamedAttachments::Pimpl::InvalidateAttachment(AttachmentName name)
     {
         for (unsigned v=0; v<s_maxBoundTargets; ++v)
             if (_resNames[v] == name) {
@@ -242,13 +242,13 @@ namespace RenderCore { namespace Techniques
             }
     }
 
-    auto NamedResources::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    auto NamedAttachments::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
     {
         if (resName >= s_maxBoundTargets) return nullptr;
         return &_pimpl->_attachments[resName];
     }
     
-    Metal::ShaderResourceView*   NamedResources::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::ShaderResourceView*   NamedAttachments::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -273,7 +273,7 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_srv[viewName].IsGood() ? &_pimpl->_srv[viewName] : nullptr;
     }
 
-    Metal::RenderTargetView*     NamedResources::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::RenderTargetView*     NamedAttachments::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -298,7 +298,7 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_rtv[viewName].IsGood() ? &_pimpl->_rtv[viewName] : nullptr;
     }
 
-    Metal::DepthStencilView*     NamedResources::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::DepthStencilView*     NamedAttachments::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -323,7 +323,7 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_dsv[viewName].IsGood() ? &_pimpl->_dsv[viewName] : nullptr;
     }
 
-    void NamedResources::DefineAttachments(IteratorRange<const AttachmentDesc*> attachments)
+    void NamedAttachments::DefineAttachments(IteratorRange<const AttachmentDesc*> attachments)
     {
         for (const auto& a:attachments) {
             assert(a._name < s_maxBoundTargets);
@@ -336,7 +336,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void NamedResources::Bind(AttachmentName resName, const ResourcePtr& resource)
+    void NamedAttachments::Bind(AttachmentName resName, const ResourcePtr& resource)
     {
         assert(resName < s_maxBoundTargets);
         if (_pimpl->_resources[resName] == resource) return;
@@ -361,13 +361,13 @@ namespace RenderCore { namespace Techniques
         _pimpl->_resNames[resName] = resName;
     }
 
-    void NamedResources::Unbind(AttachmentName resName)
+    void NamedAttachments::Unbind(AttachmentName resName)
     {
         assert(resName < s_maxBoundTargets);
         _pimpl->InvalidateAttachment(resName);
     }
 
-    void NamedResources::Bind(FrameBufferProperties props)
+    void NamedAttachments::Bind(FrameBufferProperties props)
     {
         bool xyChanged = 
                props._outputWidth != _pimpl->_props._outputWidth
@@ -390,17 +390,17 @@ namespace RenderCore { namespace Techniques
         _pimpl->_props = props;
     }
 
-    const FrameBufferProperties& NamedResources::GetFrameBufferProperties() const
+    const FrameBufferProperties& NamedAttachments::GetFrameBufferProperties() const
     {
         return _pimpl->_props;
     }
 
-    IteratorRange<const AttachmentDesc*> NamedResources::GetDescriptions() const
+    IteratorRange<const AttachmentDesc*> NamedAttachments::GetDescriptions() const
     {
         return MakeIteratorRange(_pimpl->_attachments);
     }
 
-    NamedResources::NamedResources()
+    NamedAttachments::NamedAttachments()
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_factory = &Metal::GetObjectFactory();
@@ -411,8 +411,14 @@ namespace RenderCore { namespace Techniques
         _pimpl->_props = {0u, 0u, TextureSamples::Create()};
     }
 
-    NamedResources::~NamedResources()
+    NamedAttachments::~NamedAttachments()
     {}
     
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    FrameBufferDesc BuildFrameBufferDesc(
+        NamedAttachments& namedResources,
+        IteratorRange<const PassFragmentInterface*> fragments);
+
 }}
 

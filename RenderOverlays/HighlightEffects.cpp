@@ -83,7 +83,7 @@ namespace RenderOverlays
 
     void ExecuteHighlightByStencil(
         RenderCore::IThreadContext& threadContext,
-        Techniques::NamedResources& namedRes,
+        Techniques::NamedAttachments& namedRes,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
@@ -189,17 +189,17 @@ namespace RenderOverlays
     {
     public:
         IThreadContext*                 _threadContext;
-        Techniques::NamedResources*     _namedRes;
+        Techniques::NamedAttachments*     _namedRes;
         Techniques::RenderPassInstance  _rpi;
 
-        Pimpl(IThreadContext& threadContext, Techniques::NamedResources& namedRes)
+        Pimpl(IThreadContext& threadContext, Techniques::NamedAttachments& namedRes)
         : _threadContext(&threadContext), _namedRes(&namedRes) {}
         ~Pimpl() {}
     };
 
     BinaryHighlight::BinaryHighlight(
         IThreadContext& threadContext, 
-        Techniques::NamedResources& namedRes)
+        Techniques::NamedAttachments& namedRes)
     {
         using namespace RenderCore;
         _pimpl = std::make_unique<Pimpl>(threadContext, namedRes);

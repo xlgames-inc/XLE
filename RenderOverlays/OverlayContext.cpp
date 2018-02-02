@@ -595,7 +595,7 @@ namespace RenderOverlays
         return _projDesc;
     }
 
-    RenderCore::Techniques::NamedResources*     ImmediateOverlayContext::GetNamedResources() const
+    RenderCore::Techniques::NamedAttachments*     ImmediateOverlayContext::GetNamedResources() const
     {
         return _namedResources;
     }
@@ -615,7 +615,7 @@ namespace RenderOverlays
 
     ImmediateOverlayContext::ImmediateOverlayContext(
         IThreadContext& threadContext, 
-        RenderCore::Techniques::NamedResources* namedRes,
+        RenderCore::Techniques::NamedAttachments* namedRes,
         const Techniques::ProjectionDesc& projDesc)
     : _defaultTextStyle(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
     , _projDesc(projDesc)
@@ -650,7 +650,7 @@ namespace RenderOverlays
 	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
 		MakeImmediateOverlayContext(
 			RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::NamedResources* namedRes,
+			RenderCore::Techniques::NamedAttachments* namedRes,
 			const RenderCore::Techniques::ProjectionDesc& projDesc)
 	{
 		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(

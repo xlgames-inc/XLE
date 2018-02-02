@@ -67,12 +67,12 @@ namespace RenderOverlays
 
         RenderCore::IThreadContext*                 GetDeviceContext();
         RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const;
-        RenderCore::Techniques::NamedResources*     GetNamedResources() const;
+        RenderCore::Techniques::NamedAttachments*     GetNamedResources() const;
         const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
         ImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext, 
-            RenderCore::Techniques::NamedResources* namedRes = nullptr,
+            RenderCore::Techniques::NamedAttachments* namedRes = nullptr,
             const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
         ~ImmediateOverlayContext();
 
@@ -92,7 +92,7 @@ namespace RenderOverlays
         RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::Techniques::ProjectionDesc _projDesc;
-        RenderCore::Techniques::NamedResources* _namedResources;
+        RenderCore::Techniques::NamedAttachments* _namedResources;
 
         enum VertexFormat { PC, PCT, PCR, PCCTT };
         class DrawCall
@@ -127,7 +127,7 @@ namespace RenderOverlays
 	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
 		MakeImmediateOverlayContext(
 			RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::NamedResources* namedRes = nullptr,
+			RenderCore::Techniques::NamedAttachments* namedRes = nullptr,
 			const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 }
 

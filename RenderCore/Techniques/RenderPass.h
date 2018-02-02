@@ -10,7 +10,7 @@
 #include "../FrameBufferDesc.h"
 #include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
-#include "../Utility/IteratorUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 #include <memory>
 
@@ -22,16 +22,75 @@ namespace RenderCore
     class TextureSamples;
     class FrameBufferProperties;
     using AttachmentName = uint32;
-    class Resource;
-    using ResourcePtr = std::shared_ptr<Resource>;
+    class IResource;
+    using IResourcePtr = std::shared_ptr<IResource>;
 }
 
 namespace RenderCore { namespace Techniques
 {
-    class NamedResources
+    class AttachmentRequest
     {
     public:
-        void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
+        Format _format;
+        float _width = 1.0f, _height = 1.0f;
+        AttachmentDesc::DimensionsMode _dimsMode = AttachmentDesc::DimensionsMode::OutputRelative;
+        AttachmentDesc::Flags::BitField _flags = 0u;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class PassFragmentInterface
+    {
+    public:
+        AttachmentName DefineAttachment(const AttachmentRequest& request);
+
+        void BindColorAttachment(
+            unsigned passIndex,
+            unsigned slot, 
+            AttachmentName attachmentName,
+            AttachmentViewDesc::LoadStore loadOp = AttachmentViewDesc::LoadStore::Retain, 
+            const ClearValue& clearValue = ClearValue{});
+
+        void BindDepthStencilAttachment(
+            unsigned passIndex,
+            AttachmentName attachmentName,
+            AttachmentViewDesc::LoadStore loadOp = AttachmentViewDesc::LoadStore::Retain, 
+            const ClearValue& clearValue = ClearValue{});
+
+        void BindInputAttachment(
+            unsigned passIndex,
+            unsigned slot, 
+            AttachmentName attachmentName,
+            AttachmentViewDesc::LoadStore storeOp = AttachmentViewDesc::LoadStore::Retain, 
+            TextureViewWindow::Aspect aspect = TextureViewWindow::Aspect::UndefinedAspect);
+
+        uint64_t GetHash() const;
+
+        PassFragmentInterface();
+        ~PassFragmentInterface();
+
+        std::vector<std::pair<AttachmentName, AttachmentRequest>> _attachmentRequests;
+    protected:
+        mutable uint64_t _hash;
+    };
+
+    class BoundPassFragment
+    {
+    public:
+        auto GetSRV(const Metal::INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*;
+        Metal::ViewportDesc GetFullViewport() const;
+
+        using PassAndSlot = std::pair<unsigned, unsigned>;
+        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class NamedAttachments
+    {
+    public:
+        // void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
+        void DefineAttachment(AttachmentName, const AttachmentRequest& request);
 
         auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::ShaderResourceView*;
         auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::RenderTargetView*;
@@ -39,18 +98,23 @@ namespace RenderCore { namespace Techniques
         auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
         void Bind(FrameBufferProperties props);
-        void Bind(AttachmentName, const ResourcePtr& resource);
+        void Bind(AttachmentName, const IResourcePtr& resource);
         void Unbind(AttachmentName);
 
         const FrameBufferProperties& GetFrameBufferProperties() const;
         IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
-        NamedResources();
-        ~NamedResources();
+        NamedAttachments();
+        ~NamedAttachments();
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+    FrameBufferDesc BuildFrameBufferDesc(
+        /* in/out */ NamedAttachments& namedResources,
+        /* out */ std::vector<BoundPassFragment>& boundFragments,
+        /* int */ IteratorRange<const PassFragmentInterface*> fragments);
 
     class RenderPassBeginDesc
     {
@@ -85,18 +149,21 @@ namespace RenderCore { namespace Techniques
         void NextSubpass();
         void End();
 
+        Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
+        const Metal::INamedAttachments& GetNamedAttachments() const { return *_namedAttachments; }
+
         RenderPassInstance(
             Metal::DeviceContext& context,
             const FrameBufferDesc& layout,
             uint64 hashName,
-            NamedResources& namedResources,
+            NamedAttachments& namedResources,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         RenderPassInstance(
             IThreadContext& context,
             const FrameBufferDesc& layout,
             uint64 hashName,
-            NamedResources& namedResources,
+            NamedAttachments& namedResources,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
         ~RenderPassInstance();
 
@@ -106,6 +173,7 @@ namespace RenderCore { namespace Techniques
 
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
+        std::shared_ptr<Metal::INamedAttachments> _namedAttachments;
         Metal::DeviceContext* _attachedContext;
         unsigned _activeSubpass;
     };

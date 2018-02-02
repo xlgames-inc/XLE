@@ -538,7 +538,7 @@ namespace Sample
     static void RunRenderPassTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        RenderCore::Techniques::NamedResources& namedResources,
+        RenderCore::Techniques::NamedAttachments& namedResources,
         const RenderCore::TextureSamples& samples)
     {
         TRY
@@ -832,7 +832,7 @@ namespace Sample
                 MakeIteratorRange(subpasses),
                 MakeIteratorRange(attachmentViews));
 
-            RenderCore::Techniques::NamedResources namedResources;
+            RenderCore::Techniques::NamedAttachments namedResources;
             namedResources.Bind(presentationChain->GetDesc()->_samples);
             namedResources.DefineAttachments(MakeIteratorRange(attachments));
 

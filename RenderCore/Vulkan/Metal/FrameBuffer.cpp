@@ -515,7 +515,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const FrameBufferDesc& fbDesc,
         const FrameBufferProperties& props,
         VkRenderPass layout,
-        const INamedResources& namedResources)
+        const INamedAttachments& namedResources)
     : _layout(layout)
     {
         // We must create the frame buffer, including all resources and views required.
@@ -620,7 +620,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
         IteratorRange<const AttachmentDesc*> attachmentResources,
-        const INamedResources& namedResources,
+        const INamedAttachments& namedResources,
         uint64 hashName)
     {
         auto layout = BuildFrameBufferLayout(factory, desc, attachmentResources, props._samples);
@@ -652,7 +652,7 @@ namespace RenderCore { namespace Metal_Vulkan
     FrameBufferCache::~FrameBufferCache()
     {}
 
-    INamedResources::~INamedResources() {}
+    INamedAttachments::~INamedAttachments() {}
 
 }}
 

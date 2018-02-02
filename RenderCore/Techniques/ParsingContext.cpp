@@ -67,7 +67,7 @@ namespace RenderCore { namespace Techniques
         return _techniqueContext->_stateSetEnvironment;
     }
 
-    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, NamedResources* namedResources)
+    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, NamedAttachments* namedResources)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
         _stateSetResolver = _techniqueContext->_defaultStateSetResolver;

@@ -7,7 +7,7 @@
 #pragma once
 
 #include "TextureView.h"
-#include "FrameBuffer.h"        // for NamedResources
+#include "FrameBuffer.h"        // for NamedAttachments
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
@@ -190,7 +190,7 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;
 		ObjectFactory* _factory;
 
-        // NamedResources _namedResources;
+        // NamedAttachments _namedResources;
         VectorPattern<unsigned,2> _presentationTargetDims;
     };
 

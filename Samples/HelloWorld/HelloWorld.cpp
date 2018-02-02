@@ -184,7 +184,7 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             
 
-            RenderCore::Techniques::NamedResources namedResources;
+            RenderCore::Techniques::NamedAttachments namedResources;
 
                 //  Finally, we execute the frame loop
             for (;;) {

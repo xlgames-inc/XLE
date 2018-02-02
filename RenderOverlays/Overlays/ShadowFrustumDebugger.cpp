@@ -78,7 +78,7 @@ namespace Overlays
         Metal::DeviceContext& devContext, 
         const RenderCore::Techniques::ProjectionDesc& mainCameraProjDesc,
         const SceneEngine::ShadowProjectionDesc& projectionDesc,
-        RenderCore::Techniques::NamedResources* namedResources,
+        RenderCore::Techniques::NamedAttachments* namedResources,
         const Metal::UniformsStream& globalUniforms)
     {
         devContext.Bind(Techniques::CommonResources()._dssDisable);

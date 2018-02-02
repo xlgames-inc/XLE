@@ -10,6 +10,10 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class Resource;
     class ShaderProgram;
     class ShaderResourceView;
+    class RenderTargetView;
+    class DepthStencilView;
+    class FrameBuffer;
+    class INamedAttachments;
     class StencilDesc;
     class DepthStencilDesc;
     class RasterizationDesc;

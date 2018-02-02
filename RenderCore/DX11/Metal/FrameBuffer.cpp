@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_DX11
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
-        const INamedResources& namedResources)
+        const INamedAttachments& namedResources)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
@@ -159,7 +159,7 @@ namespace RenderCore { namespace Metal_DX11
 		const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
         IteratorRange<const AttachmentDesc*> attachmentResources,
-        const INamedResources& namedResources,
+        const INamedAttachments& namedResources,
         uint64 hashName)
     {
         return std::make_shared<FrameBuffer>(factory, desc, namedResources);

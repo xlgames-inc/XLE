@@ -19,7 +19,7 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext;
     class IStateSetResolver;
-    class NamedResources;
+    class NamedAttachments;
     
     /// <summary>Manages critical shader state</summary>
     /// Certain system variables are bound to the shaders, and managed by higher
@@ -51,7 +51,7 @@ namespace RenderCore { namespace Techniques
             std::shared_ptr<IStateSetResolver> stateSetResolver);
         const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
         const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
-        NamedResources& GetNamedResources() { assert(_namedResources); return *_namedResources; }
+        NamedAttachments& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 
             //  ----------------- Exception reporting -----------------
         class StringHelpers
@@ -70,7 +70,7 @@ namespace RenderCore { namespace Techniques
         bool HasInvalidAssets() const { return _stringHelpers->_invalidAssets[0] != '\0'; }
         bool HasErrorString() const { return _stringHelpers->_errorString[0] != '\0'; }
 
-        ParsingContext(const TechniqueContext& techniqueContext, NamedResources* namedResources = nullptr);
+        ParsingContext(const TechniqueContext& techniqueContext, NamedAttachments* namedResources = nullptr);
         ~ParsingContext();
 
         ParsingContext& operator=(const ParsingContext&) = delete;
@@ -86,7 +86,7 @@ namespace RenderCore { namespace Techniques
         std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
         const Metal::ConstantBuffer*                _globalUniformsConstantBuffers[5];
 
-        NamedResources*     _namedResources;
+        NamedAttachments*     _namedResources;
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>
