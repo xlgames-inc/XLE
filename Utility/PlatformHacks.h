@@ -18,6 +18,11 @@
     #define HACK_GLES_3 1
 #endif
 
+#if HACK_PLATFORM_IOS
+    #define kAPIOpenGLES2 2
+    #define kAPIOpenGLES3 3
+#endif
+
 // ES3-only definitions
 #if !HACK_GLES_3
 
@@ -28,7 +33,7 @@
 extern void glTexStorage2D (uint32_t target, int32_t levels, uint32_t internalformat, int32_t width, int32_t height);
 extern void* glMapBufferRange (uint32_t target, intptr_t offset, intptr_t length, uint32_t access);
 extern void glBindSampler (uint32_t unit, uint32_t sampler);
-extern void glSamplerParameteri (int32_t sampler, uint32_t pname, int32_t param);
+extern void glSamplerParameteri (uint32_t sampler, uint32_t pname, int32_t param);
 extern void glGenSamplers (int32_t count, uint32_t* samplers);
 extern void glDeleteSamplers (int32_t count, const uint32_t* samplers);
 extern uint8_t glIsSampler (uint32_t sampler);
