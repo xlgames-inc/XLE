@@ -739,24 +739,6 @@ namespace RenderCore { namespace ImplVulkan
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #if !FLEX_USE_VTABLE_Device && !DOXYGEN
-        namespace Detail
-        {
-            void* Ignore_Device::QueryInterface(size_t guid)
-            {
-                return nullptr;
-            }
-        }
-    #endif
-
-    void*                   DeviceVulkan::QueryInterface(size_t guid)
-    {
-        if (guid == typeid(Base_DeviceVulkan).hash_code()) {
-            return (IDeviceVulkan*)this;
-        }
-        return nullptr;
-    }
-
 	VkInstance DeviceVulkan::GetVulkanInstance() { return _instance.get(); }
 	VkDevice DeviceVulkan::GetUnderlyingDevice() { return _underlying.get(); }
     VkQueue DeviceVulkan::GetRenderingQueue()
@@ -1041,16 +1023,6 @@ namespace RenderCore { namespace ImplVulkan
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-	#if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
-		namespace Detail
-		{
-			void* Ignore_ThreadContext::QueryInterface(size_t guid)
-			{
-				return nullptr;
-			}
-		}
-	#endif
-
 	ResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
 	{
 		if (_gpuTracker)
@@ -1215,7 +1187,7 @@ namespace RenderCore { namespace ImplVulkan
 
     void*   ThreadContextVulkan::QueryInterface(size_t guid)
     {
-        if (guid == typeid(Base_ThreadContextVulkan).hash_code()) { return (IThreadContextVulkan*)this; }
+        if (guid == typeid(IThreadContextVulkan).hash_code()) { return (IThreadContextVulkan*)this; }
         return nullptr;
     }
 

@@ -29,18 +29,6 @@ namespace RenderCore { namespace Metal_DX11
                 &&  (unsigned)Topology::TriangleStrip  == D3D11_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP,
                 "Toplogy flags are out-of-sync");
 
-    void DeviceContext::Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[])
-    {
-        ID3D::Buffer* buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-        for (unsigned c=0; c<bufferCount; ++c) buffers[c] = VBs[c]->GetUnderlying();
-        _underlying->IASetVertexBuffers(startSlot, bufferCount, buffers, strides, offsets);
-    }
-
-    void DeviceContext::Bind(const BoundInputLayout& inputLayout)
-    {
-        _underlying->IASetInputLayout(inputLayout.GetUnderlying());
-    }
-
     void DeviceContext::Bind(Topology topology)
     {
         _underlying->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(topology));
@@ -420,10 +408,6 @@ namespace RenderCore { namespace Metal_DX11
 
 namespace RenderCore { namespace Metal_DX11
 {
-    template void DeviceContext::Bind<1>(const ResourceList<VertexBuffer, 1>&, unsigned, unsigned);
-    template void DeviceContext::Bind<2>(const ResourceList<VertexBuffer, 2>&, unsigned, unsigned);
-    template void DeviceContext::Bind<3>(const ResourceList<VertexBuffer, 3>&, unsigned, unsigned);
-
     template void DeviceContext::Bind<0>(const ResourceList<RenderTargetView, 0>&, const DepthStencilView*);
     template void DeviceContext::Bind<1>(const ResourceList<RenderTargetView, 1>&, const DepthStencilView*);
     template void DeviceContext::Bind<2>(const ResourceList<RenderTargetView, 2>&, const DepthStencilView*);

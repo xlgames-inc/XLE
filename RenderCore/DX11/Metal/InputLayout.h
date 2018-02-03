@@ -17,6 +17,8 @@
 #include <memory>
 #include <vector>
 
+namespace RenderCore { class VertexBufferView; }
+
 namespace RenderCore { namespace Metal_DX11
 {
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -26,6 +28,8 @@ namespace RenderCore { namespace Metal_DX11
     class BoundInputLayout
     {
     public:
+		void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+
         BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader);
         explicit BoundInputLayout(DeviceContext& context);
@@ -39,8 +43,8 @@ namespace RenderCore { namespace Metal_DX11
         UnderlyingType              GetUnderlying() const { return _underlying.get(); }
 
     private:
-        intrusive_ptr<ID3D::InputLayout>   _underlying;
-        static intrusive_ptr<ID3D::InputLayout>   BuildInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader);
+        intrusive_ptr<ID3D::InputLayout>	_underlying;
+		std::vector<unsigned>				_vertexStrides;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

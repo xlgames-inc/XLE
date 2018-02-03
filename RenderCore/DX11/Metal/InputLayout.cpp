@@ -14,6 +14,7 @@
 #include "ObjectFactory.h"
 #include "../../Format.h"
 #include "../../Types.h"
+#include "../../BufferView.h"
 #include "../../RenderUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
@@ -21,16 +22,78 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
+	{
+		auto byteCode = shader.GetByteCode();
+
+		const unsigned MaxInputLayoutElements = 64;
+
+		//
+		//      Our format is almost identical (except std::string -> const char*)
+		//
+		D3D11_INPUT_ELEMENT_DESC nativeLayout[MaxInputLayoutElements];
+		for (unsigned c = 0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
+			nativeLayout[c].SemanticName = layout.first[c]._semanticName.c_str();
+			nativeLayout[c].SemanticIndex = layout.first[c]._semanticIndex;
+			nativeLayout[c].Format = DXGI_FORMAT(layout.first[c]._nativeFormat);
+			nativeLayout[c].InputSlot = layout.first[c]._inputSlot;
+			nativeLayout[c].AlignedByteOffset = layout.first[c]._alignedByteOffset;
+			nativeLayout[c].InputSlotClass = D3D11_INPUT_CLASSIFICATION(layout.first[c]._inputSlotClass);
+			nativeLayout[c].InstanceDataStepRate = layout.first[c]._instanceDataStepRate;
+		}
+
+		return GetObjectFactory().CreateInputLayout(
+			nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()),
+			byteCode.begin(), byteCode.size());
+	}
+
+	static std::vector<unsigned> CalculateVertexStrides(const InputLayout& layout)
+	{
+		std::vector<unsigned> result;
+		for (auto& a:layout) {
+			if (result.size() <= a._inputSlot)
+				result.resize(a._inputSlot + 1, 0);
+			unsigned& stride = result[a._inputSlot];
+			auto bytes = BitsPerPixel(a._nativeFormat) / 8;
+			if (a._alignedByteOffset == ~0u) {
+				stride = stride + bytes;
+			} else {
+				stride = std::max(stride, a._alignedByteOffset + bytes);
+			}
+		}
+		return result;
+	}
+
+	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+	{
+		ID3D::Buffer* buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		UINT offsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		for (unsigned c = 0; c < vertexBuffers.size(); ++c) {
+			assert(vertexBuffers[c]._resource);
+			auto* res = AsID3DResource(*vertexBuffers[c]._resource);
+			assert(QueryInterfaceCast<ID3D::Buffer>(res));
+			buffers[c] = (ID3D::Buffer*)res;
+			offsets[c] = vertexBuffers[c]._offset;
+			assert(c < _vertexStrides.size());
+			strides[c] = _vertexStrides[c];
+		}
+		const unsigned startSlot = 0;
+		context.GetUnderlying()->IASetVertexBuffers(startSlot, (UINT)vertexBuffers.size(), buffers, strides, offsets);
+		context.GetUnderlying()->IASetInputLayout(_underlying.get());
+	}
 
     BoundInputLayout::BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader)
     {
             // need constructor deferring!
         _underlying = BuildInputLayout(layout, shader.GetCompiledVertexShader());
+		_vertexStrides = CalculateVertexStrides(layout);
     }
 
     BoundInputLayout::BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
     {
         _underlying = BuildInputLayout(layout, shader);
+		_vertexStrides = CalculateVertexStrides(layout);
     }
 
     BoundInputLayout::BoundInputLayout(DeviceContext& context)
@@ -38,6 +101,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::InputLayout* rawptr = nullptr;
         context.GetUnderlying()->IAGetInputLayout(&rawptr);
         _underlying = moveptr(rawptr);
+		// todo -- getting the vertex strides would require also querying the vertex buffer bindings 
     }
 
     BoundInputLayout::BoundInputLayout() {}
@@ -45,39 +109,16 @@ namespace RenderCore { namespace Metal_DX11
 
 	BoundInputLayout::BoundInputLayout(BoundInputLayout&& moveFrom) never_throws
 	: _underlying(std::move(moveFrom._underlying))
+	, _vertexStrides(std::move(moveFrom._vertexStrides))
 	{
 	}
 
 	BoundInputLayout& BoundInputLayout::operator=(BoundInputLayout&& moveFrom) never_throws
 	{
 		_underlying = std::move(moveFrom._underlying);
+		_vertexStrides = std::move(moveFrom._vertexStrides);
 		return *this;
 	}
-
-    intrusive_ptr<ID3D::InputLayout>   BoundInputLayout::BuildInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
-    {
-        auto byteCode = shader.GetByteCode();
-
-        const unsigned MaxInputLayoutElements = 64;
-
-            //
-            //      Our format is almost identical (except std::string -> const char*)
-            //
-        D3D11_INPUT_ELEMENT_DESC nativeLayout[MaxInputLayoutElements];
-        for (unsigned c=0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
-            nativeLayout[c].SemanticName             = layout.first[c]._semanticName.c_str();
-            nativeLayout[c].SemanticIndex            = layout.first[c]._semanticIndex;
-            nativeLayout[c].Format                   = DXGI_FORMAT(layout.first[c]._nativeFormat);
-            nativeLayout[c].InputSlot                = layout.first[c]._inputSlot;
-            nativeLayout[c].AlignedByteOffset        = layout.first[c]._alignedByteOffset;
-            nativeLayout[c].InputSlotClass           = D3D11_INPUT_CLASSIFICATION(layout.first[c]._inputSlotClass);
-            nativeLayout[c].InstanceDataStepRate     = layout.first[c]._instanceDataStepRate;
-        }
-
-        return GetObjectFactory().CreateInputLayout(
-            nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()), 
-            byteCode.begin(), byteCode.size());
-    }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
