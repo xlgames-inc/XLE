@@ -51,6 +51,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class BoundClassInterfaces;
     
     class FrameBuffer;
-    class FrameBufferCache;
+    class FrameBufferPool;
 }}
 

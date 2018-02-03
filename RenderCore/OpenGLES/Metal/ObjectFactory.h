@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -12,7 +10,7 @@
 
 typedef uint32_t GLenum;
 
-namespace RenderCore { class IDevice; }
+namespace RenderCore { class IDevice; class IResource; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -88,6 +86,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     class DeviceContext;
 
     ObjectFactory& GetObjectFactory(IDevice& device);
+    ObjectFactory& GetObjectFactory(IResource& resource);
     ObjectFactory& GetObjectFactory(DeviceContext&);
     ObjectFactory& GetObjectFactory();
 

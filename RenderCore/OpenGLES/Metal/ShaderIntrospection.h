@@ -1,7 +1,7 @@
 
 #pragma once
 
-#include "IndexedGLType.h"
+#include "ObjectFactory.h"
 #include "../../Types.h"
 #include "../../../Utility/ParameterBox.h"
 #include "../../../Utility/IteratorUtils.h"

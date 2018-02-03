@@ -9,9 +9,59 @@
 #include "../Metal/TextureView.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ObjectFactory.h"
+#include "../Metal/State.h"
 
 namespace RenderCore { namespace Techniques
 {
+
+    AttachmentName PassFragmentInterface::DefineAttachment(const AttachmentDesc& request)
+    {
+        return ~0u;
+    }
+
+    void PassFragmentInterface::BindColorAttachment(
+        unsigned passIndex,
+        unsigned slot,
+        AttachmentName attachmentName,
+        AttachmentViewDesc::LoadStore loadOp,
+        const ClearValue& clearValue)
+    {
+    }
+
+    void PassFragmentInterface::BindDepthStencilAttachment(
+        unsigned passIndex,
+        AttachmentName attachmentName,
+        AttachmentViewDesc::LoadStore loadOp,
+        const ClearValue& clearValue)
+    {
+    }
+
+    void PassFragmentInterface::BindInputAttachment(
+        unsigned passIndex,
+        unsigned slot,
+        AttachmentName attachmentName,
+        AttachmentViewDesc::LoadStore storeOp,
+        TextureViewWindow::Aspect aspect)
+    {
+    }
+
+    PassFragmentInterface::PassFragmentInterface() {}
+    PassFragmentInterface::~PassFragmentInterface() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto PassFragment::GetSRV(const Metal::INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*
+    {
+        return nullptr;
+    }
+
+    Metal::ViewportDesc PassFragment::GetFullViewport() const
+    {
+        return {};
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     void            RenderPassInstance::NextSubpass()
     {
         Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
@@ -83,9 +133,9 @@ namespace RenderCore { namespace Techniques
             dsvs.push_back(existingDSV ? *existingDSV : Metal::DepthStencilView());
         }
 
-        Metal::FrameBufferCache cache;
+        Metal::FrameBufferPool cache;
         _frameBuffer = cache.BuildFrameBuffer(
-            context.GetFactory(), layout, 
+            Metal::GetObjectFactory(context), layout, 
             namedResources.GetFrameBufferProperties(),
             namedResources.GetDescriptions(),
             NamedAttachmentsWrapper(namedResources),
@@ -142,7 +192,7 @@ namespace RenderCore { namespace Techniques
         Metal::ShaderResourceView   _srv[s_maxBoundTargets];
         Metal::RenderTargetView     _rtv[s_maxBoundTargets];
         Metal::DepthStencilView     _dsv[s_maxBoundTargets];
-        RenderCore::ResourcePtr     _resources[s_maxBoundTargets];
+        RenderCore::IResourcePtr    _resources[s_maxBoundTargets];
         AttachmentDesc              _attachments[s_maxBoundTargets];
         AttachmentName              _resNames[s_maxBoundTargets];
 
@@ -156,10 +206,10 @@ namespace RenderCore { namespace Techniques
 
     static bool Equal(const AttachmentDesc& lhs, const AttachmentDesc& rhs)
     {
-        return lhs._name == rhs._name
-            && lhs._dimsMode == rhs._dimsMode
+        return lhs._dimsMode == rhs._dimsMode
             && lhs._width == rhs._width
             && lhs._height == rhs._height
+            && lhs._arrayLayerCount == rhs._arrayLayerCount
             && lhs._format == rhs._format
             && lhs._flags == rhs._flags
             ;
@@ -323,34 +373,32 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_dsv[viewName].IsGood() ? &_pimpl->_dsv[viewName] : nullptr;
     }
 
-    void NamedAttachments::DefineAttachments(IteratorRange<const AttachmentDesc*> attachments)
+    void NamedAttachments::DefineAttachment(AttachmentName name, const AttachmentDesc& request)
     {
-        for (const auto& a:attachments) {
-            assert(a._name < s_maxBoundTargets);
-            if (!Equal(_pimpl->_attachments[a._name], a)) {
-                // Clear all of the views associated with this resource
-                _pimpl->InvalidateAttachment(a._name);
-                _pimpl->_resources[a._name].reset();
-                _pimpl->_attachments[a._name] = a;
-            }
+        assert(name < s_maxBoundTargets);
+        if (!Equal(_pimpl->_attachments[name], request)) {
+            // Clear all of the views associated with this resource
+            _pimpl->InvalidateAttachment(name);
+            _pimpl->_resources[name].reset();
+            _pimpl->_attachments[name] = request;
         }
     }
 
-    void NamedAttachments::Bind(AttachmentName resName, const ResourcePtr& resource)
+    void NamedAttachments::Bind(AttachmentName resName, const IResourcePtr& resource)
     {
         assert(resName < s_maxBoundTargets);
         if (_pimpl->_resources[resName] == resource) return;
 
         _pimpl->InvalidateAttachment(resName);
 
-        auto desc = Metal::ExtractDesc(resource);
+        auto desc = Metal::ExtractDesc(*resource);
         _pimpl->_attachments[resName] = 
             {
-                0u, 
-                RenderCore::AttachmentDesc::DimensionsMode::Absolute, 
+                desc._textureDesc._format,
                 (float)desc._textureDesc._width, (float)desc._textureDesc._height,
-                0u, desc._textureDesc._format, 
+                0u,
                 TextureViewWindow::UndefinedAspect,
+                RenderCore::AttachmentDesc::DimensionsMode::Absolute,
                   ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
                 | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)
                 | ((desc._bindFlags & BindFlag::DepthStencil) ? AttachmentDesc::Flags::DepthStencil : 0u)
@@ -417,8 +465,12 @@ namespace RenderCore { namespace Techniques
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(
-        NamedAttachments& namedResources,
-        IteratorRange<const PassFragmentInterface*> fragments);
+        /* in/out */ NamedAttachments& namedResources,
+        /* out */ std::vector<PassFragment>& boundFragments,
+        /* int */ IteratorRange<const PassFragmentInterface*> fragments)
+    {
+        return FrameBufferDesc {};
+    }
 
 }}
 

@@ -149,12 +149,12 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class FrameBufferCache::Pimpl 
+    class FrameBufferPool::Pimpl 
     {
     public:
     };
 
-    std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
+    std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
 		const ObjectFactory& factory,
 		const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
@@ -165,12 +165,12 @@ namespace RenderCore { namespace Metal_DX11
         return std::make_shared<FrameBuffer>(factory, desc, namedResources);
     }
 
-    FrameBufferCache::FrameBufferCache()
+    FrameBufferPool::FrameBufferPool()
     {
         _pimpl = std::make_unique<Pimpl>();
     }
 
-    FrameBufferCache::~FrameBufferCache()
+    FrameBufferPool::~FrameBufferPool()
     {}
 
 

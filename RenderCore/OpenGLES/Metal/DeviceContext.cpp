@@ -146,18 +146,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 #endif
 
-#if 0
-    DeviceContext::DeviceContext(EGLDisplay display, EGLContext underlyingContext)
-    :       _display(display)
-    ,       _underlyingContext(underlyingContext)
-    {
-            //  -- todo -- we can create another gl context and
-            //      bind it to the current thread (if we don't want to
-            //      use the immediate context)
-        _nativeTopology = GL_TRIANGLES;
-    }
-#endif
-
     DeviceContext::DeviceContext()
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
@@ -188,7 +176,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         static std::shared_ptr<DeviceContext> dummy;
         auto* tc = (IThreadContextOpenGLES*)threadContext.QueryInterface(typeid(IThreadContextOpenGLES).hash_code());
         if (tc) return tc->GetDeviceContext();
-        return nullptr;
+        return dummy;
     }
 
 #if 0

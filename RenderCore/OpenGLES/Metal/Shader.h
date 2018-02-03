@@ -9,7 +9,7 @@
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Utility/Mixins.h"
 #include "../../ShaderService.h"
-#include "IndexedGLType.h"
+#include "ObjectFactory.h"
 
 namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 

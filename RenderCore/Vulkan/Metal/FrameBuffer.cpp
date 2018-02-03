@@ -609,13 +609,13 @@ namespace RenderCore { namespace Metal_Vulkan
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class FrameBufferCache::Pimpl 
+    class FrameBufferPool::Pimpl 
     {
     public:
         std::vector<std::pair<uint64, VulkanUniquePtr<VkRenderPass>>> _layouts;
     };
 
-    std::shared_ptr<FrameBuffer> FrameBufferCache::BuildFrameBuffer(
+    std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
 		const ObjectFactory& factory,
         const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
@@ -627,7 +627,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return std::make_shared<FrameBuffer>(factory, desc, props, layout, namedResources);
     }
 
-    VkRenderPass FrameBufferCache::BuildFrameBufferLayout(
+    VkRenderPass FrameBufferPool::BuildFrameBufferLayout(
         const ObjectFactory& factory,
         const FrameBufferDesc& desc,
         IteratorRange<const AttachmentDesc*> attachmentResources,
@@ -644,12 +644,12 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    FrameBufferCache::FrameBufferCache()
+    FrameBufferPool::FrameBufferPool()
     {
         _pimpl = std::make_unique<Pimpl>();
     }
 
-    FrameBufferCache::~FrameBufferCache()
+    FrameBufferPool::~FrameBufferPool()
     {}
 
     INamedAttachments::~INamedAttachments() {}

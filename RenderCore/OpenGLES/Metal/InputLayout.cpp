@@ -8,7 +8,7 @@
 #include "Shader.h"
 #include "ShaderIntrospection.h"
 #include "Format.h"
-#include "ShaderResource.h"
+#include "TextureView.h"
 #include "PipelineLayout.h"
 #include "State.h"
 #include "Resource.h"

@@ -33,14 +33,14 @@
 		8F46A0DA202140290003948C /* QueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0B4202140280003948C /* QueryPool.h */; };
 		8F46A0DB202140290003948C /* Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0B5202140280003948C /* Forward.h */; };
 		8F46A0DC202140290003948C /* Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0B5202140280003948C /* Forward.h */; };
-		8F46A0DD202140290003948C /* ShaderResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B6202140280003948C /* ShaderResource.cpp */; };
-		8F46A0DE202140290003948C /* ShaderResource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B6202140280003948C /* ShaderResource.cpp */; };
+		8F46A0DD202140290003948C /* TextureView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B6202140280003948C /* TextureView.cpp */; };
+		8F46A0DE202140290003948C /* TextureView.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B6202140280003948C /* TextureView.cpp */; };
 		8F46A0DF202140290003948C /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B7202140280003948C /* InputLayout.cpp */; };
 		8F46A0E0202140290003948C /* InputLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B7202140280003948C /* InputLayout.cpp */; };
 		8F46A0E1202140290003948C /* Buffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0B8202140280003948C /* Buffer.h */; };
 		8F46A0E2202140290003948C /* Buffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0B8202140280003948C /* Buffer.h */; };
-		8F46A0E5202140290003948C /* ShaderResource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0BA202140290003948C /* ShaderResource.h */; };
-		8F46A0E6202140290003948C /* ShaderResource.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0BA202140290003948C /* ShaderResource.h */; };
+		8F46A0E5202140290003948C /* TextureView.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0BA202140290003948C /* TextureView.h */; };
+		8F46A0E6202140290003948C /* TextureView.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0BA202140290003948C /* TextureView.h */; };
 		8F46A0E7202140290003948C /* Shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0BB202140290003948C /* Shader.cpp */; };
 		8F46A0E8202140290003948C /* Shader.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0BB202140290003948C /* Shader.cpp */; };
 		8F46A0E9202140290003948C /* State.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0BC202140290003948C /* State.h */; };
@@ -73,10 +73,10 @@
 		8F46A0B3202140280003948C /* QueryPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = QueryPool.cpp; sourceTree = "<group>"; };
 		8F46A0B4202140280003948C /* QueryPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QueryPool.h; sourceTree = "<group>"; };
 		8F46A0B5202140280003948C /* Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Forward.h; sourceTree = "<group>"; };
-		8F46A0B6202140280003948C /* ShaderResource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = ShaderResource.cpp; sourceTree = "<group>"; };
+		8F46A0B6202140280003948C /* TextureView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextureView.cpp; sourceTree = "<group>"; };
 		8F46A0B7202140280003948C /* InputLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InputLayout.cpp; sourceTree = "<group>"; };
 		8F46A0B8202140280003948C /* Buffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Buffer.h; sourceTree = "<group>"; };
-		8F46A0BA202140290003948C /* ShaderResource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = ShaderResource.h; sourceTree = "<group>"; };
+		8F46A0BA202140290003948C /* TextureView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextureView.h; sourceTree = "<group>"; };
 		8F46A0BB202140290003948C /* Shader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Shader.cpp; sourceTree = "<group>"; };
 		8F46A0BC202140290003948C /* State.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = State.h; sourceTree = "<group>"; };
 		8F46A0BD202140290003948C /* DeviceContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DeviceContext.h; sourceTree = "<group>"; };
@@ -166,8 +166,8 @@
 				8F46A0AC202140280003948C /* Resource.h */,
 				8F46A0BB202140290003948C /* Shader.cpp */,
 				8F46A0A8202140270003948C /* Shader.h */,
-				8F46A0B6202140280003948C /* ShaderResource.cpp */,
-				8F46A0BA202140290003948C /* ShaderResource.h */,
+				8F46A0B6202140280003948C /* TextureView.cpp */,
+				8F46A0BA202140290003948C /* TextureView.h */,
 				8F46A0AB202140270003948C /* State.cpp */,
 				8F46A0BC202140290003948C /* State.h */,
 				8F7B6C8920212D3A006D0079 /* IncludeAppleMetal.h */,
@@ -189,7 +189,7 @@
 				8F46A0DB202140290003948C /* Forward.h in Headers */,
 				8F46A0D9202140290003948C /* QueryPool.h in Headers */,
 				8F46A0CF202140290003948C /* InputLayout.h in Headers */,
-				8F46A0E5202140290003948C /* ShaderResource.h in Headers */,
+				8F46A0E5202140290003948C /* TextureView.h in Headers */,
 				8F46A0E1202140290003948C /* Buffer.h in Headers */,
 				8F46A0E9202140290003948C /* State.h in Headers */,
 				8F46A0ED202140290003948C /* Format.h in Headers */,
@@ -210,7 +210,7 @@
 				8F46A0DC202140290003948C /* Forward.h in Headers */,
 				8F46A0DA202140290003948C /* QueryPool.h in Headers */,
 				8F46A0D0202140290003948C /* InputLayout.h in Headers */,
-				8F46A0E6202140290003948C /* ShaderResource.h in Headers */,
+				8F46A0E6202140290003948C /* TextureView.h in Headers */,
 				8F46A0E2202140290003948C /* Buffer.h in Headers */,
 				8F46A0EA202140290003948C /* State.h in Headers */,
 				8F46A0EE202140290003948C /* Format.h in Headers */,
@@ -305,7 +305,7 @@
 				8F46A0D7202140290003948C /* QueryPool.cpp in Sources */,
 				8F46A0D5202140290003948C /* Format.cpp in Sources */,
 				8F46A0E7202140290003948C /* Shader.cpp in Sources */,
-				8F46A0DD202140290003948C /* ShaderResource.cpp in Sources */,
+				8F46A0DD202140290003948C /* TextureView.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -323,7 +323,7 @@
 				8F46A0D8202140290003948C /* QueryPool.cpp in Sources */,
 				8F46A0D6202140290003948C /* Format.cpp in Sources */,
 				8F46A0E8202140290003948C /* Shader.cpp in Sources */,
-				8F46A0DE202140290003948C /* ShaderResource.cpp in Sources */,
+				8F46A0DE202140290003948C /* TextureView.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

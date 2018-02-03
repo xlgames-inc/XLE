@@ -37,6 +37,9 @@ extern void glSamplerParameteri (uint32_t sampler, uint32_t pname, int32_t param
 extern void glGenSamplers (int32_t count, uint32_t* samplers);
 extern void glDeleteSamplers (int32_t count, const uint32_t* samplers);
 extern uint8_t glIsSampler (uint32_t sampler);
+extern void glClearBufferfv (uint32_t buffer, int32_t drawbuffer, const float *value);
+extern void glClearBufferfi (uint32_t buffer, int32_t drawbuffer, float depth, int32_t stencil);
+
 
 #if defined(__cplusplus)
     }

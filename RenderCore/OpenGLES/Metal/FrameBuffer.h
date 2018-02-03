@@ -1,52 +1,69 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#include "VulkanCore.h"
-#include "../../Types_Forward.h"
+#include "TextureView.h"
 #include "../../FrameBufferDesc.h"
+#include "../../Types_Forward.h"
 #include <memory>
 
-namespace RenderCore { namespace Metal_Vulkan
+namespace RenderCore { namespace Metal_OpenGLES
 {
     class ObjectFactory;
     class RenderTargetView;
     class ShaderResourceView;
     class DepthStencilView;
-    class TextureView;
     class DeviceContext;
-    
+
     class INamedAttachments
     {
     public:
-        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> ShaderResourceView* = 0;
-        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> RenderTargetView* = 0;
-        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> DepthStencilView* = 0;
-        virtual auto GetDesc(AttachmentName resName) const -> const AttachmentDesc* = 0;
-        ~INamedAttachments();
+        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const ShaderResourceView* = 0;
+        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const RenderTargetView* = 0;
+        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const DepthStencilView* = 0;
     };
 
     class FrameBuffer
 	{
 	public:
-		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
-        VkRenderPass GetLayout() const { return _layout; }
+        void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+
+        RenderTargetView& GetRTV(unsigned index);
+        DepthStencilView& GetDSV(unsigned index);
 
 		FrameBuffer(
-			const ObjectFactory& factory,
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            const FrameBufferProperties& props,
-            VkRenderPass layout,
             const INamedAttachments& namedResources);
 		FrameBuffer();
 		~FrameBuffer();
 	private:
-		VulkanSharedPtr<VkFramebuffer> _underlying;
-        VkRenderPass _layout;
+        static const unsigned s_maxMRTs = 4u;
+        static const unsigned s_maxSubpasses = 4u;
+        static const unsigned s_maxAttachments = 16u;
+        
+        RenderTargetView    _rtvs[s_maxAttachments];
+        DepthStencilView    _dsvs[s_maxAttachments];
+        unsigned            _attachmentCount;
+        
+        class Subpass
+        {
+        public:
+            unsigned _rtvs[s_maxMRTs];
+            unsigned _dsv;
+            unsigned _rtvCount;
+
+            AttachmentViewDesc::LoadStore _rtvLoad[s_maxMRTs];
+            AttachmentViewDesc::LoadStore _rtvStore[s_maxMRTs];
+            AttachmentViewDesc::LoadStore _dsvLoad;
+            AttachmentViewDesc::LoadStore _dsvStore;
+
+            intrusive_ptr<OpenGL::FrameBuffer> _frameBuffer;
+        };
+        Subpass     _subpasses[s_maxSubpasses];
+        unsigned    _subpassCount;
 	};
 
     /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
@@ -60,18 +77,12 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
-			const ObjectFactory& factory,
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const FrameBufferProperties& props,
             IteratorRange<const AttachmentDesc*> attachmentResources,
             const INamedAttachments& namedResources,
             uint64 hashName);
-
-        VkRenderPass BuildFrameBufferLayout(
-            const ObjectFactory& factory,
-            const FrameBufferDesc& desc,
-            IteratorRange<const AttachmentDesc*> attachmentResources,
-            const TextureSamples& samples);
 
         FrameBufferPool();
         ~FrameBufferPool();
@@ -79,6 +90,7 @@ namespace RenderCore { namespace Metal_Vulkan
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
 
     void BeginRenderPass(
         DeviceContext& context,
@@ -89,4 +101,5 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndRenderPass(DeviceContext& context);
+
 }}

@@ -5,7 +5,7 @@
 #pragma once
 
 #include "InputLayout.h"
-#include "ShaderResource.h"
+#include "TextureView.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
 #include "../../Format.h"

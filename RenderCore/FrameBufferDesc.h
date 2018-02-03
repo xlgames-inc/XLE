@@ -40,19 +40,18 @@ namespace RenderCore
     class AttachmentDesc
     {
     public:
-        AttachmentName _name;
+        Format _format;
+        float _width = 1.0f, _height = 1.0f;
+        unsigned _arrayLayerCount = 1u;
 
-        enum class DimensionsMode 
+        TextureViewWindow::Aspect _defaultAspect = TextureViewWindow::Aspect::ColorLinear;
+
+        enum class DimensionsMode
         {
             Absolute,                   ///< _width and _height define absolute pixel values
             OutputRelative              ///< _width and _height are multipliers applied to the defined "output" dimensions (ie, specify 1.f to create buffers the same size as the output)
         };
-        DimensionsMode _dimsMode;
-        float _width, _height;
-        unsigned _arrayLayerCount;
-
-        Format _format;
-        TextureViewWindow::Aspect _defaultAspect;
+        DimensionsMode _dimsMode = DimensionsMode::OutputRelative;
 
         struct Flags
         {
@@ -66,7 +65,7 @@ namespace RenderCore
             };
             using BitField = unsigned;
         };
-        Flags::BitField _flags;
+        Flags::BitField _flags = 0u;
     };
 
     /// <summary>Defines which attachments are used during a subpass (and ordering)</summary>

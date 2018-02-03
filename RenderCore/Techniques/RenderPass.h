@@ -28,21 +28,12 @@ namespace RenderCore
 
 namespace RenderCore { namespace Techniques
 {
-    class AttachmentRequest
-    {
-    public:
-        Format _format;
-        float _width = 1.0f, _height = 1.0f;
-        AttachmentDesc::DimensionsMode _dimsMode = AttachmentDesc::DimensionsMode::OutputRelative;
-        AttachmentDesc::Flags::BitField _flags = 0u;
-    };
-
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class PassFragmentInterface
     {
     public:
-        AttachmentName DefineAttachment(const AttachmentRequest& request);
+        AttachmentName DefineAttachment(const AttachmentDesc& request);
 
         void BindColorAttachment(
             unsigned passIndex,
@@ -64,17 +55,13 @@ namespace RenderCore { namespace Techniques
             AttachmentViewDesc::LoadStore storeOp = AttachmentViewDesc::LoadStore::Retain, 
             TextureViewWindow::Aspect aspect = TextureViewWindow::Aspect::UndefinedAspect);
 
-        uint64_t GetHash() const;
-
         PassFragmentInterface();
         ~PassFragmentInterface();
 
-        std::vector<std::pair<AttachmentName, AttachmentRequest>> _attachmentRequests;
-    protected:
-        mutable uint64_t _hash;
+        std::vector<std::pair<AttachmentName, AttachmentDesc>> _attachmentRequests;
     };
 
-    class BoundPassFragment
+    class PassFragment
     {
     public:
         auto GetSRV(const Metal::INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*;
@@ -89,8 +76,7 @@ namespace RenderCore { namespace Techniques
     class NamedAttachments
     {
     public:
-        // void DefineAttachments(IteratorRange<const AttachmentDesc*> attachments);
-        void DefineAttachment(AttachmentName, const AttachmentRequest& request);
+        void DefineAttachment(AttachmentName, const AttachmentDesc& request);
 
         auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::ShaderResourceView*;
         auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::RenderTargetView*;
@@ -113,7 +99,7 @@ namespace RenderCore { namespace Techniques
 
     FrameBufferDesc BuildFrameBufferDesc(
         /* in/out */ NamedAttachments& namedResources,
-        /* out */ std::vector<BoundPassFragment>& boundFragments,
+        /* out */ std::vector<PassFragment>& boundFragments,
         /* int */ IteratorRange<const PassFragmentInterface*> fragments);
 
     class RenderPassBeginDesc

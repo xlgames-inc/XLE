@@ -2,7 +2,7 @@
 
 #include "../../ResourceDesc.h"
 #include "../../IDevice.h"
-#include "IndexedGLType.h"
+#include "ObjectFactory.h"
 #include "../../../Utility/IteratorUtils.h"
 
 namespace RenderCore
@@ -21,8 +21,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         const Desc& GetDesc() const         { return _desc; }
 
-        const intrusive_ptr<OpenGL::Buffer>& GetBuffer() const  { return _underlyingBuffer; }
-        const intrusive_ptr<OpenGL::Texture>& GetTexture() const  { return _underlyingTexture; }
+        const intrusive_ptr<OpenGL::Buffer>& GetBuffer() const { return _underlyingBuffer; }
+        const intrusive_ptr<OpenGL::Texture>& GetTexture() const { return _underlyingTexture; }
+        const intrusive_ptr<OpenGL::RenderBuffer>& GetRenderBuffer() const { return _underlyingRenderBuffer; }
         IteratorRange<const void*> GetConstantBuffer() const { return MakeIteratorRange(_constantBuffer); }
 
         virtual void*       QueryInterface(size_t guid);
@@ -38,6 +39,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     protected:
         intrusive_ptr<OpenGL::Buffer> _underlyingBuffer;
         intrusive_ptr<OpenGL::Texture> _underlyingTexture;
+        intrusive_ptr<OpenGL::RenderBuffer> _underlyingRenderBuffer;
         std::vector<uint8_t> _constantBuffer;
         Desc _desc;
     };
@@ -49,6 +51,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         return static_cast<const Resource&>(resource).GetBuffer()->AsRawGLHandle();
     }
+
+    ResourceDesc ExtractDesc(const IResource& res);
+    IResourcePtr CreateResource(
+        ObjectFactory& factory, const ResourceDesc& desc,
+        const IDevice::ResourceInitializer& initData = nullptr);
 }}
 
 

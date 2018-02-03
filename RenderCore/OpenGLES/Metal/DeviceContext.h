@@ -7,8 +7,8 @@
 #pragma once
 
 #include "InputLayout.h"
-#include "IndexedGLType.h"
-#include "ShaderResource.h"
+#include "ObjectFactory.h"
+#include "TextureView.h"
 #include "../IDeviceOpenGLES.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"

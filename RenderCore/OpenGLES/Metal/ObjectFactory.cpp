@@ -1,10 +1,8 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "IndexedGLType.h"
+#include "ObjectFactory.h"
 #include "../../../Utility/StringFormat.h"
 #include "../IDeviceOpenGLES.h"
 #include "IncludeGLES.h"
@@ -329,6 +327,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     ObjectFactory& GetObjectFactory(IDevice& device) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
     ObjectFactory& GetObjectFactory(DeviceContext&) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
+    ObjectFactory& GetObjectFactory(IResource&) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
     ObjectFactory& GetObjectFactory() { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
 
 }}

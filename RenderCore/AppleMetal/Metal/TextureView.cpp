@@ -2,7 +2,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ShaderResource.h"
+#include "TextureView.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {

@@ -68,7 +68,7 @@ namespace RenderCore { namespace Metal_DX11
     ///
     /// This helper class allows client code to simply declare what it needs and the actual management 
     /// of the device objects will be handled within the cache.
-    class FrameBufferCache
+    class FrameBufferPool
     {
     public:
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
@@ -79,8 +79,8 @@ namespace RenderCore { namespace Metal_DX11
             const INamedAttachments& namedResources,
             uint64 hashName);
 
-        FrameBufferCache();
-        ~FrameBufferCache();
+        FrameBufferPool();
+        ~FrameBufferPool();
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

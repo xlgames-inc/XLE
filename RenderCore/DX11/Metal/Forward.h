@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_DX11
     class ViewportDesc;
 
     class FrameBuffer;
-    class FrameBufferCache;
+    class FrameBufferPool;
 
     typedef SharedPkt ConstantBufferPacket;
 }}

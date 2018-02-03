@@ -128,7 +128,7 @@ namespace RenderCore { namespace Metal_Vulkan
         DescriptorPool                      _mainDescriptorPool;
         VulkanSharedPtr<VkPipelineCache>    _mainPipelineCache;
         DummyResources                      _dummyResources;
-        FrameBufferCache                    _mainFrameBufferCache;
+        FrameBufferPool                    _mainFrameBufferCache;
 
         GlobalPools();
         ~GlobalPools();

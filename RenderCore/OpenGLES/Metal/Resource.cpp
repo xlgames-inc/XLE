@@ -75,6 +75,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         assert(error == GL_NO_ERROR);*/
     }
 
+    /*
     static GLenum AsBindingQuery(GLenum binding)
     {
         switch (binding) {
@@ -84,7 +85,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         default:                    return 0;
         }
     }
-
+    */
 
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
@@ -94,6 +95,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         checkError();
 
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
+
             auto initData = initializer({0,0});
             if (desc._bindFlags & BindFlag::ConstantBuffer) {
                 _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.end());
@@ -111,98 +113,109 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
                 (*GetGLWrappers()->BufferData)(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
             }
+
         } else {
 
+            // write only textures can become render buffers
             auto fmt = AsTexelFormatType(desc._textureDesc._format);
+            bool canBeRenderBuffer = desc._cpuAccess == 0 && desc._gpuAccess == GPUAccess::Write && !initializer;
+            if (!canBeRenderBuffer) {
 
-            _underlyingTexture = factory.CreateTexture();
+                _underlyingTexture = factory.CreateTexture();
+                if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D
+                    ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+                    ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D
+                    ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
-            if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D
-                ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
-                ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D
-                ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
-
-                auto bindTarget = GL_TEXTURE_2D;
-                bool useTexStorage = true;
-                if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
-                    assert(desc._textureDesc._height == 1);
-                    assert(desc._textureDesc._arrayCount <= 1);
-                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
-                    assert(desc._textureDesc._arrayCount <= 1);
-                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
-                    assert(desc._textureDesc._arrayCount <= 1);
-                    bindTarget = GL_TEXTURE_3D;
-                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
-                    assert(desc._textureDesc._arrayCount == 6);
-                    bindTarget = GL_TEXTURE_CUBE_MAP;
-                }
-
-                GLint prevTexture;
-                glGetIntegerv(AsBindingQuery(bindTarget), &prevTexture);
-                glBindTexture(bindTarget, _underlyingTexture->AsRawGLHandle());
-
-                if (!initializer && useTexStorage) {
-                    (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
-                } else {
-
-                    // If we're uploading a cubemap, we must iterate through all of the faces
-                    // and use a binding target for each face.
-                    // Otherwise we only have a single face, which is going to be the main
-                    // binding target.
-                    GLenum faceBinding[] = {
-                        GL_TEXTURE_CUBE_MAP_POSITIVE_X,
-                        GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
-                        GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
-                        GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
-                        GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
-                        GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
-                    unsigned faceCount = dimof(faceBinding);
-
-                    if (desc._textureDesc._dimensionality != TextureDesc::Dimensionality::CubeMap) {
-                        faceBinding[0] = bindTarget;
-                        faceCount = 1;
+                    auto bindTarget = GL_TEXTURE_2D;
+                    bool useTexStorage = true;
+                    if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
+                        assert(desc._textureDesc._height == 1);
+                        assert(desc._textureDesc._arrayCount <= 1);
+                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
+                        assert(desc._textureDesc._arrayCount <= 1);
+                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
+                        assert(desc._textureDesc._arrayCount <= 1);
+                        bindTarget = GL_TEXTURE_3D;
+                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+                        assert(desc._textureDesc._arrayCount == 6);
+                        bindTarget = GL_TEXTURE_CUBE_MAP;
                     }
 
-                    for (unsigned f=0; f<faceCount; ++f) {
-                        if (initializer) {
-                            for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
-                                auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
-                                auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
-                                auto subRes = initializer({m, f});
-                                if (fmt._type != 0) {
+                    // GLint prevTexture;
+                    // glGetIntegerv(AsBindingQuery(bindTarget), &prevTexture);
+                    glBindTexture(bindTarget, _underlyingTexture->AsRawGLHandle());
+
+                    if (!initializer && useTexStorage) {
+                        (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                    } else {
+
+                        // If we're uploading a cubemap, we must iterate through all of the faces
+                        // and use a binding target for each face.
+                        // Otherwise we only have a single face, which is going to be the main
+                        // binding target.
+                        GLenum faceBinding[] = {
+                            GL_TEXTURE_CUBE_MAP_POSITIVE_X,
+                            GL_TEXTURE_CUBE_MAP_NEGATIVE_X,
+                            GL_TEXTURE_CUBE_MAP_POSITIVE_Y,
+                            GL_TEXTURE_CUBE_MAP_NEGATIVE_Y,
+                            GL_TEXTURE_CUBE_MAP_POSITIVE_Z,
+                            GL_TEXTURE_CUBE_MAP_NEGATIVE_Z };
+                        unsigned faceCount = dimof(faceBinding);
+
+                        if (desc._textureDesc._dimensionality != TextureDesc::Dimensionality::CubeMap) {
+                            faceBinding[0] = bindTarget;
+                            faceCount = 1;
+                        }
+
+                        for (unsigned f=0; f<faceCount; ++f) {
+                            if (initializer) {
+                                for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
+                                    auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
+                                    auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
+                                    auto subRes = initializer({m, f});
+                                    if (fmt._type != 0) {
+                                        (*GetGLWrappers()->TexImage2D)(
+                                            faceBinding[f],
+                                            m, fmt._internalFormat,
+                                            mipWidth, mipHeight, 0,
+                                            fmt._format, fmt._type,
+                                            subRes._data.begin());
+                                    } else {
+                                        (*GetGLWrappers()->CompressedTexImage2D)(
+                                            faceBinding[f],
+                                            m, fmt._internalFormat,
+                                            mipWidth, mipHeight, 0,
+                                            (GLsizei)subRes._data.size(),
+                                            subRes._data.begin());
+                                    }
+                                }
+                            } else  {
+                                assert(fmt._type != 0);
+                                for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
+                                    auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
+                                    auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
                                     (*GetGLWrappers()->TexImage2D)(
                                         faceBinding[f],
                                         m, fmt._internalFormat,
                                         mipWidth, mipHeight, 0,
                                         fmt._format, fmt._type,
-                                        subRes._data.begin());
-                                } else {
-                                    (*GetGLWrappers()->CompressedTexImage2D)(
-                                        faceBinding[f],
-                                        m, fmt._internalFormat,
-                                        mipWidth, mipHeight, 0,
-                                        (GLsizei)subRes._data.size(),
-                                        subRes._data.begin());
+                                        nullptr);
                                 }
                             }
-                        } else  {
-                            assert(fmt._type != 0);
-                            for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
-                                auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
-                                auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
-                                (*GetGLWrappers()->TexImage2D)(
-                                    faceBinding[f],
-                                    m, fmt._internalFormat,
-                                    mipWidth, mipHeight, 0,
-                                    fmt._format, fmt._type,
-                                    nullptr);
-                            }
                         }
+
                     }
 
+                    // glBindTexture(bindTarget, prevTexture);
                 }
 
-                glBindTexture(bindTarget, prevTexture);
+            } else {
+
+                auto renderBuffer = factory.CreateRenderBuffer();
+                glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer->AsRawGLHandle());
+                glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+
             }
 
         }
@@ -212,6 +225,21 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     Resource::Resource() {}
     Resource::~Resource() {}
+
+    ResourceDesc ExtractDesc(const IResource& input)
+    {
+        auto* res = (Resource*)const_cast<IResource&>(input).QueryInterface(typeid(Resource).hash_code());
+        if (res)
+            return res->GetDesc();
+        return ResourceDesc{};
+    }
+
+    IResourcePtr CreateResource(
+        ObjectFactory& factory, const ResourceDesc& desc,
+        const IDevice::ResourceInitializer& initData)
+    {
+        return std::make_shared<Resource>(factory, desc, initData);
+    }
 
 }}
 

@@ -17,6 +17,8 @@
 		8F2DB6272017F8C2009F52AB /* Log.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6202017F894009F52AB /* Log.cpp */; };
 		8F2DB62A2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
 		8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
+		8F5DCB892023E5920022BA7E /* RenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F5DCB872023E5920022BA7E /* RenderPass.h */; };
+		8F5DCB8A2023E5920022BA7E /* RenderPass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB882023E5920022BA7E /* RenderPass.cpp */; };
 		8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B691EA6C4BE00DEC600 /* CPUProfileDisplay.cpp */; };
 		8F707B6C1EA6C4BE00DEC600 /* CPUProfileDisplay.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707B6A1EA6C4BE00DEC600 /* CPUProfileDisplay.h */; };
 		8F707B731EA6C59100DEC600 /* DebuggingDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B6E1EA6C59100DEC600 /* DebuggingDisplay.cpp */; };
@@ -188,6 +190,8 @@
 		8F2DB6212017F894009F52AB /* LogStartup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogStartup.h; path = ../../ConsoleRig/LogStartup.h; sourceTree = "<group>"; };
 		8F2DB6222017F894009F52AB /* LogUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LogUtil.h; path = ../../ConsoleRig/LogUtil.h; sourceTree = "<group>"; };
 		8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Font_Dummy.cpp; path = ../../RenderOverlays/Font_Dummy.cpp; sourceTree = "<group>"; };
+		8F5DCB872023E5920022BA7E /* RenderPass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderPass.h; path = ../../RenderCore/Techniques/RenderPass.h; sourceTree = "<group>"; };
+		8F5DCB882023E5920022BA7E /* RenderPass.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RenderPass.cpp; path = ../../RenderCore/Techniques/RenderPass.cpp; sourceTree = "<group>"; };
 		8F707B5B1EA6C41F00DEC600 /* libXLESubsetMac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetMac.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8F707B631EA6C45300DEC600 /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
 		8F707B641EA6C45300DEC600 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
@@ -447,11 +451,13 @@
 		8F707B8D1EA6C72D00DEC600 /* Techniques */ = {
 			isa = PBXGroup;
 			children = (
-				8F2DB6142017F1DF009F52AB /* TechniqueMaterial.cpp */,
-				8F2DB6152017F1DF009F52AB /* TechniqueMaterial.h */,
 				8F707BB01EA6C78400DEC600 /* PredefinedCBLayout.cpp */,
 				8F707BB11EA6C78400DEC600 /* PredefinedCBLayout.h */,
+				8F5DCB882023E5920022BA7E /* RenderPass.cpp */,
+				8F5DCB872023E5920022BA7E /* RenderPass.h */,
 				8F707BB21EA6C78400DEC600 /* RenderStateResolver.h */,
+				8F2DB6142017F1DF009F52AB /* TechniqueMaterial.cpp */,
+				8F2DB6152017F1DF009F52AB /* TechniqueMaterial.h */,
 			);
 			name = Techniques;
 			sourceTree = "<group>";
@@ -615,6 +621,7 @@
 				8F707B881EA6C5D500DEC600 /* GenericQuadTree.h in Headers */,
 				8F94181F1FDA01DC00DADA27 /* lundump.h in Headers */,
 				8F2DB6232017F894009F52AB /* Log.h in Headers */,
+				8F5DCB892023E5920022BA7E /* RenderPass.h in Headers */,
 				8F88060C1FA3F62200AB9E4F /* HistoricalProfilerDisplay.h in Headers */,
 				8F2DB6172017F1DF009F52AB /* TechniqueMaterial.h in Headers */,
 			);
@@ -714,6 +721,7 @@
 				8F9418341FDA01DC00DADA27 /* lstring.c in Sources */,
 				8F707B851EA6C5D500DEC600 /* GenericGridPartitioning.cpp in Sources */,
 				8F9418411FDA01DC00DADA27 /* loslib.c in Sources */,
+				8F5DCB8A2023E5920022BA7E /* RenderPass.cpp in Sources */,
 				8F9418121FDA01DC00DADA27 /* lgc.c in Sources */,
 				8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */,
 				8F2DB6242017F894009F52AB /* Log.cpp in Sources */,

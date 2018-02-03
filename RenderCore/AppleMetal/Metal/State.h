@@ -91,6 +91,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         float MinDepth, MaxDepth;
 
         ViewportDesc(DeviceContext&);
+        ViewportDesc(float topLeftX=0.f, float topLeftY=0.f, float width=0.f, float height=0.f, float minDepth=0.f, float maxDepth=1.f)
+        : TopLeftX(topLeftX), TopLeftY(topLeftY)
+        , Width(width), Height(height)
+        , MinDepth(minDepth), MaxDepth(maxDepth)
+        {}
     };
 }}
 
