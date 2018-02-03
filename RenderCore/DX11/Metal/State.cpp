@@ -20,7 +20,7 @@ namespace RenderCore { namespace Metal_DX11
 
     SamplerState::SamplerState( FilterMode filter,
                                 AddressMode addressU, AddressMode addressV, AddressMode addressW,
-                                Comparison comparison)
+                                CompareOp comparison)
     {
         D3D11_SAMPLER_DESC samplerDesc;
         switch (filter) {
@@ -267,7 +267,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison comparison)
+    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, CompareOp comparison)
     {
         D3D11_DEPTH_STENCIL_DESC depthStencilStateDesc;
         depthStencilStateDesc.DepthEnable = enabled;
@@ -288,8 +288,8 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = GetObjectFactory().CreateDepthStencilState(&depthStencilStateDesc);
     }
 
-    StencilMode StencilMode::NoEffect(Comparison::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
-    StencilMode StencilMode::AlwaysWrite(Comparison::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
+    StencilMode StencilMode::NoEffect(CompareOp::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
+    StencilMode StencilMode::AlwaysWrite(CompareOp::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
 
     DepthStencilState::DepthStencilState(
         bool depthTestEnabled, bool writeEnabled,

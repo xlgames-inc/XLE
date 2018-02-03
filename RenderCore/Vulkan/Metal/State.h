@@ -55,7 +55,7 @@ namespace RenderCore { namespace Metal_Vulkan
                         AddressMode addressU = AddressMode::Wrap, 
                         AddressMode addressV = AddressMode::Wrap, 
                         AddressMode addressW = AddressMode::Wrap,
-						Comparison comparison = Comparison::Never);
+						CompareOp comparison = CompareOp::Never);
 		~SamplerState();
 
         using UnderlyingType = VkSampler;
@@ -173,12 +173,12 @@ namespace RenderCore { namespace Metal_Vulkan
     class StencilMode
     {
     public:
-        Comparison _comparison;
+		CompareOp _comparison;
         StencilOp _onPass;
         StencilOp _onDepthFail;
         StencilOp _onStencilFail;
         StencilMode(
-            Comparison comparison     = Comparison::Always,
+			CompareOp comparison     = CompareOp::Always,
             StencilOp onPass          = StencilOp::Replace,
             StencilOp onStencilFail   = StencilOp::DontWrite,
             StencilOp onDepthFail     = StencilOp::DontWrite)
@@ -227,7 +227,7 @@ namespace RenderCore { namespace Metal_Vulkan
     class DepthStencilState : public VkPipelineDepthStencilStateCreateInfo
     {
     public:
-        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, Comparison comparison = Comparison::LessEqual);
+        explicit DepthStencilState(bool enabled=true, bool writeEnabled=true, CompareOp comparison = CompareOp::LessEqual);
         DepthStencilState(
             bool depthTestEnabled, bool writeEnabled, 
             unsigned stencilReadMask, unsigned stencilWriteMask,

@@ -765,8 +765,9 @@ namespace BufferUploads
                     if (sr._arrayLayer<part._arrayIndexMin || sr._arrayLayer>part._arrayIndexMax) return result;
 
                     auto dataMip = sr._mip + actualisedStagingLODOffset;
-                    result._size = initialisationData->GetDataSize(SubR(dataMip, sr._arrayLayer));
-                    result._data = initialisationData->GetData(SubR(dataMip, sr._arrayLayer));
+                    auto size = initialisationData->GetDataSize(SubR(dataMip, sr._arrayLayer));
+                    const void* data = initialisationData->GetData(SubR(dataMip, sr._arrayLayer));
+					result._data = MakeIteratorRange(data, PtrAdd(data, size));
                     result._pitches = initialisationData->GetPitches(SubR(dataMip, sr._arrayLayer));
                     return result;
                 });
@@ -1692,8 +1693,9 @@ namespace BufferUploads
                                     if (sr._mip < uploadStep._lodLevelMin || sr._mip > uploadStep._lodLevelMax) return result;
 
                                     auto dataMip = sr._mip + mipOffset;
-                                    result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
-                                    result._data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
+                                    auto size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
+                                    const void* data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
+									result._data = MakeIteratorRange(data, PtrAdd(data, size));
                                     result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, sr._arrayLayer));
                                     return result;
                                 });
@@ -1732,8 +1734,9 @@ namespace BufferUploads
                                         if (sr._mip < uploadStep._lodLevelMin || sr._mip > uploadStep._lodLevelMax) return result;
 
                                         auto dataMip = sr._mip;
-                                        result._size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
-                                        result._data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
+                                        auto size = uploadStep._rawData->GetDataSize(SubR(dataMip, sr._arrayLayer));
+                                        const void* data = uploadStep._rawData->GetData(SubR(dataMip, sr._arrayLayer));
+										result._data = MakeIteratorRange(data, PtrAdd(data, size));
                                         result._pitches = uploadStep._rawData->GetPitches(SubR(dataMip, sr._arrayLayer));
                                         return result;
                                     });

@@ -10,62 +10,32 @@
 #include "../IThreadContext.h"
 #include "Metal/DX11.h"
 
-#define FLEX_USE_VTABLE_DeviceDX11 FLEX_USE_VTABLE_Device
-#define FLEX_USE_VTABLE_ThreadContextDX11 FLEX_USE_VTABLE_ThreadContext
-
 namespace RenderCore
 {
     namespace Metal_DX11 { class DeviceContext; }
 
     ////////////////////////////////////////////////////////////////////////////////
 
-#define FLEX_INTERFACE DeviceDX11
-/*-----------------*/ #include "../FlexBegin.h" /*-----------------*/
-    
-        /// <summary>IDevice extension for DX11</summary>
-        /// Use IDevice::QueryInterface to query for this type from a
-        /// plain IDevice.
-        class __declspec( uuid("{01B66C67-7553-4F26-8A21-A4E0756C4738}") ) ICLASSNAME(DeviceDX11)
-        {
-        public:
-            IMETHOD ID3D::Device*           GetUnderlyingDevice() IPURE;
-            IMETHOD ID3D::DeviceContext*    GetImmediateDeviceContext() IPURE;
-            IDESTRUCTOR
-        };
-
-        #if !defined(FLEX_CONTEXT_DeviceDX11)
-            #define FLEX_CONTEXT_DeviceDX11     FLEX_CONTEXT_INTERFACE
-        #endif
-
-        #if defined(DOXYGEN)
-            typedef IDeviceDX11 Base_DeviceDX11;
-        #endif
-
-/*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
-
+    /// <summary>IDevice extension for DX11</summary>
+    /// Use IDevice::QueryInterface to query for this type from a
+    /// plain IDevice.
+    class IDeviceDX11
+    {
+    public:
+        virtual ID3D::Device*           GetUnderlyingDevice() = 0;
+		virtual ID3D::DeviceContext*    GetImmediateDeviceContext() = 0;
+		virtual ~IDeviceDX11();
+    };
 
     ////////////////////////////////////////////////////////////////////////////////
 
-#define FLEX_INTERFACE ThreadContextDX11
-/*-----------------*/ #include "../FlexBegin.h" /*-----------------*/
-    
-        /// <summary>IThreadContext extension for DX11</summary>
-        class __declspec( uuid("{B1985A80-4D9F-4D5B-88CF-657C9F9A6B66}") ) ICLASSNAME(ThreadContextDX11)
-        {
-        public:
-            IMETHOD std::shared_ptr<Metal_DX11::DeviceContext>&  GetUnderlying() IPURE;
-            IMETHOD ID3D::Device*  GetUnderlyingDevice() IPURE;
-            IDESTRUCTOR
-        };
-
-        #if !defined(FLEX_CONTEXT_ThreadContextDX11)
-            #define FLEX_CONTEXT_ThreadContextDX11     FLEX_CONTEXT_INTERFACE
-        #endif
-
-        #if defined(DOXYGEN)
-            typedef IThreadContextDX11 Base_ThreadContextDX11;
-        #endif
-
-/*-----------------*/ #include "../FlexEnd.h" /*-----------------*/
+    /// <summary>IThreadContext extension for DX11</summary>
+    class IThreadContextDX11
+    {
+    public:
+        virtual std::shared_ptr<Metal_DX11::DeviceContext>&  GetUnderlying() = 0;
+		virtual ID3D::Device*  GetUnderlyingDevice() = 0;
+		virtual ~IThreadContextDX11();
+    };
 
 }

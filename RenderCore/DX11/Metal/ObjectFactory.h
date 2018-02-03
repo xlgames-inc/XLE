@@ -94,6 +94,7 @@ namespace RenderCore { namespace Metal_DX11
     };
 
 	ObjectFactory& GetObjectFactory(IDevice& device);
+	ObjectFactory& GetObjectFactory(IResource&);
 	ObjectFactory& GetObjectFactory(DeviceContext&);
 	ObjectFactory& GetObjectFactory();
     ObjectFactory& GetObjectFactory(ID3D::Device& device);

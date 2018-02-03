@@ -17,14 +17,14 @@ namespace RenderCore
         Unknown = 0,
 
         #undef _EXP
-        #define _EXP(X, Y, Z, U)    X##_##Y = DXGI_FORMAT_##X##_##Y,
+        #define _EXP(X, Y, Z, U)    X##_##Y = DXGIVALUE_##X##_##Y,
             #include "Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
 
-        R24G8_TYPELESS = DXGI_FORMAT_R24G8_TYPELESS,
-        D24_UNORM_S8_UINT = DXGI_FORMAT_D24_UNORM_S8_UINT,
-        R24_UNORM_X8_TYPELESS = DXGI_FORMAT_R24_UNORM_X8_TYPELESS,
-        X24_TYPELESS_G8_UINT = DXGI_FORMAT_X24_TYPELESS_G8_UINT,
+        R24G8_TYPELESS = DXGIVALUE_R24G8_TYPELESS,
+        D24_UNORM_S8_UINT = DXGIVALUE_D24_UNORM_S8_UINT,
+        R24_UNORM_X8_TYPELESS = DXGIVALUE_R24_UNORM_X8_TYPELESS,
+        X24_TYPELESS_G8_UINT = DXGIVALUE_X24_TYPELESS_G8_UINT,
         S8_UINT = 148,
         D32_SFLOAT_S8_UINT = 149,
 

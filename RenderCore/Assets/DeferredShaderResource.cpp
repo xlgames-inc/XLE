@@ -288,7 +288,7 @@ namespace RenderCore { namespace Assets
         if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
             return ::Assets::AssetState::Invalid;
 
-        auto desc = Metal::ExtractDesc(_pimpl->_locator->GetUnderlying());
+        auto desc = Metal::ExtractDesc(*_pimpl->_locator->GetUnderlying());
         if (desc._type != RenderCore::ResourceDesc::Type::Texture)
             return ::Assets::AssetState::Invalid;
 
@@ -399,7 +399,7 @@ namespace RenderCore { namespace Assets
         if (!result)
             Throw(::Assets::Exceptions::ConstructionError(::Assets::Exceptions::ConstructionError::Reason::Unknown, nullptr, "Failure while attempting to load texture immediately"));
 
-        auto desc = Metal::ExtractDesc(result->GetUnderlying());
+        auto desc = Metal::ExtractDesc(*result->GetUnderlying());
         assert(desc._type == BufferDesc::Type::Texture);
         return Metal::ShaderResourceView(
             result->ShareUnderlying(),

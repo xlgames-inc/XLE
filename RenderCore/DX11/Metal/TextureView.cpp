@@ -37,16 +37,18 @@ namespace RenderCore { namespace Metal_DX11
     }
 
     RenderTargetView::RenderTargetView(
-        const ObjectFactory& factory,
-		UnderlyingResourcePtr resource,
+		const std::shared_ptr<IResource>& iresource,
 		const TextureViewWindow& window)
     {
-        if (!resource.get()) {
+		auto* resource = AsID3DResource(*iresource);
+        if (!resource) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to RenderTargetView constructor"));
         }
 
+		auto& factory = GetObjectFactory(*iresource);
+
         if (IsDefault(window)) {
-            _underlying = factory.CreateRenderTargetView(resource.get());
+            _underlying = factory.CreateRenderTargetView(resource);
         } else {
             // Build an D3D11_RENDER_TARGET_VIEW_DESC based on the properties of
             // the resource and the view window.
@@ -55,11 +57,11 @@ namespace RenderCore { namespace Metal_DX11
             // Note --  here we're exploiting the fact that the Texture1DArray/Texture2DArray/Texture2DMSArray members are overlapping 
             //          supersets of their associated non array forms.
             D3D11_RESOURCE_DIMENSION resType;
-            resource.get()->GetType(&resType);
+            resource->GetType(&resType);
             switch (resType) {
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
-                    TextureDesc1D textureDesc(resource.get());
+                    TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_RTV_DIMENSION_TEXTURE1DARRAY : D3D11_RTV_DIMENSION_TEXTURE1D;
@@ -72,7 +74,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
-                    TextureDesc2D textureDesc(resource.get());
+                    TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewWindow::Flags::ForceSingleSample)) {
@@ -91,7 +93,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
                 {
-                    TextureDesc3D textureDesc(resource.get());
+                    TextureDesc3D textureDesc(resource);
                     viewDesc.ViewDimension = D3D11_RTV_DIMENSION_TEXTURE3D;
                     viewDesc.Texture3D.MipSlice = window._mipRange._min;
                     viewDesc.Texture3D.FirstWSlice = 0;
@@ -112,13 +114,9 @@ namespace RenderCore { namespace Metal_DX11
                 Throw(::Exceptions::BasicLabel("Invalid resource type used with RenderTargetView"));
             }
             
-            _underlying = factory.CreateRenderTargetView(resource.get(), &viewDesc);
+            _underlying = factory.CreateRenderTargetView(resource, &viewDesc);
         }
     }
-
-    RenderTargetView::RenderTargetView(UnderlyingResourcePtr resource, const TextureViewWindow& window)
-    : RenderTargetView(GetObjectFactory(*resource.get()), resource, window)
-    {}
 
     auto RenderTargetView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
@@ -130,16 +128,6 @@ namespace RenderCore { namespace Metal_DX11
         return AsResourcePtr(GetResource());
     }
 
-    RenderTargetView::RenderTargetView(ID3D::RenderTargetView* resource)
-    : _underlying(resource)
-    {
-    }
-
-    RenderTargetView::RenderTargetView(MovePTRHelper<ID3D::RenderTargetView> resource)
-    : _underlying(resource)
-    {
-    }
-
     RenderTargetView::RenderTargetView(DeviceContext& context)
     {
         ID3D::RenderTargetView* rawPtr = nullptr; 
@@ -147,28 +135,19 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = moveptr(rawPtr);
     }
 
-    RenderTargetView::RenderTargetView() {}
-
-    RenderTargetView::~RenderTargetView() {}
-
-    RenderTargetView::RenderTargetView(const RenderTargetView& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    RenderTargetView& RenderTargetView::operator=(const RenderTargetView& cloneFrom) { _underlying = cloneFrom._underlying; return *this; }
-
-    RenderTargetView::RenderTargetView(RenderTargetView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    RenderTargetView& RenderTargetView::operator=(RenderTargetView&& moveFrom) never_throws { _underlying = std::move(moveFrom._underlying); return *this; }
-
-
     DepthStencilView::DepthStencilView(
-        const ObjectFactory& factory,
-		UnderlyingResourcePtr resource,
+		const std::shared_ptr<IResource>& iresource,
 		const TextureViewWindow& window)
     {
-        if (!resource.get()) {
+		auto* resource = AsID3DResource(*iresource);
+        if (!resource) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to DepthStencilView constructor"));
         }
 
+		auto& factory = GetObjectFactory(*iresource);
+
         if (IsDefault(window)) {
-            _underlying = factory.CreateDepthStencilView(resource.get());
+            _underlying = factory.CreateDepthStencilView(resource);
         } else {
             D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc;
             viewDesc.Flags = 0;
@@ -176,11 +155,11 @@ namespace RenderCore { namespace Metal_DX11
             if (window._flags & TextureViewWindow::Flags::JustStencil) viewDesc.Flags |= D3D11_DSV_READ_ONLY_DEPTH;
 
             D3D11_RESOURCE_DIMENSION resType;
-            resource.get()->GetType(&resType);
+            resource->GetType(&resType);
             switch (resType) {
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
-                    TextureDesc1D textureDesc(resource.get());
+                    TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_DSV_DIMENSION_TEXTURE1DARRAY : D3D11_DSV_DIMENSION_TEXTURE1D;
@@ -193,7 +172,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
-                    TextureDesc2D textureDesc(resource.get());
+                    TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewWindow::Flags::ForceSingleSample)) {
@@ -214,13 +193,9 @@ namespace RenderCore { namespace Metal_DX11
                 Throw(::Exceptions::BasicLabel("Invalid resource type used with DepthStencilView"));
             }
 
-            _underlying = factory.CreateDepthStencilView(resource.get(), &viewDesc);
+            _underlying = factory.CreateDepthStencilView(resource, &viewDesc);
         }
     }
-
-    DepthStencilView::DepthStencilView(UnderlyingResourcePtr resource, const TextureViewWindow& window)
-    : DepthStencilView(GetObjectFactory(*resource.get()), resource, window)
-    {}
 
     auto DepthStencilView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
@@ -240,45 +215,28 @@ namespace RenderCore { namespace Metal_DX11
         _underlying = moveptr(rawPtr);
     }
 
-    DepthStencilView::DepthStencilView(ID3D::DepthStencilView* resource)
-    : _underlying(resource)
+    UnorderedAccessView::UnorderedAccessView(
+		const std::shared_ptr<IResource>& iresource,
+		const TextureViewWindow& window)
     {
-    }
-
-    DepthStencilView::DepthStencilView(MovePTRHelper<ID3D::DepthStencilView> resource)
-    : _underlying(resource)
-    {
-    }
-
-    DepthStencilView::DepthStencilView() {}
-
-    DepthStencilView::~DepthStencilView() {}
-
-    DepthStencilView::DepthStencilView(const DepthStencilView& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    DepthStencilView& DepthStencilView::operator=(const DepthStencilView& cloneFrom) { _underlying = cloneFrom._underlying; return *this; }
-
-    DepthStencilView::DepthStencilView(DepthStencilView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    DepthStencilView& DepthStencilView::operator=(DepthStencilView&& moveFrom) never_throws { _underlying = std::move(moveFrom._underlying); return *this; }
-
-
-
-    UnorderedAccessView::UnorderedAccessView(const ObjectFactory& factory, UnderlyingResourcePtr resource, const TextureViewWindow& window)
-    {
-        if (!resource.get()) {
+		auto* resource = AsID3DResource(*iresource);
+        if (!resource) {
             Throw(::Exceptions::BasicLabel("NULL resource passed to UnorderedAccessView constructor"));
         }
 
+		auto& factory = GetObjectFactory(*iresource);
+
         if (IsDefault(window)) {
-            _underlying = factory.CreateUnorderedAccessView(resource.get());
+            _underlying = factory.CreateUnorderedAccessView(resource);
         } else {
             D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc;
 
             D3D11_RESOURCE_DIMENSION resType;
-            resource.get()->GetType(&resType);
+            resource->GetType(&resType);
             switch (resType) {
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
-                    TextureDesc1D textureDesc(resource.get());
+                    TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_UAV_DIMENSION_TEXTURE1DARRAY : D3D11_UAV_DIMENSION_TEXTURE1D;
@@ -291,7 +249,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
-                    TextureDesc2D textureDesc(resource.get());
+                    TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_UAV_DIMENSION_TEXTURE2DARRAY : D3D11_UAV_DIMENSION_TEXTURE2D;
@@ -304,7 +262,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
                 {
-                    TextureDesc3D textureDesc(resource.get());
+                    TextureDesc3D textureDesc(resource);
                     viewDesc.ViewDimension = D3D11_UAV_DIMENSION_TEXTURE3D;
                     viewDesc.Texture3D.MipSlice = window._mipRange._min;
                     viewDesc.Texture3D.FirstWSlice = 0;
@@ -315,7 +273,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_BUFFER:
                 {
-                    D3DBufferDesc bufferDesc(resource.get());
+                    D3DBufferDesc bufferDesc(resource);
                     viewDesc.ViewDimension = D3D11_UAV_DIMENSION_BUFFER;
                     viewDesc.Buffer.FirstElement = 0;
                     viewDesc.Buffer.NumElements = bufferDesc.StructureByteStride ? (bufferDesc.ByteWidth/bufferDesc.StructureByteStride) : bufferDesc.ByteWidth;
@@ -329,13 +287,9 @@ namespace RenderCore { namespace Metal_DX11
             default:
                 Throw(::Exceptions::BasicLabel("Invalid resource type used with RenderTargetView"));
             }
-            _underlying = GetObjectFactory(*resource.get()).CreateUnorderedAccessView(resource.get(), &viewDesc);
+            _underlying = GetObjectFactory(*resource).CreateUnorderedAccessView(resource, &viewDesc);
         }
     }
-
-    UnorderedAccessView::UnorderedAccessView(UnderlyingResourcePtr resource, const TextureViewWindow& window)
-    : UnorderedAccessView(GetObjectFactory(*resource.get()), resource, window)
-    {}
 
     auto UnorderedAccessView::GetResource() const -> intrusive_ptr<ID3D::Resource>
     {
@@ -347,34 +301,30 @@ namespace RenderCore { namespace Metal_DX11
         return AsResourcePtr(GetResource());
     }
 
-    UnorderedAccessView::UnorderedAccessView() {}
-    UnorderedAccessView::~UnorderedAccessView() {}
-
-    UnorderedAccessView::UnorderedAccessView(const UnorderedAccessView& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    UnorderedAccessView& UnorderedAccessView::operator=(const UnorderedAccessView& cloneFrom) { _underlying = cloneFrom._underlying; return *this; }
-
-    UnorderedAccessView::UnorderedAccessView(UnorderedAccessView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    UnorderedAccessView& UnorderedAccessView::operator=(UnorderedAccessView&& moveFrom) never_throws { _underlying = std::move(moveFrom._underlying); return *this; }
-
-	ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, const TextureViewWindow& window)
+	ShaderResourceView::ShaderResourceView(
+		const std::shared_ptr<IResource>& iresource,
+		const TextureViewWindow& window)
 	{
 		// note --	for Vulkan compatibility, this should change so that array resources
 		//			get array views by default (unless it's disabled somehow via the window)
 
-        if (!resource.get())
+		auto* resource = AsID3DResource(*iresource); 
+		if (!resource)
 			Throw(::Exceptions::BasicLabel("Null resource passed to ShaderResourceView constructor"));
 
+		auto& factory = GetObjectFactory(*iresource);
+
         if (IsDefault(window)) {
-            _underlying = factory.CreateShaderResourceView(resource.get());
+            _underlying = factory.CreateShaderResourceView(resource);
         } else {
             D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;
 
             D3D11_RESOURCE_DIMENSION resType;
-            resource.get()->GetType(&resType);
+            resource->GetType(&resType);
             switch (resType) {
             case D3D11_RESOURCE_DIMENSION_TEXTURE1D:
                 {
-                    TextureDesc1D textureDesc(resource.get());
+                    TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_SRV_DIMENSION_TEXTURE1DARRAY : D3D11_SRV_DIMENSION_TEXTURE1D;
@@ -388,7 +338,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE2D:
                 {
-                    TextureDesc2D textureDesc(resource.get());
+                    TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
                     bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
                     if (textureDesc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
@@ -416,7 +366,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_TEXTURE3D:
                 {
-                    TextureDesc3D textureDesc(resource.get());
+                    TextureDesc3D textureDesc(resource);
                     viewDesc.ViewDimension = D3D11_SRV_DIMENSION_TEXTURE3D;
                     viewDesc.Texture3D.MostDetailedMip = window._mipRange._min;
                     viewDesc.Texture3D.MipLevels = window._mipRange._count;
@@ -426,7 +376,7 @@ namespace RenderCore { namespace Metal_DX11
 
             case D3D11_RESOURCE_DIMENSION_BUFFER:
                 {
-                    D3DBufferDesc bufferDesc(resource.get());
+                    D3DBufferDesc bufferDesc(resource);
                     viewDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFEREX;
                     viewDesc.BufferEx.FirstElement = 0;
                     viewDesc.BufferEx.NumElements = bufferDesc.StructureByteStride ? (bufferDesc.ByteWidth / bufferDesc.StructureByteStride) : (bufferDesc.ByteWidth/4);
@@ -439,15 +389,13 @@ namespace RenderCore { namespace Metal_DX11
                 Throw(::Exceptions::BasicLabel("Invalid resource type used with RenderTargetView"));
             }
 
-            _underlying = factory.CreateShaderResourceView(resource.get(), &viewDesc);
+            _underlying = factory.CreateShaderResourceView(resource, &viewDesc);
         }
     }
 
-    ShaderResourceView::ShaderResourceView(UnderlyingResourcePtr resource, const TextureViewWindow& window)
-    : ShaderResourceView(GetObjectFactory(*resource.get()), resource, window)
-    {}
-
-    ShaderResourceView ShaderResourceView::RawBuffer(UnderlyingResourcePtr res, unsigned sizeBytes, unsigned offsetBytes)
+    ShaderResourceView ShaderResourceView::RawBuffer(
+		const std::shared_ptr<IResource>& resource,
+		unsigned sizeBytes, unsigned offsetBytes)
     {
         D3D11_SHADER_RESOURCE_VIEW_DESC srvDesc;
         srvDesc.Format = DXGI_FORMAT_R32_TYPELESS;
@@ -455,9 +403,9 @@ namespace RenderCore { namespace Metal_DX11
         srvDesc.BufferEx.FirstElement = offsetBytes / 4;
         srvDesc.BufferEx.NumElements = sizeBytes / 4;
         srvDesc.BufferEx.Flags = D3D11_BUFFEREX_SRV_FLAG_RAW;
-        auto r = res.get();
+        auto r = AsID3DResource(*resource);
         return ShaderResourceView(
-            GetObjectFactory(*r).CreateShaderResourceView(r, &srvDesc));
+            GetObjectFactory(*resource).CreateShaderResourceView(r, &srvDesc));
     }
 
     auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>
@@ -470,25 +418,83 @@ namespace RenderCore { namespace Metal_DX11
         return AsResourcePtr(GetResource());
     }
 
-    ShaderResourceView::ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource)
-    : _underlying(resource)
-    {
-    }
+//////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ShaderResourceView::ShaderResourceView(MovePTRHelper<ID3D::ShaderResourceView> resource)
-    : _underlying(resource)
-    {
-    }
+	// Operators moved into here to avoid making D3D headers a dependency of TextureView.h
 
-    ShaderResourceView::ShaderResourceView() {}
+	RenderTargetView::RenderTargetView(intrusive_ptr<ID3D::RenderTargetView>&& resource) : _underlying(std::move(resource)) {}
+	RenderTargetView::RenderTargetView(const intrusive_ptr<ID3D::RenderTargetView>& resource) : _underlying(resource) {}
+	RenderTargetView::RenderTargetView() {}
+	RenderTargetView::~RenderTargetView() {}
+	RenderTargetView::RenderTargetView(const RenderTargetView& cloneFrom) : _underlying(cloneFrom._underlying) {}
+	RenderTargetView::RenderTargetView(RenderTargetView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	RenderTargetView& RenderTargetView::operator=(const RenderTargetView& cloneFrom)
+	{
+		_underlying = cloneFrom._underlying;
+		return *this;
+	}
+	RenderTargetView& RenderTargetView::operator=(RenderTargetView&& moveFrom) never_throws
+	{
+		_underlying = std::move(moveFrom._underlying);
+		return *this;
+	}
 
-    ShaderResourceView::~ShaderResourceView() {}
+////////////////////////////////////////////////////////////////////////////////////////////
 
-    ShaderResourceView::ShaderResourceView(const ShaderResourceView& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    ShaderResourceView& ShaderResourceView::operator=(const ShaderResourceView& cloneFrom) { _underlying = cloneFrom._underlying; return *this; }
+	DepthStencilView::DepthStencilView(intrusive_ptr<ID3D::DepthStencilView>&& resource) : _underlying(std::move(resource)) {}
+	DepthStencilView::DepthStencilView(const intrusive_ptr<ID3D::DepthStencilView>& resource) : _underlying(resource) {}
+	DepthStencilView::DepthStencilView() {}
+	DepthStencilView::~DepthStencilView() {}
+	DepthStencilView::DepthStencilView(const DepthStencilView& cloneFrom) : _underlying(cloneFrom._underlying) {}
+	DepthStencilView::DepthStencilView(DepthStencilView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	DepthStencilView& DepthStencilView::operator=(const DepthStencilView& cloneFrom)
+	{
+		_underlying = cloneFrom._underlying;
+		return *this;
+	}
+	DepthStencilView& DepthStencilView::operator=(DepthStencilView&& moveFrom) never_throws
+	{
+		_underlying = std::move(moveFrom._underlying);
+		return *this;
+	}
 
-    ShaderResourceView::ShaderResourceView(ShaderResourceView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    ShaderResourceView& ShaderResourceView::operator=(ShaderResourceView&& moveFrom) never_throws { _underlying = std::move(moveFrom._underlying); return *this; }
+////////////////////////////////////////////////////////////////////////////////////////////
+
+	UnorderedAccessView::UnorderedAccessView(intrusive_ptr<ID3D::UnorderedAccessView>&& resource) : _underlying(std::move(resource)) {}
+	UnorderedAccessView::UnorderedAccessView(const intrusive_ptr<ID3D::UnorderedAccessView>& resource) : _underlying(resource) {}
+	UnorderedAccessView::UnorderedAccessView() {}
+	UnorderedAccessView::~UnorderedAccessView() {}
+	UnorderedAccessView::UnorderedAccessView(const UnorderedAccessView& cloneFrom) : _underlying(cloneFrom._underlying) {}
+	UnorderedAccessView::UnorderedAccessView(UnorderedAccessView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	UnorderedAccessView& UnorderedAccessView::operator=(const UnorderedAccessView& cloneFrom)
+	{
+		_underlying = cloneFrom._underlying;
+		return *this;
+	}
+	UnorderedAccessView& UnorderedAccessView::operator=(UnorderedAccessView&& moveFrom) never_throws
+	{
+		_underlying = std::move(moveFrom._underlying);
+		return *this;
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////
+
+	ShaderResourceView::ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource) : _underlying(std::move(resource)) {}
+	ShaderResourceView::ShaderResourceView(const intrusive_ptr<ID3D::ShaderResourceView>& resource) : _underlying(resource) {}
+	ShaderResourceView::ShaderResourceView() {}
+	ShaderResourceView::~ShaderResourceView() {}
+	ShaderResourceView::ShaderResourceView(const ShaderResourceView& cloneFrom) : _underlying(cloneFrom._underlying) {}
+	ShaderResourceView::ShaderResourceView(ShaderResourceView&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
+	ShaderResourceView& ShaderResourceView::operator=(const ShaderResourceView& cloneFrom)
+	{
+		_underlying = cloneFrom._underlying;
+		return *this;
+	}
+	ShaderResourceView& ShaderResourceView::operator=(ShaderResourceView&& moveFrom) never_throws
+	{
+		_underlying = std::move(moveFrom._underlying);
+		return *this;
+	}
 
 
 }}

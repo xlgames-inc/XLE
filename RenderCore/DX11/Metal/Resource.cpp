@@ -69,6 +69,13 @@ namespace RenderCore { namespace Metal_DX11
         return DuplicateResource(context.GetUnderlying(), inputResource.get());
     }
 
+	void*       Resource::QueryInterface(size_t guid)
+	{
+		if (guid == typeid(Resource).hash_code())
+			return (Resource*)this;
+		return nullptr;
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static unsigned AsNativeCPUAccessFlag(CPUAccess::BitField bitField)
@@ -154,7 +161,7 @@ namespace RenderCore { namespace Metal_DX11
 						for (unsigned a = 0; a<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++a) {
 							uint32 subresourceIndex = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
                             auto initData = init({m, a});
-							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data, UINT(initData._pitches._rowPitch), UINT(initData._pitches._slicePitch)};
+							subResources[subresourceIndex] = D3D11_SUBRESOURCE_DATA{initData._data.begin(), UINT(initData._pitches._rowPitch), UINT(initData._pitches._slicePitch)};
 						}
 					}
 				}
@@ -227,8 +234,8 @@ namespace RenderCore { namespace Metal_DX11
 			{
 				if (hasInitData) {
                     auto top = init({0,0});
-					subResources[0] = D3D11_SUBRESOURCE_DATA{top._data, UINT(top._size), UINT(top._size)};
-					hasInitData = top._data && top._size;
+					subResources[0] = D3D11_SUBRESOURCE_DATA{top._data.begin(), UINT(top._data.size()), UINT(top._data.size())};
+					hasInitData = top._data.size();
 				}
 
 				D3D11_BUFFER_DESC d3dDesc;
@@ -331,7 +338,7 @@ namespace RenderCore { namespace Metal_DX11
         return desc;
     }
 
-	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
+	ResourceDesc ExtractDesc(const UnderlyingResourcePtr& res)
     {
         if (intrusive_ptr<ID3D::Texture2D> texture2D = QueryInterfaceCast<ID3D::Texture2D>(res.get())) {
             D3D11_TEXTURE2D_DESC d3dDesc;
@@ -354,6 +361,16 @@ namespace RenderCore { namespace Metal_DX11
         desc._type = ResourceDesc::Type::Unknown;
         return desc;
     }
+
+	ResourceDesc ExtractDesc(const IResource& res)
+	{
+		auto* d3dres = (Resource*)const_cast<IResource&>(res).QueryInterface(typeid(Resource).hash_code());
+		if (d3dres)
+			return ExtractDesc(d3dres->_underlying);
+		ResourceDesc desc = {};
+		desc._type = ResourceDesc::Type::Unknown;
+		return desc;
+	}
 
     ResourceDesc ExtractDesc(const ShaderResourceView& res)
     {
@@ -402,17 +419,11 @@ namespace RenderCore { namespace Metal_DX11
 
 	RenderCore::ResourcePtr AsResourcePtr(ID3D::Resource* res)
 	{
-		res->AddRef();	// balanced by the release on destroying the new pointer
-		return ResourcePtr(
-			(Resource*)res,
-			[](Resource* r) { ((ID3D::Resource*)r)->Release(); });
+		return std::make_shared<Resource>(res);
 	}
 
 	RenderCore::ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
 	{
-		// moving the reference count out of the given ptr (ie, no AddRef required)
-		return ResourcePtr(
-			(Resource*)ReleaseOwnership(ptr),
-			[](Resource* r) { ((ID3D::Resource*)r)->Release(); });
+		return std::make_shared<Resource>(std::move(ptr));
 	}
 }}

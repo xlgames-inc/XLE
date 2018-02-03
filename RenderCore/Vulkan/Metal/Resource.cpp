@@ -373,9 +373,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (hasInitData) {
                 if (desc._type == Desc::Type::LinearBuffer) {
                     auto subResData = initData({0, 0});
-				    if (subResData._data && subResData._size) {
+				    if (subResData._data.size()) {
 					    ResourceMap map(factory.GetDevice().get(), _mem.get());
-					    std::memcpy(map.GetData(), subResData._data, std::min(subResData._size, (size_t)mem_reqs.size));
+					    std::memcpy(map.GetData(), subResData._data.begin(), std::min(subResData._data.size(), (size_t)mem_reqs.size));
 				    }
                 } else {
                     // This is the staging texture path. Rather that getting the arrangement of subresources from
@@ -411,7 +411,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
-	: Resource(factory, desc, (initData._size && initData._data) ? ([&initData](SubResourceId sr) { return (sr._mip==0&&sr._arrayLayer==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(SubResourceId)>())
+	: Resource(factory, desc, (initData._data.size()) ? ([&initData](SubResourceId sr) { return (sr._mip==0&&sr._arrayLayer==0) ? initData : SubResourceInitData{}; }) : std::function<SubResourceInitData(SubResourceId)>())
 	{}
 
     Resource::Resource(VkImage image, const Desc& desc)
@@ -755,7 +755,7 @@ namespace RenderCore { namespace Metal_Vulkan
             auto mipDesc = CalculateMipMapDesc(desc, m);
 			for (unsigned a = 0; a < arrayCount; ++a) {
                 auto subResData = initData({m, a});
-				if (!subResData._data || !subResData._size) continue;
+				if (!subResData._data.size()) continue;
 
 				VkSubresourceLayout layout = {};
                 if (image) {

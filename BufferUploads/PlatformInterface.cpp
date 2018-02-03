@@ -33,8 +33,9 @@ namespace BufferUploads { namespace PlatformInterface
         return [&pkt](SubResourceId sr) -> RenderCore::SubResourceInitData
             {
                 RenderCore::SubResourceInitData result;
-                result._data = pkt.GetData(sr);
-                result._size = pkt.GetDataSize(sr);
+                const void* data = pkt.GetData(sr);
+                auto size = pkt.GetDataSize(sr);
+				result._data = MakeIteratorRange(data, PtrAdd(data, size));
                 result._pitches = pkt.GetPitches(sr);
                 return result;
             };

@@ -154,14 +154,6 @@ namespace RenderCore { namespace Assets
                 [=](const VertexElement& ele) { return !XlCompareStringI(ele._semanticName, name); }) != ia._elements.cend();
         }
 
-        static bool HasElement(const InputLayout& ia, const char name[])
-        {
-            auto end = &ia.first[ia.second];
-            return std::find_if(
-                ia.first, end, 
-                [=](const InputElementDesc& ele) { return !XlCompareStringI(ele._semanticName.c_str(), name); }) != end;
-        }
-
         #if defined(_DEBUG)
             static std::string MakeDescription(const ParameterBox& paramBox)
             {
@@ -917,7 +909,7 @@ namespace RenderCore { namespace Assets
             // Setup the geo param box and the technique interface
             // from the vertex input layout
         result._geoParamBox = ModelConstruction::BuildGeoParamBox(
-            InputLayout(inputDesc, vertexElementCount),
+            MakeIteratorRange(inputDesc, &inputDesc[vertexElementCount]),
             sharedStateSet, paramBoxDesc, normalFromSkinning);
 
         result._techniqueInterface = sharedStateSet.InsertTechniqueInterface(

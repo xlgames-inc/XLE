@@ -34,9 +34,9 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned trackingOffset = 0;
 
         SPIRVReflection reflection(shader.GetByteCode());
-        _attributes.reserve(layout.second);
-        for (unsigned c=0; c<layout.second; ++c) {
-            const auto& e = layout.first[c];
+        _attributes.reserve(layout.size());
+        for (unsigned c=0; c<layout.size(); ++c) {
+            const auto& e = layout[c];
             auto hash = Hash64(e._semanticName, DefaultSeed64 + e._semanticIndex);
 
             auto offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;

@@ -15,6 +15,7 @@
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
+#include "../../../Assets/IFileSystem.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 #include "../../../Utility/StringUtils.h"

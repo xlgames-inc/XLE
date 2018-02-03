@@ -36,7 +36,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		    assert(IsGood());
             context.CmdUpdateBuffer(_underlyingBuffer.get(), 0, byteCount, data);
         } else {
-            Resource updatedRes(GetObjectFactory(context), GetDesc(), SubResourceInitData{ data, byteCount });
+            Resource updatedRes(GetObjectFactory(context), GetDesc(), SubResourceInitData{ MakeIteratorRange(data, PtrAdd(data, byteCount)) });
             *(Resource*)this = std::move(updatedRes);
 
             // We ideally need to add a memory barrier to prevent reading from this buffer 
@@ -59,7 +59,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	Buffer::Buffer(
 		const ObjectFactory& factory, const Desc& desc,
 		const void* initData, size_t initDataSize)
-	: Resource(factory, desc, SubResourceInitData{ initData, initDataSize })
+	: Resource(factory, desc, SubResourceInitData{ MakeIteratorRange(initData, PtrAdd(initData, initDataSize)) })
 	{
 		if (desc._type != Desc::Type::LinearBuffer)
 			Throw(::Exceptions::BasicLabel("Expecting linear buffer type"));

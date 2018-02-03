@@ -348,19 +348,9 @@ namespace RenderCore { namespace ImplDX11
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    #if !FLEX_USE_VTABLE_Device && !DOXYGEN
-        namespace Detail
-        {
-            void* Ignore_Device::QueryInterface(size_t guid)
-            {
-                return nullptr;
-            }
-        }
-    #endif
-
     void*                   DeviceDX11::QueryInterface(size_t guid)
     {
-        if (guid == typeid(Base_DeviceDX11).hash_code()) {
+        if (guid == typeid(IDeviceDX11).hash_code()) {
             return (IDeviceDX11*)this;
         }
         return nullptr;
@@ -463,7 +453,7 @@ namespace RenderCore { namespace ImplDX11
                 //      write to this buffer in non-SRGB mode (ie, we will
                 //      manually apply SRGB convertion)
             TextureViewWindow viewWindow;
-            Metal_DX11::RenderTargetView rtv(factory, backBuffer0.get(), viewWindow);
+            Metal_DX11::RenderTargetView rtv(Metal_DX11::AsResourcePtr(backBuffer0), viewWindow);
             context.SetPresentationTarget(&rtv, {_desc->_width, _desc->_height});
             context.Bind(Metal_DX11::ViewportDesc(0.f, 0.f, (float)_desc->_width, (float)_desc->_height));
         }
@@ -564,19 +554,9 @@ namespace RenderCore { namespace ImplDX11
         ++_frameId;
     }
 
-    #if !FLEX_USE_VTABLE_ThreadContext && !DOXYGEN
-		namespace Detail
-		{
-			void* Ignore_ThreadContext::QueryInterface(size_t guid)
-			{
-				return nullptr;
-			}
-		}
-	#endif
-
     void*   ThreadContextDX11::QueryInterface(size_t guid)
     {
-        if (guid == typeid(Base_ThreadContextDX11).hash_code()) { return (IThreadContextDX11*)this; }
+        if (guid == typeid(IThreadContextDX11).hash_code()) { return (IThreadContextDX11*)this; }
         return nullptr;
     }
 
@@ -599,3 +579,8 @@ namespace RenderCore { namespace ImplDX11
 
 }}
 
+namespace RenderCore
+{
+	IDeviceDX11::~IDeviceDX11() {}
+	IThreadContextDX11::~IThreadContextDX11() {}
+}

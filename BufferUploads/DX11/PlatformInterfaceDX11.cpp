@@ -28,7 +28,7 @@
 		using namespace RenderCore;
 
         static bool IsDXTCompressed(Format format) { return GetCompressionType(format) == FormatCompressionType::BlockCompression; }
-        static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::UnderlyingResourcePtr(&resource).get(); }
+        static ID3D::Resource*        ResPtr(UnderlyingResource& resource) { return Metal::AsID3DResource(resource); }
 
         unsigned UnderlyingDeviceContext::PushToTexture(
             UnderlyingResource& resource, const BufferDesc& desc,
@@ -55,19 +55,19 @@
             for (unsigned mip=0; mip<std::max(1u, unsigned(desc._textureDesc._mipCount)); ++mip) {
                 for (unsigned arrayLayer=0; arrayLayer<std::max(1u, unsigned(desc._textureDesc._arrayCount)); ++arrayLayer) {
                     auto srd = data({mip, arrayLayer});
-                    if (!srd._data || !srd._size) continue;
+                    if (!srd._data.size()) continue;
 
                     uint32 subResource = D3D11CalcSubresource(mip, arrayLayer, desc._textureDesc._mipCount);
                     if (isFullUpdate) {
 
 				        metalContext->GetUnderlying()->UpdateSubresource(
-                            ResPtr(resource), subResource, NULL, srd._data, 
+                            ResPtr(resource), subResource, NULL, srd._data.begin(), 
                             srd._pitches._rowPitch, srd._pitches._slicePitch);
 
                     } else {
 
                         D3D11_BOX d3dBox = {(UINT)box._left, (UINT)box._top, 0u, (UINT)box._right, (UINT)box._bottom, 1u};
-                        const void* pAdjustedSrcData = srd._data;
+                        const void* pAdjustedSrcData = srd._data.begin();
 
                         #if DX_VERSION >= DX_VERSION_11_1
                                 //  Attempt to use "ID3D11DeviceContext1", if we can get it. This version solves
@@ -77,10 +77,10 @@
                             intrusive_ptr<ID3D11DeviceContext1> devContext1(devContext1Temp, false);
                             if (SUCCEEDED(hresult) && devContext1) {
 
-                                assert(!IsBadReadPtr(srd._data, srd._pitches._slicePitch));
+                                assert(!IsBadReadPtr(srd._data.begin(), srd._pitches._slicePitch));
                                 unsigned copyFlags = 0; // (can be no_overwrite / discard on Win8)
                                 devContext1->UpdateSubresource1(
-                                    ResPtr(resource), subResource, &d3dBox, srd._data, 
+                                    ResPtr(resource), subResource, &d3dBox, srd._data.begin(), 
                                     srd._pitches._rowPitch, srd._pitches._slicePitch, copyFlags);
                             
                             } else 
@@ -108,7 +108,7 @@
                                         srcBitsPerElement   *= 16;
                                     }
                              
-                                    pAdjustedSrcData = ((const BYTE*)srd._data) - (alignedBox.front * srd._pitches._slicePitch) - (alignedBox.top * srd._pitches._rowPitch) - (alignedBox.left * (srcBitsPerElement/8));
+                                    pAdjustedSrcData = ((const BYTE*)srd._data.begin()) - (alignedBox.front * srd._pitches._slicePitch) - (alignedBox.top * srd._pitches._rowPitch) - (alignedBox.left * (srcBitsPerElement/8));
                             }
 
                             Metal::TextureDesc2D destinationDesc(ResPtr(resource));
@@ -122,7 +122,7 @@
                             // }
 
                             assert(pAdjustedSrcData != nullptr);
-                            assert(!IsBadReadPtr(srd._data, srd._pitches._slicePitch));
+                            assert(!IsBadReadPtr(srd._data.begin(), srd._pitches._slicePitch));
 					        metalContext->GetUnderlying()->UpdateSubresource(
                                 ResPtr(resource), subResource, &d3dBox, pAdjustedSrcData, 
                                 srd._pitches._rowPitch, srd._pitches._slicePitch);
@@ -130,7 +130,7 @@
                         }
                     }
 
-                    copiedBytes += (unsigned)srd._size;
+                    copiedBytes += (unsigned)srd._data.size();
                 }
             }
 
@@ -199,7 +199,7 @@
             for (unsigned m=0; m<desc._textureDesc._mipCount; ++m)
                 for (unsigned a=0; a<desc._textureDesc._arrayCount; ++a) {
                     auto subResData = data({m, a});
-                    if (!subResData._data || !subResData._size) continue;
+                    if (!subResData._data.size()) continue;
 
                     uint32 subResource = D3D11CalcSubresource(m, a, desc._textureDesc._mipCount);
                     D3D11_MAPPED_SUBRESOURCE mappedSubresource;
@@ -210,7 +210,7 @@
                     assert(SUCCEEDED(hresult));
 
                     if (SUCCEEDED(hresult) && mappedSubresource.pData) {
-                        auto dstSize = subResData._size;        // D3D11_MAPPED_SUBRESOURCE doesn't contain a size!
+                        auto dstSize = subResData._data.size();        // D3D11_MAPPED_SUBRESOURCE doesn't contain a size!
                         copiedBytes += CopyMipLevel(
                             mappedSubresource.pData, dstSize, TexturePitches{mappedSubresource.DepthPitch, mappedSubresource. DepthPitch},
                             CalculateMipMapDesc(desc._textureDesc, m),
@@ -235,7 +235,7 @@
             if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
                 Metal::Copy(
                     *metalContext, 
-                    &finalResource, &staging,
+					Metal::AsID3DResource(finalResource), Metal::AsID3DResource(staging),
                     Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
             } else {
                 for (unsigned a=0; a<std::max(1u, (unsigned)destinationDesc._textureDesc._arrayCount); ++a) {
@@ -243,11 +243,11 @@
                         Metal::CopyPartial(
                             *metalContext,
                             Metal::CopyPartial_Dest(
-                                &finalResource, 
+                                Metal::AsID3DResource(finalResource), 
                                 {c, a}, 
                                 {stagingXYOffset[0], stagingXYOffset[1], 0}),
                             Metal::CopyPartial_Src(
-                                &staging, 
+								Metal::AsID3DResource(staging),
                                 {c-stagingLODOffset, a},
                                 {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
                                 {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
@@ -385,8 +385,8 @@
                     using namespace RenderCore;
                     Metal::CopyPartial(
                         *metalContext,
-                        Metal::CopyPartial_Dest(destination, {0, i->_destination}),
-                        Metal::CopyPartial_Src(source, {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
+                        Metal::CopyPartial_Dest(Metal::AsID3DResource(*destination), {0, i->_destination}),
+                        Metal::CopyPartial_Src(Metal::AsID3DResource(*source), {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(*metalContext, source, MapType::ReadOnly);
@@ -593,8 +593,9 @@
 					[initialisationData](SubResourceId sr) -> RenderCore::SubResourceInitData
 					{
 						RenderCore::SubResourceInitData result;
-						result._data = initialisationData->GetData(sr);
-						result._size = initialisationData->GetDataSize(sr);
+						const void* data = initialisationData->GetData(sr);
+						auto size = initialisationData->GetDataSize(sr);
+						result._data = MakeIteratorRange(data, PtrAdd(data, size));
 						result._pitches = initialisationData->GetPitches(sr);
 						return result;
 					});
@@ -605,7 +606,7 @@
 
 		BufferDesc ExtractDesc(UnderlyingResource& resource)
 		{
-			return Metal::ExtractDesc(&resource);
+			return Metal::ExtractDesc(resource);
 		}
 
         void AttachObject(ID3D::Resource* resource, const GUID& guid, IUnknown* attachableObject)

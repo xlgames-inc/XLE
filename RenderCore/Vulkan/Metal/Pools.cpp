@@ -585,7 +585,7 @@ namespace RenderCore { namespace Metal_Vulkan
             factory, desc, 
             [&dummyData](SubResourceId)
             {
-                return SubResourceInitData{dummyData, 32*32*4, TexturePitches{32*4, 32*32*4}};
+                return SubResourceInitData{MakeIteratorRange(dummyData), TexturePitches{32*4, 32*32*4}};
             });
     }
 

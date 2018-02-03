@@ -26,7 +26,7 @@ namespace RenderCore
 	enum class Topology;
 	enum class AddressMode;
 	enum class FilterMode;
-	enum class Comparison;
+	enum class CompareOp;
 	enum class CullMode;
 	enum class FillMode;
 	enum class Blend;

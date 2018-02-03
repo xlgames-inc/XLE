@@ -18,26 +18,25 @@ namespace RenderCore { namespace Metal_DX11
     class RenderTargetView
     {
     public:
-        RenderTargetView(const ObjectFactory& factory, UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit RenderTargetView(UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
-
-        RenderTargetView(ID3D::RenderTargetView* resource);
-        RenderTargetView(MovePTRHelper<ID3D::RenderTargetView> resource);
-        RenderTargetView(DeviceContext& context);
-        RenderTargetView();
-        ~RenderTargetView();
-
-        RenderTargetView(const RenderTargetView& cloneFrom);
-        RenderTargetView(RenderTargetView&& moveFrom) never_throws;
-        RenderTargetView& operator=(const RenderTargetView& cloneFrom);
-        RenderTargetView& operator=(RenderTargetView&& moveFrom) never_throws;
+        explicit RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
+		explicit RenderTargetView(DeviceContext& context);
         
         intrusive_ptr<ID3D::Resource>	GetResource() const;
-        ResourcePtr		                ShareResource() const;
+        IResourcePtr					ShareResource() const;
 
         typedef ID3D::RenderTargetView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
+
+		RenderTargetView(intrusive_ptr<ID3D::RenderTargetView>&& resource);
+		RenderTargetView(const intrusive_ptr<ID3D::RenderTargetView>& resource);
+		RenderTargetView();
+		~RenderTargetView();
+		RenderTargetView(const RenderTargetView& cloneFrom);
+		RenderTargetView(RenderTargetView&& moveFrom) never_throws;
+		RenderTargetView& operator=(const RenderTargetView& cloneFrom);
+		RenderTargetView& operator=(RenderTargetView&& moveFrom) never_throws;
+
     private:
         intrusive_ptr<ID3D::RenderTargetView>      _underlying;
     };
@@ -45,26 +44,24 @@ namespace RenderCore { namespace Metal_DX11
     class DepthStencilView
     {
     public:
-        DepthStencilView(const ObjectFactory& factory, UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit DepthStencilView(UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
+        explicit DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
+		explicit DepthStencilView(DeviceContext& context);
 
-        DepthStencilView(ID3D::DepthStencilView* resource);
-        DepthStencilView(MovePTRHelper<ID3D::DepthStencilView> resource);
-        DepthStencilView(DeviceContext& context);
-        DepthStencilView();
-        ~DepthStencilView();
-
-        DepthStencilView(const DepthStencilView& cloneFrom);
-        DepthStencilView(DepthStencilView&& moveFrom) never_throws;
-        DepthStencilView& operator=(const DepthStencilView& cloneFrom);
-        DepthStencilView& operator=(DepthStencilView&& moveFrom) never_throws;
-        
         intrusive_ptr<ID3D::Resource>	GetResource() const;
         ResourcePtr		                ShareResource() const;
 
         typedef ID3D::DepthStencilView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
+
+		DepthStencilView(intrusive_ptr<ID3D::DepthStencilView>&& resource);
+		DepthStencilView(const intrusive_ptr<ID3D::DepthStencilView>& resource);
+		DepthStencilView();
+		~DepthStencilView();
+		DepthStencilView(const DepthStencilView& cloneFrom);
+		DepthStencilView(DepthStencilView&& moveFrom) never_throws;
+		DepthStencilView& operator=(const DepthStencilView& cloneFrom);
+		DepthStencilView& operator=(DepthStencilView&& moveFrom) never_throws;
     private:
         intrusive_ptr<ID3D::DepthStencilView>      _underlying;
     };
@@ -72,16 +69,7 @@ namespace RenderCore { namespace Metal_DX11
     class UnorderedAccessView
     {
     public:
-        UnorderedAccessView(const ObjectFactory& factory, UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit UnorderedAccessView(UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
-
-        UnorderedAccessView();
-        ~UnorderedAccessView();
-
-        UnorderedAccessView(const UnorderedAccessView& cloneFrom);
-        UnorderedAccessView(UnorderedAccessView&& moveFrom) never_throws;
-        UnorderedAccessView& operator=(const UnorderedAccessView& cloneFrom);
-        UnorderedAccessView& operator=(UnorderedAccessView&& moveFrom) never_throws;
+        explicit UnorderedAccessView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
         
         intrusive_ptr<ID3D::Resource>   GetResource() const;
         ResourcePtr		                ShareResource() const;
@@ -89,6 +77,15 @@ namespace RenderCore { namespace Metal_DX11
         typedef ID3D::UnorderedAccessView*      UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
+
+		UnorderedAccessView(intrusive_ptr<ID3D::UnorderedAccessView>&& resource);
+		UnorderedAccessView(const intrusive_ptr<ID3D::UnorderedAccessView>& resource);
+		UnorderedAccessView();
+		~UnorderedAccessView();
+		UnorderedAccessView(const UnorderedAccessView& cloneFrom);
+		UnorderedAccessView(UnorderedAccessView&& moveFrom) never_throws;
+		UnorderedAccessView& operator=(const UnorderedAccessView& cloneFrom);
+		UnorderedAccessView& operator=(UnorderedAccessView&& moveFrom) never_throws;
     private:
         intrusive_ptr<ID3D::UnorderedAccessView>   _underlying;
     };
@@ -96,20 +93,9 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderResourceView
     {
     public:
-        ShaderResourceView(const ObjectFactory& factory, UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit ShaderResourceView(UnderlyingResourcePtr resource, const TextureViewWindow& window = TextureViewWindow());
+        explicit ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
 
-        explicit ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource);
-        explicit ShaderResourceView(MovePTRHelper<ID3D::ShaderResourceView> resource);
-        ShaderResourceView();
-        ~ShaderResourceView();
-
-        ShaderResourceView(const ShaderResourceView& cloneFrom);
-        ShaderResourceView(ShaderResourceView&& moveFrom) never_throws;
-        ShaderResourceView& operator=(const ShaderResourceView& cloneFrom);
-        ShaderResourceView& operator=(ShaderResourceView&& moveFrom) never_throws;
-
-        static ShaderResourceView RawBuffer(UnderlyingResourcePtr res, unsigned sizeBytes, unsigned offsetBytes = 0);
+        static ShaderResourceView RawBuffer(const std::shared_ptr<IResource>& resource, unsigned sizeBytes, unsigned offsetBytes = 0);
 
 		intrusive_ptr<ID3D::Resource>	GetResource() const;
         ResourcePtr		                ShareResource() const;
@@ -117,6 +103,15 @@ namespace RenderCore { namespace Metal_DX11
         typedef ID3D::ShaderResourceView*       UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
+
+		ShaderResourceView(intrusive_ptr<ID3D::ShaderResourceView>&& resource);
+		ShaderResourceView(const intrusive_ptr<ID3D::ShaderResourceView>& resource);
+		ShaderResourceView();
+		~ShaderResourceView();
+		ShaderResourceView(const ShaderResourceView& cloneFrom);
+		ShaderResourceView(ShaderResourceView&& moveFrom) never_throws;
+		ShaderResourceView& operator=(const ShaderResourceView& cloneFrom);
+		ShaderResourceView& operator=(ShaderResourceView&& moveFrom) never_throws;
     private:
         intrusive_ptr<ID3D::ShaderResourceView>   _underlying;
     };

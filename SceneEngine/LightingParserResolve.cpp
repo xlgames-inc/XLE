@@ -713,16 +713,16 @@ namespace SceneEngine
         // and "0" to succeed on the back size
         _writePixelFrequencyPixels = Metal::DepthStencilState(
             false, false, StencilSky|StencilSampleCount, 0xff, 
-            Metal::StencilMode(Comparison::Equal, StencilOp::DontWrite),
-            Metal::StencilMode(Comparison::Less, StencilOp::DontWrite));
+            Metal::StencilMode(CompareOp::Equal, StencilOp::DontWrite),
+            Metal::StencilMode(CompareOp::Less, StencilOp::DontWrite));
 
         _writeNonSky = Metal::DepthStencilState(
             false, false, StencilSky, 0xff, 
-            Metal::StencilMode(Comparison::Equal, StencilOp::DontWrite));
+            Metal::StencilMode(CompareOp::Equal, StencilOp::DontWrite));
 
         Metal::SamplerState shadowComparisonSampler(
             FilterMode::ComparisonBilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp,
-            Comparison::LessEqual);
+			CompareOp::LessEqual);
         Metal::SamplerState shadowDepthSampler(
             FilterMode::Bilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp);
 

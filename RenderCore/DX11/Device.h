@@ -6,12 +6,6 @@
 
 #pragma once
 
-#define FLEX_CONTEXT_Device				FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_DeviceDX11			FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_PresentationChain	FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_ThreadContext		FLEX_CONTEXT_CONCRETE
-#define FLEX_CONTEXT_ThreadContextDX11	FLEX_CONTEXT_CONCRETE
-
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "IDeviceDX11.h"
@@ -70,7 +64,7 @@ namespace RenderCore { namespace ImplDX11
 		std::unique_ptr<IAnnotator> _annotator;
     };
 
-    class ThreadContextDX11 : public ThreadContext, public Base_ThreadContextDX11
+    class ThreadContextDX11 : public ThreadContext, public IThreadContextDX11
     {
     public:
         virtual void*       QueryInterface(size_t guid);
@@ -113,7 +107,7 @@ namespace RenderCore { namespace ImplDX11
         std::unique_ptr<Metal_DX11::ObjectFactory> _mainFactory;
     };
 
-    class DeviceDX11 : public Device, public Base_DeviceDX11
+    class DeviceDX11 : public Device, public IDeviceDX11
     {
     public:
         virtual void*           QueryInterface(size_t guid);

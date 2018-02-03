@@ -14,8 +14,6 @@
 
 typedef enum VkSampleCountFlagBits VkSampleCountFlagBits;
 
-namespace RenderCore { class Resource; }
-
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class ObjectFactory;

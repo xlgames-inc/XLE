@@ -598,7 +598,7 @@ namespace Utility
                             std::memcpy(tempCpy.get(), dest, cpySize);
                             
                             dstIterator = dest;
-                            assert(ptrdiff_t(destSize) - dstIteratorSize == cpySize);
+                            assert(ptrdiff_t(destSize) - dstIteratorSize == ptrdiff_t(cpySize));
                             dstIteratorSize = ptrdiff_t(destSize);
                             for (auto redoIt = startIt; redoIt != rit; ++redoIt) {
                                 bool castSuccess = Cast(dstIterator, size_t(dstIteratorSize), subType, tempCpyIterator, catType);

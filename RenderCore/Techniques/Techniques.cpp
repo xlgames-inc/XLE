@@ -116,7 +116,7 @@ namespace RenderCore { namespace Techniques
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
         _pimpl->_vertexInputLayout.insert(
             _pimpl->_vertexInputLayout.begin(),
-            vertexInputLayout.first, &vertexInputLayout.first[vertexInputLayout.second]);
+            vertexInputLayout.begin(), vertexInputLayout.end());
         _pimpl->UpdateHashValue();
     }
 
@@ -343,8 +343,7 @@ namespace RenderCore { namespace Techniques
         }
 
         boundInputLayout = std::make_unique<BoundInputLayout>(
-            std::make_pair(AsPointer(techniqueInterface._pimpl->_vertexInputLayout.cbegin()), techniqueInterface._pimpl->_vertexInputLayout.size()),
-            std::ref(*shaderProgram));
+			MakeIteratorRange(techniqueInterface._pimpl->_vertexInputLayout), std::ref(*shaderProgram));
 
         resolvedShader._shaderProgram = shaderProgram.get();
         resolvedShader._boundUniforms = boundUniforms.get();

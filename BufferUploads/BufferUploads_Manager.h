@@ -22,7 +22,7 @@ namespace BufferUploads
     class ThreadContext;
     namespace PlatformInterface { class GPUEventStack; }
 
-    class Manager : public Base_Manager
+    class Manager : public IManager
     {
     public:
         void                    UpdateData(TransactionID id, DataPacket* rawData, const PartialResource&);

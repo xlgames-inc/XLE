@@ -23,17 +23,6 @@ namespace RenderCore { namespace Assets
         return std::move(techniqueInterface);
     }
 
-    static bool HasElement(const InputLayout& inputLayout, const char elementSemantic[])
-    {
-        auto end = &inputLayout.first[inputLayout.second];
-        return std::find_if
-            (
-                inputLayout.first, end,
-                [=](const InputElementDesc& element)
-                    { return !XlCompareStringI(element._semanticName.c_str(), elementSemantic); }
-            ) != end;
-    }
-
     ParameterBox TechParams_SetGeo(const InputLayout& inputLayout)
     {
         ParameterBox result;

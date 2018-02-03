@@ -140,7 +140,7 @@ namespace RenderCore { namespace Assets
         }
 
         _boundInputLayout = BoundInputLayout(
-            std::make_pair(AsPointer(skinningInputLayout.cbegin()), skinningInputLayout.size()),
+            MakeIteratorRange(skinningInputLayout),
             vsByteCodeP4);
 
         /////////////////////////////////////////////////////////////////////////////
@@ -728,7 +728,7 @@ namespace RenderCore { namespace Assets
         const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(  
             "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
             "xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
-        BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
+        BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
         metalContext->Bind(boundVertexInputLayout);
         metalContext->Bind(shaderProgram);
 
@@ -809,7 +809,7 @@ namespace RenderCore { namespace Assets
 			srvDesc.ViewDimension = D3D11_SRV_DIMENSION_BUFFER ;
 			srvDesc.Buffer.ElementOffset = 0;
 			srvDesc.Buffer.ElementWidth = (UINT)(bufferSize / (4*sizeof(float)));
-			auto srv = objFactory.CreateShaderResourceView(AsID3DResource(_resource), &srvDesc);
+			auto srv = objFactory.CreateShaderResourceView(AsID3DResource(*_resource), &srvDesc);
 			_view = ShaderResourceView(srv.get());
 		#endif
     }
@@ -879,6 +879,6 @@ namespace RenderCore { namespace Assets
 
     static void PushTBufferTemporaryTexture(Metal::DeviceContext* context, TBufferTemporaryTexture& tex)
     {
-        Metal::Copy(*context, tex._resource.get(), tex._stagingResource.get());
+        Metal::Copy(*context, Metal::AsID3DResource(*tex._resource), Metal::AsID3DResource(*tex._stagingResource));
     }
 }}

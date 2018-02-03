@@ -318,7 +318,7 @@ namespace RenderCore { namespace Techniques
         auto adjWindow = window;
         if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
             adjWindow._format._aspect = attachDesc._defaultAspect;
-        _pimpl->_srv[viewName] = Metal::ShaderResourceView(*_pimpl->_factory, _pimpl->_resources[resName], adjWindow);
+        _pimpl->_srv[viewName] = Metal::ShaderResourceView(_pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_srv[viewName].IsGood() ? &_pimpl->_srv[viewName] : nullptr;
     }
@@ -343,7 +343,7 @@ namespace RenderCore { namespace Techniques
         auto adjWindow = window;
         if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
             adjWindow._format._aspect = attachDesc._defaultAspect;
-        _pimpl->_rtv[viewName] = Metal::RenderTargetView(*_pimpl->_factory, _pimpl->_resources[resName], adjWindow);
+        _pimpl->_rtv[viewName] = Metal::RenderTargetView(_pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_rtv[viewName].IsGood() ? &_pimpl->_rtv[viewName] : nullptr;
     }
@@ -368,7 +368,7 @@ namespace RenderCore { namespace Techniques
         auto adjWindow = window;
         if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
             adjWindow._format._aspect = attachDesc._defaultAspect;
-        _pimpl->_dsv[viewName] = Metal::DepthStencilView(*_pimpl->_factory, _pimpl->_resources[resName], adjWindow);
+        _pimpl->_dsv[viewName] = Metal::DepthStencilView(_pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_dsv[viewName].IsGood() ? &_pimpl->_dsv[viewName] : nullptr;
     }

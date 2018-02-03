@@ -64,7 +64,7 @@ namespace RenderCore { namespace Metal_DX11
             //      Our format is almost identical (except std::string -> const char*)
             //
         D3D11_INPUT_ELEMENT_DESC nativeLayout[MaxInputLayoutElements];
-        for (unsigned c=0; c<std::min(dimof(nativeLayout), layout.second); ++c) {
+        for (unsigned c=0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
             nativeLayout[c].SemanticName             = layout.first[c]._semanticName.c_str();
             nativeLayout[c].SemanticIndex            = layout.first[c]._semanticIndex;
             nativeLayout[c].Format                   = DXGI_FORMAT(layout.first[c]._nativeFormat);
@@ -75,7 +75,7 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         return GetObjectFactory().CreateInputLayout(
-            nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.second), 
+            nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()), 
             byteCode.begin(), byteCode.size());
     }
 

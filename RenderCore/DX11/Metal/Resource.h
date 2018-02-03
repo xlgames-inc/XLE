@@ -12,7 +12,7 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/IteratorUtils.h"
 
-namespace RenderCore { class Resource; }
+namespace RenderCore { class IResource; }
 namespace RenderCore { namespace Metal_DX11
 {
 	class DeviceContext;
@@ -40,17 +40,18 @@ namespace RenderCore { namespace Metal_DX11
 	/// <summary>Helper object to catch multiple similar pointers</summary>
 	/// To help with platform abstraction, RenderCore::Resource* is actually the
 	/// same as a Metal::Resource*. This helper allows us to catch both equally.
-	class UnderlyingResourcePtr
+	using UnderlyingResourcePtr = intrusive_ptr<Underlying::Resource>;
+
+	class Resource : public IResource
 	{
 	public:
-		Underlying::Resource* get() { return _res; }
+		UnderlyingResourcePtr _underlying;
 
-		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Underlying::Resource*)res; }
-		UnderlyingResourcePtr(const RenderCore::ResourcePtr& res) { _res = (Underlying::Resource*)res.get(); }
-		UnderlyingResourcePtr(Underlying::Resource* res) { _res = res; }
-		UnderlyingResourcePtr(intrusive_ptr<Underlying::Resource> res) { _res = res.get(); }
-	protected:
-		Underlying::Resource* _res;
+		virtual void*       QueryInterface(size_t guid);
+
+		Resource() {}
+		explicit Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying) {}
+		explicit Resource(UnderlyingResourcePtr&& underlying) : _underlying(std::move(underlying)) {}
 	};
 
     class DeviceContext;
@@ -109,7 +110,8 @@ namespace RenderCore { namespace Metal_DX11
         //      G E T   D E S C       //
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
+    ResourceDesc ExtractDesc(const UnderlyingResourcePtr& res);
+	ResourceDesc ExtractDesc(const IResource& res);
 	ResourceDesc ExtractDesc(const ShaderResourceView& res);
 	ResourceDesc ExtractDesc(const RenderTargetView& res);
     ResourceDesc ExtractDesc(const DepthStencilView& res);
@@ -130,7 +132,7 @@ namespace RenderCore { namespace Metal_DX11
 		ImageLayout _oldLayout, _newLayout;
 
         LayoutTransition(
-            UnderlyingResourcePtr res = (Resource*)nullptr, 
+            UnderlyingResourcePtr res = nullptr, 
             ImageLayout oldLayout = ImageLayout::Undefined,
             ImageLayout newLayout = ImageLayout::Undefined) 
             : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
@@ -140,16 +142,15 @@ namespace RenderCore { namespace Metal_DX11
 	/////////////// Resource creation and access ///////////////
 
 	using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-	RenderCore::ResourcePtr CreateResource(
+	RenderCore::IResourcePtr CreateResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 
 		const ResourceInitializer& init = ResourceInitializer());
 
-	ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
-
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr);
-	RenderCore::ResourcePtr AsResourcePtr(ID3D::Resource*);
-	RenderCore::ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
+	ID3D::Resource* AsID3DResource(const IResource&);
+	RenderCore::IResourcePtr AsResourcePtr(ID3D::Resource*);
+	RenderCore::IResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
 }}
 
 #pragma warning(push)

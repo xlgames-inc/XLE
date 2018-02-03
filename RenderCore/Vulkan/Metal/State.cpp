@@ -78,19 +78,19 @@ namespace RenderCore { namespace Metal_Vulkan
         // VK_BLEND_FACTOR_ONE_MINUS_SRC1_ALPHA
     }
 
-    static VkCompareOp AsVkCompareOp(Comparison comparison)
+    static VkCompareOp AsVkCompareOp(CompareOp comparison)
     {
         switch (comparison)
         {
-        case Comparison::Never: return VK_COMPARE_OP_NEVER;
-        case Comparison::Less: return VK_COMPARE_OP_LESS;
-        case Comparison::Equal: return VK_COMPARE_OP_EQUAL;
-        case Comparison::LessEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
-        case Comparison::Greater: return VK_COMPARE_OP_GREATER;
-        case Comparison::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
-        case Comparison::GreaterEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
+        case CompareOp::Never: return VK_COMPARE_OP_NEVER;
+        case CompareOp::Less: return VK_COMPARE_OP_LESS;
+        case CompareOp::Equal: return VK_COMPARE_OP_EQUAL;
+        case CompareOp::LessEqual: return VK_COMPARE_OP_LESS_OR_EQUAL;
+        case CompareOp::Greater: return VK_COMPARE_OP_GREATER;
+        case CompareOp::NotEqual: return VK_COMPARE_OP_NOT_EQUAL;
+        case CompareOp::GreaterEqual: return VK_COMPARE_OP_GREATER_OR_EQUAL;
         default:
-        case Comparison::Always: return VK_COMPARE_OP_ALWAYS;
+        case CompareOp::Always: return VK_COMPARE_OP_ALWAYS;
         }
     }
 
@@ -228,10 +228,10 @@ namespace RenderCore { namespace Metal_Vulkan
         return *this;
     }
 
-    StencilMode StencilMode::NoEffect(Comparison::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
-    StencilMode StencilMode::AlwaysWrite(Comparison::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
+    StencilMode StencilMode::NoEffect(CompareOp::Always, StencilOp::DontWrite, StencilOp::DontWrite, StencilOp::DontWrite);
+    StencilMode StencilMode::AlwaysWrite(CompareOp::Always, StencilOp::Replace, StencilOp::DontWrite, StencilOp::DontWrite);
 
-    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, Comparison comparison)
+    DepthStencilState::DepthStencilState(bool enabled, bool writeEnabled, CompareOp comparison)
     {
         sType = VK_STRUCTURE_TYPE_PIPELINE_DEPTH_STENCIL_STATE_CREATE_INFO;
         pNext = nullptr;
@@ -293,7 +293,7 @@ namespace RenderCore { namespace Metal_Vulkan
         AddressMode addressU, 
         AddressMode addressV, 
         AddressMode addressW,
-		Comparison comparison)
+		CompareOp comparison)
     {
         VkSamplerCreateInfo samplerCreateInfo = {};
         samplerCreateInfo.sType = VK_STRUCTURE_TYPE_SAMPLER_CREATE_INFO;
