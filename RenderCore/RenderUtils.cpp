@@ -22,7 +22,7 @@
 
 namespace RenderCore
 {
-    const TextureViewWindow::SubResourceRange TextureViewWindow::All = SubResourceRange{0, Unlimited};
+    const TextureViewDesc::SubResourceRange TextureViewDesc::All = SubResourceRange{0, Unlimited};
 
     namespace Exceptions
     {

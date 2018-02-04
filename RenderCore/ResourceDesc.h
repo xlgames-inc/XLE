@@ -178,7 +178,7 @@ namespace RenderCore
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class TextureViewWindow
+    class TextureViewDesc
     {
     public:
         struct SubResourceRange { unsigned _min; unsigned _count; };
@@ -214,7 +214,7 @@ namespace RenderCore
         TextureDesc::Dimensionality _dimensionality;
 		Flags::BitField				_flags;
 
-        TextureViewWindow(
+        TextureViewDesc(
             FormatFilter format = FormatFilter(),
             TextureDesc::Dimensionality dimensionality = TextureDesc::Dimensionality::Undefined,
             SubResourceRange mipRange = All,
@@ -224,7 +224,7 @@ namespace RenderCore
     };
 
     enum class FormatUsage { SRV, RTV, DSV, UAV };
-    Format ResolveFormat(Format baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage);
+    Format ResolveFormat(Format baseFormat, TextureViewDesc::FormatFilter filter, FormatUsage usage);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

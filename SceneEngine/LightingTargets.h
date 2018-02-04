@@ -13,7 +13,7 @@
 
 #include "../BufferUploads/IBufferUploads.h"
 
-namespace RenderCore { class TextureViewWindow; }
+namespace RenderCore { class TextureViewDesc; }
 
 namespace SceneEngine
 {
@@ -44,7 +44,7 @@ namespace SceneEngine
         virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
 
         virtual const SRV&      GetSRV(Name) const = 0;
-        virtual const SRV&      GetSRV(Name, Name, const RenderCore::TextureViewWindow&) const = 0;
+        virtual const SRV&      GetSRV(Name, Name, const RenderCore::TextureViewDesc&) const = 0;
     };
 
     class LightingResolveShaders

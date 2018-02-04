@@ -89,10 +89,10 @@ namespace RenderOverlays
     {
         auto stencilSrv = namedRes.GetSRV(
             5u, 2u,
-            TextureViewWindow(
-                {TextureViewWindow::Aspect::Stencil},
-                TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
-                TextureViewWindow::Flags::JustStencil));
+            TextureViewDesc(
+                {TextureViewDesc::Aspect::Stencil},
+                TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
+                TextureViewDesc::Flags::JustStencil));
         if (!stencilSrv) return;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
@@ -206,7 +206,7 @@ namespace RenderOverlays
 
 		const AttachmentDesc attachments[] = { {
 			s_commonOffscreen, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-			Format::R8G8B8A8_UNORM, TextureViewWindow::ColorLinear,
+			Format::R8G8B8A8_UNORM, TextureViewDesc::ColorLinear,
 			AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource} };
 
         namedRes.DefineAttachments(MakeIteratorRange(attachments));
@@ -214,7 +214,7 @@ namespace RenderOverlays
         const bool doDepthTest = true;
         FrameBufferDesc fbLayout = {
             {{{s_commonOffscreen}, doDepthTest?2u:~0u}, {{0u}, ~0u, {s_commonOffscreen}}}, 
-            {{s_commonOffscreen, s_commonOffscreen, TextureViewWindow(), AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain}}};
+            {{s_commonOffscreen, s_commonOffscreen, TextureViewDesc(), AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain}}};
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, fbLayout, 0u, namedRes,
             {{MakeClearValue(0.f, 0.f, 0.f, 0.f)}});

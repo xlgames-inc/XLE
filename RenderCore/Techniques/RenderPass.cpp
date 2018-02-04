@@ -41,7 +41,7 @@ namespace RenderCore { namespace Techniques
         unsigned slot,
         AttachmentName attachmentName,
         AttachmentViewDesc::LoadStore storeOp,
-        TextureViewWindow::Aspect aspect)
+        TextureViewDesc::Aspect aspect)
     {
     }
 
@@ -75,9 +75,9 @@ namespace RenderCore { namespace Techniques
     class NamedAttachmentsWrapper : public Metal::INamedAttachments
     {
     public:
-        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*;
-        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*;
-        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*;
+        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*;
+        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const -> Metal::RenderTargetView*;
+        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const -> Metal::DepthStencilView*;
         virtual auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
         NamedAttachmentsWrapper(NamedAttachments& namedRes);
@@ -86,17 +86,17 @@ namespace RenderCore { namespace Techniques
         NamedAttachments* _namedRes;
     };
 
-    auto NamedAttachmentsWrapper::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::ShaderResourceView*
+    auto NamedAttachmentsWrapper::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
     {
         return _namedRes->GetSRV(viewName, resName, window);
     }
 
-    auto NamedAttachmentsWrapper::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::RenderTargetView*
+    auto NamedAttachmentsWrapper::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const -> Metal::RenderTargetView*
     {
         return _namedRes->GetRTV(viewName, resName, window);
     }
 
-    auto NamedAttachmentsWrapper::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const -> Metal::DepthStencilView*
+    auto NamedAttachmentsWrapper::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const -> Metal::DepthStencilView*
     {
         return _namedRes->GetDSV(viewName, resName, window);
     }
@@ -298,7 +298,7 @@ namespace RenderCore { namespace Techniques
         return &_pimpl->_attachments[resName];
     }
     
-    Metal::ShaderResourceView*   NamedAttachments::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::ShaderResourceView*   NamedAttachments::GetSRV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -316,14 +316,14 @@ namespace RenderCore { namespace Techniques
                 return nullptr;
 
         auto adjWindow = window;
-        if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
+        if (adjWindow._format._aspect == TextureViewDesc::UndefinedAspect)
             adjWindow._format._aspect = attachDesc._defaultAspect;
         _pimpl->_srv[viewName] = Metal::ShaderResourceView(_pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_srv[viewName].IsGood() ? &_pimpl->_srv[viewName] : nullptr;
     }
 
-    Metal::RenderTargetView*     NamedAttachments::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::RenderTargetView*     NamedAttachments::GetRTV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -341,14 +341,14 @@ namespace RenderCore { namespace Techniques
                 return nullptr;
         
         auto adjWindow = window;
-        if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
+        if (adjWindow._format._aspect == TextureViewDesc::UndefinedAspect)
             adjWindow._format._aspect = attachDesc._defaultAspect;
         _pimpl->_rtv[viewName] = Metal::RenderTargetView(_pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
         return _pimpl->_rtv[viewName].IsGood() ? &_pimpl->_rtv[viewName] : nullptr;
     }
 
-    Metal::DepthStencilView*     NamedAttachments::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewWindow& window) const
+    Metal::DepthStencilView*     NamedAttachments::GetDSV(AttachmentName viewName, AttachmentName resName, const TextureViewDesc& window) const
     {
         if (resName == ~0u) resName = viewName;
         if (viewName >= s_maxBoundTargets || resName >= s_maxBoundTargets) return nullptr;
@@ -366,7 +366,7 @@ namespace RenderCore { namespace Techniques
                 return nullptr;
 
         auto adjWindow = window;
-        if (adjWindow._format._aspect == TextureViewWindow::UndefinedAspect)
+        if (adjWindow._format._aspect == TextureViewDesc::UndefinedAspect)
             adjWindow._format._aspect = attachDesc._defaultAspect;
         _pimpl->_dsv[viewName] = Metal::DepthStencilView(_pimpl->_resources[resName], adjWindow);
         _pimpl->_resNames[viewName] = resName;
@@ -397,7 +397,7 @@ namespace RenderCore { namespace Techniques
                 desc._textureDesc._format,
                 (float)desc._textureDesc._width, (float)desc._textureDesc._height,
                 0u,
-                TextureViewWindow::UndefinedAspect,
+                TextureViewDesc::UndefinedAspect,
                 RenderCore::AttachmentDesc::DimensionsMode::Absolute,
                   ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
                 | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)

@@ -14,23 +14,23 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    static bool IsDefault(const TextureViewWindow& window)
+    static bool IsDefault(const TextureViewDesc& window)
     {
-        return window._format._aspect == TextureViewWindow::UndefinedAspect
+        return window._format._aspect == TextureViewDesc::UndefinedAspect
             && window._format._explicitFormat == Format(0)
-            && window._mipRange._min == TextureViewWindow::All._min && window._mipRange._count == TextureViewWindow::All._count
-            && window._arrayLayerRange._min == TextureViewWindow::All._min && window._arrayLayerRange._count == TextureViewWindow::All._count
+            && window._mipRange._min == TextureViewDesc::All._min && window._mipRange._count == TextureViewDesc::All._count
+            && window._arrayLayerRange._min == TextureViewDesc::All._min && window._arrayLayerRange._count == TextureViewDesc::All._count
             && window._dimensionality == TextureDesc::Dimensionality::Undefined
             && window._flags == 0;
     }
 
-    static DXGI_FORMAT ResolveFormat(DXGI_FORMAT baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage)
+    static DXGI_FORMAT ResolveFormat(DXGI_FORMAT baseFormat, TextureViewDesc::FormatFilter filter, FormatUsage usage)
     {
         if (filter._explicitFormat != Format(0))
             return AsDXGIFormat(filter._explicitFormat);
 
         // common case is everything set to defaults --
-        if (filter._aspect == TextureViewWindow::UndefinedAspect)
+        if (filter._aspect == TextureViewDesc::UndefinedAspect)
             return baseFormat;      // (or just use DXGI_FORMAT_UNKNOWN)
 
         return AsDXGIFormat(ResolveFormat(AsFormat(baseFormat), filter, usage));
@@ -38,7 +38,7 @@ namespace RenderCore { namespace Metal_DX11
 
     RenderTargetView::RenderTargetView(
 		const std::shared_ptr<IResource>& iresource,
-		const TextureViewWindow& window)
+		const TextureViewDesc& window)
     {
 		auto* resource = AsID3DResource(*iresource);
         if (!resource) {
@@ -63,7 +63,7 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_RTV_DIMENSION_TEXTURE1DARRAY : D3D11_RTV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -76,8 +76,8 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
-                    if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewWindow::Flags::ForceSingleSample)) {
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewDesc::Flags::ForceSingleSample)) {
                         viewDesc.ViewDimension = selectArrayForm ? D3D11_RTV_DIMENSION_TEXTURE2DMSARRAY : D3D11_RTV_DIMENSION_TEXTURE2DMS;
                         viewDesc.Texture2DMSArray.FirstArraySlice = window._arrayLayerRange._min;
                         viewDesc.Texture2DMSArray.ArraySize = arraySize;
@@ -137,7 +137,7 @@ namespace RenderCore { namespace Metal_DX11
 
     DepthStencilView::DepthStencilView(
 		const std::shared_ptr<IResource>& iresource,
-		const TextureViewWindow& window)
+		const TextureViewDesc& window)
     {
 		auto* resource = AsID3DResource(*iresource);
         if (!resource) {
@@ -151,8 +151,8 @@ namespace RenderCore { namespace Metal_DX11
         } else {
             D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc;
             viewDesc.Flags = 0;
-            if (window._flags & TextureViewWindow::Flags::JustDepth) viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
-            if (window._flags & TextureViewWindow::Flags::JustStencil) viewDesc.Flags |= D3D11_DSV_READ_ONLY_DEPTH;
+            if (window._flags & TextureViewDesc::Flags::JustDepth) viewDesc.Flags |= D3D11_DSV_READ_ONLY_STENCIL;
+            if (window._flags & TextureViewDesc::Flags::JustStencil) viewDesc.Flags |= D3D11_DSV_READ_ONLY_DEPTH;
 
             D3D11_RESOURCE_DIMENSION resType;
             resource->GetType(&resType);
@@ -161,7 +161,7 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_DSV_DIMENSION_TEXTURE1DARRAY : D3D11_DSV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -174,8 +174,8 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
-                    if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewWindow::Flags::ForceSingleSample)) {
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
+                    if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewDesc::Flags::ForceSingleSample)) {
                         viewDesc.ViewDimension = selectArrayForm ? D3D11_DSV_DIMENSION_TEXTURE2DMSARRAY : D3D11_DSV_DIMENSION_TEXTURE2DMS;
                         viewDesc.Texture2DMSArray.FirstArraySlice = window._arrayLayerRange._min;
                         viewDesc.Texture2DMSArray.ArraySize = arraySize;
@@ -217,7 +217,7 @@ namespace RenderCore { namespace Metal_DX11
 
     UnorderedAccessView::UnorderedAccessView(
 		const std::shared_ptr<IResource>& iresource,
-		const TextureViewWindow& window)
+		const TextureViewDesc& window)
     {
 		auto* resource = AsID3DResource(*iresource);
         if (!resource) {
@@ -238,7 +238,7 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_UAV_DIMENSION_TEXTURE1DARRAY : D3D11_UAV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture1DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -251,7 +251,7 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_UAV_DIMENSION_TEXTURE2DARRAY : D3D11_UAV_DIMENSION_TEXTURE2D;
                     viewDesc.Texture2DArray.MipSlice = window._mipRange._min;
                     viewDesc.Texture2DArray.FirstArraySlice = window._arrayLayerRange._min;
@@ -278,8 +278,8 @@ namespace RenderCore { namespace Metal_DX11
                     viewDesc.Buffer.FirstElement = 0;
                     viewDesc.Buffer.NumElements = bufferDesc.StructureByteStride ? (bufferDesc.ByteWidth/bufferDesc.StructureByteStride) : bufferDesc.ByteWidth;
                     viewDesc.Buffer.Flags = 0;
-                    if (window._flags & TextureViewWindow::Flags::AppendBuffer) viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_APPEND;
-                    if (window._flags & TextureViewWindow::Flags::AttachedCounter) viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_COUNTER;
+                    if (window._flags & TextureViewDesc::Flags::AppendBuffer) viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_APPEND;
+                    if (window._flags & TextureViewDesc::Flags::AttachedCounter) viewDesc.Buffer.Flags |= D3D11_BUFFER_UAV_FLAG_COUNTER;
                     viewDesc.Format = AsDXGIFormat(window._format._explicitFormat);
                 }
                 break;
@@ -303,7 +303,7 @@ namespace RenderCore { namespace Metal_DX11
 
 	ShaderResourceView::ShaderResourceView(
 		const std::shared_ptr<IResource>& iresource,
-		const TextureViewWindow& window)
+		const TextureViewDesc& window)
 	{
 		// note --	for Vulkan compatibility, this should change so that array resources
 		//			get array views by default (unless it's disabled somehow via the window)
@@ -326,7 +326,7 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc1D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     viewDesc.ViewDimension = selectArrayForm ? D3D11_SRV_DIMENSION_TEXTURE1DARRAY : D3D11_SRV_DIMENSION_TEXTURE1D;
                     viewDesc.Texture1DArray.MostDetailedMip = window._mipRange._min;
                     viewDesc.Texture1DArray.MipLevels = window._mipRange._count;
@@ -340,7 +340,7 @@ namespace RenderCore { namespace Metal_DX11
                 {
                     TextureDesc2D textureDesc(resource);
                     auto arraySize = std::min((int)textureDesc.ArraySize - (int)window._arrayLayerRange._min, (int)window._arrayLayerRange._count);
-                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewWindow::Flags::ForceArray);
+                    bool selectArrayForm = ((arraySize>0) && window._arrayLayerRange._min != 0) || (window._flags & TextureViewDesc::Flags::ForceArray);
                     if (textureDesc.MiscFlags & D3D11_RESOURCE_MISC_TEXTURECUBE) {
                         viewDesc.ViewDimension = selectArrayForm ? D3D11_SRV_DIMENSION_TEXTURECUBEARRAY : D3D11_SRV_DIMENSION_TEXTURECUBE;
                         viewDesc.TextureCubeArray.MostDetailedMip = window._mipRange._min;
@@ -348,7 +348,7 @@ namespace RenderCore { namespace Metal_DX11
                         viewDesc.TextureCubeArray.First2DArrayFace = 0;
                         viewDesc.TextureCubeArray.NumCubes = std::max(1u, arraySize/6u); // ?
                     } else {
-                        if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewWindow::Flags::ForceSingleSample)) {
+                        if (textureDesc.SampleDesc.Count > 1 && !(window._flags & TextureViewDesc::Flags::ForceSingleSample)) {
                             viewDesc.ViewDimension = selectArrayForm ? D3D11_SRV_DIMENSION_TEXTURE2DMSARRAY : D3D11_SRV_DIMENSION_TEXTURE2DMS;
                             viewDesc.Texture2DMSArray.FirstArraySlice = window._arrayLayerRange._min;
                             viewDesc.Texture2DMSArray.ArraySize = arraySize;

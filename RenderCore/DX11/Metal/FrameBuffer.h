@@ -22,9 +22,9 @@ namespace RenderCore { namespace Metal_DX11
     class INamedAttachments
     {
     public:
-        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const ShaderResourceView* = 0;
-        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const RenderTargetView* = 0;
-        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> const DepthStencilView* = 0;
+        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> const ShaderResourceView* = 0;
+        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> const RenderTargetView* = 0;
+        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> const DepthStencilView* = 0;
     };
 
     class FrameBuffer

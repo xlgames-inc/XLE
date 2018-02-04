@@ -791,7 +791,7 @@ namespace SceneEngine
 			auto duplicatedDepthBuffer = Duplicate(*context, ExtractResource(depthBufferSRV));
             ShaderResourceView secondaryDepthBufferSRV(
                 duplicatedDepthBuffer, 
-                {{TextureViewWindow::Aspect::Depth}});
+                {{TextureViewDesc::Aspect::Depth}});
             // context->GetUnderlying()->CopyResource(
             //     mainTargets._secondaryDepthBufferTexture, mainTargets._msaaDepthBufferTexture);
 

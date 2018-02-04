@@ -63,11 +63,11 @@ namespace SceneEngine
         _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->ShareUnderlying());
         _nodeListBufferUAV = Metal::UnorderedAccessView(
             _nodeListBuffer->ShareUnderlying(),
-			TextureViewWindow(
+			TextureViewDesc(
 				Format::Unknown, TextureDesc::Dimensionality::Undefined,
-				TextureViewWindow::All,
-				TextureViewWindow::All,
-				TextureViewWindow::Flags::AttachedCounter));
+				TextureViewDesc::All,
+				TextureViewDesc::All,
+				TextureViewDesc::Flags::AttachedCounter));
 
         _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->ShareUnderlying());
         _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->ShareUnderlying());

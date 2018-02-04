@@ -101,7 +101,7 @@ namespace TextureTransform
             auto format = (Format)_desc._format;
             if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
             else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
-			_srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), TextureViewWindow{format});
+			_srv = Metal::ShaderResourceView(_resLocator->GetUnderlying(), TextureViewDesc{format});
             _finalFormat = format;
         }
     }
@@ -239,10 +239,10 @@ namespace TextureTransform
                     metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(mipDims[0]), float(mipDims[1])));
                     Metal::RenderTargetView rtv(
                         dstTexture->GetUnderlying(),
-                        TextureViewWindow(
+                        TextureViewDesc(
 							rtFormat, RenderCore::TextureDesc::Dimensionality::Undefined,
-							RenderCore::TextureViewWindow::SubResourceRange{m, 1},
-							RenderCore::TextureViewWindow::SubResourceRange{a, 1}));
+							RenderCore::TextureViewDesc::SubResourceRange{m, 1},
+							RenderCore::TextureViewDesc::SubResourceRange{a, 1}));
                     metalContext->Bind(MakeResourceList(rtv), nullptr);
 
                     for (unsigned p=0; p<passCount; ++p) {

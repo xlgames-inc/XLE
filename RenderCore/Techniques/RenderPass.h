@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../ResourceDesc.h"        // needed for TextureViewWindow constructor
+#include "../ResourceDesc.h"        // needed for TextureViewDesc constructor
 #include "../FrameBufferDesc.h"
 #include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
@@ -18,7 +18,7 @@ namespace RenderCore
 {
     class FrameBufferDesc;
     class AttachmentDesc;
-    class TextureViewWindow;
+    class TextureViewDesc;
     class TextureSamples;
     class FrameBufferProperties;
     using AttachmentName = uint32;
@@ -53,7 +53,7 @@ namespace RenderCore { namespace Techniques
             unsigned slot, 
             AttachmentName attachmentName,
             AttachmentViewDesc::LoadStore storeOp = AttachmentViewDesc::LoadStore::Retain, 
-            TextureViewWindow::Aspect aspect = TextureViewWindow::Aspect::UndefinedAspect);
+            TextureViewDesc::Aspect aspect = TextureViewDesc::Aspect::UndefinedAspect);
 
         PassFragmentInterface();
         ~PassFragmentInterface();
@@ -78,9 +78,9 @@ namespace RenderCore { namespace Techniques
     public:
         void DefineAttachment(AttachmentName, const AttachmentDesc& request);
 
-        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::ShaderResourceView*;
-        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::RenderTargetView*;
-        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewWindow& window = TextureViewWindow()) const -> Metal::DepthStencilView*;
+        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> Metal::ShaderResourceView*;
+        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> Metal::RenderTargetView*;
+        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> Metal::DepthStencilView*;
         auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
         void Bind(FrameBufferProperties props);

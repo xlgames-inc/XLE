@@ -892,10 +892,10 @@ namespace RenderCore { namespace ImplVulkan
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
         for (auto& i:images) {
-            TextureViewWindow window(
+            TextureViewDesc window(
                 _bufferDesc._format, _bufferDesc._dimensionality, 
-                TextureViewWindow::SubResourceRange{0, _bufferDesc._mipCount},
-                TextureViewWindow::SubResourceRange{0, _bufferDesc._arrayCount});
+                TextureViewDesc::SubResourceRange{0, _bufferDesc._mipCount},
+                TextureViewDesc::SubResourceRange{0, _bufferDesc._arrayCount});
             auto resDesc = CreateDesc(
                 BindFlag::RenderTarget|BindFlag::ShaderResource, 0u, GPUAccess::Read|GPUAccess::Write, 
                 _bufferDesc, "presentationimage");

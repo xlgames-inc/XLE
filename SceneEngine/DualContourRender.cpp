@@ -218,7 +218,7 @@ namespace SceneEngine
             if (prevTargets.GetDepthStencilView()) {
                 duplicatedDepthBuffer = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
                     prevTargets.GetDepthStencilView()).get(), 
-                    {{TextureViewWindow::Aspect::Depth}});
+                    {{TextureViewDesc::Aspect::Depth}});
             }
 #endif
 

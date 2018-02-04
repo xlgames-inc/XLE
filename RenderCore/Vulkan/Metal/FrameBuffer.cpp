@@ -347,7 +347,7 @@ namespace RenderCore { namespace Metal_Vulkan
             assert(resourceDesc);
 
             auto formatFilter = a._window._format;
-            if (formatFilter._aspect == TextureViewWindow::UndefinedAspect)
+            if (formatFilter._aspect == TextureViewDesc::UndefinedAspect)
                 formatFilter._aspect = resourceDesc->_defaultAspect;
             FormatUsage formatUsage = FormatUsage::SRV;
             auto attachUsage = Internal::GetAttachmentUsage(layout, a._viewName);

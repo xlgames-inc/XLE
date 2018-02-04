@@ -34,7 +34,7 @@ namespace RenderCore
                     _attachments.push_back(
                         AttachmentViewDesc{
                             a, a,
-                            TextureViewWindow(),
+                            TextureViewDesc(),
                             AttachmentViewDesc::LoadStore::Retain_RetainStencil,
                             AttachmentViewDesc::LoadStore::Retain_RetainStencil});
 
@@ -43,7 +43,7 @@ namespace RenderCore
                 _attachments.push_back(
                     AttachmentViewDesc{
                         p._depthStencil, p._depthStencil,
-                        TextureViewWindow(),
+                        TextureViewDesc(),
                         AttachmentViewDesc::LoadStore::Retain_RetainStencil,
                         AttachmentViewDesc::LoadStore::Retain_RetainStencil});
 
@@ -52,7 +52,7 @@ namespace RenderCore
                     _attachments.push_back(
                         AttachmentViewDesc{
                             a, a,
-                            TextureViewWindow(),
+                            TextureViewDesc(),
                             AttachmentViewDesc::LoadStore::Retain_RetainStencil,
                             AttachmentViewDesc::LoadStore::Retain_RetainStencil});
         }

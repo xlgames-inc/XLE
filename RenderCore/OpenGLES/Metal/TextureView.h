@@ -18,8 +18,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool                        IsGood() const { return _underlyingTexture.get() != nullptr; }
         bool                        HasMipMaps() const { return _hasMipMaps; }
 
-        ShaderResourceView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
+        ShaderResourceView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+        explicit ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 
         ShaderResourceView();
         ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture, bool hasMipMaps = true);
@@ -33,14 +33,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         bool                        IsGood() const { return _underlyingTexture.get() != nullptr || _underlyingRenderBuffer.get() != nullptr; }
 
-        RenderTargetView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
+        RenderTargetView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+        explicit RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 
         RenderTargetView();
         RenderTargetView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture);
         RenderTargetView(const intrusive_ptr<OpenGL::RenderBuffer>& underlyingRenderbuffer);
 
-        TextureViewWindow _window;
+        TextureViewDesc _window;
     };
 
     class DepthStencilView : public Resource
@@ -48,14 +48,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         bool                        IsGood() const { return _underlyingTexture.get() != nullptr || _underlyingRenderBuffer.get() != nullptr; }
 
-        DepthStencilView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
-        explicit DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window = TextureViewWindow());
+        DepthStencilView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
+        explicit DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 
         DepthStencilView();
         DepthStencilView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture);
         DepthStencilView(const intrusive_ptr<OpenGL::RenderBuffer>& underlyingRenderbuffer);
 
-        TextureViewWindow _window;
+        TextureViewDesc _window;
     };
 
 }}

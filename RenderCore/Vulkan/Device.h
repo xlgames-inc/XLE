@@ -160,7 +160,7 @@ namespace RenderCore { namespace ImplVulkan
 		std::shared_ptr<Metal_Vulkan::IDestructionQueue> _destrQueue;
     };
 
-    class ThreadContextVulkan : public ThreadContext, public Base_ThreadContextVulkan
+    class ThreadContextVulkan : public ThreadContext, public IThreadContextVulkan
     {
     public:
         virtual void*   QueryInterface(size_t guid);
@@ -215,7 +215,7 @@ namespace RenderCore { namespace ImplVulkan
         void DoSecondStageInit(VkSurfaceKHR surface = nullptr);
     };
 
-    class DeviceVulkan : public Device, public Base_DeviceVulkan
+    class DeviceVulkan : public Device, public IDeviceVulkan
     {
     public:
         virtual void*   QueryInterface(size_t guid);

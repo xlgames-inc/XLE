@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static Format ResolveVkFormat(Format baseFormat, TextureViewWindow::FormatFilter filter, FormatUsage usage)
+    static Format ResolveVkFormat(Format baseFormat, TextureViewDesc::FormatFilter filter, FormatUsage usage)
     {
         if (filter._explicitFormat != Format(0))
             return filter._explicitFormat;
@@ -32,15 +32,15 @@ namespace RenderCore { namespace Metal_Vulkan
         // Depth/stencil formats just stay as is. We just need to switch
         // between linear and SRGB formats when required --
         switch (filter._aspect) {
-        case TextureViewWindow::Depth:
-        case TextureViewWindow::DepthStencil:
-        case TextureViewWindow::Stencil:
+        case TextureViewDesc::Depth:
+        case TextureViewDesc::DepthStencil:
+        case TextureViewDesc::Stencil:
             return AsDepthStencilFormat(baseFormat);
 
-        case TextureViewWindow::ColorLinear:
+        case TextureViewDesc::ColorLinear:
             return AsLinearFormat(baseFormat);
 
-        case TextureViewWindow::ColorSRGB:
+        case TextureViewDesc::ColorSRGB:
             return AsSRGBFormat(baseFormat);
 
         default:
@@ -48,7 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static VkImageViewCreateInfo MakeCreateInfo(TextureViewWindow window, VkImage image, bool isArray)
+    static VkImageViewCreateInfo MakeCreateInfo(TextureViewDesc window, VkImage image, bool isArray)
     {
         // Note that the arrayCount value is sometimes set to 1 when we want 
         // an array texture with a single array slice (as opposed to 0, meaning no array at all).
@@ -73,25 +73,25 @@ namespace RenderCore { namespace Metal_Vulkan
 
         view_info.subresourceRange.aspectMask = AsImageAspectMask(window._format._explicitFormat);
         switch (window._format._aspect) {
-        case TextureViewWindow::Depth:
+        case TextureViewDesc::Depth:
             view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_DEPTH_BIT;
             break;
-        case TextureViewWindow::DepthStencil:
+        case TextureViewDesc::DepthStencil:
             view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_DEPTH_BIT | VK_IMAGE_ASPECT_STENCIL_BIT;
             break;
-        case TextureViewWindow::Stencil:
+        case TextureViewDesc::Stencil:
             view_info.subresourceRange.aspectMask &= VK_IMAGE_ASPECT_STENCIL_BIT;
             break;
         }
 
         // disable depth or stencil when requiring just a single subaspect
-        if (window._flags & TextureViewWindow::Flags::JustDepth) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
-        if (window._flags & TextureViewWindow::Flags::JustStencil) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
+        if (window._flags & TextureViewDesc::Flags::JustDepth) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_STENCIL_BIT;
+        if (window._flags & TextureViewDesc::Flags::JustStencil) view_info.subresourceRange.aspectMask &= ~VK_IMAGE_ASPECT_DEPTH_BIT;
 
         return view_info;
     }
 
-    TextureView::TextureView(const ObjectFactory& factory, VkImage image, const TextureViewWindow& window)
+    TextureView::TextureView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window)
     {
         // We don't know anything about the "image" in this case. We need to rely on "image" containing all
         // of the relevant information.
@@ -101,7 +101,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	TextureView::TextureView(
         const ObjectFactory& factory, const ResourcePtr& image, 
-        const TextureViewWindow& window, FormatUsage formatUsage)
+        const TextureViewDesc& window, FormatUsage formatUsage)
 	{
 		auto res = UnderlyingResourcePtr(image).get();
 		// note --	some "buffer" objects can be used as ShaderResources... In those cases, we will arrive here,
@@ -112,14 +112,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			const auto& tDesc = res->GetDesc()._textureDesc;
 			auto adjWindow = window;
 
-			// Some parts of the "TextureViewWindow" can be set to "undefined". In these cases,
+			// Some parts of the "TextureViewDesc" can be set to "undefined". In these cases,
 			// we should fill them in with the detail from the resource.
             adjWindow._format._explicitFormat = ResolveVkFormat(tDesc._format, adjWindow._format, formatUsage);
 			if (adjWindow._dimensionality == TextureDesc::Dimensionality::Undefined)
 				adjWindow._dimensionality = tDesc._dimensionality;
-			if (adjWindow._mipRange._count == TextureViewWindow::Unlimited)
+			if (adjWindow._mipRange._count == TextureViewDesc::Unlimited)
 				adjWindow._mipRange._count = tDesc._mipCount - adjWindow._mipRange._min;
-			if (adjWindow._arrayLayerRange._count == TextureViewWindow::Unlimited)
+			if (adjWindow._arrayLayerRange._count == TextureViewDesc::Unlimited)
 				adjWindow._arrayLayerRange._count = tDesc._arrayCount - adjWindow._arrayLayerRange._min;
 
 			auto createInfo = MakeCreateInfo(adjWindow, res->GetImage(), true);
@@ -130,11 +130,11 @@ namespace RenderCore { namespace Metal_Vulkan
         _image = image;
 	}
 
-    TextureView::TextureView(VkImage image, const TextureViewWindow& window)
+    TextureView::TextureView(VkImage image, const TextureViewDesc& window)
     : TextureView(GetObjectFactory(), image, window)
     {}
 
-    TextureView::TextureView(const ResourcePtr& image, const TextureViewWindow& window, FormatUsage formatUsage)
+    TextureView::TextureView(const ResourcePtr& image, const TextureViewDesc& window, FormatUsage formatUsage)
     : TextureView(GetObjectFactory(), image, window, formatUsage)
     { 
     }

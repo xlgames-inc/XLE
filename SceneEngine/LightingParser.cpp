@@ -676,7 +676,7 @@ namespace SceneEngine
             // Main multisampled depth stencil
             {   IMainTargets::MultisampledDepth, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 RenderCore::Format::R24G8_TYPELESS,
-                TextureViewWindow::Aspect::DepthStencil,
+                TextureViewDesc::Aspect::DepthStencil,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil },
 
                 // Generally the deferred pixel shader will just copy information from the albedo
@@ -689,17 +689,17 @@ namespace SceneEngine
                 //      In these cases, the first buffer should be a matching format.
             {   IMainTargets::GBufferDiffuse, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
-                (!desc._precisionTargets) ? TextureViewWindow::Aspect::ColorSRGB : TextureViewWindow::Aspect::ColorLinear,
+                (!desc._precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget },
 
             {   IMainTargets::GBufferNormals, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
-                TextureViewWindow::Aspect::ColorLinear,
+                TextureViewDesc::Aspect::ColorLinear,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget },
 
             {   IMainTargets::GBufferParameters, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                 (!desc._precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
-                TextureViewWindow::Aspect::ColorLinear,
+                TextureViewDesc::Aspect::ColorLinear,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }
         };
 
@@ -707,7 +707,7 @@ namespace SceneEngine
         {
             // Main multisampled depth stencil
             {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, 
-                TextureViewWindow(),
+                TextureViewDesc(),
                 AttachmentViewDesc::LoadStore::Clear_ClearStencil, AttachmentViewDesc::LoadStore::Retain },
 
                 // Generally the deferred pixel shader will just copy information from the albedo
@@ -719,15 +719,15 @@ namespace SceneEngine
                 //      .. however, it possible some clients might prefer 10 or 16 bit albedo textures
                 //      In these cases, the first buffer should be a matching format.
             {   IMainTargets::GBufferDiffuse, IMainTargets::GBufferDiffuse, 
-                TextureViewWindow(),
+                TextureViewDesc(),
                 AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
 
             {   IMainTargets::GBufferNormals, IMainTargets::GBufferNormals, 
-                TextureViewWindow(),
+                TextureViewDesc(),
                 AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
 
             {   IMainTargets::GBufferParameters, IMainTargets::GBufferParameters, 
-                TextureViewWindow(),
+                TextureViewDesc(),
                 AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
         };
 
@@ -763,7 +763,7 @@ namespace SceneEngine
         const RenderingQualitySettings& GetQualitySettings() const;
         VectorPattern<unsigned, 2>      GetDimensions() const;
         const SRV&                      GetSRV(Name) const;
-        const SRV&                      GetSRV(Name, Name, const TextureViewWindow&) const;
+        const SRV&                      GetSRV(Name, Name, const TextureViewDesc&) const;
         bool                            HasSRV(Name) const;
 
         MainTargets(
@@ -811,7 +811,7 @@ namespace SceneEngine
         return _parsingContext->GetNamedResources().GetSRV(name) != nullptr;
     }
 
-    auto MainTargets::GetSRV(Name viewName, Name resName, const TextureViewWindow& viewWindow) const -> const SRV&
+    auto MainTargets::GetSRV(Name viewName, Name resName, const TextureViewDesc& viewWindow) const -> const SRV&
     {
         auto result = _parsingContext->GetNamedResources().GetSRV(viewName, resName, viewWindow);
         assert(result);
@@ -998,7 +998,7 @@ namespace SceneEngine
                 {
                     // We want to reuse the presentation target texture, except with the format modified for SRGB/Linear
                     {   IMainTargets::PresentationTarget, IMainTargets::PresentationTarget_ToneMapWrite,
-                        {{ hardwareSRGBDisabled ? TextureViewWindow::ColorLinear : TextureViewWindow::ColorSRGB }},
+                        {{ hardwareSRGBDisabled ? TextureViewDesc::ColorLinear : TextureViewDesc::ColorSRGB }},
                         AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
                 });
             
@@ -1075,7 +1075,7 @@ namespace SceneEngine
                     AttachmentDesc::DimensionsMode::Absolute, float(frustum._width), float(frustum._height),
                     frustum._projections.Count(),
                     AsTypelessFormat(frustum._format),
-                    TextureViewWindow::DepthStencil,
+                    TextureViewDesc::DepthStencil,
                     AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil }
             };
 
@@ -1085,7 +1085,7 @@ namespace SceneEngine
 			{ SubpassDesc{{}, IMainTargets::ShadowDepthMap + shadowFrustumIndex} },
             {
                 {   IMainTargets::ShadowDepthMap + shadowFrustumIndex, IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain }
             });
 

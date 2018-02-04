@@ -157,10 +157,10 @@ namespace SceneEngine
             context.Bind(resolveRes._writeNonSky, 0x0);
         }
 
-        TextureViewWindow justDepthWindow(
-            {TextureViewWindow::Aspect::Depth},
-            TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
-            TextureViewWindow::Flags::JustDepth);
+        TextureViewDesc justDepthWindow(
+            {TextureViewDesc::Aspect::Depth},
+            TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
+            TextureViewDesc::Flags::JustDepth);
 
         context.BindPS(MakeResourceList(
             mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
@@ -375,7 +375,7 @@ namespace SceneEngine
                 {{  IMainTargets::LightResolve, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-                    TextureViewWindow::Aspect::ColorLinear,
+                    TextureViewDesc::Aspect::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }};
 			
 			parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(attachments));
@@ -386,17 +386,17 @@ namespace SceneEngine
 					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil}
                 },
                 {
-                    {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewWindow(),
+                    {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewDesc(),
                         AttachmentViewDesc::LoadStore::Retain_ClearStencil, AttachmentViewDesc::LoadStore::Retain_RetainStencil },
                         
                     {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth_JustStencil,
-                        TextureViewWindow(
-                            {TextureViewWindow::Aspect::Stencil},
-                            TextureDesc::Dimensionality::Undefined, TextureViewWindow::All, TextureViewWindow::All,
-                            TextureViewWindow::Flags::JustStencil),
+                        TextureViewDesc(
+                            {TextureViewDesc::Aspect::Stencil},
+                            TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
+                            TextureViewDesc::Flags::JustStencil),
                         AttachmentViewDesc::LoadStore::DontCare_RetainStencil, AttachmentViewDesc::LoadStore::DontCare },
 
-                    {   IMainTargets::LightResolve, IMainTargets::LightResolve, TextureViewWindow(),
+                    {   IMainTargets::LightResolve, IMainTargets::LightResolve, TextureViewDesc(),
                         AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
                 });
 

@@ -25,7 +25,7 @@ namespace RenderCore
         AttachmentName _resourceName;
         AttachmentName _viewName;
 
-        TextureViewWindow _window;
+        TextureViewDesc _window;
 
         enum class LoadStore
         {
@@ -44,7 +44,7 @@ namespace RenderCore
         float _width = 1.0f, _height = 1.0f;
         unsigned _arrayLayerCount = 1u;
 
-        TextureViewWindow::Aspect _defaultAspect = TextureViewWindow::Aspect::ColorLinear;
+        TextureViewDesc::Aspect _defaultAspect = TextureViewDesc::Aspect::ColorLinear;
 
         enum class DimensionsMode
         {

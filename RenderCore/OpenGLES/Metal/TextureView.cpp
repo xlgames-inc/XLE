@@ -26,13 +26,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         _underlyingTexture = underlyingTexture;
     }
 
-    ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewWindow& window)
+    ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : Resource(AsResource(*resource))
     {
         // todo -- handle "view" transformation
     }
 
-    ShaderResourceView::ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window)
+    ShaderResourceView::ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : ShaderResourceView(GetObjectFactory(*resource.get()), resource, window)
     {
     }
@@ -56,14 +56,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         _underlyingRenderBuffer = underlyingRenderbuffer;
     }
 
-    RenderTargetView::RenderTargetView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewWindow& window)
+    RenderTargetView::RenderTargetView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : Resource(AsResource(*resource))
     , _window(window)
     {
         // todo -- handle "view" transformation
     }
 
-    RenderTargetView::RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window)
+    RenderTargetView::RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : RenderTargetView(GetObjectFactory(*resource.get()), resource, window)
     {
     }
@@ -86,14 +86,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         _underlyingRenderBuffer = underlyingRenderbuffer;
     }
 
-    DepthStencilView::DepthStencilView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewWindow& window)
+    DepthStencilView::DepthStencilView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : Resource(AsResource(*resource))
     , _window(window)
     {
         // todo -- handle "view" transformation
     }
 
-    DepthStencilView::DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewWindow& window)
+    DepthStencilView::DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : DepthStencilView(GetObjectFactory(*resource.get()), resource, window)
     {
     }

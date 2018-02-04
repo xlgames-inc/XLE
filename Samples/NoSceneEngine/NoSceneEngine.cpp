@@ -559,35 +559,35 @@ namespace Sample
                 {   MainDepthStencil, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R24G8_TYPELESS,
-                    TextureViewWindow::Depth,
+                    TextureViewDesc::Depth,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer diffuse
                 {   GBufferDiffuse, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R8G8B8A8_UNORM_SRGB,
-                    TextureViewWindow::ColorSRGB,
+                    TextureViewDesc::ColorSRGB,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer normals
                 {   GBufferNormals, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R8G8B8A8_SNORM,
-                    TextureViewWindow::ColorLinear,
+                    TextureViewDesc::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // gbuffer params
                 {   GBufferParams, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R8G8B8A8_UNORM,
-                    TextureViewWindow::ColorLinear,
+                    TextureViewDesc::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
 
                 // lighting resolve
                 {   LightingResolve, 
                     AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
                     RenderCore::Format::R16G16B16A16_FLOAT,
-                    TextureViewWindow::ColorLinear,
+                    TextureViewDesc::ColorLinear,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource }
             };
 
@@ -595,32 +595,32 @@ namespace Sample
             {
                 // presentation target
                 {   PresentationTarget, PresentationTarget, 
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
 
                 // Main depth stencil
                 {   MainDepthStencil, MainDepthStencil,
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::DontCare },
 
                 // gbuffer diffuse
                 {   GBufferDiffuse, GBufferDiffuse,
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
 
                 // gbuffer normals
                 {   GBufferNormals, GBufferNormals,
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
 
                 // gbuffer params
                 {   GBufferParams, GBufferParams, 
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
 
                 // lighting resolve
                 {   LightingResolve, LightingResolve, 
-                    TextureViewWindow(),
+                    TextureViewDesc(),
                     AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare }
             };
 
@@ -806,7 +806,7 @@ namespace Sample
                 {   MainDepthStencil, 
                     Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                     RenderCore::Format::D24_UNORM_S8_UINT,
-                    RenderCore::TextureViewWindow::DepthStencil,
+                    RenderCore::TextureViewDesc::DepthStencil,
                     Attachment::Flags::Multisampled | Attachment::Flags::DepthStencil }
             };
 
@@ -814,12 +814,12 @@ namespace Sample
             {
                 // Presentation chain target
                 {   PresentationTarget, PresentationTarget,
-                    RenderCore::TextureViewWindow(),
+                    RenderCore::TextureViewDesc(),
                     RenderCore::AttachmentViewDesc::LoadStore::Clear, RenderCore::AttachmentViewDesc::LoadStore::Retain },
 
                 // Main depth stencil
                 {   MainDepthStencil, MainDepthStencil,
-                    RenderCore::TextureViewWindow(),
+                    RenderCore::TextureViewDesc(),
                     RenderCore::AttachmentViewDesc::LoadStore::Clear, RenderCore::AttachmentViewDesc::LoadStore::DontCare }
             };
 

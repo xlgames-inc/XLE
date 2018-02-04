@@ -687,7 +687,7 @@ namespace SceneEngine
         // ProtectState protectState(context, ProtectState::States::BlendState);
         // bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
 
-        bool hardwareSRGBEnabled = destination.GetAttachments()[0]._window._format._aspect == TextureViewWindow::ColorSRGB;
+        bool hardwareSRGBEnabled = destination.GetAttachments()[0]._window._format._aspect == TextureViewDesc::ColorSRGB;
 
         CATCH_ASSETS_BEGIN
             bool bindCopyShader = true;
@@ -920,7 +920,7 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
-            Metal::ShaderResourceView depthsSRV(depths.get(), {{TextureViewWindow::Aspect::Depth}});
+            Metal::ShaderResourceView depthsSRV(depths.get(), {{TextureViewDesc::Aspect::Depth}});
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
             Metal::ShaderResourceView inputSRV(res.get());
 #else
