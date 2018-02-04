@@ -83,7 +83,12 @@ namespace RenderCore { namespace Assets
         SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
         unsigned InsertRenderStateSet(const Techniques::RenderStateSet& states);
 
-        Metal::BoundUniforms* BeginVariation(
+		struct BoundVariation
+		{
+			Metal::BoundUniforms* _uniforms = nullptr;
+			Metal::BoundInputLayout* _inputLayout = nullptr;
+		};
+        BoundVariation BeginVariation(
             const ModelRendererContext& context, 
             SharedTechniqueConfig shaderName, SharedTechniqueInterface techniqueInterface,
             SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const;
@@ -134,6 +139,7 @@ namespace RenderCore { namespace Assets
         mutable SharedParameterBox _currentGeoParamBox;
         mutable SharedRenderStateSet _currentRenderState;
         mutable Metal::BoundUniforms* _currentBoundUniforms;
+		mutable Metal::BoundInputLayout* _currentBoundLayout;
 
         void ReleaseState(Metal::DeviceContext& context);
         friend class CaptureMarker;

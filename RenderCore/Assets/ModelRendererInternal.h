@@ -9,12 +9,11 @@
 #include "ModelRunTime.h"
 #include "ModelScaffoldInternal.h"
 #include "SharedStateSet.h" // for SharedShaderName, SharedParameterBox, etc
-#include "../Metal/Forward.h"
-#include "../Metal/Buffer.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/IteratorUtils.h"
 
+namespace RenderCore { class IResource; }
 namespace RenderCore { namespace Assets 
 {
     class SkinningBindingBox;
@@ -94,9 +93,9 @@ namespace RenderCore { namespace Assets
         std::vector<DrawCallResources>   _drawCallRes;
 
         ///////////////////////////////////////////////////////////////////////////////
-        Metal::VertexBuffer     _vertexBuffer;
-        Metal::IndexBuffer      _indexBuffer;
-        std::vector<Mesh>       _meshes;
+        std::shared_ptr<IResource>	_vertexBuffer;
+        std::shared_ptr<IResource>	_indexBuffer;
+        std::vector<Mesh>			_meshes;
         std::vector<Metal::ConstantBuffer>  _constantBuffers;
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -121,7 +120,7 @@ namespace RenderCore { namespace Assets
         Pimpl() : _scaffold(nullptr), _levelOfDetail(~unsigned(0x0)) {}
         ~Pimpl() {}
 
-        Metal::BoundUniforms* BeginVariation(
+        SharedStateSet::BoundVariation BeginVariation(
             const ModelRendererContext&, const SharedStateSet&, unsigned, SharedTechniqueInterface) const;
 
         SharedTechniqueInterface BeginGeoCall(
@@ -137,6 +136,11 @@ namespace RenderCore { namespace Assets
             unsigned                        resourcesIndex,
             unsigned                        constantsIndex,
             const Metal::ConstantBuffer*    cbs[2]);
+
+		void ApplyBoundInputLayout(
+            const ModelRendererContext&		context,
+			Metal::BoundInputLayout&		boundInputLayout,
+            unsigned						geoCallIndex) const;
 
     ///////////////////////////////////////////////////////////////////////////////
         //   B U I L D I N G   A N D   I N I T I A L I Z A T I O N   //
@@ -202,7 +206,7 @@ namespace RenderCore { namespace Assets
             const SkinnedMeshAnimBinding& preparedAnimBinding, 
             const Float4x4          transformationMachineResult[],
             const SkeletonBinding&  skeletonBinding,
-            Metal::VertexBuffer&    outputResult,
+            IResource&				outputResult,
             unsigned                outputOffset) const;
 
         static auto BuildMesh(
@@ -257,7 +261,7 @@ namespace RenderCore { namespace Assets
     public:
         std::unique_ptr<Float4x4[]> _finalMatrices;
         unsigned                    _finalMatrixCount;
-        Metal::VertexBuffer         _skinningBuffer;
+        std::shared_ptr<IResource>	_skinningBuffer;
         std::vector<unsigned>       _vbOffsets;
 
         PreparedAnimation();

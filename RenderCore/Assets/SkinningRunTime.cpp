@@ -13,6 +13,7 @@
 #include "../RenderUtils.h"
 #include "../Types.h"
 #include "../Format.h"
+#include "../BufferView.h"
 
 #include "../IDevice.h"
 #include "../IThreadContext.h"
@@ -32,6 +33,7 @@
 #include "../../ConsoleRig/Console.h"
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
+	#include "../DX11/Metal/DX11Utils.h"
 	#include "../DX11/Metal/IncludeDX11.h"
     #include "../DX11/IDeviceDX11.h"
 #endif
@@ -160,7 +162,6 @@ namespace RenderCore { namespace Assets
     void ModelRenderer::PimplWithSkinning::StartBuildingSkinning(
         Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const
     {
-        context.Bind(bindingBox._boundInputLayout);
         #if GFXAPI_ACTIVE == GFXAPI_DX11        // platformtemp
             context.Bind(bindingBox._geometryShader);
         #endif
@@ -364,7 +365,7 @@ namespace RenderCore { namespace Assets
                 const SkinnedMeshAnimBinding& preparedAnimBinding, 
                 const Float4x4              transformationMachineResult[],
                 const SkeletonBinding&      skeletonBinding,
-                Metal::VertexBuffer&        outputResult,
+                IResource&					outputResult,
                 unsigned                    outputOffset) const
     {
 #if GFXAPI_ACTIVE == GFXAPI_DX11
@@ -486,7 +487,10 @@ namespace RenderCore { namespace Assets
 
             ///////////////////////////////////////////////
 
-        ID3D::Buffer* soOutputBuffer = outputResult.GetUnderlying();
+		auto* d3dRes = (Metal_DX11::Resource*)outputResult.QueryInterface(typeid(Metal_DX11::Resource).hash_code());
+		assert(d3dRes);
+
+        auto* soOutputBuffer = Metal_DX11::QueryInterfaceCast<ID3D::Buffer>(d3dRes->_underlying).get();
         context.GetUnderlying()->SOSetTargets(1, &soOutputBuffer, &outputOffset);
         {
             const Metal::ShaderResourceView* temp[] = { tbufferTexture._view.GetUnderlying() ? &tbufferTexture._view : nullptr };
@@ -501,10 +505,11 @@ namespace RenderCore { namespace Assets
         auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
         auto skelBind = SkinnedMesh::VertexStreams::SkeletonBinding;
 
-        const VertexBuffer* vbs [2] = { &_vertexBuffer, &_vertexBuffer };
-        const unsigned strides  [2] = { mesh._extraVbStride[animGeo], mesh._extraVbStride[skelBind] };
-        unsigned offsets        [2] = { mesh._extraVbOffset[animGeo], mesh._extraVbOffset[skelBind] };
-        context.Bind(0, 2, vbs, strides, offsets);
+		VertexBufferView vbs[] = {
+			{ _vertexBuffer.get(), mesh._extraVbOffset[animGeo] },		// _extraVbStride[animGeo]
+			{ _vertexBuffer.get(), mesh._extraVbOffset[skelBind] }		// _extraVbStride[skelBind]
+		};
+		bindingBox._boundInputLayout.Apply(context, MakeIteratorRange(vbs));
 
 
             //
@@ -544,7 +549,12 @@ namespace RenderCore { namespace Assets
 
         auto result = std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)>(
             new PreparedAnimation, &DeletePreparedAnimation);
-        result->_skinningBuffer = Metal::VertexBuffer(nullptr, vbSize);
+        result->_skinningBuffer = Metal::CreateResource(
+			Metal::GetObjectFactory(),
+			CreateDesc(
+				BindFlag::VertexBuffer | BindFlag::StreamOutput, 0, GPUAccess::Read|GPUAccess::Write,
+				LinearBufferDesc::Create(vbSize),
+				"SkinningBuffer"));
         result->_vbOffsets = std::move(offsets);
         return result;
     }
@@ -560,7 +570,7 @@ namespace RenderCore { namespace Assets
                 _pimpl->_skinnedMeshes[i], 
                 _pimpl->_skinnedBindings[i],
                 result._finalMatrices.get(), skeletonBinding, 
-                result._skinningBuffer, result._vbOffsets[i]);
+                *result._skinningBuffer, result._vbOffsets[i]);
         }
 
         _pimpl->EndBuildingSkinning(*metalContext);
@@ -729,7 +739,6 @@ namespace RenderCore { namespace Assets
             "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
             "xleres/forward/illum.psh:main", "GEO_HAS_COLOUR=1");
         BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
-        metalContext->Bind(boundVertexInputLayout);
         metalContext->Bind(shaderProgram);
 
         BoundUniforms boundLayout(shaderProgram);
@@ -762,8 +771,9 @@ namespace RenderCore { namespace Assets
                 std::bind(&RenderSkeleton_DebugIterator, _1, _2, &workingVertices));
         }
 
-        VertexBuffer vertexBuffer(AsPointer(workingVertices.begin()), workingVertices.size()*sizeof(Vertex_PC));
-        metalContext->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex_PC), 0);
+        auto vertexBuffer = MakeVertexBuffer(GetObjectFactory(), MakeIteratorRange(workingVertices));
+		VertexBufferView vbs[] = { {&vertexBuffer} };		// sizeof(Vertex_PC)
+		boundVertexInputLayout.Apply(*metalContext, MakeIteratorRange(vbs));
         metalContext->Bind(Techniques::CommonResources()._dssDisable);
         metalContext->Bind(Techniques::CommonResources()._blendOpaque);
         metalContext->Bind(Topology::LineList);

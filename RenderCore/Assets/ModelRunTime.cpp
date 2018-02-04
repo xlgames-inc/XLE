@@ -27,6 +27,7 @@
 #include "../RenderUtils.h"
 #include "../Types.h"
 #include "../Format.h"
+#include "../BufferView.h"
 
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/Assets.h"
@@ -668,15 +669,36 @@ namespace RenderCore { namespace Assets
 
             ////////////////////////////////////////////////////////////////////////
 
+		auto& objFactory = Metal::GetObjectFactory();
+
         std::vector<Metal::ConstantBuffer> finalConstantBuffers;
         for (auto cb=prescientMaterialConstantBuffers.cbegin(); cb!=prescientMaterialConstantBuffers.end(); ++cb) {
             assert(cb->size());
-            Metal::ConstantBuffer newCB(AsPointer(cb->begin()), cb->size());
-            finalConstantBuffers.push_back(std::move(newCB));
+            finalConstantBuffers.emplace_back(
+				Metal::MakeConstantBuffer(objFactory, MakeIteratorRange(*cb)));
         }
 
-        Metal::VertexBuffer vb(AsPointer(nascentVB.begin()), nascentVB.size());
-        Metal::IndexBuffer ib(AsPointer(nascentIB.begin()), nascentIB.size());
+		auto vb = Metal::CreateResource(
+			objFactory,
+			CreateDesc(
+				BindFlag::VertexBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create((unsigned)nascentVB.size()),
+				"ModelVB"),
+			[&nascentVB](SubResourceId subr) {
+				assert(subr._arrayLayer == 0 && subr._mip == 0);
+				return SubResourceInitData { MakeIteratorRange(nascentVB) };
+			});
+
+		auto ib = Metal::CreateResource(
+			objFactory,
+			CreateDesc(
+				BindFlag::IndexBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create((unsigned)nascentIB.size()),
+				"ModelIB"),
+			[&nascentIB](SubResourceId subr) {
+				assert(subr._arrayLayer == 0 && subr._mip == 0);
+				return SubResourceInitData { MakeIteratorRange(nascentIB) };
+			});
 
             ////////////////////////////////////////////////////////////////////////
 
@@ -729,17 +751,19 @@ namespace RenderCore { namespace Assets
         Metal::ConstantBuffer _localTransformBuffer;
         ModelRenderingBox(const Desc&)
         {
-            Metal::ConstantBuffer localTransformBuffer(nullptr, sizeof(Techniques::LocalTransformConstants));
-            _localTransformBuffer = std::move(localTransformBuffer);
+            _localTransformBuffer = 
+				Metal::MakeConstantBuffer(
+					Metal::GetObjectFactory(), 
+					sizeof(Techniques::LocalTransformConstants));
         }
         ~ModelRenderingBox() {}
     };
 
-    Metal::BoundUniforms*    ModelRenderer::Pimpl::BeginVariation(
-            const ModelRendererContext& context,
-            const SharedStateSet&   sharedStateSet,
-            unsigned                drawCallIndex,
-            SharedTechniqueInterface      techniqueInterface) const
+    SharedStateSet::BoundVariation ModelRenderer::Pimpl::BeginVariation(
+        const ModelRendererContext& context,
+        const SharedStateSet&   sharedStateSet,
+        unsigned                drawCallIndex,
+        SharedTechniqueInterface      techniqueInterface) const
     {
         const auto& res = _drawCallRes[drawCallIndex];
         sharedStateSet.BeginRenderState(context, res._renderStateSet);
@@ -748,11 +772,11 @@ namespace RenderCore { namespace Assets
     }
 
     auto ModelRenderer::Pimpl::BeginGeoCall(
-            const ModelRendererContext& context,
-            Metal::ConstantBuffer&      localTransformBuffer,
-            const MeshToModel&          transforms,
-            const Float4x4&             modelToWorld,
-            unsigned                    geoCallIndex) const -> SharedTechniqueInterface
+        const ModelRendererContext& context,
+        Metal::ConstantBuffer&      localTransformBuffer,
+        const MeshToModel&          transforms,
+        const Float4x4&             modelToWorld,
+        unsigned                    geoCallIndex) const -> SharedTechniqueInterface
     {
         auto& cmdStream = _scaffold->CommandStream();
         auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
@@ -768,17 +792,10 @@ namespace RenderCore { namespace Assets
         assert(mesh != _meshes.end());
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
+        devContext.Bind(*checked_cast<Metal::Resource*>(_indexBuffer.get()), mesh->_indexFormat, mesh->_ibOffset);
 
-        const Metal::VertexBuffer* vbs[] = { &_vertexBuffer, &_vertexBuffer, &_vertexBuffer };
-        static_assert(dimof(vbs) == MaxVertexStreams, "Vertex buffer array size doesn't match vertex streams");
-        assert(mesh->_vertexStreamCount <= MaxVertexStreams);
-        devContext.Bind(
-            0, mesh->_vertexStreamCount, vbs,
-            mesh->_vertexStrides, mesh->_vbOffsets);
-
-        return mesh->_techniqueInterface;
-    }
+		return mesh->_techniqueInterface;
+	}
 
     auto ModelRenderer::PimplWithSkinning::BeginSkinCall(
         const ModelRendererContext& context,
@@ -804,9 +821,13 @@ namespace RenderCore { namespace Assets
         auto result = cm->_skinnedTechniqueInterface;
 
         auto& devContext = *context._context;
-        devContext.Bind(_indexBuffer, cm->_indexFormat, cm->_ibOffset);
+		devContext.Bind(*checked_cast<Metal::Resource*>(_indexBuffer.get()), cm->_indexFormat, cm->_ibOffset);
 
 		#if GFXAPI_ACTIVE == GFXAPI_DX11    // platformtemp
+			// unimplemented -- bind with BoundInputLayout path
+			//		(ie, using ApplyBoundInputLayout)
+			assert(0);
+			/*
 			auto animGeo = SkinnedMesh::VertexStreams::AnimatedGeo;
 			UINT strides[] = { cm->_extraVbStride[animGeo], cm->_vertexStrides[0], cm->_vertexStrides[1], cm->_vertexStrides[2] };
 			UINT offsets[] = { cm->_extraVbOffset[animGeo], cm->_vbOffsets[0], cm->_vbOffsets[1], cm->_vbOffsets[2] };
@@ -823,6 +844,7 @@ namespace RenderCore { namespace Assets
 			}
 
 			context._context->GetUnderlying()->IASetVertexBuffers(0, 2, underlyingVBs, strides, offsets);
+			*/
 		#endif
 
         return result;
@@ -848,6 +870,28 @@ namespace RenderCore { namespace Assets
 				*context._context, context._parserContext->GetGlobalUniformsStream(),
 				RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
 		}
+    }
+
+	void ModelRenderer::Pimpl::ApplyBoundInputLayout(
+        const ModelRendererContext& context,
+		Metal::BoundInputLayout&	boundInputLayout,
+        unsigned                    geoCallIndex) const
+	{
+		auto& cmdStream = _scaffold->CommandStream();
+        auto& geoCall = cmdStream.GetGeoCall(geoCallIndex);
+
+		    // todo -- should be possible to avoid this search
+        auto mesh = FindIf(_meshes, [=](const Pimpl::Mesh& mesh) { return mesh._id == geoCall._geoId; });
+        assert(mesh != _meshes.end());
+
+        const VertexBufferView vbs[MaxVertexStreams] = { 
+			{ _vertexBuffer, mesh->_vbOffsets[0] }, 
+			{ _vertexBuffer, mesh->_vbOffsets[1] },
+			{ _vertexBuffer, mesh->_vbOffsets[2] }
+		};
+        static_assert(dimof(vbs) == MaxVertexStreams, "Vertex buffer array size doesn't match vertex streams");
+        assert(mesh->_vertexStreamCount <= MaxVertexStreams);
+		boundInputLayout.Apply(*context._context, MakeIteratorRange(vbs));
     }
 
     auto ModelRenderer::Pimpl::BuildMesh(
@@ -1028,6 +1072,7 @@ namespace RenderCore { namespace Assets
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
         SharedTechniqueInterface currTechniqueInterface = SharedTechniqueInterface::Invalid;
         Metal::BoundUniforms* currUniforms = nullptr;
+		Metal::BoundInputLayout* currInputLayout = nullptr;
         auto& devContext = *context._context;
         auto& scaffold = *_pimpl->_scaffold;
         auto& cmdStream = scaffold.CommandStream();
@@ -1058,23 +1103,30 @@ namespace RenderCore { namespace Assets
                     currTechniqueInterface = _pimpl->BeginGeoCall(
                         context, box._localTransformBuffer, transforms, modelToWorld, md->first);
                     currGeoCall = md->first;
+					currInputLayout = nullptr;
                 }
 
-                auto* boundUniforms = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
+                auto boundVariation = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
                 const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
-                if (    boundUniforms != currUniforms 
+                if (    boundVariation._uniforms != currUniforms 
                     ||  drawCallRes._textureSet != currTextureSet 
                     ||  drawCallRes._constantBuffer != currCB) {
 
-                    if (boundUniforms) {
+                    if (boundVariation._uniforms) {
                         _pimpl->ApplyBoundUnforms(
-                            context, *boundUniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
+                            context, *boundVariation._uniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
                     }
 
                     currTextureSet = drawCallRes._textureSet; currCB = drawCallRes._constantBuffer;
-                    currUniforms = boundUniforms;
+                    currUniforms = boundVariation._uniforms;
                 }
+
+				if (boundVariation._inputLayout != currInputLayout) {
+					assert(boundVariation._inputLayout);
+					_pimpl->ApplyBoundInputLayout(context, *boundVariation._inputLayout, currGeoCall);
+					currInputLayout = boundVariation._inputLayout;
+				} 
             
                 const auto& d = md->second;
                 devContext.Bind(d._topology);
@@ -1103,21 +1155,27 @@ namespace RenderCore { namespace Assets
                     currGeoCall = md->first;
                 }
 
-                auto* boundUniforms = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
+                auto boundVariation = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
                 const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
 
-                if (    boundUniforms != currUniforms 
+                if (    boundVariation._uniforms != currUniforms 
                     ||  drawCallRes._textureSet != currTextureSet 
                     ||  drawCallRes._constantBuffer != currCB) {
 
-                    if (boundUniforms) {
+                    if (boundVariation._uniforms) {
                         _pimpl->ApplyBoundUnforms(
-                            context, *boundUniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
+                            context, *boundVariation._uniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
                     }
 
                     currTextureSet = drawCallRes._textureSet; currCB = drawCallRes._constantBuffer;
-                    currUniforms = boundUniforms;
+                    currUniforms = boundVariation._uniforms;
                 }
+
+				if (boundVariation._inputLayout != currInputLayout) {
+					assert(boundVariation._inputLayout);
+					_pimpl->ApplyBoundInputLayout(context, *boundVariation._inputLayout, currGeoCall);
+					currInputLayout = boundVariation._inputLayout;
+				} 
             
                 const auto& d = md->second;
                 devContext.Bind(d._topology);  // do we really need to set the topology every time?
@@ -1305,7 +1363,8 @@ namespace RenderCore { namespace Assets
         const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
 
         const ModelRenderer::Pimpl::Mesh* currentMesh = nullptr;
-        RenderCore::Metal::BoundUniforms* boundUniforms = nullptr;
+		SharedStateSet::BoundVariation boundVariation = { nullptr, nullptr };
+		Metal::BoundInputLayout* currInputLayout = nullptr;
         unsigned currentVariationHash = ~unsigned(0x0);
         unsigned currentTextureSet = ~unsigned(0x0);
         unsigned currentConstantBufferIndex = ~unsigned(0x0);
@@ -1319,28 +1378,17 @@ namespace RenderCore { namespace Assets
 
             if (currentMesh != d->_subMesh) {
                 const Pimpl::Mesh* mesh;
-                const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
-                static_assert(dimof(vbs) == (Pimpl::MaxVertexStreams+1), "Vertex buffer array size doesn't match vertex streams");
-
-                if ((unsigned)d->_topology > 0xffu) {
-                    auto& sknmesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
-                    unsigned strides[] = { sknmesh._extraVbStride[0], sknmesh._vertexStrides[0], sknmesh._vertexStrides[1], sknmesh._vertexStrides[2] };
-                    unsigned offsets[] = { sknmesh._extraVbOffset[0], sknmesh._vbOffsets[0], sknmesh._vbOffsets[1], sknmesh._vbOffsets[2] };
-                    assert(sknmesh._vertexStreamCount <= Pimpl::MaxVertexStreams);
-                    context._context->Bind(0, 1+sknmesh._vertexStreamCount, vbs, strides, offsets);
-                    mesh = &sknmesh;
+				if ((unsigned)d->_topology > 0xffu) {
+					auto& sknmesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
+					mesh = &sknmesh;
                     currentTechniqueInterface = sknmesh._skinnedTechniqueInterface;
-                } else {
-                    mesh = (const Pimpl::Mesh*)d->_subMesh;
-                    assert(mesh->_vertexStreamCount <= Pimpl::MaxVertexStreams);
-                    context._context->Bind(
-                        0, mesh->_vertexStreamCount, vbs,
-                        mesh->_vertexStrides, mesh->_vbOffsets);
-                    currentTechniqueInterface = mesh->_techniqueInterface;
-                }
-                context._context->Bind(renderer._pimpl->_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
+				} else {
+					mesh = (const Pimpl::Mesh*)d->_subMesh;
+					currentTechniqueInterface = mesh->_techniqueInterface;
+				}
                 currentMesh = mesh;
                 currentTextureSet = ~unsigned(0x0);
+				currInputLayout = nullptr;
             }
 
                 // Note --  At the moment, shader variation hash is the sorting priority.
@@ -1352,14 +1400,14 @@ namespace RenderCore { namespace Assets
                 //          thrashing in some cases.
             if (currentVariationHash != d->_shaderVariationHash) {
                 auto& mesh = *(const Pimpl::Mesh*)d->_subMesh;
-                boundUniforms = sharedStateSet.BeginVariation(
+                boundVariation = sharedStateSet.BeginVariation(
                     context, drawCallRes._shaderName, currentTechniqueInterface, drawCallRes._geoParamBox, 
                     drawCallRes._materialParamBox);
                 currentVariationHash = d->_shaderVariationHash;
                 currentTextureSet = ~unsigned(0x0);
             }
 
-            if (!boundUniforms) continue;
+            if (!boundVariation._uniforms) continue;
 
             sharedStateSet.BeginRenderState(context, drawCallRes._renderStateSet);
 
@@ -1381,14 +1429,41 @@ namespace RenderCore { namespace Assets
 
                 //  Sometimes the same render call may be rendered in several different locations. In these cases,
                 //  we can reduce the API thrashing to the minimum by avoiding re-setting resources and constants
-            if (boundUniforms && (textureSet != currentTextureSet || constantBufferIndex != currentConstantBufferIndex)) {
+            if (textureSet != currentTextureSet || constantBufferIndex != currentConstantBufferIndex) {
                 renderer._pimpl->ApplyBoundUnforms(
-                    context, *boundUniforms,
+                    context, *boundVariation._uniforms,
                     textureSet, constantBufferIndex, pkts);
 
                 currentTextureSet = textureSet;
                 currentConstantBufferIndex = constantBufferIndex;
             }
+
+			assert(boundVariation._inputLayout);
+			if (boundVariation._inputLayout != currInputLayout) {
+				// _pimpl->ApplyBoundInputLayout(context, *boundVariation._inputLayout, currGeoCall);
+
+				// todo -- unimplemented. bind with BoundInputLayout path
+				assert(0);
+				/*
+				const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
+                static_assert(dimof(vbs) == (Pimpl::MaxVertexStreams+1), "Vertex buffer array size doesn't match vertex streams");
+
+                if ((unsigned)d->_topology > 0xffu) {
+                    unsigned strides[] = { sknmesh._extraVbStride[0], sknmesh._vertexStrides[0], sknmesh._vertexStrides[1], sknmesh._vertexStrides[2] };
+                    unsigned offsets[] = { sknmesh._extraVbOffset[0], sknmesh._vbOffsets[0], sknmesh._vbOffsets[1], sknmesh._vbOffsets[2] };
+                    assert(sknmesh._vertexStreamCount <= Pimpl::MaxVertexStreams);
+                    context._context->Bind(0, 1+sknmesh._vertexStreamCount, vbs, strides, offsets);
+                } else {
+                    assert(mesh->_vertexStreamCount <= Pimpl::MaxVertexStreams);
+                    context._context->Bind(
+                        0, mesh->_vertexStreamCount, vbs,
+                        mesh->_vertexStrides, mesh->_vbOffsets);
+                }
+                context._context->Bind(renderer._pimpl->_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
+				*/
+
+				currInputLayout = boundVariation._inputLayout;
+			}
 
             if (((unsigned)d->_topology & 0xff) != currentTopology) {
                 currentTopology = (unsigned)d->_topology & 0xff;

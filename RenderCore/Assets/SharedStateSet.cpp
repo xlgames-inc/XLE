@@ -84,7 +84,7 @@ namespace RenderCore { namespace Assets
         if (existingInterface == hashes.cend()) {
                 //  No existing interface. We have to build a new one.
             Techniques::TechniqueInterface techniqueInterface(
-                InputLayout(vertexElements, count));
+                MakeIteratorRange(vertexElements, &vertexElements[count]));
 
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::LocalTransform, 0, 1);
             techniqueInterface.BindConstantBuffer(Techniques::ObjectCB::BasicMaterialConstants, 1, 1);
@@ -169,14 +169,15 @@ namespace RenderCore { namespace Assets
         return unsigned(_pimpl->_renderStateSets.size()-1);
     }
 
-    RenderCore::Metal::BoundUniforms* SharedStateSet::BeginVariation(
-            const ModelRendererContext& context,
-            SharedTechniqueConfig shaderName, SharedTechniqueInterface techniqueInterface, 
-            SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const
+	auto SharedStateSet::BeginVariation(
+        const ModelRendererContext& context,
+        SharedTechniqueConfig shaderName, SharedTechniqueInterface techniqueInterface, 
+        SharedParameterBox geoParamBox, SharedParameterBox materialParamBox) const
+		-> BoundVariation
     {
         if (    shaderName == _currentShaderName && techniqueInterface == _currentTechniqueInterface 
             &&  geoParamBox == _currentGeoParamBox && materialParamBox == _currentMaterialParamBox) {
-            return _currentBoundUniforms;
+			return { _currentBoundUniforms, _currentBoundLayout };
         }
 
         auto& techniqueContext = context._parserContext->GetTechniqueContext();
@@ -195,7 +196,6 @@ namespace RenderCore { namespace Assets
         auto variation = shaderType.FindVariation(context._techniqueIndex, state, techniqueInterfaceObj);
         if (variation._shaderProgram && variation._boundLayout) {
             context._context->Bind(*variation._shaderProgram);
-            context._context->Bind(*variation._boundLayout);
         }
 
         _currentShaderName = shaderName;
@@ -203,7 +203,8 @@ namespace RenderCore { namespace Assets
         _currentMaterialParamBox = materialParamBox;
         _currentGeoParamBox = geoParamBox;
         _currentBoundUniforms = variation._boundUniforms;
-        return _currentBoundUniforms;
+		_currentBoundLayout = variation._boundLayout;
+		return { _currentBoundUniforms, _currentBoundLayout };
     }
 
     void SharedStateSet::BeginRenderState(
@@ -266,6 +267,7 @@ namespace RenderCore { namespace Assets
         _currentGeoParamBox = SharedParameterBox::Invalid;
         _currentRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
+		_currentBoundLayout = nullptr;
 
         _pimpl->_capturedContext = &metalContext;
         _pimpl->_currentGlobalRenderState = stateResolver->GetHash();
@@ -300,6 +302,7 @@ namespace RenderCore { namespace Assets
         _currentGeoParamBox = SharedParameterBox::Invalid;
         _currentRenderState = SharedRenderStateSet::Invalid;
         _currentBoundUniforms = nullptr;
+		_currentBoundUniforms = nullptr;
 
         pimpl->_currentGlobalRenderState = SharedRenderStateSet::Invalid;
         pimpl->_capturedContext = nullptr;
