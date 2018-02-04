@@ -49,8 +49,8 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,
-                    const void* initData, size_t initDataSize)
-    : Resource(factory, desc, SubResourceInitData { {initData, PtrAdd(initData, initDataSize)}, {0u, 0u, 0u} })
+                    IteratorRange<const void*> initData)
+    : Resource(factory, desc, SubResourceInitData { initData, {0u, 0u, 0u} })
     {}
 
     Buffer::Buffer(const intrusive_ptr<OpenGL::Buffer>& underlying)
@@ -78,24 +78,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         return Buffer(
             factory,
             BuildDesc(BindFlag::VertexBuffer, data.size(), true),
-            data.begin(),
-            data.size());
+            data);
     }
     
-    Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    Buffer MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
     {
-        return Resource(
+        return Buffer(
             factory,
             BuildDesc(BindFlag::IndexBuffer, data.size(), true),
-            SubResourceInitData { data, {0u, 0u, 0u} });
+            data);
     }
 
-    Resource MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    Buffer MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
     {
-        return Resource(
+        return Buffer(
             factory,
             BuildDesc(BindFlag::ConstantBuffer, data.size(), true),
-            SubResourceInitData { data, {0u, 0u, 0u} });
+            data);
     }
 }}
 

@@ -73,7 +73,7 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class NamedAttachments
+    class AttachmentPool
     {
     public:
         void DefineAttachment(AttachmentName, const AttachmentDesc& request);
@@ -82,20 +82,21 @@ namespace RenderCore { namespace Techniques
         void Bind(AttachmentName, const IResourcePtr& resource);
         void Unbind(AttachmentName);
 		IResourcePtr GetResource(AttachmentName resName) const;
+		Metal::ShaderResourceView* GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
 
 		void Bind(FrameBufferProperties props); 
 		const FrameBufferProperties& GetFrameBufferProperties() const;
         IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
-        NamedAttachments();
-        ~NamedAttachments();
+        AttachmentPool();
+        ~AttachmentPool();
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
 
     FrameBufferDesc BuildFrameBufferDesc(
-        /* in/out */ NamedAttachments& namedResources,
+        /* in/out */ AttachmentPool& namedResources,
         /* out */ std::vector<PassFragment>& boundFragments,
         /* int */ IteratorRange<const PassFragmentInterface*> fragments);
 
@@ -139,14 +140,14 @@ namespace RenderCore { namespace Techniques
             Metal::DeviceContext& context,
             const FrameBufferDesc& layout,
             uint64 hashName,
-            NamedAttachments& namedResources,
+            AttachmentPool& namedResources,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         RenderPassInstance(
             IThreadContext& context,
             const FrameBufferDesc& layout,
             uint64 hashName,
-            NamedAttachments& namedResources,
+            AttachmentPool& namedResources,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
         ~RenderPassInstance();
 

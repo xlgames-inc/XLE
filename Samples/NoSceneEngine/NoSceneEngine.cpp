@@ -17,7 +17,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 
 #include "../../RenderCore/IDevice.h"
-#include "../../RenderCore/GPUProfiler.h"
+#include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
@@ -26,6 +26,7 @@
 
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
+#include "../../Assets/Assets.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -66,7 +67,7 @@
 
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../SceneEngine/ShaderLightDesc.h"      // todo -- this should really be in RenderCore::Techniques
 
@@ -189,9 +190,9 @@ namespace VulkanTest
 
 		auto fmt = Format::R8G8B8A8_UNORM;
 		auto bufferSize = width * height * BitsPerPixel(fmt) / 8;
-		auto buffer = std::make_unique<uint8[]>(bufferSize);
+		auto buffer = std::vector<uint8>(bufferSize);
 
-		if (!read_ppm(filename.c_str(), width, height, bufferSize / height, buffer.get())) {
+		if (!read_ppm(filename.c_str(), width, height, bufferSize / height, buffer.data())) {
 			std::cout << "Could not read texture file lunarg.ppm\n";
 			exit(-1);
 		}
@@ -202,7 +203,7 @@ namespace VulkanTest
 				0, 0,
 				TextureDesc::Plain2D(width, height, fmt),
 				"texture"),
-                SingleSubRes(SubResourceInitData{ buffer.get(), bufferSize, TexturePitches { bufferSize / height, bufferSize }}));
+                SingleSubRes(SubResourceInitData{ MakeIteratorRange(buffer), TexturePitches { bufferSize / height, bufferSize }}));
 
 		auto gpuResource = dev.CreateResource(
 			CreateDesc(
@@ -216,7 +217,7 @@ namespace VulkanTest
 		auto dxContext = RenderCore::Metal_DX11::DeviceContext::Get(threadContext);
 		if (dxContext) {
 			Metal_DX11::Copy(
-				*dxContext, gpuResource, stagingResource,
+				*dxContext, Metal_DX11::AsID3DResource(*gpuResource), Metal_DX11::AsID3DResource(*stagingResource),
 				Metal_DX11::ImageLayout::TransferDstOptimal, Metal_DX11::ImageLayout::TransferSrcOptimal);
 		} else {
 			auto vkContext = RenderCore::Metal_Vulkan::DeviceContext::Get(threadContext);
@@ -274,9 +275,9 @@ namespace Sample
 				dxContext->Bind(inputLayout);
 				dxContext->Bind(shader);
 
-				dxContext->Bind(Metal_DX11::Topology::TriangleList);
+				dxContext->Bind(Topology::TriangleList);
 				dxContext->Bind(Metal_DX11::DepthStencilState(false, false));
-				dxContext->Bind(Metal_DX11::RasterizerState(Metal_DX11::CullMode::None));
+				dxContext->Bind(Metal_DX11::RasterizerState(CullMode::None));
 				dxContext->BindPS(MakeResourceList(Metal_DX11::SamplerState(), Metal_DX11::SamplerState()));
 
 				auto& factory = dxContext->GetFactory();
@@ -327,9 +328,9 @@ namespace Sample
 				vkContext->Bind(inputLayout);
 				vkContext->Bind(shader);
 
-				vkContext->Bind(Metal_Vulkan::Topology::TriangleList);
+				vkContext->Bind(Topology::TriangleList);
 				vkContext->Bind(Metal_Vulkan::DepthStencilState(false, false));
-				vkContext->Bind(Metal_Vulkan::RasterizerState(Metal_Vulkan::CullMode::None));
+				vkContext->Bind(Metal_Vulkan::RasterizerState(CullMode::None));
 				vkContext->BindPS(MakeResourceList(Metal_Vulkan::SamplerState(), Metal_Vulkan::SamplerState()));
 
 				// ------ uniforms -----------
@@ -538,7 +539,7 @@ namespace Sample
     static void RunRenderPassTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        RenderCore::Techniques::NamedAttachments& namedResources,
+        RenderCore::Techniques::AttachmentPool& namedResources,
         const RenderCore::TextureSamples& samples)
     {
         TRY
@@ -547,100 +548,76 @@ namespace Sample
             auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
 			if (!metalContext) return;
 
-            const unsigned PresentationTarget = 0;
-            const unsigned MainDepthStencil = 2;
-            const unsigned GBufferDiffuse = 3;
-            const unsigned GBufferNormals = 4;
-            const unsigned GBufferParams = 5;
-            const unsigned LightingResolve = 6;
-            AttachmentDesc attachments[] = 
-            {
-                // Main depth stencil
-                {   MainDepthStencil, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-                    RenderCore::Format::R24G8_TYPELESS,
-                    TextureViewDesc::Depth,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource },
+            using namespace RenderCore::Techniques::Attachments;
+
+				// Main depth stencil
+			AttachmentDesc d_mainDepthStencil =		// MainDepthStencil, 
+                {	RenderCore::Format::R24G8_TYPELESS,
+					1.f, 1.f, 0u,
+                    TextureViewDesc::Aspect::Depth,
+					AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource };
 
                 // gbuffer diffuse
-                {   GBufferDiffuse, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-                    RenderCore::Format::R8G8B8A8_UNORM_SRGB,
+			AttachmentDesc d_diffuse =		// GBufferDiffuse,
+				{	RenderCore::Format::R8G8B8A8_UNORM_SRGB,
+					1.f, 1.f, 0u,
                     TextureViewDesc::ColorSRGB,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
+					AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
 
                 // gbuffer normals
-                {   GBufferNormals, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-                    RenderCore::Format::R8G8B8A8_SNORM,
+			AttachmentDesc d_normals =		// GBufferNormals
+                {	RenderCore::Format::R8G8B8A8_SNORM,
+                    1.f, 1.f, 0u,
                     TextureViewDesc::ColorLinear,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
+					AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
 
                 // gbuffer params
-                {   GBufferParams, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-                    RenderCore::Format::R8G8B8A8_UNORM,
+			AttachmentDesc d_params =		// GBufferParams
+                {   RenderCore::Format::R8G8B8A8_UNORM,
+                    1.f, 1.f, 0u,
                     TextureViewDesc::ColorLinear,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource },
+					AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
 
                 // lighting resolve
-                {   LightingResolve, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-                    RenderCore::Format::R16G16B16A16_FLOAT,
+			AttachmentDesc d_lightingResolve	// LightingResolve
+                {   RenderCore::Format::R16G16B16A16_FLOAT,
+                    1.f, 1.f, 0u,
                     TextureViewDesc::ColorLinear,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource }
-            };
-
-            AttachmentViewDesc attachmentViews[] = 
-            {
-                // presentation target
-                {   PresentationTarget, PresentationTarget, 
-                    TextureViewDesc(),
-                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain },
-
-                // Main depth stencil
-                {   MainDepthStencil, MainDepthStencil,
-                    TextureViewDesc(),
-                    AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::DontCare },
-
-                // gbuffer diffuse
-                {   GBufferDiffuse, GBufferDiffuse,
-                    TextureViewDesc(),
-                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
-
-                // gbuffer normals
-                {   GBufferNormals, GBufferNormals,
-                    TextureViewDesc(),
-                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
-
-                // gbuffer params
-                {   GBufferParams, GBufferParams, 
-                    TextureViewDesc(),
-                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare },
-
-                // lighting resolve
-                {   LightingResolve, LightingResolve, 
-                    TextureViewDesc(),
-                    AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::DontCare }
-            };
+					AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
+        
+			AttachmentViewDesc v_presTarget = { PresentationTarget, LoadStore::DontCare, LoadStore::Retain };
+			AttachmentViewDesc v_mainDepthStencils = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare };
+			AttachmentViewDesc v_diffuse = { GBufferDiffuse, LoadStore::DontCare, LoadStore::DontCare };
+			AttachmentViewDesc v_normals = { GBufferNormals, LoadStore::DontCare, LoadStore::DontCare };
+			AttachmentViewDesc v_params = { GBufferParams, LoadStore::DontCare, LoadStore::DontCare };
+			AttachmentViewDesc v_lightingResolve = { LightingResolve, LoadStore::DontCare, LoadStore::DontCare };
 
             SubpassDesc subpasses[] = 
             {
                 // render to fbuffer
-				SubpassDesc{{GBufferDiffuse, GBufferNormals, GBufferParams}, MainDepthStencil},
+				SubpassDesc{{ v_diffuse, v_normals, v_params }, v_mainDepthStencils },
                 // resolve lighting & resolve
-				SubpassDesc{{LightingResolve}, SubpassDesc::Unused, {GBufferDiffuse, GBufferNormals, GBufferParams}, {}, {PresentationTarget}}
+				SubpassDesc{{ v_lightingResolve }, SubpassDesc::Unused, { v_diffuse, v_normals, v_params }, {}, { v_presTarget }}
                 // SubpassDesc{{PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget}}
             };
 
-            FrameBufferDesc fbLayout(
-                MakeIteratorRange(subpasses),
-                MakeIteratorRange(attachmentViews));
+			FrameBufferDesc fbLayout(
+				MakeIteratorRange(subpasses));
 
             auto presDims = metalContext->GetPresentationTargetDims();
             namedResources.Bind(samples);
             namedResources.Bind(FrameBufferProperties{presDims[0], presDims[1], 0u});
-            namedResources.DefineAttachments(MakeIteratorRange(attachments));
+
+			namedResources.DefineAttachment(MainDepthStencil, d_mainDepthStencil);
+			namedResources.DefineAttachment(GBufferDiffuse, d_diffuse);
+			namedResources.DefineAttachment(GBufferNormals, d_normals);
+			namedResources.DefineAttachment(GBufferParams, d_params);
+			namedResources.DefineAttachment(LightingResolve, d_lightingResolve);
 
             metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
 
@@ -832,7 +809,7 @@ namespace Sample
                 MakeIteratorRange(subpasses),
                 MakeIteratorRange(attachmentViews));
 
-            RenderCore::Techniques::NamedAttachments namedResources;
+            RenderCore::Techniques::AttachmentPool namedResources;
             namedResources.Bind(presentationChain->GetDesc()->_samples);
             namedResources.DefineAttachments(MakeIteratorRange(attachments));
 

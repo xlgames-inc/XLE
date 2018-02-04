@@ -77,10 +77,10 @@ namespace RenderCore
     {
     public:
         std::vector<AttachmentViewDesc> _output;
-		AttachmentViewDesc _depthStencil;
-        std::vector<AttachmentViewDesc> _input;
-        std::vector<AttachmentViewDesc> _preserve;
-		std::vector<AttachmentViewDesc> _resolve;
+		AttachmentViewDesc _depthStencil = Unused;
+		std::vector<AttachmentViewDesc> _input = {};
+		std::vector<AttachmentViewDesc> _preserve = {};
+		std::vector<AttachmentViewDesc> _resolve = {};
 
 		static const AttachmentViewDesc Unused;
     };
@@ -92,6 +92,7 @@ namespace RenderCore
         uint64	GetHash() const { return _hash; }
 
 		FrameBufferDesc(IteratorRange<const SubpassDesc*> subpasses);
+		FrameBufferDesc(std::initializer_list<SubpassDesc> subpasses);
 		FrameBufferDesc(std::vector<SubpassDesc>&& subpasses);
 		FrameBufferDesc();
 		~FrameBufferDesc();

@@ -8,6 +8,7 @@
 #include "Techniques.h"
 #include "../Metal/InputLayout.h"   // (for UniformsStream)
 #include "../Metal/Buffer.h"
+#include "../Metal/ObjectFactory.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <memory>
@@ -24,7 +25,10 @@ namespace RenderCore { namespace Techniques
         }
 
         if (!_globalCBs[index]->IsGood()) {
-            *_globalCBs[index] = Metal::ConstantBuffer(newData, dataSize, false);
+            *_globalCBs[index] = Metal::MakeConstantBuffer(
+				Metal::GetObjectFactory(), 
+				MakeIteratorRange(newData, PtrAdd(newData, dataSize)),
+				false);
         } else {
             _globalCBs[index]->Update(context, newData, dataSize);
         }
@@ -67,7 +71,7 @@ namespace RenderCore { namespace Techniques
         return _techniqueContext->_stateSetEnvironment;
     }
 
-    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, NamedAttachments* namedResources)
+    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
         _stateSetResolver = _techniqueContext->_defaultStateSetResolver;

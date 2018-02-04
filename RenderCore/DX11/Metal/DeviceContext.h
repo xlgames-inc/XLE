@@ -7,7 +7,7 @@
 #pragma once
 
 #include "TextureView.h"
-#include "FrameBuffer.h"        // for NamedAttachments
+#include "FrameBuffer.h"        // for AttachmentPool
 #include "DX11.h"
 #include "../../IDevice_Forward.h"
 #include "../../IThreadContext_Forward.h"
@@ -19,12 +19,10 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    class VertexBuffer;
-    class IndexBuffer;
+    class Buffer;
     class ShaderResourceView;
     class SamplerState;
-    class ConstantBuffer;
-    class BoundInputLayout;
+	class BoundInputLayout;
     class VertexShader;
     class GeometryShader;
     class PixelShader;
@@ -75,12 +73,12 @@ namespace RenderCore { namespace Metal_DX11
         template<int Count> void    BindHS(const ResourceList<SamplerState, Count>& samplerStates);
         template<int Count> void    BindDS(const ResourceList<SamplerState, Count>& samplerStates);
 
-        template<int Count> void    BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindVS(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindPS(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindCS(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindGS(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindHS(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindDS(const ResourceList<Buffer, Count>& constantBuffers);
         ///////////////////////////////////////////////////////////////////////////////////////////
         template<int Count> void    BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void    BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
@@ -96,23 +94,22 @@ namespace RenderCore { namespace Metal_DX11
         template<int Count> void    BindHS_G(const ResourceList<SamplerState, Count>& samplerStates);
         template<int Count> void    BindDS_G(const ResourceList<SamplerState, Count>& samplerStates);
 
-        template<int Count> void    BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
+        template<int Count> void    BindVS_G(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindPS_G(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindCS_G(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindGS_G(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindHS_G(const ResourceList<Buffer, Count>& constantBuffers);
+        template<int Count> void    BindDS_G(const ResourceList<Buffer, Count>& constantBuffers);
         ///////////////////////////////////////////////////////////////////////////////////////////
 
         template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
         template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
 
-        template<int Count> void    BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset=0);
+        template<int Count> void    BindSO(const ResourceList<Buffer, Count>& buffers, unsigned offset=0);
 
         template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
-        void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
-        void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
+        void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
         void        Bind(Topology topology);
         void        Bind(const VertexShader& vertexShader);
         void        Bind(const GeometryShader& geometryShader);
@@ -137,6 +134,7 @@ namespace RenderCore { namespace Metal_DX11
 		T1(Type) void   UnbindDS(unsigned startSlot, unsigned count);
         T1(Type) void   Unbind();
         void            UnbindSO();
+		void			UnbindVBs();
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -187,14 +185,13 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;
 		ObjectFactory* _factory;
 
-        // NamedAttachments _namedResources;
+        // AttachmentPool _namedResources;
         VectorPattern<unsigned,2> _presentationTargetDims;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     extern template void DeviceContext::Unbind<BoundInputLayout>();
-    extern template void DeviceContext::Unbind<VertexBuffer>();
     extern template void DeviceContext::Unbind<RenderTargetView>();
     extern template void DeviceContext::Unbind<VertexShader>();
     extern template void DeviceContext::Unbind<PixelShader>();

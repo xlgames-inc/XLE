@@ -595,6 +595,7 @@ namespace ColladaConversion
 			MemoryMappedInputStream(
 				result->_fileData.GetData(),
 				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
+		formatter._allowCharacterData = true;
 
 		result->_name = identifier.AsString();
 		result->_rootNode = split.Parameters().AsString();

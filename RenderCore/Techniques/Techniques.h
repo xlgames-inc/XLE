@@ -21,6 +21,7 @@
 namespace Utility { template<typename CharType> class InputStreamFormatter; }
 using namespace Utility;
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
+namespace RenderCore { class VertexBufferView; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -64,7 +65,8 @@ namespace RenderCore { namespace Techniques
         void Apply(
             Metal::DeviceContext& devContext,
             ParsingContext& parserContext,
-            const std::initializer_list<SharedPkt>& pkts) const;
+            const std::initializer_list<SharedPkt>& pkts,
+			const std::initializer_list<VertexBufferView>& vbs) const;
 
         ResolvedShader();
     };

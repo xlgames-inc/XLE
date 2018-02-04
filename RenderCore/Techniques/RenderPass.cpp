@@ -78,10 +78,10 @@ namespace RenderCore { namespace Techniques
 		virtual IResourcePtr GetResource(AttachmentName resName) const;
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
 
-        NamedAttachmentsWrapper(NamedAttachments& namedRes);
+        NamedAttachmentsWrapper(AttachmentPool& namedRes);
         ~NamedAttachmentsWrapper();
     private:
-        NamedAttachments* _namedRes;
+        AttachmentPool* _namedRes;
     };
 
     IResourcePtr NamedAttachmentsWrapper::GetResource(AttachmentName resName) const
@@ -94,7 +94,7 @@ namespace RenderCore { namespace Techniques
         return _namedRes->GetDesc(resName);
     }
 
-    NamedAttachmentsWrapper::NamedAttachmentsWrapper(NamedAttachments& namedRes)
+    NamedAttachmentsWrapper::NamedAttachmentsWrapper(AttachmentPool& namedRes)
     : _namedRes(&namedRes) {}
     NamedAttachmentsWrapper::~NamedAttachmentsWrapper() {}
 
@@ -102,7 +102,7 @@ namespace RenderCore { namespace Techniques
         Metal::DeviceContext& context,
         const FrameBufferDesc& layout,
         uint64 hashName,
-        NamedAttachments& namedResources,
+        AttachmentPool& namedResources,
         const RenderPassBeginDesc& beginInfo)
     {
         // We need to allocate the particular frame buffer we're going to use
@@ -124,7 +124,7 @@ namespace RenderCore { namespace Techniques
         IThreadContext& context,
         const FrameBufferDesc& layout,
         uint64 hashName,
-        NamedAttachments& namedResources,
+        AttachmentPool& namedResources,
         const RenderPassBeginDesc& beginInfo)
     : RenderPassInstance(
         *Metal::DeviceContext::Get(context),
@@ -160,7 +160,7 @@ namespace RenderCore { namespace Techniques
 
     static const unsigned s_maxBoundTargets = 64;
 
-    class NamedAttachments::Pimpl
+    class AttachmentPool::Pimpl
     {
     public:
         RenderCore::IResourcePtr    _resources[s_maxBoundTargets];
@@ -185,7 +185,7 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    bool NamedAttachments::Pimpl::BuildAttachment(AttachmentName attach)
+    bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attach)
     {
         assert(attach<s_maxBoundTargets);
         _resources[attach].reset();
@@ -250,18 +250,18 @@ namespace RenderCore { namespace Techniques
         return true;
     }
 
-    auto NamedAttachments::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    auto AttachmentPool::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
     {
         if (resName >= s_maxBoundTargets) return nullptr;
         return &_pimpl->_attachments[resName];
     }
     
-    IResourcePtr NamedAttachments::GetResource(AttachmentName resName) const
+    IResourcePtr AttachmentPool::GetResource(AttachmentName resName) const
     {
 		return _pimpl->_resources[resName];
 	}
 
-    void NamedAttachments::DefineAttachment(AttachmentName name, const AttachmentDesc& request)
+    void AttachmentPool::DefineAttachment(AttachmentName name, const AttachmentDesc& request)
     {
         assert(name < s_maxBoundTargets);
         if (!Equal(_pimpl->_attachments[name], request)) {
@@ -270,7 +270,7 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void NamedAttachments::Bind(AttachmentName resName, const IResourcePtr& resource)
+    void AttachmentPool::Bind(AttachmentName resName, const IResourcePtr& resource)
     {
         assert(resName < s_maxBoundTargets);
         if (_pimpl->_resources[resName] == resource) return;
@@ -295,13 +295,13 @@ namespace RenderCore { namespace Techniques
         _pimpl->_resNames[resName] = resName;
     }
 
-    void NamedAttachments::Unbind(AttachmentName resName)
+    void AttachmentPool::Unbind(AttachmentName resName)
     {
         assert(resName < s_maxBoundTargets);
         // _pimpl->InvalidateAttachment(resName);
     }
 
-    void NamedAttachments::Bind(FrameBufferProperties props)
+    void AttachmentPool::Bind(FrameBufferProperties props)
     {
         bool xyChanged = 
                props._outputWidth != _pimpl->_props._outputWidth
@@ -326,17 +326,17 @@ namespace RenderCore { namespace Techniques
         _pimpl->_props = props;
     }
 
-    const FrameBufferProperties& NamedAttachments::GetFrameBufferProperties() const
+    const FrameBufferProperties& AttachmentPool::GetFrameBufferProperties() const
     {
         return _pimpl->_props;
     }
 
-    IteratorRange<const AttachmentDesc*> NamedAttachments::GetDescriptions() const
+    IteratorRange<const AttachmentDesc*> AttachmentPool::GetDescriptions() const
     {
         return MakeIteratorRange(_pimpl->_attachments);
     }
 
-    NamedAttachments::NamedAttachments()
+    AttachmentPool::AttachmentPool()
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_factory = &Metal::GetObjectFactory();
@@ -347,13 +347,13 @@ namespace RenderCore { namespace Techniques
         _pimpl->_props = {0u, 0u, TextureSamples::Create()};
     }
 
-    NamedAttachments::~NamedAttachments()
+    AttachmentPool::~AttachmentPool()
     {}
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(
-        /* in/out */ NamedAttachments& namedResources,
+        /* in/out */ AttachmentPool& namedResources,
         /* out */ std::vector<PassFragment>& boundFragments,
         /* int */ IteratorRange<const PassFragmentInterface*> fragments)
     {

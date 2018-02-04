@@ -19,6 +19,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
+#include "../RenderCore/BufferView.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -372,7 +373,7 @@ namespace RenderOverlays
     void ImmediateOverlayContext::Flush()
     {
         if (_writePointer != 0) {
-			Metal::VertexBuffer temporaryBuffer(_workingBuffer.get(), _writePointer);
+			auto temporaryBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(_workingBuffer.get(), PtrAdd(_workingBuffer.get(), _writePointer)));
             for (auto i=_drawCalls.cbegin(); i!=_drawCalls.cend(); ++i) {
                 _metalContext->Bind(i->_topology);
 
@@ -381,19 +382,14 @@ namespace RenderOverlays
                     //          (because we need to reset offset and vertex stride
                     //          information)
                     //
-                const Metal::VertexBuffer* vbs[1];
-                unsigned strides[1], offsets[1];
-                vbs[0] = &temporaryBuffer;
-                strides[0] = VertexSize(i->_vertexFormat);
-                offsets[0] = i->_vertexOffset;
-                _metalContext->Bind(0, 1, vbs, strides, offsets);
+				const VertexBufferView vbs[] = { VertexBufferView{ &temporaryBuffer, i->_vertexOffset } };
 
                     //
                     //      The shaders we need to use (and the vertex input
                     //      layout) are determined by the vertex format and 
                     //      topology selected.
                     //
-                SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName);
+                SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName, MakeIteratorRange(vbs));
                 if (!i->_textureName.empty()) {
                     _metalContext->BindPS(MakeResourceList(
                         ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(i->_textureName.c_str()).GetShaderResource()));
@@ -481,7 +477,7 @@ namespace RenderOverlays
                 vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CR:vs_*":"xleres/basic3D.vsh:PCR:vs_*";
                 geometryShaderSource = "xleres/basic.gsh:PCR:gs_*";
                 pixelShaderDefault = "xleres/basic.psh:PC:ps_*";
-                inputLayout = std::make_pair(Vertex_PCR::inputElements, dimof(Vertex_PCR::inputElements));
+                inputLayout = MakeIteratorRange(Vertex_PCR::inputElements);
             }
 
         } else {
@@ -489,15 +485,15 @@ namespace RenderOverlays
             if (desc._format == PC) {
                 vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2C:vs_*":"xleres/basic3D.vsh:PC:vs_*";
                 pixelShaderDefault = "xleres/basic.psh:PC:ps_*";
-                inputLayout = std::make_pair(Vertex_PC::inputElements, dimof(Vertex_PC::inputElements));
+                inputLayout = MakeIteratorRange(Vertex_PC::inputElements);
             } else if (desc._format == PCT) {
                 vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CT:vs_*":"xleres/basic3D.vsh:PCT:vs_*";
                 pixelShaderDefault = "xleres/basic.psh:PCT:ps_*";
-                inputLayout = std::make_pair(Vertex_PCT::inputElements, dimof(Vertex_PCT::inputElements));
+                inputLayout = MakeIteratorRange(Vertex_PCT::inputElements);
             } else if (desc._format == PCCTT) {
                 vertexShaderSource = (desc._projMode==ProjectionMode::P2D)?"xleres/basic2D.vsh:P2CCTT:vs_*":"xleres/basic3D.vsh:PCCTT:vs_*";
                 pixelShaderDefault = "xleres/basic.psh:PCT:ps_*";
-                inputLayout = std::make_pair(Vertex_PCCTT::inputElements, dimof(Vertex_PCCTT::inputElements));
+                inputLayout = MakeIteratorRange(Vertex_PCCTT::inputElements);
             }
 
         }
@@ -562,7 +558,9 @@ namespace RenderOverlays
         _validationCallback = std::move(validationCallback);
     }
 
-    void            ImmediateOverlayContext::SetShader(Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+    void            ImmediateOverlayContext::SetShader(
+		Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName, 
+		IteratorRange<const VertexBufferView*> vertexBuffers)
     {
                 // \todo --     we should cache the input layout result
                 //              (since it's just the same every time)
@@ -575,7 +573,7 @@ namespace RenderOverlays
             } else {
                 _metalContext->Bind(*box._shaderProgram);
             }
-            _metalContext->Bind(box._boundInputLayout);
+			box._boundInputLayout.Apply(*_metalContext, vertexBuffers);
 
             Metal::ConstantBufferPacket constants[] = { _viewportConstantBuffer };
             box._boundUniforms.Apply(
@@ -595,7 +593,7 @@ namespace RenderOverlays
         return _projDesc;
     }
 
-    RenderCore::Techniques::NamedAttachments*     ImmediateOverlayContext::GetNamedResources() const
+    RenderCore::Techniques::AttachmentPool*     ImmediateOverlayContext::GetNamedResources() const
     {
         return _namedResources;
     }
@@ -615,7 +613,7 @@ namespace RenderOverlays
 
     ImmediateOverlayContext::ImmediateOverlayContext(
         IThreadContext& threadContext, 
-        RenderCore::Techniques::NamedAttachments* namedRes,
+        RenderCore::Techniques::AttachmentPool* namedRes,
         const Techniques::ProjectionDesc& projDesc)
     : _defaultTextStyle(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
     , _projDesc(projDesc)
@@ -650,7 +648,7 @@ namespace RenderOverlays
 	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
 		MakeImmediateOverlayContext(
 			RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::NamedAttachments* namedRes,
+			RenderCore::Techniques::AttachmentPool* namedRes,
 			const RenderCore::Techniques::ProjectionDesc& projDesc)
 	{
 		auto overlayContext = std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>(

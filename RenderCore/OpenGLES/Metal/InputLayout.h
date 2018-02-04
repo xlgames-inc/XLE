@@ -49,7 +49,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     class DeviceContext;
     using ConstantBufferPacket = SharedPkt;
-    class ConstantBuffer;
     class ShaderResourceView;
         ////////////////////////////////////////////////////////////////////////////////////////////////
     class BoundUniforms

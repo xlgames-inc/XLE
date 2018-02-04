@@ -845,13 +845,14 @@ namespace RenderCore { namespace Techniques
     void ResolvedShader::Apply(
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
-        const std::initializer_list<Metal::ConstantBufferPacket>& pkts) const
+        const std::initializer_list<SharedPkt>& pkts,
+		const std::initializer_list<VertexBufferView>& vbs) const
     {
         _boundUniforms->Apply(
             devContext, 
             parserContext.GetGlobalUniformsStream(),
             Metal::UniformsStream(pkts.begin(), nullptr, pkts.size()));
-        devContext.Bind(*_boundLayout);
+		_boundLayout->Apply(devContext, MakeIteratorRange(vbs.begin(), vbs.end()));
         devContext.Bind(*_shaderProgram);
     }
 

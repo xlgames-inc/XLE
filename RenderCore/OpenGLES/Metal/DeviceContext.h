@@ -25,7 +25,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     class ShaderResourceView;
     class SamplerState;
-    class ConstantBuffer;
     class BoundInputLayout;
     class ShaderProgram;
     class BlendState;

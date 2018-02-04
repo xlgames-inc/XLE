@@ -24,6 +24,7 @@
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Types.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderCore/BufferView.h"
 
 // #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightDesc.h"
@@ -126,6 +127,14 @@ namespace Overlays
         Pimpl() {}
     };
 
+	template<typename Type>
+		RenderCore::Metal::Buffer MakeConstantBuffer(const Type& obj)
+		{
+			return RenderCore::Metal::MakeConstantBuffer(
+				Metal::GetObjectFactory(),
+				MakeIteratorRange(&obj, PtrAdd(&obj, sizeof(Type))));
+		}
+
     static void Copy2DTexture(
         RenderCore::Metal::DeviceContext* context, const RenderCore::Metal::ShaderResourceView& srv, Float2 screenMins, Float2 screenMaxs, float scrollAreaMin, float scrollAreaMax)
     {
@@ -148,21 +157,21 @@ namespace Overlays
             InputElementDesc( "TEXCOORD", 0, Format::R32G32_FLOAT )
         };
 
-        VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-        context->Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
+        auto vertexBuffer = MakeVertexBuffer(GetObjectFactory(), MakeIteratorRange(vertices));
 
         const auto& shaderProgram = ::Assets::GetAssetDep<ShaderProgram>(
             "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
             "xleres/basic.psh:copy_point_scrolllimit:" PS_DefShaderModel);
-        BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
-        context->Bind(boundVertexInputLayout);
+        BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
+		VertexBufferView vbvs[] = { VertexBufferView{&vertexBuffer} };
+        boundVertexInputLayout.Apply(*context, MakeIteratorRange(vbvs));
         context->Bind(shaderProgram);
 
         ViewportDesc viewport(*context);
         float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
         float scrollConstants[] = { scrollAreaMin, scrollAreaMax, 0.f, 0.f };
-        ConstantBuffer reciprocalViewportDimensions(constants, sizeof(constants));
-        ConstantBuffer scrollConstantsBuffer(scrollConstants, sizeof(scrollConstants));
+        auto reciprocalViewportDimensions = MakeConstantBuffer(constants);
+        auto scrollConstantsBuffer = MakeConstantBuffer(scrollConstants);
         const ShaderResourceView* resources[] = { &srv };
         const ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions, &scrollConstantsBuffer };
         BoundUniforms boundLayout(shaderProgram);

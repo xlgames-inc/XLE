@@ -37,14 +37,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         Buffer();
         Buffer( ObjectFactory& factory, const ResourceDesc& desc,
-                const void* initData = nullptr, size_t initDataSize = 0);
+                IteratorRange<const void*> initData);
         Buffer(const intrusive_ptr<OpenGL::Buffer>& underlying);
         ~Buffer();
     };
 
     Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
-    Resource MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
-    Resource MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*>);
+    Buffer MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
+    Buffer MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*>);
 
 }}
 

@@ -124,9 +124,10 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->OMSetDepthStencilState(depthStencil.GetUnderlying(), stencilRef);
     }
 
-    void DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
+    void DeviceContext::Bind(const Resource& ib, Format indexFormat, unsigned offset)
     {
-        _underlying->IASetIndexBuffer(ib.GetUnderlying(), AsDXGIFormat(indexFormat), offset);
+		assert(QueryInterfaceCast<ID3D::Buffer>(ib._underlying.get()));
+        _underlying->IASetIndexBuffer((ID3D::Buffer*)ib._underlying.get(), AsDXGIFormat(indexFormat), offset);
     }
 
     void DeviceContext::Bind(const ViewportDesc& viewport)
@@ -251,12 +252,12 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetInputLayout(nullptr);
     }
 
-    template<> void DeviceContext::Unbind<VertexBuffer>()
-    {
-        ID3D::Buffer* vb = nullptr;
+    void DeviceContext::UnbindVBs()
+	{
+		ID3D::Buffer* vb = nullptr;
         UINT strides = 0, offsets = 0;
         _underlying->IASetVertexBuffers(0, 1, &vb, &strides, &offsets);
-    }
+	}
 
     template<> void DeviceContext::Unbind<RenderTargetView>()
     {
@@ -445,9 +446,9 @@ namespace RenderCore { namespace Metal_DX11
 
     EXPANDSTAGES(SamplerState)
     EXPANDSTAGES(ShaderResourceView)
-    EXPANDSTAGES(ConstantBuffer)
+    EXPANDSTAGES(Buffer)
     EXPAND(UnorderedAccessView, BindCS)
 
-    template void DeviceContext::BindSO<1>(const ResourceList<VertexBuffer, 1>&, unsigned);
-    template void DeviceContext::BindSO<2>(const ResourceList<VertexBuffer, 2>&, unsigned);
+    template void DeviceContext::BindSO<1>(const ResourceList<Buffer, 1>&, unsigned);
+    template void DeviceContext::BindSO<2>(const ResourceList<Buffer, 2>&, unsigned);
 }}

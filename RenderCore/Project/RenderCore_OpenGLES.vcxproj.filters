@@ -11,6 +11,14 @@
     <ClInclude Include="..\OpenGLES\Metal\Shader.h" />
     <ClInclude Include="..\OpenGLES\Metal\ShaderResource.h" />
     <ClInclude Include="..\OpenGLES\Metal\State.h" />
+    <ClInclude Include="..\OpenGLES\Metal\Forward.h" />
+    <ClInclude Include="..\OpenGLES\Metal\FrameBuffer.h" />
+    <ClInclude Include="..\OpenGLES\Metal\IncludeGLES.h" />
+    <ClInclude Include="..\OpenGLES\Metal\ObjectFactory.h" />
+    <ClInclude Include="..\OpenGLES\Metal\PipelineLayout.h" />
+    <ClInclude Include="..\OpenGLES\Metal\QueryPool.h" />
+    <ClInclude Include="..\OpenGLES\Metal\ShaderIntrospection.h" />
+    <ClInclude Include="..\OpenGLES\Metal\TextureView.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\OpenGLES\Metal\Buffer.cpp" />
@@ -21,5 +29,12 @@
     <ClCompile Include="..\OpenGLES\Metal\Shader.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\ShaderResource.cpp" />
     <ClCompile Include="..\OpenGLES\Metal\State.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\FrameBuffer.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\ObjectFactory.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\PipelineLayout.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\QueryPool.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\Resource.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\ShaderIntrospection.cpp" />
+    <ClCompile Include="..\OpenGLES\Metal\TextureView.cpp" />
   </ItemGroup>
 </Project>

@@ -52,7 +52,7 @@ namespace ColladaConversion
 
     static void SkipAllAttributes(Formatter& formatter)
     {
-        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+        while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
             Formatter::InteriorSection name, value;
             formatter.TryAttribute(name, value);
         }
@@ -816,7 +816,7 @@ namespace ColladaConversion
                         // attributes. Given that the source is XML, the attributes
                         // will always come first.
                     {
-                        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+                        while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
                             Section name, value;
                             formatter.TryAttribute(name, value);
 
@@ -1483,7 +1483,7 @@ namespace ColladaConversion
 
         RawOperation newOp;
 
-        while (formatter.PeekNext(true) == Formatter::Blob::AttributeName) {
+        while (formatter.PeekNext() == Formatter::Blob::AttributeName) {
             Section attribName, attribValue;
             formatter.TryAttribute(attribName, attribValue);
             if (Is(attribName, u("sid"))) newOp._sid = attribValue;

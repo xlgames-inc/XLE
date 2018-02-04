@@ -114,7 +114,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->DSSetSamplers(samplerStates._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindVS(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -123,7 +123,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->VSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindPS(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -132,7 +132,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->PSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindCS(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -141,7 +141,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->CSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindGS(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -150,7 +150,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->GSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindHS(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -159,7 +159,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->HSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindDS(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -264,7 +264,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->DSSetSamplers(samplerStates._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindVS_G(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -273,7 +273,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->VSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindPS_G(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -282,7 +282,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->PSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindCS_G(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -291,7 +291,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->CSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindGS_G(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -300,7 +300,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->GSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindHS_G(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -309,7 +309,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->HSSetConstantBuffers(constantBuffers._startingPoint, Count, underlyings);
     }
 
-    template<int Count> void DeviceContext::BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers)
+    template<int Count> void DeviceContext::BindDS_G(const ResourceList<Buffer, Count>& constantBuffers)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, constantBuffers);
@@ -355,7 +355,7 @@ namespace RenderCore { namespace Metal_DX11
             Count1 + unorderedAccess._startingPoint, Count2, uavUnderlyings, initialCounts);
     }
 
-    template<int Count> void DeviceContext::BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset)
+    template<int Count> void DeviceContext::BindSO(const ResourceList<Buffer, Count>& buffers, unsigned offset)
     {
 		ID3D::Buffer* underlyings[Count];
 		CopyArrayOfUnderlying(underlyings, buffers);

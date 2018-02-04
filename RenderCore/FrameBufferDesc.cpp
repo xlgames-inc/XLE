@@ -24,6 +24,10 @@ namespace RenderCore
     : FrameBufferDesc(std::vector<SubpassDesc>(subpasses.begin(), subpasses.end()))
     {}
 
+	FrameBufferDesc::FrameBufferDesc(std::initializer_list<SubpassDesc> subpasses)
+	: FrameBufferDesc(std::vector<SubpassDesc>(subpasses.begin(), subpasses.end()))
+	{}
+
 	FrameBufferDesc::FrameBufferDesc()
     : _hash(0)
     {

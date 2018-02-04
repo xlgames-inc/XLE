@@ -6,6 +6,7 @@
 
 #include "CommonResources.h"
 #include "TechniqueUtils.h" // just for sizeof(LocalTransformConstants)
+#include "../Metal/ObjectFactory.h"
 #include "../../ConsoleRig/ResourceBox.h"
 
 namespace RenderCore { namespace Techniques
@@ -33,7 +34,7 @@ namespace RenderCore { namespace Techniques
         _linearClampSampler = SamplerState(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp);
         _pointClampSampler = SamplerState(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp);
 
-        _localTransformBuffer = ConstantBuffer(nullptr, sizeof(LocalTransformConstants));
+        _localTransformBuffer = MakeConstantBuffer(GetObjectFactory(), sizeof(LocalTransformConstants));
     }
 
     CommonResourceBox& CommonResources()

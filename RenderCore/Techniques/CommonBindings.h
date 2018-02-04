@@ -41,5 +41,15 @@ namespace RenderCore { namespace Techniques
 
         static const auto Max = 12u;
     };
+
+	namespace Attachments
+	{
+		const unsigned PresentationTarget = 0;
+        const unsigned MainDepthStencil = 2;
+        const unsigned GBufferDiffuse = 3;
+        const unsigned GBufferNormals = 4;
+        const unsigned GBufferParams = 5;
+        const unsigned LightingResolve = 6;
+	}
 }}
 

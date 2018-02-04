@@ -276,7 +276,7 @@ namespace RenderCore { namespace Metal_DX11
 							StageBinding::Binding newBinding;
 							newBinding._shaderSlot = bindingDesc.BindPoint;
 							newBinding._inputInterfaceSlot = slot | (stream<<16);
-							newBinding._savedCB = ConstantBuffer(nullptr, cbDesc.Size);
+							newBinding._savedCB = MakeConstantBuffer(GetObjectFactory(), cbDesc.Size);
 							_stageBindings[s]._shaderConstantBindings.push_back(newBinding);
 							functionResult = true;
 							break;

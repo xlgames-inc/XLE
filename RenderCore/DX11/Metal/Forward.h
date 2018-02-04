@@ -14,9 +14,7 @@ namespace RenderCore { namespace Metal_DX11
 {
     class ShaderProgram;
 
-    class VertexBuffer;
-    class IndexBuffer;
-    class ConstantBuffer;
+    class Buffer;
 
     class BoundUniforms;
     class BoundInputLayout;
@@ -41,6 +39,7 @@ namespace RenderCore { namespace Metal_DX11
     class FrameBuffer;
     class FrameBufferPool;
 
-    typedef SharedPkt ConstantBufferPacket;
+    using ConstantBufferPacket = SharedPkt;
+	using ConstantBuffer = Buffer;
 }}
 

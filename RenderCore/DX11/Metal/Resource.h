@@ -18,11 +18,6 @@ namespace RenderCore { namespace Metal_DX11
 	class DeviceContext;
 	class ObjectFactory;
 
-    namespace Underlying
-    {
-        typedef ID3D::Resource      Resource;
-    }
-
 	enum class ImageLayout
 	{
 		Undefined,
@@ -40,7 +35,7 @@ namespace RenderCore { namespace Metal_DX11
 	/// <summary>Helper object to catch multiple similar pointers</summary>
 	/// To help with platform abstraction, RenderCore::Resource* is actually the
 	/// same as a Metal::Resource*. This helper allows us to catch both equally.
-	using UnderlyingResourcePtr = intrusive_ptr<Underlying::Resource>;
+	using UnderlyingResourcePtr = intrusive_ptr<ID3D::Resource>;
 
 	class Resource : public IResource
 	{
@@ -116,10 +111,10 @@ namespace RenderCore { namespace Metal_DX11
 	ResourceDesc ExtractDesc(const RenderTargetView& res);
     ResourceDesc ExtractDesc(const DepthStencilView& res);
     ResourceDesc ExtractDesc(const UnorderedAccessView& res);
-    RenderCore::ResourcePtr ExtractResource(const ShaderResourceView&);
-	RenderCore::ResourcePtr ExtractResource(const RenderTargetView&);
-	RenderCore::ResourcePtr ExtractResource(const DepthStencilView&);
-    RenderCore::ResourcePtr ExtractResource(const UnorderedAccessView&);
+    std::shared_ptr<IResource> ExtractResource(const ShaderResourceView&);
+	std::shared_ptr<IResource> ExtractResource(const RenderTargetView&);
+	std::shared_ptr<IResource> ExtractResource(const DepthStencilView&);
+    std::shared_ptr<IResource> ExtractResource(const UnorderedAccessView&);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      U T I L S       //
@@ -142,15 +137,20 @@ namespace RenderCore { namespace Metal_DX11
 	/////////////// Resource creation and access ///////////////
 
 	using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-	RenderCore::IResourcePtr CreateResource(
+	std::shared_ptr<IResource> CreateResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 
 		const ResourceInitializer& init = ResourceInitializer());
 
+	intrusive_ptr<ID3D::Resource> CreateUnderlyingResource(
+		const ObjectFactory& factory,
+		const ResourceDesc& desc,
+		const ResourceInitializer& init = ResourceInitializer());
+
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr);
 	ID3D::Resource* AsID3DResource(const IResource&);
-	RenderCore::IResourcePtr AsResourcePtr(ID3D::Resource*);
-	RenderCore::IResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
+	std::shared_ptr<IResource> AsResourcePtr(ID3D::Resource*);
+	std::shared_ptr<IResource> AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
 }}
 
 #pragma warning(push)
@@ -165,7 +165,7 @@ namespace RenderCore { namespace Metal_DX11
         //      requires #include <d3d11.h>
         //
 
-    extern template Utility::intrusive_ptr<RenderCore::Metal_DX11::Underlying::Resource>;
+    extern template Utility::intrusive_ptr<ID3D::Resource>;
 
         /// \endcond
 #pragma warning(pop)

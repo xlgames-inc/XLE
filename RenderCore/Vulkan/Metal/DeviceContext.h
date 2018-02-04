@@ -8,7 +8,7 @@
 
 #include "Forward.h"
 #include "State.h"
-#include "FrameBuffer.h"        // for NamedAttachments
+#include "FrameBuffer.h"        // for AttachmentPool
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"

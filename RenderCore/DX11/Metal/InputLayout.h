@@ -88,26 +88,26 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderProgram;
     class DeepShaderProgram;
 
-    typedef SharedPkt ConstantBufferPacket;
+    using ConstantBufferPacket = SharedPkt;
 
     class UniformsStream
     {
     public:
         UniformsStream();
-        UniformsStream( const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
+        UniformsStream( const ConstantBufferPacket packets[], const Buffer* prebuiltBuffers[], size_t packetCount,
                         const ShaderResourceView* resources[] = nullptr, size_t resourceCount = 0);
 
         template <int Count0>
             UniformsStream( ConstantBufferPacket (&packets)[Count0]);
         template <int Count0, int Count1>
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                            const ConstantBuffer* (&prebuiltBuffers)[Count1]);
+                            const Buffer* (&prebuiltBuffers)[Count1]);
         template <int Count0, int Count1>
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
                             const ShaderResourceView* (&resources)[Count1]);
         template <int Count0, int Count1, int Count2>
             UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                            const ConstantBuffer* (&prebuiltBuffers)[Count1],
+                            const Buffer* (&prebuiltBuffers)[Count1],
                             const ShaderResourceView* (&resources)[Count2]);
 
         UniformsStream(
@@ -115,7 +115,7 @@ namespace RenderCore { namespace Metal_DX11
             std::initializer_list<const ShaderResourceView*> srvs);
     protected:
         const ConstantBufferPacket*     _packets;
-        const ConstantBuffer*const*     _prebuiltBuffers;
+        const Buffer*const*     _prebuiltBuffers;
         size_t                          _packetCount;
         const ShaderResourceView*const* _resources;
         size_t                          _resourceCount;
@@ -167,7 +167,7 @@ namespace RenderCore { namespace Metal_DX11
             public:
                 unsigned _shaderSlot;
                 unsigned _inputInterfaceSlot;
-                mutable ConstantBuffer _savedCB;
+                mutable Buffer _savedCB;
             };
             std::vector<Binding>    _shaderConstantBindings;
             std::vector<Binding>    _shaderResourceBindings;
@@ -229,7 +229,7 @@ namespace RenderCore { namespace Metal_DX11
         _resourceCount = 0;
     }
 
-    inline UniformsStream::UniformsStream(  const ConstantBufferPacket packets[], const ConstantBuffer* prebuiltBuffers[], size_t packetCount,
+    inline UniformsStream::UniformsStream(  const ConstantBufferPacket packets[], const Buffer* prebuiltBuffers[], size_t packetCount,
                                             const ShaderResourceView* resources[], size_t resourceCount)
     {
         _packets = packets;
@@ -251,7 +251,7 @@ namespace RenderCore { namespace Metal_DX11
         
     template <int Count0, int Count1>
         UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                                        const ConstantBuffer* (&prebuildBuffers)[Count1])
+                                        const Buffer* (&prebuildBuffers)[Count1])
         {
             static_assert(Count0 == Count1, "Expecting equal length arrays in UniformsStream constructor");
             _packets = packets;
@@ -274,7 +274,7 @@ namespace RenderCore { namespace Metal_DX11
 
     template <int Count0, int Count1, int Count2>
         UniformsStream::UniformsStream( ConstantBufferPacket (&packets)[Count0],
-                                        const ConstantBuffer* (&prebuiltBuffers)[Count1],
+                                        const Buffer* (&prebuiltBuffers)[Count1],
                                         const ShaderResourceView* (&resources)[Count2])
     {
             static_assert(Count0 == Count1, "Expecting equal length arrays in UniformsStream constructor");

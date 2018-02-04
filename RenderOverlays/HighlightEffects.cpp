@@ -13,6 +13,7 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Format.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
@@ -39,7 +40,8 @@ namespace RenderOverlays
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
-        metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(&settings, sizeof(settings))));
+		auto cbData = MakeIteratorRange(&settings, PtrAdd(&settings, sizeof(settings)));
+        metalContext.BindPS(MakeResourceList(Metal::MakeConstantBuffer(Metal::GetObjectFactory(), cbData)));
         metalContext.BindPS(MakeResourceList(stencilSrv));
         metalContext.Bind(Techniques::CommonResources()._dssDisable);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
@@ -83,12 +85,12 @@ namespace RenderOverlays
 
     void ExecuteHighlightByStencil(
         RenderCore::IThreadContext& threadContext,
-        Techniques::NamedAttachments& namedRes,
+        Techniques::AttachmentPool& namedRes,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
         auto stencilSrv = namedRes.GetSRV(
-            5u, 2u,
+            RenderCore::Techniques::Attachments::MainDepthStencil,
             TextureViewDesc(
                 {TextureViewDesc::Aspect::Stencil},
                 TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
@@ -100,49 +102,6 @@ namespace RenderOverlays
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-    class CommonOffscreenTarget
-    {
-    public:
-        class Desc
-        {
-        public:
-            unsigned _width, _height;
-            Format _format;
-            Desc(unsigned width, unsigned height, Format format)
-                : _width(width), _height(height), _format(format) {}
-        };
-
-        Metal::RenderTargetView _rtv;
-        Metal::ShaderResourceView _srv;
-
-        CommonOffscreenTarget(const Desc& desc);
-        ~CommonOffscreenTarget();
-    };
-
-    CommonOffscreenTarget::CommonOffscreenTarget(const Desc& desc)
-    {
-            //  Still some work involved to just create a texture
-            //  
-        auto bufferDesc = CreateDesc(
-            BindFlag::ShaderResource|BindFlag::RenderTarget, 0, GPUAccess::Write,
-            TextureDesc::Plain2D(desc._width, desc._height, desc._format),
-            "CommonOffscreen");
-
-        // auto resource = SceneEngine::GetBufferUploads().Transaction_Immediate(bufferDesc);
-        auto& factory = Metal::GetObjectFactory();
-        auto resource = Metal::CreateResource(factory, bufferDesc);
-
-        Metal::RenderTargetView rtv(factory, resource);
-        Metal::ShaderResourceView srv(factory, resource);
-
-        _rtv = std::move(rtv);
-        _srv = std::move(srv);
-    }
-
-    CommonOffscreenTarget::~CommonOffscreenTarget() {}
-#endif
 
     static const RenderCore::AttachmentName s_commonOffscreen = 15u;
 
@@ -189,32 +148,38 @@ namespace RenderOverlays
     {
     public:
         IThreadContext*                 _threadContext;
-        Techniques::NamedAttachments*     _namedRes;
+        Techniques::AttachmentPool*	_namedRes;
         Techniques::RenderPassInstance  _rpi;
 
-        Pimpl(IThreadContext& threadContext, Techniques::NamedAttachments& namedRes)
+        Pimpl(IThreadContext& threadContext, Techniques::AttachmentPool& namedRes)
         : _threadContext(&threadContext), _namedRes(&namedRes) {}
         ~Pimpl() {}
     };
 
     BinaryHighlight::BinaryHighlight(
         IThreadContext& threadContext, 
-        Techniques::NamedAttachments& namedRes)
+        Techniques::AttachmentPool& namedRes)
     {
         using namespace RenderCore;
         _pimpl = std::make_unique<Pimpl>(threadContext, namedRes);
 
-		const AttachmentDesc attachments[] = { {
-			s_commonOffscreen, AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-			Format::R8G8B8A8_UNORM, TextureViewDesc::ColorLinear,
-			AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource} };
+		AttachmentDesc d_commonOffscreen {
+			Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
+			TextureViewDesc::ColorLinear,
+			AttachmentDesc::DimensionsMode::OutputRelative, 
+			AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
 
-        namedRes.DefineAttachments(MakeIteratorRange(attachments));
+        namedRes.DefineAttachment(s_commonOffscreen, d_commonOffscreen);
 
+		using namespace RenderCore::Techniques::Attachments;
         const bool doDepthTest = true;
-        FrameBufferDesc fbLayout = {
-            {{{s_commonOffscreen}, doDepthTest?2u:~0u}, {{0u}, ~0u, {s_commonOffscreen}}}, 
-            {{s_commonOffscreen, s_commonOffscreen, TextureViewDesc(), AttachmentViewDesc::LoadStore::Clear, AttachmentViewDesc::LoadStore::Retain}}};
+		AttachmentViewDesc v_commonOffscreen { s_commonOffscreen, LoadStore::Clear, LoadStore::Retain };
+		AttachmentViewDesc v_mainColor { PresentationTarget, LoadStore::Retain, LoadStore::Retain };
+		AttachmentViewDesc v_mainDepth { doDepthTest?MainDepthStencil:~0u, LoadStore::Retain, LoadStore::Retain };
+        FrameBufferDesc fbLayout {
+			SubpassDesc {{v_commonOffscreen}, v_mainDepth}, 
+			SubpassDesc {{v_mainColor}, SubpassDesc::Unused, {v_commonOffscreen}}
+		};
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, fbLayout, 0u, namedRes,
             {{MakeClearValue(0.f, 0.f, 0.f, 0.f)}});

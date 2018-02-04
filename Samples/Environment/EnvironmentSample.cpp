@@ -279,7 +279,7 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = primMan._rDevice->GetImmediateContext();
 
-			RenderCore::Techniques::NamedAttachments namedResources;
+			RenderCore::Techniques::AttachmentPool namedResources;
 
                 //  Finally, we execute the frame loop
             for (;;) {

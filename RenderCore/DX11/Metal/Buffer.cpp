@@ -14,127 +14,26 @@
 namespace RenderCore { namespace Metal_DX11
 {
         
-    VertexBuffer::VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
+    Buffer::Buffer(
+		ObjectFactory& factory, const ResourceDesc& desc,
+		IteratorRange<const void*> initData)
+	: Resource(CreateUnderlyingResource(factory, desc, 
+		[initData](SubResourceId subr) {
+			assert(subr._mip == 0 && subr._arrayLayer == 0);
+			return SubResourceInitData { initData, {} };
+		}))
     {
-        if (byteCount!=0) {
-            D3D11_BUFFER_DESC desc;
-            desc.ByteWidth = (UINT)byteCount;
-            desc.Usage = D3D11_USAGE_IMMUTABLE;
-            desc.BindFlags = D3D11_BIND_VERTEX_BUFFER;
-            if (!data) {    // hack -- assume it's a stream output buffer for now
-                desc.Usage = D3D11_USAGE_DEFAULT;
-                desc.BindFlags |= D3D11_BIND_STREAM_OUTPUT;
-            }
-            desc.CPUAccessFlags = 0;
-            desc.MiscFlags = 0;
-            desc.StructureByteStride = 0;
-            D3D11_SUBRESOURCE_DATA subresData;
-            subresData.pSysMem = data;
-            subresData.SysMemPitch = subresData.SysMemSlicePitch = 0;
-            _underlying = factory.CreateBuffer(&desc, data?(&subresData):nullptr);
-        }
-    }
+	}
 
-    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-        : VertexBuffer(GetObjectFactory(), data, byteCount)
+    Buffer::Buffer() {}
+
+    Buffer::~Buffer() {}
+
+    Buffer::Buffer(UnderlyingResourcePtr cloneFrom)
+    : Resource(cloneFrom)
     {}
 
-    VertexBuffer::VertexBuffer() {}
-
-    VertexBuffer::~VertexBuffer() {}
-
-    VertexBuffer::VertexBuffer(const VertexBuffer& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    VertexBuffer& VertexBuffer::operator=(const VertexBuffer& cloneFrom)            { _underlying = cloneFrom._underlying; return *this; }
-
-    VertexBuffer::VertexBuffer(VertexBuffer&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    VertexBuffer& VertexBuffer::operator=(VertexBuffer&& moveFrom) never_throws     { _underlying = std::move(moveFrom._underlying); return *this; }
-
-    VertexBuffer::VertexBuffer(UnderlyingResourcePtr cloneFrom)
-    : _underlying(QueryInterfaceCast<ID3D::Buffer>(cloneFrom.get()))
-    {}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    IndexBuffer::IndexBuffer() {}
-    
-    IndexBuffer::IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
-    {
-        if (byteCount!=0) {
-            D3D11_BUFFER_DESC desc;
-            desc.ByteWidth = (UINT)byteCount;
-            desc.Usage = D3D11_USAGE_IMMUTABLE;
-            desc.BindFlags = D3D11_BIND_INDEX_BUFFER;
-            desc.CPUAccessFlags = 0;
-            desc.MiscFlags = 0;
-            desc.StructureByteStride = 0;
-            D3D11_SUBRESOURCE_DATA subresData;
-            subresData.pSysMem = data;
-            subresData.SysMemPitch = subresData.SysMemSlicePitch = 0;
-            _underlying = factory.CreateBuffer(&desc, &subresData);
-        }
-    }
-
-    IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-        : IndexBuffer(GetObjectFactory(), data, byteCount)
-    {}
-
-    IndexBuffer::IndexBuffer(DeviceContext& context)
-    {
-        ID3D::Buffer* rawPtr = nullptr;
-        DXGI_FORMAT fmt = DXGI_FORMAT_UNKNOWN;
-        unsigned offset = 0;
-        context.GetUnderlying()->IAGetIndexBuffer(&rawPtr, &fmt, &offset);
-        _underlying = moveptr(rawPtr);
-    }
-
-    IndexBuffer::~IndexBuffer() {}
-
-    IndexBuffer::IndexBuffer(const IndexBuffer& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    IndexBuffer& IndexBuffer::operator=(const IndexBuffer& cloneFrom)            { _underlying = cloneFrom._underlying; return *this; }
-
-    IndexBuffer::IndexBuffer(IndexBuffer&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    IndexBuffer& IndexBuffer::operator=(IndexBuffer&& moveFrom) never_throws     { _underlying = std::move(moveFrom._underlying); return *this; }
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ConstantBuffer::ConstantBuffer() {}
-    ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount, bool immutable)
-        : ConstantBuffer(GetObjectFactory(), data, byteCount, immutable)
-    {}
-
-    ConstantBuffer::ConstantBuffer(
-        const ObjectFactory& factory,
-        const void* data, size_t byteCount, bool immutable)
-    {
-        if (byteCount!=0) {
-            D3D11_BUFFER_DESC desc;
-            desc.ByteWidth = (UINT)byteCount;
-            if (data && immutable) {
-                desc.Usage = D3D11_USAGE_IMMUTABLE;
-                desc.CPUAccessFlags = 0;
-            } else {
-                desc.Usage = D3D11_USAGE_DYNAMIC;
-                desc.CPUAccessFlags = D3D11_CPU_ACCESS_WRITE;
-            }
-            desc.BindFlags = D3D11_BIND_CONSTANT_BUFFER;
-            
-            desc.MiscFlags = 0;
-            desc.StructureByteStride = 0;
-            D3D11_SUBRESOURCE_DATA subresData;
-            subresData.pSysMem = data;
-            subresData.SysMemPitch = subresData.SysMemSlicePitch = 0;
-            _underlying = factory.CreateBuffer(&desc, data?(&subresData):nullptr);
-        }
-    }
-
-    ConstantBuffer::~ConstantBuffer() {}
-
-    ConstantBuffer::ConstantBuffer(const ConstantBuffer& cloneFrom) : _underlying(cloneFrom._underlying) {}
-    ConstantBuffer& ConstantBuffer::operator=(const ConstantBuffer& cloneFrom)            { _underlying = cloneFrom._underlying; return *this; }
-
-    ConstantBuffer::ConstantBuffer(intrusive_ptr<ID3D::Buffer> underlyingBuffer) : _underlying(underlyingBuffer) {}
-
-    void    ConstantBuffer::Update(DeviceContext& context, const void* data, size_t byteCount)
+    void    Buffer::Update(DeviceContext& context, const void* data, size_t byteCount)
     {
         // context.GetUnderlying()->UpdateSubresource(
         //     _underlying, 0, nullptr, data, byteCount, byteCount);
@@ -148,8 +47,47 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    ConstantBuffer::ConstantBuffer(ConstantBuffer&& moveFrom) never_throws : _underlying(std::move(moveFrom._underlying)) {}
-    ConstantBuffer& ConstantBuffer::operator=(ConstantBuffer&& moveFrom) never_throws     { _underlying = std::move(moveFrom._underlying); return *this; }
+	static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
+    {
+        return CreateDesc(
+            bindingFlags | (immutable ? 0 : BindFlag::TransferDst),
+            immutable ? 0 : CPUAccess::Write,
+            GPUAccess::Read,
+            LinearBufferDesc::Create(unsigned(byteCount)),
+            "buf");
+    }
+
+    Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    {
+        return Buffer(
+            factory,
+            BuildDesc(BindFlag::VertexBuffer, data.size(), true),
+            data);
+    }
+    
+    Buffer MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    {
+        return Buffer(
+            factory,
+            BuildDesc(BindFlag::IndexBuffer, data.size(), true),
+            data);
+    }
+
+    Buffer MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*> data, bool immutable)
+    {
+        return Buffer(
+            factory,
+            BuildDesc(BindFlag::ConstantBuffer, data.size(), immutable),
+            data);
+    }
+
+	Buffer MakeConstantBuffer(ObjectFactory& factory, size_t size)
+	{
+		return Buffer(
+            factory,
+            BuildDesc(BindFlag::ConstantBuffer, size, false));
+	}
+
 
 }}
 

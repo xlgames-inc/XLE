@@ -12,7 +12,7 @@
 #include "../Math/Matrix.h"
 #include "../Utility/StringUtils.h"
 
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class NamedAttachments; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class AttachmentPool; } }
 
 namespace RenderOverlays
 {

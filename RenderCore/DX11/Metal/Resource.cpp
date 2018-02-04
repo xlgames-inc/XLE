@@ -145,7 +145,7 @@ namespace RenderCore { namespace Metal_DX11
 		return result;
 	}
 
-	RenderCore::ResourcePtr CreateResource(
+	intrusive_ptr<ID3D::Resource> CreateUnderlyingResource(
 		const ObjectFactory& factory,
 		const ResourceDesc& desc,
 		const ResourceInitializer& init)
@@ -166,7 +166,7 @@ namespace RenderCore { namespace Metal_DX11
 					}
 				}
 
-				if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::T1D) {
+				if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
 
 					D3D11_TEXTURE1D_DESC textureDesc;
 					XlZeroMemory(textureDesc);
@@ -181,10 +181,10 @@ namespace RenderCore { namespace Metal_DX11
 					if (textureDesc.Usage == D3D11_USAGE_STAGING && !textureDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
 						textureDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
 					textureDesc.MiscFlags = 0;
-					return AsResourcePtr(factory.CreateTexture1D(&textureDesc, hasInitData ? subResources : nullptr, desc._name));
+					return factory.CreateTexture1D(&textureDesc, hasInitData ? subResources : nullptr, desc._name);
 
-				} else if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::T2D
-					|| desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::CubeMap) {
+				} else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+					|| desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
 					D3D11_TEXTURE2D_DESC textureDesc;
 					XlZeroMemory(textureDesc);
@@ -202,11 +202,11 @@ namespace RenderCore { namespace Metal_DX11
 					if (textureDesc.Usage == D3D11_USAGE_STAGING && !textureDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
 						textureDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
 					textureDesc.MiscFlags = 0;
-					if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::CubeMap)
+					if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap)
 						textureDesc.MiscFlags |= D3D11_RESOURCE_MISC_TEXTURECUBE;
-					return AsResourcePtr(factory.CreateTexture2D(&textureDesc, hasInitData ? subResources : nullptr, desc._name));
+					return factory.CreateTexture2D(&textureDesc, hasInitData ? subResources : nullptr, desc._name);
 
-				} else if (desc._textureDesc._dimensionality == RenderCore::TextureDesc::Dimensionality::T3D) {
+				} else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
 
 					D3D11_TEXTURE3D_DESC textureDesc;
 					XlZeroMemory(textureDesc);
@@ -222,7 +222,7 @@ namespace RenderCore { namespace Metal_DX11
 					if (textureDesc.Usage == D3D11_USAGE_STAGING && !textureDesc.CPUAccessFlags)		// staging resources must have either D3D11_CPU_ACCESS_WRITE or D3D11_CPU_ACCESS_READ
 						textureDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
 					textureDesc.MiscFlags = 0;
-					return AsResourcePtr(factory.CreateTexture3D(&textureDesc, hasInitData ? subResources : nullptr, desc._name));
+					return factory.CreateTexture3D(&textureDesc, hasInitData ? subResources : nullptr, desc._name);
 
 				} else {
 					Throw(::Exceptions::BasicLabel("Unknown texture dimensionality creating resource"));
@@ -259,12 +259,20 @@ namespace RenderCore { namespace Metal_DX11
 					d3dDesc.CPUAccessFlags = hasInitData ? D3D11_CPU_ACCESS_WRITE : D3D11_CPU_ACCESS_READ;
 				assert(desc._bindFlags != BindFlag::IndexBuffer || d3dDesc.BindFlags == D3D11_USAGE_DYNAMIC);
 
-				return AsResourcePtr(factory.CreateBuffer(&d3dDesc, hasInitData ? subResources : nullptr, desc._name));
+				return factory.CreateBuffer(&d3dDesc, hasInitData ? subResources : nullptr, desc._name);
 			}
 
 		default:
 			Throw(::Exceptions::BasicLabel("Unknown resource type while creating resource"));
 		}
+	}
+
+	std::shared_ptr<IResource> CreateResource(
+		const ObjectFactory& factory,
+		const ResourceDesc& desc,
+		const ResourceInitializer& init)
+	{
+		return AsResourcePtr(CreateUnderlyingResource(factory, desc, init));
 	}
 
 	ResourceDesc AsGenericDesc(const D3D11_BUFFER_DESC& d3dDesc)
@@ -291,7 +299,7 @@ namespace RenderCore { namespace Metal_DX11
         desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
         desc._gpuAccess = GPUAccess::Read;
         desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-        desc._textureDesc._dimensionality = RenderCore::TextureDesc::Dimensionality::T2D;
+        desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T2D;
         desc._textureDesc._width = d3dDesc.Width;
         desc._textureDesc._height = d3dDesc.Height;
         desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
@@ -309,7 +317,7 @@ namespace RenderCore { namespace Metal_DX11
         desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
         desc._gpuAccess = GPUAccess::Read;
         desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-        desc._textureDesc._dimensionality = RenderCore::TextureDesc::Dimensionality::T1D;
+        desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T1D;
         desc._textureDesc._width = d3dDesc.Width;
         desc._textureDesc._height = 1;
         desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
@@ -327,7 +335,7 @@ namespace RenderCore { namespace Metal_DX11
         desc._cpuAccess = AsGenericCPUAccess(d3dDesc.CPUAccessFlags);
         desc._gpuAccess = GPUAccess::Read;
         desc._bindFlags = AsGenericBindFlags(d3dDesc.BindFlags);
-        desc._textureDesc._dimensionality = RenderCore::TextureDesc::Dimensionality::T3D;
+        desc._textureDesc._dimensionality = TextureDesc::Dimensionality::T3D;
         desc._textureDesc._width = d3dDesc.Width;
         desc._textureDesc._height = d3dDesc.Height;
         desc._textureDesc._mipCount = uint8(d3dDesc.MipLevels);
@@ -392,22 +400,22 @@ namespace RenderCore { namespace Metal_DX11
         return ExtractDesc(res.GetResource().get());
     }
 
-    RenderCore::ResourcePtr ExtractResource(const ShaderResourceView& view)
+    ResourcePtr ExtractResource(const ShaderResourceView& view)
     {
         return AsResourcePtr(view.GetResource());
     }
 
-	RenderCore::ResourcePtr ExtractResource(const RenderTargetView& view)
+	ResourcePtr ExtractResource(const RenderTargetView& view)
     {
         return AsResourcePtr(view.GetResource());
     }
 
-	RenderCore::ResourcePtr ExtractResource(const DepthStencilView& view)
+	ResourcePtr ExtractResource(const DepthStencilView& view)
     {
         return AsResourcePtr(view.GetResource());
     }
 
-    RenderCore::ResourcePtr ExtractResource(const UnorderedAccessView& view)
+    ResourcePtr ExtractResource(const UnorderedAccessView& view)
     {
         return AsResourcePtr(view.GetResource());
     }
@@ -417,12 +425,12 @@ namespace RenderCore { namespace Metal_DX11
 		return res.get();
 	}
 
-	RenderCore::ResourcePtr AsResourcePtr(ID3D::Resource* res)
+	ResourcePtr AsResourcePtr(ID3D::Resource* res)
 	{
 		return std::make_shared<Resource>(res);
 	}
 
-	RenderCore::ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
+	ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
 	{
 		return std::make_shared<Resource>(std::move(ptr));
 	}

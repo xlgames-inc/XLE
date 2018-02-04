@@ -13,6 +13,7 @@
 #include "../RenderCore/Types_Forward.h"
 #include "../Math/Matrix.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include "Font.h"
 #include <vector>
 #include <memory>
@@ -67,12 +68,12 @@ namespace RenderOverlays
 
         RenderCore::IThreadContext*                 GetDeviceContext();
         RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const;
-        RenderCore::Techniques::NamedAttachments*     GetNamedResources() const;
+        RenderCore::Techniques::AttachmentPool*     GetNamedResources() const;
         const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
 
         ImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext, 
-            RenderCore::Techniques::NamedAttachments* namedRes = nullptr,
+            RenderCore::Techniques::AttachmentPool* namedRes = nullptr,
             const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
         ~ImmediateOverlayContext();
 
@@ -92,7 +93,7 @@ namespace RenderOverlays
         RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::Techniques::ProjectionDesc _projDesc;
-        RenderCore::Techniques::NamedAttachments* _namedResources;
+        RenderCore::Techniques::AttachmentPool* _namedResources;
 
         enum VertexFormat { PC, PCT, PCR, PCCTT };
         class DrawCall
@@ -117,7 +118,7 @@ namespace RenderOverlays
 
         std::vector<DrawCall>   _drawCalls;
         void                    Flush();
-        void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName);
+        void                    SetShader(RenderCore::Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName, IteratorRange<const RenderCore::VertexBufferView*> vertexBuffers);
 
         template<typename Type> VertexFormat AsVertexFormat() const;
         unsigned                VertexSize(VertexFormat format);
@@ -127,7 +128,7 @@ namespace RenderOverlays
 	std::unique_ptr<ImmediateOverlayContext, AlignedDeletor<ImmediateOverlayContext>>
 		MakeImmediateOverlayContext(
 			RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::NamedAttachments* namedRes = nullptr,
+			RenderCore::Techniques::AttachmentPool* namedRes = nullptr,
 			const RenderCore::Techniques::ProjectionDesc& projDesc = RenderCore::Techniques::ProjectionDesc());
 }
 
