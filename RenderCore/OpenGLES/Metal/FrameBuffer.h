@@ -17,14 +17,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     class DepthStencilView;
     class DeviceContext;
 
-    class INamedAttachments
-    {
-    public:
-        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> const ShaderResourceView* = 0;
-        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> const RenderTargetView* = 0;
-        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> const DepthStencilView* = 0;
-    };
-
     class FrameBuffer
 	{
 	public:
@@ -42,23 +34,18 @@ namespace RenderCore { namespace Metal_OpenGLES
 	private:
         static const unsigned s_maxMRTs = 4u;
         static const unsigned s_maxSubpasses = 4u;
-        static const unsigned s_maxAttachments = 16u;
-        
-        RenderTargetView    _rtvs[s_maxAttachments];
-        DepthStencilView    _dsvs[s_maxAttachments];
-        unsigned            _attachmentCount;
         
         class Subpass
         {
         public:
-            unsigned _rtvs[s_maxMRTs];
-            unsigned _dsv;
-            unsigned _rtvCount;
+			RenderTargetView _rtvs[s_maxMRTs];
+			DepthStencilView _dsv;
+			unsigned _rtvCount;
 
-            AttachmentViewDesc::LoadStore _rtvLoad[s_maxMRTs];
-            AttachmentViewDesc::LoadStore _rtvStore[s_maxMRTs];
-            AttachmentViewDesc::LoadStore _dsvLoad;
-            AttachmentViewDesc::LoadStore _dsvStore;
+			LoadStore _rtvLoad[s_maxMRTs];
+			unsigned _rtvClearValue[s_maxMRTs];
+			LoadStore _dsvLoad;
+			unsigned _dsvClearValue;
 
             intrusive_ptr<OpenGL::FrameBuffer> _frameBuffer;
         };
@@ -80,7 +67,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const FrameBufferProperties& props,
-            IteratorRange<const AttachmentDesc*> attachmentResources,
             const INamedAttachments& namedResources,
             uint64 hashName);
 

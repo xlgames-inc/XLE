@@ -4,11 +4,17 @@
 
 #pragma once
 
+#include "../../../Core/SelectConfiguration.h"
 #include "../../../Utility/PlatformHacks.h"
 
-#ifdef HACK_PLATFORM_IOS
-    #import <OpenGLES/ES3/gl.h>
-    #import <OpenGLES/ES3/glext.h>
+#if PLATFORMOS_TARGET == PLATFORMOS_OSX
+	// Emulate GLES using desktop GL
+	#include <OpenGL/gl.h>
+#elif PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+	// Project Angle emulation layer
+	#include <GLES2/gl2.h>
 #else
-    #import <OpenGL/gl.h>
+	// Real GLES
+	#include <OpenGLES/ES3/gl.h>
+	#include <OpenGLES/ES3/glext.h>
 #endif

@@ -39,20 +39,20 @@ namespace RenderCore { namespace Techniques
             unsigned passIndex,
             unsigned slot, 
             AttachmentName attachmentName,
-            AttachmentViewDesc::LoadStore loadOp = AttachmentViewDesc::LoadStore::Retain, 
+            LoadStore loadOp = LoadStore::Retain, 
             const ClearValue& clearValue = ClearValue{});
 
         void BindDepthStencilAttachment(
             unsigned passIndex,
             AttachmentName attachmentName,
-            AttachmentViewDesc::LoadStore loadOp = AttachmentViewDesc::LoadStore::Retain, 
+            LoadStore loadOp = LoadStore::Retain, 
             const ClearValue& clearValue = ClearValue{});
 
         void BindInputAttachment(
             unsigned passIndex,
             unsigned slot, 
             AttachmentName attachmentName,
-            AttachmentViewDesc::LoadStore storeOp = AttachmentViewDesc::LoadStore::Retain, 
+            LoadStore storeOp = LoadStore::Retain, 
             TextureViewDesc::Aspect aspect = TextureViewDesc::Aspect::UndefinedAspect);
 
         PassFragmentInterface();
@@ -64,7 +64,7 @@ namespace RenderCore { namespace Techniques
     class PassFragment
     {
     public:
-        auto GetSRV(const Metal::INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*;
+        auto GetSRV(const INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*;
         Metal::ViewportDesc GetFullViewport() const;
 
         using PassAndSlot = std::pair<unsigned, unsigned>;
@@ -77,17 +77,14 @@ namespace RenderCore { namespace Techniques
     {
     public:
         void DefineAttachment(AttachmentName, const AttachmentDesc& request);
+		auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
-        auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> Metal::ShaderResourceView*;
-        auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> Metal::RenderTargetView*;
-        auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> Metal::DepthStencilView*;
-        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
-
-        void Bind(FrameBufferProperties props);
         void Bind(AttachmentName, const IResourcePtr& resource);
         void Unbind(AttachmentName);
+		IResourcePtr GetResource(AttachmentName resName) const;
 
-        const FrameBufferProperties& GetFrameBufferProperties() const;
+		void Bind(FrameBufferProperties props); 
+		const FrameBufferProperties& GetFrameBufferProperties() const;
         IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
         NamedAttachments();
@@ -136,7 +133,7 @@ namespace RenderCore { namespace Techniques
         void End();
 
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
-        const Metal::INamedAttachments& GetNamedAttachments() const { return *_namedAttachments; }
+        const INamedAttachments& GetNamedAttachments() const { return *_namedAttachments; }
 
         RenderPassInstance(
             Metal::DeviceContext& context,
@@ -159,7 +156,7 @@ namespace RenderCore { namespace Techniques
 
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
-        std::shared_ptr<Metal::INamedAttachments> _namedAttachments;
+        std::shared_ptr<INamedAttachments> _namedAttachments;
         Metal::DeviceContext* _attachedContext;
         unsigned _activeSubpass;
     };

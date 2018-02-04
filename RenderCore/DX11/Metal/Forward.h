@@ -40,7 +40,6 @@ namespace RenderCore { namespace Metal_DX11
 
     class FrameBuffer;
     class FrameBufferPool;
-	class INamedAttachments;
 
     typedef SharedPkt ConstantBufferPacket;
 }}

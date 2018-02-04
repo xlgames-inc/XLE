@@ -47,15 +47,11 @@
     <ClInclude Include="..\Documentation.h" />
     <ClInclude Include="..\DX11\Device.h" />
     <ClInclude Include="..\DX11\IDeviceDX11.h" />
-    <ClInclude Include="..\FlexForward.h" />
     <ClInclude Include="..\Format.h" />
     <ClInclude Include="..\FrameBufferDesc.h" />
     <ClInclude Include="..\IAnnotator.h" />
     <ClInclude Include="..\IAnnotator_Forward.h" />
     <ClInclude Include="..\IDevice.h" />
-    <ClInclude Include="..\FlexBegin.h" />
-    <ClInclude Include="..\FlexEnd.h" />
-    <ClInclude Include="..\FlexUtil.h" />
     <ClInclude Include="..\IDevice_Forward.h" />
     <ClInclude Include="..\Init.h" />
     <ClInclude Include="..\IThreadContext.h" />

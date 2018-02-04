@@ -13,7 +13,6 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class RenderTargetView;
     class DepthStencilView;
     class FrameBuffer;
-    class INamedAttachments;
     class StencilDesc;
     class DepthStencilDesc;
     class RasterizationDesc;

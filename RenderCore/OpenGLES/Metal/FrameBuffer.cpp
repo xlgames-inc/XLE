@@ -11,57 +11,69 @@
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "../../Format.h"
+#include "../../FrameBufferDesc.h"
 #include "../../../Utility/MemoryUtils.h"
+
+#include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    static unsigned FindAttachmentIndex(IteratorRange<const AttachmentViewDesc*> attachments, AttachmentName name)
-    {
-        auto i = std::find_if(
-            attachments.begin(), attachments.end(), 
-            [name](const AttachmentViewDesc& desc) { return desc._viewName == name; });
-        if (i != attachments.end())
-            return (unsigned)std::distance(attachments.begin(), i);
-        return ~0u;
-    }
+	class TextureViewPool
+	{
+	public:
+		ShaderResourceView GetSRV(const IResourcePtr& resource, const TextureViewDesc& view);
+		RenderTargetView GetRTV(const IResourcePtr& resource, const TextureViewDesc& view);
+		DepthStencilView GetDSV(const IResourcePtr& resource, const TextureViewDesc& view);
+
+		TextureViewPool();
+		~TextureViewPool();
+	private:
+		std::vector<std::pair<uint64, RenderTargetView>> _rtvs;
+		std::vector<std::pair<uint64, DepthStencilView>> _dsvs;
+		std::vector<std::pair<uint64, ShaderResourceView>> _srvs;
+	};
 
     FrameBuffer::FrameBuffer(
-        ObjectFactory& factory,
+		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
     {
         // We must create the frame buffer, including all resources and views required.
         // Here, some resources can come from the presentation chain. But other resources will
         // be created an attached to this object.
-        auto attachments = fbDesc.GetAttachments();
         auto subpasses = fbDesc.GetSubpasses();
-        
-        assert(attachments.size() < s_maxAttachments);
-        for (unsigned c=0; c<(unsigned)attachments.size(); ++c) {
-            const auto& a = attachments[c];
-            const auto* existingRTV = namedResources.GetRTV(a._viewName, a._resourceName, a._window);
-            const auto* existingDSV = namedResources.GetDSV(a._viewName, a._resourceName, a._window);
-            _rtvs[c] = existingRTV ? *existingRTV : RenderTargetView();
-            _dsvs[c] = existingDSV ? *existingDSV : DepthStencilView();
-        }
-        _attachmentCount = (unsigned)attachments.size();
 
+		TextureViewPool viewPool;
+		unsigned clearValueIterator = 0;
+        
         assert(subpasses.size() < s_maxSubpasses);
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
-            const auto& s = subpasses[c];
-            auto& sp = _subpasses[c];;
-            sp._rtvCount = (unsigned)std::min(s._output.size(), dimof(Subpass::_rtvs));
-            for (unsigned r=0; r<sp._rtvCount; ++r)
-                sp._rtvs[r] = FindAttachmentIndex(attachments, s._output[r]);
-            for (unsigned r=sp._rtvCount; r<dimof(Subpass::_rtvs); ++r) sp._rtvs[r] = ~0u;
-            sp._dsv = (s._depthStencil != SubpassDesc::Unused) ? FindAttachmentIndex(attachments, s._depthStencil) : ~0u;
-            sp._dsvLoad = attachments[sp._dsv]._loadFromPreviousPhase;
-            sp._dsvStore = attachments[sp._dsv]._storeToNextPhase;
+			const auto& spDesc = subpasses[c];
+			auto& sp = _subpasses[c];
+			sp._rtvCount = std::min((unsigned)spDesc._output.size(), s_maxMRTs);
+			for (unsigned r = 0; r<sp._rtvCount; ++r) {
+				const auto& attachmentView = spDesc._output[r];
+				auto resource = namedResources.GetResource(attachmentView._resourceName);
+				if (!resource)
+					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
+				sp._rtvs[r] = viewPool.GetRTV(resource, attachmentView._window);
+				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
+				sp._rtvClearValue[r] = clearValueIterator++;
+			}
+
+			if (spDesc._depthStencil._resourceName != ~0u) {
+				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
+				if (!resource)
+					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
+				sp._dsv = viewPool.GetDSV(resource, spDesc._depthStencil._window);
+				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
+				sp._dsvClearValue = clearValueIterator++;
+			}
 
             sp._frameBuffer = factory.CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, sp._frameBuffer->AsRawGLHandle());
             for (unsigned rtv=0; rtv<sp._rtvCount; ++rtv) {
-                auto& res = _rtvs[sp._rtvs[rtv]];
+                auto& res = sp._rtvs[rtv];
 
                 auto desc = ExtractDesc(res);
                 assert(desc._type == ResourceDesc::Type::Texture);
@@ -101,9 +113,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                 } else {
                     assert(0);
                 }
-
-                sp._rtvLoad[rtv] = attachments[sp._rtvs[rtv]]._loadFromPreviousPhase;
-                sp._rtvStore[rtv] = attachments[sp._rtvs[rtv]]._storeToNextPhase;
             }
         }
         _subpassCount = (unsigned)subpasses.size();
@@ -125,11 +134,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
-        if (s._dsvLoad == AttachmentViewDesc::LoadStore::Clear_ClearStencil) {
+        if (s._dsvLoad == LoadStore::Clear_ClearStencil) {
             glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsv]._depthStencil._depth, clearValues[s._dsv]._depthStencil._stencil);
-        } else if (s._dsvLoad == AttachmentViewDesc::LoadStore::Clear || s._dsvLoad == AttachmentViewDesc::LoadStore::Clear_RetainStencil) {
+        } else if (s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil) {
             glClearBufferfi(GL_DEPTH, 0, clearValues[s._dsv]._depthStencil._depth, clearValues[s._dsv]._depthStencil._stencil);
-        } else if (s._dsvLoad == AttachmentViewDesc::LoadStore::DontCare_ClearStencil || s._dsvLoad == AttachmentViewDesc::LoadStore::Retain_ClearStencil) {
+        } else if (s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil) {
             glClearBufferfi(GL_STENCIL, 0, clearValues[s._dsv]._depthStencil._depth, clearValues[s._dsv]._depthStencil._stencil);
         }
     }
@@ -186,7 +195,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 		ObjectFactory& factory,
 		const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
-        IteratorRange<const AttachmentDesc*> attachmentResources,
         const INamedAttachments& namedResources,
         uint64 hashName)
     {

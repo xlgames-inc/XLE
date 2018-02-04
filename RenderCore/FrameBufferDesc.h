@@ -16,25 +16,25 @@ namespace RenderCore
 {
     using AttachmentName = uint32;
 
+	enum class LoadStore
+	{
+		DontCare, Retain, Clear,
+		DontCare_RetainStencil, Retain_RetainStencil, Clear_RetainStencil,
+		DontCare_ClearStencil, Retain_ClearStencil, Clear_ClearStencil
+	};
+
     /// <summary>Attachments are part of a frame buffer, and typically represent a rendering surface</summary>
     /// This description object can define an attachment. Typically the attachment is defined in terms of
     /// some global frame buffer properties (such as output dimensions and sample count).
     class AttachmentViewDesc
     {
     public:
-        AttachmentName _resourceName;
-        AttachmentName _viewName;
+        AttachmentName _resourceName = ~0u;
 
-        TextureViewDesc _window;
+        LoadStore _loadFromPreviousPhase = LoadStore::Retain_RetainStencil;       ///< equivalent to "load op" in a Vulkan attachment
+        LoadStore _storeToNextPhase = LoadStore::Retain_RetainStencil;            ///< equivalent to "store op" in a Vulkan attachment
 
-        enum class LoadStore
-        {
-            DontCare,                   Retain,                 Clear,
-            DontCare_RetainStencil,     Retain_RetainStencil,   Clear_RetainStencil,
-            DontCare_ClearStencil,      Retain_ClearStencil,    Clear_ClearStencil
-        };
-        LoadStore _loadFromPreviousPhase;       ///< equivalent to "load op" in a Vulkan attachment
-        LoadStore _storeToNextPhase;            ///< equivalent to "store op" in a Vulkan attachment
+		TextureViewDesc _window = {};
     };
 
     class AttachmentDesc
@@ -42,7 +42,7 @@ namespace RenderCore
     public:
         Format _format;
         float _width = 1.0f, _height = 1.0f;
-        unsigned _arrayLayerCount = 1u;
+        unsigned _arrayLayerCount = 0u;
 
         TextureViewDesc::Aspect _defaultAspect = TextureViewDesc::Aspect::ColorLinear;
 
@@ -76,33 +76,28 @@ namespace RenderCore
     class SubpassDesc
     {
     public:
-        static const AttachmentName Unused = ~0u;
-        std::vector<AttachmentName> _output = {};
-        AttachmentName _depthStencil = Unused;
-        std::vector<AttachmentName> _input = {};
-        std::vector<AttachmentName> _preserve = {};
-		std::vector<AttachmentName> _resolve = {};
+        std::vector<AttachmentViewDesc> _output;
+		AttachmentViewDesc _depthStencil;
+        std::vector<AttachmentViewDesc> _input;
+        std::vector<AttachmentViewDesc> _preserve;
+		std::vector<AttachmentViewDesc> _resolve;
+
+		static const AttachmentViewDesc Unused;
     };
 
     class FrameBufferDesc
 	{
 	public:
-        IteratorRange<const SubpassDesc*>           GetSubpasses() const    { return MakeIteratorRange(_subpasses); }
-        IteratorRange<const AttachmentViewDesc*>    GetAttachments() const  { return MakeIteratorRange(_attachments); }
-        uint64                                      GetHash() const         { return _hash; }
+        auto	GetSubpasses() const -> IteratorRange<const SubpassDesc*> { return MakeIteratorRange(_subpasses); }
+        uint64	GetHash() const { return _hash; }
 
-		FrameBufferDesc(
-            IteratorRange<const SubpassDesc*> subpasses,
-            IteratorRange<const AttachmentViewDesc*> attachments = IteratorRange<const AttachmentViewDesc*>());
-		FrameBufferDesc(
-			std::vector<SubpassDesc>&& subpasses,
-			std::vector<AttachmentViewDesc>&& attachments = std::vector<AttachmentViewDesc>());
+		FrameBufferDesc(IteratorRange<const SubpassDesc*> subpasses);
+		FrameBufferDesc(std::vector<SubpassDesc>&& subpasses);
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
 	private:
         std::vector<SubpassDesc>        _subpasses;
-        std::vector<AttachmentViewDesc> _attachments;
         uint64                          _hash;
 	};
 
@@ -125,6 +120,16 @@ namespace RenderCore
         };
         DepthStencilValue _depthStencil;
     };
+
+	class INamedAttachments
+	{
+	public:
+		virtual IResourcePtr GetResource(AttachmentName resName) const = 0;
+		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const = 0;
+		virtual ~INamedAttachments();
+	};
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline ClearValue MakeClearValue(const VectorPattern<float, 4>& v)
     {

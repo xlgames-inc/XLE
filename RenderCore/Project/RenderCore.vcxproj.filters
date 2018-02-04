@@ -2,15 +2,6 @@
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="..\IDevice.h" />
-    <ClInclude Include="..\FlexBegin.h">
-      <Filter>Util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\FlexUtil.h">
-      <Filter>Util</Filter>
-    </ClInclude>
-    <ClInclude Include="..\FlexEnd.h">
-      <Filter>Util</Filter>
-    </ClInclude>
     <ClInclude Include="..\Metal\Buffer.h">
       <Filter>Metal</Filter>
     </ClInclude>
@@ -46,9 +37,6 @@
     </ClInclude>
     <ClInclude Include="..\IDevice_Forward.h" />
     <ClInclude Include="..\Documentation.h" />
-    <ClInclude Include="..\FlexForward.h">
-      <Filter>Util</Filter>
-    </ClInclude>
     <ClInclude Include="..\Metal\DeviceContextImpl.h">
       <Filter>Metal</Filter>
     </ClInclude>
