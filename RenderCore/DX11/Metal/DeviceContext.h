@@ -22,14 +22,8 @@ namespace RenderCore { namespace Metal_DX11
     class ShaderResourceView;
     class SamplerState;
 	class BoundInputLayout;
-    class VertexShader;
-    class GeometryShader;
-    class PixelShader;
     class ComputeShader;
-    class DomainShader;
-    class HullShader;
     class ShaderProgram;
-    class DeepShaderProgram;
     class RasterizerState;
     class BlendState;
     class DepthStencilState;
@@ -113,21 +107,14 @@ namespace RenderCore { namespace Metal_DX11
 
         void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
         void        Bind(Topology topology);
-        void        Bind(const VertexShader& vertexShader);
-        void        Bind(const GeometryShader& geometryShader);
-        void        Bind(const PixelShader& pixelShader);
         void        Bind(const ComputeShader& computeShader);
-        void        Bind(const DomainShader& domainShader);
-        void        Bind(const HullShader& hullShader);
         void        Bind(const ShaderProgram& shaderProgram);
-        void        Bind(const DeepShaderProgram& deepShaderProgram);
         void        Bind(const RasterizerState& rasterizer);
         void        Bind(const BlendState& blender);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
         void        Bind(const ViewportDesc& viewport);
 
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
-        void        Bind(const DeepShaderProgram& deepShaderProgram, const BoundClassInterfaces& dynLinkage);
 
         T1(Type) void   UnbindVS(unsigned startSlot, unsigned count);
         T1(Type) void   UnbindGS(unsigned startSlot, unsigned count);
@@ -137,6 +124,11 @@ namespace RenderCore { namespace Metal_DX11
         T1(Type) void   Unbind();
         void            UnbindSO();
 		void			UnbindVBs();
+		void			UnbindVS();
+		void			UnbindPS();
+		void			UnbindGS();
+		void			UnbindHS();
+		void			UnbindDS();
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -195,9 +187,6 @@ namespace RenderCore { namespace Metal_DX11
 
     extern template void DeviceContext::Unbind<BoundInputLayout>();
     extern template void DeviceContext::Unbind<RenderTargetView>();
-    extern template void DeviceContext::Unbind<VertexShader>();
-    extern template void DeviceContext::Unbind<PixelShader>();
-    extern template void DeviceContext::Unbind<GeometryShader>();
 
     ObjectFactory& GetObjectFactory(IDevice& device);
 	ObjectFactory& GetObjectFactory(DeviceContext&);

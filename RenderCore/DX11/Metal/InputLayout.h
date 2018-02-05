@@ -22,9 +22,11 @@ namespace RenderCore { class VertexBufferView; class CompiledShaderByteCode; }
 namespace RenderCore { namespace Metal_DX11
 {
     class ShaderProgram;
-	class DeepShaderProgram;
 	class DeviceContext;
-	class PipelineLayoutConfig;
+	class PipelineLayoutConfig
+	{
+	public:
+	};
 
     class BoundInputLayout
     {
@@ -121,7 +123,6 @@ namespace RenderCore { namespace Metal_DX11
         const std::vector<intrusive_ptr<ID3D::ClassInstance>>& GetClassInstances(ShaderStage stage) const;
 
         BoundClassInterfaces(const ShaderProgram& shader);
-        BoundClassInterfaces(const DeepShaderProgram& shader);
         BoundClassInterfaces();
         ~BoundClassInterfaces();
 

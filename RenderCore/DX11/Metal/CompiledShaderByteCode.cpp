@@ -9,10 +9,8 @@
 #include "ObjectFactory.h"
 #include "../../ShaderService.h"
 #include "../../ShaderLangUtil.h"
-#include "../../../Assets/IAssetCompiler.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Assets/ConfigFileContainer.h"
-#include "../../../Assets/AssetServices.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../../Assets/IFileSystem.h"

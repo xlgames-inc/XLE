@@ -8,13 +8,6 @@
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "InputLayout.h"
-#include "../../RenderUtils.h"
-#include "../../Format.h"
-#include "../../../Assets/IAssetCompiler.h"
-#include "../../../Assets/Assets.h"
-#include "../../../Utility/StringUtils.h"
-#include "../../../Utility/StringFormat.h"
-#include "../../../Core/Exceptions.h"
 
 #include "IncludeDX11.h"
 #include <D3D11Shader.h>
@@ -23,78 +16,7 @@ namespace RenderCore { namespace Metal_DX11
 {
     using ::Assets::ResChar;
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    VertexShader::VertexShader(StringSection<ResChar> initializer)
-    {
-            //
-            //      We have to append the shader model to the resource name
-            //      (if it's not already there)
-            //
-        ResChar temp[MaxPath];
-        if (!XlFindStringI(initializer, "vs_")) {
-            StringMeldInPlace(temp) << initializer << ":" VS_DefShaderModel;
-            initializer = temp;
-        }
-
-		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
-        assert(compiledShader.GetStage() == ShaderStage::Vertex);
-        auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateVertexShader(byteCode.begin(), byteCode.size());
-    }
-
-    VertexShader::VertexShader(const CompiledShaderByteCode& compiledShader)
-    {
-		auto& objFactory = GetObjectFactory();
-        if (compiledShader.DynamicLinkingEnabled())
-            _classLinkage = objFactory.CreateClassLinkage();
-
-        if (compiledShader.GetStage() != ShaderStage::Null) {
-            assert(compiledShader.GetStage() == ShaderStage::Vertex);
-            auto byteCode = compiledShader.GetByteCode();
-            _underlying = objFactory.CreateVertexShader(byteCode.begin(), byteCode.size(), _classLinkage.get());
-        }
-    }
-
-    VertexShader::VertexShader() {}
-    
-    VertexShader::~VertexShader() {}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    PixelShader::PixelShader(StringSection<ResChar> initializer)
-    {
-            //
-            //      We have to append the shader model to the resource name
-            //      (if it's not already there)
-            //
-        ResChar temp[MaxPath];
-        if (!XlFindStringI(initializer, "ps_")) {
-            StringMeldInPlace(temp) << initializer << ":" PS_DefShaderModel;
-            initializer = temp;
-        }
-
-        const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
-        assert(compiledShader.GetStage() == ShaderStage::Pixel);
-        auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreatePixelShader(byteCode.begin(), byteCode.size());
-    }
-
-    PixelShader::PixelShader(const CompiledShaderByteCode& compiledShader)
-    {
-        auto& objFactory = GetObjectFactory();
-        if (compiledShader.DynamicLinkingEnabled())
-            _classLinkage = objFactory.CreateClassLinkage();
-
-        if (compiledShader.GetStage() != ShaderStage::Null) {
-            assert(compiledShader.GetStage() == ShaderStage::Pixel);
-            auto byteCode = compiledShader.GetByteCode();
-            _underlying = objFactory.CreatePixelShader(byteCode.begin(), byteCode.size(), _classLinkage.get());
-        }
-    }
-
-    PixelShader::PixelShader() {}
-    PixelShader::~PixelShader() {}
+#if 0
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -226,25 +148,9 @@ namespace RenderCore { namespace Metal_DX11
     {
         return _hackInitializers;
     }
+#endif
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ComputeShader::ComputeShader(StringSection<ResChar> initializer, StringSection<ResChar> definesTable)
-    {
-        ResChar temp[MaxPath];
-        if (!XlFindStringI(initializer, "cs_")) {
-            StringMeldInPlace(temp) << initializer << ":" CS_DefShaderModel;
-            initializer = temp;
-        }
-
-        const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
-        assert(compiledShader.GetStage() == ShaderStage::Compute);
-        auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateComputeShader(byteCode.begin(), byteCode.size());
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
-    }
 
     ComputeShader::ComputeShader(const CompiledShaderByteCode& compiledShader)
     {
@@ -264,206 +170,156 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DomainShader::DomainShader(StringSection<ResChar> initializer, StringSection<ResChar> definesTable)
-    {
-        ResChar temp[MaxPath];
-        if (!XlFindStringI(initializer, "ds_")) {
-            StringMeldInPlace(temp) << initializer << ":" DS_DefShaderModel;
-            initializer = temp;
-        }
+	void ShaderProgram::Apply(DeviceContext& devContext) const
+	{
+		ID3D::DeviceContext* d3dDevContext = devContext.GetUnderlying();
+		d3dDevContext->VSSetShader(_vertexShader.get(), nullptr, 0);
+		d3dDevContext->GSSetShader(_geometryShader.get(), nullptr, 0);
+		d3dDevContext->PSSetShader(_pixelShader.get(), nullptr, 0);
+		d3dDevContext->HSSetShader(_hullShader.get(), nullptr, 0);			// todo -- prevent frequent thrashing of this state
+		d3dDevContext->DSSetShader(_domainShader.get(), nullptr, 0);
+	}
 
-		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
-        assert(compiledShader.GetStage() == ShaderStage::Domain);
-        auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateDomainShader(byteCode.begin(), byteCode.size());
+	void ShaderProgram::Apply(DeviceContext& devContext, const BoundClassInterfaces& dynLinkage) const
+	{
+		ID3D::DeviceContext* d3dDevContext = devContext.GetUnderlying();
+		auto& vsDyn = dynLinkage.GetClassInstances(ShaderStage::Vertex);
+		auto& gsDyn = dynLinkage.GetClassInstances(ShaderStage::Geometry);
+		auto& psDyn = dynLinkage.GetClassInstances(ShaderStage::Pixel);
+		auto& hsDyn = dynLinkage.GetClassInstances(ShaderStage::Hull);
+		auto& dsDyn = dynLinkage.GetClassInstances(ShaderStage::Domain);
+
+		d3dDevContext->VSSetShader(_vertexShader.get(), (ID3D::ClassInstance*const*)AsPointer(vsDyn.cbegin()), (unsigned)vsDyn.size());
+		d3dDevContext->GSSetShader(_geometryShader.get(), (ID3D::ClassInstance*const*)AsPointer(gsDyn.cbegin()), (unsigned)gsDyn.size());
+		d3dDevContext->PSSetShader(_pixelShader.get(), (ID3D::ClassInstance*const*)AsPointer(psDyn.cbegin()), (unsigned)psDyn.size());
+		d3dDevContext->HSSetShader(_hullShader.get(), (ID3D::ClassInstance*const*)AsPointer(hsDyn.cbegin()), (unsigned)hsDyn.size());
+		d3dDevContext->DSSetShader(_domainShader.get(), (ID3D::ClassInstance*const*)AsPointer(dsDyn.cbegin()), (unsigned)dsDyn.size());
+	}
+
+    ShaderProgram::ShaderProgram(	ObjectFactory& factory, 
+									const CompiledShaderByteCode& vs,
+									const CompiledShaderByteCode& ps)
+    {
+		///////////////// VS ////////////////////
+		if (vs.DynamicLinkingEnabled())
+			_classLinkage[(unsigned)ShaderStage::Vertex] = factory.CreateClassLinkage();
+			
+		if (vs.GetStage() != ShaderStage::Null) {
+			assert(vs.GetStage() == ShaderStage::Vertex);
+			auto byteCode = vs.GetByteCode();
+			_vertexShader = factory.CreateVertexShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Vertex].get());
+			_compiledCode[(unsigned)ShaderStage::Vertex] = vs;
+		}
+
+		///////////////// PS ////////////////////
+		if (ps.DynamicLinkingEnabled())
+			_classLinkage[(unsigned)ShaderStage::Pixel] = factory.CreateClassLinkage();
+
+		if (ps.GetStage() != ShaderStage::Null) {
+			assert(ps.GetStage() == ShaderStage::Pixel);
+			auto byteCode = ps.GetByteCode();
+			_pixelShader = factory.CreatePixelShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Pixel].get());
+			_compiledCode[(unsigned)ShaderStage::Pixel] = ps;
+		}
 
         _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
-    }
-
-    DomainShader::DomainShader(const CompiledShaderByteCode& compiledShader)
-    {
-        if (compiledShader.GetStage() != ShaderStage::Null) {
-            assert(compiledShader.GetStage() == ShaderStage::Domain);
-            auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory().CreateDomainShader(byteCode.begin(), byteCode.size());
-        }
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
-    }
-
-    DomainShader::~DomainShader() {}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    HullShader::HullShader(StringSection<ResChar> initializer, StringSection<ResChar> definesTable)
-    {
-        ResChar temp[MaxPath];
-        if (!XlFindStringI(initializer, "hs_")) {
-            StringMeldInPlace(temp) << initializer << ":" HS_DefShaderModel;
-            initializer = temp;
-        }
-
-		const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer, definesTable);
-        assert(compiledShader.GetStage() == ShaderStage::Hull);
-        auto byteCode = compiledShader.GetByteCode();
-        _underlying = GetObjectFactory().CreateHullShader(byteCode.begin(), byteCode.size());
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
-    }
-
-    HullShader::HullShader(const CompiledShaderByteCode& compiledShader)
-    {
-        if (compiledShader.GetStage() != ShaderStage::Null) {
-            assert(compiledShader.GetStage() == ShaderStage::Hull);
-            auto byteCode = compiledShader.GetByteCode();
-            _underlying = GetObjectFactory().CreateHullShader(byteCode.begin(), byteCode.size());
-        }
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
-    }
-
-    HullShader::~HullShader() {}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ShaderProgram::ShaderProgram(   StringSection<ResChar> vertexShaderInitializer, 
-                                    StringSection<ResChar> fragmentShaderInitializer)
-    :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer)) // (odd..?)
-    ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer)) // (odd..?)
-    ,   _vertexShader(*_compiledVertexShader)
-    ,   _pixelShader(*_compiledPixelShader)
-    ,   _compiledGeometryShader(nullptr)
-    {
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
+        Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
     }
     
-    ShaderProgram::ShaderProgram(   StringSection<ResChar> vertexShaderInitializer, 
-                                    StringSection<ResChar> fragmentShaderInitializer,
-                                    StringSection<ResChar> definesTable)
-    :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
-    ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
-    ,   _vertexShader(*_compiledVertexShader)
-    ,   _pixelShader(*_compiledPixelShader)
-    ,   _compiledGeometryShader(nullptr)
+    ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
+									const CompiledShaderByteCode& vs,
+									const CompiledShaderByteCode& gs,
+									const CompiledShaderByteCode& ps)
+	: ShaderProgram(factory, vs, ps)
     {
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
+		///////////////// GS ////////////////////
+		if (gs.DynamicLinkingEnabled())
+			_classLinkage[(unsigned)ShaderStage::Geometry] = factory.CreateClassLinkage();
+
+		if (gs.GetStage() != ShaderStage::Null) {
+			assert(gs.GetStage() == ShaderStage::Geometry);
+			auto byteCode = gs.GetByteCode();
+			_geometryShader = factory.CreateGeometryShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Geometry].get());
+			_compiledCode[(unsigned)ShaderStage::Geometry] = gs;
+		}
+
+		Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
     }
 
-    ShaderProgram::ShaderProgram(   StringSection<ResChar> vertexShaderInitializer, 
-                                    StringSection<ResChar> geometryShaderInitializer,
-                                    StringSection<ResChar> fragmentShaderInitializer,
-                                    StringSection<ResChar> definesTable)
-    :   _compiledVertexShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(vertexShaderInitializer, definesTable)) // (odd..?)
-    ,   _compiledPixelShader(&::Assets::GetAssetComp<CompiledShaderByteCode>(fragmentShaderInitializer, definesTable)) // (odd..?)
-    ,   _vertexShader(*_compiledVertexShader)
-    ,   _pixelShader(*_compiledPixelShader)
-    ,   _compiledGeometryShader(nullptr)
+    ShaderProgram::ShaderProgram(	ObjectFactory& factory,
+									const CompiledShaderByteCode& vs,
+									const CompiledShaderByteCode& gs,
+									const CompiledShaderByteCode& ps,
+									const CompiledShaderByteCode& hs,
+									const CompiledShaderByteCode& ds)
+	: ShaderProgram(factory, vs, gs, ps)
     {
-        if (!geometryShaderInitializer.IsEmpty()) {
-            _compiledGeometryShader = &::Assets::GetAssetComp<CompiledShaderByteCode>(geometryShaderInitializer, definesTable);
-            _geometryShader = GeometryShader(*_compiledGeometryShader);
-        }
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
-        if (_compiledGeometryShader) {
-            Assets::RegisterAssetDependency(_validationCallback, _compiledGeometryShader->GetDependencyValidation());
-        }
+		///////////////// HS ////////////////////
+		if (hs.DynamicLinkingEnabled())
+			_classLinkage[(unsigned)ShaderStage::Hull] = factory.CreateClassLinkage();
+
+		if (hs.GetStage() != ShaderStage::Null) {
+			assert(hs.GetStage() == ShaderStage::Hull);
+			auto byteCode = hs.GetByteCode();
+			_hullShader = factory.CreateHullShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Hull].get());
+			_compiledCode[(unsigned)ShaderStage::Hull] = hs;
+		}
+
+		///////////////// DS ////////////////////
+		if (ds.DynamicLinkingEnabled())
+			_classLinkage[(unsigned)ShaderStage::Domain] = factory.CreateClassLinkage();
+
+		if (ds.GetStage() != ShaderStage::Null) {
+			assert(ds.GetStage() == ShaderStage::Domain);
+			auto byteCode = ds.GetByteCode();
+			_domainShader = factory.CreateDomainShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Domain].get());
+			_compiledCode[(unsigned)ShaderStage::Domain] = ds;
+		}
+
+		Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
+		Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
     }
 
-    ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& compiledVertexShader, 
-                                    const CompiledShaderByteCode& compiledFragmentShader)
-    :   _compiledVertexShader(&compiledVertexShader)
-    ,   _compiledPixelShader(&compiledFragmentShader)
-    ,   _compiledGeometryShader(nullptr)
-    {
-            //  make sure both the vertex shader and the pixel shader
-            //  have completed compiling. If one completes early, we don't
-            //  want to create the vertex shader object, and then just delete it.
-        compiledVertexShader.GetByteCode();
-        compiledFragmentShader.GetByteCode();
-
-        auto vertexShader = VertexShader(compiledVertexShader);
-        auto pixelShader = PixelShader(compiledFragmentShader);
-
-        _vertexShader = std::move(vertexShader);
-        _pixelShader = std::move(pixelShader);
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, _compiledVertexShader->GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledPixelShader->GetDependencyValidation());
-    }
-
-	ShaderProgram::ShaderProgram()
-	{
-		_compiledVertexShader = nullptr;
-		_compiledPixelShader = nullptr;
-		_compiledGeometryShader = nullptr;
-	}
+	ShaderProgram::ShaderProgram() {}
     ShaderProgram::~ShaderProgram() {}
 
     bool ShaderProgram::DynamicLinkingEnabled() const
     {
-        return _compiledVertexShader->DynamicLinkingEnabled() || _compiledPixelShader->DynamicLinkingEnabled();
+        for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
+			if (_classLinkage[c]) return true;
+		return false;
     }
 
 	ShaderProgram::ShaderProgram(ShaderProgram&& moveFrom) never_throws
-	: _compiledVertexShader(moveFrom._compiledVertexShader)
-	, _compiledPixelShader(moveFrom._compiledPixelShader)
-	, _compiledGeometryShader(moveFrom._compiledGeometryShader)
-	, _vertexShader(std::move(moveFrom._vertexShader))
+	: _vertexShader(std::move(moveFrom._vertexShader))
 	, _pixelShader(std::move(moveFrom._pixelShader))
 	, _geometryShader(std::move(moveFrom._geometryShader))
+	, _hullShader(std::move(moveFrom._hullShader))
+	, _domainShader(std::move(moveFrom._domainShader))
 	, _validationCallback(std::move(moveFrom._validationCallback))
 	{
-		moveFrom._compiledVertexShader = nullptr;
-		moveFrom._compiledPixelShader = nullptr;
-		moveFrom._compiledGeometryShader = nullptr;
+		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
+			_compiledCode[c] = std::move(moveFrom._compiledCode[c]);
+			_classLinkage[c] = std::move(moveFrom._classLinkage[c]);
+		}
 	}
 
     ShaderProgram& ShaderProgram::operator=(ShaderProgram&& moveFrom) never_throws
 	{
-		_compiledVertexShader = moveFrom._compiledVertexShader;
-		_compiledPixelShader = moveFrom._compiledPixelShader;
-		_compiledGeometryShader = moveFrom._compiledGeometryShader;
-		moveFrom._compiledVertexShader = nullptr;
-		moveFrom._compiledPixelShader = nullptr;
-		moveFrom._compiledGeometryShader = nullptr;
-
 		_vertexShader = std::move(moveFrom._vertexShader);
 		_pixelShader = std::move(moveFrom._pixelShader);
 		_geometryShader = std::move(moveFrom._geometryShader);
+		_hullShader = std::move(moveFrom._hullShader);
+		_domainShader = std::move(moveFrom._domainShader);
 		_validationCallback = std::move(moveFrom._validationCallback);
+
+		for (unsigned c = 0; c<(unsigned)ShaderStage::Max; ++c) {
+			_compiledCode[c] = std::move(moveFrom._compiledCode[c]);
+			_classLinkage[c] = std::move(moveFrom._classLinkage[c]);
+		}
 		return *this;
 	}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    DeepShaderProgram::DeepShaderProgram(  
-        StringSection<ResChar> vertexShaderInitializer, 
-        StringSection<ResChar> geometryShaderInitializer,
-        StringSection<ResChar> fragmentShaderInitializer,
-        StringSection<ResChar> hullShaderInitializer,
-        StringSection<ResChar> domainShaderInitializer,
-        StringSection<ResChar> definesTable)
-    :   ShaderProgram(vertexShaderInitializer, geometryShaderInitializer, fragmentShaderInitializer, definesTable)
-    ,   _compiledHullShader(::Assets::GetAssetComp<CompiledShaderByteCode>(hullShaderInitializer, definesTable))
-    ,   _compiledDomainShader(::Assets::GetAssetComp<CompiledShaderByteCode>(domainShaderInitializer, definesTable))
-    ,   _hullShader(_compiledHullShader)
-    ,   _domainShader(_compiledDomainShader)
-    {
-        Assets::RegisterAssetDependency(_validationCallback, _compiledHullShader.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, _compiledDomainShader.GetDependencyValidation());
-    }
-
-    DeepShaderProgram::~DeepShaderProgram() {}
 
     template intrusive_ptr<ID3D::ShaderReflection>;
 }}

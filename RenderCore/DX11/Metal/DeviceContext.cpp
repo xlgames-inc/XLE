@@ -34,78 +34,19 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetPrimitiveTopology(D3D11_PRIMITIVE_TOPOLOGY(topology));
     }
 
-    void DeviceContext::Bind(const VertexShader& vertexShader)
-    {
-        _underlying->VSSetShader(vertexShader.GetUnderlying(), nullptr, 0);
-    }
-
-    void DeviceContext::Bind(const GeometryShader& geometryShader)
-    {
-        _underlying->GSSetShader(geometryShader.GetUnderlying(), nullptr, 0);
-    }
-
-    void DeviceContext::Bind(const PixelShader& pixelShader)
-    {
-        _underlying->PSSetShader(pixelShader.GetUnderlying(), nullptr, 0);
-    }
-
     void DeviceContext::Bind(const ComputeShader& computeShader)
     {
         _underlying->CSSetShader(computeShader.GetUnderlying(), nullptr, 0);
     }
 
-    void DeviceContext::Bind(const DomainShader& domainShader)
-    {
-        _underlying->DSSetShader(domainShader.GetUnderlying(), nullptr, 0);
-    }
-
-    void DeviceContext::Bind(const HullShader& hullShader)
-    {
-        _underlying->HSSetShader(hullShader.GetUnderlying(), nullptr, 0);
-    }
-
     void DeviceContext::Bind(const ShaderProgram& shaderProgram)
     {
-        _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), nullptr, 0);
-        _underlying->GSSetShader(shaderProgram.GetGeometryShader().GetUnderlying(), nullptr, 0);
-        _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), nullptr, 0);
+		shaderProgram.Apply(*this);
     }
 
     void DeviceContext::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage)
     {
-        auto& vsDyn = dynLinkage.GetClassInstances(ShaderStage::Vertex);
-        _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), 
-            (ID3D::ClassInstance*const*)AsPointer(vsDyn.cbegin()), (unsigned)vsDyn.size());
-
-        auto& psDyn = dynLinkage.GetClassInstances(ShaderStage::Pixel);
-        _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), 
-            (ID3D::ClassInstance*const*)AsPointer(psDyn.cbegin()), (unsigned)psDyn.size());
-
-        _underlying->GSSetShader(shaderProgram.GetGeometryShader().GetUnderlying(), nullptr, 0);
-    }
-
-    void DeviceContext::Bind(const DeepShaderProgram& shaderProgram)
-    {
-        _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), nullptr, 0);
-        _underlying->GSSetShader(shaderProgram.GetGeometryShader().GetUnderlying(), nullptr, 0);
-        _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), nullptr, 0);
-        _underlying->HSSetShader(shaderProgram.GetHullShader().GetUnderlying(), nullptr, 0);
-        _underlying->DSSetShader(shaderProgram.GetDomainShader().GetUnderlying(), nullptr, 0);
-    }
-
-    void DeviceContext::Bind(const DeepShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage)
-    {
-        auto& vsDyn = dynLinkage.GetClassInstances(ShaderStage::Vertex);
-        _underlying->VSSetShader(shaderProgram.GetVertexShader().GetUnderlying(), 
-            (ID3D::ClassInstance*const*)AsPointer(vsDyn.cbegin()), (unsigned)vsDyn.size());
-
-        auto& psDyn = dynLinkage.GetClassInstances(ShaderStage::Pixel);
-        _underlying->PSSetShader(shaderProgram.GetPixelShader().GetUnderlying(), 
-            (ID3D::ClassInstance*const*)AsPointer(psDyn.cbegin()), (unsigned)psDyn.size());
-
-        _underlying->GSSetShader(shaderProgram.GetGeometryShader().GetUnderlying(), nullptr, 0);
-        _underlying->HSSetShader(shaderProgram.GetHullShader().GetUnderlying(), nullptr, 0);
-        _underlying->DSSetShader(shaderProgram.GetDomainShader().GetUnderlying(), nullptr, 0);
+		shaderProgram.Apply(*this, dynLinkage);
     }
 
     void DeviceContext::Bind(const RasterizerState& rasterizer)
@@ -243,9 +184,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->CSSetUnorderedAccessViews(startSlot, count, uoavs, initialCounts);
     }
 
-    template<> void DeviceContext::Unbind<ComputeShader>()   { _underlying->CSSetShader(nullptr, nullptr, 0); }
-    template<> void DeviceContext::Unbind<HullShader>()      { _underlying->HSSetShader(nullptr, nullptr, 0); }
-    template<> void DeviceContext::Unbind<DomainShader>()    { _underlying->DSSetShader(nullptr, nullptr, 0); }
+    template<> void DeviceContext::Unbind<ComputeShader>()	{ _underlying->CSSetShader(nullptr, nullptr, 0); }
 
     template<> void DeviceContext::Unbind<BoundInputLayout>()
     {
@@ -264,20 +203,11 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->OMSetRenderTargets(0, nullptr, nullptr);
     }
 
-    template<> void DeviceContext::Unbind<VertexShader>()
-    {
-        _underlying->VSSetShader(nullptr, nullptr, 0);
-    }
-
-    template<> void DeviceContext::Unbind<PixelShader>()
-    {
-        _underlying->PSSetShader(nullptr, nullptr, 0);
-    }
-
-    template<> void DeviceContext::Unbind<GeometryShader>()
-    {
-        _underlying->GSSetShader(nullptr, nullptr, 0);
-    }
+    void DeviceContext::UnbindVS() { _underlying->VSSetShader(nullptr, nullptr, 0); }
+    void DeviceContext::UnbindPS() { _underlying->PSSetShader(nullptr, nullptr, 0); }
+    void DeviceContext::UnbindGS() { _underlying->GSSetShader(nullptr, nullptr, 0); }
+	void DeviceContext::UnbindHS() { _underlying->HSSetShader(nullptr, nullptr, 0); }
+	void DeviceContext::UnbindDS() { _underlying->DSSetShader(nullptr, nullptr, 0); }
 
     void DeviceContext::UnbindSO()
     {

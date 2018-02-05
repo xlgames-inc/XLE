@@ -167,10 +167,10 @@ namespace RenderCore
 		CompiledShaderByteCode();
         ~CompiledShaderByteCode();
 
-		CompiledShaderByteCode(const CompiledShaderByteCode&) = delete;
-        CompiledShaderByteCode& operator=(const CompiledShaderByteCode&) = delete;
-        CompiledShaderByteCode(CompiledShaderByteCode&&);
-        CompiledShaderByteCode& operator=(CompiledShaderByteCode&&);
+		CompiledShaderByteCode(const CompiledShaderByteCode&) = default;
+        CompiledShaderByteCode& operator=(const CompiledShaderByteCode&) = default;
+        CompiledShaderByteCode(CompiledShaderByteCode&&) = default;
+        CompiledShaderByteCode& operator=(CompiledShaderByteCode&&) = default;
 
         auto        GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _depVal; }
 
