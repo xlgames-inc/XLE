@@ -52,7 +52,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         void Bind(const ShaderProgram& shaderProgram);
 
         void Bind(const BlendState& blender);
@@ -135,10 +134,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (int c=0; c<Count; ++c) {
             samplerStates._buffers[c].Apply(c+samplerStates._startingPoint);
         }
-    }
-
-    template<int Count> void GraphicsPipeline::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers)
-    {
     }
 
 }}

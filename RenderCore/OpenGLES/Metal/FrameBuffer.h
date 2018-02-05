@@ -22,9 +22,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
 
-        RenderTargetView& GetRTV(unsigned index);
-        DepthStencilView& GetDSV(unsigned index);
-
 		FrameBuffer(
 			ObjectFactory& factory,
             const FrameBufferDesc& desc,

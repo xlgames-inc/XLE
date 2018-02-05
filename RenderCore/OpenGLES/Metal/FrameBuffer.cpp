@@ -11,6 +11,7 @@
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "../../Format.h"
+#include "../../ResourceUtils.h"
 #include "../../FrameBufferDesc.h"
 #include "../../../Utility/MemoryUtils.h"
 
@@ -18,21 +19,6 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-	class TextureViewPool
-	{
-	public:
-		ShaderResourceView GetSRV(const IResourcePtr& resource, const TextureViewDesc& view);
-		RenderTargetView GetRTV(const IResourcePtr& resource, const TextureViewDesc& view);
-		DepthStencilView GetDSV(const IResourcePtr& resource, const TextureViewDesc& view);
-
-		TextureViewPool();
-		~TextureViewPool();
-	private:
-		std::vector<std::pair<uint64, RenderTargetView>> _rtvs;
-		std::vector<std::pair<uint64, DepthStencilView>> _dsvs;
-		std::vector<std::pair<uint64, ShaderResourceView>> _srvs;
-	};
-
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -43,20 +29,21 @@ namespace RenderCore { namespace Metal_OpenGLES
         // be created an attached to this object.
         auto subpasses = fbDesc.GetSubpasses();
 
-		TextureViewPool viewPool;
+		ViewPool<RenderTargetView> rtvPool;
+        ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
         
         assert(subpasses.size() < s_maxSubpasses);
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 			auto& sp = _subpasses[c];
-			sp._rtvCount = std::min((unsigned)spDesc._output.size(), s_maxMRTs);
+			sp._rtvCount = (unsigned)std::min(spDesc._output.size(), dimof(Subpass::_rtvs));
 			for (unsigned r = 0; r<sp._rtvCount; ++r) {
 				const auto& attachmentView = spDesc._output[r];
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-				sp._rtvs[r] = viewPool.GetRTV(resource, attachmentView._window);
+				sp._rtvs[r] = rtvPool.GetView(resource, attachmentView._window);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
 				sp._rtvClearValue[r] = clearValueIterator++;
 			}
@@ -65,7 +52,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = viewPool.GetDSV(resource, spDesc._depthStencil._window);
+				sp._dsv = dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				sp._dsvClearValue = clearValueIterator++;
 			}
@@ -129,23 +116,20 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
             auto attachmentIdx = s._rtvs[rtv];
             auto load = s._rtvLoad[rtv];
-            if (load == AttachmentViewDesc::LoadStore::Clear) {
-                glClearBufferfv(GL_COLOR, GL_DRAW_BUFFER0 + rtv, clearValues[attachmentIdx]._float);
+            if (load == LoadStore::Clear) {
+                glClearBufferfv(GL_COLOR, GL_DRAW_BUFFER0 + rtv, clearValues[s._rtvClearValue[rtv]]._float);
             }
         }
 
         if (s._dsvLoad == LoadStore::Clear_ClearStencil) {
-            glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsv]._depthStencil._depth, clearValues[s._dsv]._depthStencil._stencil);
+            glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
         } else if (s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil) {
-            glClearBufferfi(GL_DEPTH, 0, clearValues[s._dsv]._depthStencil._depth, clearValues[s._dsv]._depthStencil._stencil);
+            glClearBufferfi(GL_DEPTH, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
         } else if (s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil) {
-            glClearBufferfi(GL_STENCIL, 0, clearValues[s._dsv]._depthStencil._depth, clearValues[s._dsv]._depthStencil._stencil);
+            glClearBufferfi(GL_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
         }
     }
 
-    RenderTargetView& FrameBuffer::GetRTV(unsigned index) { assert(index < _attachmentCount); return _rtvs[index]; }
-    DepthStencilView& FrameBuffer::GetDSV(unsigned index) { assert(index < _attachmentCount); return _dsvs[index]; }
-    
 	FrameBuffer::FrameBuffer() {}
     FrameBuffer::~FrameBuffer() {}
 
