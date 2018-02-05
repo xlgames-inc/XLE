@@ -327,7 +327,7 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->OMSetRenderTargets(Count, underlyings, depthStencil?depthStencil->GetUnderlying():nullptr);
     }
 
-	template<> void DeviceContext::Bind(const ResourceList<RenderTargetView, 0>& renderTargets, const DepthStencilView* depthStencil)
+	template<> inline void DeviceContext::Bind(const ResourceList<RenderTargetView, 0>& renderTargets, const DepthStencilView* depthStencil)
 	{
 		assert(renderTargets._startingPoint == 0);
 		_underlying->OMSetRenderTargets(0, nullptr, depthStencil ? depthStencil->GetUnderlying() : nullptr);

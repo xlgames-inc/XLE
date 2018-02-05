@@ -13,7 +13,7 @@
 #include <type_traits>
 #include <tuple>
 
-namespace RenderCore { class TextureDesc; class LinearBufferDesc; class Resource; }
+namespace RenderCore { class TextureDesc; class LinearBufferDesc; class IResource; }
 namespace BufferUploads { class DataPacket; class ResourceLocator; }
 
 namespace SceneEngine
@@ -73,7 +73,7 @@ namespace SceneEngine
 
         const bool IsGood() const { return _locator.get() != nullptr; }
         const BufferUploads::ResourceLocator& Locator() const { return *_locator; }
-        RenderCore::Resource* Resource() const { return _locator->GetUnderlying(); }
+        RenderCore::IResource* Resource() const { return _locator->GetUnderlying(); }
 
         GestaltResource();
         GestaltResource(

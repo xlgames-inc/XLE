@@ -632,6 +632,12 @@ namespace Utility
         return true;
     }
 
+	template<typename CharType>
+		bool InputStreamFormatter<CharType>::TryCharacterData(InteriorSection&)
+	{
+		return false;
+	}
+
     template<typename CharType>
         StreamLocation InputStreamFormatter<CharType>::GetLocation() const
     {

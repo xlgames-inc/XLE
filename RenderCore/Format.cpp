@@ -193,7 +193,7 @@ namespace RenderCore
         FormatPrefix::Enum prefix = GetPrefix(format);
         using namespace FormatPrefix;
         switch (prefix) {
-        case BC1:   return CompressionParameters { 4, 4, 4, 8 };
+        case BC1:   return CompressionParameters { 4, 4, 8, 8 };
         case BC2:
         case BC3:
         case BC4:
@@ -203,9 +203,9 @@ namespace RenderCore
         case RGB_ETC2:
         case RGBA_ETC2:
         case RGBA1_ETC2:
-            return CompressionParameters { 4, 4, 8, 8 };
+            return CompressionParameters { 4, 4, 16, 8 };
         case BC6H:
-            return CompressionParameters { 4, 4, 8, 16 };
+            return CompressionParameters { 4, 4, 16, 16 };
 
         case RGB_PVRTC1_2BPP:
         case RGBA_PVRTC1_2BPP:

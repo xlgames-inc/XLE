@@ -69,17 +69,18 @@ namespace RenderCore { namespace Metal_DX11
 		ID3D::Buffer* buffers[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 		UINT strides[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 		UINT offsets[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		for (unsigned c = 0; c < vertexBuffers.size(); ++c) {
+		auto vbCount = std::min(vertexBuffers.size(), _vertexStrides.size());
+		assert(vbCount < D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT);
+		for (unsigned c = 0; c < vbCount; ++c) {
 			assert(vertexBuffers[c]._resource);
-			auto* res = AsID3DResource(*vertexBuffers[c]._resource);
+			auto* res = AsID3DResource(*const_cast<IResource*>(vertexBuffers[c]._resource));
 			assert(QueryInterfaceCast<ID3D::Buffer>(res));
 			buffers[c] = (ID3D::Buffer*)res;
 			offsets[c] = vertexBuffers[c]._offset;
-			assert(c < _vertexStrides.size());
 			strides[c] = _vertexStrides[c];
 		}
 		const unsigned startSlot = 0;
-		context.GetUnderlying()->IASetVertexBuffers(startSlot, (UINT)vertexBuffers.size(), buffers, strides, offsets);
+		context.GetUnderlying()->IASetVertexBuffers(startSlot, (UINT)vbCount, buffers, strides, offsets);
 		context.GetUnderlying()->IASetInputLayout(_underlying.get());
 	}
 

@@ -50,8 +50,8 @@ namespace RenderCore { namespace Metal_DX11
 	static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
     {
         return CreateDesc(
-            bindingFlags | (immutable ? 0 : BindFlag::TransferDst),
-            immutable ? 0 : CPUAccess::Write,
+            bindingFlags,
+            immutable ? 0 : CPUAccess::WriteDynamic,
             GPUAccess::Read,
             LinearBufferDesc::Create(unsigned(byteCount)),
             "buf");

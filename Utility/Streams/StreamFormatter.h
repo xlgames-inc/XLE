@@ -117,7 +117,9 @@ namespace Utility
         enum class Blob 
         {
             BeginElement, EndElement, 
-            AttributeName, AttributeValue, None 
+            AttributeName, AttributeValue, 
+			CharacterData,
+			None 
         };
         Blob PeekNext();
 
@@ -126,6 +128,7 @@ namespace Utility
         bool TryBeginElement(InteriorSection& name);
         bool TryEndElement();
         bool TryAttribute(InteriorSection& name, InteriorSection& value);
+		bool TryCharacterData(InteriorSection&);
 
         void SkipElement();
 

@@ -13,7 +13,6 @@
 #include "../../IThreadContext_Forward.h"
 #include "../../ResourceList.h"
 #include "../../Types_Forward.h"
-#include "../../../Utility/Mixins.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
 
@@ -43,19 +42,22 @@ namespace RenderCore { namespace Metal_DX11
         //  todo ---    DeviceContext, ObjectFactory & CommandList -- maybe these
         //              should go into RenderCore (because it's impossible to do anything without them)
 
-    class CommandList : public RefCountedObject, noncopyable
+    class CommandList : public RefCountedObject
     {
     public:
         CommandList(ID3D::CommandList* underlying);
         CommandList(intrusive_ptr<ID3D::CommandList>&& underlying);
         ID3D::CommandList* GetUnderlying() { return _underlying.get(); }
+
+		CommandList(const CommandList&) = delete;
+		CommandList& operator=(const CommandList&) = delete;
     private:
         intrusive_ptr<ID3D::CommandList> _underlying;
     };
 
     using CommandListPtr = intrusive_ptr<CommandList>;
 
-    class DeviceContext : noncopyable
+    class DeviceContext
     {
     public:
         ///////////////////////////////////////////////////////////////////////////////////////////

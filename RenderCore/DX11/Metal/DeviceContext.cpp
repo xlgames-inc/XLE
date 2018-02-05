@@ -409,7 +409,6 @@ namespace RenderCore { namespace Metal_DX11
 
 namespace RenderCore { namespace Metal_DX11
 {
-    template void DeviceContext::Bind<0>(const ResourceList<RenderTargetView, 0>&, const DepthStencilView*);
     template void DeviceContext::Bind<1>(const ResourceList<RenderTargetView, 1>&, const DepthStencilView*);
     template void DeviceContext::Bind<2>(const ResourceList<RenderTargetView, 2>&, const DepthStencilView*);
     template void DeviceContext::Bind<3>(const ResourceList<RenderTargetView, 3>&, const DepthStencilView*);

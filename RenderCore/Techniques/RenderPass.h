@@ -82,7 +82,7 @@ namespace RenderCore { namespace Techniques
         void Bind(AttachmentName, const IResourcePtr& resource);
         void Unbind(AttachmentName);
 		IResourcePtr GetResource(AttachmentName resName) const;
-		Metal::ShaderResourceView* GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
+		Metal::ShaderResourceView GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
 
 		void Bind(FrameBufferProperties props); 
 		const FrameBufferProperties& GetFrameBufferProperties() const;

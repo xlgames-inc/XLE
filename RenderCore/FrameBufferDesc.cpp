@@ -35,5 +35,7 @@ namespace RenderCore
 
     FrameBufferDesc::~FrameBufferDesc() {}
 
+	INamedAttachments::~INamedAttachments() {}
+
 }
 

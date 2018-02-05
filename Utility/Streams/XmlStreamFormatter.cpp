@@ -208,8 +208,16 @@ namespace Utility
         auto scopeType = _scopeStack.top()._type;
         if (scopeType == Scope::Type::None || scopeType == Scope::Type::Element) {
 
-            if (_allowCharacterData && mark.Remaining() >= 1 && *mark != '<') {
-                return _primed = Blob::CharacterData;
+            if (_allowCharacterData) {
+				// Scan forward to look for the next non-whitespace element
+				// If it's not a new element, we'll consider the whole block (including the whitespace we
+				// just skipped) to be a character data blob
+				while (mark.Remaining() >= 1 && IsWhitespace(*mark))
+					mark.AdvanceCheckNewLine();
+				if (mark.Remaining() >= 1 && *mark != '<') {
+					// (_marker remains at the start of the whitespace block)
+					return _primed = Blob::CharacterData;
+				}
             }
             
             for (;;) {
@@ -488,6 +496,12 @@ namespace Utility
                     Throw(FormatException(
                         "Malformed attribute while skipping forward", GetLocation()));
                 break;
+
+			case Blob::CharacterData:
+				if (!TryCharacterData(dummy0))
+					Throw(FormatException(
+                        "Malformed character data while skipping forward", GetLocation()));
+				break;
 
             default:
                 Throw(FormatException(

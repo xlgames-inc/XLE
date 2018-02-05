@@ -63,6 +63,11 @@ namespace Utility
                 lastAttribute = a;
             } else if (next == Formatter::Blob::EndElement) {
                 break;
+			} else if (next == Formatter::Blob::CharacterData) {
+				typename Formatter::InteriorSection dummy;
+                if (!formatter.TryCharacterData(dummy))
+                    Throw(FormatException(
+                        "Error while reading character data in StreamDOM", formatter.GetLocation()));
             } else {
                 Throw(FormatException(
                     StringMeld<128>() << "Got unexpected blob type (" << unsigned(next) << ") while parsing element in StreamDOM",

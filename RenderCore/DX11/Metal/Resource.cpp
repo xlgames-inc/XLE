@@ -425,6 +425,13 @@ namespace RenderCore { namespace Metal_DX11
 		return res.get();
 	}
 
+	ID3D::Resource* AsID3DResource(IResource& res)
+	{
+		auto*d3dRes = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		if (!d3dRes) return nullptr;
+		return d3dRes->_underlying.get();
+	}
+
 	ResourcePtr AsResourcePtr(ID3D::Resource* res)
 	{
 		return std::make_shared<Resource>(res);

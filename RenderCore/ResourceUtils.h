@@ -8,6 +8,8 @@
 
 #include "ResourceDesc.h"       // actually only needed for TexturePitches
 #include "Types_Forward.h"
+#include "../Utility/MemoryUtils.h"
+#include <memory>
 
 namespace RenderCore
 {
@@ -16,6 +18,7 @@ namespace RenderCore
     class TexturePitches;
     class SubResourceInitData;
     class Box2D;
+	class IResource;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      C O P Y I N G       //
@@ -49,4 +52,48 @@ namespace RenderCore
         const TextureDesc& tDesc, unsigned mipIndex, unsigned arrayLayer);
 
     TexturePitches MakeTexturePitches(const TextureDesc& desc);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      V I E W    P O O L       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<typename ViewType, typename ViewDescType=TextureViewDesc>
+		class ViewPool
+	{
+	public:
+		ViewType GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view);
+		void Erase(IResource& res);
+
+	private:
+		struct Entry { std::shared_ptr<IResource> _resource; ViewType _view; };
+		std::vector<std::pair<uint64, Entry>> _views;
+	};
+
+	inline uint64_t CalculateHash(const TextureViewDesc& viewDesc)
+	{
+		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(viewDesc)));
+	}
+
+	template<typename ViewType, typename ViewDescType>
+		ViewType ViewPool<ViewType, ViewDescType>::GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view)
+	{
+		uint64_t hash = HashCombine((size_t)resource.get(), CalculateHash(view));
+		auto i = LowerBound(_views, hash);
+		if (i != _views.end() && i->first == hash)
+			return i->second._view;
+
+		i = _views.emplace(i, std::make_pair(hash, Entry{ resource, ViewType{resource, view}}));
+		return i->second._view;
+	}
+
+	template<typename ViewType, typename ViewDescType>
+		void ViewPool<ViewType, ViewDescType>::Erase(IResource& res)
+	{
+		IResource* rawRes = &res;
+		_views.erase(
+			std::remove_if(
+				_views.begin(), _views.end(),
+				[rawRes](const std::pair<uint64, Entry>& p) { return p.second._resource.get() == rawRes; }),
+			_views.end());
+	}
 }

@@ -14,6 +14,8 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+	static const bool s_allowDefaultViews = true;
+
     static bool IsDefault(const TextureViewDesc& window)
     {
         return window._format._aspect == TextureViewDesc::UndefinedAspect
@@ -47,7 +49,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		auto& factory = GetObjectFactory(*iresource);
 
-        if (IsDefault(window)) {
+        if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateRenderTargetView(resource);
         } else {
             // Build an D3D11_RENDER_TARGET_VIEW_DESC based on the properties of
@@ -146,7 +148,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		auto& factory = GetObjectFactory(*iresource);
 
-        if (IsDefault(window)) {
+        if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateDepthStencilView(resource);
         } else {
             D3D11_DEPTH_STENCIL_VIEW_DESC viewDesc;
@@ -226,7 +228,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		auto& factory = GetObjectFactory(*iresource);
 
-        if (IsDefault(window)) {
+        if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateUnorderedAccessView(resource);
         } else {
             D3D11_UNORDERED_ACCESS_VIEW_DESC viewDesc;
@@ -314,7 +316,7 @@ namespace RenderCore { namespace Metal_DX11
 
 		auto& factory = GetObjectFactory(*iresource);
 
-        if (IsDefault(window)) {
+        if (s_allowDefaultViews && IsDefault(window)) {
             _underlying = factory.CreateShaderResourceView(resource);
         } else {
             D3D11_SHADER_RESOURCE_VIEW_DESC viewDesc;

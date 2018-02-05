@@ -148,7 +148,7 @@ namespace RenderCore { namespace Metal_DX11
 		const ResourceInitializer& init = ResourceInitializer());
 
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr);
-	ID3D::Resource* AsID3DResource(const IResource&);
+	ID3D::Resource* AsID3DResource(IResource&);
 	std::shared_ptr<IResource> AsResourcePtr(ID3D::Resource*);
 	std::shared_ptr<IResource> AsResourcePtr(intrusive_ptr<ID3D::Resource>&&);
 }}

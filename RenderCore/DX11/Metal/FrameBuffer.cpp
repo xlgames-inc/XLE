@@ -11,27 +11,13 @@
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "../../Format.h"
+#include "../../ResourceUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 
 #include "IncludeDX11.h"
 
 namespace RenderCore { namespace Metal_DX11
 {
-	class TextureViewPool
-	{
-	public:
-		ShaderResourceView GetSRV(const IResourcePtr& resource, const TextureViewDesc& view);
-		RenderTargetView GetRTV(const IResourcePtr& resource, const TextureViewDesc& view);
-		DepthStencilView GetDSV(const IResourcePtr& resource, const TextureViewDesc& view);
-
-		TextureViewPool();
-		~TextureViewPool();
-	private:
-		std::vector<std::pair<uint64, RenderTargetView>> _rtvs;
-		std::vector<std::pair<uint64, DepthStencilView>> _dsvs;
-		std::vector<std::pair<uint64, ShaderResourceView>> _srvs;
-	};
-
     FrameBuffer::FrameBuffer(
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
@@ -41,7 +27,8 @@ namespace RenderCore { namespace Metal_DX11
         // be created an attached to this object.
         auto subpasses = fbDesc.GetSubpasses();
 
-		TextureViewPool viewPool;
+		ViewPool<RenderTargetView> rtvPool;
+		ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
         
         assert(subpasses.size() < s_maxSubpasses);
@@ -54,7 +41,7 @@ namespace RenderCore { namespace Metal_DX11
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-                sp._rtvs[r] = viewPool.GetRTV(resource, attachmentView._window);
+                sp._rtvs[r] = rtvPool.GetView(resource, attachmentView._window);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
 				sp._rtvClearValue[r] = clearValueIterator++;
 			}
@@ -63,7 +50,7 @@ namespace RenderCore { namespace Metal_DX11
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = viewPool.GetDSV(resource, spDesc._depthStencil._window);
+				sp._dsv = dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				sp._dsvClearValue = clearValueIterator++;
 			}
@@ -170,49 +157,7 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static uint64_t Hash(const TextureViewDesc& viewDesc)
-	{
-		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(viewDesc)));
-	}
-
-	ShaderResourceView TextureViewPool::GetSRV(const IResourcePtr& resource, const TextureViewDesc& view)
-	{
-		uint64_t hash = HashCombine((size_t)resource.get(), Hash(view));
-		auto i = LowerBound(_srvs, hash);
-		if (i != _srvs.end() && i->first == hash)
-			return i->second;
-
-		ShaderResourceView newSrv(resource, view);
-		_srvs.insert(i, { hash, newSrv });
-		return newSrv;
-	}
-
-	RenderTargetView TextureViewPool::GetRTV(const IResourcePtr& resource, const TextureViewDesc& view)
-	{
-		uint64_t hash = HashCombine((size_t)resource.get(), Hash(view));
-		auto i = LowerBound(_rtvs, hash);
-		if (i != _rtvs.end() && i->first == hash)
-			return i->second;
-
-		RenderTargetView newSrv(resource, view);
-		_rtvs.insert(i, { hash, newSrv });
-		return newSrv;
-	}
-
-	DepthStencilView TextureViewPool::GetDSV(const IResourcePtr& resource, const TextureViewDesc& view)
-	{
-		uint64_t hash = HashCombine((size_t)resource.get(), Hash(view));
-		auto i = LowerBound(_dsvs, hash);
-		if (i != _dsvs.end() && i->first == hash)
-			return i->second;
-
-		DepthStencilView newSrv(resource, view);
-		_dsvs.insert(i, { hash, newSrv });
-		return newSrv;
-	}
-
-	TextureViewPool::TextureViewPool() {}
-	TextureViewPool::~TextureViewPool() {}
+	
 
 }}
 

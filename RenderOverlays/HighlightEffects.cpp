@@ -95,10 +95,10 @@ namespace RenderOverlays
                 {TextureViewDesc::Aspect::Stencil},
                 TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
                 TextureViewDesc::Flags::JustStencil));
-        if (!stencilSrv) return;
+        if (!stencilSrv.IsGood()) return;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
-        ExecuteHighlightByStencil(*metalContext, *stencilSrv, settings, onlyHighlighted);
+        ExecuteHighlightByStencil(*metalContext, stencilSrv, settings, onlyHighlighted);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -187,9 +187,9 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
-        auto* srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
-        assert(srv);
-        if (!srv) return;
+        auto srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        assert(srv.IsGood());
+        if (!srv.IsGood()) return;
 
         _pimpl->_rpi.NextSubpass();
 
@@ -206,7 +206,7 @@ namespace RenderOverlays
         for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
             settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
         ExecuteHighlightByStencil(
-            *metalContext, *srv, 
+            *metalContext, srv, 
             settings, false);
 
         _pimpl->_rpi.End();
@@ -217,13 +217,13 @@ namespace RenderOverlays
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        auto* srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
-        assert(srv);
-        if (!srv) return;
+        auto srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        assert(srv.IsGood());
+        if (!srv.IsGood()) return;
 
         _pimpl->_rpi.NextSubpass();
         auto metalContext = Metal::DeviceContext::Get(threadContext);
-        metalContext->BindPS(MakeResourceList(*srv));
+        metalContext->BindPS(MakeResourceList(srv));
 
         struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
         SharedPkt pkts[] = { MakeSharedPkt(constants) };
@@ -244,16 +244,16 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
-        auto* srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
-        assert(srv);
-        if (!srv) return;
+        auto srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        assert(srv.IsGood());
+        if (srv.IsGood()) return;
 
             //  now we can render these objects over the main image, 
             //  using some filtering
 
         _pimpl->_rpi.NextSubpass();
         auto metalContext = Metal::DeviceContext::Get(threadContext);
-        metalContext->BindPS(MakeResourceList(*srv));
+        metalContext->BindPS(MakeResourceList(srv));
 
         struct Constants { Float4 _shadowColor; } constants = { shadowColor };
         SharedPkt pkts[] = { MakeSharedPkt(constants) };

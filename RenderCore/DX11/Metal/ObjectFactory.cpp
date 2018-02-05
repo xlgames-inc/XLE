@@ -365,6 +365,13 @@ namespace RenderCore { namespace Metal_DX11
 		return GetObjectFactory(*dev);
 	}
 
+	ObjectFactory& GetObjectFactory(IResource& res)
+	{
+		auto*d3dRes = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		if (!d3dRes) Throw(::Exceptions::BasicLabel("Could not get object factory associated with device"));
+		return GetObjectFactory(*d3dRes->_underlying);
+	}
+
 	ObjectFactory& GetObjectFactory(DeviceContext& context)
 	{
 		return context.GetFactory();

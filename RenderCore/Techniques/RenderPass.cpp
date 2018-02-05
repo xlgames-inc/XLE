@@ -10,6 +10,7 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ObjectFactory.h"
 #include "../Metal/State.h"
+#include "../ResourceUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -163,9 +164,10 @@ namespace RenderCore { namespace Techniques
     class AttachmentPool::Pimpl
     {
     public:
-        RenderCore::IResourcePtr    _resources[s_maxBoundTargets];
-        AttachmentDesc              _attachments[s_maxBoundTargets];
-        AttachmentName              _resNames[s_maxBoundTargets];
+        IResourcePtr		_attachments[s_maxBoundTargets];
+        AttachmentDesc		_attachmentDescs[s_maxBoundTargets];
+		
+		ViewPool<Metal::ShaderResourceView> _srvPool;
 
         FrameBufferProperties       _props;
 
@@ -188,8 +190,8 @@ namespace RenderCore { namespace Techniques
     bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attach)
     {
         assert(attach<s_maxBoundTargets);
-        _resources[attach].reset();
-        const auto& a = _attachments[attach];
+        _attachments[attach].reset();
+        const auto& a = _attachmentDescs[attach];
 
         // We need to calculate the dimensions, format, samples and bind flags for this
         // attachment. All of the information we need should be defined as part of the frame
@@ -246,39 +248,49 @@ namespace RenderCore { namespace Techniques
         }
 
         // note -- it might be handy to have a cache of "device memory" that could be reused here?
-        _resources[attach] = Metal::CreateResource(*_factory, desc);
+        _attachments[attach] = Metal::CreateResource(*_factory, desc);
         return true;
     }
 
     auto AttachmentPool::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
     {
         if (resName >= s_maxBoundTargets) return nullptr;
-        return &_pimpl->_attachments[resName];
+        return &_pimpl->_attachmentDescs[resName];
     }
     
     IResourcePtr AttachmentPool::GetResource(AttachmentName resName) const
     {
-		return _pimpl->_resources[resName];
+		if (resName >= s_maxBoundTargets) return nullptr;
+		if (!_pimpl->_attachments[resName])
+			_pimpl->BuildAttachment(resName);
+		return _pimpl->_attachments[resName];
+	}
+
+	Metal::ShaderResourceView AttachmentPool::GetSRV(AttachmentName resName, const TextureViewDesc& window) const
+	{
+		if (resName >= s_maxBoundTargets) return {};
+		if (!_pimpl->_attachments[resName]) return {};
+		return _pimpl->_srvPool.GetView(_pimpl->_attachments[resName], window);
 	}
 
     void AttachmentPool::DefineAttachment(AttachmentName name, const AttachmentDesc& request)
     {
         assert(name < s_maxBoundTargets);
-        if (!Equal(_pimpl->_attachments[name], request)) {
-            _pimpl->_resources[name].reset();
-            _pimpl->_attachments[name] = request;
+        if (!Equal(_pimpl->_attachmentDescs[name], request)) {
+            _pimpl->_attachments[name].reset();
+            _pimpl->_attachmentDescs[name] = request;
         }
     }
 
     void AttachmentPool::Bind(AttachmentName resName, const IResourcePtr& resource)
     {
         assert(resName < s_maxBoundTargets);
-        if (_pimpl->_resources[resName] == resource) return;
+        if (_pimpl->_attachments[resName] == resource) return;
 
-        // _pimpl->InvalidateAttachment(resName);
+		_pimpl->_srvPool.Erase(*_pimpl->_attachments[resName]);
 
         auto desc = Metal::ExtractDesc(*resource);
-        _pimpl->_attachments[resName] = 
+        _pimpl->_attachmentDescs[resName] = 
             {
                 desc._textureDesc._format,
                 (float)desc._textureDesc._width, (float)desc._textureDesc._height,
@@ -291,14 +303,14 @@ namespace RenderCore { namespace Techniques
                 | ((desc._bindFlags & BindFlag::TransferSrc) ? AttachmentDesc::Flags::TransferSource : 0u)
             };
 
-        _pimpl->_resources[resName] = resource;
-        _pimpl->_resNames[resName] = resName;
+        _pimpl->_attachments[resName] = resource;
     }
 
     void AttachmentPool::Unbind(AttachmentName resName)
     {
         assert(resName < s_maxBoundTargets);
-        // _pimpl->InvalidateAttachment(resName);
+		if (_pimpl->_attachments[resName])
+			_pimpl->_srvPool.Erase(*_pimpl->_attachments[resName]);
     }
 
     void AttachmentPool::Bind(FrameBufferProperties props)
@@ -311,17 +323,21 @@ namespace RenderCore { namespace Techniques
             ||  props._samples._samplingQuality != _pimpl->_props._samples._samplingQuality;
         if (!xyChanged && !samplesChanged) return;
 
-        /*
 		if (xyChanged)
             for (unsigned c=0; c<s_maxBoundTargets; ++c)
-                if (_pimpl->_attachments[c]._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative)
-                    _pimpl->InvalidateAttachment(c);
+                if (_pimpl->_attachmentDescs[c]._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
+					if (_pimpl->_attachments[c])
+						_pimpl->_srvPool.Erase(*_pimpl->_attachments[c]);
+					_pimpl->_attachments[c].reset();
+				}
 
         if (samplesChanged) // Invalidate all resources and views that depend on the multisample state
             for (unsigned c=0; c<s_maxBoundTargets; ++c)
-                if (_pimpl->_attachments[c]._flags & AttachmentDesc::Flags::Multisampled)
-                    _pimpl->InvalidateAttachment(c);
-		*/
+                if (_pimpl->_attachmentDescs[c]._flags & AttachmentDesc::Flags::Multisampled) {
+                    if (_pimpl->_attachments[c])
+						_pimpl->_srvPool.Erase(*_pimpl->_attachments[c]);
+					_pimpl->_attachments[c].reset();
+				}
 
         _pimpl->_props = props;
     }
@@ -333,7 +349,7 @@ namespace RenderCore { namespace Techniques
 
     IteratorRange<const AttachmentDesc*> AttachmentPool::GetDescriptions() const
     {
-        return MakeIteratorRange(_pimpl->_attachments);
+        return MakeIteratorRange(_pimpl->_attachmentDescs);
     }
 
     AttachmentPool::AttachmentPool()
@@ -341,8 +357,7 @@ namespace RenderCore { namespace Techniques
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_factory = &Metal::GetObjectFactory();
         for (unsigned c=0; c<s_maxBoundTargets; ++c) {
-            _pimpl->_resNames[c] = ~0u;
-            _pimpl->_attachments[c] = {};
+            _pimpl->_attachmentDescs[c] = {};
         }
         _pimpl->_props = {0u, 0u, TextureSamples::Create()};
     }

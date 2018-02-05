@@ -765,8 +765,8 @@ namespace PlatformRig { namespace Overlays
             CreateDesc(
                 BindFlag::RenderTarget|BindFlag::ShaderResource, 0, GPUAccess::Read|GPUAccess::Write,
                 TextureDesc::Plain2D(64, 64, Format::R8_UNORM), "ConsRasterTest"));
-        _bufferRTV = RTV(factory, buffer);
-        _bufferSRV = SRV(factory, buffer);
+        _bufferRTV = RTV(buffer);
+        _bufferSRV = SRV(buffer);
         _viewport = Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f);
     }
 

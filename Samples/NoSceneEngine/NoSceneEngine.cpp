@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #define _CRT_SECURE_NO_WARNINGS
-#define SELECT_VULKAN
+// #define SELECT_VULKAN
 
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/MainInputHandler.h"
@@ -27,11 +27,15 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/Assets.h"
+#include "../../Assets/IFileSystem.h"
+#include "../../Assets/MountingTree.h"
+#include "../../Assets/OSFileSystem.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -60,6 +64,7 @@
 #include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
 
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
@@ -220,6 +225,7 @@ namespace VulkanTest
 				*dxContext, Metal_DX11::AsID3DResource(*gpuResource), Metal_DX11::AsID3DResource(*stagingResource),
 				Metal_DX11::ImageLayout::TransferDstOptimal, Metal_DX11::ImageLayout::TransferSrcOptimal);
 		} else {
+#if 0
 			auto vkContext = RenderCore::Metal_Vulkan::DeviceContext::Get(threadContext);
 			// is it a good idea to change the layout of the staging resource before we use it?
 			Metal_Vulkan::SetImageLayouts(*vkContext, {
@@ -230,6 +236,7 @@ namespace VulkanTest
 				Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::TransferSrcOptimal);
             Metal_Vulkan::SetImageLayouts(*vkContext, {{gpuResource, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}});
 			texObj._imageLayout = Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal;
+#endif
 		}
 	}
 }
@@ -247,7 +254,8 @@ namespace Sample
 
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
 
-    static VulkanTest::texture_object texObj = {};
+	static VulkanTest::texture_object texObj = {};
+#if 0
 
     static void RunShaderTest(RenderCore::IThreadContext& genericThreadContext)
     {
@@ -372,6 +380,7 @@ namespace Sample
         CATCH(const ::Assets::Exceptions::RetrievalError&) {}
         CATCH_END
     }
+#endif
 
     static RenderCore::Techniques::CameraDesc GetDefaultCamera(float time)
     { 
@@ -548,6 +557,9 @@ namespace Sample
             auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
 			if (!metalContext) return;
 
+			// Hack -- cached state isn't getting cleared out automatically, we must automatically flush it
+			metalContext->InvalidateCachedState();
+
             using namespace RenderCore::Techniques::Attachments;
 
 				// Main depth stencil
@@ -591,7 +603,7 @@ namespace Sample
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
         
 			AttachmentViewDesc v_presTarget = { PresentationTarget, LoadStore::DontCare, LoadStore::Retain };
-			AttachmentViewDesc v_mainDepthStencils = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare };
+			AttachmentViewDesc v_mainDepthStencils = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare, TextureViewDesc::Aspect::DepthStencil };
 			AttachmentViewDesc v_diffuse = { GBufferDiffuse, LoadStore::DontCare, LoadStore::DontCare };
 			AttachmentViewDesc v_normals = { GBufferNormals, LoadStore::DontCare, LoadStore::DontCare };
 			AttachmentViewDesc v_params = { GBufferParams, LoadStore::DontCare, LoadStore::DontCare };
@@ -610,8 +622,7 @@ namespace Sample
 				MakeIteratorRange(subpasses));
 
             auto presDims = metalContext->GetPresentationTargetDims();
-            namedResources.Bind(samples);
-            namedResources.Bind(FrameBufferProperties{presDims[0], presDims[1], 0u});
+            namedResources.Bind(FrameBufferProperties{presDims[0], presDims[1], samples});
 
 			namedResources.DefineAttachment(MainDepthStencil, d_mainDepthStencil);
 			namedResources.DefineAttachment(GBufferDiffuse, d_diffuse);
@@ -641,7 +652,7 @@ namespace Sample
 
                 // This is the lighting resolve. 
                 {
-                    metalContext->BindPS(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
+                    metalContext->BindPS(MakeResourceList(namedResources.GetSRV(GBufferDiffuse), namedResources.GetSRV(GBufferNormals)));
 
                     auto& resolveShdr = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -651,6 +662,8 @@ namespace Sample
                     metalContext->Bind(Topology::TriangleStrip);
                     metalContext->Bind(resolveShdr);
                     metalContext->Draw(4);
+
+					metalContext->UnbindPS<Metal::ShaderResourceView>(0, 2);
                 }
             }
 
@@ -664,6 +677,8 @@ namespace Sample
         using namespace PlatformRig;
         using namespace Sample;
 
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+
             // We need to startup some basic objects:
             //      * OverlappedWindow (corresponds to a single basic window on Windows)
             //      * RenderDevice & presentation chain
@@ -673,7 +688,7 @@ namespace Sample
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
         LogInfo << "Building primary managers";
-        auto renderDevice = RenderCore::CreateDevice();
+        auto renderDevice = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
 
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();
@@ -683,7 +698,10 @@ namespace Sample
                 clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
-        auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice.get());
+		assetServices->AttachCurrentModule();
+		ConsoleRig::GlobalServices::GetCrossModule().Publish(*assetServices);
+        auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice);
+		renderAssetServices->AttachCurrentModule();
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
@@ -700,7 +718,7 @@ namespace Sample
             //  * init the gpu profiler (this init step will probably change someday)
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
-        renderAssetServices->InitColladaCompilers();
+        renderAssetServices->InitModelCompilers();
         g_gpuProfiler = RenderCore::CreateAnnotator(*renderDevice);
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
@@ -711,7 +729,6 @@ namespace Sample
                 {
                     texObj._resource.reset();
                     assetServices->GetAssetSets().Clear();
-                    RenderCore::Techniques::ResourceBoxes_Shutdown();
                     RenderOverlays::CleanupFontSystem();
                     TerminateFileSystemMonitoring();
                 });
@@ -745,7 +762,7 @@ namespace Sample
 
                 //  We can log the active assets at any time using this method.
                 //  At this point during startup, we should only have a few assets loaded.
-            assetServices->GetAssetSets().LogReport();
+            // assetServices->GetAssetSets().LogReport();
 
                 //  We need 2 final objects for rendering:
                 //      * the FrameRig schedules continuous rendering. It will take care
@@ -754,6 +771,7 @@ namespace Sample
             LogInfo << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
+#if 0
 			bool initTex = false;
 			if (!initTex) {
 				using namespace RenderCore;
@@ -766,52 +784,46 @@ namespace Sample
 				// VulkanTest::init_image2(*renderDevice, *context, texObj);
 				initTex = true;
 			}
+#endif
 
                 //  Frame buffer layout
-            using Attachment = RenderCore::AttachmentDesc;
-            using Subpass = RenderCore::SubpassDesc;
+            using AttachmentDesc = RenderCore::AttachmentDesc;
+            using SubpassDesc = RenderCore::SubpassDesc;
             const unsigned PresentationTarget = 0;
             const unsigned MainDepthStencil = 1;
-            Attachment attachments[] = 
-            {
-                // Presentation chain target
+
+				// Presentation chain target
                 // {   PresentationTarget, 
                 //     Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
                 //     presentationChain->GetDesc()->_format },
 
                 // Main depth stencil
-                {   MainDepthStencil, 
-                    Attachment::DimensionsMode::OutputRelative, 1.f, 1.f, 
-                    RenderCore::Format::D24_UNORM_S8_UINT,
+			AttachmentDesc d_mainDepthStencil
+                {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,
                     RenderCore::TextureViewDesc::DepthStencil,
-                    Attachment::Flags::Multisampled | Attachment::Flags::DepthStencil }
-            };
+					AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil };
 
-            RenderCore::AttachmentViewDesc attachmentViews[] = 
-            {
+            RenderCore::AttachmentViewDesc v_mainColor = 
                 // Presentation chain target
-                {   PresentationTarget, PresentationTarget,
-                    RenderCore::TextureViewDesc(),
-                    RenderCore::AttachmentViewDesc::LoadStore::Clear, RenderCore::AttachmentViewDesc::LoadStore::Retain },
+                {   RenderCore::Techniques::Attachments::PresentationTarget,
+                    RenderCore::LoadStore::Clear, RenderCore::LoadStore::Retain };
 
+			RenderCore::AttachmentViewDesc v_mainDepthStencil = 
                 // Main depth stencil
-                {   MainDepthStencil, MainDepthStencil,
-                    RenderCore::TextureViewDesc(),
-                    RenderCore::AttachmentViewDesc::LoadStore::Clear, RenderCore::AttachmentViewDesc::LoadStore::DontCare }
-            };
+                {   RenderCore::Techniques::Attachments::MainDepthStencil,
+                    RenderCore::LoadStore::Clear, RenderCore::LoadStore::DontCare };
 
-            Subpass subpasses[] = 
+            SubpassDesc subpasses[] = 
             {
-                Subpass({PresentationTarget}, MainDepthStencil)
+				{{v_mainColor}, v_mainDepthStencil}
             };
 
-            RenderCore::FrameBufferDesc fbLayout(
-                MakeIteratorRange(subpasses),
-                MakeIteratorRange(attachmentViews));
+            RenderCore::FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));
 
             RenderCore::Techniques::AttachmentPool namedResources;
-            namedResources.Bind(presentationChain->GetDesc()->_samples);
-            namedResources.DefineAttachments(MakeIteratorRange(attachments));
+            // namedResources.Bind(presentationChain->GetDesc()->_samples);
+            namedResources.DefineAttachment(RenderCore::Techniques::Attachments::MainDepthStencil, d_mainDepthStencil);
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -821,7 +833,8 @@ namespace Sample
 
 				auto res = context->BeginFrame(*presentationChain);
                 auto presDims = context->GetStateDesc()._viewportDimensions;
-                namedResources.Bind(RenderCore::FrameBufferProperties{presDims[0], presDims[1], 0u});
+				auto samples = presentationChain->GetDesc()->_samples;
+                namedResources.Bind(RenderCore::FrameBufferProperties{presDims[0], presDims[1], samples});
                 namedResources.Bind(0, res);
                 // context->BeginRenderPass(
                 //     fbLayout, 
@@ -851,7 +864,9 @@ namespace Sample
         g_gpuProfiler.reset();
 
         renderAssetServices.reset();
+		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*assetServices);
         assetServices.reset();
+		TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -862,7 +877,7 @@ namespace Sample
         //     debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
         // }
         debugSys.Register(
-            std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+            std::make_shared<PlatformRig::Overlays::HierarchicalProfilerDisplay>(&g_cpuProfiler), 
             "[Profiler] CPU Profiler");
     }
 }
