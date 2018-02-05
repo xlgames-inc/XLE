@@ -102,6 +102,24 @@ namespace RenderCore { namespace Metal_DX11
 		ShaderProgram(ShaderProgram&&) never_throws;
         ShaderProgram& operator=(ShaderProgram&&) never_throws;
 
+
+		// Legacy asset based API --
+		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
+						StringSection<::Assets::ResChar> psName);
+		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
+						StringSection<::Assets::ResChar> psName,
+						StringSection<::Assets::ResChar> definesTable);
+		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
+						StringSection<::Assets::ResChar> gsName, 
+						StringSection<::Assets::ResChar> psName,
+						StringSection<::Assets::ResChar> definesTable);
+		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
+						StringSection<::Assets::ResChar> gsName, 
+						StringSection<::Assets::ResChar> psName,
+						StringSection<::Assets::ResChar> hsName,
+						StringSection<::Assets::ResChar> dsName,
+						StringSection<::Assets::ResChar> definesTable);
+
     protected:
 		intrusive_ptr<ID3D::VertexShader>		_vertexShader;
 		intrusive_ptr<ID3D::PixelShader>		_pixelShader;
