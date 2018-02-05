@@ -20,8 +20,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
     class BoundUniforms;
     class BoundInputLayout;
-    class ConstantBufferLayout;
-    class UniformsStream;
 
     class RenderTargetView;
     class DepthStencilView;

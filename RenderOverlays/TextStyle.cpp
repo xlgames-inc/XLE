@@ -230,8 +230,8 @@ TextStyleResources::TextStyleResources(const Desc& desc)
     const auto& shaderProgram = Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderSource);
 	Metal::BoundInputLayout boundInputLayout(RenderCore::GlobalInputLayouts::PCT, shaderProgram);
 
-	Metal::ConstantBufferLayoutElement elements[] = {
-        { "ReciprocalViewportDimensions", RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth), 0 }
+	ConstantBufferElementDesc elements[] = {
+        { Hash64("ReciprocalViewportDimensions"), RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
     };
 
 	Metal::BoundUniforms boundUniforms(shaderProgram);

@@ -20,6 +20,7 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/BufferView.h"
+#include "../RenderCore/UniformsStream.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -352,8 +353,8 @@ namespace RenderOverlays
         float _pad[2];
     };
 
-    Metal::ConstantBufferLayoutElement ReciprocalViewportDimensions_Elements[] = {
-        { "ReciprocalViewportDimensions", Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth), 0 }
+    RenderCore::ConstantBufferElementDesc ReciprocalViewportDimensions_Elements[] = {
+        { Hash64("ReciprocalViewportDimensions"), Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
     };
     
     void ImmediateOverlayContext::SetState(const OverlayState& state) 

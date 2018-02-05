@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Types.h"
 #include "../Assets/AssetsCore.h"
 #include "../Assets/DepVal.h"
 #include "../Utility/StringUtils.h"
@@ -26,13 +27,6 @@ namespace Assets
 
 namespace RenderCore
 {
-    enum class ShaderStage
-    {
-        Vertex, Pixel, Geometry, Hull, Domain, Compute,
-        Null,
-        Max
-    };
-
     class ShaderService
     {
     public:

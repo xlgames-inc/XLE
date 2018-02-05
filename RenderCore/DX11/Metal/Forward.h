@@ -18,8 +18,6 @@ namespace RenderCore { namespace Metal_DX11
 
     class BoundUniforms;
     class BoundInputLayout;
-    class ConstantBufferLayout;
-    class UniformsStream;
 
     class RenderTargetView;
     class DepthStencilView;

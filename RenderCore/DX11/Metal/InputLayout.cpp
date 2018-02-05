@@ -12,30 +12,28 @@
 #include "DX11Utils.h"
 #include "Shader.h"
 #include "ObjectFactory.h"
+#include "Format.h"
 #include "../../Format.h"
 #include "../../Types.h"
 #include "../../BufferView.h"
 #include "../../RenderUtils.h"
+#include "../../ShaderService.h"
+#include "../../UniformsStream.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include <D3D11Shader.h>
 
 namespace RenderCore { namespace Metal_DX11
 {
-	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
 	{
 		auto byteCode = shader.GetByteCode();
 
-		const unsigned MaxInputLayoutElements = 64;
-
-		//
-		//      Our format is almost identical (except std::string -> const char*)
-		//
-		D3D11_INPUT_ELEMENT_DESC nativeLayout[MaxInputLayoutElements];
+		D3D11_INPUT_ELEMENT_DESC nativeLayout[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
 		for (unsigned c = 0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
 			nativeLayout[c].SemanticName = layout.first[c]._semanticName.c_str();
 			nativeLayout[c].SemanticIndex = layout.first[c]._semanticIndex;
-			nativeLayout[c].Format = DXGI_FORMAT(layout.first[c]._nativeFormat);
+			nativeLayout[c].Format = AsDXGIFormat(layout.first[c]._nativeFormat);
 			nativeLayout[c].InputSlot = layout.first[c]._inputSlot;
 			nativeLayout[c].AlignedByteOffset = layout.first[c]._alignedByteOffset;
 			nativeLayout[c].InputSlotClass = D3D11_INPUT_CLASSIFICATION(layout.first[c]._inputSlotClass);
@@ -47,7 +45,55 @@ namespace RenderCore { namespace Metal_DX11
 			byteCode.begin(), byteCode.size());
 	}
 
-	static std::vector<unsigned> CalculateVertexStrides(const InputLayout& layout)
+	static std::vector<std::pair<uint64_t, std::pair<const char*, UINT>>> GetInputParameters(ID3D::ShaderReflection& reflection)
+	{
+		std::vector<std::pair<uint64_t, std::pair<const char*, UINT>>> result;
+		unsigned paramCount = reflection.GetNumInterfaceSlots();
+		for (unsigned p=0;p<paramCount; ++p) {
+			D3D11_SIGNATURE_PARAMETER_DESC desc;
+			auto hresult = reflection.GetInputParameterDesc(p, &desc);
+			assert(SUCCEEDED(hresult));
+			if (!desc.SemanticName) continue;
+			auto hash = Hash64(desc.SemanticName) + desc.SemanticIndex;
+			result.push_back({hash, {desc.SemanticName, desc.SemanticIndex}});
+		}
+		std::sort(result.begin(), result.end(), CompareFirst<uint64_t, std::pair<const char*, UINT>>());
+		return result;
+	}
+
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader)
+	{
+		auto byteCode = shader.GetByteCode();
+		auto reflection = CreateReflection(shader);
+		auto inputParameters = GetInputParameters(*reflection);
+
+		UINT accumulatingOffset = 0; 
+
+		D3D11_INPUT_ELEMENT_DESC nativeLayout[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
+		for (unsigned c = 0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
+			// We have to lookup the name of an input parameter that matches the hash,
+			// because CreateInputLayout requires the full semantic name
+			auto i = LowerBound(inputParameters, layout[c]._semanticHash);
+			if (i==inputParameters.end() || i->first == layout[c]._semanticHash)
+				continue;
+
+			nativeLayout[c].SemanticName = i->second.first;
+			nativeLayout[c].SemanticIndex = i->second.second;
+			nativeLayout[c].Format = AsDXGIFormat(layout.first[c]._nativeFormat);
+			nativeLayout[c].InputSlot = 0;
+			nativeLayout[c].AlignedByteOffset = accumulatingOffset;
+			nativeLayout[c].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+			nativeLayout[c].InstanceDataStepRate = 0;
+
+			accumulatingOffset += BitsPerPixel(layout.first[c]._nativeFormat) / 8;
+		}
+
+		return GetObjectFactory().CreateInputLayout(
+			nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()),
+			byteCode.begin(), byteCode.size());
+	}
+
+	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const InputElementDesc*> layout)
 	{
 		std::vector<unsigned> result;
 		for (auto& a:layout) {
@@ -62,6 +108,11 @@ namespace RenderCore { namespace Metal_DX11
 			}
 		}
 		return result;
+	}
+
+	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const MiniInputElementDesc*> layout)
+	{
+		return std::vector<unsigned> { RenderCore::CalculateVertexStride(layout) };
 	}
 
 	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
@@ -84,14 +135,27 @@ namespace RenderCore { namespace Metal_DX11
 		context.GetUnderlying()->IASetInputLayout(_underlying.get());
 	}
 
-    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader)
+    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader)
     {
             // need constructor deferring!
         _underlying = BuildInputLayout(layout, shader.GetCompiledVertexShader());
 		_vertexStrides = CalculateVertexStrides(layout);
     }
 
-    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
+    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
+    {
+        _underlying = BuildInputLayout(layout, shader);
+		_vertexStrides = CalculateVertexStrides(layout);
+    }
+
+	BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& shader)
+    {
+            // need constructor deferring!
+        _underlying = BuildInputLayout(layout, shader.GetCompiledVertexShader());
+		_vertexStrides = CalculateVertexStrides(layout);
+    }
+
+    BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
         _underlying = BuildInputLayout(layout, shader);
 		_vertexStrides = CalculateVertexStrides(layout);
@@ -123,128 +187,83 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BoundUniforms::BoundUniforms(const ShaderProgram& shader)
+    BoundUniforms::BoundUniforms(
+		const ShaderProgram& shader,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
     {
+		for (unsigned c=0; c<4; ++c)
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+
+		intrusive_ptr<ID3D::ShaderReflection> reflections[(unsigned)ShaderStage::Max];
+
             //  In this case, we must bind with every shader stage 
             //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[(unsigned)ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
-        _stageBindings[(unsigned)ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
+        reflections[(unsigned)ShaderStage::Vertex]     = CreateReflection(shader.GetCompiledVertexShader());
+        reflections[(unsigned)ShaderStage::Pixel]      = CreateReflection(shader.GetCompiledPixelShader());
         auto* geoShader = shader.GetCompiledGeometryShader();
         if (geoShader) {
-            _stageBindings[(unsigned)ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
+            reflections[(unsigned)ShaderStage::Geometry]   = CreateReflection(*geoShader);
         }
+
+		const UniformsStreamInterface* streams[] = { &interface0, &interface1, &interface2, &interface3 };
+		for (unsigned streamIdx=0; streamIdx<dimof(streams); ++streamIdx) {
+			const auto& stream = *streams[streamIdx];
+			for (unsigned slot=0; slot<(unsigned)stream._cbBindings.size(); ++slot) {
+				auto bound = BindConstantBuffer(
+					MakeIteratorRange(reflections),
+					stream._cbBindings[slot]._hashName, slot, streamIdx,
+					MakeIteratorRange(stream._cbBindings[slot]._elements));
+				if (bound)
+					_boundUniformBufferSlots[streamIdx] |= 1ull << uint64_t(slot);
+			}
+			for (unsigned slot=0; slot<(unsigned)stream._srvBindings.size(); ++slot) {
+				auto bound = BindShaderResource(
+					MakeIteratorRange(reflections),
+					stream._srvBindings[slot], slot, streamIdx);
+				if (bound)
+					_boundResourceSlots[streamIdx] |= 1ull << uint64_t(slot);
+			}
+		}
     }
 
-    BoundUniforms::BoundUniforms(const DeepShaderProgram& shader)
-    {
-            //  In this case, we must bind with every shader stage 
-            //      (since a shader program actually reflects the state of the entire stage pipeline) 
-        _stageBindings[(unsigned)ShaderStage::Vertex]._reflection     = CreateReflection(shader.GetCompiledVertexShader());
-        _stageBindings[(unsigned)ShaderStage::Pixel]._reflection      = CreateReflection(shader.GetCompiledPixelShader());
-        auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader) {
-            _stageBindings[(unsigned)ShaderStage::Geometry]._reflection   = CreateReflection(*geoShader);
-        }
-        _stageBindings[(unsigned)ShaderStage::Hull]._reflection       = CreateReflection(shader.GetCompiledHullShader());
-        _stageBindings[(unsigned)ShaderStage::Domain]._reflection     = CreateReflection(shader.GetCompiledDomainShader());
-    }
-
-	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
-    {
-            //  In this case, we're binding with a single shader stage
-        auto stage = shader.GetStage();
-        if ((unsigned)stage < dimof(_stageBindings)) {
-            _stageBindings[(unsigned)stage]._reflection = CreateReflection(shader);
-        }
-    }
-
-    BoundUniforms::BoundUniforms() {}
+    BoundUniforms::BoundUniforms() 
+	{
+		for (unsigned c=0; c<4; ++c)
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+	}
 
     BoundUniforms::~BoundUniforms() {}
 
-    BoundUniforms::BoundUniforms(const BoundUniforms& copyFrom)
+    bool BoundUniforms::BindConstantBuffer( 
+		IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
+		uint64 hashName, unsigned slot, unsigned stream,
+        IteratorRange<const ConstantBufferElementDesc*> elements)
     {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = copyFrom._stageBindings[s];
-    }
+		bool functionResult = false;
 
-    BoundUniforms& BoundUniforms::operator=(const BoundUniforms& copyFrom)
-    {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = copyFrom._stageBindings[s];
-        return *this;
-    }
-
-    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
-    {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = std::move(moveFrom._stageBindings[s]);
-    }
-
-    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
-    {
-        for (unsigned s=0; s<dimof(_stageBindings); ++s)
-            _stageBindings[s] = std::move(moveFrom._stageBindings[s]);
-        return *this;
-    }
-    
-    BoundUniforms::StageBinding::StageBinding() {}
-    BoundUniforms::StageBinding::~StageBinding() {}
-
-    BoundUniforms::StageBinding::StageBinding(StageBinding&& moveFrom)
-    :   _reflection(std::move(moveFrom._reflection))
-    ,   _shaderConstantBindings(std::move(moveFrom._shaderConstantBindings))
-    ,   _shaderResourceBindings(std::move(moveFrom._shaderResourceBindings))
-    {
-    }
-
-    BoundUniforms::StageBinding& BoundUniforms::StageBinding::operator=(BoundUniforms::StageBinding&& moveFrom)
-    {
-        _reflection = std::move(moveFrom._reflection);
-        _shaderConstantBindings = std::move(moveFrom._shaderConstantBindings);
-        _shaderResourceBindings = std::move(moveFrom._shaderResourceBindings);
-        return *this;
-    }
-
-	BoundUniforms::StageBinding::StageBinding(const StageBinding& copyFrom)
-	: _reflection(copyFrom._reflection)
-	, _shaderConstantBindings(copyFrom._shaderConstantBindings)
-	, _shaderResourceBindings(copyFrom._shaderResourceBindings)
-	{
-	}
-
-	BoundUniforms::StageBinding& BoundUniforms::StageBinding::operator=(const StageBinding& copyFrom)
-	{
-		_reflection = copyFrom._reflection;
-		_shaderConstantBindings = copyFrom._shaderConstantBindings;
-		_shaderResourceBindings = copyFrom._shaderResourceBindings;
-		return *this;
-	}
-    
-
-    bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
-                                            const ConstantBufferLayoutElement elements[], size_t elementCount)
-    {
-        bool functionResult = false;
             //
             //    Look for this constant buffer in the shader interface.
             //        If it exists, let's validate that the input layout is similar
             //        to what the shader expects.
             //
         for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!_stageBindings[s]._reflection) continue;
+            if (!reflections[s]) continue;
 
             D3D11_SHADER_DESC shaderDesc;
-            auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
+            auto hresult = reflections[s]->GetDesc(&shaderDesc);
 
 			if (SUCCEEDED(hresult)) {
 				for (unsigned c2=0; c2<shaderDesc.BoundResources; ++c2) {
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c2, &bindingDesc);
+					hresult = reflections[s]->GetResourceBindingDesc(c2, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
-						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
+						const auto hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
 						if (hash == hashName) {
-							ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(
+							ID3D::ShaderReflectionConstantBuffer* cbReflection = reflections[s]->GetConstantBufferByName(
 								bindingDesc.Name);
 							if (!cbReflection) 
 								continue;
@@ -258,9 +277,23 @@ namespace RenderCore { namespace Metal_DX11
 							assert(Hash64(cbDesc.Name) == hashName);        // double check we got the correct reflection object
 
 							#if defined(_DEBUG)
-								for (size_t c=0; c<elementCount; ++c) {
-									ID3D::ShaderReflectionVariable* variable = 
-										cbReflection->GetVariableByName(elements[c]._name);
+								for (size_t c=0; c<elements.size(); ++c) {
+									ID3D::ShaderReflectionVariable* variable = nullptr;
+
+									// search through to find a variable a name that matches the hash value
+									for (unsigned v=0; v<cbDesc.Variables; ++v) {
+										auto* var = cbReflection->GetVariableByIndex(v);
+										if (!var) continue;
+										D3D11_SHADER_VARIABLE_DESC desc;
+										hresult = var->GetDesc(&desc);
+										if (!SUCCEEDED(hresult)) continue;
+										auto h = Hash64(desc.Name);
+										if (h == elements[c]._semanticHash) {
+											variable = var;
+											break;
+										}
+									}
+
 									assert(variable);
 									if (variable) {
 										D3D11_SHADER_VARIABLE_DESC variableDesc;
@@ -268,11 +301,10 @@ namespace RenderCore { namespace Metal_DX11
 										variable->GetDesc(&variableDesc);
 										assert(variableDesc.Name!=nullptr);
 										assert(variableDesc.StartOffset == elements[c]._offset);
-										assert(variableDesc.Size == std::max(1u, elements[c]._arrayCount) * BitsPerPixel(elements[c]._format) / 8);
+										assert(variableDesc.Size == std::max(1u, elements[c]._arrayElementCount) * BitsPerPixel(elements[c]._nativeFormat) / 8);
 									}
 								}
 							#endif
-							(void)elements; (void)elementCount; // (not used in release)
 
 							StageBinding::Binding newBinding;
 							newBinding._shaderSlot = bindingDesc.BindPoint;
@@ -290,252 +322,23 @@ namespace RenderCore { namespace Metal_DX11
         return functionResult;
     }
 
-    static Format AsNativeFormat(D3D11_SHADER_TYPE_DESC typeDesc)
-    {
-        switch (typeDesc.Type) {
-        case D3D10_SVT_INT:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return Format::R32G32B32A32_SINT;
-                } else if (typeDesc.Columns == 2) {
-                    return Format::R32G32_SINT;
-                } else if (typeDesc.Columns == 1) {
-                    return Format::R32_SINT;
-                } else {
-                    return Format::Unknown;
-                }
-            }
-            break;
-        case D3D10_SVT_UINT:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return Format::R32G32B32A32_UINT;
-                } else if (typeDesc.Columns == 2) {
-                    return Format::R32G32_UINT;
-                } else if (typeDesc.Columns == 1) {
-                    return Format::R32_UINT;
-                } else {
-                    return Format::Unknown;
-                }
-            }
-            break;
-        case D3D10_SVT_UINT8:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return Format::R8G8B8A8_UINT;
-                } else if (typeDesc.Columns == 2) {
-                    return Format::R8G8B8A8_UINT;
-                } else if (typeDesc.Columns == 1) {
-                    return Format::R8G8B8A8_UINT;
-                } else {
-                    return Format::Unknown;
-                }
-            }
-            break;
-        case D3D10_SVT_FLOAT:
-            if (typeDesc.Rows <= 1) {
-                if (typeDesc.Columns == 4) {
-                    return Format::R32G32B32A32_FLOAT;
-                } else if (typeDesc.Columns == 2) {
-                    return Format::R32G32_FLOAT;
-                } else if (typeDesc.Columns == 1) {
-                    return Format::R32_FLOAT;
-                } else {
-                    return Format::Unknown;
-                }
-            }
-            break;
-        case D3D11_SVT_DOUBLE:
-        default:
-            break;
-        }
-        return Format::Unknown;
-    }
-
-    bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
-    {
-            // expecting this method to be called before any other BindConstantBuffers 
-            // operations for this uniformsStream (because we start from a zero index)
-        #if defined(_DEBUG)
-            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderConstantBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
-        #endif
-
-        bool result = true;
-        for (auto c=cbs.begin(); c<cbs.end(); ++c)
-            result &= BindConstantBuffer(Hash64(*c), unsigned(c-cbs.begin()), uniformsStream);
-        return result;
-    }
-
-    bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs)
-    {
-            // expecting this method to be called before any other BindConstantBuffers 
-            // operations for this uniformsStream (because we start from a zero index)
-        #if defined(_DEBUG)
-            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderConstantBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
-        #endif
-
-        bool result = true;
-        for (auto c=cbs.begin(); c<cbs.end(); ++c)
-            result &= BindConstantBuffer(*c, unsigned(c-cbs.begin()), uniformsStream);
-        return result;
-    }
-
-    bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
-    {
-        #if defined(_DEBUG)
-            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderResourceBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
-        #endif
-
-        bool result = true;
-        for (auto c=res.begin(); c<res.end(); ++c)
-            result &= BindShaderResource(Hash64(*c), unsigned(c-res.begin()), uniformsStream);
-        return result;
-    }
-
-    bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
-    {
-        #if defined(_DEBUG)
-            for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c)
-                for (const auto& i:_stageBindings[c]._shaderResourceBindings)
-                    assert((i._inputInterfaceSlot>>16) != uniformsStream);
-        #endif
-
-        bool result = true;
-        for (auto c=res.begin(); c<res.end(); ++c)
-            result &= BindShaderResource(*c, unsigned(c-res.begin()), uniformsStream);
-        return result;
-    }
-
-	void BoundUniforms::CopyReflection(const BoundUniforms& copyFrom)
-	{
-		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
-			_stageBindings[c]._shaderConstantBindings.clear();
-			_stageBindings[c]._shaderResourceBindings.clear();
-			_stageBindings[c]._reflection = copyFrom._stageBindings[c]._reflection;
-		}
-	}
-
-	intrusive_ptr<ID3D::ShaderReflection> BoundUniforms::GetReflection(ShaderStage stage)
-	{
-		return _stageBindings[(unsigned)stage]._reflection;
-	}
-
-    ConstantBufferLayout::ConstantBufferLayout() { _size = 0; _elementCount = 0; }
-    ConstantBufferLayout::ConstantBufferLayout(ConstantBufferLayout&& moveFrom)
-    :   _elements(std::move(moveFrom._elements))
-    ,   _elementCount(moveFrom._elementCount)
-    ,   _size(moveFrom._size)
-    {}
-    ConstantBufferLayout& ConstantBufferLayout::operator=(ConstantBufferLayout&& moveFrom)
-    {
-        _elements = std::move(moveFrom._elements);
-        _elementCount = moveFrom._elementCount;
-        _size = moveFrom._size;
-        return *this;
-    }
-
-#pragma warning(disable:4345) // behavior change: an object of POD type constructed with an initializer of the form () will be default-initialized
-
-    ConstantBufferLayout BoundUniforms::GetConstantBufferLayout(const char name[])
-    {
-        ConstantBufferLayout result;
-
-            //
-            //      Find the first instance of a constant buffer with this name
-            //      note -- what happens it doesn't match in different stages?
-            //
-        for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!_stageBindings[s]._reflection) continue;
-
-            ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(name);
-            if (!cbReflection) 
-                continue;
-
-            D3D11_SHADER_BUFFER_DESC cbDesc;
-            XlZeroMemory(cbDesc);
-            cbReflection->GetDesc(&cbDesc);
-            if (!cbDesc.Size) 
-                continue;
-
-            result._size = cbDesc.Size;
-            result._elements = std::unique_ptr<ConstantBufferLayoutElementHash[]>(new ConstantBufferLayoutElementHash[cbDesc.Variables]);
-            result._elementCount = 0;
-            for (unsigned c=0; c<cbDesc.Variables; ++c) {
-                auto* variable = cbReflection->GetVariableByIndex(c);
-                if (!variable) {
-                    continue;
-                }
-                D3D11_SHADER_VARIABLE_DESC variableDesc;
-                D3D11_SHADER_TYPE_DESC typeDesc;
-                auto hresult = variable->GetDesc(&variableDesc);
-                if (!SUCCEEDED(hresult)) {
-                    continue;
-                }
-                auto* type = variable->GetType();
-                hresult = type->GetDesc(&typeDesc);
-                if (!SUCCEEDED(hresult)) {
-                    continue;
-                }
-                if (typeDesc.Class != D3D10_SVC_SCALAR && typeDesc.Class != D3D10_SVC_VECTOR && typeDesc.Class != D3D10_SVC_MATRIX_ROWS && typeDesc.Class != D3D10_SVC_MATRIX_COLUMNS) {
-                    continue;
-                }
-
-                ConstantBufferLayoutElementHash newElement;
-                newElement._name = Hash64(variableDesc.Name, XlStringEnd(variableDesc.Name));
-                newElement._offset = variableDesc.StartOffset;
-                newElement._arrayCount = typeDesc.Elements;
-                newElement._format = AsNativeFormat(typeDesc);
-                if (newElement._format == Format::Unknown) {
-                    continue;
-                }
-
-                result._elements[result._elementCount++] = newElement;
-            }
-        }
-
-        return std::move(result);
-    }
-
-    std::vector<std::pair<ShaderStage,unsigned>> BoundUniforms::GetConstantBufferBinding(const char name[])
-    {
-        std::vector<std::pair<ShaderStage,unsigned>> result;
-        for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!_stageBindings[s]._reflection) continue;
-
-            ID3D::ShaderReflectionConstantBuffer* cbReflection = _stageBindings[s]._reflection->GetConstantBufferByName(name);
-            if (!cbReflection) 
-                continue;
-
-            D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-            HRESULT hresult = _stageBindings[s]._reflection->GetResourceBindingDescByName(name, &bindingDesc);
-            if (SUCCEEDED(hresult)) {
-                result.push_back(std::make_pair(ShaderStage(s), bindingDesc.BindPoint));
-            }
-        }
-        return result;
-    }
-
-    bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
+    bool BoundUniforms::BindShaderResource(
+		IteratorRange<const intrusive_ptr<ID3D::ShaderReflection>*> reflections,
+		uint64 hashName, unsigned slot, unsigned stream)
     {
         bool functionResult = false;
         for (unsigned s=0; s<dimof(_stageBindings); ++s) {
-            if (!_stageBindings[s]._reflection) continue;
+            if (!reflections[s]) continue;
 
             D3D11_SHADER_DESC shaderDesc;
-            auto hresult = _stageBindings[s]._reflection->GetDesc(&shaderDesc);
+            auto hresult = reflections[s]->GetDesc(&shaderDesc);
 
 			assert(SUCCEEDED(hresult));
 			if (SUCCEEDED(hresult)) {
 				bool gotBinding = false;
 				for (unsigned c=0; c<shaderDesc.BoundResources && !gotBinding; ++c) {
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
-					hresult = _stageBindings[s]._reflection->GetResourceBindingDesc(c, &bindingDesc);
+					hresult = reflections[s]->GetResourceBindingDesc(c, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
 						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
 						if (hash == hashName) {
@@ -551,9 +354,10 @@ namespace RenderCore { namespace Metal_DX11
         return functionResult;
     }
 
-    void BoundUniforms::Apply(  DeviceContext& context, 
-                                const UniformsStream& stream0, 
-                                const UniformsStream& stream1) const
+    void BoundUniforms::Apply(  
+		DeviceContext& context, 
+        unsigned streamIdx,
+        const UniformsStream& stream) const
     {
         typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffers)(UINT, UINT, ID3D::Buffer *const *);
         typedef void (__stdcall ID3D::DeviceContext::*SetShaderResources)(UINT, UINT, ID3D11ShaderResourceView *const *);
@@ -578,8 +382,6 @@ namespace RenderCore { namespace Metal_DX11
             &ID3D::DeviceContext::CSSetShaderResources,
         };
 
-        const UniformsStream* streams[] = { &stream0, &stream1 };
-
         for (unsigned s=0; s<dimof(_stageBindings); ++s) {
             const StageBinding& stage = _stageBindings[s];
 
@@ -590,25 +392,30 @@ namespace RenderCore { namespace Metal_DX11
                 for (auto   i =stage._shaderConstantBindings.begin(); 
                             i!=stage._shaderConstantBindings.end(); ++i) {
 
-                    unsigned slot = i->_inputInterfaceSlot & 0xff;
-                    unsigned streamIndex = i->_inputInterfaceSlot >> 16;
-                    if (streamIndex < dimof(streams) && slot < streams[streamIndex]->_packetCount) {
-                        auto& stream = *streams[streamIndex];
-                        if (stream._packets && stream._packets[slot]) {
+					if ((i->_inputInterfaceSlot >> 16) != streamIdx)
+						continue;
 
-                            i->_savedCB.Update(context, stream._packets[slot].begin(), stream._packets[slot].size());
+                    unsigned slot = i->_inputInterfaceSlot & 0xff;
+                    if (slot < stream._constantBuffers.size()) {
+						const auto& cb = stream._constantBuffers[slot];
+                        if (cb._prebuiltBuffer) {
+
+							auto* res = checked_cast<const Resource*>(cb._prebuiltBuffer)->_underlying.get();
+							assert(QueryInterfaceCast<ID3D::Buffer>(res));
+
                             setMask |= 1 << (i->_shaderSlot);
-                            if (i->_savedCB.GetUnderlying() != currentCBS[i->_shaderSlot]) {
-                                currentCBS[i->_shaderSlot] = i->_savedCB.GetUnderlying();
+                            if (res != currentCBS[i->_shaderSlot]) {
+                                currentCBS[i->_shaderSlot] = (ID3D::Buffer*)res;
                                 lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
                                 highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
                             }
 
-                        } else if (stream._prebuiltBuffers && stream._prebuiltBuffers[slot]) {
+                        } else if (cb._packet.size()) {
 
+                            i->_savedCB.Update(context, cb._packet.begin(), cb._packet.size());
                             setMask |= 1 << (i->_shaderSlot);
-                            if (stream._prebuiltBuffers[slot]->GetUnderlying() != currentCBS[i->_shaderSlot]) {
-                                currentCBS[i->_shaderSlot] = stream._prebuiltBuffers[slot]->GetUnderlying();
+                            if (i->_savedCB.GetUnderlying() != currentCBS[i->_shaderSlot]) {
+                                currentCBS[i->_shaderSlot] = i->_savedCB.GetUnderlying();
                                 lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
                                 highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
                             }
@@ -638,10 +445,13 @@ namespace RenderCore { namespace Metal_DX11
                 uint32 setMask = 0;
                 for (auto   i =stage._shaderResourceBindings.cbegin(); 
                             i!=stage._shaderResourceBindings.cend(); ++i) {
+
+					if ((i->_inputInterfaceSlot >> 16) != streamIdx)
+						continue;
+
                     unsigned slot = i->_inputInterfaceSlot & 0xff;
-                    unsigned streamIndex = i->_inputInterfaceSlot >> 16;
-                    if (streamIndex < dimof(streams) && slot < streams[streamIndex]->_resourceCount && streams[streamIndex]->_resources[slot]) {
-                        currentSRVs[i->_shaderSlot] = streams[streamIndex]->_resources[slot]->GetUnderlying();
+                    if (slot < stream._resources.size() && stream._resources[slot]) {
+                        currentSRVs[i->_shaderSlot] = stream._resources[slot]->GetUnderlying();
                         lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
                         highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
                         setMask |= 1<<(i->_shaderSlot);
@@ -694,6 +504,7 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void BoundClassInterfaces::Bind(uint64 hashName, unsigned bindingArrayIndex, const char instance[])
     {
@@ -849,6 +660,70 @@ namespace RenderCore { namespace Metal_DX11
 		_classInstanceArray = copyFrom._classInstanceArray;
 		return *this;
 	}
+
+#if 0
+    static Format AsNativeFormat(D3D11_SHADER_TYPE_DESC typeDesc)
+    {
+        switch (typeDesc.Type) {
+        case D3D10_SVT_INT:
+            if (typeDesc.Rows <= 1) {
+                if (typeDesc.Columns == 4) {
+                    return Format::R32G32B32A32_SINT;
+                } else if (typeDesc.Columns == 2) {
+                    return Format::R32G32_SINT;
+                } else if (typeDesc.Columns == 1) {
+                    return Format::R32_SINT;
+                } else {
+                    return Format::Unknown;
+                }
+            }
+            break;
+        case D3D10_SVT_UINT:
+            if (typeDesc.Rows <= 1) {
+                if (typeDesc.Columns == 4) {
+                    return Format::R32G32B32A32_UINT;
+                } else if (typeDesc.Columns == 2) {
+                    return Format::R32G32_UINT;
+                } else if (typeDesc.Columns == 1) {
+                    return Format::R32_UINT;
+                } else {
+                    return Format::Unknown;
+                }
+            }
+            break;
+        case D3D10_SVT_UINT8:
+            if (typeDesc.Rows <= 1) {
+                if (typeDesc.Columns == 4) {
+                    return Format::R8G8B8A8_UINT;
+                } else if (typeDesc.Columns == 2) {
+                    return Format::R8G8B8A8_UINT;
+                } else if (typeDesc.Columns == 1) {
+                    return Format::R8G8B8A8_UINT;
+                } else {
+                    return Format::Unknown;
+                }
+            }
+            break;
+        case D3D10_SVT_FLOAT:
+            if (typeDesc.Rows <= 1) {
+                if (typeDesc.Columns == 4) {
+                    return Format::R32G32B32A32_FLOAT;
+                } else if (typeDesc.Columns == 2) {
+                    return Format::R32G32_FLOAT;
+                } else if (typeDesc.Columns == 1) {
+                    return Format::R32_FLOAT;
+                } else {
+                    return Format::Unknown;
+                }
+            }
+            break;
+        case D3D11_SVT_DOUBLE:
+        default:
+            break;
+        }
+        return Format::Unknown;
+    }
+#endif
 
 }}
 

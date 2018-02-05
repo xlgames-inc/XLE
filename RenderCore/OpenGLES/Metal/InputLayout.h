@@ -17,6 +17,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     class ShaderProgram;
     class PipelineLayoutConfig;
+	class DeviceContext;
 
     class BoundInputLayout
     {
@@ -47,10 +48,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class DeviceContext;
-    using ConstantBufferPacket = SharedPkt;
-    class ShaderResourceView;
-        ////////////////////////////////////////////////////////////////////////////////////////////////
     class BoundUniforms
     {
     public:

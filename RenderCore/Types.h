@@ -264,7 +264,12 @@ namespace RenderCore
 		Decrease = 8        // D3D11_STENCIL_OP_DECR
 	};
 
-
+	enum class ShaderStage
+    {
+        Vertex, Pixel, Geometry, Hull, Domain, Compute,
+        Null,
+        Max
+    };
 
 }
 
