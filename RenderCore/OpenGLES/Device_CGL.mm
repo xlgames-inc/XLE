@@ -30,7 +30,22 @@ namespace RenderCore { namespace ImplOpenGLES
         _activeFrameContext = presChain.GetUnderlying().get().CGLContextObj;
         CGLRetainContext(_activeFrameContext);
         CGLSetCurrentContext(_activeFrameContext);
-        return nullptr;     // the target is always render buffer 0
+
+        // auto rbDesc = Metal_OpenGLES::ExtractDesc((OpenGL::RenderBuffer*)0);
+        // (void)rbDesc;
+
+        /*glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        GLint objectType = ~0, objectName = ~0u;
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &objectType);
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &objectName);*/
+
+        /*GLint swapRectangle[4] = {0,0,0,0};
+        GLint backingSize[2] = {0,0};
+        auto err = CGLGetParameter(_activeFrameContext, kCGLCPSwapRectangle, swapRectangle);
+        err = CGLGetParameter(_activeFrameContext, kCGLCPSurfaceBackingSize, backingSize);
+        (void)err;*/
+
+        return std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(presChain._backBufferDesc));
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
@@ -47,7 +62,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
     bool                        ThreadContext::IsImmediate() const { return false; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
-    std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return nullptr; }
+    std::shared_ptr<IDevice>    ThreadContext::GetDevice() const
+    {
+        return _device.lock();
+    }
     void                        ThreadContext::IncrFrameId() {}
     void                        ThreadContext::InvalidateCachedState() const {}
 
@@ -208,6 +226,8 @@ namespace RenderCore { namespace ImplOpenGLES
                 // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
                 kCGLPFAColorSize, 24,
                 kCGLPFAAlphaSize, 8,
+                kCGLPFABackingStore, 0,
+                kCGLPFAAccelerated, 1,
                 0,
             };
 
@@ -229,6 +249,11 @@ namespace RenderCore { namespace ImplOpenGLES
 
             _nsContext.get().view = (NSView*)platformValue;
         }
+
+        _backBufferDesc = CreateDesc(
+            BindFlag::RenderTarget, 0, GPUAccess::Write,
+            TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
+            "backbuffer");
     }
 
     PresentationChain::~PresentationChain()
@@ -237,6 +262,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
+        _backBufferDesc._textureDesc._width = newWidth;
+        _backBufferDesc._textureDesc._height = newHeight;
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const

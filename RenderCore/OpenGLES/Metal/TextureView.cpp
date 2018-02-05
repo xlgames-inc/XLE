@@ -8,7 +8,7 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    static Resource& AsResource(IResource& resource)
+    static Resource AsResource(IResource& resource)
     {
         auto* result = (Resource*)resource.QueryInterface(typeid(Resource).hash_code());
         if (!result)
@@ -16,48 +16,35 @@ namespace RenderCore { namespace Metal_OpenGLES
         return *result;
     }
 
-    ShaderResourceView::ShaderResourceView() {}
-    ShaderResourceView::ShaderResourceView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture, bool hasMipMaps)
-    : _hasMipMaps(hasMipMaps)
+    static std::shared_ptr<Resource> AsResource(const std::shared_ptr<IResource>& resource)
     {
-        if (!glIsTexture(underlyingTexture->AsRawGLHandle()))
-            Throw(Exceptions::GenericFailure("Binding non-texture to shader resource view"));
-
-        _underlyingTexture = underlyingTexture;
+        auto* result = (Resource*)resource->QueryInterface(typeid(Resource).hash_code());
+        if (!result || result != resource.get())
+            Throw(::Exceptions::BasicLabel("Unexpected resource type passed to texture view"));
+        return std::static_pointer_cast<Resource>(resource);
     }
 
+    ShaderResourceView::ShaderResourceView() : _hasMipMaps(false) {}
+
     ShaderResourceView::ShaderResourceView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
-    : Resource(AsResource(*resource))
+    : _resource(AsResource(resource))
+    , _window(window)
     {
+        _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount >= 1;
         // todo -- handle "view" transformation
     }
 
     ShaderResourceView::ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : ShaderResourceView(GetObjectFactory(*resource.get()), resource, window)
     {
+        _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount >= 1;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     RenderTargetView::RenderTargetView() {}
-    RenderTargetView::RenderTargetView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture)
-    {
-        if (!glIsTexture(underlyingTexture->AsRawGLHandle()))
-            Throw(Exceptions::GenericFailure("Binding non-texture to render target view"));
-
-        _underlyingTexture = underlyingTexture;
-    }
-
-    RenderTargetView::RenderTargetView(const intrusive_ptr<OpenGL::RenderBuffer>& underlyingRenderbuffer)
-    {
-        if (!glIsRenderbuffer(underlyingRenderbuffer->AsRawGLHandle()))
-            Throw(Exceptions::GenericFailure("Binding non-render buffer to render target view"));
-
-        _underlyingRenderBuffer = underlyingRenderbuffer;
-    }
-
     RenderTargetView::RenderTargetView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
-    : Resource(AsResource(*resource))
+    : _resource(AsResource(resource))
     , _window(window)
     {
         // todo -- handle "view" transformation
@@ -71,23 +58,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     DepthStencilView::DepthStencilView() {}
-    DepthStencilView::DepthStencilView(const intrusive_ptr<OpenGL::Texture>& underlyingTexture)
-    {
-        if (!glIsTexture(underlyingTexture->AsRawGLHandle()))
-            Throw(Exceptions::GenericFailure("Binding non-texture to depth stencil target view"));
-
-        _underlyingTexture = underlyingTexture;
-    }
-    DepthStencilView::DepthStencilView(const intrusive_ptr<OpenGL::RenderBuffer>& underlyingRenderbuffer)
-    {
-        if (!glIsRenderbuffer(underlyingRenderbuffer->AsRawGLHandle()))
-            Throw(Exceptions::GenericFailure("Binding non-render buffer to depth stencil target view"));
-
-        _underlyingRenderBuffer = underlyingRenderbuffer;
-    }
-
     DepthStencilView::DepthStencilView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
-    : Resource(AsResource(*resource))
+    : _resource(AsResource(resource))
     , _window(window)
     {
         // todo -- handle "view" transformation

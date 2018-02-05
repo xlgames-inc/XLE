@@ -11,7 +11,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    GLenum AsBufferTarget(RenderCore::BindFlag::BitField bindFlags)
+    GLenum AsBufferTarget(BindFlag::BitField bindFlags)
     {
         // Valid "target" values for glBindBuffer:
         // GL_ARRAY_BUFFER, GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, GL_ELEMENT_ARRAY_BUFFER, GL_PIXEL_PACK_BUFFER, GL_PIXEL_UNPACK_BUFFER, GL_TRANSFORM_FEEDBACK_BUFFER, or GL_UNIFORM_BUFFER
@@ -19,7 +19,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         // GL_COPY_READ_BUFFER, GL_COPY_WRITE_BUFFER, GL_PIXEL_PACK_BUFFER & GL_PIXEL_UNPACK_BUFFER
         // Also note that this function will always 0 when multiple flags are set in 'bindFlags'
 
-        using namespace RenderCore;
         switch (bindFlags) {
         case BindFlag::VertexBuffer: return GL_ARRAY_BUFFER;
         case BindFlag::IndexBuffer: return GL_ELEMENT_ARRAY_BUFFER;
@@ -29,14 +28,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         return 0;
     }
 
-    GLenum AsUsageMode( RenderCore::CPUAccess::BitField cpuAccess,
-                        RenderCore::GPUAccess::BitField gpuAccess)
+    GLenum AsUsageMode( CPUAccess::BitField cpuAccess,
+                        GPUAccess::BitField gpuAccess)
     {
         // GL_STREAM_DRAW, GL_STREAM_READ, GL_STREAM_COPY, GL_STATIC_DRAW, GL_STATIC_READ, GL_STATIC_COPY, GL_DYNAMIC_DRAW, GL_DYNAMIC_READ, or GL_DYNAMIC_COPY
         // These values are not accessible here:
         //  GL_STREAM_COPY, GL_STATIC_COPY, GL_DYNAMIC_COPY
 
-        using namespace RenderCore;
         if (cpuAccess == 0) {
             return GL_STATIC_DRAW;
         } else if (cpuAccess & CPUAccess::WriteDynamic) {
@@ -48,6 +46,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         return 0;
+    }
+
+    static std::pair<CPUAccess::BitField, GPUAccess::BitField> AsAccessBitFields(GLenum glAccess)
+    {
+        switch (glAccess) {
+        case GL_STATIC_DRAW: return {0, GPUAccess::Read};
+        case GL_STATIC_READ: return {CPUAccess::Read, GPUAccess::Read};
+        case GL_DYNAMIC_READ: return {CPUAccess::WriteDynamic | CPUAccess::Read, GPUAccess::Read};
+        case GL_DYNAMIC_DRAW: return {CPUAccess::WriteDynamic, GPUAccess::Read};
+        case GL_STREAM_READ: return {CPUAccess::Write | CPUAccess::Read, GPUAccess::Read};
+        case GL_STREAM_DRAW: return {CPUAccess::Write, GPUAccess::Read};
+        default: return {0,0};
+        }
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -91,6 +102,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         ObjectFactory& factory, const Desc& desc,
         const IDevice::ResourceInitializer& initializer)
     : _desc(desc)
+    , _isBackBuffer(false)
     {
         checkError();
 
@@ -223,8 +235,42 @@ namespace RenderCore { namespace Metal_OpenGLES
         checkError();
     }
 
-    Resource::Resource() {}
+    Resource::Resource(const intrusive_ptr<OpenGL::Texture>& texture, const ResourceDesc& desc)
+    : _underlyingTexture(texture)
+    , _desc(desc)
+    {
+        if (!glIsTexture(texture->AsRawGLHandle()))
+            Throw(::Exceptions::BasicLabel("Binding non-texture as texture resource"));
+    }
+
+    Resource::Resource(const intrusive_ptr<OpenGL::RenderBuffer>& renderbuffer)
+    : _underlyingRenderBuffer(renderbuffer)
+    {
+        if (!glIsRenderbuffer(renderbuffer->AsRawGLHandle()))
+            Throw(::Exceptions::BasicLabel("Binding non-render buffer as render buffer resource"));
+
+        _desc = ExtractDesc(renderbuffer.get());
+    }
+
+    Resource::Resource(const intrusive_ptr<OpenGL::Buffer>& buffer)
+    : _underlyingBuffer(buffer)
+    {
+        if (!glIsBuffer(buffer->AsRawGLHandle()))
+            Throw(::Exceptions::BasicLabel("Binding non-render buffer as render buffer resource"));
+
+        _desc = ExtractDesc(buffer.get());
+    }
+
+    Resource::Resource() : _isBackBuffer(false) {}
     Resource::~Resource() {}
+
+    Resource Resource::CreateBackBuffer(const Desc& desc)
+    {
+        Resource result;
+        result._isBackBuffer = true;
+        result._desc = desc;
+        return result;
+    }
 
     ResourceDesc ExtractDesc(const IResource& input)
     {
@@ -239,6 +285,51 @@ namespace RenderCore { namespace Metal_OpenGLES
         const IDevice::ResourceInitializer& initData)
     {
         return std::make_shared<Resource>(factory, desc, initData);
+    }
+
+    ResourceDesc ExtractDesc(OpenGL::RenderBuffer* renderbuffer)
+    {
+        glBindRenderbuffer(GL_RENDERBUFFER, renderbuffer->AsRawGLHandle());
+        GLint width = 0, height = 0, internalFormat = 0, samples = 0;
+        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &width);
+        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &height);
+        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_INTERNAL_FORMAT, &internalFormat);
+        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_SAMPLES, &samples);
+
+        auto fmt = SizedInternalFormatAsRenderCoreFormat(internalFormat);
+        auto components = GetComponents(fmt);
+        bool isDepthStencilBuffer =
+                components == FormatComponents::Depth
+            ||  components == FormatComponents::DepthStencil
+            ||  components == FormatComponents::Stencil;
+
+        return CreateDesc(
+            isDepthStencilBuffer ? BindFlag::DepthStencil : BindFlag::RenderTarget,
+            0, GPUAccess::Write,
+            TextureDesc::Plain2D(width, height, fmt, 1, 0, TextureSamples::Create(samples)),
+            "");
+    }
+
+    ResourceDesc ExtractDesc(OpenGL::Texture* texture)
+    {
+        assert(0);  // can't access information about the texture using opengles (until 3.1)
+        return ResourceDesc{};
+    }
+
+    ResourceDesc ExtractDesc(OpenGL::Buffer* buffer)
+    {
+        GLenum bindingTarget = GL_ARRAY_BUFFER;
+        glBindBuffer(bindingTarget, buffer->AsRawGLHandle());
+        GLint size = 0, usage = 0;
+        glGetBufferParameteriv(bindingTarget, GL_BUFFER_SIZE, &size);
+        glGetBufferParameteriv(bindingTarget, GL_BUFFER_USAGE, &usage);
+
+        auto accessFlags = AsAccessBitFields(usage);
+        return CreateDesc(
+            BindFlag::VertexBuffer | BindFlag::IndexBuffer | BindFlag::ConstantBuffer,
+            accessFlags.first, accessFlags.second,
+            LinearBufferDesc::Create(size),
+            "");
     }
 
 }}

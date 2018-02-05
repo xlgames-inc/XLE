@@ -57,50 +57,70 @@ namespace RenderCore { namespace Metal_OpenGLES
 				sp._dsvClearValue = clearValueIterator++;
 			}
 
+            GLenum drawBuffers[dimof(Subpass::_rtvs)] = { GL_NONE, GL_NONE, GL_NONE, GL_NONE };
+            unsigned colorAttachmentIterator = 0;
+
+            #if defined(_DEBUG)
+                int maxDrawBuffers = 0;
+                glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
+                assert(sp._rtvCount <= maxDrawBuffers);
+            #endif
+
             sp._frameBuffer = factory.CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, sp._frameBuffer->AsRawGLHandle());
             for (unsigned rtv=0; rtv<sp._rtvCount; ++rtv) {
-                auto& res = sp._rtvs[rtv];
+                auto& res = *sp._rtvs[rtv].GetResource();
+                auto& viewWindow = sp._rtvs[rtv]._window;
 
-                auto desc = ExtractDesc(res);
-                assert(desc._type == ResourceDesc::Type::Texture);
-
-                if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
-                    ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
-                    if (res.GetRenderBuffer()) {
-                        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv, GL_RENDERBUFFER, res.GetRenderBuffer()->AsRawGLHandle());
-                    } else {
-                        if (desc._textureDesc._arrayCount > 1u) {
-                            glFramebufferTextureLayer(
-                                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv,
-                                res.GetTexture()->AsRawGLHandle(),
-                                res._window._mipRange._min,
-                                res._window._arrayLayerRange._min);
-                        } else {
-                            glFramebufferTexture2D(
-                                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv, GL_TEXTURE_2D,
-                                res.GetTexture()->AsRawGLHandle(),
-                                res._window._mipRange._min);
-                        }
-                    }
-                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
-                    assert(!res.GetRenderBuffer());     // not rational in this case
-                    glFramebufferTextureLayer(
-                        GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv,
-                        res.GetTexture()->AsRawGLHandle(),
-                        res._window._mipRange._min,
-                        res._window._arrayLayerRange._min);
-                } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
-                    assert(!res.GetRenderBuffer());     // not rational in this case
-                    assert(desc._textureDesc._arrayCount <= 1u);    // cannot render to arrays of cubemaps
-                    glFramebufferTexture2D(
-                        GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv, GL_TEXTURE_CUBE_MAP_POSITIVE_X + res._window._arrayLayerRange._min,
-                        res.GetTexture()->AsRawGLHandle(),
-                        res._window._mipRange._min);
+                if (res.IsBackBuffer()) {
+                    drawBuffers[rtv] = GL_BACK;
                 } else {
-                    assert(0);
+
+                    auto desc = ExtractDesc(res);
+                    assert(desc._type == ResourceDesc::Type::Texture);
+
+                    if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+                        ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
+                        if (res.GetRenderBuffer()) {
+                            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv, GL_RENDERBUFFER, res.GetRenderBuffer()->AsRawGLHandle());
+                        } else {
+                            if (desc._textureDesc._arrayCount > 1u) {
+                                glFramebufferTextureLayer(
+                                    GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator,
+                                    res.GetTexture()->AsRawGLHandle(),
+                                    viewWindow._mipRange._min,
+                                    viewWindow._arrayLayerRange._min);
+                            } else {
+                                glFramebufferTexture2D(
+                                    GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator, GL_TEXTURE_2D,
+                                    res.GetTexture()->AsRawGLHandle(),
+                                    viewWindow._mipRange._min);
+                            }
+                        }
+                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
+                        assert(!res.GetRenderBuffer());     // not rational in this case
+                        glFramebufferTextureLayer(
+                            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator,
+                            res.GetTexture()->AsRawGLHandle(),
+                            viewWindow._mipRange._min,
+                            viewWindow._arrayLayerRange._min);
+                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+                        assert(!res.GetRenderBuffer());     // not rational in this case
+                        assert(desc._textureDesc._arrayCount <= 1u);    // cannot render to arrays of cubemaps
+                        glFramebufferTexture2D(
+                            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator, GL_TEXTURE_CUBE_MAP_POSITIVE_X + viewWindow._arrayLayerRange._min,
+                            res.GetTexture()->AsRawGLHandle(),
+                            viewWindow._mipRange._min);
+                    } else {
+                        assert(0);
+                    }
+
+                    drawBuffers[rtv] = GL_COLOR_ATTACHMENT0 + colorAttachmentIterator;
+                    ++colorAttachmentIterator;
                 }
             }
+
+            glDrawBuffers(sp._rtvCount, drawBuffers);
         }
         _subpassCount = (unsigned)subpasses.size();
     }

@@ -25,6 +25,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const intrusive_ptr<OpenGL::Texture>& GetTexture() const { return _underlyingTexture; }
         const intrusive_ptr<OpenGL::RenderBuffer>& GetRenderBuffer() const { return _underlyingRenderBuffer; }
         IteratorRange<const void*> GetConstantBuffer() const { return MakeIteratorRange(_constantBuffer); }
+        const bool IsBackBuffer() { return _isBackBuffer; }
 
         virtual void*       QueryInterface(size_t guid);
 
@@ -34,13 +35,20 @@ namespace RenderCore { namespace Metal_OpenGLES
         Resource(
             ObjectFactory& factory, const Desc& desc,
             const IDevice::ResourceInitializer& initData);
+
+        Resource(const intrusive_ptr<OpenGL::Texture>&, const ResourceDesc& = {});
+        Resource(const intrusive_ptr<OpenGL::RenderBuffer>&);
+        Resource(const intrusive_ptr<OpenGL::Buffer>&);
         Resource();
         ~Resource();
+
+        static Resource CreateBackBuffer(const Desc& desc);
     protected:
         intrusive_ptr<OpenGL::Buffer> _underlyingBuffer;
         intrusive_ptr<OpenGL::Texture> _underlyingTexture;
         intrusive_ptr<OpenGL::RenderBuffer> _underlyingRenderBuffer;
         std::vector<uint8_t> _constantBuffer;
+        bool _isBackBuffer;
         Desc _desc;
     };
 
@@ -56,6 +64,10 @@ namespace RenderCore { namespace Metal_OpenGLES
     IResourcePtr CreateResource(
         ObjectFactory& factory, const ResourceDesc& desc,
         const IDevice::ResourceInitializer& initData = nullptr);
+
+    ResourceDesc ExtractDesc(OpenGL::RenderBuffer* renderbuffer);
+    ResourceDesc ExtractDesc(OpenGL::Texture* renderbuffer);
+    ResourceDesc ExtractDesc(OpenGL::Buffer* renderbuffer);
 }}
 
 

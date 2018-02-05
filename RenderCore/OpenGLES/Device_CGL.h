@@ -1,8 +1,9 @@
 #pragma once
 
+#include "IDeviceOpenGLES.h"
 #include "../IDevice.h"
 #include "../IThreadContext.h"
-#include "IDeviceOpenGLES.h"
+#include "../ResourceDesc.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
@@ -28,6 +29,8 @@ namespace RenderCore { namespace ImplOpenGLES
             CGLContextObj sharedContext,
             const void* platformValue, unsigned width, unsigned height);
         ~PresentationChain();
+
+        ResourceDesc _backBufferDesc;
 
     private:
         TBC::OCPtr<NSOpenGLContext> _nsContext;
