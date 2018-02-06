@@ -173,12 +173,24 @@ namespace Overlays
         auto reciprocalViewportDimensions = MakeConstantBuffer(constants);
         auto scrollConstantsBuffer = MakeConstantBuffer(scrollConstants);
         const ShaderResourceView* resources[] = { &srv };
-        const ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions, &scrollConstantsBuffer };
-        BoundUniforms boundLayout(shaderProgram);
-        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1);
-        boundLayout.BindConstantBuffer(Hash64("ScrollConstants"), 1, 1);
-        boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
-        boundLayout.Apply(*context, UniformsStream(), UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
+		ConstantBufferView cnsts[] = { {&reciprocalViewportDimensions}, {&scrollConstantsBuffer} };
+		UniformsStreamInterface interf;
+		interf.BindConstantBuffer(0, { Hash64("ReciprocalViewportDimensionsCB") });
+		interf.BindConstantBuffer(1, { Hash64("ScrollConstants") });
+		interf.BindShaderResource(0, { Hash64("DiffuseTexture") });
+
+		BoundUniforms boundLayout(
+			shaderProgram,
+			PipelineLayoutConfig{},
+			UniformsStreamInterface{},
+			interf);
+        
+		boundLayout.Apply(
+			*context, 1,
+			{
+				MakeIteratorRange(cnsts),
+				MakeIteratorRange(resources),
+			});
 
         context->Bind(BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
         context->Bind(Topology::TriangleStrip);

@@ -60,12 +60,16 @@ namespace Overlays
                 << "SHADOW_CASCADE_MODE=" << desc._cascadeMode 
                 << ";SHADOW_ENABLE_NEAR_CASCADE=" << (desc._enableNearCascade?1:0)));
 
-        _uniforms = Metal::BoundUniforms(*_shader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
-        _uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"), 0, 1);
-        _uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), 1, 1);
-        _uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"), 2, 1);
-        _uniforms.BindShaderResource(Hash64("DepthTexture"), 0, 1);
+		UniformsStreamInterface uniformsInterf;
+		uniformsInterf.BindConstantBuffer(0, { Hash64("ArbitraryShadowProjection") });
+		uniformsInterf.BindConstantBuffer(1, { Hash64("OrthogonalShadowProjection") });
+		uniformsInterf.BindConstantBuffer(2, { Hash64("ScreenToShadowProjection") });
+		uniformsInterf.BindConstantBuffer(3, { Hash64("DepthTexture") });
+		_uniforms = Metal::BoundUniforms(
+			*_shader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			uniformsInterf);
         
         _depVal = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_depVal, _shader->GetDependencyValidation());

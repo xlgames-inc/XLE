@@ -15,11 +15,14 @@ namespace RenderCore { namespace Assets
         const InputLayout& inputLayout,
         const std::initializer_list<uint64_t>& objectCBs)
     {
+		UniformsStreamInterface interf;
+		unsigned index = 0;
+		for (auto o : objectCBs)
+			interf.BindConstantBuffer(index++, { o });
+
         Techniques::TechniqueInterface techniqueInterface(inputLayout);
         Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-        unsigned index = 0;
-        for (auto o:objectCBs)
-            techniqueInterface.BindConstantBuffer(o, index++, 1);
+		techniqueInterface.BindUniformsStream(1, interf);
         return std::move(techniqueInterface);
     }
 

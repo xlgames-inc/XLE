@@ -34,9 +34,8 @@ namespace RenderCore { namespace Techniques
     class TechniqueInterface::Pimpl
     {
     public:
-        std::vector<InputElementDesc>        _vertexInputLayout;
-        std::vector<std::pair<uint64, unsigned>>    _constantBuffers;
-        std::vector<std::pair<uint64, unsigned>>    _shaderResources;
+        std::vector<InputElementDesc>			_vertexInputLayout;
+        std::vector<UniformsStreamInterface>    _uniformStreams;
 
         uint64 _hashValue;
         Pimpl() : _hashValue(0) {}
@@ -46,10 +45,9 @@ namespace RenderCore { namespace Techniques
 
     void        TechniqueInterface::Pimpl::UpdateHashValue()
     {
-        _hashValue = 
-              Hash64(AsPointer(_constantBuffers.cbegin()), AsPointer(_constantBuffers.cend()))
-            ^ Hash64(AsPointer(_shaderResources.cbegin()), AsPointer(_shaderResources.cend()))
-            ;
+		_hashValue = 0;
+		for (const auto& i : _uniformStreams)
+			_hashValue = HashCombine(i.GetHash(), _hashValue);
 
         unsigned index = 0;
         for (auto i=_vertexInputLayout.cbegin(); i!=_vertexInputLayout.cend(); ++i, ++index) {
@@ -77,28 +75,12 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void    TechniqueInterface::BindConstantBuffer(uint64 hashName, unsigned slot, unsigned stream)
+    void    TechniqueInterface::BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf)
     {
-        auto i = std::lower_bound(_pimpl->_constantBuffers.begin(), _pimpl->_constantBuffers.end(),
-            slot, CompareFirst<uint64, unsigned>());
-        if (i == _pimpl->_constantBuffers.end() || i->first != hashName) {
-            _pimpl->_constantBuffers.insert(i, std::make_pair(hashName, slot | (stream<<16)));
-            _pimpl->UpdateHashValue();
-            return;
-        }
-        assert(0);  // attempting to bind the same constant buffer twice
-    }
-
-    void    TechniqueInterface::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
-    {
-        auto i = std::lower_bound(_pimpl->_shaderResources.begin(), _pimpl->_shaderResources.end(),
-            slot, CompareFirst<uint64, unsigned>());
-        if (i == _pimpl->_shaderResources.end() || i->first != hashName) {
-            _pimpl->_shaderResources.insert(i, std::make_pair(hashName, slot | (stream<<16)));
-            _pimpl->UpdateHashValue();
-            return;
-        }
-        assert(0);  // attempting to bind the same constant buffer twice
+		if (_pimpl->_uniformStreams.size() <= streamIndex)
+			_pimpl->_uniformStreams.resize(streamIndex + 1);
+		_pimpl->_uniformStreams[streamIndex] = interf;
+		_pimpl->UpdateHashValue();
     }
 
     uint64  TechniqueInterface::GetHashValue() const
@@ -111,7 +93,7 @@ namespace RenderCore { namespace Techniques
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
     }
 
-    TechniqueInterface::TechniqueInterface(const InputLayout& vertexInputLayout)
+    TechniqueInterface::TechniqueInterface(InputLayout vertexInputLayout)
     {
         _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
         _pimpl->_vertexInputLayout.insert(
@@ -331,16 +313,18 @@ namespace RenderCore { namespace Techniques
                 combinedStrings.c_str());
         }
 
-        boundUniforms = std::make_unique<BoundUniforms>(std::ref(*shaderProgram));
-        for (auto i = techniqueInterface._pimpl->_constantBuffers.cbegin();
-            i != techniqueInterface._pimpl->_constantBuffers.cend(); ++i) {
-            boundUniforms->BindConstantBuffer(i->first, i->second & 0xff, i->second >> 16, nullptr, 0);
-        }
+		PipelineLayoutConfig dummy;
+		UniformsStreamInterface streamInterfaces[4];
+		for (unsigned c=0; c<std::min(dimof(streamInterfaces), techniqueInterface._pimpl->_uniformStreams.size()); ++c)
+			streamInterfaces[c] = techniqueInterface._pimpl->_uniformStreams[c];
 
-        for (auto i = techniqueInterface._pimpl->_shaderResources.cbegin();
-            i != techniqueInterface._pimpl->_shaderResources.cend(); ++i) {
-            boundUniforms->BindShaderResource(i->first, i->second & 0xff, i->second >> 16);
-        }
+		boundUniforms = std::make_unique<BoundUniforms>(
+			std::ref(*shaderProgram),
+			dummy,
+			streamInterfaces[0],
+			streamInterfaces[1],
+			streamInterfaces[2],
+			streamInterfaces[3]);
 
         boundInputLayout = std::make_unique<BoundInputLayout>(
 			MakeIteratorRange(techniqueInterface._pimpl->_vertexInputLayout), std::ref(*shaderProgram));
@@ -845,16 +829,20 @@ namespace RenderCore { namespace Techniques
     void ResolvedShader::Apply(
         Metal::DeviceContext& devContext,
         ParsingContext& parserContext,
-        const std::initializer_list<SharedPkt>& pkts,
 		const std::initializer_list<VertexBufferView>& vbs) const
     {
-        _boundUniforms->Apply(
-            devContext, 
-            parserContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(pkts.begin(), nullptr, pkts.size()));
+		_boundUniforms->Apply(devContext, 0, parserContext.GetGlobalUniformsStream());
 		_boundLayout->Apply(devContext, MakeIteratorRange(vbs.begin(), vbs.end()));
         devContext.Bind(*_shaderProgram);
     }
+
+	void ResolvedShader::ApplyUniforms(
+		Metal::DeviceContext& devContext,
+		unsigned streamIdx,
+		const UniformsStream& stream) const
+	{
+		_boundUniforms->Apply(devContext, streamIdx, stream);
+	}
 
     ResolvedShader::ResolvedShader()
     {
@@ -866,37 +854,31 @@ namespace RenderCore { namespace Techniques
 
         //////////////////////-------//////////////////////
 
+	const UniformsStreamInterface& TechniqueContext::GetGlobalUniformsStreamInterface()
+	{
+			//  We need to specify the order of resources as they appear in 
+			//  _globalUniformsStream
+		static auto HashGlobalTransform = Hash64("GlobalTransform");
+		static auto HashGlobalState = Hash64("GlobalState");
+		static auto HashShadowProjection = Hash64("ArbitraryShadowProjection");
+		static auto HashOrthoShadowProjection = Hash64("OrthogonalShadowProjection");
+		static auto HashBasicLightingEnvironment = Hash64("BasicLightingEnvironment");
+		static UniformsStreamInterface globalUniforms;
+		static bool setupGlobalUniforms;
+		if (!setupGlobalUniforms) {
+			globalUniforms.BindConstantBuffer(CB_GlobalTransform, { HashGlobalTransform });
+			globalUniforms.BindConstantBuffer(CB_GlobalState, { HashGlobalState });
+			globalUniforms.BindConstantBuffer(CB_ShadowProjection, { HashShadowProjection });
+			globalUniforms.BindConstantBuffer(CB_OrthoShadowProjection, { HashOrthoShadowProjection });
+			globalUniforms.BindConstantBuffer(CB_BasicLightingEnvironment, { HashBasicLightingEnvironment });
+			setupGlobalUniforms = true;
+		}
+		return globalUniforms;
+	}
 
     void     TechniqueContext::BindGlobalUniforms(TechniqueInterface& binding)
     {
-            //  We need to specify the order of resources as they appear in 
-            //  _globalUniformsStream
-        static auto HashGlobalTransform             = Hash64("GlobalTransform");
-        static auto HashGlobalState                 = Hash64("GlobalState");
-        static auto HashShadowProjection            = Hash64("ArbitraryShadowProjection");
-        static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
-        static auto HashBasicLightingEnvironment    = Hash64("BasicLightingEnvironment");
-        binding.BindConstantBuffer(HashGlobalTransform, CB_GlobalTransform, 0);
-        binding.BindConstantBuffer(HashGlobalState, CB_GlobalState, 0);
-        binding.BindConstantBuffer(HashShadowProjection, CB_ShadowProjection, 0);
-        binding.BindConstantBuffer(HashOrthoShadowProjection, CB_OrthoShadowProjection, 0);
-        binding.BindConstantBuffer(HashBasicLightingEnvironment, CB_BasicLightingEnvironment, 0);
-    }
-
-    void     TechniqueContext::BindGlobalUniforms(Metal::BoundUniforms& binding)
-    {
-            //  We need to specify the order of resources as they appear in 
-            //  _globalUniformsStream
-        static auto HashGlobalTransform             = Hash64("GlobalTransform");
-        static auto HashGlobalState                 = Hash64("GlobalState");
-        static auto HashShadowProjection            = Hash64("ArbitraryShadowProjection");
-        static auto HashOrthoShadowProjection       = Hash64("OrthogonalShadowProjection");
-        static auto HashBasicLightingEnvironment    = Hash64("BasicLightingEnvironment");
-        binding.BindConstantBuffer(HashGlobalTransform, CB_GlobalTransform, 0);
-        binding.BindConstantBuffer(HashGlobalState, CB_GlobalState, 0);
-        binding.BindConstantBuffer(HashShadowProjection, CB_ShadowProjection, 0);
-        binding.BindConstantBuffer(HashOrthoShadowProjection, CB_OrthoShadowProjection, 0);
-        binding.BindConstantBuffer(HashBasicLightingEnvironment, CB_BasicLightingEnvironment, 0);
+		binding.BindUniformsStream(0, GetGlobalUniformsStreamInterface());
     }
 
     TechniqueContext::TechniqueContext()

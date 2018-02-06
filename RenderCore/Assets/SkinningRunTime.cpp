@@ -43,6 +43,64 @@
 
 namespace RenderCore { namespace Assets
 {
+
+	unsigned ModelRenderer::PimplWithSkinning::BuildPostSkinInputAssembly(
+		InputElementDesc dst[], unsigned dstCount,
+		const BoundSkinnedGeometry& scaffoldGeo)
+	{
+		assert(0);
+		return 0;
+	}
+
+	auto ModelRenderer::PimplWithSkinning::BuildAnimBinding(
+		const ModelCommandStream::GeoCall& geoInst,
+		const BoundSkinnedGeometry& geo,
+		SharedStateSet& sharedStateSet,
+		const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMeshAnimBinding
+	{
+		assert(0);
+		return {};
+	}
+
+	void ModelRenderer::PimplWithSkinning::BuildSkinnedBuffer(
+		Metal::DeviceContext&       context,
+		const SkinnedMesh&          mesh,
+		const SkinnedMeshAnimBinding& preparedAnimBinding,
+		const Float4x4              transformationMachineResult[],
+		const SkeletonBinding&      skeletonBinding,
+		IResource&					outputResult,
+		unsigned                    outputOffset) const
+	{
+		assert(0);
+	}
+
+	static void DeletePreparedAnimation(PreparedAnimation* ptr) { delete ptr; }
+
+	auto ModelRenderer::CreatePreparedAnimation() const -> std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)>
+	{
+		assert(0);
+		auto result = std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)>(
+			nullptr, &DeletePreparedAnimation);
+		return result;
+	}
+
+	void ModelRenderer::PrepareAnimation(
+		IThreadContext& context, PreparedAnimation& result,
+		const SkeletonBinding& skeletonBinding) const
+	{
+		assert(0);
+	}
+
+	bool ModelRenderer::CanDoPrepareAnimation(IThreadContext& context)
+	{
+		return false;
+	}
+}}
+
+#if 0
+
+namespace RenderCore { namespace Assets
+{
     class HashedInputAssemblies
     {
     public:
@@ -892,3 +950,6 @@ namespace RenderCore { namespace Assets
         Metal::Copy(*context, Metal::AsID3DResource(*tex._resource), Metal::AsID3DResource(*tex._stagingResource));
     }
 }}
+
+#endif
+

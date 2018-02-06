@@ -7,6 +7,8 @@
 #pragma once
 
 #include "TechniqueUtils.h"
+#include "../UniformsStream.h"
+#include "../BufferView.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/MemoryUtils.h"
 #include <vector>
@@ -41,7 +43,7 @@ namespace RenderCore { namespace Techniques
 
             //  ----------------- Working technique context -----------------
         TechniqueContext&               GetTechniqueContext()               { return *_techniqueContext.get(); }
-        const Metal::UniformsStream&    GetGlobalUniformsStream() const     { return *_globalUniformsStream.get(); }
+		UniformsStream					GetGlobalUniformsStream() const;
         Metal::ConstantBuffer&          GetGlobalTransformCB()              { return *_globalCBs[0]; }
         Metal::ConstantBuffer&          GetGlobalStateCB()                  { return *_globalCBs[1]; }
         void    SetGlobalCB(
@@ -78,13 +80,11 @@ namespace RenderCore { namespace Techniques
 
     protected:
         std::unique_ptr<Metal::ConstantBuffer>      _globalCBs[5];
+		ConstantBufferView							_globalCBVs[5];
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
         AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
         std::shared_ptr<IStateSetResolver>          _stateSetResolver;
-
-        std::unique_ptr<Metal::UniformsStream>      _globalUniformsStream;
-        const Metal::ConstantBuffer*                _globalUniformsConstantBuffers[5];
 
         AttachmentPool*     _namedResources;
     };
@@ -116,5 +116,14 @@ namespace RenderCore { namespace Techniques
     #define CATCH_ASSETS_END(parserContext) } CATCH_ASSETS(parserContext) CATCH_END
     /// @}
 
+
+	inline UniformsStream ParsingContext::GetGlobalUniformsStream() const
+	{
+		return {
+			MakeIteratorRange(_globalCBVs),
+			{},
+			{}
+		};
+	}
 }}
 

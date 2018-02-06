@@ -6,6 +6,11 @@
 #include "Types.h"
 #include "Format.h"
 #include "../Utility/MemoryUtils.h"
+#include "../Core/SelectConfiguration.h"
+
+#if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
+	#define __builtin_expect(X, Y) X
+#endif
 
 namespace RenderCore 
 {

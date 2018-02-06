@@ -13,7 +13,7 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/IteratorUtils.h"
 
-namespace RenderCore { class IResource; }
+namespace RenderCore { class IResource; class ConstantBufferView; }
 namespace RenderCore { namespace Assets 
 {
     class SkinningBindingBox;
@@ -130,12 +130,12 @@ namespace RenderCore { namespace Assets
             const Float4x4&         modelToWorld,
             unsigned                geoCallIndex) const;
 
-        void ApplyBoundUnforms(
-            const ModelRendererContext&     context,
-            Metal::BoundUniforms&           boundUniforms,
-            unsigned                        resourcesIndex,
-            unsigned                        constantsIndex,
-            const Metal::ConstantBuffer*    cbs[2]);
+		void ApplyBoundUnforms(
+			const ModelRendererContext&     context,
+			Metal::BoundUniforms&           boundUniforms,
+			unsigned                        resourcesIndex,
+			unsigned                        constantsIndex,
+			ConstantBufferView				cbvs[2]);
 
 		void ApplyBoundInputLayout(
             const ModelRendererContext&		context,

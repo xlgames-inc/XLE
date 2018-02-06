@@ -198,6 +198,18 @@ namespace RenderCore { namespace Metal_DX11
 		d3dDevContext->DSSetShader(_domainShader.get(), (ID3D::ClassInstance*const*)AsPointer(dsDyn.cbegin()), (unsigned)dsDyn.size());
 	}
 
+	const CompiledShaderByteCode&       ShaderProgram::GetCompiledCode(ShaderStage stage) const
+	{
+		assert(stage < ShaderStage::Max);
+		return _compiledCode[(unsigned)stage];
+	}
+
+	ID3D::ClassLinkage*					ShaderProgram::GetClassLinkage(ShaderStage stage) const
+	{
+		assert(stage < ShaderStage::Max);
+		return _classLinkage[(unsigned)stage].get();
+	}
+
     ShaderProgram::ShaderProgram(	ObjectFactory& factory, 
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& ps)

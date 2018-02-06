@@ -67,9 +67,9 @@ namespace RenderOverlays
         void SetState(const OverlayState& state);
 
         RenderCore::IThreadContext*                 GetDeviceContext();
-        RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const;
+        /*RenderCore::Techniques::ProjectionDesc      GetProjectionDesc() const;
         RenderCore::Techniques::AttachmentPool*     GetNamedResources() const;
-        const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;
+        const RenderCore::Metal::UniformsStream&    GetGlobalUniformsStream() const;*/
 
         ImmediateOverlayContext(
             RenderCore::IThreadContext& threadContext, 
@@ -90,7 +90,6 @@ namespace RenderOverlays
 
         RenderCore::SharedPkt _viewportConstantBuffer;
         RenderCore::SharedPkt _globalTransformConstantBuffer;
-        RenderCore::Metal::UniformsStream _globalUniformsStream;
 
         RenderCore::Techniques::ProjectionDesc _projDesc;
         RenderCore::Techniques::AttachmentPool* _namedResources;

@@ -515,13 +515,10 @@ namespace Sample
 			auto metalContext = Metal::DeviceContext::Get(genericThreadContext);
 			if (metalContext) {
 
-                auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+                /*auto& horizBlur = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "game/xleres/basic2D.vsh:fullscreen:vs_*", 
                     "game/xleres/deferred/resolvelight.psh:main:ps_5_0",
-                    "GBUFFER_TYPE=1;MSAA_SAMPLES=0;SHADOW_CASCADE_MODE=1;SHADOW_ENABLE_NEAR_CASCADE=0;SHADOW_RESOLVE_MODEL=1;SHADOW_RT_HYBRID=0;LIGHT_SHAPE=0;DIFFUSE_METHOD=0;HAS_SCREENSPACE_AO=0");
-
-                horizBlur.GetCompiledPixelShader().GetByteCode();
-                horizBlur.GetCompiledVertexShader().GetByteCode();
+                    "GBUFFER_TYPE=1;MSAA_SAMPLES=0;SHADOW_CASCADE_MODE=1;SHADOW_ENABLE_NEAR_CASCADE=0;SHADOW_RESOLVE_MODEL=1;SHADOW_RT_HYBRID=0;LIGHT_SHAPE=0;DIFFUSE_METHOD=0;HAS_SCREENSPACE_AO=0");*/
 
                 auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
 

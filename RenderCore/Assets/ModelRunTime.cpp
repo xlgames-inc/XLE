@@ -855,7 +855,7 @@ namespace RenderCore { namespace Assets
         Metal::BoundUniforms&           boundUniforms,
         unsigned                        resourcesIndex,
         unsigned                        constantsIndex,
-        const Metal::ConstantBuffer*    cbs[2])
+		ConstantBufferView				cbvs[2])
     {
         const Metal::ShaderResourceView* srvs[16];
         assert(_texturesPerMaterial <= dimof(srvs));
@@ -864,11 +864,15 @@ namespace RenderCore { namespace Assets
             srvs[c] = t?(&t->GetShaderResource()):nullptr;
         }
 		if (constantsIndex != ~0u) {
-			cbs[1] = &_constantBuffers[constantsIndex];
-			assert(cbs[1] && cbs[1]->IsGood());
-			boundUniforms.Apply(
-				*context._context, context._parserContext->GetGlobalUniformsStream(),
-				RenderCore::Metal::UniformsStream(nullptr, cbs, 2, srvs, _texturesPerMaterial));
+			cbvs[1] = &_constantBuffers[constantsIndex];
+			assert(_constantBuffers[constantsIndex].IsGood());
+
+			boundUniforms.Apply(*context._context, 0, context._parserContext->GetGlobalUniformsStream());
+			boundUniforms.Apply(*context._context, 1, 
+				UniformsStream {
+					MakeIteratorRange(cbvs, &cbvs[dimof(cbvs)]),
+					MakeIteratorRange(srvs, &srvs[_texturesPerMaterial])
+				});
 		}
     }
 
@@ -1067,7 +1071,7 @@ namespace RenderCore { namespace Assets
             PreparedAnimation*  preparedAnimation) const
     {
         auto& box = ConsoleRig::FindCachedBox<ModelRenderingBox>(ModelRenderingBox::Desc());
-        const Metal::ConstantBuffer* pkts[] = { &box._localTransformBuffer, nullptr };
+		ConstantBufferView pkts[] = { &box._localTransformBuffer, {} };
 
         unsigned currTextureSet = ~unsigned(0x0), currCB = ~unsigned(0x0), currGeoCall = ~unsigned(0x0);
         SharedTechniqueInterface currTechniqueInterface = SharedTechniqueInterface::Invalid;
@@ -1360,7 +1364,7 @@ namespace RenderCore { namespace Assets
         localTrans._localSpaceView = Float3(0.f, 0.f, 0.f);
         
         Metal::ConstantBuffer& localTransformBuffer = Techniques::CommonResources()._localTransformBuffer;
-        const Metal::ConstantBuffer* pkts[] = { &localTransformBuffer, nullptr };
+		ConstantBufferView pkts[] = { &localTransformBuffer, {} };
 
         const ModelRenderer::Pimpl::Mesh* currentMesh = nullptr;
 		SharedStateSet::BoundVariation boundVariation = { nullptr, nullptr };

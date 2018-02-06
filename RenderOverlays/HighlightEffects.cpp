@@ -15,6 +15,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Format.h"
+#include "../../RenderCore/BufferView.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringFormat.h"
@@ -22,6 +23,18 @@
 namespace RenderOverlays
 {
     using namespace RenderCore;
+
+	std::shared_ptr<Metal::ShaderProgram> LoadShaderProgram(
+		StringSection<> vs,
+		StringSection<> ps,
+		StringSection<> definesTable = {})
+	{
+		auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(vs, definesTable);
+		auto psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(ps, definesTable);
+		auto vsActual = vsCode->Actualize();
+		auto psActual = psCode->Actualize();
+		return std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
+	}
 
     const UInt4 HighlightByStencilSettings::NoHighlight = UInt4(0xffffffff, 0xffffffff, 0xffffffff, 0xffffffff);
 
@@ -61,22 +74,22 @@ namespace RenderOverlays
         params << ";INPUT_MODE=" << (stencilInput?0:1);
 
         {
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto shader = LoadShaderProgram(
                 "xleres/basic2D.vsh:fullscreen:vs_*", 
                 "xleres/Vis/HighlightVis.psh:HighlightByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
-            metalContext.Bind(shader);
+            metalContext.Bind(*shader);
             metalContext.Draw(4);
         }
 
         {
-            auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
+            auto shader = LoadShaderProgram(
                 "xleres/basic2D.vsh:fullscreen:vs_*", 
                 "xleres/Vis/HighlightVis.psh:OutlineByStencil:ps_*",
                 (const ::Assets::ResChar*)params);
                 
-            metalContext.Bind(shader);
+            metalContext.Bind(*shader);
             metalContext.Draw(4);
         }
 
@@ -110,10 +123,10 @@ namespace RenderOverlays
     public:
         class Desc {};
 
-        const Metal::ShaderProgram* _drawHighlight;
+        std::shared_ptr<Metal::ShaderProgram> _drawHighlight;
         Metal::BoundUniforms _drawHighlightUniforms;
 
-        const Metal::ShaderProgram* _drawShadow;
+		std::shared_ptr<Metal::ShaderProgram> _drawShadow;
         Metal::BoundUniforms _drawShadowUniforms;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
@@ -126,18 +139,20 @@ namespace RenderOverlays
     HighlightShaders::HighlightShaders(const Desc&)
     {
         //// ////
-        _drawHighlight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _drawHighlight = LoadShaderProgram(
             "xleres/basic2D.vsh:fullscreen:vs_*", 
             "xleres/effects/outlinehighlight.psh:main:ps_*");
-        _drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight);
-        _drawHighlightUniforms.BindConstantBuffer(Hash64("$Globals"), 0, 1);
+		UniformsStreamInterface drawHighlightInterface;
+		drawHighlightInterface.BindConstantBuffer(0, { Hash64("$Globals") });
+		_drawHighlightUniforms = Metal::BoundUniforms(*_drawHighlight, {}, {}, drawHighlightInterface);
 
         //// ////
-        _drawShadow = &::Assets::GetAssetDep<Metal::ShaderProgram>(
+        _drawShadow = LoadShaderProgram(
             "xleres/basic2D.vsh:fullscreen:vs_*", 
             "xleres/effects/outlinehighlight.psh:main_shadow:ps_*");
-        _drawShadowUniforms = Metal::BoundUniforms(*_drawShadow);
-        _drawShadowUniforms.BindConstantBuffer(Hash64("ShadowHighlightSettings"), 0, 1);
+		UniformsStreamInterface drawShadowInterface;
+		drawShadowInterface.BindConstantBuffer(0, { Hash64("ShadowHighlightSettings") });
+		_drawShadowUniforms = Metal::BoundUniforms(*_drawShadow, {}, {}, drawShadowInterface);
 
         //// ////
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -226,13 +241,10 @@ namespace RenderOverlays
         metalContext->BindPS(MakeResourceList(srv));
 
         struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
-        SharedPkt pkts[] = { MakeSharedPkt(constants) };
+		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
         auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-        shaders._drawHighlightUniforms.Apply(
-            *metalContext, 
-            Metal::UniformsStream(), 
-            Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
+        shaders._drawHighlightUniforms.Apply(*metalContext, 1, { MakeIteratorRange(cbvs) });
         metalContext->Bind(*shaders._drawHighlight);
         metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext->Bind(Techniques::CommonResources()._dssDisable);
@@ -256,13 +268,10 @@ namespace RenderOverlays
         metalContext->BindPS(MakeResourceList(srv));
 
         struct Constants { Float4 _shadowColor; } constants = { shadowColor };
-        SharedPkt pkts[] = { MakeSharedPkt(constants) };
+		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
         auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-        shaders._drawShadowUniforms.Apply(
-            *metalContext, 
-            Metal::UniformsStream(), 
-            Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
+        shaders._drawShadowUniforms.Apply(*metalContext, 1, { MakeIteratorRange(cbvs) });
         metalContext->Bind(*shaders._drawShadow);
         metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
         metalContext->Bind(Techniques::CommonResources()._dssDisable);

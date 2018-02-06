@@ -21,7 +21,7 @@
 namespace Utility { template<typename CharType> class InputStreamFormatter; }
 using namespace Utility;
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
-namespace RenderCore { class VertexBufferView; }
+namespace RenderCore { class VertexBufferView; class UniformsStreamInterface; class UniformsStream; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -65,8 +65,12 @@ namespace RenderCore { namespace Techniques
         void Apply(
             Metal::DeviceContext& devContext,
             ParsingContext& parserContext,
-            const std::initializer_list<SharedPkt>& pkts,
 			const std::initializer_list<VertexBufferView>& vbs) const;
+
+		void ApplyUniforms(
+			Metal::DeviceContext& context,
+			unsigned streamIdx,
+			const UniformsStream& stream) const;
 
         ResolvedShader();
     };
@@ -99,13 +103,12 @@ namespace RenderCore { namespace Techniques
     class TechniqueInterface
     {
     public:
-        void    BindConstantBuffer(uint64 hashName, unsigned slot, unsigned streamIndex);
-        void    BindShaderResource(uint64 hashName, unsigned slot, unsigned streamIndex);
-
+        void    BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf);
         uint64  GetHashValue() const;
 
-        TechniqueInterface();
-        TechniqueInterface(const InputLayout& vertexInputLayout);
+		TechniqueInterface(InputLayout vertexInputLayout);
+
+        TechniqueInterface();        
         TechniqueInterface(TechniqueInterface&& moveFrom) never_throws;
         TechniqueInterface&operator=(TechniqueInterface&& moveFrom) never_throws;
         ~TechniqueInterface();
@@ -242,7 +245,7 @@ namespace RenderCore { namespace Techniques
 
         TechniqueContext();
         static void     BindGlobalUniforms(TechniqueInterface&);
-        static void     BindGlobalUniforms(Metal::BoundUniforms&);
+		static const UniformsStreamInterface& GetGlobalUniformsStreamInterface();
 
         static const unsigned CB_GlobalTransform = 0;
         static const unsigned CB_GlobalState = 1;

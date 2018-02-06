@@ -544,11 +544,13 @@ namespace RenderOverlays
 
         if (_shaderProgram) {
             Metal::BoundInputLayout boundInputLayout(inputLayout, *_shaderProgram);
-            Metal::BoundUniforms boundUniforms(*_shaderProgram);
-            boundUniforms.BindConstantBuffer(
-                Hash64("ReciprocalViewportDimensionsCB"), 0, 1,
-                ReciprocalViewportDimensions_Elements, dimof(ReciprocalViewportDimensions_Elements));
-            Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
+			UniformsStreamInterface uniformsInterf;
+			uniformsInterf.BindConstantBuffer(0, { Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(ReciprocalViewportDimensions_Elements) });
+			Metal::BoundUniforms boundUniforms(
+				*_shaderProgram,
+				Metal::PipelineLayoutConfig(),
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				uniformsInterf);
 
             ::Assets::RegisterAssetDependency(validationCallback, _shaderProgram->GetDependencyValidation());
 
@@ -576,9 +578,11 @@ namespace RenderOverlays
             }
 			box._boundInputLayout.Apply(*_metalContext, vertexBuffers);
 
-            Metal::ConstantBufferPacket constants[] = { _viewportConstantBuffer };
-            box._boundUniforms.Apply(
-                *_metalContext.get(), _globalUniformsStream, Metal::UniformsStream(constants, nullptr, dimof(constants)));
+			ConstantBufferView stream0CBVs[] = { _globalTransformConstantBuffer };
+			box._boundUniforms.Apply(*_metalContext.get(), 0, { MakeIteratorRange(stream0CBVs) });
+
+			ConstantBufferView stream1CBVs[] = { _viewportConstantBuffer };
+			box._boundUniforms.Apply(*_metalContext.get(), 1, { MakeIteratorRange(stream1CBVs) });
         } else {
             assert(0);
         }
@@ -589,7 +593,7 @@ namespace RenderOverlays
         return _deviceContext;
     }
 
-    Techniques::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
+    /*Techniques::ProjectionDesc    ImmediateOverlayContext::GetProjectionDesc() const
     {
         return _projDesc;
     }
@@ -602,7 +606,7 @@ namespace RenderOverlays
     const Metal::UniformsStream&    ImmediateOverlayContext::GetGlobalUniformsStream() const
     {
         return _globalUniformsStream;
-    }
+    }*/
 
     class DefaultFontBox
     {
@@ -631,9 +635,6 @@ namespace RenderOverlays
         auto trans = Techniques::BuildGlobalTransformConstants(projDesc);
         _globalTransformConstantBuffer = MakeSharedPkt(
             (const uint8*)&trans, (const uint8*)PtrAdd(&trans, sizeof(trans)));
-
-        _globalUniformsStream = Metal::UniformsStream(
-            &_globalTransformConstantBuffer, nullptr, 1);
     }
 
     ImmediateOverlayContext::~ImmediateOverlayContext()
