@@ -57,14 +57,25 @@ namespace RenderCore { namespace Techniques
     class FrameBufferDescFragment
     {
     public:
-        AttachmentName DefineAttachment(const AttachmentDesc& request);
+        enum class Direction { In, Out, InOut, Temporary };
+        AttachmentName DefineAttachment(
+            Direction direction,
+            uint64_t semantic,
+            const AttachmentDesc& request);
+        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(Direction::Temporary, 0, request); }
         void AddSubpass(SubpassDesc&& subpass);
 
         FrameBufferDescFragment();
         ~FrameBufferDescFragment();
 
-        std::vector<std::pair<AttachmentName, AttachmentDesc>>  _attachments;
-        std::vector<SubpassDesc>                                _subpasses;
+        struct Attachment
+        {
+            Direction       _direction;
+            uint64_t        _semantic;
+            AttachmentDesc  _desc;
+        };
+        std::vector<std::pair<AttachmentName, Attachment>> _attachments;
+        std::vector<SubpassDesc>    _subpasses;
 
     private:
         unsigned _nextAttachment;
@@ -79,6 +90,8 @@ namespace RenderCore { namespace Techniques
         using PassAndSlot = std::pair<unsigned, unsigned>;
         std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
     };
+
+    FrameBufferDescFragment MergeFragments(IteratorRange<const FrameBufferDescFragment*> fragments);
 
     FrameBufferDesc BuildFrameBufferDesc(
         /* in/out */ AttachmentPool& namedResources,
