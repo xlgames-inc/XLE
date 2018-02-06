@@ -74,10 +74,13 @@ namespace RenderCore { namespace Metal_OpenGLES
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const SubResourceInitData& initData)
-    : Resource(factory, desc, [&initData](SubResourceId subRes) {
+    : Resource(factory, desc,
+        initData._data.size()
+        ? [&initData](SubResourceId subRes) {
             assert(subRes._mip == 0 && subRes._arrayLayer == 0);
             return initData;
-        })
+        }
+        : IDevice::ResourceInitializer{})
     {}
 
     static void checkError()
@@ -224,8 +227,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             } else {
 
-                auto renderBuffer = factory.CreateRenderBuffer();
-                glBindRenderbuffer(GL_RENDERBUFFER, renderBuffer->AsRawGLHandle());
+                _underlyingRenderBuffer = factory.CreateRenderBuffer();
+                glBindRenderbuffer(GL_RENDERBUFFER, _underlyingRenderBuffer->AsRawGLHandle());
                 glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
 
             }

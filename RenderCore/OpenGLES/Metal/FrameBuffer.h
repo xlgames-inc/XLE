@@ -22,6 +22,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
 
+        OpenGL::FrameBuffer* GetSubpassUnderlyingFramebuffer(unsigned subpassIndex);
+
 		FrameBuffer(
 			ObjectFactory& factory,
             const FrameBufferDesc& desc,

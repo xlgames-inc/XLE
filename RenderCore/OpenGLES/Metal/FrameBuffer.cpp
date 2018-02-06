@@ -150,6 +150,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
+    {
+        assert(subpassIndex < _subpassCount);
+        return _subpasses[subpassIndex]._frameBuffer.get();
+    }
+
 	FrameBuffer::FrameBuffer() {}
     FrameBuffer::~FrameBuffer() {}
 

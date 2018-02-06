@@ -99,6 +99,11 @@ namespace RenderCore { namespace Techniques
     : _namedRes(&namedRes) {}
     NamedAttachmentsWrapper::~NamedAttachmentsWrapper() {}
 
+    std::shared_ptr<INamedAttachments> MakeNamedAttachmentsWrapper(AttachmentPool& namedRes)
+    {
+        return std::make_shared<NamedAttachmentsWrapper>(namedRes);
+    }
+
     RenderPassInstance::RenderPassInstance(
         Metal::DeviceContext& context,
         const FrameBufferDesc& layout,

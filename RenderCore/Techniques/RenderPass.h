@@ -162,6 +162,8 @@ namespace RenderCore { namespace Techniques
         unsigned _activeSubpass;
     };
 
+    std::shared_ptr<INamedAttachments> MakeNamedAttachmentsWrapper(AttachmentPool& namedRes);
+
 }}
 
 

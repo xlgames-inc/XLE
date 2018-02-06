@@ -120,6 +120,18 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    void GraphicsPipeline::Bind(const ViewportDesc& viewport)
+    {
+        glViewport((GLint)viewport.TopLeftX, (GLint)viewport.TopLeftY, (GLsizei)viewport.Width, (GLsizei)viewport.Height);
+
+        // hack -- desktop gl has a slight naming change
+        #if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
+            glDepthRangef(viewport.MinDepth, viewport.MaxDepth);
+        #else
+            glDepthRange(viewport.MinDepth, viewport.MaxDepth);
+        #endif
+    }
+
     void GraphicsPipeline::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);

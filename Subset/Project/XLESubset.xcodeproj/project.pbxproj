@@ -19,6 +19,7 @@
 		8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB6292017F9D1009F52AB /* Font_Dummy.cpp */; };
 		8F5DCB892023E5920022BA7E /* RenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F5DCB872023E5920022BA7E /* RenderPass.h */; };
 		8F5DCB8A2023E5920022BA7E /* RenderPass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB882023E5920022BA7E /* RenderPass.cpp */; };
+		8F67C91D20291FF500C5869F /* RenderPass.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB882023E5920022BA7E /* RenderPass.cpp */; };
 		8F707B6B1EA6C4BE00DEC600 /* CPUProfileDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B691EA6C4BE00DEC600 /* CPUProfileDisplay.cpp */; };
 		8F707B6C1EA6C4BE00DEC600 /* CPUProfileDisplay.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F707B6A1EA6C4BE00DEC600 /* CPUProfileDisplay.h */; };
 		8F707B731EA6C59100DEC600 /* DebuggingDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B6E1EA6C59100DEC600 /* DebuggingDisplay.cpp */; };
@@ -783,6 +784,7 @@
 				8F9418351FDA01DC00DADA27 /* lstring.c in Sources */,
 				8FA3F73F1EDD157B003EF623 /* CPUProfileDisplay.cpp in Sources */,
 				8F9418421FDA01DC00DADA27 /* loslib.c in Sources */,
+				8F67C91D20291FF500C5869F /* RenderPass.cpp in Sources */,
 				8F9418131FDA01DC00DADA27 /* lgc.c in Sources */,
 				8FA3F7411EDD157B003EF623 /* GeometryAlgorithm.cpp in Sources */,
 				8F2DB6272017F8C2009F52AB /* Log.cpp in Sources */,

@@ -58,6 +58,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
+        void Bind(const ViewportDesc& viewport);
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);

@@ -4,11 +4,12 @@
 #include "../IDevice.h"
 #include "../IThreadContext.h"
 #include "../ResourceDesc.h"
+#include "Metal/ObjectFactory.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
 
-namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; }}
+namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Resource; }}
 
 @class NSOpenGLContext;
 typedef struct _CGLContextObject       *CGLContextObj;
@@ -31,6 +32,8 @@ namespace RenderCore { namespace ImplOpenGLES
         ~PresentationChain();
 
         ResourceDesc _backBufferDesc;
+        std::shared_ptr<Metal_OpenGLES::Resource> _fakeBackBuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _fakeBackBufferFrameBuffer;
 
     private:
         TBC::OCPtr<NSOpenGLContext> _nsContext;

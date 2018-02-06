@@ -45,6 +45,9 @@ namespace RenderCore { namespace ImplOpenGLES
         err = CGLGetParameter(_activeFrameContext, kCGLCPSurfaceBackingSize, backingSize);
         (void)err;*/
 
+        if (presChain._fakeBackBuffer)
+            return presChain._fakeBackBuffer;
+
         return std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(presChain._backBufferDesc));
     }
 
@@ -53,6 +56,17 @@ namespace RenderCore { namespace ImplOpenGLES
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
         assert(presChain.GetUnderlying().get().CGLContextObj == _activeFrameContext);
         if (_activeFrameContext) {
+            // If using "fake back buffer" mode, blt to the true back buffer
+            if (presChain._fakeBackBuffer) {
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, presChain._fakeBackBufferFrameBuffer->AsRawGLHandle());
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                glBlitFramebuffer(
+                    0, 0, presChain._backBufferDesc._textureDesc._width, presChain._backBufferDesc._textureDesc._height,
+                    0, 0, presChain._backBufferDesc._textureDesc._width, presChain._backBufferDesc._textureDesc._height,
+                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+            }
+
             CGLFlushDrawable(_activeFrameContext);
             CGLReleaseContext(_activeFrameContext);
             _activeFrameContext = nullptr;
@@ -254,6 +268,21 @@ namespace RenderCore { namespace ImplOpenGLES
             BindFlag::RenderTarget, 0, GPUAccess::Write,
             TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
             "backbuffer");
+
+        const bool useFakeBackbuffer = true;
+        if (useFakeBackbuffer) {
+            _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
+
+            _fakeBackBufferFrameBuffer = objFactory.CreateFrameBuffer();
+            glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferFrameBuffer->AsRawGLHandle());
+            glBindRenderbuffer(GL_RENDERBUFFER, _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
+            glFramebufferRenderbuffer(
+                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
+                _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
+            GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers(1, drawBuffers);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
     }
 
     PresentationChain::~PresentationChain()
@@ -264,6 +293,21 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         _backBufferDesc._textureDesc._width = newWidth;
         _backBufferDesc._textureDesc._height = newHeight;
+
+        // recreate the "fake back buffer" if we created one previously
+        if (_fakeBackBuffer) {
+            auto& objFactory = Metal_OpenGLES::GetObjectFactory(*_fakeBackBuffer);
+            _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
+
+            _fakeBackBufferFrameBuffer = objFactory.CreateFrameBuffer();
+            glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferFrameBuffer->AsRawGLHandle());
+            glFramebufferRenderbuffer(
+                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
+                _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
+            GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+            glDrawBuffers(1, drawBuffers);
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        }
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
