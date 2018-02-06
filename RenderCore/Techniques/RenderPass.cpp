@@ -15,50 +15,34 @@
 namespace RenderCore { namespace Techniques
 {
 
-    AttachmentName PassFragmentInterface::DefineAttachment(const AttachmentDesc& request)
+    AttachmentName FrameBufferDescFragment::DefineAttachment(const AttachmentDesc& request)
     {
-        return ~0u;
+        auto name = (1u<<31u) | _nextAttachment++;
+        _attachments.push_back({name, request});
+        return name;
     }
 
-    void PassFragmentInterface::BindColorAttachment(
-        unsigned passIndex,
-        unsigned slot,
-        AttachmentName attachmentName,
-        LoadStore loadOp,
-        const ClearValue& clearValue)
+    void FrameBufferDescFragment::AddSubpass(SubpassDesc&& subpass)
     {
+        _subpasses.emplace_back(std::move(subpass));
     }
 
-    void PassFragmentInterface::BindDepthStencilAttachment(
-        unsigned passIndex,
-        AttachmentName attachmentName,
-        LoadStore loadOp,
-        const ClearValue& clearValue)
-    {
-    }
-
-    void PassFragmentInterface::BindInputAttachment(
-        unsigned passIndex,
-        unsigned slot,
-        AttachmentName attachmentName,
-        LoadStore storeOp,
-        TextureViewDesc::Aspect aspect)
-    {
-    }
-
-    PassFragmentInterface::PassFragmentInterface() {}
-    PassFragmentInterface::~PassFragmentInterface() {}
+    FrameBufferDescFragment::FrameBufferDescFragment() : _nextAttachment(0) {}
+    FrameBufferDescFragment::~FrameBufferDescFragment() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto PassFragment::GetSRV(const INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*
+    auto PassFragment::GetSRV(const AttachmentPool& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*
     {
-        return nullptr;
-    }
+        auto i = std::find_if(
+            _inputAttachmentMapping.begin(), _inputAttachmentMapping.end(),
+            [passIndex, slot](const std::pair<PassAndSlot, AttachmentName>& p) {
+                return p.first == std::make_pair(passIndex, slot);
+            });
+        if (i == _inputAttachmentMapping.end())
+            return {};
 
-    Metal::ViewportDesc PassFragment::GetFullViewport() const
-    {
-        return {};
+        return namedAttachments.GetSRV(i->second);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -271,7 +255,7 @@ namespace RenderCore { namespace Techniques
 		return _pimpl->_attachments[resName];
 	}
 
-	Metal::ShaderResourceView AttachmentPool::GetSRV(AttachmentName resName, const TextureViewDesc& window) const
+	Metal::ShaderResourceView* AttachmentPool::GetSRV(AttachmentName resName, const TextureViewDesc& window) const
 	{
 		if (resName >= s_maxBoundTargets) return {};
 		if (!_pimpl->_attachments[resName]) return {};
@@ -375,9 +359,32 @@ namespace RenderCore { namespace Techniques
     FrameBufferDesc BuildFrameBufferDesc(
         /* in/out */ AttachmentPool& namedResources,
         /* out */ std::vector<PassFragment>& boundFragments,
-        /* int */ IteratorRange<const PassFragmentInterface*> fragments)
+        /* int */ IteratorRange<const FrameBufferDescFragment*> fragments)
     {
-        return FrameBufferDesc {};
+        // Merge together the input fragments to create the final output
+        std::vector<SubpassDesc> mergedSubpasses;
+        for (const auto& f:fragments) {
+            PassFragment fragMapping;
+
+            for (unsigned sp=0; sp<f._subpasses.size(); ++sp) {
+                const auto& subpassDesc = f._subpasses[sp];
+                for (unsigned i=0; i<subpassDesc._input.size(); ++i) {
+                    fragMapping._inputAttachmentMapping.push_back({
+                        {sp, i},
+                        subpassDesc._input[i]._resourceName
+                    });
+                }
+            }
+            boundFragments.emplace_back(std::move(fragMapping));
+
+            mergedSubpasses.insert(
+                mergedSubpasses.begin(),
+                f._subpasses.begin(), f._subpasses.end());
+            for (auto& a:f._attachments)
+                namedResources.DefineAttachment(a.first, a.second); // todo -- check compatibility
+        }
+
+        return FrameBufferDesc{std::move(mergedSubpasses)};
     }
 
 }}

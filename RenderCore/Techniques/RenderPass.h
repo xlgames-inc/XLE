@@ -30,62 +30,19 @@ namespace RenderCore { namespace Techniques
 {
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class PassFragmentInterface
-    {
-    public:
-        AttachmentName DefineAttachment(const AttachmentDesc& request);
-
-        void BindColorAttachment(
-            unsigned passIndex,
-            unsigned slot, 
-            AttachmentName attachmentName,
-            LoadStore loadOp = LoadStore::Retain, 
-            const ClearValue& clearValue = ClearValue{});
-
-        void BindDepthStencilAttachment(
-            unsigned passIndex,
-            AttachmentName attachmentName,
-            LoadStore loadOp = LoadStore::Retain, 
-            const ClearValue& clearValue = ClearValue{});
-
-        void BindInputAttachment(
-            unsigned passIndex,
-            unsigned slot, 
-            AttachmentName attachmentName,
-            LoadStore storeOp = LoadStore::Retain, 
-            TextureViewDesc::Aspect aspect = TextureViewDesc::Aspect::UndefinedAspect);
-
-        PassFragmentInterface();
-        ~PassFragmentInterface();
-
-        std::vector<std::pair<AttachmentName, AttachmentDesc>> _attachmentRequests;
-    };
-
-    class PassFragment
-    {
-    public:
-        auto GetSRV(const INamedAttachments& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*;
-        Metal::ViewportDesc GetFullViewport() const;
-
-        using PassAndSlot = std::pair<unsigned, unsigned>;
-        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
-    };
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
     class AttachmentPool
     {
     public:
         void DefineAttachment(AttachmentName, const AttachmentDesc& request);
-		auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
 
         void Bind(AttachmentName, const IResourcePtr& resource);
         void Unbind(AttachmentName);
-		IResourcePtr GetResource(AttachmentName resName) const;
-		Metal::ShaderResourceView GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
+        IResourcePtr GetResource(AttachmentName resName) const;
+        Metal::ShaderResourceView* GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
 
-		void Bind(FrameBufferProperties props); 
-		const FrameBufferProperties& GetFrameBufferProperties() const;
+        void Bind(FrameBufferProperties props);
+        const FrameBufferProperties& GetFrameBufferProperties() const;
         IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
         AttachmentPool();
@@ -95,10 +52,40 @@ namespace RenderCore { namespace Techniques
         std::unique_ptr<Pimpl> _pimpl;
     };
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class FrameBufferDescFragment
+    {
+    public:
+        AttachmentName DefineAttachment(const AttachmentDesc& request);
+        void AddSubpass(SubpassDesc&& subpass);
+
+        FrameBufferDescFragment();
+        ~FrameBufferDescFragment();
+
+        std::vector<std::pair<AttachmentName, AttachmentDesc>>  _attachments;
+        std::vector<SubpassDesc>                                _subpasses;
+
+    private:
+        unsigned _nextAttachment;
+    };
+
+    class PassFragment
+    {
+    public:
+        auto GetSRV(const AttachmentPool& namedAttachments, unsigned passIndex, unsigned slot) const
+            -> Metal::ShaderResourceView*;
+
+        using PassAndSlot = std::pair<unsigned, unsigned>;
+        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+    };
+
     FrameBufferDesc BuildFrameBufferDesc(
         /* in/out */ AttachmentPool& namedResources,
         /* out */ std::vector<PassFragment>& boundFragments,
-        /* int */ IteratorRange<const PassFragmentInterface*> fragments);
+        /* int */ IteratorRange<const FrameBufferDescFragment*> fragments);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class RenderPassBeginDesc
     {

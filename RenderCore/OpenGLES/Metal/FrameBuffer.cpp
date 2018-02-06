@@ -19,6 +19,50 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    static void BindToFramebuffer(
+        GLenum attachmentSlot,
+        Resource& res, const TextureViewDesc& viewWindow)
+    {
+        const auto& desc = res.GetDesc();
+        assert(desc._type == ResourceDesc::Type::Texture);
+
+        if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
+            ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
+            if (res.GetRenderBuffer()) {
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, attachmentSlot, GL_RENDERBUFFER, res.GetRenderBuffer()->AsRawGLHandle());
+            } else {
+                if (desc._textureDesc._arrayCount > 1u) {
+                    glFramebufferTextureLayer(
+                        GL_FRAMEBUFFER, attachmentSlot,
+                        res.GetTexture()->AsRawGLHandle(),
+                        viewWindow._mipRange._min,
+                        viewWindow._arrayLayerRange._min);
+                } else {
+                    glFramebufferTexture2D(
+                        GL_FRAMEBUFFER, attachmentSlot, GL_TEXTURE_2D,
+                        res.GetTexture()->AsRawGLHandle(),
+                        viewWindow._mipRange._min);
+                }
+            }
+        } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
+            assert(!res.GetRenderBuffer());     // not rational in this case
+            glFramebufferTextureLayer(
+                GL_FRAMEBUFFER, attachmentSlot,
+                res.GetTexture()->AsRawGLHandle(),
+                viewWindow._mipRange._min,
+                viewWindow._arrayLayerRange._min);
+        } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
+            assert(!res.GetRenderBuffer());     // not rational in this case
+            assert(desc._textureDesc._arrayCount <= 1u);    // cannot render to arrays of cubemaps
+            glFramebufferTexture2D(
+                GL_FRAMEBUFFER, attachmentSlot, GL_TEXTURE_CUBE_MAP_POSITIVE_X + viewWindow._arrayLayerRange._min,
+                res.GetTexture()->AsRawGLHandle(),
+                viewWindow._mipRange._min);
+        } else {
+            assert(0);
+        }
+    }
+
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -43,7 +87,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-				sp._rtvs[r] = rtvPool.GetView(resource, attachmentView._window);
+				sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
 				sp._rtvClearValue[r] = clearValueIterator++;
 			}
@@ -52,7 +96,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = dsvPool.GetView(resource, spDesc._depthStencil._window);
+				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				sp._dsvClearValue = clearValueIterator++;
 			}
@@ -69,55 +113,51 @@ namespace RenderCore { namespace Metal_OpenGLES
             sp._frameBuffer = factory.CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, sp._frameBuffer->AsRawGLHandle());
             for (unsigned rtv=0; rtv<sp._rtvCount; ++rtv) {
-                auto& res = *sp._rtvs[rtv].GetResource();
-                auto& viewWindow = sp._rtvs[rtv]._window;
+                assert(sp._rtvs[rtv].IsGood());
 
+                auto& res = *sp._rtvs[rtv].GetResource();
                 if (res.IsBackBuffer()) {
                     drawBuffers[rtv] = GL_BACK;
                 } else {
-
-                    auto desc = ExtractDesc(res);
-                    assert(desc._type == ResourceDesc::Type::Texture);
-
-                    if (    desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D
-                        ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
-                        if (res.GetRenderBuffer()) {
-                            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+rtv, GL_RENDERBUFFER, res.GetRenderBuffer()->AsRawGLHandle());
-                        } else {
-                            if (desc._textureDesc._arrayCount > 1u) {
-                                glFramebufferTextureLayer(
-                                    GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator,
-                                    res.GetTexture()->AsRawGLHandle(),
-                                    viewWindow._mipRange._min,
-                                    viewWindow._arrayLayerRange._min);
-                            } else {
-                                glFramebufferTexture2D(
-                                    GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator, GL_TEXTURE_2D,
-                                    res.GetTexture()->AsRawGLHandle(),
-                                    viewWindow._mipRange._min);
-                            }
-                        }
-                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
-                        assert(!res.GetRenderBuffer());     // not rational in this case
-                        glFramebufferTextureLayer(
-                            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator,
-                            res.GetTexture()->AsRawGLHandle(),
-                            viewWindow._mipRange._min,
-                            viewWindow._arrayLayerRange._min);
-                    } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
-                        assert(!res.GetRenderBuffer());     // not rational in this case
-                        assert(desc._textureDesc._arrayCount <= 1u);    // cannot render to arrays of cubemaps
-                        glFramebufferTexture2D(
-                            GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0+colorAttachmentIterator, GL_TEXTURE_CUBE_MAP_POSITIVE_X + viewWindow._arrayLayerRange._min,
-                            res.GetTexture()->AsRawGLHandle(),
-                            viewWindow._mipRange._min);
-                    } else {
-                        assert(0);
-                    }
-
+                    BindToFramebuffer(GL_COLOR_ATTACHMENT0 + colorAttachmentIterator, res, sp._rtvs[rtv]._window);
                     drawBuffers[rtv] = GL_COLOR_ATTACHMENT0 + colorAttachmentIterator;
                     ++colorAttachmentIterator;
                 }
+            }
+            if (sp._dsv.IsGood()) {
+                auto& res = *sp._dsv.GetResource();
+                const auto& viewWindow = sp._dsv._window;
+
+                // select either GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH_ATTACHMENT or GL_STENCIL_ATTACHMENT
+                // depending on the type of resource & the view window
+                GLenum bindingPoint = GL_DEPTH_STENCIL_ATTACHMENT;
+                assert(res.GetDesc()._type == ResourceDesc::Type::Texture);
+                auto fmt = res.GetDesc()._textureDesc._format;
+                auto components = GetComponents(viewWindow._format._explicitFormat != Format::Unknown ? viewWindow._format._explicitFormat : fmt);
+
+                switch (components) {
+                case FormatComponents::Depth:
+                    bindingPoint = GL_DEPTH_ATTACHMENT;
+                    break;
+
+                case FormatComponents::Stencil:
+                    bindingPoint = GL_STENCIL_ATTACHMENT;
+                    break;
+
+                default:
+                    {
+                        auto aspect = viewWindow._format._aspect;
+                        if (aspect == TextureViewDesc::Aspect::Depth) {
+                            bindingPoint = GL_DEPTH_ATTACHMENT;
+                        } else if (aspect == TextureViewDesc::Aspect::Stencil) {
+                            bindingPoint = GL_STENCIL_ATTACHMENT;
+                        }
+                        assert(!(viewWindow._flags & TextureViewDesc::Flags::JustDepth));
+                        assert(!(viewWindow._flags & TextureViewDesc::Flags::JustStencil));
+                    }
+                }
+
+                BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
             glDrawBuffers(sp._rtvCount, drawBuffers);

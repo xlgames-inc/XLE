@@ -61,11 +61,11 @@ namespace RenderCore
 		class ViewPool
 	{
 	public:
-		ViewType GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view);
+		ViewType* GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view);
 		void Erase(IResource& res);
 
 	private:
-		struct Entry { std::shared_ptr<IResource> _resource; ViewType _view; };
+		struct Entry { std::shared_ptr<IResource> _resource; std::unique_ptr<ViewType> _view; };
 		std::vector<std::pair<uint64, Entry>> _views;
 	};
 
@@ -75,15 +75,16 @@ namespace RenderCore
 	}
 
 	template<typename ViewType, typename ViewDescType>
-		ViewType ViewPool<ViewType, ViewDescType>::GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view)
+		ViewType* ViewPool<ViewType, ViewDescType>::GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view)
 	{
 		uint64_t hash = HashCombine((size_t)resource.get(), CalculateHash(view));
 		auto i = LowerBound(_views, hash);
 		if (i != _views.end() && i->first == hash)
-			return i->second._view;
+			return i->second._view.get();
 
-		i = _views.emplace(i, std::make_pair(hash, Entry{ resource, ViewType{resource, view}}));
-		return i->second._view;
+        auto newView = std::make_unique<ViewType>(resource, view);
+		i = _views.emplace(i, std::make_pair(hash, Entry{ resource, std::move(newView) }));
+		return i->second._view.get();
 	}
 
 	template<typename ViewType, typename ViewDescType>
