@@ -7,10 +7,11 @@
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
+#include <memory>
 
 @class EAGLContext;
 
-namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; }}
+namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Resource; }}
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -23,7 +24,7 @@ namespace RenderCore { namespace ImplOpenGLES
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
         EAGLContext*        GetEAGLContext() { return _eaglContext.get(); }
 
-        const intrusive_ptr<OpenGL::RenderBuffer>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
+        const std::shared_ptr<Metal_OpenGLES::Resource>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
 
         PresentationChain(
             Metal_OpenGLES::ObjectFactory& objFactory,
@@ -33,7 +34,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     private:
         TBC::OCPtr<EAGLContext> _eaglContext;
-        intrusive_ptr<OpenGL::RenderBuffer> _frameRenderbuffer;
+        std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -65,7 +66,7 @@ namespace RenderCore { namespace ImplOpenGLES
         TBC::OCPtr<EAGLContext> _activeFrameContext;
         TBC::OCPtr<EAGLContext> _sharedContext;
 
-        intrusive_ptr<OpenGL::RenderBuffer> _activeFrameRenderbuffer;
+        std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
         intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
     };
 

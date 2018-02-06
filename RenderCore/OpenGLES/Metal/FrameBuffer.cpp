@@ -177,7 +177,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto attachmentIdx = s._rtvs[rtv];
             auto load = s._rtvLoad[rtv];
             if (load == LoadStore::Clear) {
-                glClearBufferfv(GL_COLOR, GL_DRAW_BUFFER0 + rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
             }
         }
 

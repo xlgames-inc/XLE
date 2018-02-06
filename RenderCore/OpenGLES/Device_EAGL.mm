@@ -3,6 +3,7 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Resource.h"
+#include "Metal/Format.h"
 #include "../IAnnotator.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -33,17 +34,11 @@ namespace RenderCore { namespace ImplOpenGLES
 
         _activeFrameBuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
         glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->AsRawGLHandle());
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
         if(glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE)
             Throw(std::runtime_error("Framebuffer not complete in PresentationChain::PresentationChain"));
 
-        GLint backingWidth, backingHeight;
-        glBindRenderbuffer(GL_RENDERBUFFER, _activeFrameRenderbuffer->AsRawGLHandle());
-        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &backingWidth);
-        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &backingHeight);
-        glViewport(0,0,backingWidth, backingHeight);
-
-        return nullptr;
+        return _activeFrameRenderbuffer;
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
@@ -51,7 +46,7 @@ namespace RenderCore { namespace ImplOpenGLES
         auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
         assert(!presChain.GetEAGLContext() || presChain.GetEAGLContext() == _activeFrameContext);
         if (_activeFrameContext) {
-            glBindRenderbuffer(GL_RENDERBUFFER, _activeFrameRenderbuffer->AsRawGLHandle());
+            glBindRenderbuffer(GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
             [_activeFrameContext.get() presentRenderbuffer:GL_RENDERBUFFER];
         }
         _activeFrameRenderbuffer.reset();
@@ -62,7 +57,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     bool                        ThreadContext::IsImmediate() const { return false; }
     ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
-    std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return nullptr; }
+    std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }
     void                        ThreadContext::IncrFrameId() {}
     void                        ThreadContext::InvalidateCachedState() const {}
 
@@ -201,17 +196,14 @@ namespace RenderCore { namespace ImplOpenGLES
                 kEAGLColorFormatRGBA8, kEAGLDrawablePropertyColorFormat,
                 nil];
 
-        _frameRenderbuffer = objFactory.CreateRenderBuffer();
-        glBindRenderbuffer(GL_RENDERBUFFER, _frameRenderbuffer->AsRawGLHandle());
+        auto frameRenderbuffer = objFactory.CreateRenderBuffer();
+        glBindRenderbuffer(GL_RENDERBUFFER, frameRenderbuffer->AsRawGLHandle());
 
         auto res = [eaglContext renderbufferStorage: GL_RENDERBUFFER fromDrawable: eaglDrawable];
         if (!res)
             Throw(std::runtime_error("Failed to allocate renderbuffer storage for EAGL drawable in PresentationChain::PresentationChain"));
 
-        // Get the drawable buffer's width and height so we can create a depth buffer for the FBO
-        GLint backingWidth, backingHeight;
-        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &backingWidth);
-        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_HEIGHT, &backingHeight);
+        _frameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(frameRenderbuffer);
     }
 
     PresentationChain::~PresentationChain()

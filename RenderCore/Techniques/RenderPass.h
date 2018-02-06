@@ -98,8 +98,8 @@ namespace RenderCore { namespace Techniques
         // VectorPattern<unsigned, 2>          _extent;
 
         RenderPassBeginDesc(
-            std::initializer_list<ClearValue> clearValues = {})
-        : _clearValues(clearValues.begin(), clearValues.end())
+            IteratorRange<const ClearValue*> clearValues = {})
+        : _clearValues(clearValues)
         {}
     };
 
