@@ -18,6 +18,11 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
+	static bool HasClear(LoadStore ls) 
+	{
+		return ls == LoadStore::Clear || ls == LoadStore::Clear_ClearStencil || ls == LoadStore::Clear_RetainStencil || ls == LoadStore::DontCare_ClearStencil || ls == LoadStore::Retain_ClearStencil;
+	}
+
     FrameBuffer::FrameBuffer(
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
@@ -41,18 +46,26 @@ namespace RenderCore { namespace Metal_DX11
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-                sp._rtvs[r] = rtvPool.GetView(resource, attachmentView._window);
+                sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
-				sp._rtvClearValue[r] = clearValueIterator++;
+				if (HasClear(sp._rtvLoad[r])) {
+					sp._rtvClearValue[r] = clearValueIterator++;
+				} else {
+					sp._rtvClearValue[r] = ~0u;
+				}
 			}
 
 			if (spDesc._depthStencil._resourceName != ~0u) {
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = dsvPool.GetView(resource, spDesc._depthStencil._window);
+				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
-				sp._dsvClearValue = clearValueIterator++;
+				if (HasClear(sp._dsvLoad)) {
+					sp._dsvClearValue = clearValueIterator++;
+				} else {
+					sp._dsvClearValue = ~0u;
+				}
 			}
         }
         _subpassCount = (unsigned)subpasses.size();

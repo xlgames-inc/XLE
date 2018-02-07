@@ -600,7 +600,7 @@ namespace Sample
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
         
 			AttachmentViewDesc v_presTarget = { PresentationTarget, LoadStore::DontCare, LoadStore::Retain };
-			AttachmentViewDesc v_mainDepthStencils = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare, TextureViewDesc::Aspect::DepthStencil };
+			AttachmentViewDesc v_mainDepthStencil = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare, TextureViewDesc::Aspect::DepthStencil };
 			AttachmentViewDesc v_diffuse = { GBufferDiffuse, LoadStore::DontCare, LoadStore::DontCare };
 			AttachmentViewDesc v_normals = { GBufferNormals, LoadStore::DontCare, LoadStore::DontCare };
 			AttachmentViewDesc v_params = { GBufferParams, LoadStore::DontCare, LoadStore::DontCare };
@@ -609,9 +609,10 @@ namespace Sample
             SubpassDesc subpasses[] = 
             {
                 // render to fbuffer
-				SubpassDesc{{ v_diffuse, v_normals, v_params }, v_mainDepthStencils },
+				SubpassDesc{{ v_diffuse, v_normals, v_params }, v_mainDepthStencil },
                 // resolve lighting & resolve
-				SubpassDesc{{ v_lightingResolve }, SubpassDesc::Unused, { v_diffuse, v_normals, v_params }, {}, { v_presTarget }}
+				// SubpassDesc{{ v_lightingResolve }, SubpassDesc::Unused, { v_diffuse, v_normals, v_params }, {}, { v_presTarget }}
+				SubpassDesc{{ v_presTarget }, SubpassDesc::Unused, { v_diffuse, v_normals, v_params }}
                 // SubpassDesc{{PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget}}
             };
 
@@ -629,11 +630,12 @@ namespace Sample
 
             metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
 
-            auto beginInfo = Techniques::RenderPassBeginDesc({ClearValue(), MakeClearValue(1.f, 0)});
+			auto clearValues = {MakeClearValue(1.f, 0)};
             {
                 Techniques::RenderPassInstance rpi(
                     *metalContext, fbLayout,
-                    0u, namedResources, beginInfo);
+                    0u, namedResources, 
+					MakeIteratorRange(clearValues));
 
                 // First, render gbuffer subpass
                 {
@@ -649,7 +651,7 @@ namespace Sample
 
                 // This is the lighting resolve. 
                 {
-                    metalContext->BindPS(MakeResourceList(namedResources.GetSRV(GBufferDiffuse), namedResources.GetSRV(GBufferNormals)));
+                    metalContext->BindPS(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
 
                     auto& resolveShdr = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "game/xleres/basic2D.vsh:fullscreen:vs_*", 

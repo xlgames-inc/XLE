@@ -10,6 +10,7 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ObjectFactory.h"
 #include "../Metal/State.h"
+#include "../Format.h"
 #include "../ResourceUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
 

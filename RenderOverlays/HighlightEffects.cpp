@@ -108,10 +108,10 @@ namespace RenderOverlays
                 {TextureViewDesc::Aspect::Stencil},
                 TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
                 TextureViewDesc::Flags::JustStencil));
-        if (!stencilSrv.IsGood()) return;
+        if (!stencilSrv->IsGood()) return;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
-        ExecuteHighlightByStencil(*metalContext, stencilSrv, settings, onlyHighlighted);
+        ExecuteHighlightByStencil(*metalContext, *stencilSrv, settings, onlyHighlighted);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -195,14 +195,15 @@ namespace RenderOverlays
 			SubpassDesc {{v_commonOffscreen}, v_mainDepth}, 
 			SubpassDesc {{v_mainColor}, SubpassDesc::Unused, {v_commonOffscreen}}
 		};
+		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, fbLayout, 0u, namedRes,
-            {{MakeClearValue(0.f, 0.f, 0.f, 0.f)}});
+			{MakeIteratorRange(clearValues)});
     }
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
-        auto srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        auto& srv = *_pimpl->_namedRes->GetSRV(s_commonOffscreen);
         assert(srv.IsGood());
         if (!srv.IsGood()) return;
 
@@ -232,7 +233,7 @@ namespace RenderOverlays
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        auto srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        auto& srv = *_pimpl->_namedRes->GetSRV(s_commonOffscreen);
         assert(srv.IsGood());
         if (!srv.IsGood()) return;
 
@@ -256,7 +257,7 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
-        auto srv = _pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        auto& srv = *_pimpl->_namedRes->GetSRV(s_commonOffscreen);
         assert(srv.IsGood());
         if (srv.IsGood()) return;
 
