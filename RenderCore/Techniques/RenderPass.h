@@ -57,12 +57,10 @@ namespace RenderCore { namespace Techniques
     class FrameBufferDescFragment
     {
     public:
-        enum class Direction { In, Out, InOut, Temporary };
         AttachmentName DefineAttachment(
-            Direction direction,
             uint64_t semantic,
             const AttachmentDesc& request);
-        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(Direction::Temporary, 0, request); }
+        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, request); }
         void AddSubpass(SubpassDesc&& subpass);
 
         FrameBufferDescFragment();
@@ -70,7 +68,6 @@ namespace RenderCore { namespace Techniques
 
         struct Attachment
         {
-            Direction       _direction;
             uint64_t        _semantic;
             AttachmentDesc  _desc;
         };
@@ -91,12 +88,24 @@ namespace RenderCore { namespace Techniques
         std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
     };
 
-    FrameBufferDescFragment MergeFragments(IteratorRange<const FrameBufferDescFragment*> fragments);
+    struct PreregisteredAttachment
+    {
+    public:
+        AttachmentName _name;
+        uint64_t _semantic;
+        AttachmentDesc _desc;
+        enum class State { Uninitialized, Initialized };
+        State _state = State::Uninitialized;
+    };
+
+    std::pair<FrameBufferDescFragment, std::vector<PassFragment>>
+        MergeFragments(
+            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
+            IteratorRange<const FrameBufferDescFragment*> fragments);
 
     FrameBufferDesc BuildFrameBufferDesc(
-        /* in/out */ AttachmentPool& namedResources,
-        /* out */ std::vector<PassFragment>& boundFragments,
-        /* int */ IteratorRange<const FrameBufferDescFragment*> fragments);
+        AttachmentPool& namedResources,
+        FrameBufferDescFragment&& fragment);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

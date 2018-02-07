@@ -11,17 +11,17 @@
 #include "../Metal/ObjectFactory.h"
 #include "../Metal/State.h"
 #include "../ResourceUtils.h"
+#include "../../Utility/ArithmeticUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
 
     AttachmentName FrameBufferDescFragment::DefineAttachment(
-        Direction direction,
         uint64_t semantic,
         const AttachmentDesc& request)
     {
         auto name = _nextAttachment++;
-        _attachments.push_back({name, {direction, semantic, request}});
+        _attachments.push_back({name, {semantic, request}});
         return name;
     }
 
@@ -360,19 +360,24 @@ namespace RenderCore { namespace Techniques
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(
-        /* in/out */ AttachmentPool& namedResources,
-        /* out */ std::vector<PassFragment>& boundFragments,
-        /* int */ IteratorRange<const FrameBufferDescFragment*> fragments)
+        AttachmentPool& namedResources,
+        FrameBufferDescFragment&& fragment)
     {
-        return {};
+        // Define all of the attachments in the attachment pool
+        for (const auto& attachment:fragment._attachments)
+            namedResources.DefineAttachment(attachment.first, attachment.second._desc);
+
+        // Generate the final FrameBufferDesc by moving the subpasses out of the fragment
+        // Usually this function is called as a final step when converting a number of fragments
+        // into a final FrameBufferDesc, so it makes sense to move the subpasses from the input
+        return FrameBufferDesc{std::move(fragment._subpasses)};
     }
 
     static bool IsCompatible(const AttachmentDesc& lhs, const AttachmentDesc& rhs)
     {
         return
-            ((lhs._format == rhs._format) || (lhs._format == Format::Unknown) || (rhs._format == Format::Unknown))
-            && lhs._width == rhs._width
-            && lhs._height == rhs._height
+            ( (lhs._format == rhs._format) || (lhs._format == Format::Unknown) || (rhs._format == Format::Unknown) )
+            && lhs._width == rhs._width && lhs._height == rhs._height
             && lhs._arrayLayerCount == rhs._arrayLayerCount
             && lhs._defaultAspect == rhs._defaultAspect
             && lhs._dimsMode == rhs._dimsMode
@@ -388,104 +393,192 @@ namespace RenderCore { namespace Techniques
         return i->second;
     }
 
-    FrameBufferDescFragment MergeFragments(IteratorRange<const FrameBufferDescFragment*> fragments)
+    struct DirectionFlags
+    {
+        enum Bits
+        {
+            Reference = 1<<0,
+            Load = 1<<1,
+            Store = 1<<2
+        };
+        using BitField = unsigned;
+    };
+
+    static bool HasRetain(LoadStore loadStore)
+    {
+        return  loadStore == LoadStore::Retain
+            ||  loadStore == LoadStore::DontCare_RetainStencil
+            ||  loadStore == LoadStore::Retain_RetainStencil
+            ||  loadStore == LoadStore::Clear_RetainStencil
+            ||  loadStore == LoadStore::Retain_ClearStencil
+            ;
+    }
+
+    static DirectionFlags::BitField GetLoadDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
+    {
+        DirectionFlags::BitField result = 0;
+        for (const auto&a:p._output)
+            if (a._resourceName == attachment) {
+                result |= DirectionFlags::Reference;
+                if (HasRetain(a._loadFromPreviousPhase))
+                    result |= DirectionFlags::Load;
+            }
+        if (p._depthStencil._resourceName == attachment) {
+            result |= DirectionFlags::Reference;
+            if (HasRetain(p._depthStencil._loadFromPreviousPhase))
+                result |= DirectionFlags::Load;
+        }
+        for (const auto&a:p._input)
+            if (a._resourceName == attachment)
+                result |= DirectionFlags::Reference | DirectionFlags::Load;
+        return result;
+    }
+
+    static DirectionFlags::BitField GetStoreDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
+    {
+        DirectionFlags::BitField result = 0;
+        for (const auto&a:p._output)
+            if (a._resourceName == attachment) {
+                result |= DirectionFlags::Reference;
+                if (HasRetain(a._storeToNextPhase))
+                    result |= DirectionFlags::Store;
+            }
+        if (p._depthStencil._resourceName == attachment) {
+            result |= DirectionFlags::Reference;
+            if (HasRetain(p._depthStencil._storeToNextPhase))
+                result |= DirectionFlags::Store;
+        }
+        return result;
+    }
+
+    static AttachmentName NextName(IteratorRange<const PreregisteredAttachment*> attachments)
+    {
+        // find the lowest name not used by any of the attachments
+        uint64_t bitField = 0;
+        for (const auto& a:attachments) {
+            assert(a._name < 64);
+            assert(!(bitField & (1ull << uint64_t(a._name))));
+            bitField |= 1ull << uint64_t(a._name);
+        }
+        // Find the position of the least significant bit set in the inverse
+        // That is the smallest number less than 64 that hasn't been used yet
+        return xl_ctz8(~bitField);
+    }
+
+    std::pair<FrameBufferDescFragment, std::vector<PassFragment>> MergeFragments(
+        IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
+        IteratorRange<const FrameBufferDescFragment*> fragments)
     {
         // Merge together the input fragments to create the final output
         // Each fragment defines an input/output interface. We need to bind these
         // together (along with the temporaries) to create a single cohesive render pass.
         // Where we can reuse the same temporary multiple times, we should do so
         FrameBufferDescFragment result;
-        if (!fragments.size()) return result;
-
-        struct UnconsumedInput
-        {
-            uint64_t        _semantic;
-            AttachmentDesc  _desc;
-            AttachmentName  _finalName;
-        };
-        std::vector<UnconsumedInput> originalInput;
-        originalInput.push_back(
-            {
-                Hash64("color"),
-                AttachmentDesc { Format::R8G8B8A8_UNORM },
-                result.DefineAttachment(FrameBufferDescFragment::Direction::Temporary, Hash64("color"), AttachmentDesc { Format::R8G8B8A8_UNORM })
-            });
-        originalInput.push_back(
-            {
-                Hash64("depth"),
-                AttachmentDesc { Format::D24_UNORM_S8_UINT },
-                result.DefineAttachment(FrameBufferDescFragment::Direction::Temporary, Hash64("depth"), AttachmentDesc { Format::R8G8B8A8_UNORM })
-            });
-
-        std::vector<UnconsumedInput> unconsumedInputs = originalInput;
-
-        struct AvailableTemporary
-        {
-            AttachmentDesc  _desc;
-            AttachmentName  _finalName;
-        };
-        std::vector<AvailableTemporary> availableTemporaries;
-
         std::vector<PassFragment> fragmentRemapping;
 
+        if (!fragments.size()) return { std::move(result), std::move(fragmentRemapping) };
+
+        std::vector<PreregisteredAttachment> workingAttachments { preregisteredInputs.begin(), preregisteredInputs.end() };
         for (auto f=fragments.begin(); f!=fragments.end(); ++f) {
-            std::vector<UnconsumedInput> newUnconsumedInputs;
-            std::vector<AvailableTemporary> newAvailableTemporaries;
+            std::vector<PreregisteredAttachment> newWorkingAttachments;
             std::vector<std::pair<AttachmentName, AttachmentName>> attachmentRemapping;
 
             /////////////////////////////////////////////////////////////////////////////
             for (const auto& interf:f->_attachments) {
                 AttachmentName reboundName = ~0u;
 
+                DirectionFlags::BitField directionFlags = 0;
+                // Look through the load/store values in the subpasses to find the "direction" for
+                // this attachment. When deciding on the load flags, we must look for the first
+                // subpass that references the attachment; for the store flags we look for the last
+                // subpass
+                for (auto p=f->_subpasses.begin(); p!=f->_subpasses.end(); ++p) {
+                    auto subpassDirectionFlags = GetLoadDirectionFlags(*p, interf.first);
+                    if (subpassDirectionFlags != 0) {
+                        directionFlags |= subpassDirectionFlags;
+                        break;
+                    }
+                }
+                for (auto p=f->_subpasses.rbegin(); p!=f->_subpasses.rend(); ++p) {
+                    auto subpassDirectionFlags = GetStoreDirectionFlags(*p, interf.first);
+                    if (subpassDirectionFlags != 0) {
+                        directionFlags |= subpassDirectionFlags;
+                        break;
+                    }
+                }
+                assert(directionFlags != 0);
+
+                /*
+                FrameBufferDescFragment::Direction dir = FrameBufferDescFragment::Direction::Temporary;
+                switch (directionFlags) {
+                case DirectionFlags::Reference | DirectionFlags::Load | DirectionFlags::Store: dir = FrameBufferDescFragment::Direction::InOut; break;
+                case DirectionFlags::Reference | DirectionFlags::Load: dir = FrameBufferDescFragment::Direction::In; break;
+                case DirectionFlags::Reference | DirectionFlags::Store: dir = FrameBufferDescFragment::Direction::Out; break;
+                }
+                assert(interf.second._direction == dir);
+                */
+
                 auto interfaceAttachment = interf.second;
-                if (interfaceAttachment._direction == FrameBufferDescFragment::Direction::In || interfaceAttachment._direction == FrameBufferDescFragment::Direction::InOut) {
-                    // find something compatible in the unconsumed inputs array
+                if (directionFlags & DirectionFlags::Load) {
+
+                    // We're expecting a buffer that already has some initialized contents. Look for
+                    // something matching in our working attachments array
                     auto compat = std::find_if(
-                        unconsumedInputs.begin(), unconsumedInputs.end(),
-                        [&interfaceAttachment](const UnconsumedInput& input) {
-                            return input._semantic == interfaceAttachment._semantic;
+                        workingAttachments.begin(), workingAttachments.end(),
+                        [&interfaceAttachment](const PreregisteredAttachment& input) {
+                            return (input._state == PreregisteredAttachment::State::Initialized)
+                                && (input._semantic == interfaceAttachment._semantic)
+                                && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
-                    if (compat == unconsumedInputs.end())
+                    if (compat == workingAttachments.end())
                         Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request"));
 
-                    if (!IsCompatible(compat->_desc, interfaceAttachment._desc))
-                        Throw(::Exceptions::BasicLabel("Incompatible attachment descriptions in renderpass fragment resolve"));
+                    reboundName = compat->_name;
 
-                    reboundName = compat->_finalName;
-                    if (interfaceAttachment._direction != FrameBufferDescFragment::Direction::InOut) {
-                        newAvailableTemporaries.push_back({compat->_desc, compat->_finalName});
-                        unconsumedInputs.erase(compat);
-                    }
+                    // remove from the working attachments and push back in it's new state
+                    auto newState = *compat;
+                    newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                    workingAttachments.erase(compat);
+                    newWorkingAttachments.push_back(newState);
 
-                } else if (interfaceAttachment._direction == FrameBufferDescFragment::Direction::Out) {
-                    // define a new output buffer, or reuse something that we can reuse
-                    auto available = std::find_if(
-                        availableTemporaries.begin(), availableTemporaries.end(),
-                        [&interfaceAttachment](const AvailableTemporary& temp) {
-                            return IsCompatible(temp._desc, interfaceAttachment._desc);
-                        });
-                    if (available != availableTemporaries.end()) {
-                        reboundName = available->_finalName;
-                        newUnconsumedInputs.push_back({interfaceAttachment._semantic, available->_desc, available->_finalName});
-                    } else {
-                        reboundName = result.DefineAttachment(FrameBufferDescFragment::Direction::Temporary, interfaceAttachment._semantic, interfaceAttachment._desc);
-                        newUnconsumedInputs.push_back({interfaceAttachment._semantic, interfaceAttachment._desc, reboundName});
-                    }
-                } else if (interfaceAttachment._direction == FrameBufferDescFragment::Direction::Temporary) {
-                    auto available = std::find_if(
-                        availableTemporaries.begin(), availableTemporaries.end(),
-                        [&interfaceAttachment](const AvailableTemporary& temp) {
-                            return IsCompatible(temp._desc, interfaceAttachment._desc);
-                        });
-                    if (available != availableTemporaries.end()) {
-                        reboundName = available->_finalName;
-                        newAvailableTemporaries.push_back(*available);
-                        availableTemporaries.erase(available);
-                    } else {
-                        reboundName = result.DefineAttachment(FrameBufferDescFragment::Direction::Temporary, interfaceAttachment._semantic, interfaceAttachment._desc);
-                    }
                 } else {
-                    assert(0);
+
+                    // define a new output buffer, or reuse something that we can reuse
+                    auto compat = std::find_if(
+                        workingAttachments.begin(), workingAttachments.end(),
+                        [&interfaceAttachment](const PreregisteredAttachment& input) {
+                            return (input._state == PreregisteredAttachment::State::Uninitialized)
+                                && (input._semantic == interfaceAttachment._semantic)
+                                && IsCompatible(input._desc, interfaceAttachment._desc);
+                        });
+
+                    if (compat == workingAttachments.end()) {
+                        // Technically we could do a second pass looking for some initialized attachment
+                        // we could write over -- but that would lead to other complications. Let's just
+                        // create something new.
+
+                        reboundName = std::max(NextName(MakeIteratorRange(workingAttachments)), NextName(MakeIteratorRange(newWorkingAttachments)));
+
+                        PreregisteredAttachment newState {
+                            reboundName,
+                            interfaceAttachment._semantic,
+                            interfaceAttachment._desc,
+                            (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized
+                        };
+                        newWorkingAttachments.push_back(newState);
+
+                    } else {
+
+                        reboundName = compat->_name;
+
+                        // remove from the working attachments and push back in it's new state
+                        auto newState = *compat;
+                        newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        workingAttachments.erase(compat);
+                        newWorkingAttachments.push_back(newState);
+
+                    }
+
                 }
 
                 attachmentRemapping.push_back({interf.first, reboundName});
@@ -511,33 +604,23 @@ namespace RenderCore { namespace Techniques
                     a._resourceName = Remap(attachmentRemapping, a._resourceName);
                 result.AddSubpass(std::move(newSubpass));
             }
+            fragmentRemapping.emplace_back(std::move(passFragment));
 
             /////////////////////////////////////////////////////////////////////////////
 
-            unconsumedInputs.insert(unconsumedInputs.end(), newUnconsumedInputs.begin(), newUnconsumedInputs.end());
-            availableTemporaries.insert(availableTemporaries.end(), newAvailableTemporaries.begin(), newAvailableTemporaries.end());
+            workingAttachments.insert(workingAttachments.end(), newWorkingAttachments.begin(), newWorkingAttachments.end());
 
         }
 
-        // The remaining "unconsumedInputs" are now the outputs
-        // We need to set the direction flags on all of the defined attachments
-        for (auto& attach:result._attachments) {
-            auto i = std::find_if(
-                originalInput.begin(), originalInput.end(),
-                [&attach](const UnconsumedInput& e) { return e._finalName == attach.first; });
-            bool isInput = i != originalInput.end();
-
-            auto o = std::find_if(
-                unconsumedInputs.begin(), unconsumedInputs.end(),
-                [&attach](const UnconsumedInput& e) { return e._finalName == attach.first; });
-            bool isOutput = o != unconsumedInputs.end();
-
-            if (isInput && isOutput) attach.second._direction = FrameBufferDescFragment::Direction::InOut;
-            else if (isInput) attach.second._direction = FrameBufferDescFragment::Direction::In;
-            else if (isOutput) attach.second._direction = FrameBufferDescFragment::Direction::Out;
+        // The workingAttachments array is now the list of attachments that must go into
+        // the output fragment;
+        result._attachments.reserve(workingAttachments.size());
+        for (auto& a:workingAttachments) {
+            FrameBufferDescFragment::Attachment r { a._semantic, a._desc };
+            result._attachments.push_back({a._name, r});
         }
 
-        return result;
+        return { std::move(result), std::move(fragmentRemapping) };
     }
 
 }}
