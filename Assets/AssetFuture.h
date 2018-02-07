@@ -92,6 +92,15 @@ namespace Assets
 		auto state = _state;
 		if (state == AssetState::Ready)
 			return _actualized;
+
+		// If our current state is pending, we must try the polling function at least once (otherwise 
+		// when TryActualize is called in a loop, there's no guarantee that the polling function will
+		// ever be called)
+		const_cast<AssetFuture<AssetType>*>(this)->OnFrameBarrier();
+
+		if (state == AssetState::Ready)
+			return _actualized;
+
 		static AssetPtr<AssetType> dummy;
 		return dummy;
 	}

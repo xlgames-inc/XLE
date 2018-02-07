@@ -296,22 +296,25 @@ namespace RenderCore { namespace Techniques
 
         using namespace Metal;
     
-        std::unique_ptr<ShaderProgram> shaderProgram;
+        std::shared_ptr<::Assets::AssetFuture<ShaderProgram>> shaderProgramFuture;
         std::unique_ptr<BoundUniforms> boundUniforms;
         std::unique_ptr<BoundInputLayout> boundInputLayout;
 
         if (_technique._geometryShaderName.empty()) {
-            shaderProgram = std::make_unique<ShaderProgram>(
+            shaderProgramFuture = ::Assets::MakeAsset<ShaderProgram>(
                 (_technique._vertexShaderName + vsShaderModel).c_str(), 
                 (_technique._pixelShaderName + psShaderModel).c_str(), 
                 combinedStrings.c_str());
         } else {
-            shaderProgram = std::make_unique<ShaderProgram>(
+            shaderProgramFuture = ::Assets::MakeAsset<ShaderProgram>(
                 (_technique._vertexShaderName + vsShaderModel).c_str(), 
                 (_technique._geometryShaderName + gsShaderModel).c_str(), 
                 (_technique._pixelShaderName + psShaderModel).c_str(), 
                 combinedStrings.c_str());
         }
+
+		shaderProgramFuture->StallWhilePending();
+		auto shaderProgram = shaderProgramFuture->Actualize();
 
 		PipelineLayoutConfig dummy;
 		UniformsStreamInterface streamInterfaces[4];

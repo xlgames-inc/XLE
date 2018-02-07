@@ -17,8 +17,6 @@ namespace Assets
 		std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 	}
 
-	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
-
 	namespace Internal
 	{
 		// Note -- here's a useful pattern that can turn any expression in a SFINAE condition
@@ -32,6 +30,18 @@ namespace Assets
 
 		template<typename... Params>
 			struct HasDirectAutoConstructAsset : decltype(HasDirectAutoConstructAsset_Helper<Params...>(0)) {};
+
+
+		template<typename AssetType, typename... Params>
+			static auto HasConstructToFutureOverride_Helper(int) -> decltype(
+				AssetType::ConstructToFuture(std::declval<::Assets::AssetFuture<AssetType>&>(), std::declval<Params>()...), 
+				std::true_type{});
+
+		template<typename...>
+			static auto HasConstructToFutureOverride_Helper(...) -> std::false_type;
+
+		template<typename AssetType, typename... Params>
+			struct HasConstructToFutureOverride : decltype(HasConstructToFutureOverride_Helper<AssetType, Params...>(0)) {};
 	}
 	
 	// If we can construct an AssetType directly from the given parameters, then enable an implementation of
@@ -113,7 +123,15 @@ namespace Assets
 
 	template<
 		typename AssetType, typename... Params, 
-		ENABLE_IF(Internal::AssetTraits<AssetType>::HasCompileProcessType)>
+		typename std::enable_if<Internal::HasConstructToFutureOverride<AssetType, Params...>::value>::type* = nullptr>
+		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
+	{
+		AssetType::ConstructToFuture(future, std::forward<Params>(initialisers)...);
+	}
+
+	template<
+		typename AssetType, typename... Params, 
+		typename std::enable_if<Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasConstructToFutureOverride<AssetType, Params...>::value>::type* = nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		StringSection<ResChar> inits[] = { initialisers... };
@@ -122,12 +140,10 @@ namespace Assets
 
 	template<
 		typename AssetType, typename... Params, 
-		ENABLE_IF(!Internal::AssetTraits<AssetType>::HasCompileProcessType)>
+		typename std::enable_if<!Internal::AssetTraits<AssetType>::HasCompileProcessType && !Internal::HasConstructToFutureOverride<AssetType, Params...>::value>::type* = nullptr>
 		void AutoConstructToFuture(AssetFuture<AssetType>& future, Params... initialisers)
 	{
 		AutoConstructToFutureDirect(future, std::forward<Params>(initialisers)...);
 	}
-
-	#undef ENABLE_IF
 }
 

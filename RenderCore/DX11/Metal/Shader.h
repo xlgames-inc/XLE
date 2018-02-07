@@ -13,7 +13,7 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include <memory>
 
-namespace Assets { class DependencyValidation; }
+namespace Assets { class DependencyValidation; template<typename AssetType> class AssetFuture; }
 namespace RenderCore { class InputElementDesc; class CompiledShaderByteCode; }
 
 namespace RenderCore { namespace Metal_DX11
@@ -104,21 +104,27 @@ namespace RenderCore { namespace Metal_DX11
 
 
 		// Legacy asset based API --
-		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
-						StringSection<::Assets::ResChar> psName);
-		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
-						StringSection<::Assets::ResChar> psName,
-						StringSection<::Assets::ResChar> definesTable);
-		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
-						StringSection<::Assets::ResChar> gsName, 
-						StringSection<::Assets::ResChar> psName,
-						StringSection<::Assets::ResChar> definesTable);
-		ShaderProgram(	StringSection<::Assets::ResChar> vsName,
-						StringSection<::Assets::ResChar> gsName, 
-						StringSection<::Assets::ResChar> psName,
-						StringSection<::Assets::ResChar> hsName,
-						StringSection<::Assets::ResChar> dsName,
-						StringSection<::Assets::ResChar> definesTable);
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> definesTable = {});
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> gsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> definesTable);
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> gsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> hsName,
+			StringSection<::Assets::ResChar> dsName,
+			StringSection<::Assets::ResChar> definesTable);
 
     protected:
 		intrusive_ptr<ID3D::VertexShader>		_vertexShader;
@@ -306,3 +312,4 @@ namespace RenderCore { namespace Metal_DX11
 	
 #endif
 }}
+

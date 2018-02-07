@@ -377,46 +377,90 @@ namespace RenderCore { namespace Metal_DX11
 		}
 	}
 
-
-	ShaderProgram::ShaderProgram(
-		StringSection<::Assets::ResChar> vsName,
-		StringSection<::Assets::ResChar> psName)
+	static void TryRegisterDependency(
+		::Assets::DepValPtr& dst,
+		const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
 	{
-		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName);
-		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, vsName);
-		auto vsActual = vsCode->Actualize();
-		auto psActual = psCode->Actualize();
-		*this = Metal::ShaderProgram(Metal::GetObjectFactory(), *vsActual, *psActual);
+		auto futureDepVal = future->GetDependencyValidation();
+		if (futureDepVal)
+			::Assets::RegisterAssetDependency(dst, futureDepVal);
 	}
 
-	ShaderProgram::ShaderProgram(
+	void ShaderProgram::ConstructToFuture(
+		::Assets::AssetFuture<ShaderProgram>& future,
 		StringSection<::Assets::ResChar> vsName,
 		StringSection<::Assets::ResChar> psName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
 		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
 		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
-		auto vsActual = vsCode->Actualize();
-		auto psActual = psCode->Actualize();
-		*this = Metal::ShaderProgram(Metal::GetObjectFactory(), *vsActual, *psActual);
+
+		future.SetPollingFunction(
+			[vsCode, psCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
+
+			auto vsActual = vsCode->TryActualize();
+			auto psActual = psCode->TryActualize();
+
+			if (!vsActual || !psActual) {
+				auto vsState = vsCode->GetAssetState();
+				auto psState = psCode->GetAssetState();
+				if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					TryRegisterDependency(depVal, vsCode);
+					TryRegisterDependency(depVal, psCode);
+					thatFuture.SetInvalidAsset(depVal, nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newShaderProgram = std::make_shared<ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
+			thatFuture.SetAsset(std::move(newShaderProgram), {});
+			return false;
+		});
 	}
 
-	ShaderProgram::ShaderProgram(
+	void ShaderProgram::ConstructToFuture(
+		::Assets::AssetFuture<ShaderProgram>& future,
 		StringSection<::Assets::ResChar> vsName,
 		StringSection<::Assets::ResChar> gsName,
 		StringSection<::Assets::ResChar> psName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
-		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, definesTable);
+		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
 		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, definesTable);
-		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, definesTable);
-		auto vsActual = vsCode->Actualize();
-		auto gsActual = gsCode->Actualize();
-		auto psActual = psCode->Actualize();
-		*this = Metal::ShaderProgram(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual);
+		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
+
+		future.SetPollingFunction(
+			[vsCode, gsCode, psCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
+
+			auto vsActual = vsCode->TryActualize();
+			auto gsActual = gsCode->TryActualize();
+			auto psActual = psCode->TryActualize();
+
+			if (!vsActual || !gsActual || !psActual) {
+				auto vsState = vsCode->GetAssetState();
+				auto gsState = gsCode->GetAssetState();
+				auto psState = psCode->GetAssetState();
+				if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					TryRegisterDependency(depVal, vsCode);
+					TryRegisterDependency(depVal, gsCode);
+					TryRegisterDependency(depVal, psCode);
+					thatFuture.SetInvalidAsset(depVal, nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newShaderProgram = std::make_shared<ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual);
+			thatFuture.SetAsset(std::move(newShaderProgram), {});
+			return false;
+		});
 	}
 
-	ShaderProgram::ShaderProgram(
+	void ShaderProgram::ConstructToFuture(
+		::Assets::AssetFuture<ShaderProgram>& future,
 		StringSection<::Assets::ResChar> vsName,
 		StringSection<::Assets::ResChar> gsName,
 		StringSection<::Assets::ResChar> psName,
@@ -424,20 +468,47 @@ namespace RenderCore { namespace Metal_DX11
 		StringSection<::Assets::ResChar> dsName,
 		StringSection<::Assets::ResChar> definesTable)
 	{
-		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, definesTable);
+		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
 		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, definesTable);
-		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, definesTable);
-		auto dsCode = MakeByteCodeFuture(ShaderStage::Domain, definesTable);
-		auto hsCode = MakeByteCodeFuture(ShaderStage::Hull, definesTable);
-		auto vsActual = vsCode->Actualize();
-		auto gsActual = gsCode->Actualize();
-		auto psActual = psCode->Actualize();
-		auto dsActual = dsCode->Actualize();
-		auto hsActual = hsCode->Actualize();
-		*this = Metal::ShaderProgram(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, *dsActual, *hsActual);
+		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
+		auto hsCode = MakeByteCodeFuture(ShaderStage::Hull, hsName, definesTable);
+		auto dsCode = MakeByteCodeFuture(ShaderStage::Domain, dsName, definesTable);
+
+		future.SetPollingFunction(
+			[vsCode, gsCode, psCode, hsCode, dsCode](::Assets::AssetFuture<ShaderProgram>& thatFuture) -> bool {
+
+			auto vsActual = vsCode->TryActualize();
+			auto gsActual = gsCode->TryActualize();
+			auto psActual = psCode->TryActualize();
+			auto hsActual = hsCode->TryActualize();
+			auto dsActual = dsCode->TryActualize();
+
+			if (!vsActual || !gsActual || !psActual || !hsActual || !dsActual) {
+				auto vsState = vsCode->GetAssetState();
+				auto gsState = gsCode->GetAssetState();
+				auto psState = psCode->GetAssetState();
+				auto hsState = hsCode->GetAssetState();
+				auto dsState = dsCode->GetAssetState();
+				if (vsState == ::Assets::AssetState::Invalid || gsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid || hsState == ::Assets::AssetState::Invalid || dsState == ::Assets::AssetState::Invalid) {
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					TryRegisterDependency(depVal, vsCode);
+					TryRegisterDependency(depVal, gsCode);
+					TryRegisterDependency(depVal, psCode);
+					TryRegisterDependency(depVal, hsCode);
+					TryRegisterDependency(depVal, dsCode);
+					thatFuture.SetInvalidAsset(depVal, nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newShaderProgram = std::make_shared<ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
+			thatFuture.SetAsset(std::move(newShaderProgram), {});
+			return false;
+		});
 	}
 
+	template intrusive_ptr<ID3D::ShaderReflection>;
 
-    template intrusive_ptr<ID3D::ShaderReflection>;
 }}
 

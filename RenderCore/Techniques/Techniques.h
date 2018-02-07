@@ -186,7 +186,7 @@ namespace RenderCore { namespace Techniques
 			Technique _technique;
 			mutable std::vector<std::pair<uint64, ResolvedShader>>			_filteredToResolved;
 			mutable std::vector<std::pair<uint64, ResolvedShader>>			_globalToResolved;
-			mutable std::vector<std::unique_ptr<Metal::ShaderProgram>>		_resolvedShaderPrograms;
+			mutable std::vector<std::shared_ptr<Metal::ShaderProgram>>		_resolvedShaderPrograms;
 			mutable std::vector<std::unique_ptr<Metal::BoundUniforms>>		_resolvedBoundUniforms;
 			mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>>	_resolvedBoundInputLayouts;
 
