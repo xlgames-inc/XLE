@@ -200,9 +200,7 @@ namespace Assets { namespace IntermediateAssets
                 RegisterAssetDependency(validation, record);
 
                 if (record->_state._status == DependentFileState::Status::Shadowed) {
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogInfo << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed";
-                    #endif
+                    Log(Verbose) << "Asset (" << intermediateFileName << ") is invalidated because dependency (" << depName << ") is marked shadowed" << std::endl;
                     return nullptr;
                 }
 

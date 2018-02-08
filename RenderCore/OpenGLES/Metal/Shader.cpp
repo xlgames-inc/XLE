@@ -10,14 +10,11 @@
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
 #include "../../../Assets/DepVal.h"
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "IncludeGLES.h"
-
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../../../ConsoleRig/Log.h"
-#endif
 
 #include <iostream>
 
@@ -200,9 +197,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 errorsLog = std::make_shared<std::vector<uint8_t>>(sizeof(char) * infoLen);
                 glGetProgramInfoLog(newProgramIndex->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errorsLog->data());
 
-                #if defined(XLE_HAS_CONSOLE_RIG)
-                    LogWarning << (const char*)errorsLog->data();
-                #endif
+                Log(Warning) << (const char*)errorsLog->data() << std::endl;
             }
 
             Throw(::Assets::Exceptions::ConstructionError(

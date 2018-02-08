@@ -15,15 +15,12 @@
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
 #include "../../../Utility/PtrUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 #include "IncludeGLES.h"
-
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../../../ConsoleRig/Log.h"
-#endif
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -87,9 +84,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (attribute < 0 || attribute >= _maxVertexAttributes) {
                         //  Binding failure! Write a warning, but ignore it. The binding is
                         //  still valid even if one or more attributes fail
-                    #if defined(XLE_HAS_CONSOLE_RIG)
-                        LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
-                    #endif
+                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
                 } else {
                     const auto componentType = GetComponentType(elements[c]._nativeFormat);
                     _bindings.push_back({
@@ -146,9 +141,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 hash += std::atoi(&buffer[semanticIdx]);
                 auto i = std::find_if(layout.begin(), layout.end(), [hash](const MiniInputElementDesc&l) { return l._semanticHash == hash; });
                 if (i == layout.end()) {
-#if defined(XLE_HAS_CONSOLE_RIG)
-                    LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
-#endif
+                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
                     continue;
                 }
 

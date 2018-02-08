@@ -9,10 +9,7 @@
 #include <assert.h>
 #include <map>
 
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../../../ConsoleRig/Log.h"
-#endif
-
+#include "../../../ConsoleRig/Log.h"
 #include "../../../../CoreServices/GLWrappers.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -303,15 +300,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void ObjectFactory::ReportLeaks()
     {
-        #if defined(XLE_HAS_CONSOLE_RIG)
-            LogWarning << "[OpenGL Leaks] " << globalResources._refCountTable.size() << " objects remain" << std::endl;
-            auto count=0u;
-            for (std::map<unsigned, signed>::const_iterator i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
-                LogWarning << "  [" << count << "] Object (" << i->first << ") has (" << i->second << ") refs" << std::endl;
-            }
-        #else
-            assert(0);
-        #endif
+        Log(Warning) << "[OpenGL Leaks] " << _refCountTable.size() << " objects remain" << std::endl;
+        auto count=0u;
+        for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
+            Log(Warning) << "  [" << count << "] Object (" << i->first << ") has (" << i->second << ") refs" << std::endl;
+        }
     }
 
     ObjectFactory::ObjectFactory()

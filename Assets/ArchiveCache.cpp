@@ -7,9 +7,7 @@
 #include "ArchiveCache.h"
 #include "ChunkFile.h"
 #include "IFileSystem.h"
-#if defined(XLE_HAS_CONSOLE_RIG)
-    #include "../ConsoleRig/Log.h"
-#endif
+#include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -569,14 +567,10 @@ namespace Assets
         TRY {
             FlushToDisk();
         } CATCH (const std::exception& e) {
-            #if defined(XLE_HAS_CONSOLE_RIG)
-                LogWarning << "Suppressing exception in ArchiveCache::~ArchiveCache: " << e.what();
-            #endif
+            Log(Warning) << "Suppressing exception in ArchiveCache::~ArchiveCache: " << e.what() << std::endl;
 			(void)e;
         } CATCH (...) {
-            #if defined(XLE_HAS_CONSOLE_RIG)
-                LogWarning << "Suppressing unknown exception in ArchiveCache::~ArchiveCache.";
-            #endif
+            Log(Warning) << "Suppressing unknown exception in ArchiveCache::~ArchiveCache." << std::endl;
         } CATCH_END
     }
 }
