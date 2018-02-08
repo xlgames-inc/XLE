@@ -202,7 +202,7 @@ namespace RenderCore { namespace Metal_DX11
             ::Assets::DependentFileState timeMarker;
             {
 				std::unique_ptr<::Assets::IFileInterface> fileInterface;
-				auto ioResult = ::Assets::MainFileSystem::TryOpen(fileInterface, path, "rb");
+				auto ioResult = ::Assets::MainFileSystem::TryOpen(fileInterface, path, "rb", FileShareMode::Read | FileShareMode::Write);
 				if (ioResult == ::Assets::IFileSystem::IOReason::Success && fileInterface) {
 					auto desc = fileInterface->GetDesc();
                     size = desc._size;

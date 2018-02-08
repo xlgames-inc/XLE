@@ -312,39 +312,54 @@ namespace RenderCore { namespace Assets
             if (!c)
                 Throw(std::runtime_error("Low level shader compiler has been destroyed before compile operation completed"));
 
-            Blob errors, payload;
-            bool success = false;
-            std::vector<::Assets::DependentFileState> deps;
-            if (c->_preprocessor) {
-                auto preprocessedOutput = c->_preprocessor->RunPreprocessor(resId._filename);
-                if (preprocessedOutput._processedSource.empty())
-                    Throw(std::runtime_error("Preprocessed output is empty"));
+			std::vector<::Assets::DependentFileState> deps;
+			Blob errors, payload;
+			bool success = false;
 
-                deps = std::move(preprocessedOutput._dependencies);
+			TRY
+			{
+				if (c->_preprocessor) {
+					auto preprocessedOutput = c->_preprocessor->RunPreprocessor(resId._filename);
+					if (preprocessedOutput._processedSource.empty())
+						Throw(std::runtime_error("Preprocessed output is empty"));
 
-                success = c->_compiler->DoLowLevelCompile(
-                    payload, errors, deps,
-                    preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(), resId,
-                    definesTable.c_str());
+					deps = std::move(preprocessedOutput._dependencies);
 
-            } else {
-                deps.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resId._filename));
-                size_t fileSize = 0;
-                auto fileData = ::Assets::TryLoadFileAsMemoryBlock(resId._filename, &fileSize);
-                if (!fileData.get() || !fileSize)
-                    Throw(std::runtime_error("Shader source file is empty or missing"));
+					success = c->_compiler->DoLowLevelCompile(
+						payload, errors, deps,
+						preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(), resId,
+						definesTable.c_str());
 
-                success = c->_compiler->DoLowLevelCompile(
-                    payload, errors, deps,
-                    fileData.get(), fileSize, resId,
-                    definesTable.c_str());
-            }
+				} else {
+					deps.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resId._filename));
 
-            auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
-            auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
-            if (newState == ::Assets::AssetState::Invalid)
-                Throw(::Assets::Exceptions::ConstructionError(
-                    ::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood, depVal, errors));
+					// Don't use TryLoadFileAsMemoryBlock here, because we want exceptions to propagate upwards
+					// Also, allow read & write sharing, because we want to support rapid reloading of shaders that
+					// might be open in an external editor
+					auto file = ::Assets::MainFileSystem::OpenFileInterface(resId._filename, "rb" , FileShareMode::Read | FileShareMode::Write);
+					file->Seek(0, FileSeekAnchor::End);
+					auto fileSize = file->TellP();
+					file->Seek(0);
+
+					auto fileData = std::make_unique<uint8[]>(fileSize);
+					file->Read(fileData.get(), 1, fileSize);
+
+					success = c->_compiler->DoLowLevelCompile(
+						payload, errors, deps,
+						fileData.get(), fileSize, resId,
+						definesTable.c_str());
+				}
+			}
+				// embue any exceptions with the dependency validation
+			CATCH(const ::Assets::Exceptions::ConstructionError& e)
+			{
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+			}
+			CATCH(const std::exception& e)
+			{
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+			}
+			CATCH_END
 
                 // before we can finish the "complete" step, we need to commit
                 // to archive output
@@ -355,51 +370,55 @@ namespace RenderCore { namespace Assets
                 depName, dimof(depName));
             auto archive = c->_shaderCacheSet->GetArchive(archiveName, *store);
 
-            assert(payload.get() && payload->size() > 0);
+			// payload will be empty on compile error, so don't write it out
+            if (payload && !payload->empty()) {
+				#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+					auto metricsString =
+						c->_compiler->MakeShaderMetricsString(
+							AsPointer(payload->cbegin()), payload->size());
+				#endif
 
-            #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                auto metricsString =
-                    c->_compiler->MakeShaderMetricsString(
-                        AsPointer(payload->cbegin()), payload->size());
-            #endif
+				std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
+				auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
+				auto depNameAsString = std::string(depName);
 
-            std::vector<::Assets::DependentFileState> depsAsVector(deps.begin(), deps.end());
-            auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
-            auto depNameAsString = std::string(depName);
+				#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+						//  When we have archive attachments enabled, we can write
+						//  some information to help identify this shader object
+						//  We'll start with something to define the object...
+					std::stringstream builder;
+					builder
+						<< "[" << resId._filename
+						<< ":" << resId._entryPoint
+						<< ":" << resId._shaderModel
+						<< "] [" << definesTable << "]";
+					auto archiveCacheAttachment = builder.str();
+				#endif
 
-            #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                    //  When we have archive attachments enabled, we can write
-                    //  some information to help identify this shader object
-                    //  We'll start with something to define the object...
-                std::stringstream builder;
-                builder
-                    << "[" << resId._filename
-                    << ":" << resId._entryPoint
-                    << ":" << resId._shaderModel
-                    << "] [" << definesTable << "]";
-                auto archiveCacheAttachment = builder.str();
-            #endif
+				archive->Commit(
+					archiveId, payload,
+					#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+						(archiveCacheAttachment + " [" + metricsString + "]"),
+					#else
+						std::string(),
+					#endif
 
-            archive->Commit(
-                archiveId, payload,
-                #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                    (archiveCacheAttachment + " [" + metricsString + "]"),
-                #else
-                    std::string(),
-                #endif
-
-                        // on flush, we need to write out the dependencies file
-                        // note that delaying the call to WriteDependencies requires
-                        // many small annoying allocations! It's much simplier if we
-                        // can just write them now -- but it causes problems if we a
-                        // crash or use End Debugging before we flush the archive
-                [depsAsVector, depNameAsString, baseDirAsString, store]()
-                { store->WriteDependencies(
-                    depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString),
-                    MakeIteratorRange(depsAsVector), false); });
-            (void)archiveCacheAttachment;
+							// on flush, we need to write out the dependencies file
+							// note that delaying the call to WriteDependencies requires
+							// many small annoying allocations! It's much simplier if we
+							// can just write them now -- but it causes problems if we a
+							// crash or use End Debugging before we flush the archive
+					[depsAsVector, depNameAsString, baseDirAsString, store]()
+					{ store->WriteDependencies(
+						depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString),
+						MakeIteratorRange(depsAsVector), false); });
+				(void)archiveCacheAttachment;
+			}
 
                 // Create the artifact and add it to the compile marker
+			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
+			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+
             future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
             future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
 
