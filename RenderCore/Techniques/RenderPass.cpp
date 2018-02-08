@@ -102,11 +102,13 @@ namespace RenderCore { namespace Techniques
         // We need to allocate the particular frame buffer we're going to use
         // And then we'll call BeginRenderPass to begin the render pass
 
+        _namedAttachments = std::make_shared<NamedAttachmentsWrapper>(namedResources);
+
         Metal::FrameBufferPool cache;
         _frameBuffer = cache.BuildFrameBuffer(
             Metal::GetObjectFactory(context), layout, 
             namedResources.GetFrameBufferProperties(),
-            NamedAttachmentsWrapper(namedResources),
+            *_namedAttachments,
             hashName);
         assert(_frameBuffer);
 
@@ -280,7 +282,11 @@ namespace RenderCore { namespace Techniques
         assert(resName < s_maxBoundTargets);
         if (_pimpl->_attachments[resName] == resource) return;
 
-		_pimpl->_srvPool.Erase(*_pimpl->_attachments[resName]);
+        auto& attach = _pimpl->_attachments[resName];
+        if (attach) {
+		    _pimpl->_srvPool.Erase(*attach);
+            attach = nullptr;
+        }
 
         auto desc = Metal::ExtractDesc(*resource);
         _pimpl->_attachmentDescs[resName] = 
@@ -296,7 +302,7 @@ namespace RenderCore { namespace Techniques
                 | ((desc._bindFlags & BindFlag::TransferSrc) ? AttachmentDesc::Flags::TransferSource : 0u)
             };
 
-        _pimpl->_attachments[resName] = resource;
+        attach = resource;
     }
 
     void AttachmentPool::Unbind(AttachmentName resName)
@@ -374,15 +380,15 @@ namespace RenderCore { namespace Techniques
         return FrameBufferDesc{std::move(fragment._subpasses)};
     }
 
-    static bool IsCompatible(const AttachmentDesc& lhs, const AttachmentDesc& rhs)
+    static bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request)
     {
         return
-            ( (lhs._format == rhs._format) || (lhs._format == Format::Unknown) || (rhs._format == Format::Unknown) )
-            && lhs._width == rhs._width && lhs._height == rhs._height
-            && lhs._arrayLayerCount == rhs._arrayLayerCount
-            && lhs._defaultAspect == rhs._defaultAspect
-            && lhs._dimsMode == rhs._dimsMode
-            && lhs._flags == rhs._flags
+            ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
+            && testAttachment._width == request._width && testAttachment._height == request._height
+            && testAttachment._arrayLayerCount == request._arrayLayerCount
+            && testAttachment._defaultAspect == request._defaultAspect
+            && testAttachment._dimsMode == request._dimsMode
+            && (testAttachment._flags & request._flags) == request._flags
             ;
     }
 
@@ -466,6 +472,14 @@ namespace RenderCore { namespace Techniques
         return xl_ctz8(~bitField);
     }
 
+    static uint64_t GetSemantic(IteratorRange<const std::pair<AttachmentName, FrameBufferDescFragment::Attachment>*> attachments, RenderCore::AttachmentName attachment)
+    {
+        for (const auto& a:attachments)
+            if (a.first == attachment)
+                return a.second._semantic;
+        return 0;
+    }
+
     std::pair<FrameBufferDescFragment, std::vector<PassFragment>> MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
         IteratorRange<const FrameBufferDescFragment*> fragments)
@@ -478,6 +492,23 @@ namespace RenderCore { namespace Techniques
         std::vector<PassFragment> fragmentRemapping;
 
         if (!fragments.size()) return { std::move(result), std::move(fragmentRemapping) };
+
+        // Some attachments will need the "ShaderResource" flag set, so that we can use them as an
+        // input to the a shader. This propagates backwards, since once any data is written to a
+        // non-shader resource attachment, it can never be moved to a shader resource attachment.
+        // Hense we must ensure that any attachments that will ever be used as a shader resource
+        // always have that flag set.
+        std::vector<uint64_t> shaderResourceSemantics;
+        for (const auto& f:fragments)
+            for (const auto& p:f._subpasses)
+                for (const auto& a:p._input)
+                    if (HasRetain(a._loadFromPreviousPhase)) {
+                        auto semantic = GetSemantic(MakeIteratorRange(f._attachments), a._resourceName);
+                        if (semantic)
+                            shaderResourceSemantics.push_back(semantic);
+                    }
+        std::sort(shaderResourceSemantics.begin(), shaderResourceSemantics.end());
+        shaderResourceSemantics.erase(std::unique(shaderResourceSemantics.begin(), shaderResourceSemantics.end()), shaderResourceSemantics.end());
 
         std::vector<PreregisteredAttachment> workingAttachments { preregisteredInputs.begin(), preregisteredInputs.end() };
         for (auto f=fragments.begin(); f!=fragments.end(); ++f) {
@@ -509,17 +540,12 @@ namespace RenderCore { namespace Techniques
                 }
                 assert(directionFlags != 0);
 
-                /*
-                FrameBufferDescFragment::Direction dir = FrameBufferDescFragment::Direction::Temporary;
-                switch (directionFlags) {
-                case DirectionFlags::Reference | DirectionFlags::Load | DirectionFlags::Store: dir = FrameBufferDescFragment::Direction::InOut; break;
-                case DirectionFlags::Reference | DirectionFlags::Load: dir = FrameBufferDescFragment::Direction::In; break;
-                case DirectionFlags::Reference | DirectionFlags::Store: dir = FrameBufferDescFragment::Direction::Out; break;
-                }
-                assert(interf.second._direction == dir);
-                */
-
                 auto interfaceAttachment = interf.second;
+                // toggle on the "ShaderResource" flag, if necessary
+                if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
+                    interfaceAttachment._desc._flags |= AttachmentDesc::Flags::Enum::ShaderResource;
+                }
+
                 if (directionFlags & DirectionFlags::Load) {
 
                     // We're expecting a buffer that already has some initialized contents. Look for
@@ -549,7 +575,6 @@ namespace RenderCore { namespace Techniques
                         workingAttachments.begin(), workingAttachments.end(),
                         [&interfaceAttachment](const PreregisteredAttachment& input) {
                             return (input._state == PreregisteredAttachment::State::Uninitialized)
-                                && (input._semantic == interfaceAttachment._semantic)
                                 && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
 

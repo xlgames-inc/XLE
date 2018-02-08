@@ -208,19 +208,11 @@ namespace RenderCore
             FormatFilter(Format explicitFormat) : _aspect(UndefinedAspect), _explicitFormat(explicitFormat) {}
         };
 
-        FormatFilter                _format;
-        SubResourceRange            _mipRange;
-        SubResourceRange            _arrayLayerRange;
-        TextureDesc::Dimensionality _dimensionality;
-		Flags::BitField				_flags;
-
-        TextureViewDesc(
-            FormatFilter format = FormatFilter(),
-            TextureDesc::Dimensionality dimensionality = TextureDesc::Dimensionality::Undefined,
-            SubResourceRange mipRange = All,
-            SubResourceRange arrayLayerRange = All,
-			Flags::BitField flags = 0
-            ) : _format(format), _dimensionality(dimensionality), _mipRange(mipRange), _arrayLayerRange(arrayLayerRange), _flags(flags) {}
+        FormatFilter                _format = FormatFilter {};
+        SubResourceRange            _mipRange = All;
+        SubResourceRange            _arrayLayerRange = All;
+        TextureDesc::Dimensionality _dimensionality = TextureDesc::Dimensionality::Undefined;
+		Flags::BitField				_flags = 0;
     };
 
     enum class FormatUsage { SRV, RTV, DSV, UAV };

@@ -77,7 +77,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
         
-        assert(subpasses.size() < s_maxSubpasses);
+        assert(subpasses.size() <= s_maxSubpasses);
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 			auto& sp = _subpasses[c];
@@ -161,6 +161,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             glDrawBuffers(sp._rtvCount, drawBuffers);
+
+            // auto validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+            // assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
         }
         _subpassCount = (unsigned)subpasses.size();
     }

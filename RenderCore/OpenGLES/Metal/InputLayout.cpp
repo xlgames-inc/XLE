@@ -107,7 +107,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 lastElementEnd = elementStart + elementSize;
             }
 
-            _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
+            if (bindingStart != (unsigned)_bindings.size())
+                _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
     }
 
@@ -168,7 +169,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 _attributeState |= 1<<unsigned(attrLoc);
             }
 
-            _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
+            if (bindingStart != (unsigned)_bindings.size())
+				_bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
     }
 

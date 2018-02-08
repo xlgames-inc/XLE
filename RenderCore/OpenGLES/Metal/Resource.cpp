@@ -133,7 +133,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             // write only textures can become render buffers
             auto fmt = AsTexelFormatType(desc._textureDesc._format);
-            bool canBeRenderBuffer = desc._cpuAccess == 0 && desc._gpuAccess == GPUAccess::Write && !initializer;
+            bool canBeRenderBuffer = desc._cpuAccess == 0 && desc._gpuAccess == GPUAccess::Write && (!(desc._bindFlags & BindFlag::ShaderResource)) && !initializer;
             if (!canBeRenderBuffer) {
 
                 _underlyingTexture = factory.CreateTexture();
@@ -143,7 +143,11 @@ namespace RenderCore { namespace Metal_OpenGLES
                     ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
                     auto bindTarget = GL_TEXTURE_2D;
-                    bool useTexStorage = true;
+                    #if PLATFORMOS_ACTIVE == PLATFORMOS_OSX     // DavidJ -- temporary hack -- glTexStorage path not working for me on OSX (pixel format compatibility issue?) -- falling back to old path
+                        bool useTexStorage = false;
+                    #else
+                        bool useTexStorage = true;
+                    #endif
                     if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
                         assert(desc._textureDesc._height == 1);
                         assert(desc._textureDesc._arrayCount <= 1);
@@ -244,6 +248,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         if (!glIsTexture(texture->AsRawGLHandle()))
             Throw(::Exceptions::BasicLabel("Binding non-texture as texture resource"));
+        _isBackBuffer = false;
     }
 
     Resource::Resource(const intrusive_ptr<OpenGL::RenderBuffer>& renderbuffer)
@@ -253,6 +258,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             Throw(::Exceptions::BasicLabel("Binding non-render buffer as render buffer resource"));
 
         _desc = ExtractDesc(renderbuffer.get());
+        _isBackBuffer = false;
     }
 
     Resource::Resource(const intrusive_ptr<OpenGL::Buffer>& buffer)
@@ -262,6 +268,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             Throw(::Exceptions::BasicLabel("Binding non-render buffer as render buffer resource"));
 
         _desc = ExtractDesc(buffer.get());
+        _isBackBuffer = false;
     }
 
     Resource::Resource() : _isBackBuffer(false) {}
