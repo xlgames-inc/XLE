@@ -237,6 +237,11 @@ namespace Utility
 				}
 		#endif
 
+    #elif (STL_ACTIVE == STL_GCC) || (STL_ACTIVE == STL_LIBCPP)
+
+        template <class Iterator>
+            decltype(&(*std::declval<std::__wrap_iter<Iterator>>())) AsPointer(std::__wrap_iter<Iterator> i) { return *reinterpret_cast<Iterator*>(&i); }
+
     #else
 
         /*
@@ -252,7 +257,7 @@ namespace Utility
         template <typename Type>
             const Type * AsPointer( const typename std::basic_string<Type>::const_iterator & i ) { return &(*i); }
         */
-    
+
         template <typename Iterator>
             decltype(&(*std::declval<Iterator>())) AsPointer(Iterator i) { return &(*i); }
     
