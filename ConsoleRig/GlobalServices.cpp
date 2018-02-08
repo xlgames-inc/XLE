@@ -164,10 +164,8 @@ namespace ConsoleRig
 
     GlobalServices::GlobalServices(const StartupConfig& cfg)
     {
-        if (cfg._shortTaskThreadPoolCount)
-            _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
-        if (cfg._longTaskThreadPoolCount)
-            _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
+        _shortTaskPool = std::make_unique<CompletionThreadPool>(cfg._shortTaskThreadPoolCount);
+        _longTaskPool = std::make_unique<CompletionThreadPool>(cfg._longTaskThreadPoolCount);
 
         _crossModule = std::make_shared<CrossModule>();
         MainRig_Startup(cfg, _crossModule->_services);

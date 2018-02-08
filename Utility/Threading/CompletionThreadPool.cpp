@@ -13,6 +13,7 @@ namespace Utility
 {
     void CompletionThreadPool::EnqueueBasic(PendingTask&& task)
     {
+        assert(IsGood());
         _pendingTasks.push_overflow(std::forward<PendingTask>(task));
 
             // set event should wake one thread -- and that thread should
@@ -99,6 +100,7 @@ namespace Utility
 
     void ThreadPool::EnqueueBasic(PendingTask&& task)
     {
+        assert(IsGood());
         _pendingTasks.push_overflow(std::forward<PendingTask>(task));
         _pendingTaskVariable.notify_one();
     }

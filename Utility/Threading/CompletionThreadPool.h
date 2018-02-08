@@ -22,6 +22,8 @@ namespace Utility
 
 		void EnqueueBasic(std::function<void()>&& task);
 
+        bool IsGood() const { return !_workerThreads.empty(); }
+
         CompletionThreadPool(unsigned threadCount);
         ~CompletionThreadPool();
 
@@ -53,6 +55,8 @@ namespace Utility
             void Enqueue(Fn&& fn, Args&&... args);
 
 		void EnqueueBasic(std::function<void()>&& task);
+
+        bool IsGood() const { return !_workerThreads.empty(); }
 
         ThreadPool(unsigned threadCount);
         ~ThreadPool();
