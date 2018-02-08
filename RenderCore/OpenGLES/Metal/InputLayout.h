@@ -25,12 +25,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         BoundInputLayout() : _attributeState(0) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
-        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program);
+        BoundInputLayout(IteratorRange<IteratorRange<const MiniInputElementDesc*>*> layouts, const ShaderProgram& program);
+
     private:
         class Binding
         {
         public:
-            unsigned    _attributeIndex;
+            unsigned    _attributeLocation;
             unsigned    _size;
             unsigned    _type;
             bool        _isNormalized;

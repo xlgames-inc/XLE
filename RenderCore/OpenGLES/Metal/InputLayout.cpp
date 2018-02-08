@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
     {
             //
-            //      For each entry in "layout", we need to compare it's name
+            //      For each entry in "layout", we need to compare its name
             //      with the names of the attributes in "shader".
             //
             //      When we find a match, write the details into a binding object.
@@ -111,59 +111,65 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& program)
+    BoundInputLayout::BoundInputLayout(IteratorRange<IteratorRange<const MiniInputElementDesc*>*> layouts, const ShaderProgram& program)
     {
-        _bindings.reserve(layout.size());
         _attributeState = 0;
 
-        auto vertexStride = CalculateVertexStride(layout, false);
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_maxVertexAttributes);
+        
         int activeAttributeCount = 0, activeAttributeMaxLength = 0;
         glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTES, &activeAttributeCount);
         glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &activeAttributeMaxLength);
 
         GLchar buffer[activeAttributeMaxLength];
 
-        for (int a=0; a<activeAttributeCount; ++a) {
-            GLint size; GLenum type;
-            GLsizei nameLen;
-            glGetActiveAttrib(programHandle, a, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
-            if (!nameLen) continue;
+        for (const auto& layout : layouts) {
+            _bindings.reserve(_bindings.size() + layout.size());
+            assert(_bindings.capacity() <= _maxVertexAttributes);
 
-            auto semanticIdx = nameLen;
-            while (std::isdigit(buffer[semanticIdx-1])) --semanticIdx;
-            uint64_t hash = Hash64(buffer, &buffer[semanticIdx]);
-            hash += std::atoi(&buffer[semanticIdx]);
-            auto i = std::find_if(layout.begin(), layout.end(), [hash](const MiniInputElementDesc&l) { return l._semanticHash == hash; });
-            if (i == layout.end()) {
-                #if defined(XLE_HAS_CONSOLE_RIG)
+            auto vertexStride = CalculateVertexStride(layout, false);
+            auto bindingStart = _bindings.size();
+
+            for (int attrIndex=0; attrIndex<activeAttributeCount; ++attrIndex) {
+                GLint size; GLenum type;
+                GLsizei nameLen;
+                glGetActiveAttrib(programHandle, attrIndex, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
+                if (!nameLen) continue;
+                GLint attrLoc = glGetAttribLocation(programHandle, buffer);
+
+                auto semanticIdx = nameLen;
+                while (std::isdigit(buffer[semanticIdx-1])) --semanticIdx;
+                uint64_t hash = Hash64(buffer, &buffer[semanticIdx]);
+                hash += std::atoi(&buffer[semanticIdx]);
+                auto i = std::find_if(layout.begin(), layout.end(), [hash](const MiniInputElementDesc&l) { return l._semanticHash == hash; });
+                if (i == layout.end()) {
+#if defined(XLE_HAS_CONSOLE_RIG)
                     LogWarning << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
-                #endif
-                continue;
-            }
+#endif
+                    continue;
+                }
 
-            const auto elementStart = CalculateVertexStride(MakeIteratorRange(layout.begin(), i), false);
-            // auto fmt = VertexAttributePointerAsFormat(size, type, true);
-            // assert(fmt == i->_nativeFormat);
+                const auto elementStart = CalculateVertexStride(MakeIteratorRange(layout.begin(), i), false);
+                // auto fmt = VertexAttributePointerAsFormat(size, type, true);
+                // assert(fmt == i->_nativeFormat);
 
-            const auto componentType = GetComponentType(i->_nativeFormat);
-            _bindings.push_back({
-                    unsigned(a),
+                const auto componentType = GetComponentType(i->_nativeFormat);
+                _bindings.push_back({
+                    unsigned(attrLoc),
                     GetComponentCount(GetComponents(i->_nativeFormat)), AsGLVertexComponentType(i->_nativeFormat),
                     (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
                     unsigned(vertexStride),
                     elementStart
                 });
 
-            assert(!(_attributeState & 1<<unsigned(a)));
-            _attributeState |= 1<<unsigned(a);
+                assert(!(_attributeState & 1<<unsigned(attrLoc)));
+                _attributeState |= 1<<unsigned(attrLoc);
+            }
+
+            _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
-
-        // all bindings are in VB 0 in this form
-        _bindingsByVertexBuffer.push_back((unsigned)_bindings.size());
-
-        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&_maxVertexAttributes);
     }
 
     void BoundInputLayout::Apply(DeviceContext&, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
@@ -178,7 +184,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             for(auto ai=attributeIterator; ai<(attributeIterator+bindingCount); ++ai) {
                 const auto& i = _bindings[ai];
                 glVertexAttribPointer(
-                    i._attributeIndex, i._size, i._type, i._isNormalized,
+                    i._attributeLocation, i._size, i._type, i._isNormalized,
                     i._stride,
                     (const void*)(size_t)(vb._offset + i._offset));
             }
