@@ -28,6 +28,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     class BoundInputLayout;
     class ShaderProgram;
     class BlendState;
+    class ViewportDesc;
 
     class RasterizationDesc;
     class DepthStencilDesc;
