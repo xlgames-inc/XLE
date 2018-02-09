@@ -30,14 +30,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     : _resource(AsResource(resource))
     , _window(window)
     {
-        _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount >= 1;
+        _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount > 1;
         // todo -- handle "view" transformation
     }
 
     ShaderResourceView::ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window)
     : ShaderResourceView(GetObjectFactory(*resource.get()), resource, window)
     {
-        _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount >= 1;
+        _hasMipMaps = _resource->GetDesc()._textureDesc._mipCount > 1;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

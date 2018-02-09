@@ -168,7 +168,6 @@ namespace RenderCore { namespace Techniques
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
         std::shared_ptr<INamedAttachments> _namedAttachments;
         Metal::DeviceContext* _attachedContext;
-        unsigned _activeSubpass;
     };
 
     std::shared_ptr<INamedAttachments> MakeNamedAttachmentsWrapper(AttachmentPool& namedRes);

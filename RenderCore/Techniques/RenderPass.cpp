@@ -135,21 +135,18 @@ namespace RenderCore { namespace Techniques
     RenderPassInstance::RenderPassInstance(RenderPassInstance&& moveFrom)
     : _frameBuffer(std::move(moveFrom._frameBuffer))
     , _attachedContext(moveFrom._attachedContext)
-    , _activeSubpass(moveFrom._activeSubpass)
     {}
 
     RenderPassInstance& RenderPassInstance::operator=(RenderPassInstance&& moveFrom)
     {
         _frameBuffer = std::move(moveFrom._frameBuffer);
         _attachedContext = moveFrom._attachedContext;
-        _activeSubpass = moveFrom._activeSubpass;
         return *this;
     }
 
     RenderPassInstance::RenderPassInstance()
     {
         _attachedContext = nullptr;
-        _activeSubpass = 0u;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -458,11 +455,16 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
-    static AttachmentName NextName(IteratorRange<const PreregisteredAttachment*> attachments)
+    static AttachmentName NextName(IteratorRange<const PreregisteredAttachment*> attachments0, IteratorRange<const PreregisteredAttachment*> attachments1)
     {
         // find the lowest name not used by any of the attachments
         uint64_t bitField = 0;
-        for (const auto& a:attachments) {
+        for (const auto& a:attachments0) {
+            assert(a._name < 64);
+            assert(!(bitField & (1ull << uint64_t(a._name))));
+            bitField |= 1ull << uint64_t(a._name);
+        }
+        for (const auto& a:attachments1) {
             assert(a._name < 64);
             assert(!(bitField & (1ull << uint64_t(a._name))));
             bitField |= 1ull << uint64_t(a._name);
@@ -583,7 +585,7 @@ namespace RenderCore { namespace Techniques
                         // we could write over -- but that would lead to other complications. Let's just
                         // create something new.
 
-                        reboundName = std::max(NextName(MakeIteratorRange(workingAttachments)), NextName(MakeIteratorRange(newWorkingAttachments)));
+                        reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
 
                         PreregisteredAttachment newState {
                             reboundName,
@@ -628,6 +630,18 @@ namespace RenderCore { namespace Techniques
                     a._resourceName = Remap(attachmentRemapping, a._resourceName);
                 for (auto&a:newSubpass._resolve)
                     a._resourceName = Remap(attachmentRemapping, a._resourceName);
+
+                #if defined(_DEBUG)
+                    std::vector<AttachmentName> uniqueAttachments;
+                    for (auto&a:newSubpass._output) uniqueAttachments.push_back(a._resourceName);
+                    uniqueAttachments.push_back(newSubpass._depthStencil._resourceName);
+                    for (auto&a:newSubpass._input) uniqueAttachments.push_back(a._resourceName);
+                    for (auto&a:newSubpass._preserve) uniqueAttachments.push_back(a._resourceName);
+                    for (auto&a:newSubpass._resolve) uniqueAttachments.push_back(a._resourceName);
+                    std::sort(uniqueAttachments.begin(), uniqueAttachments.end());
+                    assert(std::unique(uniqueAttachments.begin(), uniqueAttachments.end()) == uniqueAttachments.end()); // make sure the same attachment isn't used more than once
+                #endif
+
                 result.AddSubpass(std::move(newSubpass));
             }
             fragmentRemapping.emplace_back(std::move(passFragment));
