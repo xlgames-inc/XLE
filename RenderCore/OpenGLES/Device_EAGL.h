@@ -53,6 +53,7 @@ namespace RenderCore { namespace ImplOpenGLES
         void                        InvalidateCachedState() const;
 
         IAnnotator&                 GetAnnotator();
+        virtual void*               QueryInterface(size_t guid);
 
         ThreadContext(EAGLContext* sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContext();

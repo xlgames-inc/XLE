@@ -76,6 +76,13 @@ namespace RenderCore { namespace ImplOpenGLES
         return *_annotator;
     }
 
+    void*                       ThreadContext::QueryInterface(size_t guid) {
+        if (guid == typeid(EAGLContext).hash_code()) {
+            return (EAGLContext*)_sharedContext;
+        }
+        return nullptr;
+    }
+
     ThreadContext::ThreadContext(EAGLContext* sharedContext, const std::shared_ptr<Device>& device)
     : _device(device)
     , _sharedContext(sharedContext)
@@ -95,7 +102,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (guid == typeid(IThreadContextOpenGLES).hash_code()) {
             return (IThreadContextOpenGLES*)this;
         }
-        return nullptr;
+        return ThreadContext::QueryInterface(guid);
     }
 
     ThreadContextOpenGLES::ThreadContextOpenGLES(EAGLContext* sharedContext, const std::shared_ptr<Device>& device)
