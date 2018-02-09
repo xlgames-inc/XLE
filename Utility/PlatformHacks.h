@@ -39,6 +39,7 @@ extern void glDeleteSamplers (int32_t count, const uint32_t* samplers);
 extern uint8_t glIsSampler (uint32_t sampler);
 extern void glClearBufferfv (uint32_t buffer, int32_t drawbuffer, const float *value);
 extern void glClearBufferfi (uint32_t buffer, int32_t drawbuffer, float depth, int32_t stencil);
+extern void glInvalidateFramebuffer (uint32_t target, int32_t numAttachments, const uint32_t* attachments);
 
 
 #if defined(__cplusplus)
