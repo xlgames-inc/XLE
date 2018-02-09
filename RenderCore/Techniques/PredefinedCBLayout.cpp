@@ -59,7 +59,7 @@ namespace RenderCore { namespace Techniques
 
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
-        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;?\s*)--");
+        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;.*)--");
 
         unsigned cbIterator = 0;
         const char* iterator = source.begin();
