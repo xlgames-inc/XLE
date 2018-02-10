@@ -100,24 +100,28 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         auto& objectFactory = GetObjectFactory();
         _prebuiltSamplerMipmaps = objectFactory.CreateSampler();
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _minFilter);
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
+        if (_prebuiltSamplerMipmaps) {
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _minFilter);
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
 
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
-        glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
+            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+        }
 
         _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter);
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
+        if (_prebuiltSamplerNoMipmaps) {
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
 
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
-        glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+        }
     }
 
     BlendState::BlendState() {}

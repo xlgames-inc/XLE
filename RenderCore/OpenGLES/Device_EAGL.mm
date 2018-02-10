@@ -204,6 +204,14 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(std::runtime_error("Failed to allocate renderbuffer storage for EAGL drawable in PresentationChain::PresentationChain"));
 
         _frameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(frameRenderbuffer);
+
+        _desc = std::make_shared<PresentationChainDesc>();
+        auto resDesc = ExtractDesc(*_frameRenderbuffer);
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        _desc->_width = resDesc._textureDesc._width;
+        _desc->_height = resDesc._textureDesc._height;
+        _desc->_format = resDesc._textureDesc._format;
+        _desc->_samples = resDesc._textureDesc._samples;
     }
 
     PresentationChain::~PresentationChain()
@@ -212,12 +220,12 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
+        assert(0);      // unimplemented
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
-        static std::shared_ptr<PresentationChainDesc> dummy;
-        return dummy;
+        return _desc;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -35,6 +35,7 @@ namespace RenderCore { namespace ImplOpenGLES
     private:
         TBC::OCPtr<EAGLContext> _eaglContext;
         std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
+        std::shared_ptr<PresentationChainDesc> _desc;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

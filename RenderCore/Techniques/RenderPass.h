@@ -86,6 +86,7 @@ namespace RenderCore { namespace Techniques
 
         using PassAndSlot = std::pair<unsigned, unsigned>;
         std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+        unsigned _subpassCount;
     };
 
     struct PreregisteredAttachment

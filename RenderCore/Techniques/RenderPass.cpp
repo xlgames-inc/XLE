@@ -644,6 +644,7 @@ namespace RenderCore { namespace Techniques
 
                 result.AddSubpass(std::move(newSubpass));
             }
+            passFragment._subpassCount = (unsigned)f->_subpasses.size();
             fragmentRemapping.emplace_back(std::move(passFragment));
 
             /////////////////////////////////////////////////////////////////////////////

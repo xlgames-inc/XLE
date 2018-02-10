@@ -111,7 +111,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
 
-            auto initData = initializer({0,0});
+            SubResourceInitData initData;
+            if (initializer)
+                initData = initializer({0,0});
             if (desc._bindFlags & BindFlag::ConstantBuffer) {
                 _constantBuffer.insert(_constantBuffer.end(), (const uint8_t*)initData._data.begin(), (const uint8_t*)initData._data.end());
             } else {
