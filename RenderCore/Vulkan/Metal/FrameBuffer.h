@@ -19,16 +19,6 @@ namespace RenderCore { namespace Metal_Vulkan
     class DepthStencilView;
     class TextureView;
     class DeviceContext;
-    
-    class INamedAttachments
-    {
-    public:
-        virtual auto GetSRV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> ShaderResourceView* = 0;
-        virtual auto GetRTV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> RenderTargetView* = 0;
-        virtual auto GetDSV(AttachmentName viewName, AttachmentName resName = ~0u, const TextureViewDesc& window = TextureViewDesc()) const -> DepthStencilView* = 0;
-        virtual auto GetDesc(AttachmentName resName) const -> const AttachmentDesc* = 0;
-        ~INamedAttachments();
-    };
 
     class FrameBuffer
 	{
@@ -63,14 +53,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const FrameBufferProperties& props,
-            IteratorRange<const AttachmentDesc*> attachmentResources,
             const INamedAttachments& namedResources,
             uint64 hashName);
 
         VkRenderPass BuildFrameBufferLayout(
             const ObjectFactory& factory,
             const FrameBufferDesc& desc,
-            IteratorRange<const AttachmentDesc*> attachmentResources,
+            const INamedAttachments& namedResources,
             const TextureSamples& samples);
 
         FrameBufferPool();
