@@ -21,28 +21,21 @@
 
 #include "IncludeVulkan.h"
 
-/*
-#include "Shader.h"
-#include "Buffer.h"
-#include "State.h"
-#include "TextureView.h"
-#include "ObjectFactory.h"
-#include "DeviceContext.h"
-#include "Pools.h"
-#include "Format.h"
-#include "PipelineLayout.h"
-#include "../../Types.h"
-#include "../../ShaderService.h"
-
-#include "../../../ConsoleRig/Log.h"
-*/
-
 namespace RenderCore { namespace Metal_Vulkan
 {
-    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader)
-    : BoundInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex))
-    {
-    }
+	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+	{
+        VkBuffer buffers[s_maxBoundVBs];
+		VkDeviceSize offsets[s_maxBoundVBs];
+		auto count = (unsigned)std::min(vertexBuffers.size(), dimof(buffers));
+		for (unsigned c=0; c<count; ++c) {
+			offsets[c] = vertexBuffers[c]._offset;
+			assert(const_cast<IResource*>(vertexBuffers[c]._resource)->QueryInterface(typeid(Resource).hash_code()));
+			buffers[c] = ((Resource*)vertexBuffers[c]._resource)->GetBuffer();
+		}
+        context.CmdBindVertexBuffers(0, count, buffers, offsets);
+		context.SetVertexStrides(MakeIteratorRange(_vertexStrides));
+	}
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
@@ -70,7 +63,14 @@ namespace RenderCore { namespace Metal_Vulkan
             _attributes.push_back(desc);
         }
 
+		_vertexStrides = CalculateVertexStrides(layout);
+
         // todo -- check if any input slots are not bound to anything
+    }
+
+	BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader)
+    : BoundInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex))
+    {
     }
 
     BoundInputLayout::BoundInputLayout() {}
@@ -521,6 +521,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (descWrite._requiresTemporaryBufferBarrier)
 			context.GetTemporaryBufferSpace().WriteBarrier(context);
     }
+
+	BoundUniforms::BoundUniforms() {}
+	BoundUniforms::~BoundUniforms() {}
 
 }}
 

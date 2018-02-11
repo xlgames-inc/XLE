@@ -6,6 +6,7 @@
 
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
+#include "Resource.h"
 #include "../IDeviceDX11.h"
 #include "../../RenderUtils.h"
 #include "../../../ConsoleRig/AttachableInternal.h"

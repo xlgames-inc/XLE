@@ -16,6 +16,8 @@ namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 namespace RenderCore { namespace Metal_Vulkan
 {
 	class ObjectFactory;
+	class BoundClassInterfaces;
+	class DeviceContext;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -41,17 +43,38 @@ namespace RenderCore { namespace Metal_Vulkan
 		ShaderProgram();
         ~ShaderProgram();
 
-		void Apply(DeviceContext&) const;
-		void Apply(DeviceContext&, const BoundClassInterfaces&) const;
-
-		const CompiledShaderByteCode&       GetCompiledCode(ShaderStage stage) const;
+		const CompiledShaderByteCode&			GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
+		const VulkanSharedPtr<VkShaderModule>&	GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
 
         bool DynamicLinkingEnabled() const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
-		ShaderProgram(ShaderProgram&&) never_throws;
-        ShaderProgram& operator=(ShaderProgram&&) never_throws;
+		ShaderProgram(ShaderProgram&&) = default;
+        ShaderProgram& operator=(ShaderProgram&&) = default;
+
+		// Legacy asset based API --
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> definesTable = {});
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> gsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> definesTable);
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ShaderProgram>&,
+			StringSection<::Assets::ResChar> vsName,
+			StringSection<::Assets::ResChar> gsName,
+			StringSection<::Assets::ResChar> psName,
+			StringSection<::Assets::ResChar> hsName,
+			StringSection<::Assets::ResChar> dsName,
+			StringSection<::Assets::ResChar> definesTable);
 
     protected:
 		CompiledShaderByteCode _compiledCode[ShaderStage::Max];
@@ -65,7 +88,9 @@ namespace RenderCore { namespace Metal_Vulkan
     class ComputeShader
     {
     public:
-        explicit ComputeShader(const CompiledShaderByteCode& byteCode);
+		const VulkanSharedPtr<VkShaderModule>&	GetModule() const { return _module; }
+
+        ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& byteCode);
         ComputeShader();
         ~ComputeShader();
 

@@ -336,26 +336,6 @@ namespace RenderCore { namespace Metal_DX11
 	}
 
 
-	static std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>> MakeByteCodeFuture(ShaderStage stage, StringSection<> initializer)
-	{
-		char profileStr[] = "?s_";
-		switch (stage) {
-		case ShaderStage::Vertex: profileStr[0] = 'v'; break;
-		case ShaderStage::Geometry: profileStr[0] = 'g'; break;
-		case ShaderStage::Pixel: profileStr[0] = 'p'; break;
-		case ShaderStage::Domain: profileStr[0] = 'd'; break;
-		case ShaderStage::Hull: profileStr[0] = 'h'; break;
-		case ShaderStage::Compute: profileStr[0] = 'c'; break;
-		}
-		if (!XlFindStringI(initializer, profileStr)) {
-			ResChar temp[MaxPath];
-			StringMeldInPlace(temp) << initializer << ":" << profileStr << "*";
-			return ::Assets::MakeAsset<CompiledShaderByteCode>(temp);
-		} else {
-			return ::Assets::MakeAsset<CompiledShaderByteCode>(initializer);
-		}
-	}
-
 	static std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>> MakeByteCodeFuture(ShaderStage stage, StringSection<> initializer, StringSection<> definesTable)
 	{
 		char profileStr[] = "?s_";
@@ -428,7 +408,7 @@ namespace RenderCore { namespace Metal_DX11
 		StringSection<::Assets::ResChar> definesTable)
 	{
 		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
-		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, definesTable);
+		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, gsName, definesTable);
 		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
 
 		future.SetPollingFunction(
@@ -469,7 +449,7 @@ namespace RenderCore { namespace Metal_DX11
 		StringSection<::Assets::ResChar> definesTable)
 	{
 		auto vsCode = MakeByteCodeFuture(ShaderStage::Vertex, vsName, definesTable);
-		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, definesTable);
+		auto gsCode = MakeByteCodeFuture(ShaderStage::Geometry, gsName, definesTable);
 		auto psCode = MakeByteCodeFuture(ShaderStage::Pixel, psName, definesTable);
 		auto hsCode = MakeByteCodeFuture(ShaderStage::Hull, hsName, definesTable);
 		auto dsCode = MakeByteCodeFuture(ShaderStage::Domain, dsName, definesTable);

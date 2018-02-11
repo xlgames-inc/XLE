@@ -11,19 +11,5 @@
 namespace RenderCore { namespace Metal_Vulkan
 {
 
-    template<int Count> 
-        void DeviceContext::Bind(
-            const ResourceList<VertexBuffer, Count>& VBs, 
-            unsigned stride, unsigned offset) 
-        {
-			assert(_commandList);
-            assert(Count <= s_maxBoundVBs);
-            VkDeviceSize offsets[s_maxBoundVBs] = { offset, offset, offset, offset };
-            SetVertexStrides(VBs._startingPoint, {stride, stride, stride, stride});
-            vkCmdBindVertexBuffers(
-				_commandList.get(),
-                VBs._startingPoint, Count,
-                VBs._buffers, offsets);
-        }
 
 }}

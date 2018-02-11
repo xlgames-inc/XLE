@@ -33,8 +33,6 @@ namespace RenderCore { namespace Metal_Vulkan
         TextureView();
         ~TextureView();
 
-        using UnderlyingType = const TextureView*;
-		UnderlyingType			GetUnderlying() const { return this; }
 		bool					IsGood() const { return _imageView != nullptr; }
 
 		Resource*							GetResource() const { return _image.get(); }

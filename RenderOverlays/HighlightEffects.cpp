@@ -61,7 +61,7 @@ namespace RenderOverlays
         metalContext.Bind(Topology::TriangleStrip);
         metalContext.Unbind<Metal::BoundInputLayout>();
 
-        auto desc = Metal::ExtractDesc(stencilSrv.GetResource());
+        auto desc = stencilSrv.GetResource()->GetDesc();
         if (desc._type != ResourceDesc::Type::Texture) return;
         
         auto components = GetComponents(desc._textureDesc._format);
@@ -104,10 +104,10 @@ namespace RenderOverlays
     {
         auto stencilSrv = namedRes.GetSRV(
             RenderCore::Techniques::Attachments::MainDepthStencil,
-            TextureViewDesc(
+            TextureViewDesc{
                 {TextureViewDesc::Aspect::Stencil},
-                TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
-                TextureViewDesc::Flags::JustStencil));
+                TextureViewDesc::All, TextureViewDesc::All, TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::JustStencil});
         if (!stencilSrv->IsGood()) return;
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);

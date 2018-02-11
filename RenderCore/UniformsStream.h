@@ -20,6 +20,12 @@ namespace RenderCore
         IteratorRange<const ConstantBufferView*> _constantBuffers = {};
         IteratorRange<const void*const*> _resources = {};				// Metal::ShaderResourceView
         IteratorRange<const void*const*> _samplers = {};				// Metal::SamplerState
+
+		template<typename Type>
+			static IteratorRange<const void*const*> MakeResources(const Type& input)
+			{
+				return IteratorRange<const void*const*>((const void*const*)input.begin(), (const void*const*)input.end());
+			}
     };
 
     class ConstantBufferElementDesc

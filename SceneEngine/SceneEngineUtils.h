@@ -22,7 +22,7 @@
 #endif
 
 namespace RenderOverlays { class Font; }
-namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class UnderlyingAPI; }
+namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class UnderlyingAPI; class IResource; }
 namespace BufferUploads { class ResourceLocator; }
 
 namespace Utility
@@ -168,7 +168,7 @@ namespace SceneEngine
     static const auto TechniqueIndex_StochasticTransparency = RenderCore::Techniques::TechniqueIndex::StochasticTransparency;
     static const auto TechniqueIndex_DepthWeightedTransparency = RenderCore::Techniques::TechniqueIndex::DepthWeightedTransparency;
 
-    RenderCore::ResourcePtr CreateResourceImmediate(const RenderCore::ResourceDesc& desc);
+    std::shared_ptr<RenderCore::IResource> CreateResourceImmediate(const RenderCore::ResourceDesc& desc);
 
         //  Currently there is no flexible way to set material parameters
         //  there's just a single global set of material values...

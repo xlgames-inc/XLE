@@ -86,7 +86,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const VkFramebufferCreateInfo& createInfo) const;
 
         VulkanUniquePtr<VkShaderModule> CreateShaderModule(
-            const void* byteCode, size_t size,
+            IteratorRange<const void*> byteCode,
             VkShaderModuleCreateFlags flags = 0) const;
 
         VulkanUniquePtr<VkPipeline> CreateGraphicsPipeline(

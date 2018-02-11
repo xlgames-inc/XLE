@@ -756,6 +756,8 @@ namespace RenderCore { namespace Metal_Vulkan
             desc.pColorAttachments = (const VkAttachmentReference*)(beforeOutputs+1);
             desc.colorAttachmentCount = uint32_t(attachReferences.size() - beforeOutputs);
             desc.pResolveAttachments = nullptr; // not supported
+			desc.pPreserveAttachments = nullptr;
+			desc.preserveAttachmentCount = 0;
 
             if (p._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
 				auto resource = p._depthStencil._resourceName;

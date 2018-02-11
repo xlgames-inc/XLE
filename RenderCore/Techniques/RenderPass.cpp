@@ -285,7 +285,7 @@ namespace RenderCore { namespace Techniques
             attach = nullptr;
         }
 
-        auto desc = Metal::ExtractDesc(*resource);
+        auto desc = resource->GetDesc();
         _pimpl->_attachmentDescs[resName] = 
             {
                 desc._textureDesc._format,

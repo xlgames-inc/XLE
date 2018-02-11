@@ -109,8 +109,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkAccessFlags flags = 0;
         if (oldImageLayout == VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL
 			|| oldImageLayout == VK_IMAGE_LAYOUT_PRESENT_SRC_KHR) {
-			flags =
-				VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
+			flags = VK_ACCESS_COLOR_ATTACHMENT_WRITE_BIT;
 		}
 
         if (oldImageLayout == VK_IMAGE_LAYOUT_TRANSFER_DST_OPTIMAL) {

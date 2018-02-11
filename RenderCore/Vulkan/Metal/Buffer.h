@@ -31,6 +31,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool                IsGood() const { return _underlyingBuffer != nullptr; }
     };
 
+	using ConstantBuffer = Buffer;
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*>);

@@ -32,6 +32,7 @@ namespace RenderCore { namespace Metal_DX11
     class ViewportDesc;
     class BoundClassInterfaces;
 	class ObjectFactory;
+	class Resource;
 
         //  todo ---    DeviceContext, ObjectFactory & CommandList -- maybe these
         //              should go into RenderCore (because it's impossible to do anything without them)

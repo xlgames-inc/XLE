@@ -477,6 +477,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			Throw(VulkanAPIFailure(res, "Failure while allocating descriptor set")); 
     }
 
+	VulkanUniquePtr<VkDescriptorSet> DescriptorPool::Allocate(VkDescriptorSetLayout layout)
+	{
+		VulkanUniquePtr<VkDescriptorSet> result[1];
+		Allocate(MakeIteratorRange(result), MakeIteratorRange(&layout, &layout+1));
+		return std::move(result[0]);
+	}
+
     void DescriptorPool::FlushDestroys()
     {
 		if (!_device || !_pool) return;

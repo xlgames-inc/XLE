@@ -44,7 +44,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ComputeShader;
 	class DomainShader;
 	class HullShader;
-	class DeepShaderProgram;
 	class BoundClassInterfaces;
     
     class FrameBuffer;

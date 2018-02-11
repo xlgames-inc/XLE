@@ -59,6 +59,14 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
+	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&)
+	{
+		if (_shaderProgram != &shaderProgram) {
+            _shaderProgram = &shaderProgram;
+            _pipelineStale = true;
+        }
+	}
+
     static VkPrimitiveTopology AsNative(Topology topo)
     {
         switch (topo)
@@ -106,25 +114,24 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void        GraphicsPipelineBuilder::SetVertexStrides(unsigned first, std::initializer_list<unsigned> vertexStrides)
+    void        GraphicsPipelineBuilder::SetVertexStrides(IteratorRange<const unsigned*> vertexStrides)
     {
-        for (unsigned c=0; (first+c)<vertexStrides.size() && c < dimof(_vertexStrides); ++c) {
-            if (_vertexStrides[first+c] != vertexStrides.begin()[c]) {
-                _vertexStrides[first+c] = vertexStrides.begin()[c];
+        for (unsigned c=0; c < vertexStrides.size() && c < dimof(_vertexStrides); ++c) {
+            if (_vertexStrides[c] != vertexStrides[c]) {
+                _vertexStrides[c] = vertexStrides[c];
                 _pipelineStale = true;
             }
         }
     }
 
-    static VkPipelineShaderStageCreateInfo BuildShaderStage(
-        const Shader& shader, VkShaderStageFlagBits stage)
+    static VkPipelineShaderStageCreateInfo BuildShaderStage(VkShaderModule shader, VkShaderStageFlagBits stage)
     {
         VkPipelineShaderStageCreateInfo result = {};
         result.sType = VK_STRUCTURE_TYPE_PIPELINE_SHADER_STAGE_CREATE_INFO;
         result.pNext = nullptr;
         result.flags = 0;
         result.stage = stage;
-        result.module = shader.GetUnderlying();
+        result.module = shader;
         result.pName = "main";
         result.pSpecializationInfo = nullptr;
         return result;
@@ -141,12 +148,12 @@ namespace RenderCore { namespace Metal_Vulkan
 
         VkPipelineShaderStageCreateInfo shaderStages[3];
         uint32_t shaderStageCount = 0;
-        if (_shaderProgram->GetVertexShader().IsGood())
-            shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetVertexShader(), VK_SHADER_STAGE_VERTEX_BIT);
-        if (_shaderProgram->GetPixelShader().IsGood())
-            shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetPixelShader(), VK_SHADER_STAGE_FRAGMENT_BIT);
-        if (_shaderProgram->GetGeometryShader().IsGood())
-            shaderStages[shaderStageCount++] = BuildShaderStage(_shaderProgram->GetGeometryShader(), VK_SHADER_STAGE_GEOMETRY_BIT);
+		const auto& vs = _shaderProgram->GetModule(ShaderStage::Vertex);
+		const auto& gs = _shaderProgram->GetModule(ShaderStage::Geometry);
+		const auto& ps = _shaderProgram->GetModule(ShaderStage::Pixel);
+        if (vs) shaderStages[shaderStageCount++] = BuildShaderStage(vs.get(), VK_SHADER_STAGE_VERTEX_BIT);
+        if (gs) shaderStages[shaderStageCount++] = BuildShaderStage(gs.get(), VK_SHADER_STAGE_GEOMETRY_BIT);
+		if (ps) shaderStages[shaderStageCount++] = BuildShaderStage(ps.get(), VK_SHADER_STAGE_FRAGMENT_BIT);
 
         VkDynamicState dynamicStateEnables[VK_DYNAMIC_STATE_RANGE_SIZE];
         VkPipelineDynamicStateCreateInfo dynamicState = {};
@@ -283,7 +290,7 @@ namespace RenderCore { namespace Metal_Vulkan
         pipeline.basePipelineIndex = 0;
 
         assert(_shader);
-        pipeline.stage = BuildShaderStage(*_shader, VK_SHADER_STAGE_COMPUTE_BIT);
+        pipeline.stage = BuildShaderStage(_shader->GetModule().get(), VK_SHADER_STAGE_COMPUTE_BIT);
 
         auto result = factory.CreateComputePipeline(pipelineCache, pipeline);
         _pipelineStale = false;
@@ -335,31 +342,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_commandList);
         vkCmdBindIndexBuffer(
 			_commandList.get(),
-			ib.GetUnderlying(),
+			ib.GetBuffer(),
 			offset,
 			indexFormat == Format::R32_UINT ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
 	}
-
-	/*
-	void        DeviceContext::Bind(
-		unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], 
-		const unsigned strides[], const unsigned offsets[])
-	{
-		assert(_commandList);
-		assert(bufferCount <= s_maxBoundVBs);
-		SetVertexStrides(startSlot, std::initializer_list<unsigned>(strides, &strides[bufferCount]));
-		VkBuffer buffers[s_maxBoundVBs];
-		VkDeviceSize vkOffsets[s_maxBoundVBs];
-		for (unsigned c=0; c<bufferCount; ++c) {
-			buffers[c] = VBs[c]->GetUnderlying();
-			vkOffsets[c] = offsets[c];
-		}
-        vkCmdBindVertexBuffers(
-			_commandList.get(),
-			startSlot, bufferCount,
-			buffers, vkOffsets);
-	}
-	*/
 
     void        DeviceContext::BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set)
     {
@@ -414,7 +400,7 @@ namespace RenderCore { namespace Metal_Vulkan
         if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
 
 		if (!_renderPass) {
-			LogWarning << "Attempting to bind graphics pipeline without a render pass";
+			Log(Warning) << "Attempting to bind graphics pipeline without a render pass" << std::endl;
 			return false;
 		}
 
@@ -814,6 +800,18 @@ namespace RenderCore { namespace Metal_Vulkan
 		vkCmdSetEvent(_commandList.get(), evnt, stageMask);
 	}
 
+	void DeviceContext::CmdBindVertexBuffers(
+		uint32_t            firstBinding,
+		uint32_t            bindingCount,
+		const VkBuffer*     pBuffers,
+		const VkDeviceSize*	pOffsets)
+	{
+		vkCmdBindVertexBuffers(
+			_commandList.get(), 
+			firstBinding, bindingCount,
+			pBuffers, pOffsets);
+	}
+
     DeviceContext::DeviceContext(
         ObjectFactory&			factory, 
         GlobalPools&            globalPools,
@@ -934,7 +932,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
             // (we're limited by the number of bits in _sinceLastFlush)
         if (bindingPoint >= 64u) {
-            LogWarning << "Cannot bind to binding point " << bindingPoint;
+            Log(Warning) << "Cannot bind to binding point " << bindingPoint << std::endl;
             return;
         }
 
@@ -978,7 +976,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             if (resources[c]->GetImageView()) {
                 if (_pimpl->_srvMapping[binding] == ~0u) {
-                    LogWarning << "SRV image mapping is off root signature";
+                    Log(Warning) << "SRV image mapping is off root signature" << std::endl;
                     continue;
                 }
 
@@ -988,7 +986,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
             } else {
                 if (_pimpl->_srvBufferMapping[binding] == ~0u) {
-                    LogWarning << "SRV buffer mapping is off root signature";
+                    Log(Warning) << "SRV buffer mapping is off root signature" << std::endl;
                     continue;
                 }
             
@@ -1017,7 +1015,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             if (resources[c]->GetImageView()) {
                 if (_pimpl->_uavMapping[binding] == ~0u) {
-                    LogWarning << "UAV image mapping is off root signature";
+                    Log(Warning) << "UAV image mapping is off root signature" << std::endl;
                     continue;
                 }
             
@@ -1028,7 +1026,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_GENERAL });
             } else {
                 if (_pimpl->_uavBufferMapping[binding] == ~0u) {
-                    LogWarning << "UAV buffer mapping is off root signature";
+                    Log(Warning) << "UAV buffer mapping is off root signature" << std::endl;
                     continue;
                 }
             
@@ -1051,7 +1049,7 @@ namespace RenderCore { namespace Metal_Vulkan
             assert(binding < Pimpl::s_maxBindings);
 
             if (_pimpl->_cbMapping[binding] == ~0u) {
-                LogWarning << "Uniform buffer mapping is off root signature";
+                Log(Warning) << "Uniform buffer mapping is off root signature" << std::endl;
                 continue;
             }
 
@@ -1071,7 +1069,7 @@ namespace RenderCore { namespace Metal_Vulkan
             assert(binding < Pimpl::s_maxBindings);
 
             if (_pimpl->_samplerMapping[binding] == ~0u) {
-                LogWarning << "Sampler mapping is off root signature";
+                Log(Warning) << "Sampler mapping is off root signature" << std::endl;
                 continue;
             }
 

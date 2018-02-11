@@ -13,7 +13,7 @@
 #include <memory>
 
 namespace Assets { class DependencyValidation; template<typename AssetType> class AssetFuture; }
-namespace RenderCore { class InputElementDesc; class CompiledShaderByteCode; }
+namespace RenderCore { class InputElementDesc; class CompiledShaderByteCode; class IDevice; }
 
 namespace RenderCore { namespace Metal_DX11
 {

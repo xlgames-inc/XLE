@@ -7,9 +7,12 @@
 #pragma once
 
 #include "DX11.h"
-#include "Resource.h"
+#include "../../ResourceDesc.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../Types_Forward.h"
+#include <memory>
+
+namespace RenderCore { class IResource; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -22,7 +25,7 @@ namespace RenderCore { namespace Metal_DX11
 		explicit RenderTargetView(DeviceContext& context);
         
         intrusive_ptr<ID3D::Resource>	GetResource() const;
-        IResourcePtr					ShareResource() const;
+        std::shared_ptr<IResource>		ShareResource() const;
 
         typedef ID3D::RenderTargetView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
@@ -48,7 +51,7 @@ namespace RenderCore { namespace Metal_DX11
 		explicit DepthStencilView(DeviceContext& context);
 
         intrusive_ptr<ID3D::Resource>	GetResource() const;
-        ResourcePtr		                ShareResource() const;
+        std::shared_ptr<IResource>		ShareResource() const;
 
         typedef ID3D::DepthStencilView*         UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
@@ -72,7 +75,7 @@ namespace RenderCore { namespace Metal_DX11
         explicit UnorderedAccessView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
         
         intrusive_ptr<ID3D::Resource>   GetResource() const;
-        ResourcePtr		                ShareResource() const;
+        std::shared_ptr<IResource>		ShareResource() const;
 
         typedef ID3D::UnorderedAccessView*      UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
@@ -98,7 +101,7 @@ namespace RenderCore { namespace Metal_DX11
         static ShaderResourceView RawBuffer(const std::shared_ptr<IResource>& resource, unsigned sizeBytes, unsigned offsetBytes = 0);
 
 		intrusive_ptr<ID3D::Resource>	GetResource() const;
-        ResourcePtr		                ShareResource() const;
+        std::shared_ptr<IResource>		ShareResource() const;
         
         typedef ID3D::ShaderResourceView*       UnderlyingType;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }

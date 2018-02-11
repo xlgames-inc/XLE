@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
 #include "Format.h"
+#include "Resource.h"
 #include "../../RenderUtils.h"
 #include "../../Format.h"
 #include "DX11Utils.h"

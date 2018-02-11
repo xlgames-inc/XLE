@@ -16,6 +16,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Buffer.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -189,7 +190,7 @@ namespace Overlays
 			*context, 1,
 			{
 				MakeIteratorRange(cnsts),
-				MakeIteratorRange(resources),
+				UniformsStream::MakeResources(MakeIteratorRange(resources))
 			});
 
         context->Bind(BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));

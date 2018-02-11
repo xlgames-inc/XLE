@@ -93,23 +93,6 @@ namespace RenderCore { namespace Metal_DX11
 			byteCode.begin(), byteCode.size());
 	}
 
-	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const InputElementDesc*> layout)
-	{
-		std::vector<unsigned> result;
-		for (auto& a:layout) {
-			if (result.size() <= a._inputSlot)
-				result.resize(a._inputSlot + 1, 0);
-			unsigned& stride = result[a._inputSlot];
-			auto bytes = BitsPerPixel(a._nativeFormat) / 8;
-			if (a._alignedByteOffset == ~0u) {
-				stride = stride + bytes;
-			} else {
-				stride = std::max(stride, a._alignedByteOffset + bytes);
-			}
-		}
-		return result;
-	}
-
 	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const MiniInputElementDesc*> layout)
 	{
 		return std::vector<unsigned> { RenderCore::CalculateVertexStride(layout) };

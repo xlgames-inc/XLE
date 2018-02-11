@@ -158,15 +158,15 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     VulkanUniquePtr<VkShaderModule> ObjectFactory::CreateShaderModule(
-        const void* byteCode, size_t size,
+        IteratorRange<const void*> byteCode,
         VkShaderModuleCreateFlags flags) const
     {
         VkShaderModuleCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_SHADER_MODULE_CREATE_INFO;
         createInfo.pNext = nullptr;
         createInfo.flags = flags;
-        createInfo.codeSize = size;
-        createInfo.pCode = (const uint32_t*)byteCode;
+        createInfo.codeSize = byteCode.size();
+        createInfo.pCode = (const uint32_t*)byteCode.begin();
 
         auto d = _destruction.get();
         VkShaderModule rawShader = nullptr;

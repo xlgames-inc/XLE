@@ -872,7 +872,7 @@ namespace RenderCore { namespace Assets
 			boundUniforms.Apply(*context._context, 1, 
 				UniformsStream {
 					MakeIteratorRange(cbvs, &cbvs[2]),
-					MakeIteratorRange(srvs, &srvs[_texturesPerMaterial])
+					UniformsStream::MakeResources(MakeIteratorRange(srvs, &srvs[_texturesPerMaterial]))
 				});
 		}
     }

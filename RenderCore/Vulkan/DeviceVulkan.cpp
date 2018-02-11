@@ -739,6 +739,13 @@ namespace RenderCore { namespace ImplVulkan
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
+	void*   DeviceVulkan::QueryInterface(size_t guid)
+	{
+		if (guid == typeid(IDeviceVulkan).hash_code())
+			return (IDeviceVulkan*)this;
+		return nullptr;
+	}
+
 	VkInstance DeviceVulkan::GetVulkanInstance() { return _instance.get(); }
 	VkDevice DeviceVulkan::GetUnderlyingDevice() { return _underlying.get(); }
     VkQueue DeviceVulkan::GetRenderingQueue()
@@ -892,10 +899,11 @@ namespace RenderCore { namespace ImplVulkan
         auto images = GetImages(_device.get(), _swapChain.get());
         _images.reserve(images.size());
         for (auto& i:images) {
-            TextureViewDesc window(
-                _bufferDesc._format, _bufferDesc._dimensionality, 
+            TextureViewDesc window{
+                _bufferDesc._format, 
                 TextureViewDesc::SubResourceRange{0, _bufferDesc._mipCount},
-                TextureViewDesc::SubResourceRange{0, _bufferDesc._arrayCount});
+				TextureViewDesc::SubResourceRange{0, _bufferDesc._arrayCount},
+				_bufferDesc._dimensionality};
             auto resDesc = CreateDesc(
                 BindFlag::RenderTarget|BindFlag::ShaderResource, 0u, GPUAccess::Read|GPUAccess::Write, 
                 _bufferDesc, "presentationimage");
@@ -1215,3 +1223,8 @@ namespace RenderCore { namespace ImplVulkan
 
 }}
 
+namespace RenderCore
+{
+	IDeviceVulkan::~IDeviceVulkan() {}
+	IThreadContextVulkan::~IThreadContextVulkan() {}
+}

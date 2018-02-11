@@ -687,7 +687,7 @@ namespace Sample
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
         LogInfo << "Building primary managers";
-        auto renderDevice = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
+        auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();

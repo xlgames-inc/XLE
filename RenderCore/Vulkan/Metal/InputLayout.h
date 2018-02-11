@@ -50,7 +50,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         const IteratorRange<const VkVertexInputAttributeDescription*> GetAttributes() const { return MakeIteratorRange(_attributes); }
     private:
-        std::vector<VkVertexInputAttributeDescription> _attributes;
+        std::vector<VkVertexInputAttributeDescription>	_attributes;
+		std::vector<unsigned>							_vertexStrides;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -75,9 +76,10 @@ namespace RenderCore { namespace Metal_Vulkan
             const UniformsStreamInterface& interface3 = {});
         BoundUniforms();
         ~BoundUniforms();
-        BoundUniforms& operator=(const BoundUniforms& copyFrom);
-        BoundUniforms(BoundUniforms&& moveFrom) never_throws;
-        BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
+        BoundUniforms(const BoundUniforms&) = default;
+		BoundUniforms& operator=(const BoundUniforms&) = default;
+        BoundUniforms(BoundUniforms&&) = default;
+        BoundUniforms& operator=(BoundUniforms&&) = default;
 
     private:
 		bool _isComputeShader;

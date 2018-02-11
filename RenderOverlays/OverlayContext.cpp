@@ -13,6 +13,7 @@
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/CommonResources.h"
