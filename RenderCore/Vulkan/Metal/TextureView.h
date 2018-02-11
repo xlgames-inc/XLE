@@ -13,6 +13,7 @@
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
+	class Resource;
 
 	/// <summary>Shared base class for various view objects</summary>
 	/// In Vulkan, views of shader resources can be either VkImageViews or VkBufferViews.
@@ -25,12 +26,10 @@ namespace RenderCore { namespace Metal_Vulkan
     class TextureView
     {
     public:
-		using ResourcePtr = std::shared_ptr<RenderCore::Resource>;
-
         TextureView(const ObjectFactory& factory, VkImage image, const TextureViewDesc& window = TextureViewDesc());
-		TextureView(const ObjectFactory& factory, const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc(), FormatUsage usage = FormatUsage::SRV);
+		TextureView(const ObjectFactory& factory, const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc(), FormatUsage usage = FormatUsage::SRV);
         explicit TextureView(const VkImage image, const TextureViewDesc& window = TextureViewDesc());
-		explicit TextureView(const ResourcePtr& image, const TextureViewDesc& window = TextureViewDesc(), FormatUsage usage = FormatUsage::SRV);
+		explicit TextureView(const IResourcePtr& image, const TextureViewDesc& window = TextureViewDesc(), FormatUsage usage = FormatUsage::SRV);
         TextureView();
         ~TextureView();
 
@@ -38,13 +37,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		UnderlyingType			GetUnderlying() const { return this; }
 		bool					IsGood() const { return _imageView != nullptr; }
 
-		RenderCore::Resource*	GetResource() const { return _image.get(); }
-		const ResourcePtr&		ShareResource() const { return _image; }
-        VkImageView             GetImageView() const { return _imageView.get(); }
+		Resource*							GetResource() const { return _image.get(); }
+		const std::shared_ptr<Resource>&	ShareResource() const { return _image; }
+        VkImageView							GetImageView() const { return _imageView.get(); }
 
     private:
         VulkanSharedPtr<VkImageView>	_imageView;
-		ResourcePtr						_image;
+		std::shared_ptr<Resource>		_image;
     };
 
     // note -- in Vulkan, ShaderResourceView, RenderTargetView, DepthStencilView and UnorderedAccessView

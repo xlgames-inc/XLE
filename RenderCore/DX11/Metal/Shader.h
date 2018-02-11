@@ -9,7 +9,6 @@
 #include "DX11.h"
 #include "../../Types.h"
 #include "../../ShaderService.h"
-#include "../../RenderCore/IDevice_Forward.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include <memory>
 

@@ -42,7 +42,8 @@ namespace RenderCore { namespace Metal_DX11
 	public:
 		UnderlyingResourcePtr _underlying;
 
-		virtual void*       QueryInterface(size_t guid);
+		virtual void*			QueryInterface(size_t guid);
+		virtual ResourceDesc	GetDesc() const;
 
 		Resource() {}
 		explicit Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying) {}

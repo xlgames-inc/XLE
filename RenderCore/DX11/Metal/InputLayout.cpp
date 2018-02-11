@@ -450,7 +450,7 @@ namespace RenderCore { namespace Metal_DX11
 
                     unsigned slot = i->_inputInterfaceSlot & 0xff;
                     if (slot < stream._resources.size() && stream._resources[slot]) {
-                        currentSRVs[i->_shaderSlot] = stream._resources[slot]->GetUnderlying();
+                        currentSRVs[i->_shaderSlot] = ((ShaderResourceView*)stream._resources[slot])->GetUnderlying();
                         lowestShaderSlot = std::min(lowestShaderSlot, i->_shaderSlot);
                         highestShaderSlot = std::max(highestShaderSlot, i->_shaderSlot);
                         setMask |= 1<<(i->_shaderSlot);

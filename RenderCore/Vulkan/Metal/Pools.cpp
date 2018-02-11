@@ -269,19 +269,18 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 	}
 
-	static void PushData(VkDevice device, Buffer buffer, size_t startPt, const void* data, size_t byteCount)
+	static void PushData(VkDevice device, Buffer buffer, size_t startPt, IteratorRange<const void*> data)
 	{
 		// Write to the buffer using a map and CPU assisted copy
 		// Note -- we could also consider using "non-coherent" memory access here, and manually doing
 		// flushes and invalidates.
 		ResourceMap map(
 			device, buffer.GetMemory(),
-			startPt, byteCount);
-		std::memcpy(map.GetData(), data, byteCount);
+			startPt, data.size());
+		std::memcpy(map.GetData(), data.begin(), data.size());
 	}
 
-	VkDescriptorBufferInfo	TemporaryBufferSpace::AllocateBuffer(
-		const void* data, size_t byteCount)
+	VkDescriptorBufferInfo	TemporaryBufferSpace::AllocateBuffer(IteratorRange<const void*> data)
 	{
 		auto& b = _pimpl->_cb;
 
@@ -295,10 +294,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		if (fitsInHeap) {
+			auto byteCount = data.size();
 			auto alignedByteCount = CeilToMultiple((unsigned)byteCount, b._alignment); // (probably pow2, but we don't know for sure)
 			auto space = b._heap.AllocateBack(alignedByteCount);
 			if (space != ~0u) {
-				PushData(_pimpl->_factory->GetDevice().get(), b._buffer, space, data, byteCount);
+				PushData(_pimpl->_factory->GetDevice().get(), b._buffer, space, data);
 				b._markedDestroys.back()._front = space + alignedByteCount;
 
 				// Check if we've crossed over the "last barrier" point (no special
@@ -621,7 +621,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _blankBuffer = Buffer(
             factory, 
             CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(sizeof(blankData)), "DummyBuffer"),
-            blankData);
+            MakeIteratorRange(blankData));
     }
 
     DummyResources::DummyResources() {}

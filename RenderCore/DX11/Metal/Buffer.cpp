@@ -51,7 +51,7 @@ namespace RenderCore { namespace Metal_DX11
     {
         return CreateDesc(
             bindingFlags,
-            immutable ? 0 : CPUAccess::WriteDynamic,
+            immutable ? 0 : CPUAccess::Write,
             GPUAccess::Read,
             LinearBufferDesc::Create(unsigned(byteCount)),
             "buf");

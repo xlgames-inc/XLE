@@ -35,22 +35,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		PresentSrc						= 1000001002, // VK_IMAGE_LAYOUT_PRESENT_SRC_KHR
 	};
 
-	/// <summary>Helper object to catch multiple similar pointers</summary>
-	/// To help with platform abstraction, RenderCore::Resource* is actually the
-	/// same as a Metal::Resource*. This helper allows us to catch both equally.
-	class UnderlyingResourcePtr
-	{
-	public:
-		Resource* get() { return _res; }
-        const Resource* get() const { return _res; }
-	
-		UnderlyingResourcePtr(Resource* res) { _res = res; }
-		UnderlyingResourcePtr(RenderCore::Resource* res) { _res = (Resource*)res; }
-		UnderlyingResourcePtr(const std::shared_ptr<RenderCore::Resource>& res) { _res = (Resource*)res.get(); }
-	protected:
-		Resource* _res;
-	};
-
 	/// <summary>Abstraction for a device memory resource</summary>
 	/// A Resource can either be a buffer or an image. In Vulkan, both types reference a VkDeviceMemory
 	/// object that represents the actual allocation. This object maintains that allocation, and provides
@@ -59,7 +43,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	/// Images and buffers are combined into a single object for convenience. This allows us to use the 
 	/// single "Desc" object to describe both, and it also fits in better with other APIs (eg, DirectX).
 	/// This adds a small amount of redundancy to the Resource object -- but it seems to be trivial.
-	class Resource
+	class Resource : public IResource
 	{
 	public:
 		using Desc = ResourceDesc;
@@ -77,7 +61,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkDeviceMemory GetMemory() const    { return _mem.get(); }
 		VkImage GetImage() const            { return _underlyingImage.get(); }
 		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
-		const Desc& GetDesc() const         { return _desc; }
+		Desc GetDesc() const				{ return _desc; }
+
+		virtual void*       QueryInterface(size_t guid);
 
 		const VulkanSharedPtr<VkImage>& ShareImage() const { return _underlyingImage; }
 	protected:
@@ -94,6 +80,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		const ObjectFactory& factory,
 		const ResourceDesc& desc, 
 		const ResourceInitializer& init = ResourceInitializer());
+
+	using UnderlyingResourcePtr = std::shared_ptr<IResource>;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      M E M O R Y   M A P       //
@@ -118,7 +106,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDevice dev, VkDeviceMemory memory,
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap(
-			IDevice& dev, UnderlyingResourcePtr resource,
+			IDevice& dev, Resource& resource,
             SubResourceId subResource,
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap();
@@ -145,7 +133,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	void Copy(
         DeviceContext&, 
-        UnderlyingResourcePtr dst, UnderlyingResourcePtr src, 
+        Resource& dst, Resource& src, 
         ImageLayout dstLayout = ImageLayout::TransferDstOptimal, ImageLayout srcLayout = ImageLayout::TransferSrcOptimal);
 
     using UInt3Pattern = VectorPattern<unsigned, 3>;
@@ -153,29 +141,29 @@ namespace RenderCore { namespace Metal_Vulkan
     class CopyPartial_Dest
     {
     public:
-        Resource*       _resource;
+        Resource*		_resource;
         SubResourceId   _subResource;
         UInt3Pattern    _leftTopFront;
 
         CopyPartial_Dest(
-            UnderlyingResourcePtr dst, SubResourceId subres = {},
+            Resource& dst, SubResourceId subres = {},
             const UInt3Pattern& leftTopFront = UInt3Pattern())
-        : _resource(dst.get()), _subResource(subres), _leftTopFront(leftTopFront) {}
+        : _resource(&dst), _subResource(subres), _leftTopFront(leftTopFront) {}
     };
 
     class CopyPartial_Src
     {
     public:
-		Resource*       _resource;
+		Resource*		_resource;
         SubResourceId   _subResource;
         UInt3Pattern    _leftTopFront;
         UInt3Pattern    _rightBottomBack;
 
         CopyPartial_Src(
-            UnderlyingResourcePtr dst, SubResourceId subres = {},
+            Resource& dst, SubResourceId subres = {},
             const UInt3Pattern& leftTopFront = UInt3Pattern(~0u,0,0),
             const UInt3Pattern& rightBottomBack = UInt3Pattern(~0u,1,1))
-        : _resource(dst.get()), _subResource(subres)
+        : _resource(&dst), _subResource(subres)
         , _leftTopFront(leftTopFront)
         , _rightBottomBack(rightBottomBack) {}
     };
@@ -185,8 +173,8 @@ namespace RenderCore { namespace Metal_Vulkan
         const CopyPartial_Dest& dst, const CopyPartial_Src& src,
         ImageLayout dstLayout = ImageLayout::Undefined, ImageLayout srcLayout = ImageLayout::Undefined);
 
-	ResourcePtr Duplicate(ObjectFactory&, UnderlyingResourcePtr inputResource);
-	ResourcePtr Duplicate(DeviceContext&, UnderlyingResourcePtr inputResource);
+	ResourcePtr Duplicate(ObjectFactory&, Resource& inputResource);
+	ResourcePtr Duplicate(DeviceContext&, Resource& inputResource);
 
     unsigned CopyViaMemoryMap(
         VkDevice device, VkImage image, VkDeviceMemory mem,
@@ -194,7 +182,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const std::function<SubResourceInitData(SubResourceId)>& initData);
 
     unsigned CopyViaMemoryMap(
-        IDevice& dev, UnderlyingResourcePtr resource,
+        IDevice& dev, Resource& resource,
         const std::function<SubResourceInitData(SubResourceId)>& initData);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -212,14 +200,14 @@ namespace RenderCore { namespace Metal_Vulkan
     class LayoutTransition
     {
     public:
-        UnderlyingResourcePtr _res;
+        Resource* _res;
 		ImageLayout _oldLayout, _newLayout;
 
         LayoutTransition(
-            UnderlyingResourcePtr res = (Resource*)nullptr, 
+            Resource& res, 
             ImageLayout oldLayout = ImageLayout::Undefined,
             ImageLayout newLayout = ImageLayout::Undefined) 
-            : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
+            : _res(&res), _oldLayout(oldLayout), _newLayout(newLayout) {}
     };
 	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
 

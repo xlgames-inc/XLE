@@ -100,10 +100,13 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
 	TextureView::TextureView(
-        const ObjectFactory& factory, const ResourcePtr& image, 
+        const ObjectFactory& factory, const std::shared_ptr<IResource>& image, 
         const TextureViewDesc& window, FormatUsage formatUsage)
 	{
-		auto res = UnderlyingResourcePtr(image).get();
+		auto res = (Resource*)image->QueryInterface(typeid(Resource).hash_code());
+		if (!res)
+			Throw(::Exceptions::BasicLabel("Incorrect resource type passed to Vulkan TextureView"));
+
 		// note --	some "buffer" objects can be used as ShaderResources... In those cases, we will arrive here,
 		//			and the calling code is probably expecting use to create a VkBufferView
 		if (res->GetImage()) {
@@ -127,7 +130,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
         // keep a pointer to the "image" even if we couldn't construct a VkImageView
-        _image = image;
+        _image = std::static_pointer_cast<Resource>(image);
 	}
 
     TextureView::TextureView(VkImage image, const TextureViewDesc& window)

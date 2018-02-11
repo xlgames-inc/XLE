@@ -58,8 +58,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	Buffer::Buffer(
 		const ObjectFactory& factory, const Desc& desc,
-		const void* initData, size_t initDataSize)
-	: Resource(factory, desc, SubResourceInitData{ MakeIteratorRange(initData, PtrAdd(initData, initDataSize)) })
+		IteratorRange<const void*> initData)
+	: Resource(factory, desc, SubResourceInitData{ initData })
 	{
 		if (desc._type != Desc::Type::LinearBuffer)
 			Throw(::Exceptions::BasicLabel("Expecting linear buffer type"));
@@ -69,45 +69,46 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    static BufferUploads::BufferDesc BuildDesc(
-        BufferUploads::BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
+    static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
     {
-        using namespace BufferUploads;
         return CreateDesc(
-            bindingFlags | (immutable ? 0 : BindFlag::TransferDst), 
-            immutable ? 0 : CPUAccess::Write, 
-            GPUAccess::Read, 
-            LinearBufferDesc::Create(unsigned(byteCount)), 
+            bindingFlags,
+            immutable ? 0 : CPUAccess::Write,
+            GPUAccess::Read,
+            LinearBufferDesc::Create(unsigned(byteCount)),
             "buf");
     }
 
+    Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    {
+        return Buffer(
+            factory,
+            BuildDesc(BindFlag::VertexBuffer, data.size(), true),
+            data);
+    }
+    
+    Buffer MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
+    {
+        return Buffer(
+            factory,
+            BuildDesc(BindFlag::IndexBuffer, data.size(), true),
+            data);
+    }
 
-    VertexBuffer::VertexBuffer() {}
-    VertexBuffer::VertexBuffer(const void* data, size_t byteCount)
-    : VertexBuffer(GetObjectFactory(), data, byteCount)
-    {}
+    Buffer MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*> data, bool immutable)
+    {
+        return Buffer(
+            factory,
+            BuildDesc(BindFlag::ConstantBuffer, data.size(), immutable),
+            data);
+    }
 
-    VertexBuffer::VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
-    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::VertexBuffer, byteCount, data != nullptr), data, byteCount)
-    {}
-
-    IndexBuffer::IndexBuffer() {}
-    IndexBuffer::IndexBuffer(const void* data, size_t byteCount)
-    : IndexBuffer(GetObjectFactory(), data, byteCount)
-    {}
-
-    IndexBuffer::IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount)
-    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::IndexBuffer, byteCount, data != nullptr), data, byteCount)
-    {}
-
-    ConstantBuffer::ConstantBuffer() {}
-    ConstantBuffer::ConstantBuffer(const void* data, size_t byteCount, bool immutable)
-    : ConstantBuffer(GetObjectFactory(), data, byteCount, immutable)
-    {}
-
-    ConstantBuffer::ConstantBuffer(const ObjectFactory& factory, const void* data, size_t byteCount, bool immutable)
-    : Buffer(factory, BuildDesc(BufferUploads::BindFlag::ConstantBuffer, byteCount, immutable && (data != nullptr)), data, byteCount)
-    {}
+	Buffer MakeConstantBuffer(ObjectFactory& factory, size_t size)
+	{
+		return Buffer(
+            factory,
+            BuildDesc(BindFlag::ConstantBuffer, size, false));
+	}
 
 }}
 

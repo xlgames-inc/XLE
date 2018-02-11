@@ -76,6 +76,12 @@ namespace RenderCore { namespace Metal_DX11
 		return nullptr;
 	}
 
+	ResourceDesc	Resource::GetDesc() const
+	{
+		if (!_underlying) return {};
+		return ExtractDesc(_underlying);
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static unsigned AsNativeCPUAccessFlag(CPUAccess::BitField bitField)

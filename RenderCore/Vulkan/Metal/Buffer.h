@@ -21,7 +21,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		Buffer(
 			const ObjectFactory& factory, const Desc& desc,
-			const void* initData = nullptr, size_t initDataSize = 0);
+			IteratorRange<const void*> initData = {});
 		Buffer();
 
 		void    Update(DeviceContext& context, const void* data, size_t byteCount);
@@ -33,40 +33,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class VertexBuffer : public Buffer
-    {
-    public:
-		VertexBuffer();
-        VertexBuffer(const void* data, size_t byteCount);
-        VertexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
-		VertexBuffer(UnderlyingResourcePtr) {}
-    };
+    Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
+    Buffer MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*>);
+    Buffer MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*>, bool immutable = true);
+	Buffer MakeConstantBuffer(ObjectFactory& factory, size_t size);
 
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class IndexBuffer : public Buffer
-    {
-    public:
-		IndexBuffer();
-        IndexBuffer(const void* data, size_t byteCount);
-        IndexBuffer(const ObjectFactory& factory, const void* data, size_t byteCount);
-    };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DeviceContext;
-
-    class ConstantBuffer : public Buffer
-    {
-    public:
-        ConstantBuffer(const void* data, size_t byteCount, bool immutable=true);
-        ConstantBuffer(
-            const ObjectFactory& factory,
-            const void* data, size_t byteCount, bool immutable=true);
-        ConstantBuffer();
-    };
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-    
 }}
 

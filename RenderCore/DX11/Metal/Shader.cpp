@@ -414,7 +414,7 @@ namespace RenderCore { namespace Metal_DX11
 				return true;
 			}
 
-			auto newShaderProgram = std::make_shared<ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
+			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *psActual);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
 			return false;
 		});
@@ -453,7 +453,7 @@ namespace RenderCore { namespace Metal_DX11
 				return true;
 			}
 
-			auto newShaderProgram = std::make_shared<ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual);
+			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
 			return false;
 		});
@@ -502,7 +502,7 @@ namespace RenderCore { namespace Metal_DX11
 				return true;
 			}
 
-			auto newShaderProgram = std::make_shared<ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
+			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
 			return false;
 		});

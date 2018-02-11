@@ -14,7 +14,6 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-	class UnderlyingResourcePtr;
 	class DeviceContext;
 
 	class IAsyncTracker
@@ -154,7 +153,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	ObjectFactory& GetObjectFactory(IDevice& device);
 	ObjectFactory& GetObjectFactory(DeviceContext&);
-	ObjectFactory& GetObjectFactory(UnderlyingResourcePtr);
+	ObjectFactory& GetObjectFactory(IResource&);
 	ObjectFactory& GetObjectFactory();
 
     void SetDefaultObjectFactory(ObjectFactory*);

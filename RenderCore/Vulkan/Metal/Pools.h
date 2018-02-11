@@ -59,7 +59,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TemporaryBufferSpace
 	{
 	public:
-		VkDescriptorBufferInfo	AllocateBuffer(const void* data, size_t byteCount);
+		VkDescriptorBufferInfo	AllocateBuffer(IteratorRange<const void*> data);
 		void FlushDestroys();
 		void WriteBarrier(DeviceContext& context);
 
@@ -78,6 +78,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void Allocate(
             IteratorRange<VulkanUniquePtr<VkDescriptorSet>*> dst,
             IteratorRange<const VkDescriptorSetLayout*> layouts);
+		VulkanUniquePtr<VkDescriptorSet> Allocate(VkDescriptorSetLayout layout);
 
         void FlushDestroys();
         VkDevice GetDevice() { return _device.get(); }

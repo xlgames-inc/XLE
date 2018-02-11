@@ -23,6 +23,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
     }
 
+	static Resource& AsResource(IResource& input)
+	{
+		assert(input.QueryInterface(typeid(Resource).hash_code()));
+		return *(Resource*)&input;
+	}
+
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
 	{
 		VkBufferUsageFlags result = 0;
@@ -188,7 +194,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         unsigned barrierCount = 0;
         for (unsigned c=0; c<(unsigned)changes.size(); ++c) {
-		    auto& r = *changes[c]._res.get();
+		    auto& r = AsResource(*changes[c]._res);
 		    assert(r.GetDesc()._type == ResourceDesc::Type::Texture);
             if (!r.GetImage()) continue;   // (staging buffer case)
 
@@ -426,16 +432,23 @@ namespace RenderCore { namespace Metal_Vulkan
 	Resource::Resource() {}
 	Resource::~Resource() {}
 
+	void* Resource::QueryInterface(size_t guid)
+	{
+		if (guid == typeid(Resource).hash_code())
+			return this;
+		return nullptr;
+	}
+
 	ResourceDesc ExtractDesc(UnderlyingResourcePtr res)
 	{
-		return res.get()->GetDesc();
+		return AsResource(*res).GetDesc();
 	}
 
 	ResourceDesc ExtractDesc(const TextureView& res)
 	{
 		auto resource = res.GetResource();
 		if (!resource) return ResourceDesc();
-		return ExtractDesc(resource);
+		return AsResource(*resource).GetDesc();
 	}
 
 	RenderCore::ResourcePtr ExtractResource(const TextureView& res)
@@ -482,10 +495,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void Copy(DeviceContext& context, UnderlyingResourcePtr dst, UnderlyingResourcePtr src, ImageLayout dstLayout, ImageLayout srcLayout)
+	void Copy(DeviceContext& context, Resource& dst, Resource& src, ImageLayout dstLayout, ImageLayout srcLayout)
 	{
-		assert(src.get() && dst.get());
-        if (dst.get()->GetImage() && src.get()->GetImage()) {
+        if (dst.GetImage() && src.GetImage()) {
             // image to image copy
 
             // Each mipmap is treated as a separate copy operation (but multiple array layers can be handled
@@ -495,8 +507,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		    //		When copying between compressed and uncompressed images, the uncompressed pixel size must
 		    //		be equal to the compressed block size.
 
-		    const auto& srcDesc = src.get()->GetDesc();
-		    const auto& dstDesc = dst.get()->GetDesc();
+		    const auto& srcDesc = src.GetDesc();
+		    const auto& dstDesc = dst.GetDesc();
 		    assert(srcDesc._type == Resource::Desc::Type::Texture);
 		    assert(dstDesc._type == Resource::Desc::Type::Texture);
 
@@ -533,14 +545,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		    }
 
 		    context.CmdCopyImage(
-			    src.get()->GetImage(), AsVkImageLayout(srcLayout),
-			    dst.get()->GetImage(), AsVkImageLayout(dstLayout),
+			    src.GetImage(), AsVkImageLayout(srcLayout),
+			    dst.GetImage(), AsVkImageLayout(dstLayout),
 			    copyOperations, copyOps);
 
-        } else if (dst.get()->GetBuffer() && src.get()->GetBuffer()) {
+        } else if (dst.GetBuffer() && src.GetBuffer()) {
             // buffer to buffer copy
-            const auto& srcDesc = src.get()->GetDesc();
-		    const auto& dstDesc = dst.get()->GetDesc();
+            const auto& srcDesc = src.GetDesc();
+		    const auto& dstDesc = dst.GetDesc();
             assert(srcDesc._type == Resource::Desc::Type::LinearBuffer);
 		    assert(dstDesc._type == Resource::Desc::Type::LinearBuffer);
             VkBufferCopy copyOps[] = 
@@ -548,18 +560,18 @@ namespace RenderCore { namespace Metal_Vulkan
                 VkBufferCopy{0, 0, std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes)}
             };
             context.CmdCopyBuffer(
-                src.get()->GetBuffer(),
-                dst.get()->GetBuffer(),
+                src.GetBuffer(),
+                dst.GetBuffer(),
                 dimof(copyOps), copyOps);
-        } else if (dst.get()->GetImage() && src.get()->GetBuffer()) {
+        } else if (dst.GetImage() && src.GetBuffer()) {
             // This copy operation is typically used when initializing a texture via staging
             // resource. The buffer probably has a "Texture" type Desc, even though the underlying
             // resource is a buffer.
-            if (src.get()->GetDesc()._type != ResourceDesc::Type::Texture)
+            if (src.GetDesc()._type != ResourceDesc::Type::Texture)
                 Throw(::Exceptions::BasicLabel("Buffer to image copy not implemented, except for staging resources"));
 
-            const auto& srcDesc = src.get()->GetDesc();
-		    const auto& dstDesc = dst.get()->GetDesc();
+            const auto& srcDesc = src.GetDesc();
+		    const auto& dstDesc = dst.GetDesc();
 		    assert(srcDesc._type == Resource::Desc::Type::Texture);
 		    assert(dstDesc._type == Resource::Desc::Type::Texture);
 
@@ -596,8 +608,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
             const auto copyOperations = mips*arrayCount;
             context.CmdCopyBufferToImage(
-                src.get()->GetBuffer(),
-                dst.get()->GetImage(), AsVkImageLayout(dstLayout),
+                src.GetBuffer(),
+                dst.GetImage(), AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
         } else {
             // copies from buffer to image, or image to buffer are supported by Vulkan, but
@@ -782,21 +794,21 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     unsigned CopyViaMemoryMap(
-        IDevice& dev, UnderlyingResourcePtr resource,
+        IDevice& dev, Resource& resource,
         const std::function<SubResourceInitData(SubResourceId)>& initData)
     {
-        assert(resource.get()->GetDesc()._type == ResourceDesc::Type::Texture);
+        assert(resource.GetDesc()._type == ResourceDesc::Type::Texture);
         return CopyViaMemoryMap(
-            ExtractUnderlyingDevice(dev), resource.get()->GetImage(), resource.get()->GetMemory(),
-            resource.get()->GetDesc()._textureDesc, initData);
+            ExtractUnderlyingDevice(dev), resource.GetImage(), resource.GetMemory(),
+            resource.GetDesc()._textureDesc, initData);
     }
 
-	ResourcePtr Duplicate(ObjectFactory&, UnderlyingResourcePtr inputResource) 
+	ResourcePtr Duplicate(ObjectFactory&, Resource& inputResource) 
     { 
         Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
     }
 
-	ResourcePtr Duplicate(DeviceContext&, UnderlyingResourcePtr inputResource)
+	ResourcePtr Duplicate(DeviceContext&, Resource& inputResource)
 	{
 		Throw(::Exceptions::BasicLabel("Resource duplication not implemented"));
 	}
@@ -824,7 +836,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	ResourceMap::ResourceMap(
-		IDevice& idev, UnderlyingResourcePtr resource,
+		IDevice& idev, Resource& resource,
         SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
 	{
@@ -834,8 +846,8 @@ namespace RenderCore { namespace Metal_Vulkan
         _pitches = TexturePitches { unsigned(size), unsigned(size) };
 
         // special case for images, where we need to take into account the requested "subresource"
-        auto* image = resource.get()->GetImage();
-        const auto& desc = resource.get()->GetDesc();
+        auto* image = resource.GetImage();
+        const auto& desc = resource.GetDesc();
         if (image) {
             auto aspectMask = AsImageAspectMask(desc._textureDesc._format);
             VkImageSubresource sub = { aspectMask, subResource._mip, subResource._arrayLayer };
@@ -859,12 +871,12 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
-        auto res = vkMapMemory(dev, resource.get()->GetMemory(), finalOffset, finalSize, 0, &_data);
+        auto res = vkMapMemory(dev, resource.GetMemory(), finalOffset, finalSize, 0, &_data);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failed while mapping device memory"));
 
         _dev = dev;
-        _mem = resource.get()->GetMemory();
+        _mem = resource.GetMemory();
     }
 
 	void ResourceMap::TryUnmap()

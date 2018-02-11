@@ -166,8 +166,8 @@ namespace RenderCore
     class IResource
     {
     public:
-        virtual void*               QueryInterface(size_t guid) = 0;
-        virtual const ResourceDesc& GetDesc() const = 0;
+		virtual ResourceDesc	GetDesc() const = 0;
+        virtual void*			QueryInterface(size_t guid) = 0;
         ~IResource();
     };
 

@@ -330,7 +330,7 @@ namespace RenderCore { namespace Metal_Vulkan
             &scissor);
     }
 
-	void        DeviceContext::Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset)
+	void        DeviceContext::Bind(const Resource& ib, Format indexFormat, unsigned offset)
 	{
 		assert(_commandList);
         vkCmdBindIndexBuffer(
@@ -340,6 +340,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			indexFormat == Format::R32_UINT ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
 	}
 
+	/*
 	void        DeviceContext::Bind(
 		unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], 
 		const unsigned strides[], const unsigned offsets[])
@@ -358,6 +359,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			startSlot, bufferCount,
 			buffers, vkOffsets);
 	}
+	*/
 
     void        DeviceContext::BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set)
     {
@@ -813,7 +815,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
     DeviceContext::DeviceContext(
-        const ObjectFactory&    factory, 
+        ObjectFactory&			factory, 
         GlobalPools&            globalPools,
         PipelineLayout&         globalPipelineLayout,
         PipelineLayout&         computePipelineLayout,
@@ -991,7 +993,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 }
             
                 // This is a "structured buffer" in the DirectX terminology
-                auto buffer = UnderlyingResourcePtr(resources[c]->GetResource()).get()->GetBuffer();
+                auto buffer = resources[c]->GetResource()->GetBuffer();
                 assert(buffer);
                 _pimpl->WriteBinding(
                     _pimpl->_srvBufferMapping[binding], descriptorSet, 
@@ -1030,7 +1032,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     continue;
                 }
             
-                auto buffer = UnderlyingResourcePtr(resources[c]->GetResource()).get()->GetBuffer();
+                auto buffer = resources[c]->GetResource()->GetBuffer();
                 assert(buffer);
                 _pimpl->WriteBinding(
                     _pimpl->_uavBufferMapping[binding], descriptorSet, 

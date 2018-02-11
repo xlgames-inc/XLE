@@ -8,6 +8,7 @@
 
 #include "../Utility/PtrUtils.h"
 #include "../Utility/MiniHeap.h"
+#include "../Utility/IteratorUtils.h"
 #include "../Core/Exceptions.h"
 #include "../Core/Types.h"
 #include <type_traits>      // (for is_integral)
@@ -76,6 +77,8 @@ namespace RenderCore
         const void* begin() const { return _allocation; }
         const void* end() const { return PtrAdd(_allocation, _size); }
         size_t size() const { return _size; }
+
+		IteratorRange<const void*> AsIteratorRange() const { return MakeIteratorRange(begin(), end()); }
 
         SharedPkt() never_throws;
         SharedPkt(const SharedPkt& cloneFrom);

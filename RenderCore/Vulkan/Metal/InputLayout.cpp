@@ -5,6 +5,23 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "InputLayout.h"
+#include "ShaderReflection.h"
+#include "Shader.h"
+#include "Format.h"
+#include "PipelineLayout.h"
+#include "DeviceContext.h"
+#include "Pools.h"
+#include "../../Format.h"
+#include "../../Types.h"
+#include "../../BufferView.h"
+#include "../../UniformsStream.h"
+#include "../../../ConsoleRig/Log.h"
+#include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/ArithmeticUtils.h"
+
+#include "IncludeVulkan.h"
+
+/*
 #include "Shader.h"
 #include "Buffer.h"
 #include "State.h"
@@ -14,21 +31,20 @@
 #include "Pools.h"
 #include "Format.h"
 #include "PipelineLayout.h"
-#include "../../Format.h"
 #include "../../Types.h"
 #include "../../ShaderService.h"
-#include "../../../Utility/MemoryUtils.h"
-#include "../../../Utility/ArithmeticUtils.h"
+
 #include "../../../ConsoleRig/Log.h"
+*/
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const ShaderProgram& shader)
-    : BoundInputLayout(layout, shader.GetCompiledVertexShader())
+    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader)
+    : BoundInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex))
     {
     }
 
-    BoundInputLayout::BoundInputLayout(const InputLayout& layout, const CompiledShaderByteCode& shader)
+    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
     {
         // find the vertex inputs into the shader, and match them against the input layout
         unsigned trackingOffset = 0;
@@ -71,130 +87,58 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    BoundUniforms::BoundUniforms(const ShaderProgram& shader)
+	class BoundUniformsHelper
+     {
+     public:
+        BoundUniformsHelper(const ShaderProgram& shader);
+		BoundUniformsHelper(const CompiledShaderByteCode& shader);
+
+		bool BindConstantBuffer(uint64 hashName, unsigned slot, unsigned uniformsStream);
+		bool BindShaderResource(uint64 hashName, unsigned slot, unsigned uniformsStream);
+
+		SPIRVReflection _reflection[ShaderStage::Max];
+
+        static const unsigned s_streamCount = 4;
+        std::vector<uint32_t>	_cbBindingIndices[s_streamCount];
+        std::vector<uint32_t>	_srvBindingIndices[s_streamCount];
+        bool					_isComputeShader;
+
+        uint64_t			BuildShaderBindingMask(unsigned descriptorSet);
+     };
+
+    BoundUniformsHelper::BoundUniformsHelper(const ShaderProgram& shader)
     {
         _isComputeShader = false;
-        if (shader.GetCompiledVertexShader().GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
-        if (shader.GetCompiledPixelShader().GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
-        auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader && geoShader->GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
-        BuildShaderBindingMask();
+		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
+			const auto& compiledCode = shader.GetCompiledCode((ShaderStage)c);
+			if (compiledCode.GetByteCode().size())
+				_reflection[c] = SPIRVReflection(compiledCode.GetByteCode());
+		}
     }
 
-    BoundUniforms::BoundUniforms(const DeepShaderProgram& shader)
-    {
-        _isComputeShader = false;
-        if (shader.GetCompiledVertexShader().GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Vertex] = SPIRVReflection(shader.GetCompiledVertexShader().GetByteCode());
-        if (shader.GetCompiledPixelShader().GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Pixel] = SPIRVReflection(shader.GetCompiledPixelShader().GetByteCode());
-        auto* geoShader = shader.GetCompiledGeometryShader();
-        if (geoShader && geoShader->GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Geometry] = SPIRVReflection(geoShader->GetByteCode());
-        if (shader.GetCompiledHullShader().GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Hull] = SPIRVReflection(shader.GetCompiledHullShader().GetByteCode());
-        if (shader.GetCompiledDomainShader().GetStage() != ShaderStage::Null)
-            _reflection[(unsigned)ShaderStage::Domain] = SPIRVReflection(shader.GetCompiledDomainShader().GetByteCode());
-        BuildShaderBindingMask();
-    }
-
-	BoundUniforms::BoundUniforms(const CompiledShaderByteCode& shader)
+	BoundUniformsHelper::BoundUniformsHelper(const CompiledShaderByteCode& shader)
     {
         auto stage = shader.GetStage();
         if ((unsigned)stage < dimof(_reflection)) {
             _reflection[(unsigned)stage] = SPIRVReflection(shader.GetByteCode());
         }
         _isComputeShader = stage == ShaderStage::Compute;
-        BuildShaderBindingMask();
     }
 
-    BoundUniforms::BoundUniforms() {}
-    BoundUniforms::~BoundUniforms() {}
-
-    BoundUniforms::BoundUniforms(const BoundUniforms& copyFrom)
+    uint64_t BoundUniformsHelper::BuildShaderBindingMask(unsigned descriptorSet)
     {
-        for (unsigned s=0; s<dimof(_reflection); ++s)
-            _reflection[s] = copyFrom._reflection[s];
-
-        for (unsigned s=0; s<s_streamCount; ++s) {
-            _cbBindingIndices[s] = copyFrom._cbBindingIndices[s];
-            _srvBindingIndices[s] = copyFrom._srvBindingIndices[s];
-        }
-
-        for (unsigned s=0; s<s_descriptorSetCount; ++s) {
-            _shaderBindingMask[s] = copyFrom._shaderBindingMask[s];
-            _descriptorSets[s] = nullptr;
-        }
-        _isComputeShader = copyFrom._isComputeShader;
-    }
-
-    BoundUniforms& BoundUniforms::operator=(const BoundUniforms& copyFrom)
-    {
-        for (unsigned s=0; s<dimof(_reflection); ++s)
-            _reflection[s] = copyFrom._reflection[s];
-        for (unsigned s=0; s<s_streamCount; ++s) {
-            _cbBindingIndices[s] = copyFrom._cbBindingIndices[s];
-            _srvBindingIndices[s] = copyFrom._srvBindingIndices[s];
-        }
-
-        for (unsigned s=0; s<s_descriptorSetCount; ++s) {
-            _shaderBindingMask[s] = copyFrom._shaderBindingMask[s];
-            _descriptorSets[s] = nullptr;
-        }
-        _isComputeShader = copyFrom._isComputeShader;
-        return *this;
-    }
-
-    BoundUniforms::BoundUniforms(BoundUniforms&& moveFrom) never_throws
-    {
-        for (unsigned s=0; s<dimof(_reflection); ++s)
-            _reflection[s] = std::move(moveFrom._reflection[s]);
-        for (unsigned s=0; s<s_streamCount; ++s) {
-            _cbBindingIndices[s] = std::move(moveFrom._cbBindingIndices[s]);
-            _srvBindingIndices[s] = std::move(moveFrom._srvBindingIndices[s]);
-        }
-        for (unsigned s=0; s<s_descriptorSetCount; ++s) {
-            _shaderBindingMask[s] = moveFrom._shaderBindingMask[s];
-            _descriptorSets[s] = std::move(_descriptorSets[s]);
-        }
-        _isComputeShader = moveFrom._isComputeShader;
-    }
-
-    BoundUniforms& BoundUniforms::operator=(BoundUniforms&& moveFrom) never_throws
-    {
-        for (unsigned s=0; s<dimof(_reflection); ++s)
-            _reflection[s] = std::move(moveFrom._reflection[s]);
-        for (unsigned s=0; s<s_streamCount; ++s) {
-            _cbBindingIndices[s] = std::move(moveFrom._cbBindingIndices[s]);
-            _srvBindingIndices[s] = std::move(moveFrom._srvBindingIndices[s]);
-        }
-        for (unsigned s=0; s<s_descriptorSetCount; ++s) {
-            _shaderBindingMask[s] = moveFrom._shaderBindingMask[s];
-            _descriptorSets[s] = std::move(_descriptorSets[s]);
-        }
-        _isComputeShader = moveFrom._isComputeShader;
-        return *this;
-    }
-
-    void BoundUniforms::BuildShaderBindingMask()
-    {
-        for (unsigned d=0; d<s_descriptorSetCount; ++d) {
-            _shaderBindingMask[d] = 0x0ull;
-            for (unsigned r=0; r<(unsigned)ShaderStage::Max; ++r) {
-                // Look for all of the bindings in this descriptor set that are referenced by the shader
-                for(const auto&b:_reflection[r]._bindings) {
-                    if (b.second._descriptorSet == d && b.second._bindingPoint != ~0x0u)
-                        _shaderBindingMask[d] |= 1ull << uint64(b.second._bindingPoint);
-                }
+        uint64_t shaderBindingMask = 0x0ull;
+        for (unsigned r=0; r<(unsigned)ShaderStage::Max; ++r) {
+            // Look for all of the bindings in this descriptor set that are referenced by the shader
+            for(const auto&b:_reflection[r]._bindings) {
+                if (b.second._descriptorSet == descriptorSet && b.second._bindingPoint != ~0x0u)
+                    shaderBindingMask |= 1ull << uint64(b.second._bindingPoint);
             }
         }
+		return shaderBindingMask;
     }
 
-    bool BoundUniforms::BindConstantBuffer( uint64 hashName, unsigned slot, unsigned stream,
-                                            const ConstantBufferLayoutElement elements[], size_t elementCount)
+    bool BoundUniformsHelper::BindConstantBuffer(uint64 hashName, unsigned slot, unsigned stream)
     {
         // assert(!_pipelineLayout);
 		auto descSet = 0u;
@@ -209,7 +153,7 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             if (i->second._descriptorSet != descSet) {
-                LogWarning << "Constant buffer binding appears to be in the wrong descriptor set.";
+                Log(Warning) << "Constant buffer binding appears to be in the wrong descriptor set." << std::endl;
                 continue;
             }
 
@@ -218,11 +162,11 @@ namespace RenderCore { namespace Metal_Vulkan
             if (i->second._bindingPoint == ~0x0u)
                 continue;
 
-            assert(descSet < s_descriptorSetCount);
+            assert(descSet == stream);
 
             if (_cbBindingIndices[stream].size() <= slot) _cbBindingIndices[stream].resize(slot+1, ~0u);
 
-            auto descSetBindingPoint = (i->second._bindingPoint & 0xffff) | (descSet << 16);
+            auto descSetBindingPoint = i->second._bindingPoint;
             assert(_cbBindingIndices[stream][slot] == ~0u || _cbBindingIndices[stream][slot] == descSetBindingPoint);
             _cbBindingIndices[stream][slot] = descSetBindingPoint;
 
@@ -232,7 +176,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return gotBinding;
     }
 
-    bool BoundUniforms::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
+    bool BoundUniformsHelper::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
     {
         // assert(!_pipelineLayout);
 		auto descSet = 0u;
@@ -247,15 +191,15 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             if (i->second._descriptorSet != descSet) {
-                LogWarning << "Shader resource binding appears to be in the wrong descriptor set.";
+                Log(Warning) << "Shader resource binding appears to be in the wrong descriptor set." << std::endl;
                 continue;
             }
-            assert(descSet < s_descriptorSetCount);
+            assert(descSet == stream);
 
             if (_srvBindingIndices[stream].size() <= slot) _srvBindingIndices[stream].resize(slot+1, ~0u);
 
             assert(i->second._bindingPoint != ~0x0u);
-            auto descSetBindingPoint = (i->second._bindingPoint & 0xffff) | (descSet << 16);
+            auto descSetBindingPoint = i->second._bindingPoint;
             assert(_srvBindingIndices[stream][slot] == ~0u || _srvBindingIndices[stream][slot] == descSetBindingPoint);
             _srvBindingIndices[stream][slot] = descSetBindingPoint;
             gotBinding = true;
@@ -264,255 +208,290 @@ namespace RenderCore { namespace Metal_Vulkan
         return gotBinding;
     }
 
-    bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<const char*> cbs)
+	BoundUniforms::BoundUniforms(
+        const ShaderProgram& shader,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+	{
+		BoundUniformsHelper helper(shader);
+		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
+		for (unsigned stream=0; stream<dimof(interfaces); ++stream) {
+			_boundUniformBufferSlots[stream] = 0;
+			_boundResourceSlots[stream] = 0;
+			for (unsigned slot=0; slot<interfaces[stream]->_cbBindings.size(); ++slot) {
+				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_cbBindings[slot]._hashName, slot, stream);
+				if (bindSuccess)
+					_boundUniformBufferSlots[stream] |= 1ull<<uint64_t(slot);
+			}
+			for (unsigned slot=0; slot<interfaces[stream]->_srvBindings.size(); ++slot) {
+				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_srvBindings[slot], slot, stream);
+				if (bindSuccess)
+					_boundResourceSlots[stream] |= 1ull<<uint64_t(slot);
+			}
+			_cbBindingIndices[stream] = std::move(helper._cbBindingIndices[stream]);
+			_srvBindingIndices[stream] = std::move(helper._srvBindingIndices[stream]);
+			_shaderBindingMask[stream] = helper.BuildShaderBindingMask(stream);
+		}
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	struct NascentDescriptorWrite
+	{
+	public:
+		static const unsigned s_maxBindings = 16;
+        VkDescriptorBufferInfo	_bufferInfo[s_maxBindings];
+        VkDescriptorImageInfo	_imageInfo[s_maxBindings];
+        VkWriteDescriptorSet	_writes[s_maxBindings];
+
+        unsigned _writeCount = 0, _bufferCount = 0, _imageCount = 0;
+		bool _requiresTemporaryBufferBarrier = false;
+	};
+
+	static uint64_t WriteCBBindings(
+		NascentDescriptorWrite& result,
+		TemporaryBufferSpace& temporaryBufferSpace,
+		ObjectFactory& factory,
+		VkDescriptorSet dstSet,
+		IteratorRange<const ConstantBufferView*> cbvs,
+		IteratorRange<const uint32_t*> bindingIndicies,
+		uint64_t shaderBindingMask)
+	{
+		auto writeCount = result._writeCount;
+		auto bufferCount = result._bufferCount;
+		auto bindingsWrittenTo = 0u;
+
+		auto count = std::min(cbvs.size(), bindingIndicies.size());
+		for (unsigned c=0; c<count; ++c) {
+			auto dstBinding = bindingIndicies[c];
+            if (dstBinding == ~0u) continue;
+
+			assert(shaderBindingMask & (1ull << uint64_t(dstBinding)));
+
+			#if defined(_DEBUG) // check for duplicate descriptor writes (ie, writing to the same binding twice as part of the same operation)
+				for (unsigned w=0; w<writeCount; ++w)
+					assert( result._writes[w].dstBinding != dstBinding
+						||  result._writes[w].dstSet != dstSet);
+			#endif
+
+			assert(writeCount < dimof(result._writes));
+			auto& write = result._writes[writeCount++];
+			write = {};
+			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+			write.dstSet = dstSet;
+			write.dstBinding = dstBinding;
+			write.descriptorCount = 1;
+			write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			write.dstArrayElement = 0;
+
+			if (cbvs[c]._prebuiltBuffer) {
+				assert(const_cast<IResource*>(cbvs[c]._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
+				auto& res = *(Resource*)cbvs[c]._prebuiltBuffer;
+				assert(res.GetBuffer());
+				result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{res.GetBuffer(), 0, VK_WHOLE_SIZE};
+				write.pBufferInfo = &result._bufferInfo[bufferCount];
+				++bufferCount;
+			} else {
+				auto& pkt = cbvs[c]._packet;
+				assert(bufferCount < dimof(result._bufferInfo));
+				// We must either allocate some memory from a temporary pool, or 
+				// (or we could use push constants)
+				result._bufferInfo[bufferCount] = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
+				if (!result._bufferInfo[bufferCount].buffer) {
+					LogWarning << "Failed to allocate temporary buffer space. Falling back to new buffer.";
+					auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
+					result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
+				} else {
+					result._requiresTemporaryBufferBarrier |= true;
+				}
+				write.pBufferInfo = &result._bufferInfo[bufferCount];
+				++bufferCount;
+			}
+
+			bindingsWrittenTo |= 1ull << uint64(dstBinding);
+		}
+
+		result._writeCount = writeCount;
+		result._bufferCount = bufferCount;
+		return bindingsWrittenTo;
+	}
+
+	static uint64_t WriteSRVBindings(
+		NascentDescriptorWrite& result,
+		GlobalPools& globalPools,
+		VkDescriptorSet dstSet,
+		IteratorRange<const ShaderResourceView*const*> srvs,
+		IteratorRange<const uint32_t*> bindingIndicies,
+		uint64_t shaderBindingMask)
+	{
+		auto writeCount = result._writeCount;
+		auto imageCount = result._imageCount;
+		auto bufferCount = result._bufferCount;
+		auto bindingsWrittenTo = 0u;
+
+		auto count = std::min(srvs.size(), bindingIndicies.size());
+		for (unsigned c=0; c<count; ++c) {
+			auto dstBinding = bindingIndicies[c];
+            if (dstBinding == ~0u) continue;
+
+			assert(shaderBindingMask & (1ull << uint64_t(dstBinding)));
+
+			#if defined(_DEBUG) // check for duplicate descriptor writes
+                for (unsigned w=0; w<writeCount; ++w)
+                    assert( result._writes[w].dstBinding != dstBinding
+						||  result._writes[w].dstSet != dstSet);
+			#endif
+
+			assert(writeCount < dimof(result._writes));
+			auto& write = result._writes[writeCount++];
+			write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = dstSet;
+            write.dstBinding = dstBinding;
+            write.descriptorCount = 1;
+            write.dstArrayElement = 0;
+
+			// Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
+			// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
+			// descriptor.
+			if (srvs[c]->GetImageView()) {
+				assert(imageCount < dimof(result._imageInfo));
+				result._imageInfo[imageCount] = VkDescriptorImageInfo {
+					globalPools._dummyResources._blankSampler->GetUnderlying(),
+					srvs[c]->GetImageView(),
+					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+				write.pImageInfo = &result._imageInfo[imageCount];
+				write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+				++imageCount;
+			} else {
+				auto buffer = srvs[c]->GetResource()->GetBuffer();
+				assert(bufferCount < dimof(result._bufferInfo));
+                result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
+                write.pBufferInfo = &result._bufferInfo[bufferCount];
+				write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+				++bufferCount;
+			}
+		}
+
+		result._writeCount = writeCount;
+		result._imageCount = imageCount;
+		result._bufferCount = bufferCount;
+		return bindingsWrittenTo;
+	}
+
+	static uint64_t WriteDummyDescriptors(
+		NascentDescriptorWrite& result,
+		GlobalPools& globalPools,
+		VkDescriptorSet dstSet,
+		const DescriptorSetSignature& sig,
+		uint64_t dummyDescWriteMask)
+	{
+		auto bindingsWrittenTo = 0u;
+
+		assert(result._bufferCount < dimof(result._bufferInfo));
+        assert(result._imageCount < dimof(result._imageInfo));
+        auto blankBuffer = result._bufferCount;
+        auto blankImage = result._imageCount;
+        result._bufferInfo[result._bufferCount++] = VkDescriptorBufferInfo { 
+            globalPools._dummyResources._blankBuffer.GetUnderlying(),
+            0, VK_WHOLE_SIZE };
+        result._imageInfo[result._imageCount++] = VkDescriptorImageInfo {
+            globalPools._dummyResources._blankSampler->GetUnderlying(),
+            globalPools._dummyResources._blankSrv.GetImageView(),
+            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+
+        unsigned minBit = xl_ctz8(dummyDescWriteMask);
+        unsigned maxBit = std::min(64u - xl_clz8(dummyDescWriteMask), (unsigned)sig._bindings.size()-1);
+
+        for (unsigned bIndex=minBit; bIndex<=maxBit; ++bIndex) {
+            if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
+
+            LogWarning << "No data provided for bound uniform (" << bIndex << "). Using dummy resource.";
+
+            assert(result._writeCount < dimof(result._writes));
+			auto& write = result._writes[result._writeCount];
+            write = {};
+            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
+            write.dstSet = dstSet;
+            write.dstBinding = bIndex;
+            write.descriptorCount = 1;
+            write.dstArrayElement = 0;
+
+            const auto& b = sig._bindings[bIndex];
+            if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
+                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+                write.pBufferInfo = &result._bufferInfo[blankBuffer];
+            } else if (b._type == DescriptorSetBindingSignature::Type::Texture) {
+                write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+                write.pImageInfo = &result._imageInfo[blankImage];
+            } else {
+                assert(0);      // (other types, such as UAVs and structured buffers not supported)
+            }
+
+            bindingsWrittenTo |= 1ull << uint64(bIndex);
+            ++result._writeCount;
+        }
+
+		return bindingsWrittenTo;
+	}
+
+    void BoundUniforms::Apply(  
+		DeviceContext& context,
+        unsigned streamIdx,
+        const UniformsStream& stream) const
     {
-        // assert(!_pipelineLayout);
-            // expecting this method to be called before any other BindConstantBuffers 
-            // operations for this uniformsStream (because we start from a zero index)
-        assert(uniformsStream < s_streamCount);
+		assert(streamIdx < s_streamCount);
 
-		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
-        bool result = true;
-        for (auto c=cbs.begin(); c<cbs.end(); ++c)
-            result &= BindConstantBuffer(Hash64(*c), unsigned(c-cbs.begin()), uniformsStream);
-        return result;
-    }
+		// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
+		// sure that all of the commands have already been completed).
+		//
+		// So, in effect writing a new descriptor set will always be a allocate operation. We may have a pool
+		// of prebuild sets that we can reuse; or we can just allocate and free every time.
+		//
+		// Because each uniform stream can be set independantly, and at different rates, we'll use a separate
+		// descriptor set for each uniform stream. 
+		//
+		// In this call, we could attempt to reuse another descriptor set that was created from exactly the same
+		// inputs and already used earlier this frame...? But that may not be worth it. It seems like it will
+		// make more sense to just create and set a full descriptor set for every call to this function.
 
-    bool BoundUniforms::BindConstantBuffers(unsigned uniformsStream, std::initializer_list<uint64> cbs)
-    {
-        // assert(!_pipelineLayout);
-            // expecting this method to be called before any other BindConstantBuffers 
-            // operations for this uniformsStream (because we start from a zero index)
-        assert(uniformsStream < s_streamCount);
-
-		if (_cbBindingIndices[uniformsStream].size() < cbs.size()) _cbBindingIndices[uniformsStream].resize(cbs.size(), ~0u);
-		bool result = true;
-        for (auto c=cbs.begin(); c<cbs.end(); ++c)
-            result &= BindConstantBuffer(*c, unsigned(c-cbs.begin()), uniformsStream);
-        return result;
-    }
-
-    bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<const char*> res)
-    {
-        // assert(!_pipelineLayout);
-        assert(uniformsStream < s_streamCount);
-
-		if (_srvBindingIndices[uniformsStream].size() < res.size()) _srvBindingIndices[uniformsStream].resize(res.size(), ~0u);
-		bool result = true;
-        for (auto c=res.begin(); c<res.end(); ++c)
-            result &= BindShaderResource(Hash64(*c), unsigned(c-res.begin()), uniformsStream);
-        return result;
-    }
-
-    bool BoundUniforms::BindShaderResources(unsigned uniformsStream, std::initializer_list<uint64> res)
-    {
-        // assert(!_pipelineLayout);
-        assert(uniformsStream < s_streamCount);
-
-		if (_srvBindingIndices[uniformsStream].size() < res.size()) _srvBindingIndices[uniformsStream].resize(res.size(), ~0u);
-		bool result = true;
-        for (auto c=res.begin(); c<res.end(); ++c)
-            result &= BindShaderResource(*c, unsigned(c-res.begin()), uniformsStream);
-        return result;
-    }
-
-    static const bool s_reallocateDescriptorSets = true;
-
-    void BoundUniforms::Apply(  DeviceContext& context, 
-                                const UniformsStream& stream0, 
-                                const UniformsStream& stream1) const
-    {
-        // BuildPipelineLayout(GetObjectFactory(), context.GetGlobalPools()._mainDescriptorPool);
-
-        // There's currently a problem reusing descriptor sets from frame to frame. I'm not sure
-        // what the issue is, but causes an error deep within Vulkan. The validation errors don't
-        // report the issue, but just say that "You must call vkBeginCommandBuffer() before this call to ..."
-        // Allocating a fresh descriptor set before every write appears to solve this problem.
-        //
-        // It seems like we could do with better management of the descriptor sets. Allocating new sets
-        // frequently might be ok... But in that case, we should use a "pool" that can be reset once
-        // per frame (as opposed to calling "free" for every separate descriptor.
-        //
-        // In some cases, we might want descriptor sets that are permanent. Ie, we allocate them while
-        // loading a model, and then keep them around over multiple frames. For these cases, we could
-        // have a separate pool with the VK_DESCRIPTOR_POOL_CREATE_FREE_DESCRIPTOR_SET_BIT flag set.
-        //
-        // We have to be careful because vkUpdateDescriptorSets happens immediately -- like mapping
-        // a texture. That makes the memory management more complicated.
         auto pipelineType = _isComputeShader 
             ? DeviceContext::PipelineType::Compute 
             : DeviceContext::PipelineType::Graphics;
         auto* pipelineLayout = context.GetPipelineLayout(pipelineType);
 
-        if (constant_expression<s_reallocateDescriptorSets>::result()) {
-            VkDescriptorSetLayout rawLayouts[s_descriptorSetCount];
-            for (unsigned c=0; c<s_descriptorSetCount; ++c)
-                rawLayouts[c] = pipelineLayout->GetDescriptorSetLayout(c);
-            context.GetGlobalPools()._mainDescriptorPool.Allocate(
-                MakeIteratorRange(_descriptorSets),
-                MakeIteratorRange(rawLayouts));
-        }
+		auto& globalPools = context.GetGlobalPools();
+		auto descriptorSet = globalPools._mainDescriptorPool.Allocate(pipelineLayout->GetDescriptorSetLayout(streamIdx));
 
         // -------- write descriptor set --------
-        const unsigned maxBindings = 16;
-        VkDescriptorBufferInfo bufferInfo[maxBindings];
-        VkDescriptorImageInfo imageInfo[maxBindings];
-        VkWriteDescriptorSet writes[maxBindings];
+		NascentDescriptorWrite descWrite;
+		auto cbBindingFlag = WriteCBBindings(
+			descWrite,
+			context.GetTemporaryBufferSpace(),
+			context.GetFactory(),
+			descriptorSet.get(),
+			stream._constantBuffers,
+			MakeIteratorRange(_cbBindingIndices[streamIdx]),
+			_shaderBindingMask[streamIdx]);
 
-        unsigned writeCount = 0, bufferCount = 0, imageCount = 0;
+		auto svBindingFlag = WriteSRVBindings(
+			descWrite,
+			globalPools,
+			descriptorSet.get(),
+			MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
+			MakeIteratorRange(_srvBindingIndices[streamIdx]),
+			_shaderBindingMask[streamIdx]);		
 
-		const UniformsStream* streams[] = { &stream0, &stream1 };
-
-        uint64 descSetWrites[s_descriptorSetCount] = { 0x0ull };
-        auto& globalPools = context.GetGlobalPools();
-
-		bool temporaryBufferBarrier = false;
-
-        for (unsigned stri=0; stri<dimof(streams); ++stri) {
-            const auto& s = *streams[stri];
-
-			auto maxCbs = _cbBindingIndices[stri].size();
-            for (unsigned p=0; p<std::min(s._packetCount, maxCbs); ++p) {
-                if (s._prebuiltBuffers && s._prebuiltBuffers[p] && s._prebuiltBuffers[p]->IsGood()) {
-
-                    assert(bufferCount < dimof(bufferInfo));
-                    assert(writeCount < dimof(writes));
-
-                    auto dstBinding = _cbBindingIndices[stri][p];
-                    if (dstBinding == ~0u) continue;
-                    bufferInfo[bufferCount] = VkDescriptorBufferInfo{s._prebuiltBuffers[p]->GetUnderlying(), 0, VK_WHOLE_SIZE};
-                    assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
-
-                    // Currently occuring when creating shadow depth textures, because of some of the shadow constant buffers
-                    // #if defined(_DEBUG) // check for duplicate descriptor writes
-                    //     for (unsigned w=0; w<writeCount; ++w)
-                    //         assert( writes[w].dstBinding != (dstBinding&0xffff)
-                    //             ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
-                    // #endif
-
-                    writes[writeCount] = {};
-                    writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
-                    writes[writeCount].dstBinding = dstBinding&0xffff;
-                    writes[writeCount].descriptorCount = 1;
-                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
-                    writes[writeCount].dstArrayElement = 0;
-
-                    descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
-                    ++writeCount;
-                    ++bufferCount;
-                } else if (s._packets && s._packets[p]) {
-                    assert(bufferCount < dimof(bufferInfo));
-                    assert(writeCount < dimof(writes));
-
-                    auto dstBinding = _cbBindingIndices[stri][p];
-                    if (dstBinding == ~0u) continue;
-					bufferInfo[bufferCount] = context.GetTemporaryBufferSpace().AllocateBuffer(
-						s._packets[p].begin(), s._packets[p].size());
-
-					temporaryBufferBarrier |= bufferInfo[bufferCount].buffer != nullptr;
-					if (!bufferInfo[bufferCount].buffer) {
-						LogWarning << "Failed to allocate temporary buffer space. Falling back to new buffer.";
-						ConstantBuffer cb(context.GetFactory(), s._packets[p].begin(), s._packets[p].size());
-						bufferInfo[bufferCount] = VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
-					}
-
-					assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
-
-                    #if defined(_DEBUG) // check for duplicate descriptor writes
-                        for (unsigned w=0; w<writeCount; ++w)
-                            assert( writes[w].dstBinding != (dstBinding&0xffff)
-                                ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
-                    #endif
-
-                    writes[writeCount] = {};
-                    writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                    writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
-                    writes[writeCount].dstBinding = dstBinding&0xffff;
-                    writes[writeCount].descriptorCount = 1;
-                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
-                    writes[writeCount].dstArrayElement = 0;
-
-                    descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
-                    ++writeCount;
-                    ++bufferCount;
-
-                }
-            }
-
-			auto maxSrvs = _srvBindingIndices[stri].size();
-            for (unsigned r=0; r<std::min(s._resourceCount, maxSrvs); ++r) {
-                if (s._resources && s._resources[r]) {
-
-                    assert(imageCount < dimof(imageInfo));
-                    assert(writeCount < dimof(writes));
-
-                    auto dstBinding = _srvBindingIndices[stri][r];
-                    if (dstBinding == ~0u) continue;
-
-                    // Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
-                    // So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-                    // descriptor.
-                    if (s._resources[r]->GetImageView()) {
-                        imageInfo[imageCount] = VkDescriptorImageInfo {
-                            globalPools._dummyResources._blankSampler->GetUnderlying(),
-                            s._resources[r]->GetImageView(),
-						    VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-                        assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
-
-                        #if defined(_DEBUG) // check for duplicate descriptor writes
-                            for (unsigned w=0; w<writeCount; ++w)
-                                assert( writes[w].dstBinding != (dstBinding&0xffff)
-                                    ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
-                        #endif
-
-                        writes[writeCount] = {};
-                        writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                        writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
-                        writes[writeCount].dstBinding = dstBinding&0xffff;
-                        writes[writeCount].descriptorCount = 1;
-                        writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                        writes[writeCount].pImageInfo = &imageInfo[imageCount];
-                        writes[writeCount].dstArrayElement = 0;
-                        ++imageCount;
-                    } else {
-                        auto buffer = UnderlyingResourcePtr(s._resources[r]->GetResource()).get()->GetBuffer();
-                        bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
-                        assert(_shaderBindingMask[0] & (1ull << uint64(dstBinding&0xffff)));
-
-                        #if defined(_DEBUG) // check for duplicate descriptor writes
-                            for (unsigned w=0; w<writeCount; ++w)
-                                assert( writes[w].dstBinding != (dstBinding&0xffff)
-                                    ||  writes[w].dstSet != _descriptorSets[dstBinding>>16].get());
-                        #endif
-
-                        writes[writeCount] = {};
-                        writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                        writes[writeCount].dstSet = _descriptorSets[dstBinding>>16].get();
-                        writes[writeCount].dstBinding = dstBinding&0xffff;
-                        writes[writeCount].descriptorCount = 1;
-                        writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-                        writes[writeCount].pBufferInfo = &bufferInfo[bufferCount];
-                        writes[writeCount].dstArrayElement = 0;
-                        ++bufferCount;
-                    }
-
-                    descSetWrites[dstBinding>>16] |= 1ull << uint64(dstBinding&0xffff);
-                    ++writeCount;
-                }
-            }
-        }
-
-        static_assert(s_descriptorSetCount==1, "Expecting single descriptor set");
-        auto rootSig = pipelineLayout->ShareRootSignature();
-        const auto& sig = rootSig->_descriptorSets[0];
+        auto& rootSig = *pipelineLayout->ShareRootSignature();
+        const auto& sig = rootSig._descriptorSets[streamIdx];
 
         #if defined(_DEBUG)
             // Check to make sure the descriptor type matches the write operation we're performing
-            for (unsigned w=0; w<writeCount; w++) {
-                auto& write = writes[w];
+            for (unsigned w=0; w<descWrite._writeCount; w++) {
+                auto& write = descWrite._writes[w];
                 assert(write.dstBinding < sig._bindings.size());
                 assert(AsDescriptorType(sig._bindings[write.dstBinding]._type) == write.descriptorType);
             }
@@ -527,72 +506,20 @@ namespace RenderCore { namespace Metal_Vulkan
         //
         // In the most common case, there should be no dummy descriptors to fill in here... So we'll 
         // optimise for that case.
-        uint64 dummyDescWriteMask = (~descSetWrites[0]) & _shaderBindingMask[0];
-        if (dummyDescWriteMask != 0) {
-
-            assert(bufferCount < dimof(bufferInfo));
-            assert(imageCount < dimof(imageInfo));
-            auto blankBuffer = bufferCount;
-            auto blankImage = imageCount;
-            bufferInfo[bufferCount++] = VkDescriptorBufferInfo { 
-                globalPools._dummyResources._blankBuffer.GetUnderlying(),
-                0, VK_WHOLE_SIZE };
-            imageInfo[imageCount++] = VkDescriptorImageInfo {
-                globalPools._dummyResources._blankSampler->GetUnderlying(),
-                globalPools._dummyResources._blankSrv.GetImageView(),
-                VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-
-            unsigned minBit = xl_ctz8(dummyDescWriteMask);
-            unsigned maxBit = std::min(64u - xl_clz8(dummyDescWriteMask), (unsigned)sig._bindings.size()-1);
-
-            for (unsigned bIndex=minBit; bIndex<=maxBit; ++bIndex) {
-                if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
-
-                LogWarning << "No data provided for bound uniform (" << bIndex << "). Using dummy resource.";
-
-                assert(writeCount < dimof(writes));
-                writes[writeCount] = {};
-                writes[writeCount].sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-                writes[writeCount].dstSet = _descriptorSets[0].get();
-                writes[writeCount].dstBinding = bIndex;
-                writes[writeCount].descriptorCount = 1;
-                writes[writeCount].dstArrayElement = 0;
-
-                const auto& b = sig._bindings[bIndex];
-                if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
-                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                    writes[writeCount].pBufferInfo = &bufferInfo[blankBuffer];
-                } else if (b._type == DescriptorSetBindingSignature::Type::Texture) {
-                    writes[writeCount].descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                    writes[writeCount].pImageInfo = &imageInfo[blankImage];
-                } else {
-                    assert(0);      // (other types, such as UAVs and structured buffers not supported)
-                }
-
-                // descSetWrites[0] |= 1ull << uint64(bIndex);
-                ++writeCount;
-            }
-        }
+        uint64 dummyDescWriteMask = (~(cbBindingFlag|svBindingFlag)) & _shaderBindingMask[streamIdx];
+        if (dummyDescWriteMask != 0)
+			WriteDummyDescriptors(descWrite, globalPools, descriptorSet.get(), sig, dummyDescWriteMask);
 
         // note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
         //          Ideally we don't really want to have to update these constantly... Once they are 
         //          set, maybe we can just reuse them?
-        if (writeCount)
-            vkUpdateDescriptorSets(context.GetUnderlyingDevice(), writeCount, writes, 0, nullptr);
+        if (descWrite._writeCount)
+            vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
         
-        VkDescriptorSet rawDescriptorSets[s_descriptorSetCount];
-        for (unsigned c=0; c<s_descriptorSetCount; ++c)
-            rawDescriptorSets[c] = _descriptorSets[c].get();
-        
-        static_assert(dimof(rawDescriptorSets) == 1, "Expecting just a single descriptor set");
-        context.BindDescriptorSet(pipelineType, 0, rawDescriptorSets[0]);
+        context.BindDescriptorSet(pipelineType, streamIdx, descriptorSet.get());
 
-		if (temporaryBufferBarrier)
+		if (descWrite._requiresTemporaryBufferBarrier)
 			context.GetTemporaryBufferSpace().WriteBarrier(context);
-    }
-
-    void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
-    {
     }
 
 }}

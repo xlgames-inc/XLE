@@ -7,8 +7,6 @@
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 
-#include "Metal/Forward.h"      // (for Metal::ShaderResourceView)
-
 namespace RenderCore 
 {
     class MiniInputElementDesc;
@@ -20,8 +18,8 @@ namespace RenderCore
     public:
         // todo -- is there any way to shift ShaderResourceView down to RenderCore layer?
         IteratorRange<const ConstantBufferView*> _constantBuffers = {};
-        IteratorRange<const Metal::ShaderResourceView*const*> _resources = {};
-        IteratorRange<const Metal::SamplerState*const*> _samplers = {};
+        IteratorRange<const void*const*> _resources = {};				// Metal::ShaderResourceView
+        IteratorRange<const void*const*> _samplers = {};				// Metal::SamplerState
     };
 
     class ConstantBufferElementDesc

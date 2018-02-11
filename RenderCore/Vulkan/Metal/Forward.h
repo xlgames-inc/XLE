@@ -14,9 +14,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     class ShaderProgram;
 
-    class VertexBuffer;
-    class IndexBuffer;
-    class ConstantBuffer;
+    class Buffer;
 
     class BoundUniforms;
     class BoundInputLayout;
@@ -37,7 +35,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	class ViewportDesc;
 
-    typedef SharedPkt ConstantBufferPacket;
+    using ConstantBufferPacket = SharedPkt;
+	using ConstantBuffer = Buffer;
 
 	class VertexShader;
 	class GeometryShader;

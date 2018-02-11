@@ -20,11 +20,11 @@ namespace BufferUploads { namespace PlatformInterface
         /////////////////////////////////////////////////////////////////////
 
 	using UnderlyingQuery = RenderCore::Metal::UnderlyingQuery;
-	using UnderlyingResource = RenderCore::Resource;
-	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+	using UnderlyingResource = RenderCore::IResource;
+	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
 	UnderlyingResourcePtr CreateResource(RenderCore::IDevice& device, const BufferDesc& desc, DataPacket* initialisationData = nullptr);
-    BufferDesc      ExtractDesc(RenderCore::Resource& resource);
+    BufferDesc      ExtractDesc(RenderCore::IResource& resource);
 
     int64           QueryPerformanceCounter();
 

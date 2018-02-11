@@ -15,6 +15,7 @@
 
 #include "Metal/QueryPool.h"
 #include "Metal/DeviceContext.h"
+#include "Metal/ObjectFactory.h"
 
 namespace RenderCore
 {

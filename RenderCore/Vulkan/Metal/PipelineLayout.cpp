@@ -33,7 +33,7 @@ namespace RenderCore { namespace Metal_Vulkan
         bool _pendingLayoutRebuild;
     };
 
-    VkDescriptorSetLayout       PipelineLayout::GetDescriptorSetLayout(unsigned index)
+    VkDescriptorSetLayout PipelineLayout::GetDescriptorSetLayout(unsigned index)
     {
         assert(index < (unsigned)_pimpl->_descriptorSetLayout.size());
         return _pimpl->_descriptorSetLayout[index].get();
@@ -217,7 +217,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl->_pendingLayoutRebuild = false;
     }
 
-    std::shared_ptr<RootSignature> PipelineLayout::ShareRootSignature()
+    const std::shared_ptr<RootSignature>& PipelineLayout::ShareRootSignature()
     {
         // this method can be called simulateously from multiple threads
         ScopedLock(_pimpl->_rootSignatureLock);

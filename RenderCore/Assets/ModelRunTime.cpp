@@ -24,6 +24,7 @@
 #include "../Metal/State.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
+#include "../Metal/ObjectFactory.h"
 #include "../RenderUtils.h"
 #include "../Types.h"
 #include "../Format.h"

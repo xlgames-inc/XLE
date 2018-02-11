@@ -16,8 +16,8 @@ namespace Utility { class DefragStep; }
 
 namespace BufferUploads
 {
-    using UnderlyingResource = RenderCore::Resource;
-	using UnderlyingResourcePtr = RenderCore::ResourcePtr;
+    using UnderlyingResource = RenderCore::IResource;
+	using UnderlyingResourcePtr = RenderCore::IResourcePtr;
 
     class IResourcePool
     {

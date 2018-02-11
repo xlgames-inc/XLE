@@ -30,7 +30,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class CommandPool;
 	class DescriptorPool;
 	class DummyResources;
-	class UnderlyingResourcePtr;
 	enum class CommandBufferType;
 	class TemporaryBufferSpace;
 
@@ -151,8 +150,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DeviceContext : public GraphicsPipelineBuilder, ComputePipelineBuilder
     {
     public:
-		template<int Count> void    Bind(const ResourceList<VertexBuffer, Count>& VBs, unsigned stride, unsigned offset=0);
-
         template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void    BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources);
@@ -197,13 +194,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
 
-		template<int Count> void    BindSO(const ResourceList<VertexBuffer, Count>& buffers, unsigned offset=0) {}
-
 		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
         template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess) {}
 
-		void        Bind(unsigned startSlot, unsigned bufferCount, const VertexBuffer* VBs[], const unsigned strides[], const unsigned offsets[]);
-        void        Bind(const IndexBuffer& ib, Format indexFormat, unsigned offset=0);
+		void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
         void        Bind(const ViewportDesc& viewport);
         const ViewportDesc& GetBoundViewport() const { return _boundViewport; }
 
@@ -252,7 +246,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
-		const ObjectFactory& GetFactory() const				{ return *_factory; }
+		ObjectFactory&	GetFactory() const				{ return *_factory; }
 		TemporaryBufferSpace& GetTemporaryBufferSpace()		{ return *_tempBufferSpace; }
 
         void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
@@ -323,7 +317,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		void CmdResetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
 
         DeviceContext(
-            const ObjectFactory& factory, 
+            ObjectFactory& factory, 
             GlobalPools& globalPools,
             PipelineLayout& globalPipelineLayout,
             PipelineLayout& computePipelineLayout,
@@ -336,7 +330,7 @@ namespace RenderCore { namespace Metal_Vulkan
     private:
         VulkanSharedPtr<VkCommandBuffer>    _commandList;
         GlobalPools*                        _globalPools;
-        const ObjectFactory*                _factory;
+        ObjectFactory*						_factory;
 
         VkRenderPass                        _renderPass;
         TextureSamples                      _renderPassSamples;
@@ -359,13 +353,6 @@ namespace RenderCore { namespace Metal_Vulkan
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
     };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    ObjectFactory& GetObjectFactory(IDevice& device);
-	ObjectFactory& GetObjectFactory(DeviceContext&);
-	ObjectFactory& GetObjectFactory(UnderlyingResourcePtr);
-	ObjectFactory& GetObjectFactory();
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
