@@ -41,7 +41,6 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const BlendState& blendState);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
         
-        void        Bind(const BoundInputLayout& inputLayout);
         void        Bind(const ShaderProgram& shaderProgram);
 		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
 
@@ -73,6 +72,9 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned                _vertexStrides[s_maxBoundVBs];
 
         bool                    _pipelineStale;
+
+		void        SetBoundInputLayout(const BoundInputLayout& inputLayout);
+		friend class BoundInputLayout;
     };
 
     class ComputePipelineBuilder

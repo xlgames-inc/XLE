@@ -43,7 +43,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _depthStencilState.back.reference = stencilRef;
     }
 
-    void        GraphicsPipelineBuilder::Bind(const BoundInputLayout& inputLayout)
+    void        GraphicsPipelineBuilder::SetBoundInputLayout(const BoundInputLayout& inputLayout)
     {
         if (_inputLayout != &inputLayout) {
             _pipelineStale = true;
@@ -114,16 +114,6 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    void        GraphicsPipelineBuilder::SetVertexStrides(IteratorRange<const unsigned*> vertexStrides)
-    {
-        for (unsigned c=0; c < vertexStrides.size() && c < dimof(_vertexStrides); ++c) {
-            if (_vertexStrides[c] != vertexStrides[c]) {
-                _vertexStrides[c] = vertexStrides[c];
-                _pipelineStale = true;
-            }
-        }
-    }
-
     static VkPipelineShaderStageCreateInfo BuildShaderStage(VkShaderModule shader, VkShaderStageFlagBits stage)
     {
         VkPipelineShaderStageCreateInfo result = {};
@@ -163,14 +153,12 @@ namespace RenderCore { namespace Metal_Vulkan
         dynamicState.pDynamicStates = dynamicStateEnables;
         dynamicState.dynamicStateCount = 0;
 
-        VkVertexInputBindingDescription vertexBinding = { 0, _vertexStrides[0], VK_VERTEX_INPUT_RATE_VERTEX };
-
         VkPipelineVertexInputStateCreateInfo vi = {};
         vi.sType = VK_STRUCTURE_TYPE_PIPELINE_VERTEX_INPUT_STATE_CREATE_INFO;
         vi.pNext = nullptr;
         vi.flags = 0;
-        vi.vertexBindingDescriptionCount = 1;
-        vi.pVertexBindingDescriptions = &vertexBinding;
+        vi.vertexBindingDescriptionCount = 0;
+		vi.pVertexBindingDescriptions = nullptr;
         vi.vertexAttributeDescriptionCount = 0;
         vi.pVertexAttributeDescriptions = nullptr;
 
@@ -178,6 +166,10 @@ namespace RenderCore { namespace Metal_Vulkan
             auto attribs = _inputLayout->GetAttributes();
             vi.vertexAttributeDescriptionCount = (uint32)attribs.size();
             vi.pVertexAttributeDescriptions = attribs.begin();
+
+			VkVertexInputBindingDescription vertexBinding = { 0, _vertexStrides[0], VK_VERTEX_INPUT_RATE_VERTEX };
+			vi.vertexBindingDescriptionCount = 1;
+			vi.pVertexBindingDescriptions = &vertexBinding;
         }
 
         VkPipelineInputAssemblyStateCreateInfo ia = {};
@@ -296,8 +288,6 @@ namespace RenderCore { namespace Metal_Vulkan
         _pipelineStale = false;
         return std::move(result);
     }
-
-    void        Reset();
 
     ComputePipelineBuilder::ComputePipelineBuilder()
     {
@@ -609,6 +599,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		// We will release our reference on _command list here.
 		auto result = std::move(_commandList);
+		assert(!_commandList);
 		return result;
 	}
 

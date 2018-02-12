@@ -34,7 +34,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			buffers[c] = ((Resource*)vertexBuffers[c]._resource)->GetBuffer();
 		}
         context.CmdBindVertexBuffers(0, count, buffers, offsets);
-		context.SetVertexStrides(MakeIteratorRange(_vertexStrides));
+		context.SetBoundInputLayout(*this);
 	}
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader)
@@ -63,7 +63,10 @@ namespace RenderCore { namespace Metal_Vulkan
             _attributes.push_back(desc);
         }
 
-		_vertexStrides = CalculateVertexStrides(layout);
+		auto vertexStrides = CalculateVertexStrides(layout);
+		_vbBindingDescriptions.reserve(vertexStrides.size());
+		for (unsigned b=0; b<(unsigned)vertexStrides.size(); ++b)
+			_vbBindingDescriptions.push_back({b, vertexStrides[b], VK_VERTEX_INPUT_RATE_VERTEX});
 
         // todo -- check if any input slots are not bound to anything
     }
@@ -93,8 +96,8 @@ namespace RenderCore { namespace Metal_Vulkan
         BoundUniformsHelper(const ShaderProgram& shader);
 		BoundUniformsHelper(const CompiledShaderByteCode& shader);
 
-		bool BindConstantBuffer(uint64 hashName, unsigned slot, unsigned uniformsStream);
-		bool BindShaderResource(uint64 hashName, unsigned slot, unsigned uniformsStream);
+		bool BindConstantBuffer(uint64 hashName, unsigned uniformsStream, unsigned slot);
+		bool BindShaderResource(uint64 hashName, unsigned uniformsStream, unsigned slot);
 
 		SPIRVReflection _reflection[ShaderStage::Max];
 
@@ -138,7 +141,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		return shaderBindingMask;
     }
 
-    bool BoundUniformsHelper::BindConstantBuffer(uint64 hashName, unsigned slot, unsigned stream)
+    bool BoundUniformsHelper::BindConstantBuffer(uint64 hashName, unsigned stream, unsigned slot)
     {
         // assert(!_pipelineLayout);
 		auto descSet = 0u;
@@ -162,7 +165,8 @@ namespace RenderCore { namespace Metal_Vulkan
             if (i->second._bindingPoint == ~0x0u)
                 continue;
 
-            assert(descSet == stream);
+            // assert(descSet == stream);
+			if (descSet != stream) continue;
 
             if (_cbBindingIndices[stream].size() <= slot) _cbBindingIndices[stream].resize(slot+1, ~0u);
 
@@ -176,7 +180,7 @@ namespace RenderCore { namespace Metal_Vulkan
         return gotBinding;
     }
 
-    bool BoundUniformsHelper::BindShaderResource(uint64 hashName, unsigned slot, unsigned stream)
+    bool BoundUniformsHelper::BindShaderResource(uint64 hashName, unsigned stream, unsigned slot)
     {
         // assert(!_pipelineLayout);
 		auto descSet = 0u;
@@ -222,12 +226,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			_boundUniformBufferSlots[stream] = 0;
 			_boundResourceSlots[stream] = 0;
 			for (unsigned slot=0; slot<interfaces[stream]->_cbBindings.size(); ++slot) {
-				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_cbBindings[slot]._hashName, slot, stream);
+				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_cbBindings[slot]._hashName, stream, slot);
 				if (bindSuccess)
 					_boundUniformBufferSlots[stream] |= 1ull<<uint64_t(slot);
 			}
 			for (unsigned slot=0; slot<interfaces[stream]->_srvBindings.size(); ++slot) {
-				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_srvBindings[slot], slot, stream);
+				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_srvBindings[slot], stream, slot);
 				if (bindSuccess)
 					_boundResourceSlots[stream] |= 1ull<<uint64_t(slot);
 			}
@@ -235,6 +239,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			_srvBindingIndices[stream] = std::move(helper._srvBindingIndices[stream]);
 			_shaderBindingMask[stream] = helper.BuildShaderBindingMask(stream);
 		}
+		_isComputeShader = helper._isComputeShader;
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -301,7 +306,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				// (or we could use push constants)
 				result._bufferInfo[bufferCount] = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
 				if (!result._bufferInfo[bufferCount].buffer) {
-					LogWarning << "Failed to allocate temporary buffer space. Falling back to new buffer.";
+					Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
 					auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
 					result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
 				} else {
@@ -409,7 +414,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned bIndex=minBit; bIndex<=maxBit; ++bIndex) {
             if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
 
-            LogWarning << "No data provided for bound uniform (" << bIndex << "). Using dummy resource.";
+            Log(Warning) << "No data provided for bound uniform (" << bIndex << "). Using dummy resource." << std::endl;
 
             assert(result._writeCount < dimof(result._writes));
 			auto& write = result._writes[result._writeCount];
@@ -444,6 +449,9 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStream& stream) const
     {
 		assert(streamIdx < s_streamCount);
+		if (!_shaderBindingMask[streamIdx]) {
+			return;	// nothing bound, nothing to do
+		}
 
 		// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
 		// sure that all of the commands have already been completed).

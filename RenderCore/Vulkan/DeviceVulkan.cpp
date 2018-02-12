@@ -15,6 +15,7 @@
 #include "Metal/PipelineLayout.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Core/SelectConfiguration.h"
@@ -110,7 +111,7 @@ namespace RenderCore { namespace ImplVulkan
         static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
         {
 	        (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
-            Log(Verbose) << pLayerPrefix << ": " << pMsg;
+            Log(Warning) << pLayerPrefix << ": " << pMsg << std::endl;
 	        return false;
         }
     
@@ -462,6 +463,7 @@ namespace RenderCore { namespace ImplVulkan
 		unsigned _bufferCount;
 		unsigned _producerBufferIndex;
 		unsigned _consumerBufferIndex;
+		bool _firstProducerFrame;
 		Marker _currentProducerFrame;
 		Marker _lastConsumerFrame;
 		VkDevice _device;
@@ -489,13 +491,21 @@ namespace RenderCore { namespace ImplVulkan
 
 	void EventBasedTracker::IncrementProducerFrame()
 	{
-		++_currentProducerFrame;
-		_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
-		// If we start "eating our tail" (ie, we don't have enough buffers to support the queued GPU frames, we will get an assert
-		// here... This needs to be replaced with something more robust
-		// Probably higher level code should prevent the CPU from getting too far ahead of the GPU, so as to guarantee we never
-		// end up eating our tail here...
-		assert(_trackers[_producerBufferIndex]._frameMarker == Marker_Invalid); 
+		if (!_firstProducerFrame) {
+			++_currentProducerFrame;
+			_producerBufferIndex = (_producerBufferIndex + 1) % _bufferCount; 
+			// If we start "eating our tail" (ie, we don't have enough buffers to support the queued GPU frames, we will get an assert
+			// here... This needs to be replaced with something more robust
+			// Probably higher level code should prevent the CPU from getting too far ahead of the GPU, so as to guarantee we never
+			// end up eating our tail here...
+			while (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid) {
+				Threading::YieldTimeSlice();
+				UpdateConsumer();
+			}
+			assert(_trackers[_producerBufferIndex]._frameMarker == Marker_Invalid); 
+		}
+		
+		_firstProducerFrame = false;
 		_trackers[_producerBufferIndex]._frameMarker = _currentProducerFrame;
 	}
 
@@ -532,9 +542,8 @@ namespace RenderCore { namespace ImplVulkan
 		_consumerBufferIndex = 0;
 		_producerBufferIndex = 0;
 		_lastConsumerFrame = 0;
+		_firstProducerFrame = true;
 		_device = factory.GetDevice().get();
-
-		_trackers[_producerBufferIndex]._frameMarker = _currentProducerFrame;
 	}
 
 	EventBasedTracker::~EventBasedTracker() {}

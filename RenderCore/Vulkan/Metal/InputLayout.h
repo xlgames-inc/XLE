@@ -49,9 +49,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws;
 
         const IteratorRange<const VkVertexInputAttributeDescription*> GetAttributes() const { return MakeIteratorRange(_attributes); }
+		const IteratorRange<const VkVertexInputBindingDescription*> GetVBBindings() const { return MakeIteratorRange(_vbBindingDescriptions); }
     private:
         std::vector<VkVertexInputAttributeDescription>	_attributes;
-		std::vector<unsigned>							_vertexStrides;
+		std::vector<VkVertexInputBindingDescription>	_vbBindingDescriptions;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

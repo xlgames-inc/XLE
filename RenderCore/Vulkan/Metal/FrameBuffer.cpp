@@ -12,6 +12,7 @@
 #include "ObjectFactory.h"
 #include "../../ResourceUtils.h"
 #include "../../Format.h"
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -521,19 +522,6 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 #endif
 
-	/*
-	class WorkingAttachments 
-	{
-	public:
-
-	};
-
-	std::vector<WorkingAttachments> CalculateWorkingAttachments(const FrameBufferDesc& layout)
-	{
-		
-        
-	}*/
-
 	static bool HasRetain(LoadStore ls)
 	{
 		return ls == LoadStore::Retain
@@ -542,6 +530,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			|| ls == LoadStore::Clear_RetainStencil
 			|| ls == LoadStore::Retain_ClearStencil;
 	}
+
+	/*static bool HasClear(LoadStore ls)
+	{
+		return ls == LoadStore::Clear
+			|| ls == LoadStore::Clear_RetainStencil
+			|| ls == LoadStore::DontCare_ClearStencil
+			|| ls == LoadStore::Retain_ClearStencil
+			|| ls == LoadStore::Clear_ClearStencil;
+	}*/
 	
 	static void MergeFormatFilter(TextureViewDesc::FormatFilter& dst, TextureViewDesc::FormatFilter src)
 	{
@@ -607,17 +604,17 @@ namespace RenderCore { namespace Metal_Vulkan
 				if (i == workingAttachments.end() || i->first != resource)
 					i = workingAttachments.insert(i, {resource, WorkingAttachment{}});
 
-				AttachmentUsage loadUsage { spIdx, Internal::AttachmentUsageType::Output, r._loadFromPreviousPhase };
-				AttachmentUsage storeUsage {};
-				if (r._storeToNextPhase == LoadStore::Retain)
-					storeUsage = { spIdx, Internal::AttachmentUsageType::Output, r._storeToNextPhase };
+				AttachmentUsage loadUsage { spIdx, spa.second, r._loadFromPreviousPhase };
+				AttachmentUsage storeUsage { spIdx, spa.second, r._storeToNextPhase };
 
 				// If we're loading data from a previous phase, we've got to find it in
 				// the working attachments, and create a subpass dependency
 				// Otherwise, if there are any previous contents, they 
 				// will be destroyed.
-				if (HasRetain(r._loadFromPreviousPhase))
-					dependencies.push_back({resource, i->second._lastSubpassWrite, loadUsage});
+				// We do this even if there's not an explicit retain on the load step
+				//	-- we assume "retain" between subpasses, even if the views contradict that
+				//	(as per Vulkan, where LoadStore is only for the input/output of the entire render pass)
+				dependencies.push_back({resource, i->second._lastSubpassWrite, loadUsage});
 
 				// We also need a dependency with the last subpass to read from this 
 				// attachment. We can't write to it until the reading is finished
@@ -636,7 +633,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				}
 
 				MergeFormatFilter(i->second._formatFilter, r._window._format);
-				i->second._attachmentUsage |= Internal::AttachmentUsageType::Output;
+				i->second._attachmentUsage |= spa.second;
 			}
 		}
 
@@ -656,13 +653,13 @@ namespace RenderCore { namespace Metal_Vulkan
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::DepthStencil) formatUsage = FormatUsage::DSV;
             auto resolvedFormat = ResolveFormat(resourceDesc->_format, formatFilter, formatUsage);
 
-			// look through the subpass dependencies to find load operations including
+			// look through the subpass dependencies to find the load operation for the first reference to this resource
 			LoadStore originalLoad = LoadStore::DontCare;
 			for (const auto& d:dependencies) {
 				if (d._resource == a.first && d._first._subpassIdx == ~0u) {
 					// this is a load from pre-renderpass
-					assert(originalLoad == LoadStore::DontCare || originalLoad == d._first._loadStore);
-					originalLoad = d._first._loadStore;
+					assert(originalLoad == LoadStore::DontCare || originalLoad == d._second._loadStore);
+					originalLoad = d._second._loadStore;
 				}
 			}
 			LoadStore finalStore = a.second._lastSubpassWrite._loadStore;
@@ -702,7 +699,7 @@ namespace RenderCore { namespace Metal_Vulkan
             if (a.first == 0u) {
                 // we assume that name "0" is always bound to a presentable buffer
                 assert(!isDepthStencil);
-                desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
+                desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
                 desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             } 
             
@@ -751,7 +748,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				auto i = LowerBound(workingAttachments, resource);
 				assert(i != workingAttachments.end() && i->first == resource);
 				auto internalName = std::distance(workingAttachments.begin(), i);
-				attachReferences.push_back(VkAttachmentReference{(uint32_t)internalName, AsShaderReadLayout(i->second._attachmentUsage)});
+				attachReferences.push_back(VkAttachmentReference{(uint32_t)internalName, VK_IMAGE_LAYOUT_COLOR_ATTACHMENT_OPTIMAL}); // AsShaderReadLayout(i->second._attachmentUsage)});
             }
             desc.pColorAttachments = (const VkAttachmentReference*)(beforeOutputs+1);
             desc.colorAttachmentCount = uint32_t(attachReferences.size() - beforeOutputs);
@@ -765,7 +762,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				assert(i != workingAttachments.end() && i->first == resource);
 				auto internalName = std::distance(workingAttachments.begin(), i);
 				desc.pDepthStencilAttachment = (const VkAttachmentReference*)(attachReferences.size()+1);
-				attachReferences.push_back(VkAttachmentReference{(uint32_t)internalName, AsShaderReadLayout(i->second._attachmentUsage)});
+				attachReferences.push_back(VkAttachmentReference{(uint32_t)internalName, VK_IMAGE_LAYOUT_DEPTH_STENCIL_ATTACHMENT_OPTIMAL}); // AsShaderReadLayout(i->second._attachmentUsage)});
             } else {
                 desc.pDepthStencilAttachment = nullptr;
             }
@@ -917,6 +914,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		// Also create subpass dependencies for every subpass. This is required currently, because we can sometimes
 		// use vkCmdPipelineBarrier with a global memory barrier to push through dynamic constants data. However, this
 		// might defeat some of the key goals of the render pass system!
+		/*
+			Note -- this currently crashes the VK_LAYER_LUNARG_draw_state validation code... But it seems like we need it!
 		for (unsigned c = 0; c<unsigned(subpasses.size()); ++c) {
 			vkDeps.push_back(VkSubpassDependency{
 				c, c, 
@@ -931,6 +930,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				| VK_ACCESS_SHADER_READ_BIT,
 				0});
 		}
+		*/
 
 		////////////////////////////////////////////////////////////////////////////////////
 		// Build the final render pass object
@@ -986,44 +986,61 @@ namespace RenderCore { namespace Metal_Vulkan
         const INamedAttachments& namedResources)
     : _layout(layout)
     {
-        // We must create the frame buffer, including all resources and views required.
-        // Here, some resources can come from the presentation chain. But other resources will
-        // be created an attached to this object.
+        // We must create the frame buffer, including all views required.
+        // We need to order the list of views in VkFramebufferCreateInfo in the
+		// same order as the attachments were defined in the VkRenderPass object.
 		auto subpasses = fbDesc.GetSubpasses();
 
         MaxDims maxDims;
-
-		ViewPool<RenderTargetView> rtvPool;
-        ViewPool<DepthStencilView> dsvPool;
-		ViewPool<ShaderResourceView> srvPool;
-        VkImageView rawViews[16];
-		unsigned rawViewCount = 0;
-
-        for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
+		std::vector<std::pair<AttachmentName, Internal::AttachmentUsageType::BitField>> attachments;
+		attachments.reserve(subpasses.size()*4);	// estimate
+		for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 
 			for (const auto& r:spDesc._output) {
-				auto resource = namedResources.GetResource(r._resourceName);
-				auto* rtv = rtvPool.GetView(resource, r._window);
-				rawViews[rawViewCount++] = rtv->GetImageView();
+				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Output});
 				BuildMaxDims(maxDims, r._resourceName, namedResources, props);
 			}
 
 			if (spDesc._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
-				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
-				auto* dsv = dsvPool.GetView(resource, spDesc._depthStencil._window);
-				rawViews[rawViewCount++] = dsv->GetImageView();
+				attachments.push_back({spDesc._depthStencil._resourceName, Internal::AttachmentUsageType::DepthStencil});
 				BuildMaxDims(maxDims, spDesc._depthStencil._resourceName, namedResources, props);
 			}
 
 			for (const auto& r:spDesc._input) {
 				// todo -- these srvs also need to be exposed to the caller, so they can be bound to
 				// the shader during the subpass
-				auto resource = namedResources.GetResource(r._resourceName);
-				auto* srv = srvPool.GetView(resource, r._window);
-				rawViews[rawViewCount++] = srv->GetImageView();
+				attachments.push_back({r._resourceName, Internal::AttachmentUsageType::Input});
 				BuildMaxDims(maxDims, r._resourceName, namedResources, props);
 			}
+        }
+
+		// Sort by AttachmentName, and combine multiple references to the same resource into a single view
+		std::sort(attachments.begin(), attachments.end(), CompareFirst<AttachmentName, Internal::AttachmentUsageType::BitField>());
+		std::vector<std::pair<AttachmentName, Internal::AttachmentUsageType::BitField>> uniqueAttachments;
+		uniqueAttachments.reserve(attachments.size());
+
+		for (auto i=attachments.begin(); i!=attachments.end();) {
+			auto i2 = i;
+			Internal::AttachmentUsageType::BitField mergedUsage = 0;
+			while (i2!=attachments.end() && i2->first == i->first) { 
+				mergedUsage |= i2->second;
+				++i2;
+			}
+			uniqueAttachments.push_back({i->first, mergedUsage});
+			i = i2;
+		}
+
+		ViewPool<TextureView> viewPool;
+        VkImageView rawViews[16];
+		unsigned rawViewCount = 0;
+
+        for (const auto&a:uniqueAttachments) {
+			// Note that we can't support TextureViewDesc properly here, because we don't support 
+			// the same resource being used with more than one view
+			auto resource = namedResources.GetResource(a.first);
+			auto* rtv = viewPool.GetView(resource, TextureViewDesc{});
+			rawViews[rawViewCount++] = rtv->GetImageView();
         }
 
         VkFramebufferCreateInfo fb_info = {};

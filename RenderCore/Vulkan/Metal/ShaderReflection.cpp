@@ -74,14 +74,14 @@ namespace RenderCore { namespace Metal_Vulkan
         using namespace spv;
         // spv::Parameterize();
 
-        auto* i = ((const uint32_t*)byteCode.begin()) + 5;
-        while (i < byteCode.end()) {
+        auto* bci = ((const uint32_t*)byteCode.begin()) + 5;
+        while (bci < byteCode.end()) {
             // Instruction wordCount and opcode
-            unsigned int firstWord = *i;
+            unsigned int firstWord = *bci;
             unsigned wordCount = firstWord >> WordCountShift;
             Op opCode = (Op)(firstWord & OpCodeMask);
-            auto paramStart = i+1;
-            i += wordCount;
+            auto paramStart = bci+1;
+            bci += wordCount;
 
             switch (opCode) {
             case OpMemberName:

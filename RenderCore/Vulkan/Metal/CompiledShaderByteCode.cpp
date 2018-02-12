@@ -26,6 +26,9 @@
 // Vulkan SDK includes -- 
 #pragma push_macro("new")
 #undef new
+#pragma warning(disable:4458)		// declaration of 'loc' hides class member
+#undef _ENFORCE_MATCHING_ALLOCATORS
+#define _ENFORCE_MATCHING_ALLOCATORS 0
 #include <glslang/glslang/Public/ShaderLang.h>
 #include <glslang/glslang/Include/InitializeGlobals.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
@@ -272,7 +275,8 @@ namespace RenderCore { namespace Metal_Vulkan
         /*out*/ ::Assets::Blob& payload,
         /*out*/ ::Assets::Blob& errors,
         EShLanguage shaderType,
-        const char glslSource[]) 
+        const char glslSource[],
+		const ResChar shaderModel[]) 
     {
         // This function is derived from the Vulkan SDK samples
         auto builtInLimits = CreateTBuiltInResource();
@@ -309,7 +313,7 @@ namespace RenderCore { namespace Metal_Vulkan
         payload = std::make_shared<std::vector<uint8>>(spirvBlockSize + sizeof(ShaderService::ShaderHeader));
 
         *(ShaderService::ShaderHeader*)AsPointer(payload->begin())
-            = ShaderService::ShaderHeader { ShaderService::ShaderHeader::Version, false };
+            = ShaderService::ShaderHeader { shaderModel, false };
 
         // std::stringstream disassem;
         // spv::Disassemble(disassem, spirv);
@@ -492,7 +496,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto spvRes = GLSLtoSPV(
             payload, errors, 
             GLSLShaderTypeToEShLanguage(glslShader.shaderType),
-            glslShader.sourceCode);
+            glslShader.sourceCode, shaderPath._shaderModel);
 
         return spvRes;
 #else

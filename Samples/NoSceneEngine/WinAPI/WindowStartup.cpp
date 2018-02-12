@@ -42,7 +42,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
     PlatformRig::AccumulatedAllocations accumulatedAllocations;
 
     ConsoleRig::GlobalServices services;
-    LogInfo << "------------------------------------------------------------------------------------------";
+    Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
 
     TRY {
         Sample::ExecuteSample();
@@ -51,8 +51,8 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         XlOutputDebugString(e.what());
         XlOutputDebugString("\n");
 
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
+        Log(Error) << e.what() << std::endl;
         XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 

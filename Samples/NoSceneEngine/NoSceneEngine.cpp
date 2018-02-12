@@ -255,8 +255,8 @@ namespace Sample
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
 
 	static VulkanTest::texture_object texObj = {};
-#if 0
 
+#if 0
     static void RunShaderTest(RenderCore::IThreadContext& genericThreadContext)
     {
         TRY
@@ -565,7 +565,7 @@ namespace Sample
 					1.f, 1.f, 0u,
                     TextureViewDesc::Aspect::Depth,
 					AttachmentDesc::DimensionsMode::OutputRelative,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource };
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::DepthStencil };
 
                 // gbuffer diffuse
 			AttachmentDesc d_diffuse =		// GBufferDiffuse,
@@ -598,7 +598,13 @@ namespace Sample
                     TextureViewDesc::ColorLinear,
 					AttachmentDesc::DimensionsMode::OutputRelative,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
-        
+
+			namedResources.DefineAttachment(MainDepthStencil, d_mainDepthStencil);
+			namedResources.DefineAttachment(GBufferDiffuse, d_diffuse);
+			namedResources.DefineAttachment(GBufferNormals, d_normals);
+			namedResources.DefineAttachment(GBufferParams, d_params);
+			namedResources.DefineAttachment(LightingResolve, d_lightingResolve);
+
 			AttachmentViewDesc v_presTarget = { PresentationTarget, LoadStore::DontCare, LoadStore::Retain };
 			AttachmentViewDesc v_mainDepthStencil = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare, TextureViewDesc::Aspect::DepthStencil };
 			AttachmentViewDesc v_diffuse = { GBufferDiffuse, LoadStore::DontCare, LoadStore::DontCare };
@@ -608,27 +614,15 @@ namespace Sample
 
             SubpassDesc subpasses[] = 
             {
+				// SubpassDesc{{ v_presTarget }, v_mainDepthStencil },
+
                 // render to fbuffer
 				SubpassDesc{{ v_diffuse, v_normals, v_params }, v_mainDepthStencil },
                 // resolve lighting & resolve
-				// SubpassDesc{{ v_lightingResolve }, SubpassDesc::Unused, { v_diffuse, v_normals, v_params }, {}, { v_presTarget }}
 				SubpassDesc{{ v_presTarget }, SubpassDesc::Unused, { v_diffuse, v_normals, v_params }}
-                // SubpassDesc{{PresentationTarget}, SubpassDesc::Unused, {GBufferDiffuse}) // , {}, {PresentationTarget}}
             };
 
-			FrameBufferDesc fbLayout(
-				MakeIteratorRange(subpasses));
-
-            auto presDims = metalContext->GetPresentationTargetDims();
-            namedResources.Bind(FrameBufferProperties{presDims[0], presDims[1], samples});
-
-			namedResources.DefineAttachment(MainDepthStencil, d_mainDepthStencil);
-			namedResources.DefineAttachment(GBufferDiffuse, d_diffuse);
-			namedResources.DefineAttachment(GBufferNormals, d_normals);
-			namedResources.DefineAttachment(GBufferParams, d_params);
-			namedResources.DefineAttachment(LightingResolve, d_lightingResolve);
-
-            metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
+			FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));
 
 			auto clearValues = {MakeClearValue(1.f, 0)};
             {
@@ -637,7 +631,7 @@ namespace Sample
                     0u, namedResources, 
 					MakeIteratorRange(clearValues));
 
-                // First, render gbuffer subpass
+				// First, render gbuffer subpass
                 {
                     auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
@@ -654,8 +648,8 @@ namespace Sample
                     metalContext->BindPS(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
 
                     auto& resolveShdr = ::Assets::GetAssetDep<Metal::ShaderProgram>(
-                        "game/xleres/basic2D.vsh:fullscreen:vs_*", 
-                        "game/xleres/basic.psh:copy:ps_*",
+                        "xleres/basic2D.vsh:fullscreen:vs_*", 
+                        "xleres/basic.psh:copy:ps_*",
                         "");
                     metalContext->Unbind<Metal::BoundInputLayout>();
                     metalContext->Bind(Topology::TriangleStrip);
@@ -676,6 +670,12 @@ namespace Sample
         using namespace PlatformRig;
         using namespace Sample;
 
+		std::cout << std::endl;
+		Log(Warning) << "TestLog" << std::endl;
+		std::cout << "TestCOUT" << std::endl;
+		std::cout << "TestCOUT2" << std::endl;
+		std::cout.flush();
+
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
             // We need to startup some basic objects:
@@ -686,7 +686,7 @@ namespace Sample
             //
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
-        LogInfo << "Building primary managers";
+        LogInfo << "Building primary managers" << std::endl;
         auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
@@ -831,6 +831,7 @@ namespace Sample
                 }
 
 				auto res = context->BeginFrame(*presentationChain);
+				RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
                 auto presDims = context->GetStateDesc()._viewportDimensions;
 				auto samples = presentationChain->GetDesc()->_samples;
                 namedResources.Bind(RenderCore::FrameBufferProperties{presDims[0], presDims[1], samples});
@@ -843,16 +844,16 @@ namespace Sample
                 // RunShaderTest(*context);
                 RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources);
                 SetupLightingParser(*context, parserContext);
+				RenderCore::Metal::DeviceContext::Get(*context)->Bind(RenderCore::Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
                 // RunModelTest(*context, parserContext);
                 // context->EndRenderPass();
-                RunRenderPassTest(
+				RunRenderPassTest(
                     *context, parserContext, 
                     namedResources,
                     RenderCore::TextureSamples::Create()); // 2));
                 context->Present(*presentationChain);
-                // 
-                //     // ------- Update ----------------------------------------
-                RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
+
+				// ------- Update ----------------------------------------
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
             }
