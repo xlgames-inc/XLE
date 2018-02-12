@@ -54,6 +54,9 @@ namespace ConsoleRig
 	static auto Fn_GetAssetRoot = ConstHash64<'asse', 'troo', 't'>::Value;
 	static auto Fn_DefaultFileSystem = ConstHash64<'defa', 'ultf', 's'>::Value;
 
+	void DebugUtil_Startup();
+	void DebugUtil_Shutdown();
+
     static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
     {
         std::string appNameString = cfg._applicationName;
@@ -111,6 +114,8 @@ namespace ConsoleRig
     {
         auto& serv = GlobalServices::GetCrossModule()._services;
 
+		DebugUtil_Startup();
+
         if (!serv.Has<ModuleId()>(Fn_ConsoleMainModule)) {
             auto console = std::make_shared<Console>();
             auto currentModule = GetCurrentModuleId();
@@ -156,6 +161,7 @@ namespace ConsoleRig
         }
 
 		ResourceBoxes_Shutdown();
+		DebugUtil_Shutdown();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

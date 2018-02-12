@@ -50,6 +50,7 @@
   <ItemGroup>
     <ClCompile Include="..\AttachableLibrary_WinAPI.cpp" />
     <ClCompile Include="..\Console.cpp" />
+    <ClCompile Include="..\DebugUtil.cpp" />
     <ClCompile Include="..\GlobalServices.cpp" />
     <ClCompile Include="..\Log.cpp" />
     <ClCompile Include="..\OutputStream.cpp" />

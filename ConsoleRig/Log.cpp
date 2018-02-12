@@ -17,14 +17,14 @@ namespace ConsoleRig
             const std::string& fmtTemplate,
             const SourceLocation& sourceLocation)
     {
-        if (!fmtTemplate.empty()) {
+		if (!fmtTemplate.empty()) {
             auto fmt = fmt::format(
                 fmtTemplate,
                 fmt::arg("file", sourceLocation._file),
                 fmt::arg("line", sourceLocation._line));
-            _chain->sputn(fmt.data(), fmt.size());
+            std::cout.rdbuf()->sputn(fmt.data(), fmt.size());
         }
-        return _chain->sputn(msg.begin(), msg.size());       // (note; don't include the length of the formatted section; because it will confuse the caller when it is a basic_ostream
+        return std::cout.rdbuf()->sputn(msg.begin(), msg.size());       // (note; don't include the length of the formatted section; because it will confuse the caller when it is a basic_ostream
     }
 
     template<typename CharType, typename CharTraits>
@@ -47,7 +47,7 @@ namespace ConsoleRig
     {
         if (std::basic_streambuf<CharType, CharTraits>::traits_type::not_eof(ch)) {
             if (_cfg._enabledSinks & MessageTargetConfiguration::Sink::Console) {
-                _chain->sputc((CharType)ch);
+                std::cout.rdbuf()->sputc((CharType)ch);
                 _sourceLocationPrimed |= std::basic_streambuf<CharType, CharTraits>::traits_type::eq_int_type(ch, (int_type)'\n');
                 static_assert(0!=std::basic_streambuf<CharType, CharTraits>::traits_type::eof(), "Expecting char traits EOF character to be something other than 0");
                 return 0;   // (anything other than traits_type::eof() signifies success)
@@ -58,7 +58,10 @@ namespace ConsoleRig
     }
 
     template<typename CharType, typename CharTraits>
-        int MessageTarget<CharType, CharTraits>::sync() { return _chain->pubsync(); }
+        int MessageTarget<CharType, CharTraits>::sync() 
+		{ 
+			return std::cout.rdbuf()->pubsync(); 
+		}
 
     template<>
         std::basic_streambuf<char>& MessageTarget<char>::DefaultChain()
