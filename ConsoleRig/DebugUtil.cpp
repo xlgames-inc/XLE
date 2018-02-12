@@ -50,7 +50,7 @@ namespace ConsoleRig
 
             virtual std::streamsize xsputn(const CharType* s, std::streamsize count);
             virtual int sync();
-			virtual int_type overflow(int_type ch);
+			virtual typename std::basic_streambuf<CharType>::int_type overflow(typename std::basic_streambuf<CharType>::int_type ch);
         };
 
         template <typename CharType>
@@ -67,7 +67,7 @@ namespace ConsoleRig
         }
 
 		template <typename CharType>
-			auto StdCToXLEStreamAdapter<CharType>::overflow(int_type ch) -> int_type
+			auto StdCToXLEStreamAdapter<CharType>::overflow(typename std::basic_streambuf<CharType>::int_type ch) -> typename std::basic_streambuf<CharType>::int_type
 		{
 			// For some reason, std::endl always invokes "overflow" instead of "xsputn"
 			using Traits = std::char_traits<CharType>;

@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F030D7820322416007ACBB2 /* DebugUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F030D7720322416007ACBB2 /* DebugUtil.cpp */; };
+		8F030D79203225F6007ACBB2 /* DebugUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F030D7720322416007ACBB2 /* DebugUtil.cpp */; };
 		8FA52DCA1FD9D48A0039B229 /* IncludeLUA.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */; };
 		8FA52DCB1FD9D48A0039B229 /* GlobalServices.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FA52DBD1FD9D4890039B229 /* GlobalServices.h */; };
 		8FA52DCF1FD9D48A0039B229 /* OutputStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FA52DC01FD9D48A0039B229 /* OutputStream.cpp */; };
@@ -34,6 +36,7 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8F030D7720322416007ACBB2 /* DebugUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = DebugUtil.cpp; path = ../DebugUtil.cpp; sourceTree = "<group>"; };
 		8FA52D861FD9D3900039B229 /* libConsoleRigIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libConsoleRigIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		8FA52DB01FD9D3CA0039B229 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
 		8FA52DB11FD9D3CB0039B229 /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
@@ -76,6 +79,7 @@
 				8FA52DAF1FD9D3C10039B229 /* Config */,
 				8FA52DE31FD9DC580039B229 /* Console.cpp */,
 				8FA52DE41FD9DC580039B229 /* Console.h */,
+				8F030D7720322416007ACBB2 /* DebugUtil.cpp */,
 				8FA52DC21FD9D48A0039B229 /* GlobalServices.cpp */,
 				8FA52DBD1FD9D4890039B229 /* GlobalServices.h */,
 				8FA52DBC1FD9D4890039B229 /* IncludeLUA.h */,
@@ -203,6 +207,7 @@
 				8FA52DE61FD9DC580039B229 /* Console.cpp in Sources */,
 				8FA52DD41FD9D48A0039B229 /* GlobalServices.cpp in Sources */,
 				8FA52DD01FD9D48A0039B229 /* OutputStream.cpp in Sources */,
+				8F030D79203225F6007ACBB2 /* DebugUtil.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -213,6 +218,7 @@
 				8FA52DE51FD9DC580039B229 /* Console.cpp in Sources */,
 				8FA52DD31FD9D48A0039B229 /* GlobalServices.cpp in Sources */,
 				8FA52DCF1FD9D48A0039B229 /* OutputStream.cpp in Sources */,
+				8F030D7820322416007ACBB2 /* DebugUtil.cpp in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

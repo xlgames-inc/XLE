@@ -19,7 +19,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         using Desc = ResourceDesc;
 
-        const Desc& GetDesc() const         { return _desc; }
+        Desc GetDesc() const         { return _desc; }
 
         const intrusive_ptr<OpenGL::Buffer>& GetBuffer() const { return _underlyingBuffer; }
         const intrusive_ptr<OpenGL::Texture>& GetTexture() const { return _underlyingTexture; }

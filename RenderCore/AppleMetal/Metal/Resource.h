@@ -22,7 +22,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         using Desc = ResourceDesc;
 
-        const Desc& GetDesc() const         { return _desc; }
+        Desc GetDesc() const         { return _desc; }
 
         virtual void*       QueryInterface(size_t guid);
 
