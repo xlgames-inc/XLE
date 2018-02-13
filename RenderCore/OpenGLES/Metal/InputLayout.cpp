@@ -92,7 +92,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                             GetComponentCount(GetComponents(elements[c]._nativeFormat)), AsGLVertexComponentType(elements[c]._nativeFormat),
                             (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
                             unsigned(vertexStride),
-                            elementStart
+                            elementStart,
+                            elements[c]._inputSlotClass == InputDataRate::PerVertex ? 0 : elements[c]._instanceDataStepRate
                         });
 
                     assert(!(_attributeState & 1<<unsigned(attribute)));
@@ -107,7 +108,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    BoundInputLayout::BoundInputLayout(IteratorRange<IteratorRange<const MiniInputElementDesc*>*> layouts, const ShaderProgram& program)
+    BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& program)
     {
         _attributeState = 0;
 
@@ -121,12 +122,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         GLchar buffer[activeAttributeMaxLength];
 
-        for (const auto& layout : layouts) {
-            _bindings.reserve(_bindings.size() + layout.size());
-            assert(_bindings.capacity() <= _maxVertexAttributes);
-
-            auto vertexStride = CalculateVertexStride(layout, false);
-            auto bindingStart = _bindings.size();
+        if (!layouts.empty()) {
+            std::vector<Binding> workingBindings[layouts.size()];
+            unsigned vertexStrides[layouts.size()];
+            for (unsigned c=0; c<layouts.size(); ++c)
+                vertexStrides[c] = CalculateVertexStride(layouts[c]._elements, false);
 
             for (int attrIndex=0; attrIndex<activeAttributeCount; ++attrIndex) {
                 GLint size; GLenum type;
@@ -139,31 +139,54 @@ namespace RenderCore { namespace Metal_OpenGLES
                 while (std::isdigit(buffer[semanticIdx-1])) --semanticIdx;
                 uint64_t hash = Hash64(buffer, &buffer[semanticIdx]);
                 hash += std::atoi(&buffer[semanticIdx]);
-                auto i = std::find_if(layout.begin(), layout.end(), [hash](const MiniInputElementDesc&l) { return l._semanticHash == hash; });
-                if (i == layout.end()) {
-                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
-                    continue;
+
+                bool foundBinding = false;
+                for (auto l=layouts.begin(); l!=layouts.end(); ++l) {
+                    auto i = std::find_if(l->_elements.begin(), l->_elements.end(), [hash](const MiniInputElementDesc&e) { return e._semanticHash == hash; });
+                    if (i == l->_elements.end())
+                        continue;
+
+                    const auto elementStart = CalculateVertexStride(MakeIteratorRange(l->_elements.begin(), i), false);
+                    unsigned slotIdx = (unsigned)std::distance(layouts.begin(), l);
+
+                    const auto componentType = GetComponentType(i->_nativeFormat);
+                    workingBindings[slotIdx].push_back({
+                        unsigned(attrLoc),
+                        GetComponentCount(GetComponents(i->_nativeFormat)), AsGLVertexComponentType(i->_nativeFormat),
+                        (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
+                        vertexStrides[slotIdx],
+                        elementStart,
+                        l->_instanceStepDataRate
+                    });
+
+                    foundBinding = true;
                 }
 
-                const auto elementStart = CalculateVertexStride(MakeIteratorRange(layout.begin(), i), false);
-                // auto fmt = VertexAttributePointerAsFormat(size, type, true);
-                // assert(fmt == i->_nativeFormat);
-
-                const auto componentType = GetComponentType(i->_nativeFormat);
-                _bindings.push_back({
-                    unsigned(attrLoc),
-                    GetComponentCount(GetComponents(i->_nativeFormat)), AsGLVertexComponentType(i->_nativeFormat),
-                    (componentType == FormatComponentType::UNorm) || (componentType == FormatComponentType::SNorm) || (componentType == FormatComponentType::UNorm_SRGB),
-                    unsigned(vertexStride),
-                    elementStart
-                });
+                if (!foundBinding) {
+                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
+                    continue;
+                }
 
                 assert(!(_attributeState & 1<<unsigned(attrLoc)));
                 _attributeState |= 1<<unsigned(attrLoc);
             }
 
-            if (bindingStart != (unsigned)_bindings.size())
-				_bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
+            for (unsigned c=0; c<layouts.size(); ++c) {
+                _bindings.insert(_bindings.end(), workingBindings[c].begin(), workingBindings[c].end());
+                _bindingsByVertexBuffer.push_back(unsigned(workingBindings[c].size()));
+            }
+            assert(_bindings.size() <= _maxVertexAttributes);
+        } else {
+            // note -- if layouts is empty, we must spit errors for alls attributes, because they are
+            // all unbound
+
+            for (int attrIndex=0; attrIndex<activeAttributeCount; ++attrIndex) {
+                GLint size; GLenum type;
+                GLsizei nameLen;
+                glGetActiveAttrib(programHandle, attrIndex, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
+                if (!nameLen) continue;
+                Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
+            }
         }
     }
 
@@ -182,6 +205,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i._attributeLocation, i._size, i._type, i._isNormalized,
                     i._stride,
                     (const void*)(size_t)(vb._offset + i._offset));
+                glVertexAttribDivisor(i._attributeLocation, i._instanceDataRate);
             }
             attributeIterator += bindingCount;
         }

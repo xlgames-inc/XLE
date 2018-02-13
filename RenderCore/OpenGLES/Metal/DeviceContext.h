@@ -64,6 +64,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 #if HACK_PLATFORM_IOS
+        void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 #endif
 

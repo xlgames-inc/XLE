@@ -26,7 +26,15 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         BoundInputLayout() : _attributeState(0) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
-        BoundInputLayout(IteratorRange<IteratorRange<const MiniInputElementDesc*>*> layouts, const ShaderProgram& program);
+
+        struct SlotBinding
+        {
+            IteratorRange<const MiniInputElementDesc*> _elements;
+            unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
+        };
+        BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const ShaderProgram& program);
 
     private:
         class Binding
@@ -38,6 +46,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             bool        _isNormalized;
             unsigned    _stride;
             unsigned    _offset;
+            unsigned    _instanceDataRate;
         };
         std::vector<Binding> _bindings;
         std::vector<unsigned> _bindingsByVertexBuffer;

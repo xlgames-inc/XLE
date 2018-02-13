@@ -147,6 +147,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 
 #if HACK_PLATFORM_IOS
+    void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+    {
+        glDrawArraysInstanced(
+            GLenum(_nativeTopology),
+            startVertexLocation, vertexCount,
+            instanceCount);
+    }
+
     void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
