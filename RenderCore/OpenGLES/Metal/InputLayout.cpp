@@ -240,7 +240,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             GLenum otherTarget = (srv._dimensionality == GL_TEXTURE_2D) ? GL_TEXTURE_CUBE_MAP : GL_TEXTURE_2D;
             glBindTexture(otherTarget, 0);
 
-            glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+            if (res.GetResource()) {
+                glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+            } else {
+                Log(Warning) << "Null resource in BoundUniforms binding operation" << std::endl;
+            }
             sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
         }
 

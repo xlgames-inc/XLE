@@ -17,7 +17,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const UnderlyingType &      GetUnderlying() const { return _resource->GetTexture(); }
         bool                        IsGood() const { return _resource->GetTexture().get() != nullptr; }
         bool                        HasMipMaps() const { return _hasMipMaps; }
-        const std::shared_ptr<Resource>& GetResource() { return _resource; }
+        const std::shared_ptr<Resource>& GetResource() const { return _resource; }
 
         ShaderResourceView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
         explicit ShaderResourceView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());

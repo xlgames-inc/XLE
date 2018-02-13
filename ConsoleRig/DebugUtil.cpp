@@ -106,11 +106,14 @@ namespace ConsoleRig
             
             bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
             if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
-                s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
-                s_oldCoutStreamBuf = std::cout.rdbuf();
-                std::cout.rdbuf(&s_coutAdapter);
+                auto redirect = GetSharedDebuggerWarningStream();
+                if (redirect) {
+                    s_coutAdapter.Reset(GetSharedDebuggerWarningStream());
+                    s_oldCoutStreamBuf = std::cout.rdbuf();
+                    std::cout.rdbuf(&s_coutAdapter);
 
-                serv.Add(Fn_CoutRedirectModule, [=](){ return currentModule; });
+                    serv.Add(Fn_CoutRedirectModule, [=](){ return currentModule; });
+                }
             }
 
         #endif
