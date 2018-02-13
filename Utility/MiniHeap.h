@@ -54,8 +54,6 @@ namespace Utility
 
             operator void*()    { return _allocation; }
             operator bool()     { return _allocation != nullptr; }
-            template <typename Type>
-                operator Type() { return (Type)_allocation; }
 
             Allocation() : _allocation(nullptr), _marker(~uint32(0x0)) {}
             Allocation(void* a, uint32 marker) : _allocation(a), _marker(marker) {}
