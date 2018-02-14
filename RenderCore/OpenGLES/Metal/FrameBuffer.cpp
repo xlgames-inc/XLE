@@ -191,6 +191,21 @@ namespace RenderCore { namespace Metal_OpenGLES
         } else if (s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil) {
             glClearBufferfi(GL_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
         }
+
+        GLenum attachmentsToInvalidate[s_maxMRTs+1];
+        unsigned invalidationCount = 0;
+        for (unsigned rtv=0; rtv<s._rtvCount; ++rtv)
+            if (s._rtvLoad[rtv] == LoadStore::DontCare)
+                attachmentsToInvalidate[invalidationCount++] = GL_COLOR_ATTACHMENT0 + rtv;
+        if (s._dsvLoad == LoadStore::DontCare) {
+            attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_STENCIL_ATTACHMENT;
+        } else if (s._dsvLoad == LoadStore::DontCare_RetainStencil || s._dsvLoad == LoadStore::DontCare_ClearStencil) {
+            attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_ATTACHMENT;
+        } else if (s._dsvLoad == LoadStore::Retain || s._dsvLoad == LoadStore::Clear) {
+            attachmentsToInvalidate[invalidationCount++] = GL_STENCIL_ATTACHMENT;
+        }
+        if (invalidationCount)
+            glInvalidateFramebuffer(GL_FRAMEBUFFER, invalidationCount, attachmentsToInvalidate);
     }
 
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
