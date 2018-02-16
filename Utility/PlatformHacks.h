@@ -40,6 +40,7 @@ extern uint8_t glIsSampler (uint32_t sampler);
 extern void glClearBufferfv (uint32_t buffer, int32_t drawbuffer, const float *value);
 extern void glClearBufferfi (uint32_t buffer, int32_t drawbuffer, float depth, int32_t stencil);
 extern void glInvalidateFramebuffer (uint32_t target, int32_t numAttachments, const uint32_t* attachments);
+extern void glVertexAttribDivisor(uint32_t index, uint32_t divisor);
 
 
 #if defined(__cplusplus)

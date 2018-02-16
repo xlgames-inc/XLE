@@ -74,7 +74,7 @@ namespace Assets { namespace IntermediateAssets
             while (f != depFileName.end() && b != baseDirectory.end() && ConvChar(*f) == ConvChar(*b)) { ++f; ++b; }
             while (f != depFileName.end() && ConvChar(*f) == '/') { ++f; }
 
-			static_assert(DestCount > 0);
+			static_assert(DestCount > 0, "Attempting to use MakeDepFileName with zero length array");
 			auto* dend = &destination[DestCount-1];
 			auto* d = destination;
 			auto* s = baseDirectory.begin();
