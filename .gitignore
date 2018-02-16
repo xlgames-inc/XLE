@@ -16,6 +16,19 @@ ArchivedStuff/
 Foreign/OpenCOLLADA/COLLADASaxFrameworkLoader/lib
 PluginNonDist/
 CMakeBuild/
+Solutions/CMake/Assets
+Solutions/CMake/CMakeFiles
+Solutions/CMake/ConsoleRig
+Solutions/CMake/ForeignMisc
+Solutions/CMake/Makefile
+Solutions/CMake/Math
+Solutions/CMake/RenderCore
+Solutions/CMake/Samples
+Solutions/CMake/ShaderParser
+Solutions/CMake/Utility
+Solutions/CMake/cmake_install.cmake
+RenderCore/CMake*
+
 
 *.user
 *.csproj.user
