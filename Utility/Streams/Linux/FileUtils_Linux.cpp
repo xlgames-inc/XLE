@@ -20,7 +20,11 @@ namespace Utility
 
 		void CreateDirectory_Int(const char* dn)    
 		{ 
+#ifdef MINGW
+            auto result = mkdir(dn);
+#else
 			auto result = mkdir(dn, 0);
+#endif
 			// assert(result == 0);
 		}
 		void CreateDirectory_Int(const utf8* dn)    { CreateDirectory_Int((const char*)dn); }

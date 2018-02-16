@@ -16,6 +16,8 @@
 #include "../../Utility/ArithmeticUtils.h"
 #include <cmath>
 
+#include <cmath>
+
 namespace RenderCore { namespace Techniques
 {
 

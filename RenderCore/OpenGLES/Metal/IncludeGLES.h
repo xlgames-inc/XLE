@@ -13,6 +13,8 @@
 #elif PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	// Project Angle emulation layer
 	#include <GLES2/gl2.h>
+	#include <GLES2/gl2ext.h>
+	#include <GLES3/gl3.h>
 #else
 	// Real GLES
 	#include <OpenGLES/ES3/gl.h>

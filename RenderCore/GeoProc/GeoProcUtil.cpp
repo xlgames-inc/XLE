@@ -8,6 +8,8 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Foreign/half-1.9.2/include/half.hpp"
 
+#include <cstdlib>
+
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
     unsigned int FloatBits(float input)
@@ -97,7 +99,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         for (size_t c=0; c<vertexCount; ++c) {
             const void* v    = PtrAdd(vertexData, vertexStride*c + elementDesc._alignedByteOffset);
             Float3 position  = Truncate(AsFloat4(v, elementDesc._nativeFormat));
-            assert(!isinf(position[0]) && !isinf(position[1]) && !isinf(position[2]));
+            assert(!std::isinf(position[0]) && !std::isinf(position[1]) && !std::isinf(position[2]));
             AddToBoundingBox(boundingBox, position, localToWorld);
         }
     }

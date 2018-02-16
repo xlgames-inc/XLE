@@ -7,6 +7,7 @@
 #include "../Utility/Threading/ThreadingUtils.h"		// (for Threading::YieldTimeSlice() below)
 #include <memory>
 #include <string>
+#include <functional>
 #include <assert.h>
 
 namespace Assets

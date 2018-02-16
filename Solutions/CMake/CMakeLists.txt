@@ -27,9 +27,12 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_EXE_LINKER_FLAGS "-Wl,--gc-sections,--whole-archive,-z,muldefs" CACHE STRING "Linker flags for clang" FORCE)
 endif ()
 
+set(WARNING_FLAGS "-Wno-unknown-pragmas -Werror=implicit-function-declaration -Wno-unused-local-typedef")
+set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ${WARNING_FLAGS}")
+
 set(LINK_FLAGS "" CACHE STRING "Clear CMake Settings" FORCE)
 
-get_filename_component(XLE_DIR "${CMAKE_SOURCE_DIR}/../../" ABSOLUTE)
+get_filename_component(XLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
 get_filename_component(FOREIGN_DIR "${XLE_DIR}/Foreign/" ABSOLUTE)
 
 macro(BasicLibrary LibName Src)
@@ -64,7 +67,7 @@ add_subdirectory(../../Assets Assets)
 add_subdirectory(../../ConsoleRig ConsoleRig)
 add_subdirectory(../../RenderCore RenderCore)
 add_subdirectory(../../Foreign ForeignMisc)
-add_subdirectory(../../ShaderParser ShaderParser)
-add_subdirectory(../../Samples/ShaderScan Samples/ShaderScan)
+#add_subdirectory(../../ShaderParser ShaderParser)
+#add_subdirectory(../../Samples/ShaderScan Samples/ShaderScan)
 
 set(CMAKE_CONFIGURATION_TYPES "Debug;Release" CACHE STRING "" FORCE)

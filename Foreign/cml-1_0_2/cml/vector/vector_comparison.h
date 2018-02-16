@@ -17,6 +17,10 @@ Boost Software License, v1.0 (see cml/LICENSE for details).
 #include <cml/et/size_checking.h>
 #include <cml/et/scalar_ops.h>
 
+#ifdef MINGW
+#include <sys/types.h>
+#endif
+
 /* This is used below to create a more meaningful compile-time error when
  * vector_comparison is not provided with vector or VectorExpr arguments:
  */

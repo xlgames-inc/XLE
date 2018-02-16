@@ -28,6 +28,10 @@ Boost Software License, v1.0 (see cml/LICENSE for details).
 #include <cml/matrix/matrix_expr.h>
 #include <cml/matvec/matvec_promotions.h>
 
+#ifdef MINGW
+#include <sys/types.h>
+#endif
+
 /* This is used below to create a more meaningful compile-time error when
  * lu is not provided with a matrix or MatrixExpr argument:
  */

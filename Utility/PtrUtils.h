@@ -188,6 +188,10 @@
 namespace Utility
 {
             /////////////////////////////////////////////////////////////////////////////
+#ifdef MINGW
+    using std::ptrdiff_t;
+#endif
+
 
     template <typename Type>
         Type * PtrAdd( Type * input, ptrdiff_t offset )  { return (Type*)( size_t(input) + offset ); }
@@ -237,7 +241,7 @@ namespace Utility
 				}
 		#endif
 
-    #elif (STL_ACTIVE == STL_GCC) || (STL_ACTIVE == STL_LIBCPP)
+    #elif ((STL_ACTIVE == STL_GCC) || (STL_ACTIVE == STL_LIBCPP)) && !defined(MINGW)
 
         template <class Iterator>
             decltype(&(*std::declval<std::__wrap_iter<Iterator>>())) AsPointer(std::__wrap_iter<Iterator> i) { return *reinterpret_cast<Iterator*>(&i); }

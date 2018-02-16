@@ -15,6 +15,7 @@
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
 #include "../../Core/Exceptions.h"
+#include <cstdlib>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -173,9 +174,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     // We add the influence of this triangle to all vertices
                     // each vertex should get an even balance of influences from
                     // all triangles it is part of.
-				assert(isfinite(tri.normal[0]) && !isnan(tri.normal[0]) && tri.normal[0] == tri.normal[0]);
-				assert(isfinite(tri.normal[1]) && !isnan(tri.normal[1]) && tri.normal[1] == tri.normal[1]);
-				assert(isfinite(tri.normal[2]) && !isnan(tri.normal[2]) && tri.normal[2] == tri.normal[2]);
+				assert(std::isfinite(tri.normal[0]) && !std::isnan(tri.normal[0]) && tri.normal[0] == tri.normal[0]);
+				assert(std::isfinite(tri.normal[1]) && !std::isnan(tri.normal[1]) && tri.normal[1] == tri.normal[1]);
+				assert(std::isfinite(tri.normal[2]) && !std::isnan(tri.normal[2]) && tri.normal[2] == tri.normal[2]);
                 normals[v0] += tri.normal; normals[v1] += tri.normal; normals[v2] += tri.normal;
                 tangents[v0] += Expand(tri.tangent, 0.f); tangents[v1] += Expand(tri.tangent, 0.f); tangents[v2] += Expand(tri.tangent, 0.f);
                 bitangents[v0] += tri.bitangent; bitangents[v1] += tri.bitangent; bitangents[v2] += tri.bitangent;

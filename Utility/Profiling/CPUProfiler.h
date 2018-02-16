@@ -12,6 +12,7 @@
 #include "../../Core/Types.h"
 #include <vector>
 #include <assert.h>
+#include <functional>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     typedef union _LARGE_INTEGER LARGE_INTEGER;
