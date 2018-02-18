@@ -25,7 +25,7 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned				GetDescriptorSetCount();
         VkPipelineLayout		GetUnderlying();
 
-        const std::shared_ptr<RootSignature>& ShareRootSignature();
+        const std::shared_ptr<RootSignature>& GetRootSignature();
         void RebuildLayout(const ObjectFactory& objectFactory);
 
         PipelineLayout(

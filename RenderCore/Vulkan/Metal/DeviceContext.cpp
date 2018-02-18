@@ -827,22 +827,49 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static std::pair<DescriptorSetBuilder, unsigned> MakeDescriptorSetBuilder(
+		const ObjectFactory& factory, DescriptorPool& descPool, 
+		DummyResources& dummyResources,
+		PipelineLayout& pipelineLayout, StringSection<> name,
+		int cbBindingOffset=0, int srvBindingOffset=0, 
+        int samplerBindingOffset=0, int uavBindingOffset=0)
+	{
+		auto& rootSig = *pipelineLayout.GetRootSignature();
+		auto i = std::find_if(rootSig._descriptorSets.begin(), rootSig._descriptorSets.end(),
+			[name](const DescriptorSetSignature& sig) {
+				return XlEqString(MakeStringSection(sig._name), name);
+			});
+		if (i != rootSig._descriptorSets.end()) {
+			unsigned descriptorSetIndex = (unsigned)std::distance(rootSig._descriptorSets.begin(), i);
+			return {
+				DescriptorSetBuilder(
+					factory, descPool, dummyResources, 
+					pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex), *i,
+					cbBindingOffset, srvBindingOffset, samplerBindingOffset, uavBindingOffset),
+				descriptorSetIndex
+			};
+		}
+		return {DescriptorSetBuilder{}, ~0u};
+	}
+
     DescriptorCollection::DescriptorCollection(
         const ObjectFactory&    factory, 
         GlobalPools&            globalPools,
         PipelineLayout&         pipelineLayout)
     : _pipelineLayout(&pipelineLayout)
-    , _dynamicBindings(
-        factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
-        pipelineLayout.GetDescriptorSetLayout(1), pipelineLayout.ShareRootSignature()->_descriptorSets[1],
-        10, 30, 0, 0)
-    , _dynamicBindingsSlot(1u)
-    , _globalBindings(
-        factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
-        pipelineLayout.GetDescriptorSetLayout(2), pipelineLayout.ShareRootSignature()->_descriptorSets[2],
-        0, 0, 0, 0)
-    , _globalBindingsSlot(2u)
     {
+		
+		std::tie(_dynamicBindings, _dynamicBindingsSlot) =
+			MakeDescriptorSetBuilder(
+				factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
+				*_pipelineLayout, "Numeric",
+				33, 33);
+
+		std::tie(_globalBindings, _globalBindingsSlot) =
+			MakeDescriptorSetBuilder(
+				factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
+				*_pipelineLayout, "Sequencer");
+
         _descriptorSets.resize(pipelineLayout.GetDescriptorSetCount(), nullptr);
         _hasSetsAwaitingFlush = false;
     }
@@ -860,9 +887,9 @@ namespace RenderCore { namespace Metal_Vulkan
         VkDescriptorImageInfo   _imageInfo[s_pendingBufferLength];
         VkWriteDescriptorSet    _writes[s_pendingBufferLength];
 
-        unsigned _pendingWrites;
-        unsigned _pendingImageInfos;
-        unsigned _pendingBufferInfos;
+        unsigned _pendingWrites = 0;
+        unsigned _pendingImageInfos = 0;
+        unsigned _pendingBufferInfos = 0;
 
         VkDescriptorSetLayout               _layouts[s_descriptorSetCount];
         VulkanUniquePtr<VkDescriptorSet>    _activeDescSets[s_descriptorSetCount];
@@ -871,8 +898,8 @@ namespace RenderCore { namespace Metal_Vulkan
         uint64              _sinceLastFlush[s_descriptorSetCount];
         uint64              _slotsFilled[s_descriptorSetCount];
 
-        DescriptorPool*     _descriptorPool;
-        VkSampler           _dummySampler;
+        DescriptorPool*     _descriptorPool = nullptr;
+        VkSampler           _dummySampler = nullptr;
 
         unsigned    _srvMapping[s_maxBindings];
         unsigned    _srvBufferMapping[s_maxBindings];
@@ -880,13 +907,32 @@ namespace RenderCore { namespace Metal_Vulkan
         unsigned    _uavBufferMapping[s_maxBindings];
         unsigned    _cbMapping[s_maxBindings];
         unsigned    _samplerMapping[s_maxBindings];
-        int         _srvBindingOffset;
-        int         _uavBindingOffset;
-        int         _cbBindingOffset;
-        int         _samplerBindingOffset;
+        int         _srvBindingOffset = 0;
+        int         _uavBindingOffset = 0;
+        int         _cbBindingOffset = 0;
+        int         _samplerBindingOffset = 0;
 
         template<typename BindingInfo> void WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo);
         template<typename BindingInfo> BindingInfo& AllocateInfo(const BindingInfo& init);
+
+		Pimpl()
+		{
+			for (unsigned c=0; c<s_maxBindings; ++c) {
+				_srvMapping[c] = ~0u;
+				_srvBufferMapping[c] = ~0u;
+				_uavMapping[c] = ~0u;
+				_uavBufferMapping[c] = ~0u;
+				_cbMapping[c] = ~0u;
+				_samplerMapping[c] = ~0u;
+			}
+			for (unsigned c=0; c<s_descriptorSetCount; ++c) {
+				_layouts[c] = nullptr;
+				_sinceLastFlush[c] = _slotsFilled[c] = 0;
+			}
+			XlZeroMemory(_bufferInfo);
+			XlZeroMemory(_imageInfo);
+			XlZeroMemory(_writes);
+		}
     };
 
     template<typename BindingInfo> static BindingInfo*& InfoPtr(VkWriteDescriptorSet& writeDesc);
@@ -1245,6 +1291,10 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c)
             _pimpl->_defaultDescSets[c] = std::move(_pimpl->_activeDescSets[c]);
     }
+
+	DescriptorSetBuilder::DescriptorSetBuilder() 
+	{
+	}
 
     DescriptorSetBuilder::~DescriptorSetBuilder()
     {

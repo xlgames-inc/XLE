@@ -86,14 +86,21 @@ namespace RenderCore { namespace Assets
             Techniques::TechniqueInterface techniqueInterface(
                 MakeIteratorRange(vertexElements, &vertexElements[count]));
 
-			UniformsStreamInterface interf;
-			interf.BindConstantBuffer(0, { Techniques::ObjectCB::LocalTransform });
-			interf.BindConstantBuffer(1, { Techniques::ObjectCB::BasicMaterialConstants });
-            Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
-            for (unsigned c=0; c<textureBindPointsCount; ++c)
-				interf.BindShaderResource(c, textureBindPoints[c]);
+			techniqueInterface.BindUniformsStream(0, Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
 
-			techniqueInterface.BindUniformsStream(1, interf);
+			{
+				UniformsStreamInterface matInterf;
+				matInterf.BindConstantBuffer(1, { Techniques::ObjectCB::BasicMaterialConstants });
+				for (unsigned c=0; c<textureBindPointsCount; ++c)
+					matInterf.BindShaderResource(c, textureBindPoints[c]);
+				techniqueInterface.BindUniformsStream(1, matInterf);
+			}
+
+			{
+				UniformsStreamInterface objInterf;
+				objInterf.BindConstantBuffer(0, { Techniques::ObjectCB::LocalTransform });
+				techniqueInterface.BindUniformsStream(2, objInterf);
+			}
                 
             interfaces.push_back(std::move(techniqueInterface));
             hashes.push_back(interfHash);

@@ -190,7 +190,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _pimpl->_descriptorSetLayout.clear();
         _pimpl->_pipelineLayout.reset();
-        auto rootSig = ShareRootSignature();
+        auto rootSig = GetRootSignature();
 
         #if defined(_DEBUG)
             ValidateRootSignature(factory.GetPhysicalDevice(), *rootSig);
@@ -217,7 +217,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _pimpl->_pendingLayoutRebuild = false;
     }
 
-    const std::shared_ptr<RootSignature>& PipelineLayout::ShareRootSignature()
+    const std::shared_ptr<RootSignature>& PipelineLayout::GetRootSignature()
     {
         // this method can be called simulateously from multiple threads
         ScopedLock(_pimpl->_rootSignatureLock);

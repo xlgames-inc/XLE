@@ -1359,11 +1359,11 @@ namespace RenderCore { namespace Metal_DX11
         auto compiler = GetShaderCompileModule();
         if (!compiler || compiler == INVALID_HANDLE_VALUE) {
 			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
-            LogAlwaysError << "Could not load d3dcompiler_47.dll. This is required to compile shaders. Please make sure this dll is in the same directory as your executable, or reachable path";
+            LogAlwaysError << "Could not load d3dcompiler_47.dll. This is required to compile shaders. Please make sure this dll is in the same directory as your executable, or reachable path" << std::endl;
             return E_NOINTERFACE;
         }
 
-        Log(Verbose) << "Performing D3D shader compile on: " << (pSourceName ? pSourceName : "<<unnamed>>") << ":" << (pEntrypoint?pEntrypoint:"<<unknown entry point>>") << "(" << (pTarget?pTarget:"<<unknown shader model>>") << ")";
+        Log(Verbose) << "Performing D3D shader compile on: " << (pSourceName ? pSourceName : "<<unnamed>>") << ":" << (pEntrypoint?pEntrypoint:"<<unknown entry point>>") << "(" << (pTarget?pTarget:"<<unknown shader model>>") << ")" << std::endl;
 
         typedef HRESULT WINAPI D3DCompile_Fn(
             LPCVOID, SIZE_T, LPCSTR,

@@ -119,10 +119,11 @@ namespace RenderCore { namespace Metal_Vulkan
             const DescriptorSetSignature& signature, 
             int cbBindingOffset, int srvBindingOffset, 
             int samplerBindingOffset, int uavBindingOffset);
+		DescriptorSetBuilder();
         ~DescriptorSetBuilder();
 
-        DescriptorSetBuilder(const DescriptorSetBuilder&) = delete;
-        DescriptorSetBuilder& operator=(const DescriptorSetBuilder&) = delete;
+        DescriptorSetBuilder(DescriptorSetBuilder&&) = default;
+        DescriptorSetBuilder& operator=(DescriptorSetBuilder&&) = default;
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

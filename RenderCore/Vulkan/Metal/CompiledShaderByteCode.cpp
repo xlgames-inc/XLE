@@ -463,9 +463,9 @@ namespace RenderCore { namespace Metal_Vulkan
         // We need to load the root signature and add it as a dependency
         std::shared_ptr<RootSignature> rootSig;
         if (shaderPath._shaderModel[0] == 'c' || shaderPath._shaderModel[0] == 'C') {
-            rootSig = _computePipelineLayout->ShareRootSignature();
+            rootSig = _computePipelineLayout->GetRootSignature();
         } else {
-            rootSig = _graphicsPipelineLayout->ShareRootSignature();
+            rootSig = _graphicsPipelineLayout->GetRootSignature();
         }
         dependencies.push_back(rootSig->GetDependentFileState());
 

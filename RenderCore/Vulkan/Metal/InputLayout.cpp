@@ -247,7 +247,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	struct NascentDescriptorWrite
 	{
 	public:
-		static const unsigned s_maxBindings = 16;
+		static const unsigned s_maxBindings = 64u;
         VkDescriptorBufferInfo	_bufferInfo[s_maxBindings];
         VkDescriptorImageInfo	_imageInfo[s_maxBindings];
         VkWriteDescriptorSet	_writes[s_maxBindings];
@@ -493,7 +493,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			MakeIteratorRange(_srvBindingIndices[streamIdx]),
 			_shaderBindingMask[streamIdx]);		
 
-        auto& rootSig = *pipelineLayout->ShareRootSignature();
+        auto& rootSig = *pipelineLayout->GetRootSignature();
         const auto& sig = rootSig._descriptorSets[streamIdx];
 
         #if defined(_DEBUG)
