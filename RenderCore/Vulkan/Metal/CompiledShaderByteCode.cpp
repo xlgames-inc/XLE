@@ -29,6 +29,7 @@
 #pragma warning(disable:4458)		// declaration of 'loc' hides class member
 #undef _ENFORCE_MATCHING_ALLOCATORS
 #define _ENFORCE_MATCHING_ALLOCATORS 0
+#undef strdup
 #include <glslang/glslang/Public/ShaderLang.h>
 #include <glslang/glslang/Include/InitializeGlobals.h>
 #include <glslang/SPIRV/GlslangToSpv.h>
@@ -530,9 +531,9 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		#if defined(HAS_SPIRV_HEADERS)
 			// it feels like these are intended to be called during DLL detach -- 
-			glslang::FreeGlobalPools();
+			/*glslang::FreeGlobalPools();
 			glslang::FreePoolIndex();
-			glslang::FinalizeProcess();
+			glslang::FinalizeProcess();*/
 		#endif
     }
 
