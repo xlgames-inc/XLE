@@ -9,7 +9,7 @@
 
 #include "../Binding.h"
 
-cbuffer ToneMapSettings CB_BOUND1_0
+cbuffer ToneMapSettings BIND_MAT_B0
 {
 	float3  BloomScale;			        // = (2.f, 2.f, 2.f)
     float   BloomThreshold;             // = 11.f;

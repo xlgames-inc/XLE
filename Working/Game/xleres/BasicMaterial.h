@@ -11,7 +11,7 @@
 
     //  This cbuffer contains basic constants are used frequently enough that
     //  we can add support for them in most shaders.
-cbuffer BasicMaterialConstants CB_BOUND1_6
+cbuffer BasicMaterialConstants BIND_MAT_B0
 {
 	float3  MaterialDiffuse;
     float   Opacity;

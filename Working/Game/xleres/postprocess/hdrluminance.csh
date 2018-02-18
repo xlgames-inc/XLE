@@ -8,7 +8,7 @@
 #include "tonemap.h"
 #include "../Colour.h"		// (for LightingScale)
 
-Texture2D_MaybeMS<float4>	InputTexture TEXTURE_DYNAMIC_0;
+Texture2D_MaybeMS<float4>	InputTexture BIND_NUMERIC_T0;
 RWTexture2D<float>			OutputLuminance UAV_DYNAMIC_0;
 RWTexture2D<float4>			OutputBrightPass UAV_DYNAMIC_1;
 
@@ -30,7 +30,7 @@ RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer UAV_DYNAMIC_2;
 	#define IMMEDIATE_ADAPT 0
 #endif
 
-cbuffer LuminanceConstants CB_BOUND1_1
+cbuffer LuminanceConstants BIND_MAT_B1
 {
 	int		FrameIndex;
 	int		TotalSamplesCount;

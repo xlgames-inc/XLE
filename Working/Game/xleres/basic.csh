@@ -7,7 +7,7 @@
 #include "Binding.h"
 
 RWTexture2D<float4> OutputTexture UAV_DYNAMIC_0;
-Texture2D<float4> InputTexture TEXTURE_DYNAMIC_0;
+Texture2D<float4> InputTexture BIND_NUMERIC_T0;
 
 [numthreads(8, 8, 1)]
 	void ResampleBilinear(uint3 dispatchThreadId : SV_DispatchThreadID)

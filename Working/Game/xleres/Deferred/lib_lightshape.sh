@@ -22,7 +22,7 @@
 // For example, another library might have GlobalTransform bound to
 // constant buffer slot 0. So we have to have move LightBuffer to
 // a free slot.
-cbuffer LightBuffer CB_BOUND1_1
+cbuffer LightBuffer BIND_MAT_B1
 {
     LightDesc Light;
 }

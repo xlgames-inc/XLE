@@ -11,84 +11,95 @@
 // In SM5, register(t[index+10]) no longer works
 // In SM5.1, we could use register(t10, space1)... But it means dropping some compatibility
 
-#define SAMPLER_GLOBAL_0 : register(s0)
-#define SAMPLER_GLOBAL_1 : register(s1)
-#define SAMPLER_GLOBAL_2 : register(s2)
-#define SAMPLER_GLOBAL_3 : register(s3)
-#define SAMPLER_GLOBAL_4 : register(s4)
-#define SAMPLER_GLOBAL_5 : register(s5)
-#define SAMPLER_GLOBAL_6 : register(s6)
+///////////////////////////////////////////////////
+// 4 uniform streams
+//      * SEQ "sequencer" -- this is global settings, usually set once per many draw calls
+//      * MAT "material" -- once per material change
+//      * OBJ "object" -- typically contains coordinate space information, such as local to world an related constants
+//      * DRW "draw" -- catches anything that doesn't fit above, often used for special case rendering features
+//                  and typically contains the bindings that change most frequently
+//
+// Also, there's a "numeric interface" bindings, which are bound by number, rather than by name, from the CPU side
+// code. 
+//
+// Bindings that don't use specific macros implicitly fall into the "draw" stream
+
+#define BIND_SEQ_S0 : register(s0)
+#define BIND_SEQ_S1 : register(s1)
+#define BIND_SEQ_S2 : register(s2)
+#define BIND_SEQ_S3 : register(s3)
+#define BIND_SEQ_S4 : register(s4)
+#define BIND_SEQ_S5 : register(s5)
+#define BIND_SEQ_S6 : register(s6)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define TEXTURE_BOUND0_0 : register(t0)
-#define TEXTURE_BOUND0_1 : register(t1)
-#define TEXTURE_BOUND0_2 : register(t2)
-#define TEXTURE_BOUND0_3 : register(t3)
-#define TEXTURE_BOUND0_4 : register(t4)
-#define TEXTURE_BOUND0_5 : register(t5)
-#define TEXTURE_BOUND0_6 : register(t6)
-#define TEXTURE_BOUND0_7 : register(t7)
-
-#define TEXTURE_BOUND1_0 : register(t0)
-#define TEXTURE_BOUND1_1 : register(t1)
-#define TEXTURE_BOUND1_2 : register(t2)
-#define TEXTURE_BOUND1_3 : register(t3)
-#define TEXTURE_BOUND1_4 : register(t4)
-#define TEXTURE_BOUND1_5 : register(t5)
-#define TEXTURE_BOUND1_6 : register(t6)
-#define TEXTURE_BOUND1_7 : register(t7)
+#define BIND_MAT_T0 : register(t23)
+#define BIND_MAT_T1 : register(t24)
+#define BIND_MAT_T2 : register(t25)
+#define BIND_MAT_T3 : register(t26)
+#define BIND_MAT_T4 : register(t27)
+#define BIND_MAT_T5 : register(t28)
+#define BIND_MAT_T6 : register(t29)
+#define BIND_MAT_T7 : register(t30)
 
 #if defined(VULKAN)
-    #define TEXTURE_DYNAMIC_0 : register(t30)
-    #define TEXTURE_DYNAMIC_1 : register(t31)
-    #define TEXTURE_DYNAMIC_2 : register(t32)
-    #define TEXTURE_DYNAMIC_3 : register(t33)
-    #define TEXTURE_DYNAMIC_4 : register(t34)
-    #define TEXTURE_DYNAMIC_5 : register(t35)
+    #define BIND_NUMERIC_T0 : register(t33)
+    #define BIND_NUMERIC_T1 : register(t34)
+    #define BIND_NUMERIC_T2 : register(t35)
+    #define BIND_NUMERIC_T3 : register(t36)
+    #define BIND_NUMERIC_T4 : register(t37)
+    #define BIND_NUMERIC_T5 : register(t38)
 #else
-    #define TEXTURE_DYNAMIC_0 : register(t0)
-    #define TEXTURE_DYNAMIC_1 : register(t1)
-    #define TEXTURE_DYNAMIC_2 : register(t2)
-    #define TEXTURE_DYNAMIC_3 : register(t3)
-    #define TEXTURE_DYNAMIC_4 : register(t4)
-    #define TEXTURE_DYNAMIC_5 : register(t5)
+    #define BIND_NUMERIC_T0 : register(t0)
+    #define BIND_NUMERIC_T1 : register(t1)
+    #define BIND_NUMERIC_T2 : register(t2)
+    #define BIND_NUMERIC_T3 : register(t3)
+    #define BIND_NUMERIC_T4 : register(t4)
+    #define BIND_NUMERIC_T5 : register(t5)
 #endif
 
-#define TEXTURE_GLOBAL_10 : register(t10)
-#define TEXTURE_GLOBAL_14 : register(t14)
-#define TEXTURE_GLOBAL_15 : register(t15)
+#define BIND_SEQ_T0 : register(t10)
+#define BIND_SEQ_T1 : register(t11)
+#define BIND_SEQ_T2 : register(t12)
+#define BIND_SEQ_T3 : register(t13)
+#define BIND_SEQ_T4 : register(t14)
+#define BIND_SEQ_T5 : register(t15)
+#define BIND_SEQ_T6 : register(t16)
+#define BIND_SEQ_T7 : register(t17)
+#define BIND_SEQ_T8 : register(t18)
+#define BIND_SEQ_T9 : register(t19)
+#define BIND_SEQ_T10 : register(t20)
+#define BIND_SEQ_T11 : register(t21)
+#define BIND_SEQ_T12 : register(t22)
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define CB_BOUND0_0 : register(b0)
-#define CB_BOUND0_1 : register(b1)
-#define CB_BOUND0_2 : register(b2)
-#define CB_BOUND0_3 : register(b3)
-#define CB_BOUND0_4 : register(b4)
-#define CB_BOUND0_5 : register(b5)
-#define CB_BOUND0_6 : register(b6)
-#define CB_BOUND0_7 : register(b7)
-#define CB_BOUND0_8 : register(b8)
-#define CB_BOUND0_9 : register(b9)
+#define BIND_SEQ_B0 : register(b6)
+#define BIND_SEQ_B1 : register(b7)
+#define BIND_SEQ_B2 : register(b8)
+#define BIND_SEQ_B3 : register(b9)
+#define BIND_SEQ_B4 : register(b10)
+#define BIND_SEQ_B5 : register(b11)
 
-#define CB_BOUND1_0 : register(b0)
-#define CB_BOUND1_1 : register(b1)
-#define CB_BOUND1_2 : register(b2)
-#define CB_BOUND1_3 : register(b3)
-#define CB_BOUND1_4 : register(b4)
-#define CB_BOUND1_5 : register(b5)
-#define CB_BOUND1_6 : register(b6)
-#define CB_BOUND1_7 : register(b7)
-#define CB_BOUND1_8 : register(b8)
-#define CB_BOUND1_9 : register(b9)
+#define BIND_MAT_B0 : register(b3)
+#define BIND_MAT_B1 : register(b4)
+#define BIND_MAT_B2 : register(b5)
 
 #if defined(VULKAN)
-    #define CB_DYNAMIC_0 : register(b10)
-    #define CB_DYNAMIC_1 : register(b11)
+    #define BIND_NUMERIC_B0 : register(b33)
+    #define BIND_NUMERIC_B1 : register(b34)
+    #define BIND_NUMERIC_B2 : register(b35)
+    #define BIND_NUMERIC_B3 : register(b36)
+    #define BIND_NUMERIC_B4 : register(b37)
+    #define BIND_NUMERIC_B5 : register(b38)
 #else
-    #define CB_DYNAMIC_0 : register(b0)
-    #define CB_DYNAMIC_1 : register(b1)
+    #define BIND_NUMERIC_B0 : register(b0)
+    #define BIND_NUMERIC_B1 : register(b1)
+    #define BIND_NUMERIC_B2 : register(b2)
+    #define BIND_NUMERIC_B3 : register(b3)
+    #define BIND_NUMERIC_B4 : register(b4)
+    #define BIND_NUMERIC_B5 : register(b5)
 #endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

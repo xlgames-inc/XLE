@@ -38,7 +38,7 @@
     }
 #else
 
-    Texture1D DistinctColors TEXTURE_GLOBAL_15;
+    Texture1D DistinctColors BIND_SEQ_T5;
     float3 GetDistinctFloatColour(uint index)
     {
         uint dims;

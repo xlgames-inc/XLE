@@ -7,16 +7,16 @@
 #include "../Binding.h"
 #include "../TextureAlgorithm.h"
 
-Texture2D_MaybeMS<float4>	InputTexture TEXTURE_DYNAMIC_0;
+Texture2D_MaybeMS<float4>	InputTexture BIND_NUMERIC_T0;
 RWTexture2D<float4>			OutputTexture UAV_DYNAMIC_0;
 
-cbuffer Constants CB_BOUND1_0
+cbuffer Constants BIND_MAT_B0
 {
 	float4	FilteringWeights0;		// weights for gaussian filter
 	float4	FilteringWeights1;
 	float4	FilteringWeights2;
 }
-cbuffer ClampingWindow CB_BOUND1_1
+cbuffer ClampingWindow BIND_MAT_B1
 {
     float2 clampingMins;
     float2 clampingMaxs;

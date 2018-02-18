@@ -14,8 +14,8 @@
 #include "Animation\SkinTransform.h"
 #include "Binding.h"
 
-Texture2D		DiffuseTexture          TEXTURE_BOUND1_0;
-Texture2D		NormalsTexture          TEXTURE_BOUND1_1;
+Texture2D		DiffuseTexture          BIND_MAT_T0;
+Texture2D		NormalsTexture          BIND_MAT_T1;
 
 	//	Accessors for properties in MainGeometry structs
 

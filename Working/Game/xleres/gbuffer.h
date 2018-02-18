@@ -10,7 +10,7 @@
 #include "Binding.h"
 #include "CommonResources.h"    // for ClampingSampler
 
-Texture2D       NormalsFittingTexture TEXTURE_GLOBAL_14;
+Texture2D       NormalsFittingTexture BIND_SEQ_T4;
 
 static const bool SignedNormalOutput = true;
 

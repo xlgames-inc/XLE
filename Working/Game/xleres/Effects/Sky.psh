@@ -13,9 +13,9 @@
 #include "../Binding.h"
 
 #if SKY_PROJECTION==1
-	Texture2D ReflectionBox[3]	TEXTURE_DYNAMIC_0;
+	Texture2D ReflectionBox[3]	BIND_NUMERIC_T0;
 #elif SKY_PROJECTION==5
-	TextureCube ReflectionCube	TEXTURE_DYNAMIC_0;
+	TextureCube ReflectionCube	BIND_NUMERIC_T0;
 #endif
 
 float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
