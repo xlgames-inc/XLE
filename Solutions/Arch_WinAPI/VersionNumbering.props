@@ -4,10 +4,6 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup>
-    <PreLinkEvent>
-      <Command>$(SolutionDir)\BuildScripts\PostBuildVersion.js $(IntDir)\Version.obj $(Configuration)</Command>
-      <Message>Update version number</Message>
-    </PreLinkEvent>
   </ItemDefinitionGroup>
   <ItemGroup />
 </Project>
