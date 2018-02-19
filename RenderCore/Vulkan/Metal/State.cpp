@@ -132,13 +132,13 @@ namespace RenderCore { namespace Metal_Vulkan
         polygonMode = VK_POLYGON_MODE_FILL;
         cullMode = AsVkCullMode(cullmode);
         frontFace = frontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
-        depthClampEnable = VK_TRUE;
+        depthClampEnable = VK_FALSE;
         rasterizerDiscardEnable = VK_FALSE;
         depthBiasEnable = VK_FALSE;
         depthBiasConstantFactor = 0;
         depthBiasClamp = 0;
         depthBiasSlopeFactor = 0;
-        lineWidth = 0;
+        lineWidth = 1.0f;	// (set to 1.0f when this feature is disabled)
     }
 
     RasterizerState::RasterizerState(
@@ -152,13 +152,13 @@ namespace RenderCore { namespace Metal_Vulkan
         polygonMode = AsVkPolygonMode(fillmode);
         cullMode = AsVkCullMode(cullmode);
         frontFace = frontCounterClockwise ? VK_FRONT_FACE_COUNTER_CLOCKWISE : VK_FRONT_FACE_CLOCKWISE;
-        depthClampEnable = VK_TRUE;
+        depthClampEnable = VK_FALSE;
         rasterizerDiscardEnable = VK_FALSE;
         depthBiasEnable = VK_TRUE;
         depthBiasConstantFactor = *(float*)&depthBias;
         depthBiasClamp = iDepthBiasClamp;
         depthBiasSlopeFactor = slopeScaledBias;
-        lineWidth = 0;
+        lineWidth = 1.0f;	// (set to 1.0f when this feature is disabled)
     }
 
     BlendState::BlendState( 

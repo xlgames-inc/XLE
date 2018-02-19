@@ -59,30 +59,60 @@ namespace RenderCore { namespace ImplVulkan
     #if defined(ENABLE_DEBUG_EXTENSIONS)
 	    static const char* s_instanceLayers[] =
 	    {
-		    "VK_LAYER_GOOGLE_threading",
+			// "VK_LAYER_LUNARG_api_dump",
+			"VK_LAYER_LUNARG_assistant_layer",
+			"VK_LAYER_LUNARG_core_validation",
+			// "VK_LAYER_LUNARG_device_simulation",
+			// "VK_LAYER_LUNARG_monitor",
+			"VK_LAYER_LUNARG_object_tracker",
+			"VK_LAYER_LUNARG_parameter_validation",
+			// "VK_LAYER_LUNARG_screenshot",
+			"VK_LAYER_LUNARG_standard_validation"
+
 		    "VK_LAYER_LUNARG_device_limits",
-		    // "VK_LAYER_LUNARG_draw_state",
+		    "VK_LAYER_LUNARG_draw_state",
 		    "VK_LAYER_LUNARG_image",
 		    "VK_LAYER_LUNARG_mem_tracker",
 		    "VK_LAYER_LUNARG_object_tracker",
 		    "VK_LAYER_LUNARG_param_checker",
 		    "VK_LAYER_LUNARG_swapchain",
-		    "VK_LAYER_GOOGLE_unique_objects"/*,
-            "VK_LAYER_RENDERDOC_Capture"*/
+
+			// "VK_LAYER_LUNARG_vktrace"
+
+		    "VK_LAYER_GOOGLE_threading",
+			"VK_LAYER_GOOGLE_unique_objects",
+            // "VK_LAYER_RENDERDOC_Capture",
+
+			// "VK_LAYER_NV_optimus",
 	    };
 
 	    static const char* s_deviceLayers[] =
 	    {
-		    "VK_LAYER_GOOGLE_threading",
+			// "VK_LAYER_LUNARG_api_dump",
+			"VK_LAYER_LUNARG_assistant_layer",
+			"VK_LAYER_LUNARG_core_validation",
+			// "VK_LAYER_LUNARG_device_simulation",
+			// "VK_LAYER_LUNARG_monitor",
+			"VK_LAYER_LUNARG_object_tracker",
+			"VK_LAYER_LUNARG_parameter_validation",
+			// "VK_LAYER_LUNARG_screenshot",
+			"VK_LAYER_LUNARG_standard_validation"
+
 		    "VK_LAYER_LUNARG_device_limits",
-		    // "VK_LAYER_LUNARG_draw_state",
+		    "VK_LAYER_LUNARG_draw_state",
 		    "VK_LAYER_LUNARG_image",
 		    "VK_LAYER_LUNARG_mem_tracker",
 		    "VK_LAYER_LUNARG_object_tracker",
 		    "VK_LAYER_LUNARG_param_checker",
 		    "VK_LAYER_LUNARG_swapchain",
-		    "VK_LAYER_GOOGLE_unique_objects"/*,
-            "VK_LAYER_RENDERDOC_Capture"*/
+
+			// "VK_LAYER_LUNARG_vktrace"
+
+		    "VK_LAYER_GOOGLE_threading",
+			"VK_LAYER_GOOGLE_unique_objects",
+            // "VK_LAYER_RENDERDOC_Capture",
+
+			// "VK_LAYER_NV_optimus",
 	    };
 
         static std::vector<VkLayerProperties> EnumerateLayers()
@@ -292,7 +322,8 @@ namespace RenderCore { namespace ImplVulkan
 					<< "Selecting physical device (" << props.deviceName 
 					<< "). API Version: (" << props.apiVersion 
 					<< "). Driver version: (" << props.driverVersion 
-					<< "). Type: (" << AsString(props.deviceType) << ")";
+					<< "). Type: (" << AsString(props.deviceType) << ")"
+					<< std::endl;
 				return SelectedPhysicalDevice { dev, qi };
 			}
 		}

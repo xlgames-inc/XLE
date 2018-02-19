@@ -270,12 +270,12 @@ namespace RenderCore { namespace Metal_Vulkan
         auto* i = &str[1];
         while (i != str.end() && *i != ')') {
             switch (*i) {
-            case 'v': result |= VK_SHADER_STAGE_VERTEX_BIT;
-            case 'f': result |= VK_SHADER_STAGE_FRAGMENT_BIT;
-            case 'g': result |= VK_SHADER_STAGE_GEOMETRY_BIT;
-            case 'c': result |= VK_SHADER_STAGE_COMPUTE_BIT;
-            case 'd': result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT;
-            case 'h': result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT;
+            case 'v': result |= VK_SHADER_STAGE_VERTEX_BIT; break;
+            case 'f': result |= VK_SHADER_STAGE_FRAGMENT_BIT; break;
+            case 'g': result |= VK_SHADER_STAGE_GEOMETRY_BIT; break;
+            case 'c': result |= VK_SHADER_STAGE_COMPUTE_BIT; break;
+            case 'd': result |= VK_SHADER_STAGE_TESSELLATION_CONTROL_BIT; break;
+            case 'h': result |= VK_SHADER_STAGE_TESSELLATION_EVALUATION_BIT; break;
             }
             ++i;
         }

@@ -49,6 +49,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	static VkImageUsageFlags AsImageUsageFlags(BindFlag::BitField bindFlags)
 	{
 		// note -- we're assuming shader resources are sampled here (rather than storage type textures)
+		// Also, assuming that the ShaderResource flag means it can be used as an input attachment
+		//			-- could we disable the SAMPLED bit for input attachments were we don't use any filtering/sampling?
 		VkImageUsageFlags result = 0;
 		if (bindFlags & BindFlag::ShaderResource) result |= VK_IMAGE_USAGE_SAMPLED_BIT;
 		if (bindFlags & BindFlag::RenderTarget) result |= VK_IMAGE_USAGE_COLOR_ATTACHMENT_BIT;
@@ -57,8 +59,10 @@ namespace RenderCore { namespace Metal_Vulkan
         if (bindFlags & BindFlag::TransferSrc) result |= VK_IMAGE_USAGE_TRANSFER_SRC_BIT;
         if (bindFlags & BindFlag::TransferDst) result |= VK_IMAGE_USAGE_TRANSFER_DST_BIT;
 
+		if ((bindFlags & (BindFlag::RenderTarget|BindFlag::DepthStencil)) && (bindFlags & BindFlag::ShaderResource))
+			result |= VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT;
+
 		// Other Vulkan flags:
-		// VK_IMAGE_USAGE_INPUT_ATTACHMENT_BIT
 		// VK_IMAGE_USAGE_TRANSIENT_ATTACHMENT_BIT
 		return result;
 	}
@@ -597,7 +601,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     c.bufferImageHeight = std::max(height, minDims);
                     c.imageSubresource = VkImageSubresourceLayers{ dstAspectMask, m, a, 1 };
                     c.imageOffset = VkOffset3D{0,0,0};
-                    c.imageExtent = VkExtent3D{std::max(width, minDims), std::max(height, minDims), depth};
+                    c.imageExtent = VkExtent3D{std::max(width, minDims), std::max(height, minDims), std::max(depth, 1u)};
                 }
 
                 width >>= 1u;
@@ -727,7 +731,7 @@ namespace RenderCore { namespace Metal_Vulkan
                         c.imageExtent = VkExtent3D{
                             srcDesc._textureDesc._width,
                             srcDesc._textureDesc._height,
-                            srcDesc._textureDesc._depth};
+                            std::max(srcDesc._textureDesc._depth, 1u)};
                     }
                 }
 
