@@ -6,6 +6,7 @@
 
 #include "ShaderReflection.h"
 
+#define HAS_SPIRV_HEADERS
 #if defined(HAS_SPIRV_HEADERS)
 
 #include "../../../Utility/MemoryUtils.h"

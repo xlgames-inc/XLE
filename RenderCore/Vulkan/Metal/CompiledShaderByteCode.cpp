@@ -21,6 +21,7 @@
 #define EXCLUDE_PSTDINT
 #include "hlslcc.hpp"
 
+#define HAS_SPIRV_HEADERS
 #if defined(HAS_SPIRV_HEADERS)
 
 // Vulkan SDK includes -- 
