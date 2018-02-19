@@ -26,6 +26,8 @@
     #define ENABLE_DEBUG_EXTENSIONS
 #endif
 
+// #define HACK_FORCE_SYNC
+
 namespace RenderCore { 
     extern char VersionString[];
     extern char BuildDateString[];
@@ -851,6 +853,11 @@ namespace RenderCore { namespace ImplVulkan
 
     Metal_Vulkan::RenderTargetView* PresentationChain::AcquireNextImage()
     {
+		#if defined(HACK_FORCE_SYNC)
+			// hack -- just slow us down
+			Threading::Sleep(16);
+		#endif
+
         _activePresentSync = (_activePresentSync+1) % dimof(_presentSyncs);
         auto& sync = _presentSyncs[_activePresentSync];
 		if (sync._fenceHasBeenQueued) {
@@ -1081,6 +1088,11 @@ namespace RenderCore { namespace ImplVulkan
 	{
 		if (_gpuTracker)
 			_gpuTracker->IncrementProducerFrame();
+
+		#if defined(HACK_FORCE_SYNC)
+			// Hack -- complete GPU synchronize
+			vkQueueWaitIdle(_queue);
+		#endif
 
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();

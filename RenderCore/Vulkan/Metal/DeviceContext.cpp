@@ -375,6 +375,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 _graphicsDescriptors._numericBindingsSlot, descSets[0]);
         }
 
+		// GetTemporaryBufferSpace().WriteBarrier(*this);
+
         if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
 
 		if (!_renderPass) {
