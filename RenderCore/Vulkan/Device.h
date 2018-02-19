@@ -70,6 +70,7 @@ namespace RenderCore { namespace ImplVulkan
 			VulkanUniquePtr<VkSemaphore>		_onCommandBufferComplete;
 			VulkanUniquePtr<VkSemaphore>		_onCommandBufferComplete2;
 			VulkanUniquePtr<VkFence>			_presentFence;
+			bool								_fenceHasBeenQueued;
 		};
 		PresentSync& GetSyncs() { return _presentSyncs[_activePresentSync]; }
 		VkCommandBuffer GetPrimaryBuffer() { return _primaryBuffers[_activePresentSync].get(); }

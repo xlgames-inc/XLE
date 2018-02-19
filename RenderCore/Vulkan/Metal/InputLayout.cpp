@@ -403,6 +403,11 @@ namespace RenderCore { namespace Metal_Vulkan
             globalPools._dummyResources._blankSampler->GetUnderlying(),
             globalPools._dummyResources._blankSrv.GetImageView(),
             VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+		auto blankSampler = result._imageCount;
+		result._imageInfo[result._imageCount++] = VkDescriptorImageInfo {
+            globalPools._dummyResources._blankSampler->GetUnderlying(),
+            nullptr,
+            VK_IMAGE_LAYOUT_UNDEFINED };
 
         unsigned minBit = xl_ctz8(dummyDescWriteMask);
         unsigned maxBit = std::min(64u - xl_clz8(dummyDescWriteMask), (unsigned)sig._bindings.size()-1);
@@ -428,9 +433,13 @@ namespace RenderCore { namespace Metal_Vulkan
 				Log(Warning) << "No data provided for bound SRV (" << bIndex << "). Using dummy resource." << std::endl;
                 write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 write.pImageInfo = &result._imageInfo[blankImage];
-            } else {
-				continue;
+            } else if (b._type == DescriptorSetBindingSignature::Type::Sampler) {
+				Log(Warning) << "No data provided for bound sampler (" << bIndex << "). Using dummy resource." << std::endl;
+                write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
+                write.pImageInfo = &result._imageInfo[blankSampler];
+			} else  {
                 assert(0);      // (other types, such as UAVs and structured buffers not supported)
+				continue;
             }
 
             bindingsWrittenTo |= 1ull << uint64(bIndex);

@@ -814,13 +814,16 @@ namespace RenderCore { namespace ImplVulkan
     {
         _activePresentSync = (_activePresentSync+1) % dimof(_presentSyncs);
         auto& sync = _presentSyncs[_activePresentSync];
-        auto fence = sync._presentFence.get();
-        auto res = vkWaitForFences(_device.get(), 1, &fence, true, UINT64_MAX);
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while waiting for presentation fence"));
-        res = vkResetFences(_device.get(), 1, &fence);
-        if (res != VK_SUCCESS)
-            Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
+		if (sync._fenceHasBeenQueued) {
+			auto fence = sync._presentFence.get();
+			auto res = vkWaitForFences(_device.get(), 1, &fence, true, UINT64_MAX);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while waiting for presentation fence"));
+			res = vkResetFences(_device.get(), 1, &fence);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while resetting presentation fence"));
+			sync._fenceHasBeenQueued = false;
+		}
 
         // note --  Due to the timeout here, we get a synchronise here.
         //          This will prevent issues when either the GPU or CPU is
@@ -834,7 +837,7 @@ namespace RenderCore { namespace ImplVulkan
         // stalls as necessary
         uint32_t nextImageIndex = ~0x0u;
         const auto timeout = UINT64_MAX;
-        res = vkAcquireNextImageKHR(
+        auto res = vkAcquireNextImageKHR(
             _device.get(), _swapChain.get(), 
             timeout,
             sync._onAcquireComplete.get(), VK_NULL_HANDLE,
@@ -894,12 +897,6 @@ namespace RenderCore { namespace ImplVulkan
 		auto res = vkQueuePresentKHR(queue, &present);
 		if (res != VK_SUCCESS)
 			Throw(VulkanAPIFailure(res, "Failure while queuing present"));
-
-		// queue a fence -- used to avoid acquiring an image before it has completed it's present.
-		res = vkQueueSubmit(queue, 0, nullptr, sync._presentFence.get());
-		if (res != VK_SUCCESS)
-			Throw(VulkanAPIFailure(res, "Failure while queuing post present fence"));
-
 		_activeImageIndex = ~0x0u;
 	}
 
@@ -954,7 +951,8 @@ namespace RenderCore { namespace ImplVulkan
             _presentSyncs[c]._onCommandBufferComplete = factory.CreateSemaphore();
 			_presentSyncs[c]._onCommandBufferComplete2 = factory.CreateSemaphore();
             _presentSyncs[c]._onAcquireComplete = factory.CreateSemaphore();
-            _presentSyncs[c]._presentFence = factory.CreateFence(VK_FENCE_CREATE_SIGNALED_BIT);
+            _presentSyncs[c]._presentFence = factory.CreateFence(0);
+			_presentSyncs[c]._fenceHasBeenQueued = false;
         }
 		for (unsigned c = 0; c<dimof(_primaryBuffers); ++c)
 			_primaryBuffers[c] = _primaryBufferPool.Allocate(Metal_Vulkan::CommandBufferType::Primary);
@@ -1104,9 +1102,11 @@ namespace RenderCore { namespace ImplVulkan
 			submitInfo.commandBufferCount = dimof(rawCmdBuffers);
 			submitInfo.pCommandBuffers = rawCmdBuffers;
 		
-			auto res = vkQueueSubmit(_queue, 1, &submitInfo, VK_NULL_HANDLE);
+			auto res = vkQueueSubmit(_queue, 1, &submitInfo, syncs._presentFence.get());
 			if (res != VK_SUCCESS)
 				Throw(VulkanAPIFailure(res, "Failure while queuing semaphore signal"));
+
+			syncs._fenceHasBeenQueued = true;
 		}
 
 		// Converting a semphore to an event (so we can query the progress from the CPU)
