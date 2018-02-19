@@ -607,7 +607,7 @@ namespace Sample
 
 			AttachmentViewDesc v_presTarget = { PresentationTarget, LoadStore::DontCare, LoadStore::Retain };
 			AttachmentViewDesc v_mainDepthStencil = { MainDepthStencil, LoadStore::Clear, LoadStore::DontCare, TextureViewDesc::Aspect::DepthStencil };
-			AttachmentViewDesc v_diffuse = { GBufferDiffuse, LoadStore::DontCare, LoadStore::DontCare };
+			AttachmentViewDesc v_diffuse = { GBufferDiffuse, LoadStore::Clear, LoadStore::DontCare };
 			AttachmentViewDesc v_normals = { GBufferNormals, LoadStore::DontCare, LoadStore::DontCare };
 			AttachmentViewDesc v_params = { GBufferParams, LoadStore::DontCare, LoadStore::DontCare };
 			AttachmentViewDesc v_lightingResolve = { LightingResolve, LoadStore::DontCare, LoadStore::DontCare };
@@ -624,7 +624,7 @@ namespace Sample
 
 			FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));
 
-			auto clearValues = {MakeClearValue(1.f, 0)};
+			auto clearValues = {MakeClearValue(1.f,0.f,0.f,1.f), MakeClearValue(1.f, 0)};
             {
                 Techniques::RenderPassInstance rpi(
                     *metalContext, fbLayout,
@@ -813,12 +813,12 @@ namespace Sample
                 {   RenderCore::Techniques::Attachments::MainDepthStencil,
                     RenderCore::LoadStore::Clear, RenderCore::LoadStore::DontCare };
 
-            SubpassDesc subpasses[] = 
+            /*SubpassDesc subpasses[] = 
             {
 				{{v_mainColor}, v_mainDepthStencil}
             };
 
-            RenderCore::FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));
+            RenderCore::FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));*/
 
             RenderCore::Techniques::AttachmentPool namedResources;
             // namedResources.Bind(presentationChain->GetDesc()->_samples);
@@ -832,8 +832,10 @@ namespace Sample
 
 				auto res = context->BeginFrame(*presentationChain);
 				RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
-                auto presDims = context->GetStateDesc()._viewportDimensions;
-				auto samples = presentationChain->GetDesc()->_samples;
+				auto presDesc = presentationChain->GetDesc();
+                auto presDims = UInt2(presDesc->_width, presDesc->_height);
+				auto samples = presDesc->_samples;
+				assert(presDims[0] && presDims[1]);
                 namedResources.Bind(RenderCore::FrameBufferProperties{presDims[0], presDims[1], samples});
                 namedResources.Bind(0, res);
                 // context->BeginRenderPass(

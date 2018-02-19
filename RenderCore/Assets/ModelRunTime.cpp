@@ -864,21 +864,20 @@ namespace RenderCore { namespace Assets
             auto* t = _boundTextures[resourcesIndex * _texturesPerMaterial + c];
             srvs[c] = t?(&t->GetShaderResource()):nullptr;
         }
-		if (constantsIndex != ~0u) {
-			assert(_constantBuffers[constantsIndex].IsGood());
-			ConstantBufferView matCbv[] = { &_constantBuffers[constantsIndex] };
 
-			boundUniforms.Apply(*context._context, 0, context._parserContext->GetGlobalUniformsStream());
-			boundUniforms.Apply(*context._context, 1, 
-				UniformsStream {
-					MakeIteratorRange(matCbv),
-					UniformsStream::MakeResources(MakeIteratorRange(srvs, &srvs[_texturesPerMaterial]))
-				});
-			boundUniforms.Apply(*context._context, 2, 
-				UniformsStream {
-					MakeIteratorRange(cbvs, &cbvs[1])
-				});
-		}
+		assert(_constantBuffers[constantsIndex].IsGood());
+		ConstantBufferView matCbv[] = { &_constantBuffers[constantsIndex] };
+
+		boundUniforms.Apply(*context._context, 0, context._parserContext->GetGlobalUniformsStream());
+		boundUniforms.Apply(*context._context, 1, 
+			UniformsStream {
+				MakeIteratorRange(matCbv),
+				UniformsStream::MakeResources(MakeIteratorRange(srvs, &srvs[_texturesPerMaterial]))
+			});
+		boundUniforms.Apply(*context._context, 2, 
+			UniformsStream {
+				MakeIteratorRange(cbvs, &cbvs[1])
+			});
     }
 
 	void ModelRenderer::Pimpl::ApplyBoundInputLayout(

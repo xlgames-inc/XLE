@@ -167,9 +167,9 @@ namespace RenderCore { namespace Metal_Vulkan
             vi.vertexAttributeDescriptionCount = (uint32)attribs.size();
             vi.pVertexAttributeDescriptions = attribs.begin();
 
-			VkVertexInputBindingDescription vertexBinding = { 0, _vertexStrides[0], VK_VERTEX_INPUT_RATE_VERTEX };
-			vi.vertexBindingDescriptionCount = 1;
-			vi.pVertexBindingDescriptions = &vertexBinding;
+			auto vbBindings = _inputLayout->GetVBBindings();
+			vi.vertexBindingDescriptionCount = (uint32)vbBindings.size();
+			vi.pVertexBindingDescriptions = vbBindings.begin();
         }
 
         VkPipelineInputAssemblyStateCreateInfo ia = {};
@@ -233,7 +233,6 @@ namespace RenderCore { namespace Metal_Vulkan
         _shaderProgram = nullptr;
         _topology = VK_PRIMITIVE_TOPOLOGY_TRIANGLE_LIST;
         _pipelineStale = true;
-        for (auto& v:_vertexStrides) v = 0;
     }
 
     GraphicsPipelineBuilder::~GraphicsPipelineBuilder() {}
@@ -252,9 +251,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _inputLayout = cloneFrom._inputLayout;
         _shaderProgram = cloneFrom._shaderProgram;
-
-        for (unsigned c=0; c<s_maxBoundVBs; ++c)
-            _vertexStrides[c] = cloneFrom._vertexStrides[c];
 
         _pipelineStale = cloneFrom._pipelineStale;
         return *this;

@@ -90,7 +90,7 @@ namespace RenderCore { namespace Assets
 
 			{
 				UniformsStreamInterface matInterf;
-				matInterf.BindConstantBuffer(1, { Techniques::ObjectCB::BasicMaterialConstants });
+				matInterf.BindConstantBuffer(0, { Techniques::ObjectCB::BasicMaterialConstants });
 				for (unsigned c=0; c<textureBindPointsCount; ++c)
 					matInterf.BindShaderResource(c, textureBindPoints[c]);
 				techniqueInterface.BindUniformsStream(1, matInterf);

@@ -27,7 +27,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
         VkBuffer buffers[s_maxBoundVBs];
 		VkDeviceSize offsets[s_maxBoundVBs];
-		auto count = (unsigned)std::min(vertexBuffers.size(), dimof(buffers));
+		auto count = (unsigned)std::min(std::min(vertexBuffers.size(), dimof(buffers)), _vbBindingDescriptions.size());
 		for (unsigned c=0; c<count; ++c) {
 			offsets[c] = vertexBuffers[c]._offset;
 			assert(const_cast<IResource*>(vertexBuffers[c]._resource)->QueryInterface(typeid(Resource).hash_code()));
@@ -144,7 +144,6 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniformsHelper::BindConstantBuffer(uint64 hashName, unsigned stream, unsigned slot)
     {
         // assert(!_pipelineLayout);
-		auto descSet = 0u;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
@@ -155,7 +154,7 @@ namespace RenderCore { namespace Metal_Vulkan
                 continue;
             }
 
-            if (i->second._descriptorSet != descSet) {
+            if (i->second._descriptorSet != stream) {
                 Log(Warning) << "Constant buffer binding appears to be in the wrong descriptor set." << std::endl;
                 continue;
             }
@@ -164,9 +163,6 @@ namespace RenderCore { namespace Metal_Vulkan
             // In this case, we can't bind like this -- we need to use the push constants interface.
             if (i->second._bindingPoint == ~0x0u)
                 continue;
-
-            // assert(descSet == stream);
-			if (descSet != stream) continue;
 
             if (_cbBindingIndices[stream].size() <= slot) _cbBindingIndices[stream].resize(slot+1, ~0u);
 
@@ -183,7 +179,6 @@ namespace RenderCore { namespace Metal_Vulkan
     bool BoundUniformsHelper::BindShaderResource(uint64 hashName, unsigned stream, unsigned slot)
     {
         // assert(!_pipelineLayout);
-		auto descSet = 0u;
         bool gotBinding = false;
 
         for (unsigned s=0; s<dimof(_reflection); ++s) {
@@ -194,11 +189,10 @@ namespace RenderCore { namespace Metal_Vulkan
                 continue;
             }
 
-            if (i->second._descriptorSet != descSet) {
+            if (i->second._descriptorSet != stream) {
                 Log(Warning) << "Shader resource binding appears to be in the wrong descriptor set." << std::endl;
                 continue;
             }
-            assert(descSet == stream);
 
             if (_srvBindingIndices[stream].size() <= slot) _srvBindingIndices[stream].resize(slot+1, ~0u);
 
@@ -231,7 +225,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					_boundUniformBufferSlots[stream] |= 1ull<<uint64_t(slot);
 			}
 			for (unsigned slot=0; slot<interfaces[stream]->_srvBindings.size(); ++slot) {
-				bool bindSuccess = helper.BindConstantBuffer(interfaces[stream]->_srvBindings[slot], stream, slot);
+				bool bindSuccess = helper.BindShaderResource(interfaces[stream]->_srvBindings[slot], stream, slot);
 				if (bindSuccess)
 					_boundResourceSlots[stream] |= 1ull<<uint64_t(slot);
 			}
@@ -379,6 +373,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 				++bufferCount;
 			}
+
+			bindingsWrittenTo |= 1ull << uint64(dstBinding);
 		}
 
 		result._writeCount = writeCount;
@@ -414,8 +410,6 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned bIndex=minBit; bIndex<=maxBit; ++bIndex) {
             if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
 
-            Log(Warning) << "No data provided for bound uniform (" << bIndex << "). Using dummy resource." << std::endl;
-
             assert(result._writeCount < dimof(result._writes));
 			auto& write = result._writes[result._writeCount];
             write = {};
@@ -427,12 +421,15 @@ namespace RenderCore { namespace Metal_Vulkan
 
             const auto& b = sig._bindings[bIndex];
             if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
+				Log(Warning) << "No data provided for bound CB (" << bIndex << "). Using dummy resource." << std::endl;
                 write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
                 write.pBufferInfo = &result._bufferInfo[blankBuffer];
             } else if (b._type == DescriptorSetBindingSignature::Type::Texture) {
+				Log(Warning) << "No data provided for bound SRV (" << bIndex << "). Using dummy resource." << std::endl;
                 write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
                 write.pImageInfo = &result._imageInfo[blankImage];
             } else {
+				continue;
                 assert(0);      // (other types, such as UAVs and structured buffers not supported)
             }
 

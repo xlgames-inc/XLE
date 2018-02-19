@@ -17,6 +17,7 @@
     #include "../../RenderCore/DX11/Metal/IncludeDX11.h"
 	#include "../../RenderCore/DX11/Metal/ObjectFactory.h"
 	#include "../../RenderCore/DX11/Metal/Format.h"
+	#include "../../RenderCore/DX11/Metal/Resource.h"
     #include "../../RenderCore/RenderUtils.h"
 	#include "../../RenderCore/Format.h"
     #include "../../RenderCore/ResourceUtils.h"

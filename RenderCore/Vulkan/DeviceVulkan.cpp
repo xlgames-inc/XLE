@@ -1047,7 +1047,14 @@ namespace RenderCore { namespace ImplVulkan
 
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
-		_metalContext->BeginCommandList(swapChain->SharePrimaryBuffer());
+		{
+			auto cmdList = swapChain->SharePrimaryBuffer();
+			auto res = vkResetCommandBuffer(cmdList.get(), VK_COMMAND_BUFFER_RESET_RELEASE_RESOURCES_BIT);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while resetting command buffer"));
+
+			_metalContext->BeginCommandList(std::move(cmdList));
+		}
         _metalContext->SetPresentationTarget(nextImage, {swapChain->GetBufferDesc()._width, swapChain->GetBufferDesc()._height});
         _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->ShareResource();

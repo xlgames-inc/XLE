@@ -45,7 +45,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
 
         void        Bind(Topology topology);
-        void        SetVertexStrides(IteratorRange<const unsigned*> vertexStrides);
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(
             const ObjectFactory& factory,
@@ -68,8 +67,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
         const BoundInputLayout* _inputLayout;       // note -- unprotected pointer
         const ShaderProgram*    _shaderProgram;
-
-        unsigned                _vertexStrides[s_maxBoundVBs];
 
         bool                    _pipelineStale;
 

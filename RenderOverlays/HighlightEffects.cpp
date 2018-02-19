@@ -11,6 +11,7 @@
 #include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
@@ -61,7 +62,7 @@ namespace RenderOverlays
         metalContext.Bind(Topology::TriangleStrip);
         metalContext.Unbind<Metal::BoundInputLayout>();
 
-        auto desc = stencilSrv.GetResource()->GetDesc();
+        auto desc = stencilSrv.ShareResource()->GetDesc();
         if (desc._type != ResourceDesc::Type::Texture) return;
         
         auto components = GetComponents(desc._textureDesc._format);

@@ -10,6 +10,7 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/ObjectFactory.h"
 #include "../Metal/State.h"
+#include "../Metal/Resource.h"
 #include "../Format.h"
 #include "../ResourceUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
@@ -241,6 +242,7 @@ namespace RenderCore { namespace Techniques
 
         // note -- it might be handy to have a cache of "device memory" that could be reused here?
         _attachments[attach] = Metal::CreateResource(*_factory, desc);
+		assert(_attachments[attach]);
         return true;
     }
 
@@ -255,6 +257,7 @@ namespace RenderCore { namespace Techniques
 		if (resName >= s_maxBoundTargets) return nullptr;
 		if (!_pimpl->_attachments[resName])
 			_pimpl->BuildAttachment(resName);
+		assert(_pimpl->_attachments[resName]);
 		return _pimpl->_attachments[resName];
 	}
 

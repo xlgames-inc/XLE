@@ -44,14 +44,16 @@ namespace RenderCore { namespace Metal_DX11
         if (SUCCEEDED(hresult) && result.pData) {
             XlCopyMemory(result.pData, data, byteCount);
             devContext->Unmap(_underlying.get(), 0);
-        }
+        } else {
+			assert(0);		// mapping failure
+		}
     }
 
 	static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
     {
         return CreateDesc(
             bindingFlags,
-            immutable ? 0 : CPUAccess::Write,
+            immutable ? 0 : CPUAccess::WriteDynamic,
             GPUAccess::Read,
             LinearBufferDesc::Create(unsigned(byteCount)),
             "buf");
