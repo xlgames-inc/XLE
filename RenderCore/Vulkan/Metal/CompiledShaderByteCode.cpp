@@ -308,8 +308,16 @@ namespace RenderCore { namespace Metal_Vulkan
         // Awkwardly, GlslangToSpv only writes to a vector of "unsigned". 
         // But we're expecting to return a vector of "uint8". There's no way
         // to move the block from one vector type to another...!
+		glslang::SpvOptions options;
+		options.generateDebugInfo = false;
+		options.disableOptimizer = false;
+		options.optimizeSize= false;
+		#if defined(_DEBUG)
+			options.generateDebugInfo = true;
+			options.disableOptimizer = true;
+		#endif
         std::vector<unsigned> spirv;
-        glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv);
+        glslang::GlslangToSpv(*program.getIntermediate(shaderType), spirv, &options);
 
         auto spirvBlockSize = spirv.size() * sizeof(unsigned);
         payload = std::make_shared<std::vector<uint8>>(spirvBlockSize + sizeof(ShaderService::ShaderHeader));
