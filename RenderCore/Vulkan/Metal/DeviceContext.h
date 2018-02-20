@@ -99,11 +99,10 @@ namespace RenderCore { namespace Metal_Vulkan
     class DescriptorSetBuilder
     {
     public:
-        enum class Stage { Vertex, Pixel, Geometry, Compute, Hull, Domain, Max };
-        void    BindSRV(Stage stage, unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-        void    BindUAV(Stage stage, unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-        void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
-        void    Bind(Stage stage, unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
+        void    BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+        void    BindUAV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+        void    Bind(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
+        void    Bind(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 
         void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
         bool    HasChanges() const;
@@ -113,9 +112,7 @@ namespace RenderCore { namespace Metal_Vulkan
             const ObjectFactory& factory, DescriptorPool& descPool, 
             DummyResources& dummyResources,
             VkDescriptorSetLayout layout,
-            const DescriptorSetSignature& signature, 
-            int cbBindingOffset, int srvBindingOffset, 
-            int samplerBindingOffset, int uavBindingOffset);
+            const DescriptorSetSignature& signature);
 		DescriptorSetBuilder();
         ~DescriptorSetBuilder();
 
@@ -371,7 +368,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._dynamicBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Vertex, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -381,7 +377,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._dynamicBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Pixel, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -391,7 +386,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _computeDescriptors._dynamicBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Compute, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -401,7 +395,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._dynamicBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Geometry, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -411,7 +404,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._dynamicBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Hull, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -421,7 +413,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._dynamicBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Domain, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -432,7 +423,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Vertex, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -443,7 +433,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Pixel, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -454,7 +443,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Geometry, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -465,7 +453,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _computeDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Compute, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -476,7 +463,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Hull, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -487,7 +473,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Domain, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -499,7 +484,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Vertex, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -511,7 +495,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Pixel, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -523,7 +506,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
             _computeDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Compute, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -535,7 +517,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Geometry, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -547,7 +528,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Hull, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -559,7 +539,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
             _graphicsDescriptors._dynamicBindings.Bind(
-                DescriptorSetBuilder::Stage::Domain, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -572,7 +551,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._globalBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Vertex, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -582,7 +560,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._globalBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Pixel, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -592,7 +569,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _computeDescriptors._globalBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Compute, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -602,7 +578,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._globalBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Geometry, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -612,7 +587,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._globalBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Hull, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -622,7 +596,6 @@ namespace RenderCore { namespace Metal_Vulkan
         {
 			auto r = MakeIteratorRange(shaderResources._buffers);
             _graphicsDescriptors._globalBindings.BindSRV(
-                DescriptorSetBuilder::Stage::Domain, 
                 shaderResources._startingPoint,
                 MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
         }
@@ -633,7 +606,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Vertex, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -644,7 +616,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
             _graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Pixel, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -655,7 +626,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Geometry, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -666,7 +636,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
 			_computeDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Compute, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -677,7 +646,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Hull, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -688,7 +656,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Domain, 
                 samplerStates._startingPoint,
                 MakeIteratorRange(samplers));
         }
@@ -700,7 +667,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Vertex, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -712,7 +678,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Pixel, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -724,7 +689,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
 			_computeDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Compute, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -736,7 +700,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Geometry, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -748,7 +711,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Hull, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -760,7 +722,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned c=0; c<Count; ++c)
 				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
 			_graphicsDescriptors._globalBindings.Bind(
-                DescriptorSetBuilder::Stage::Domain, 
                 constantBuffers._startingPoint,
                 MakeIteratorRange(buffers));
         }
@@ -769,7 +730,6 @@ namespace RenderCore { namespace Metal_Vulkan
         void    DeviceContext::BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess)
         {
             _computeDescriptors._dynamicBindings.BindUAV(
-                DescriptorSetBuilder::Stage::Compute, 
                 unorderedAccess._startingPoint,
                 MakeIteratorRange(unorderedAccess._buffers));
         }
