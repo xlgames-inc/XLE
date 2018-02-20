@@ -225,16 +225,6 @@ namespace RenderCore { namespace Metal_DX11
         XlZeroMemory(_currentSRVs);
     }
 
-    void DeviceContext::SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims)
-    {
-        _presentationTargetDims = dims;
-    }
-
-    VectorPattern<unsigned,2> DeviceContext::GetPresentationTargetDims()
-    {
-        return _presentationTargetDims;
-    }
-
     DeviceContext::DeviceContext(ID3D::DeviceContext* context)
 	: DeviceContext(intrusive_ptr<ID3D::DeviceContext>(context)) {}
 

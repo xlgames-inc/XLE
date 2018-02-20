@@ -16,6 +16,7 @@
     <ClCompile Include="..\Vulkan\Metal\FrameBuffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\PipelineLayout.cpp" />
     <ClCompile Include="..\Vulkan\Metal\QueryPool.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\NumericInterface.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />

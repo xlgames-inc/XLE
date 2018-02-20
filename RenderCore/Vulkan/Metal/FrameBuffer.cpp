@@ -588,7 +588,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer&)
     {
-        context.CmdNextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+        context.NextSubpass(VK_SUBPASS_CONTENTS_INLINE);
     }
 
     void EndRenderPass(DeviceContext& context)

@@ -363,7 +363,7 @@ namespace RenderOverlays
         _metalContext->Bind(Techniques::CommonResources()._dssReadWrite);
         _metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
         _metalContext->Bind(Techniques::CommonResources()._defaultRasterizer);
-        _metalContext->BindPS_G(ResourceList<Metal::SamplerState, 1>(std::make_tuple(Techniques::CommonResources()._defaultSampler)));
+        // _metalContext->BindPS_G(ResourceList<Metal::SamplerState, 1>(std::make_tuple(Techniques::CommonResources()._defaultSampler)));
 
         Metal::ViewportDesc viewportDesc(*_metalContext);
         ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
@@ -393,7 +393,7 @@ namespace RenderOverlays
                     //
                 SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName, MakeIteratorRange(vbs));
                 if (!i->_textureName.empty()) {
-                    _metalContext->BindPS(MakeResourceList(
+                    _metalContext->GetNumericUniforms_Graphics().Bind(MakeResourceList(
                         ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(i->_textureName.c_str()).GetShaderResource()));
                 }
                 _metalContext->Draw(i->_vertexCount);

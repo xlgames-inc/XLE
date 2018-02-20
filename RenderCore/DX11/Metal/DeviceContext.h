@@ -153,9 +153,6 @@ namespace RenderCore { namespace Metal_DX11
         ID3D::UserDefinedAnnotation*    GetAnnotationInterface() const  { return _annotations.get(); }
         bool                            IsImmediate() const;
 
-        void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
-        VectorPattern<unsigned,2>   GetPresentationTargetDims();
-
         void        InvalidateCachedState();
 
         ID3D::Buffer*               _currentCBs[6][14];
@@ -181,7 +178,6 @@ namespace RenderCore { namespace Metal_DX11
 		ObjectFactory* _factory;
 
         // AttachmentPool _namedResources;
-        VectorPattern<unsigned,2> _presentationTargetDims;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

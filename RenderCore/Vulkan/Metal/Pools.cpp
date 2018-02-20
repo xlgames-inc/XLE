@@ -390,7 +390,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				| VK_ACCESS_INPUT_ATTACHMENT_READ_BIT
 				| VK_ACCESS_SHADER_READ_BIT
 			};
-			context.CmdPipelineBarrier(
+			context.GetActiveCommandList().PipelineBarrier(
 				VK_PIPELINE_STAGE_HOST_BIT,
 				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // could be more precise about this?
 				0,
@@ -415,7 +415,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				barrierCount = 2;
 			}
 
-			context.CmdPipelineBarrier(
+			context.GetActiveCommandList().PipelineBarrier(
 				VK_PIPELINE_STAGE_HOST_BIT,
 				VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT, // could be more precise about this?
 				0, // by-region flag?

@@ -33,7 +33,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			assert(const_cast<IResource*>(vertexBuffers[c]._resource)->QueryInterface(typeid(Resource).hash_code()));
 			buffers[c] = ((Resource*)vertexBuffers[c]._resource)->GetBuffer();
 		}
-        context.CmdBindVertexBuffers(0, count, buffers, offsets);
+        context.GetActiveCommandList().BindVertexBuffers(0, count, buffers, offsets);
 		context.SetBoundInputLayout(*this);
 	}
 

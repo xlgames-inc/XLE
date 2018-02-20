@@ -529,7 +529,7 @@ namespace Sample
                 metalContext->Bind(Metal::DepthStencilState(true, true));
 				metalContext->Bind(Metal::RasterizerState());
                 metalContext->Bind(Metal::BlendState());
-				metalContext->BindPS(MakeResourceList(Metal::SamplerState(), Metal::SamplerState()));
+				metalContext->GetNumericUniforms_Graphics().Bind(MakeResourceList(Metal::SamplerState(), Metal::SamplerState()));
 
                     //  Finally, we can render the object!
                 box._modelRenderer->Render(
@@ -645,18 +645,18 @@ namespace Sample
 
                 // This is the lighting resolve. 
                 {
-                    metalContext->BindPS(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
+                    metalContext->GetNumericUniforms_Graphics().Bind(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
 
                     auto& resolveShdr = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "xleres/basic2D.vsh:fullscreen:vs_*", 
                         "xleres/basic.psh:copy:ps_*",
                         "");
-                    metalContext->Unbind<Metal::BoundInputLayout>();
+					Metal::BoundInputLayout(IteratorRange<const InputElementDesc*>{}, resolveShdr).Apply(*metalContext, {});
                     metalContext->Bind(Topology::TriangleStrip);
                     metalContext->Bind(resolveShdr);
                     metalContext->Draw(4);
 
-					metalContext->UnbindPS<Metal::ShaderResourceView>(0, 2);
+					metalContext->GetNumericUniforms_Graphics().Reset();
                 }
             }
 

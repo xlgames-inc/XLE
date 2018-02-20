@@ -225,7 +225,7 @@ namespace RenderCore { namespace Metal_Vulkan
         if (barrierCount) {
             const VkPipelineStageFlags src_stages = VK_PIPELINE_STAGE_ALL_COMMANDS_BIT;
             const VkPipelineStageFlags dest_stages = VK_PIPELINE_STAGE_TOP_OF_PIPE_BIT;
-            context.CmdPipelineBarrier(
+            context.GetActiveCommandList().PipelineBarrier(
                 src_stages, dest_stages,
                 0, 
                 0, nullptr, 0, nullptr,
@@ -547,7 +547,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			    depth = std::max(1u, depth>>1);
 		    }
 
-		    context.CmdCopyImage(
+		    context.GetActiveCommandList().CopyImage(
 			    src.GetImage(), AsVkImageLayout(srcLayout),
 			    dst.GetImage(), AsVkImageLayout(dstLayout),
 			    copyOperations, copyOps);
@@ -562,7 +562,7 @@ namespace RenderCore { namespace Metal_Vulkan
             {
                 VkBufferCopy{0, 0, std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes)}
             };
-            context.CmdCopyBuffer(
+            context.GetActiveCommandList().CopyBuffer(
                 src.GetBuffer(),
                 dst.GetBuffer(),
                 dimof(copyOps), copyOps);
@@ -610,7 +610,7 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             const auto copyOperations = mips*arrayCount;
-            context.CmdCopyBufferToImage(
+            context.GetActiveCommandList().CopyBufferToImage(
                 src.GetBuffer(),
                 dst.GetImage(), AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);
@@ -657,7 +657,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			c.dstSubresource.baseArrayLayer = dst._subResource._arrayLayer;
 			c.dstSubresource.layerCount = 1;
 
-            context.CmdCopyImage(
+            context.GetActiveCommandList().CopyImage(
 			    src._resource->GetImage(), AsVkImageLayout(srcLayout),
 			    dst._resource->GetImage(), AsVkImageLayout(dstLayout),
 			    1, &c);
@@ -672,7 +672,7 @@ namespace RenderCore { namespace Metal_Vulkan
             c.dstOffset = dst._leftTopFront._values[0];
             auto end = std::min(src._rightBottomBack._values[0], std::min(srcDesc._linearBufferDesc._sizeInBytes, dstDesc._linearBufferDesc._sizeInBytes));
             c.size = end - src._rightBottomBack._values[0];
-            context.CmdCopyBuffer(
+            context.GetActiveCommandList().CopyBuffer(
                 src._resource->GetBuffer(),
                 dst._resource->GetBuffer(),
                 1, &c);
@@ -741,7 +741,7 @@ namespace RenderCore { namespace Metal_Vulkan
             }
 
             const auto copyOperations = mips*arrayCount;
-            context.CmdCopyBufferToImage(
+            context.GetActiveCommandList().CopyBufferToImage(
                 src._resource->GetBuffer(),
                 dst._resource->GetImage(), AsVkImageLayout(dstLayout),
                 copyOperations, copyOps);

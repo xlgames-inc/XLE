@@ -454,7 +454,6 @@ namespace RenderCore { namespace ImplDX11
                 //      manually apply SRGB convertion)
             TextureViewDesc viewWindow;
             Metal_DX11::RenderTargetView rtv(Metal_DX11::AsResourcePtr(backBuffer0), viewWindow);
-            context.SetPresentationTarget(&rtv, {_desc->_width, _desc->_height});
             context.Bind(Metal_DX11::ViewportDesc(0.f, 0.f, (float)_desc->_width, (float)_desc->_height));
         }
     }

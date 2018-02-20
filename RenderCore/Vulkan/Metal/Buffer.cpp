@@ -16,7 +16,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
         // hack to catch "LocalTransorm" buffer going through this path
         if (byteCount == 80) {
-            context.CmdPushConstants(
+            context.GetActiveCommandList().PushConstants(
                 context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
                 VK_SHADER_STAGE_VERTEX_BIT,
                 0, (uint32_t)byteCount, data);
@@ -34,7 +34,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const bool useUpdateBuffer = !context.IsInRenderPass();
         if (useUpdateBuffer) {
 		    assert(IsGood());
-            context.CmdUpdateBuffer(_underlyingBuffer.get(), 0, byteCount, data);
+            context.GetActiveCommandList().UpdateBuffer(_underlyingBuffer.get(), 0, byteCount, data);
         } else {
             Resource updatedRes(GetObjectFactory(context), GetDesc(), SubResourceInitData{ MakeIteratorRange(data, PtrAdd(data, byteCount)) });
             *(Resource*)this = std::move(updatedRes);

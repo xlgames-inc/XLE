@@ -55,8 +55,8 @@ namespace RenderOverlays
         bool onlyHighlighted)
     {
 		auto cbData = MakeIteratorRange(&settings, PtrAdd(&settings, sizeof(settings)));
-        metalContext.BindPS(MakeResourceList(Metal::MakeConstantBuffer(Metal::GetObjectFactory(), cbData)));
-        metalContext.BindPS(MakeResourceList(stencilSrv));
+        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(Metal::MakeConstantBuffer(Metal::GetObjectFactory(), cbData)));
+        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(stencilSrv));
         metalContext.Bind(Techniques::CommonResources()._dssDisable);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext.Bind(Topology::TriangleStrip);
@@ -94,7 +94,7 @@ namespace RenderOverlays
             metalContext.Draw(4);
         }
 
-        metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+        metalContext.GetNumericUniforms_Graphics().Reset();
     }
 
     void ExecuteHighlightByStencil(
@@ -239,19 +239,19 @@ namespace RenderOverlays
         if (!srv.IsGood()) return;
 
         _pimpl->_rpi.NextSubpass();
-        auto metalContext = Metal::DeviceContext::Get(threadContext);
-        metalContext->BindPS(MakeResourceList(srv));
+        auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(srv));
 
         struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
 		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
         auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-        shaders._drawHighlightUniforms.Apply(*metalContext, 1, { MakeIteratorRange(cbvs) });
-        metalContext->Bind(*shaders._drawHighlight);
-        metalContext->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        metalContext->Bind(Topology::TriangleStrip);
-        metalContext->Draw(4);
+        shaders._drawHighlightUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
+        metalContext.Bind(*shaders._drawHighlight);
+        metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+        metalContext.Bind(Techniques::CommonResources()._dssDisable);
+        metalContext.Bind(Topology::TriangleStrip);
+        metalContext.Draw(4);
 
         _pimpl->_rpi.End();
     }
@@ -266,19 +266,19 @@ namespace RenderOverlays
             //  using some filtering
 
         _pimpl->_rpi.NextSubpass();
-        auto metalContext = Metal::DeviceContext::Get(threadContext);
-        metalContext->BindPS(MakeResourceList(srv));
+        auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(srv));
 
         struct Constants { Float4 _shadowColor; } constants = { shadowColor };
 		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
         auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-        shaders._drawShadowUniforms.Apply(*metalContext, 1, { MakeIteratorRange(cbvs) });
-        metalContext->Bind(*shaders._drawShadow);
-        metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
-        metalContext->Bind(Techniques::CommonResources()._dssDisable);
-        metalContext->Bind(Topology::TriangleStrip);
-        metalContext->Draw(4);
+        shaders._drawShadowUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
+        metalContext.Bind(*shaders._drawShadow);
+        metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
+        metalContext.Bind(Techniques::CommonResources()._dssDisable);
+        metalContext.Bind(Topology::TriangleStrip);
+        metalContext.Draw(4);
 
         _pimpl->_rpi.End();
     }

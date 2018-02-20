@@ -517,7 +517,7 @@ namespace RenderCore { namespace ImplVulkan
 		// to be tracking rendering command progress -- not compute shaders!
 		// Is ALL_COMMANDS fine?
 		if (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid)
-			context.CmdSetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
 	}
 
 	void EventBasedTracker::IncrementProducerFrame()
@@ -1084,7 +1084,6 @@ namespace RenderCore { namespace ImplVulkan
 
 			_metalContext->BeginCommandList(std::move(cmdList));
 		}
-        _metalContext->SetPresentationTarget(nextImage, {swapChain->GetBufferDesc()._width, swapChain->GetBufferDesc()._height});
         _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
         return nextImage->ShareResource();
 	}
@@ -1123,7 +1122,7 @@ namespace RenderCore { namespace ImplVulkan
 
 			VkSemaphore waitSema[] = { syncs._onAcquireComplete.get() };
 			VkSemaphore signalSema[] = { syncs._onCommandBufferComplete.get(), syncs._onCommandBufferComplete2.get() };
-			VkCommandBuffer rawCmdBuffers[] = { mainCmdBuffer.get() };
+			VkCommandBuffer rawCmdBuffers[] = { mainCmdBuffer->GetUnderlying().get() };
 			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 			submitInfo.waitSemaphoreCount = dimof(waitSema);
 			submitInfo.pWaitSemaphores = waitSema;
@@ -1151,7 +1150,7 @@ namespace RenderCore { namespace ImplVulkan
 			submitInfo.pNext = nullptr;
 
 			VkSemaphore waitSema[] = { syncs._onCommandBufferComplete2.get() };
-			VkCommandBuffer rawCmdBuffers[] = { cmdBuffer.get() };
+			VkCommandBuffer rawCmdBuffers[] = { cmdBuffer->GetUnderlying().get() };
 			VkPipelineStageFlags stage = VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT;
 			submitInfo.waitSemaphoreCount = dimof(waitSema);
 			submitInfo.pWaitSemaphores = waitSema;

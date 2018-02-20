@@ -9,6 +9,7 @@
 #include "Forward.h"
 #include "State.h"
 #include "FrameBuffer.h"        // for AttachmentPool
+#include "InputLayout.h"		// for NumericUniformsInterface
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
@@ -96,41 +97,11 @@ namespace RenderCore { namespace Metal_Vulkan
         bool                    _pipelineStale;
     };
 
-    class DescriptorSetBuilder
-    {
-    public:
-        void    BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-        void    BindUAV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
-        void    Bind(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
-        void    Bind(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
-
-        void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
-        bool    HasChanges() const;
-        void    Reset();
-
-        DescriptorSetBuilder(
-            const ObjectFactory& factory, DescriptorPool& descPool, 
-            DummyResources& dummyResources,
-            VkDescriptorSetLayout layout,
-            const DescriptorSetSignature& signature);
-		DescriptorSetBuilder();
-        ~DescriptorSetBuilder();
-
-        DescriptorSetBuilder(DescriptorSetBuilder&&) = default;
-        DescriptorSetBuilder& operator=(DescriptorSetBuilder&&) = default;
-    protected:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-
     class DescriptorCollection
     {
     public:
-        DescriptorSetBuilder                _dynamicBindings;
-        unsigned                            _dynamicBindingsSlot;
-
-        DescriptorSetBuilder                _globalBindings;
-        unsigned                            _globalBindingsSlot;
+        NumericUniformsInterface			_numericBindings;
+        unsigned                            _numericBindingsSlot;
 
         std::vector<VkDescriptorSet>        _descriptorSets;
         bool                                _hasSetsAwaitingFlush;
@@ -143,59 +114,84 @@ namespace RenderCore { namespace Metal_Vulkan
             PipelineLayout&         pipelineLayout);
     };
 
-    using CommandList = VkCommandBuffer;
-    using CommandListPtr = VulkanSharedPtr<VkCommandBuffer>;
+	class CommandList
+	{
+	public:
+		void UpdateBuffer(
+            VkBuffer buffer, VkDeviceSize offset, 
+            VkDeviceSize byteCount, const void* data);
+        void BindDescriptorSets(
+            VkPipelineBindPoint pipelineBindPoint,
+            VkPipelineLayout layout,
+            uint32_t firstSet,
+            uint32_t descriptorSetCount,
+            const VkDescriptorSet* pDescriptorSets,
+            uint32_t dynamicOffsetCount,
+            const uint32_t* pDynamicOffsets);
+        void CopyBuffer(
+            VkBuffer srcBuffer,
+            VkBuffer dstBuffer,
+            uint32_t regionCount,
+            const VkBufferCopy* pRegions);
+        void CopyImage(
+            VkImage srcImage,
+            VkImageLayout srcImageLayout,
+            VkImage dstImage,
+            VkImageLayout dstImageLayout,
+            uint32_t regionCount,
+            const VkImageCopy* pRegions);
+        void CopyBufferToImage(
+            VkBuffer srcBuffer,
+            VkImage dstImage,
+            VkImageLayout dstImageLayout,
+            uint32_t regionCount,
+            const VkBufferImageCopy* pRegions);
+        void PipelineBarrier(
+            VkPipelineStageFlags            srcStageMask,
+            VkPipelineStageFlags            dstStageMask,
+            VkDependencyFlags               dependencyFlags,
+            uint32_t                        memoryBarrierCount,
+            const VkMemoryBarrier*          pMemoryBarriers,
+            uint32_t                        bufferMemoryBarrierCount,
+            const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
+            uint32_t                        imageMemoryBarrierCount,
+            const VkImageMemoryBarrier*     pImageMemoryBarriers);
+        void PushConstants(
+            VkPipelineLayout layout,
+            VkShaderStageFlags stageFlags,
+            uint32_t offset,
+            uint32_t size,
+            const void* pValues);
+		void WriteTimestamp(
+			VkPipelineStageFlagBits pipelineStage, 
+			VkQueryPool queryPool, uint32_t query);
+		void ResetQueryPool(
+			VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
+		void SetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
+		void ResetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
+		void BindVertexBuffers(
+			uint32_t            firstBinding,
+			uint32_t            bindingCount,
+			const VkBuffer*     pBuffers,
+			const VkDeviceSize*	pOffsets);
+
+		const VulkanSharedPtr<VkCommandBuffer>& GetUnderlying() const { return _underlying; }
+
+		CommandList();
+		explicit CommandList(const VulkanSharedPtr<VkCommandBuffer>& underlying);
+		~CommandList();
+
+		CommandList(CommandList&&) = default;
+		CommandList& operator=(CommandList&&) = default;
+	private:
+		VulkanSharedPtr<VkCommandBuffer> _underlying;
+	};
+
+    using CommandListPtr = std::shared_ptr<CommandList>;
 
 	class DeviceContext : public GraphicsPipelineBuilder, ComputePipelineBuilder
     {
     public:
-        template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-
-        template<int Count> void    BindVS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindGS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindCS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindHS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindDS(const ResourceList<SamplerState, Count>& samplerStates);
-
-        template<int Count> void    BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-
-        template<int Count> void    BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-
-        template<int Count> void    BindVS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindPS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindGS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindCS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindHS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindDS_G(const ResourceList<SamplerState, Count>& samplerStates);
-
-        template<int Count> void    BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-        template<int Count> void    BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers);
-
-		template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
-
-		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
-        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess) {}
-
 		void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
         void        Bind(const ViewportDesc& viewport);
         const ViewportDesc& GetBoundViewport() const { return _boundViewport; }
@@ -203,13 +199,7 @@ namespace RenderCore { namespace Metal_Vulkan
         using GraphicsPipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
         using ComputePipelineBuilder::Bind;
 
-        T1(Type) void   UnbindVS(unsigned startSlot, unsigned count) {}
-        T1(Type) void   UnbindGS(unsigned startSlot, unsigned count) {}
-        T1(Type) void   UnbindPS(unsigned startSlot, unsigned count) {}
-        T1(Type) void   UnbindCS(unsigned startSlot, unsigned count) {}
-		T1(Type) void   UnbindDS(unsigned startSlot, unsigned count) {}
-        T1(Type) void   Unbind() {}
-        void            UnbindSO() {}
+		T1(Type) void   Unbind() {}
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -223,14 +213,19 @@ namespace RenderCore { namespace Metal_Vulkan
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
+		NumericUniformsInterface& GetNumericUniforms_Graphics();
+		NumericUniformsInterface& GetNumericUniforms_Compute();
+
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 		std::shared_ptr<DeviceContext> Fork();
 
 		void		BeginCommandList();
-		void		BeginCommandList(CommandListPtr cmdList);
-		void		CommitCommandList(VkCommandBuffer_T&, bool);
+		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
+		void		CommitCommandList(CommandList&, bool);
 		auto        ResolveCommandList() -> CommandListPtr;
 		bool		IsImmediate() { return false; }
+
+		CommandList& GetActiveCommandList();
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
@@ -244,9 +239,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		ObjectFactory&	GetFactory() const				{ return *_factory; }
 		TemporaryBufferSpace& GetTemporaryBufferSpace()		{ return *_tempBufferSpace; }
 
-        void                        SetPresentationTarget(RenderTargetView* presentationTarget, const VectorPattern<unsigned,2>& dims);
-        VectorPattern<unsigned,2>   GetPresentationTargetDims();
-
         void BeginRenderPass(
             const FrameBuffer& fb,
             TextureSamples samples,
@@ -254,67 +246,7 @@ namespace RenderCore { namespace Metal_Vulkan
             IteratorRange<const ClearValue*> clearValues);
         void EndRenderPass();
         bool IsInRenderPass() const;
-
-        ///////////// Command buffer layer /////////////
-        //      (todo -- consider moving to a utility class)
-        void CmdUpdateBuffer(
-            VkBuffer buffer, VkDeviceSize offset, 
-            VkDeviceSize byteCount, const void* data);
-        void CmdBindDescriptorSets(
-            VkPipelineBindPoint pipelineBindPoint,
-            VkPipelineLayout layout,
-            uint32_t firstSet,
-            uint32_t descriptorSetCount,
-            const VkDescriptorSet* pDescriptorSets,
-            uint32_t dynamicOffsetCount,
-            const uint32_t* pDynamicOffsets);
-        void CmdCopyBuffer(
-            VkBuffer srcBuffer,
-            VkBuffer dstBuffer,
-            uint32_t regionCount,
-            const VkBufferCopy* pRegions);
-        void CmdCopyImage(
-            VkImage srcImage,
-            VkImageLayout srcImageLayout,
-            VkImage dstImage,
-            VkImageLayout dstImageLayout,
-            uint32_t regionCount,
-            const VkImageCopy* pRegions);
-        void CmdCopyBufferToImage(
-            VkBuffer srcBuffer,
-            VkImage dstImage,
-            VkImageLayout dstImageLayout,
-            uint32_t regionCount,
-            const VkBufferImageCopy* pRegions);
-        void CmdNextSubpass(VkSubpassContents);
-        void CmdPipelineBarrier(
-            VkPipelineStageFlags            srcStageMask,
-            VkPipelineStageFlags            dstStageMask,
-            VkDependencyFlags               dependencyFlags,
-            uint32_t                        memoryBarrierCount,
-            const VkMemoryBarrier*          pMemoryBarriers,
-            uint32_t                        bufferMemoryBarrierCount,
-            const VkBufferMemoryBarrier*    pBufferMemoryBarriers,
-            uint32_t                        imageMemoryBarrierCount,
-            const VkImageMemoryBarrier*     pImageMemoryBarriers);
-        void CmdPushConstants(
-            VkPipelineLayout layout,
-            VkShaderStageFlags stageFlags,
-            uint32_t offset,
-            uint32_t size,
-            const void* pValues);
-		void CmdWriteTimestamp(
-			VkPipelineStageFlagBits pipelineStage, 
-			VkQueryPool queryPool, uint32_t query);
-		void CmdResetQueryPool(
-			VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
-		void CmdSetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
-		void CmdResetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
-		void CmdBindVertexBuffers(
-			uint32_t            firstBinding,
-			uint32_t            bindingCount,
-			const VkBuffer*     pBuffers,
-			const VkDeviceSize*	pOffsets);
+		void NextSubpass(VkSubpassContents);
 
         DeviceContext(
             ObjectFactory& factory, 
@@ -328,7 +260,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		DeviceContext& operator=(const DeviceContext&) = delete;
 
     private:
-        VulkanSharedPtr<VkCommandBuffer>    _commandList;
+        CommandList							_commandList;
         GlobalPools*                        _globalPools;
         ObjectFactory*						_factory;
 
@@ -348,392 +280,15 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		TemporaryBufferSpace*				_tempBufferSpace;
 
-        VectorPattern<unsigned,2>           _presentationTargetDims;
-
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
     };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<int Count> 
-        void DeviceContext::Bind(
-            const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) 
-        {
-			assert(0);
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._dynamicBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._dynamicBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _computeDescriptors._dynamicBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._dynamicBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._dynamicBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._dynamicBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> void    DeviceContext::BindVS(const ResourceList<SamplerState, Count>& samplerStates) 
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindPS(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindGS(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindCS(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _computeDescriptors._dynamicBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindHS(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindDS(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-			VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindPS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-			VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindCS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-			VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-            _computeDescriptors._dynamicBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindGS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-			VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindHS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-			VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindDS(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-			VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-            _graphicsDescriptors._dynamicBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    template<int Count> 
-        void    DeviceContext::BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._globalBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._globalBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _computeDescriptors._globalBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._globalBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._globalBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources) 
-        {
-			auto r = MakeIteratorRange(shaderResources._buffers);
-            _graphicsDescriptors._globalBindings.BindSRV(
-                shaderResources._startingPoint,
-                MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
-        }
-
-    template<int Count> void    DeviceContext::BindVS_G(const ResourceList<SamplerState, Count>& samplerStates) 
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._globalBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindPS_G(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-			VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-            _graphicsDescriptors._globalBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindGS_G(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-            VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-			_graphicsDescriptors._globalBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindCS_G(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-            VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-			_computeDescriptors._globalBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindHS_G(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-            VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-			_graphicsDescriptors._globalBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> void    DeviceContext::BindDS_G(const ResourceList<SamplerState, Count>& samplerStates)
-        {
-            VkSampler samplers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
-			_graphicsDescriptors._globalBindings.Bind(
-                samplerStates._startingPoint,
-                MakeIteratorRange(samplers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindVS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-            VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			_graphicsDescriptors._globalBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindPS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-            VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			_graphicsDescriptors._globalBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindCS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-            VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			_computeDescriptors._globalBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindGS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-            VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			_graphicsDescriptors._globalBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindHS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-            VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			_graphicsDescriptors._globalBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindDS_G(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
-        {
-            VkBuffer buffers[Count];
-			for (unsigned c=0; c<Count; ++c)
-				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
-			_graphicsDescriptors._globalBindings.Bind(
-                constantBuffers._startingPoint,
-                MakeIteratorRange(buffers));
-        }
-
-    template<int Count> 
-        void    DeviceContext::BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess)
-        {
-            _computeDescriptors._dynamicBindings.BindUAV(
-                unorderedAccess._startingPoint,
-                MakeIteratorRange(unorderedAccess._buffers));
-        }
-
+	inline CommandList& DeviceContext::GetActiveCommandList()
+	{
+		assert(_commandList.GetUnderlying());
+		return _commandList;
+	}
 
 }}
 

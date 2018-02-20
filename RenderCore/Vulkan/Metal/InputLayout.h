@@ -20,6 +20,7 @@ namespace RenderCore
 	class InputElementDesc;
 	class MiniInputElementDesc;
 	class CompiledShaderByteCode;
+	template <typename Type, int Count> class ResourceList;
 }
 
 namespace RenderCore { namespace Metal_Vulkan
@@ -104,6 +105,82 @@ namespace RenderCore { namespace Metal_Vulkan
         BoundClassInterfaces(BoundClassInterfaces&& moveFrom) {}
         BoundClassInterfaces& operator=(BoundClassInterfaces&& moveFrom) { return *this; }
     };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class ShaderResourceView;
+	class SamplerState;
+	class Buffer;
+	using ConstantBuffer = Buffer;
+	class TextureView;
+	class ObjectFactory;
+	class DescriptorPool;
+	class DummyResources;
+	class DescriptorSetSignature;
+
+	/// <summary>Bind uniforms at numeric binding points</summary>
+	class NumericUniformsInterface
+	{
+	public:
+		void    BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+        void    BindUAV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources);
+        void    BindCB(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
+        void    BindSampler(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
+
+        void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
+        bool    HasChanges() const;
+        void    Reset();
+		
+		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
+		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
+		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
+
+        NumericUniformsInterface(
+            const ObjectFactory& factory, DescriptorPool& descPool, 
+            DummyResources& dummyResources,
+            VkDescriptorSetLayout layout,
+            const DescriptorSetSignature& signature);
+		NumericUniformsInterface();
+        ~NumericUniformsInterface();
+
+        NumericUniformsInterface(NumericUniformsInterface&&);
+        NumericUniformsInterface& operator=(NumericUniformsInterface&&);
+    protected:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<int Count> 
+	    void    NumericUniformsInterface::Bind(const ResourceList<ShaderResourceView, Count>& shaderResources) 
+	    {
+			auto r = MakeIteratorRange(shaderResources._buffers);
+	        BindSRV(
+	            shaderResources._startingPoint,
+	            MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
+	    }
+	
+	template<int Count> void    NumericUniformsInterface::Bind(const ResourceList<SamplerState, Count>& samplerStates) 
+	    {
+			VkSampler samplers[Count];
+			for (unsigned c=0; c<Count; ++c)
+				samplers[c] = samplerStates._buffers[c]->GetUnderlying();
+	        BindSampler(
+	            samplerStates._startingPoint,
+	            MakeIteratorRange(samplers));
+	    }
+	
+	template<int Count> 
+	    void    NumericUniformsInterface::Bind(const ResourceList<ConstantBuffer, Count>& constantBuffers) 
+	    {
+			VkBuffer buffers[Count];
+			for (unsigned c=0; c<Count; ++c)
+				buffers[c] = constantBuffers._buffers[c]->GetBuffer();
+	        BindCB(
+	            constantBuffers._startingPoint,
+	            MakeIteratorRange(buffers));
+	    }
 
 }}
 

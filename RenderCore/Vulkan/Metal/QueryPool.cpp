@@ -20,7 +20,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (_nextAllocation == _nextFree && _allocatedCount!=0)
 			return QueryId_Invalid;		// (we could also look for any buffers that are pending free)
 		auto query = _nextAllocation;
-		context.CmdWriteTimestamp(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, _timeStamps.get(), query);
+		context.GetActiveCommandList().WriteTimestamp(VK_PIPELINE_STAGE_ALL_GRAPHICS_BIT, _timeStamps.get(), query);
 		_nextAllocation = (_nextAllocation + 1) % _queryCount;
 		_allocatedCount = std::min(_allocatedCount+1, _queryCount);
 		return query;
@@ -34,13 +34,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			return FrameId_Invalid;
 		}
 		if (b._pendingReset) {
+			auto& cmdList = context.GetActiveCommandList();
 			if (b._queryEnd < b._queryStart) {
-				context.CmdResetQueryPool(_timeStamps.get(), b._queryStart, _queryCount - b._queryStart);
-				context.CmdResetQueryPool(_timeStamps.get(), 0, b._queryEnd);
+				cmdList.ResetQueryPool(_timeStamps.get(), b._queryStart, _queryCount - b._queryStart);
+				cmdList.ResetQueryPool(_timeStamps.get(), 0, b._queryEnd);
 				_allocatedCount -= _queryCount - b._queryStart;
 				_allocatedCount -= b._queryEnd;
 			} else {
-				context.CmdResetQueryPool(_timeStamps.get(), b._queryStart, b._queryEnd - b._queryStart);
+				cmdList.ResetQueryPool(_timeStamps.get(), b._queryStart, b._queryEnd - b._queryStart);
 				_allocatedCount -= b._queryEnd - b._queryStart;
 			}
 			assert(_nextFree == b._queryStart);
