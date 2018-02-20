@@ -132,6 +132,11 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "RenderCore_Vulkan", "..\Ren
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "Converter", "..\Samples\Converter\Project\Converter.vcxproj", "{BD081CBB-A7CD-47F3-A6A2-C72B72611326}"
 EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{A3823484-41C1-459E-8DD1-53C82E6DBF6A}"
+	ProjectSection(SolutionItems) = preProject
+		xle.natvis = xle.natvis
+	EndProjectSection
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
