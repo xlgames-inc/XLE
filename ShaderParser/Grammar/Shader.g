@@ -94,8 +94,13 @@ tokens
 			// or underscores
 		pANTLR3_STRING text = token->getText(token);
 		pANTLR3_UINT8 chrs = text->chars;
-		for (unsigned c=0; c<text->len; ++c)
-			if ((chrs[c] < 'A' || chrs[c] > 'Z') && chrs[c] != '_')
+		if (!text->len) return 0;
+
+		if ((chrs[0] < 'A' || chrs[0] > 'Z') && chrs[0] != '_')
+			return 0;
+
+		for (unsigned c=1; c<text->len; ++c)
+			if (!(chrs[c] >= 'A' && chrs[c] <= 'Z') && chrs[c] != '_' && !(chrs[c] >= '0' && chrs[c] <= '9'))
 				return 0;
 		return 1;
 	}
@@ -145,7 +150,10 @@ subscript
 
 registerValue : ident;
 
-registerAssignment : ':' 'register' '(' registerValue ')';
+registerAssignment 
+	: ':' 'register' '(' registerValue ')'
+	| isolated_macro
+	;
 	
 structure
 	:	'struct' ident '{' fields+=structure_field* '}' ';' 

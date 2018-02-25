@@ -344,7 +344,18 @@ namespace ShaderPatcher
         ISignatureProvider& sigProvider)
     {
             // Go back to the shader fragments to find the current type for the given parameter
-        auto sigResult = sigProvider.FindSignature(archiveName);
+		ISignatureProvider::Result sigResult;
+
+		// Some typenames contain a template type in angle brackets. For example, when 
+		// graphs are passed in as parameters, they are given a template signature, in the form:
+		//		parameterName<signatureTemplate>
+		auto typenameBegin = std::find(archiveName.begin(), archiveName.end(), '<');
+		if (typenameBegin != archiveName.end()) {
+			auto typenameEnd = std::find(typenameBegin+1, archiveName.end(), '>');
+			sigResult = sigProvider.FindSignature(MakeStringSection(typenameBegin+1, typenameEnd));
+		} else {
+			sigResult = sigProvider.FindSignature(archiveName);
+		}
         if (!sigResult._signature)
             return std::string();
             // Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.AsString().c_str()));
@@ -533,6 +544,7 @@ namespace ShaderPatcher
         std::string _name;
         std::string _finalArchiveName;
         const NodeGraphSignature* _signature = nullptr;
+		InstantiationParameters _instantiationParameters;
     };
 
     static ResolvedFunction ResolveFunction(
@@ -559,11 +571,17 @@ namespace ShaderPatcher
 
             auto i = instantiationParameters._parameterBindings.find(parameterName.AsString());
             if (i!=instantiationParameters._parameterBindings.end()) {
-                result._name = i->second;
+				result._finalArchiveName = i->second._archiveName;
+				result._instantiationParameters = i->second._parameters;
             } else {
-                result._name = restriction.AsString();
+				result._finalArchiveName = restriction.AsString();
             }
-            result._finalArchiveName = result._name;
+
+			auto p = result._finalArchiveName.find_last_of(':');
+			if (p != std::string::npos) {
+				result._name = result._finalArchiveName.substr(p+1);
+			} else
+				result._name = result._finalArchiveName;
 
             return result;
         }
@@ -576,6 +594,11 @@ namespace ShaderPatcher
         result._finalArchiveName = archiveName;
         return result;
     }
+
+	static InstantiationParameters::Dependency AsInstantiationDependency(const std::string& str)
+	{
+		return { str };
+	}
 
     static std::stringstream GenerateFunctionCall(
         NodeGraphSignature& workingInterface,       // this is the interface the output function we're generating. It will be expanded as necessary in this call
@@ -611,6 +634,10 @@ namespace ShaderPatcher
             //  for those parameters, we must select a specific instantiation of the function
             //
         InstantiationParameters callInstantiation;
+		callInstantiation._parameterBindings.insert(
+			sigRes._instantiationParameters._parameterBindings.begin(),
+			sigRes._instantiationParameters._parameterBindings.end());
+		// the node graph can override any instantiation parameters
         for (const auto& tp:sig.GetTemplateParameters()) {
             auto connection = std::find_if(
                 nodeGraph.GetConstantConnections().begin(),
@@ -620,7 +647,7 @@ namespace ShaderPatcher
                         && p.OutputParameterName() == tp._name;
                 });
             if (connection!=nodeGraph.GetConstantConnections().end()) {
-                callInstantiation._parameterBindings.insert({tp._name, connection->Value()});
+				callInstantiation._parameterBindings.insert({tp._name, AsInstantiationDependency(connection->Value())});
             }
         }
 
@@ -628,8 +655,8 @@ namespace ShaderPatcher
 
         auto callInstHash = callInstantiation.CalculateHash();
         if (!callInstantiation._parameterBindings.empty()) {
-            for (auto& c:callInstantiation._parameterBindings)
-                result << "\t// Instantiating " << c.first << " with " << c.second << " in call to " << functionName << std::endl;
+            for (const auto& c:callInstantiation._parameterBindings)
+                result << "\t// Instantiating " << c.first << " with " << c.second._archiveName << " in call to " << functionName << std::endl;
             functionName += "_" + std::to_string(callInstHash);
         }
 
@@ -795,70 +822,6 @@ namespace ShaderPatcher
         return std::make_tuple(result.str(), std::move(interf), std::move(depTable));
     }
 
-    std::string GenerateShaderHeader(const NodeGraph& graph)
-    {
-		assert(0);	// todo -- use new DependencyTable functionality for this
-		return std::string();
-#if 0
-            //
-            //      Generate shader source code for the given input
-            //      node graph.
-            //
-            //          Material parameters need to be sorted into
-            //          constant buffers, and then declared at the top of
-            //          the source file.
-            //
-            //          System parameters will become input parameters to
-            //          the main function call.
-            //
-            //          We need to declare some sort of output structure
-            //          to contain all of the output variables.
-            //
-            //          There's some main function call that should bounce
-            //          off and call the fragments from the graph.
-            //
-
-        std::stringstream result;
-        result << "#include \"xleres/System/Prefix.h\"" << std::endl;
-        result << std::endl;
-
-            //
-            //      Dump the text for all of the nodes
-            //
-
-        std::vector<std::string> archivesAlreadyLoaded;
-        for (auto i=graph.GetNodes().cbegin(); i!=graph.GetNodes().cend(); ++i) {
-
-                //
-                //      We have two options -- copy the contents of the fragment shader
-                //      into the new shader...
-                //
-                //      Or just add a reference with #include "".
-                //      Using an include makes it easier to adapt when the fragment
-                //      changes. But it extra dependencies for the output (and the potential
-                //      for missing includes)
-                //
-
-            auto splitName = SplitArchiveName(i->ArchiveName());
-            if (std::get<0>(splitName).empty())
-                continue;
-
-                //      We have to check for duplicates (because nodes are frequently used twice)
-            if (std::find(archivesAlreadyLoaded.cbegin(), archivesAlreadyLoaded.cend(), std::get<0>(splitName)) == archivesAlreadyLoaded.cend()) {
-                archivesAlreadyLoaded.push_back(std::get<0>(splitName));
-
-                std::string filename = std::get<0>(splitName);
-                std::replace(filename.begin(), filename.end(), '\\', '/');
-                result << "#include \"" << filename << "\"" << std::endl;
-            }
-
-        }
-
-        result << std::endl << std::endl;
-        return result.str();
-#endif
-    }
-
     bool IsStructType(StringSection<char> typeName)
     {
         // If it's not recognized as a built-in shader language type, then we
@@ -935,7 +898,7 @@ namespace ShaderPatcher
 
     static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-    static std::string GenerateSignature(const NodeGraphSignature& sig, const char name[], bool useReturnType = true)
+    static std::string GenerateSignature(const NodeGraphSignature& sig, StringSection<char> name, bool useReturnType = true)
 	{
         std::string returnType, returnSemantic;
 
@@ -972,7 +935,7 @@ namespace ShaderPatcher
 	}
 
     GeneratedFunction GenerateFunction(
-        const NodeGraph& graph, const char name[],
+        const NodeGraph& graph, StringSection<char> name,
         const InstantiationParameters& instantiationParameters,
         ISignatureProvider& sigProvider)
     {
@@ -1030,7 +993,11 @@ namespace ShaderPatcher
 		return result.str();
 	}
 
-	std::string GenerateScaffoldFunction(const NodeGraphSignature& slotSignature, const NodeGraphSignature& generatedFunctionSignature, const char name[])
+	std::string GenerateScaffoldFunction(
+		const NodeGraphSignature& inputSlotSignature, 
+		const NodeGraphSignature& generatedFunctionSignature, 
+		StringSection<char> scaffoldFunctionName,
+		StringSection<char> implementationFunctionName)
 	{
 			//
 			//	Generate the scaffolding function that conforms to the given signature in "slotSignature", but that calls the implementation
@@ -1041,11 +1008,8 @@ namespace ShaderPatcher
 			//	other, etc). Here, we have to create a function that ties then together, and tries to make the best of mis-matches.
 			//
 
+		NodeGraphSignature slotSignature = inputSlotSignature;
 		std::stringstream result;
-		result << GenerateMaterialCBuffer(generatedFunctionSignature);
-
-        result << "/////// Scaffold function for: " << name << " ///////" << std::endl;
-		result << GenerateSignature(slotSignature, name) << std::endl;
 		result << "{" << std::endl;
 
 		// make temporaries for all outputs
@@ -1073,6 +1037,8 @@ namespace ShaderPatcher
 					return test._name == p._name;
 				});
 			if (i != slotSignature.GetParameters().end()) {
+				if (XlEqString(i->_type, "auto"))
+					i->_type = p._type;
 				WriteCastExpression(paramStream, {i->_name, i->_type}, p._type);
 				continue;
 			}
@@ -1087,23 +1053,14 @@ namespace ShaderPatcher
 			paramStream << "DefaultValue_" << p._type << "()";
 		}
 
-		result << "\t" << name << "(" << paramStream.str() << ");" << std::endl;
+		result << "\t" << implementationFunctionName << "(" << paramStream.str() << ");" << std::endl;
 
 		// Map the output parameters to their final destination.
-        std::string returnType, returnSemantic;
-		for (const auto&p:slotSignature.GetParameters()) {
+		std::stringstream returnExpression;
+		for (auto&p:slotSignature.GetParameters()) {
 			if (p._direction != ParameterDirection::Out)
                 continue;
             
-            if (p._name == s_resultName) {
-                assert(returnType.empty() && returnSemantic.empty());
-                returnType = p._type;
-                returnSemantic = p._semantic;
-				continue;
-            }
-
-			result << "\t" << p._name << " = ";
-
 			// First, look for an output from the generated function
 			auto i = std::find_if(generatedFunctionSignature.GetParameters().begin(), generatedFunctionSignature.GetParameters().end(),
 				[&p](const NodeGraphSignature::Parameter& test) -> bool
@@ -1112,43 +1069,61 @@ namespace ShaderPatcher
 					return test._name == p._name;
 				});
 			if (i != generatedFunctionSignature.GetParameters().end()) {
-				WriteCastExpression(result, {std::string("temp_") + i->_name, i->_type}, p._type);
-				result << ";" << std::endl;
+				if (XlEqString(p._type, "auto"))
+					p._type = i->_type;
+
+				if (p._name == s_resultName) {
+					WriteCastExpression(returnExpression, {std::string("temp_") + i->_name, i->_type}, p._type);
+				} else {
+					result << "\t" << p._name << " = ";
+					WriteCastExpression(result, {std::string("temp_") + i->_name, i->_type}, p._type);
+					result << ";" << std::endl;
+				}
 				continue;
 			}
 
 			// Second, just use a default value
-			result << "DefaultValue_" << p._type << "();" << std::endl;
+			if (p._name == s_resultName) {
+				returnExpression << "DefaultValue_" << p._type << "()";
+			} else {
+				result << "\t" << p._name << " = ";
+				result << "DefaultValue_" << p._type << "();" << std::endl;
+			}
 		}
 
-		if (!returnType.empty()) {
-			result << "\treturn ";
-
-				// First, look for an output from the generated function
-			auto i = std::find_if(generatedFunctionSignature.GetParameters().begin(), generatedFunctionSignature.GetParameters().end(),
-				[](const NodeGraphSignature::Parameter& test) -> bool
-				{ return (test._direction == ParameterDirection::Out) && test._name == s_resultName; });
-			if (i != generatedFunctionSignature.GetParameters().end()) {
-				WriteCastExpression(result, {std::string("temp_") + i->_name, i->_type}, returnType);
-			} else {
-				// Second, just use a default value
-				result << "DefaultValue_" << returnType << "()";
-			}
-			result << ";" << std::endl;
+		auto returnExprStr = returnExpression.str();
+		if (!returnExprStr.empty()) {
+			result << "\treturn " << returnExprStr << ";" << std::endl;
 		}
 
 		result << "}" << std::endl;
 
-		return result.str();
+		{
+			std::stringstream header;
+			header << "/////// Scaffold function for: " << implementationFunctionName << " ///////" << std::endl;
+			header << GenerateMaterialCBuffer(generatedFunctionSignature);
+			header << GenerateSignature(slotSignature, scaffoldFunctionName) << std::endl;
+
+			return header.str() + result.str();
+		}
 	}
 
+	static uint64_t CalculateHash(const InstantiationParameters::Dependency& dep, uint64_t seed = DefaultSeed64)
+	{
+		uint64_t result = Hash64(dep._archiveName);
+		// todo -- ordering of parameters matters to the hash here
+		for (const auto& d:dep._parameters._parameterBindings)
+			result = Hash64(d.first, CalculateHash(d.second, result));
+		return result;
+	}
 
     uint64_t InstantiationParameters::CalculateHash() const
     {
         if (_parameterBindings.empty()) return 0;
         uint64 result = DefaultSeed64;
+		// todo -- ordering of parameters matters to the hash here
         for (const auto&p:_parameterBindings)
-            result = HashCombine(result, HashCombine(Hash64(p.first), Hash64(p.second)));
+            result = Hash64(p.first, ShaderPatcher::CalculateHash(p.second, result));
         return result;
     }
 

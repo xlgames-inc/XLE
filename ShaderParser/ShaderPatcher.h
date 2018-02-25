@@ -215,6 +215,7 @@ namespace ShaderPatcher
 
         // Returns the list of parameters taken as input through the function call mechanism
         auto GetParameters() const -> IteratorRange<const Parameter*>	{ return MakeIteratorRange(_functionParameters); }
+		auto GetParameters() -> IteratorRange<Parameter*>	{ return MakeIteratorRange(_functionParameters); }
         void AddParameter(const Parameter& param);
 
         // Returns the list of parameters that are accesses as global scope variables (or captured from a containing scope)
@@ -246,6 +247,7 @@ namespace ShaderPatcher
         {
             std::string _name;
             const NodeGraphSignature* _signature;
+			std::string _sourceFile;
         };
         virtual Result FindSignature(StringSection<> name) = 0;
         virtual ~ISignatureProvider();
@@ -256,9 +258,20 @@ namespace ShaderPatcher
     class InstantiationParameters
     {
     public:
-        std::unordered_map<std::string, std::string> _parameterBindings;
+		struct Dependency;
+        std::unordered_map<std::string, Dependency> _parameterBindings;
         uint64_t CalculateHash() const;
+
+		InstantiationParameters(std::initializer_list<std::pair<const std::string, Dependency>> init)
+		: _parameterBindings(init) {}
+		InstantiationParameters() {}
     };
+
+	struct InstantiationParameters::Dependency 
+	{ 
+		std::string _archiveName; 
+		InstantiationParameters _parameters = {};
+	};
 
     class DependencyTable
     {
@@ -269,8 +282,6 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    std::string GenerateShaderHeader(const NodeGraph& graph);
-
     struct GeneratedFunction
     {
     public:
@@ -279,7 +290,7 @@ namespace ShaderPatcher
         DependencyTable _dependencies;
     };
     GeneratedFunction GenerateFunction(
-        const NodeGraph& graph, const char name[], 
+        const NodeGraph& graph, StringSection<char> name, 
         const InstantiationParameters& instantiationParameters,
         ISignatureProvider& sigProvider);
 
@@ -301,8 +312,12 @@ namespace ShaderPatcher
 		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
-	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, const char graphName[]);
+	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, StringSection<char> graphName);
 
-	std::string GenerateScaffoldFunction(const NodeGraphSignature& outputSignature, const NodeGraphSignature& generatedFunctionSignature, const char name[]);
+	std::string GenerateScaffoldFunction(
+		const NodeGraphSignature& outputSignature, 
+		const NodeGraphSignature& generatedFunctionSignature, 
+		StringSection<char> scaffoldFunctionName,
+		StringSection<char> implementationFunctionName);
 }
 

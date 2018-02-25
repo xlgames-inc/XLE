@@ -124,5 +124,12 @@ parameterStruct returns [struct ParameterStruct result = (struct ParameterStruct
 toplevel
 	: p=parameterStruct { ParameterStruct_Register(ctx, &p); }
 	| f=function { Function_Register(ctx, &f); }
+	| ^(UNIFORM 
+		^(TYPE_NAME t=typeName
+			(
+				^(VARIABLE_NAME identifier subscript* semantic? (^(ASSIGNMENT_EXPRESSION .*))?)
+			)*
+		)
+	  )
 	;
 entrypoint : toplevel* ;

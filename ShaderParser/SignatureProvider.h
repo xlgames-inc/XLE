@@ -18,7 +18,13 @@ namespace ShaderPatcher
         ~BasicSignatureProvider();
     protected:
         ::Assets::DirectorySearchRules _searchRules;
-        std::unordered_map<uint64, NodeGraphSignature> _cache;        
+		struct Entry
+		{
+			std::string _name;
+			NodeGraphSignature _sig;
+			std::string _sourceFile;
+		};
+        std::unordered_map<uint64, Entry> _cache;        
     };
 
     NodeGraphSignature AsNodeGraphSignature(const ShaderSourceParser::FunctionSignature& sig);

@@ -71,13 +71,11 @@ namespace ShaderPatcher
 
 	ShaderFragment::~ShaderFragment() {}
 
-	static const ShaderSourceParser::FunctionSignature& LoadFunctionSignature(const std::tuple<StringSection<>, StringSection<>>& splitName, const ::Assets::DirectorySearchRules& searchRules)
+	static const ShaderSourceParser::FunctionSignature& LoadFunctionSignature(StringSection<> fileName, StringSection<> fnName)
     {
         TRY {
-			char resolvedFile[MaxPath];
-			searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
-			auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
-			auto* fn = frag.GetFunction(std::get<1>(splitName));
+			auto& frag = ::Assets::GetAssetDep<ShaderFragment>(fileName);
+			auto* fn = frag.GetFunction(fnName);
 			if (fn != nullptr) return *fn;
         } CATCH (...) {
         } CATCH_END
@@ -104,12 +102,14 @@ namespace ShaderPatcher
         auto hash = Hash64(name.begin(), name.end());
         auto existing = _cache.find(hash);
         if (existing == _cache.end()) {
-            auto res = LoadFunctionSignature(splitName, _searchRules);
+			char resolvedFile[MaxPath];
+			_searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
+            auto res = LoadFunctionSignature(resolvedFile, std::get<1>(splitName));
             auto sig = AsNodeGraphSignature(res);
-            existing = _cache.insert({hash, sig}).first;
+			existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), std::move(sig), std::string(resolvedFile)}}).first;
         }
         
-        return { std::get<1>(splitName).AsString(), &existing->second };
+        return { existing->second._name, &existing->second._sig, existing->second._sourceFile };
     }
 
     BasicSignatureProvider::BasicSignatureProvider(const ::Assets::DirectorySearchRules& searchRules)
