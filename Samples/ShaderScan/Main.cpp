@@ -20,10 +20,13 @@
 #include "Utility/Streams/StreamFormatter.h"
 #include "Utility/Streams/StreamDOM.h"
 #include "Utility/Streams/FileUtils.h"
+#include "Utility/Streams/PathUtils.h"
 #include "Utility/ParameterBox.h"
 #include <iostream>
 #include <sstream>
 #include <stack>
+#include <regex>
+#include <set>
 
 namespace ShaderScan
 {
@@ -70,55 +73,156 @@ namespace ShaderScan
 	{
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
-		const auto* filename = "xleres/System/SlotPrototype.sh";
+
+		/*
+        auto graphSyntax = std::make_shared<ShaderPatcher::GraphSyntaxFile>(ShaderPatcher::ParseGraphSyntax(inputStr));
+        auto main = graphSyntax->_subGraphs.find(entryPoint);
+        if (main == graphSyntax->_subGraphs.end())
+            Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", entryPoint.c_str()));
+
+        auto sigProvider = ShaderPatcher::MakeGraphSyntaxSignatureProvider(*graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+
+
 		size_t inputFileSize;
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
         auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
-        // auto str = ShaderPatcher::ReadGraphSyntax(inputStr, );
-        // Log(Verbose) << "--- Output ---\n" << str;
-
-        std::string entryPoint = "main";
-
-        auto graphSyntax = ShaderPatcher::ParseGraphSyntax(inputStr);
-        auto main = graphSyntax._subGraphs.find(entryPoint);
-        if (main == graphSyntax._subGraphs.end())
-            Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", entryPoint.c_str()));
-
-        auto sigProvider = ShaderPatcher::MakeGraphSyntaxSignatureProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+		
 
         auto mainInstantiation = 
             ShaderPatcher::GenerateFunction(
-                main->second._graph, (MakeGraphName(entryPoint) + "_impl").c_str(), ShaderPatcher::InstantiationParameters {}, *sigProvider);
+                main->second._graph, (MakeGraphName(entryPoint) + "_impl").c_str(), instParams, *sigProvider);
 
-        std::vector<std::string> fragments;
         fragments.push_back(ShaderPatcher::GenerateScaffoldFunction(main->second._signature, mainInstantiation._signature, MakeGraphName(entryPoint).c_str()));
         fragments.push_back(mainInstantiation._text);
+		*/
 
-        std::stack<ShaderPatcher::GeneratedFunction> instantiations;
-        instantiations.emplace(std::move(mainInstantiation));
+
+		std::set<std::string> includes;
+
+		struct PendingInstantiation
+		{
+			std::string _archiveName;
+			ShaderPatcher::InstantiationParameters _instantiationParams;
+			std::shared_ptr<ShaderPatcher::GraphSyntaxFile> _scope;
+			std::shared_ptr<ShaderPatcher::ISignatureProvider> _sigProvider;
+		};
+
+        std::vector<std::string> fragments;
+		std::stack<PendingInstantiation> instantiations;
+
+		{
+			std::string entryPoint = "xleres/Techniques/Pass_Deferred.graph::main";
+
+			auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
+			auto perPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+				"xleres/Techniques/Object_Default.graph::Default_PerPixel",
+				{
+					{ "materialSampler", { "xleres/Techniques/Object_Default.sh::MaterialSampler_RMS" } }
+				}
+			};
+
+			ShaderPatcher::InstantiationParameters instParams {
+				{ "rejectionTest", earlyRejection },
+				{ "perPixel", perPixel }
+			};
+			instantiations.emplace(PendingInstantiation{entryPoint, instParams, nullptr, nullptr});
+		}
+
         while (!instantiations.empty()) {
             auto inst = std::move(instantiations.top());
             instantiations.pop();
 
-            for (const auto&dep:inst._dependencies._dependencies) {
-                if (dep._archiveName.find(':') != std::string::npos) continue;      // exclude functions included from other files
+			static std::regex archiveNameRegex(R"--(([\w\.\\/]+)::(\w+))--");
+			std::smatch archiveNameMatch;
+			if (std::regex_match(inst._archiveName, archiveNameMatch, archiveNameRegex) && archiveNameMatch.size() >= 3) {
 
-                auto fn = graphSyntax._subGraphs.find(dep._archiveName);
-                if (fn == graphSyntax._subGraphs.end())
-                    Throw(::Exceptions::BasicLabel("Couldn't find function (%s) in input", dep._archiveName.c_str()));
+				auto filename = archiveNameMatch[1].str();
+				auto entryFn = archiveNameMatch[2].str();
 
-                auto finalGraphName = MakeGraphName(fn->first, dep._parameters.CalculateHash());
-                auto instFn = ShaderPatcher::GenerateFunction(
-                    fn->second._graph, 
-                    (finalGraphName + "_impl").c_str(), 
-                    dep._parameters, *sigProvider);
+				if (inst._scope) {
+					auto i = inst._scope->_imports.find(filename);
+					if (i != inst._scope->_imports.end())
+						filename = i->second;
+				}
 
-                fragments.push_back(ShaderPatcher::GenerateScaffoldFunction(fn->second._signature, instFn._signature, finalGraphName.c_str()));
-                fragments.push_back(instFn._text);
+				// if it's a graph file, then we must create a specific instantiation
+				if (XlEqString(MakeFileNameSplitter(filename).Extension(), "graph")) {
+
+					size_t inputFileSize;
+					auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
+					auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
+
+					auto graphSyntax = std::make_shared<ShaderPatcher::GraphSyntaxFile>(ShaderPatcher::ParseGraphSyntax(inputStr));
+					auto main = graphSyntax->_subGraphs.find(entryFn);
+					if (main == graphSyntax->_subGraphs.end())
+						Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", inst._archiveName.c_str()));
+
+					auto sigProvider = ShaderPatcher::MakeGraphSyntaxSignatureProvider(*graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+
+					std::string implementationName, scaffoldName;
+					if (inst._scope) {
+						// Slightly different rules for function name generation with inst._scope is not null. inst._scope is
+						// only null for the original instantiation request -- in that case, we want the outer most function
+						// to have the same name as the original request
+						scaffoldName = MakeGraphName(entryFn, inst._instantiationParams.CalculateHash());
+						implementationName = scaffoldName + "_impl";
+					} else {
+						scaffoldName = entryFn;
+						implementationName = scaffoldName + "_impl";
+					}
+
+					auto mainInstantiation = ShaderPatcher::GenerateFunction(main->second._graph, implementationName, inst._instantiationParams, *sigProvider);
+					auto scaffold = ShaderPatcher::GenerateScaffoldFunction(main->second._signature, mainInstantiation._signature, scaffoldName, implementationName);
+
+					fragments.push_back(scaffold);
+					fragments.push_back(mainInstantiation._text);
+
+					for (const auto&dep:mainInstantiation._dependencies._dependencies) {
+						instantiations.emplace(
+							PendingInstantiation{dep._archiveName, dep._parameters, graphSyntax, sigProvider});
+					}
+
+				} else {
+
+					if (!inst._instantiationParams._parameterBindings.empty()) {
+						includes.insert(std::string(StringMeld<MaxPath>() << filename + "_" << inst._instantiationParams.CalculateHash()));
+					} else {
+						auto sig = inst._sigProvider->FindSignature(inst._archiveName);
+						includes.insert(sig._sourceFile);
+					}
+
+				}
+				
+            } else if (inst._scope) {
+
+				auto fn = inst._scope->_subGraphs.find(inst._archiveName);
+				if (fn == inst._scope->_subGraphs.end())
+					Throw(::Exceptions::BasicLabel("Couldn't find function (%s) in input", inst._archiveName.c_str()));
+
+				auto scaffoldName = MakeGraphName(fn->first, inst._instantiationParams.CalculateHash());
+				auto implementationName = scaffoldName + "_impl";
+				auto instFn = ShaderPatcher::GenerateFunction(
+					fn->second._graph,  implementationName, 
+					inst._instantiationParams, *inst._sigProvider);
+
+				fragments.push_back(ShaderPatcher::GenerateScaffoldFunction(fn->second._signature, instFn._signature, scaffoldName, implementationName));
+				fragments.push_back(instFn._text);
                 
-                instantiations.emplace(std::move(instFn));
-            }
+				for (const auto&dep:instFn._dependencies._dependencies) {
+					instantiations.emplace(
+						PendingInstantiation{dep._archiveName, dep._parameters, inst._scope, inst._sigProvider});
+				}
+
+			} else
+				Throw(::Exceptions::BasicLabel("Unable to handle instantiation request (%s)", inst._archiveName.c_str()));
         }
+
+		{
+			std::stringstream str;
+			for (const auto&i:includes)
+				str << "#include <" << i << ">" << std::endl;
+			fragments.push_back(str.str());
+		}
 
         Log(Verbose) << "--- Output ---" << std::endl;
         for (auto frag=fragments.rbegin(); frag!=fragments.rend(); ++frag)

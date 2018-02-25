@@ -1,0 +1,16 @@
+
+import std = "xleres/Techniques/Pass_Standard.sh"
+import gbuffer = "xleres/gbuffer.h"
+
+auto main(
+    VSOutput geo,
+    graph<std::EarlyRejectionTest> rejectionTest,
+    graph<std::PerPixel> perPixel)
+{
+    /*if (rejectionTest(geo:geo).result) {
+        discard;
+    }*/
+
+	node perPixelEval = perPixel(geo:geo);
+    return gbuffer::Encode(values:perPixelEval.result).result;
+}
