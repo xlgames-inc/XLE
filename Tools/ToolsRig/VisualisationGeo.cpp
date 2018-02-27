@@ -26,8 +26,8 @@ namespace ToolsRig
         };
     }
 
-    std::pair<const RenderCore::InputElementDesc*, size_t> Vertex2D_InputLayout = std::make_pair(Internal::Vertex2D_InputLayout_, dimof(Internal::Vertex2D_InputLayout_));
-    std::pair<const RenderCore::InputElementDesc*, size_t> Vertex3D_InputLayout = std::make_pair(Internal::Vertex3D_InputLayout_, dimof(Internal::Vertex3D_InputLayout_));
+    IteratorRange<const RenderCore::InputElementDesc*> Vertex2D_InputLayout = MakeIteratorRange(Internal::Vertex2D_InputLayout_);
+    IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout = MakeIteratorRange(Internal::Vertex3D_InputLayout_);
 
     static void GeodesicSphere_Subdivide(const Float3 &v1, const Float3 &v2, const Float3 &v3, std::vector<Float3> &sphere_points, unsigned int depth) 
     {

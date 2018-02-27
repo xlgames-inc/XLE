@@ -154,7 +154,7 @@ namespace RenderCore { namespace Metal_DX11
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ComputeShader::ComputeShader(const CompiledShaderByteCode& compiledShader)
+    ComputeShader::ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& compiledShader)
     {
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Compute);
@@ -484,6 +484,35 @@ namespace RenderCore { namespace Metal_DX11
 
 			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
+			return false;
+		});
+	}
+
+	void ComputeShader::ConstructToFuture(
+		::Assets::AssetFuture<ComputeShader>& future,
+		StringSection<::Assets::ResChar> codeName,
+		StringSection<::Assets::ResChar> definesTable)
+	{
+		auto code = MakeByteCodeFuture(ShaderStage::Compute, codeName, definesTable);
+
+		future.SetPollingFunction(
+			[code](::Assets::AssetFuture<ComputeShader>& thatFuture) -> bool {
+
+			auto codeActual = code->TryActualize();
+
+			if (!codeActual) {
+				auto codeState = code->GetAssetState();
+				if (codeState == ::Assets::AssetState::Invalid) {
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					TryRegisterDependency(depVal, code);
+					thatFuture.SetInvalidAsset(depVal, nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newShader = std::make_shared<ComputeShader>(GetObjectFactory(), *codeActual);
+			thatFuture.SetAsset(std::move(newShader), {});
 			return false;
 		});
 	}

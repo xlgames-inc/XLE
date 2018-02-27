@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../Math/Vector.h"
+#include "../../Utility/IteratorUtils.h"
 #include <vector>
 
 namespace RenderCore { class InputElementDesc; }
@@ -35,8 +36,8 @@ namespace ToolsRig
         #pragma pack(pop)
     }
 
-    extern std::pair<const RenderCore::InputElementDesc*, size_t> Vertex2D_InputLayout;
-    extern std::pair<const RenderCore::InputElementDesc*, size_t> Vertex3D_InputLayout;
+    extern IteratorRange<const RenderCore::InputElementDesc*> Vertex2D_InputLayout;
+    extern IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout;
 
     std::vector<Internal::Vertex3D>     BuildGeodesicSphere(int detail = 4);
     std::vector<Internal::Vertex3D>     BuildCube();

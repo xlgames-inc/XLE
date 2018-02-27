@@ -23,6 +23,7 @@
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
+#include "../../RenderCore/Assets/AssetUtils.h"
 
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/Assets.h"
@@ -43,8 +44,8 @@ namespace ToolsRig
     public:
         class Desc {};
 
-        Metal::VertexBuffer _cubeBuffer;
-        Metal::VertexBuffer _sphereBuffer;
+        IResourcePtr _cubeBuffer;
+        IResourcePtr _sphereBuffer;
         unsigned _cubeVCount;
         unsigned _sphereVCount;
 
@@ -54,10 +55,10 @@ namespace ToolsRig
     CachedVisGeo::CachedVisGeo(const Desc&)
     {
         auto sphereGeometry = BuildGeodesicSphere();
-        _sphereBuffer = Metal::VertexBuffer(AsPointer(sphereGeometry.begin()), sphereGeometry.size() * sizeof(Internal::Vertex3D));
+        _sphereBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(sphereGeometry));
         _sphereVCount = unsigned(sphereGeometry.size());
         auto cubeGeometry = BuildCube();
-        _cubeBuffer = Metal::VertexBuffer(AsPointer(cubeGeometry.begin()), cubeGeometry.size() * sizeof(Internal::Vertex3D));
+        _cubeBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(cubeGeometry));
         _cubeVCount = unsigned(cubeGeometry.size());
     }
 
@@ -103,12 +104,6 @@ namespace ToolsRig
             auto geoType = _settings->_geometryType;
             if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex3D_InputLayout);
-                if (!shaderProgram) return;
-
                 const Internal::Vertex3D    vertices[] = 
                 {
                     { Float3(-1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
@@ -117,8 +112,16 @@ namespace ToolsRig
                     { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
-                Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-                metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Internal::Vertex3D), 0);
+                auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vertices));
+				VertexBufferView vbvs[] = {&vertexBuffer};
+
+				auto shaderProgram = _object->_materialBinder->Apply(
+                    metalContext, parserContext, techniqueIndex,
+                    _object->_parameters, _object->_systemConstants, 
+                    _object->_searchRules, Vertex3D_InputLayout,
+					MakeIteratorRange(vbvs));
+                if (!shaderProgram) return;
+
                 metalContext.Bind(Topology::TriangleStrip);
                 metalContext.Draw(dimof(vertices));
 
@@ -128,21 +131,23 @@ namespace ToolsRig
 
             } else {
 
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex3D_InputLayout);
-                if (!shaderProgram) return;
-            
                 unsigned count;
                 const auto& cachedGeo = ConsoleRig::FindCachedBox2<CachedVisGeo>();
+				VertexBufferView vbv;
                 if (geoType == MaterialVisSettings::GeometryType::Sphere) {
-                    metalContext.Bind(MakeResourceList(cachedGeo._sphereBuffer), sizeof(Internal::Vertex3D), 0);    
+					vbv = cachedGeo._sphereBuffer;
                     count = cachedGeo._sphereVCount;
                 } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
-                    metalContext.Bind(MakeResourceList(cachedGeo._cubeBuffer), sizeof(Internal::Vertex3D), 0);    
+					vbv = cachedGeo._cubeBuffer;
                     count = cachedGeo._cubeVCount;
                 } else return;
+
+				auto shaderProgram = _object->_materialBinder->Apply(
+                    metalContext, parserContext, techniqueIndex,
+                    _object->_parameters, _object->_systemConstants, 
+                    _object->_searchRules, Vertex3D_InputLayout,
+					MakeIteratorRange(&vbv, &vbv+1));
+                if (!shaderProgram) return;
                 
                 metalContext.Bind(Topology::TriangleList);
                 metalContext.Draw(count);
@@ -166,57 +171,34 @@ namespace ToolsRig
         const MaterialVisObject*    _object;
     };
 
-    static void BindVertexBuffer(
-        Metal::DeviceContext& metalContext,
+    static Metal::Buffer LoadVertexBuffer(
         const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::VertexData& vb, unsigned vertexStride)
+        RenderCore::Assets::VertexData& vb)
     {
         auto buffer = std::make_unique<uint8[]>(vb._size);
-		scaffold.OpenLargeBlocks()->Read(buffer.get(), vb._size, 1);
-        Metal::VertexBuffer metalVB(buffer.get(), vb._size);
-        metalContext.Bind(MakeResourceList(metalVB), vertexStride);
-    }
-
-    static void BindVertexBuffer(
-        Metal::DeviceContext& metalContext,
-        const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::VertexData& vb0, unsigned vertexStride0,
-        RenderCore::Assets::VertexData& vb1, unsigned vertexStride1)
-    {
-        auto buffer = std::make_unique<uint8[]>(vb0._size + vb1._size);
-        
-        {
-			auto inputFile = scaffold.OpenLargeBlocks();
-			auto largeBlocksOffset = inputFile->TellP();
-            inputFile->Seek(largeBlocksOffset + vb0._offset);
-            inputFile->Read(buffer.get(), vb0._size, 1);
-
-            inputFile->Seek(largeBlocksOffset + vb1._offset);
-            inputFile->Read(PtrAdd(buffer.get(), vb0._size), vb1._size, 1);
+		{
+            auto inputFile = scaffold.OpenLargeBlocks();
+            inputFile->Seek(vb._offset, Utility::FileSeekAnchor::Current);
+            inputFile->Read(buffer.get(), vb._size, 1);
         }
-
-        Metal::VertexBuffer metalVB(buffer.get(), vb0._size + vb1._size);
-        const Metal::VertexBuffer* vbs[] = { &metalVB, &metalVB };
-        const unsigned strides[] = { vertexStride0, vertexStride1 };
-        const unsigned offsets[] = { 0, vb0._size };
-        metalContext.Bind(0, dimof(vbs), vbs, strides, offsets);
+		return Metal::MakeVertexBuffer(
+			Metal::GetObjectFactory(),
+			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), vb._size)));
     }
 
-    static void BindIndexBuffer(
-        Metal::DeviceContext& metalContext,
+    static Metal::Buffer LoadIndexBuffer(
         const RenderCore::Assets::ModelScaffold& scaffold,
         RenderCore::Assets::IndexData& ib)
     {
         auto buffer = std::make_unique<uint8[]>(ib._size);
-        
         {
             auto inputFile = scaffold.OpenLargeBlocks();
             inputFile->Seek(ib._offset, Utility::FileSeekAnchor::Current);
             inputFile->Read(buffer.get(), ib._size, 1);
         }
-
-        Metal::IndexBuffer metalIB(buffer.get(), ib._size);
-        metalContext.Bind(metalIB, ib._format);
+		return Metal::MakeIndexBuffer(
+			Metal::GetObjectFactory(),
+			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), ib._size)));
     }
 
     void MaterialSceneParser::DrawModel(  
@@ -288,16 +270,18 @@ namespace ToolsRig
                     sysContants._objectToWorld = Identity<Float4x4>();
                 }
 
+				auto vb = LoadVertexBuffer(model, rawGeo._vb);
+				VertexBufferView vbv { &vb };
+
                 auto shaderProgram = _object->_materialBinder->Apply(
                     metalContext, parserContext, techniqueIndex,
                     _object->_parameters, sysContants, 
-                    _object->_searchRules, std::make_pair(metalVertInput, eleCount));
+                    _object->_searchRules, MakeIteratorRange(metalVertInput, metalVertInput+eleCount),
+					MakeIteratorRange(&vbv, &vbv+1));
                 if (!shaderProgram) return;
 
-                BindVertexBuffer(
-                    metalContext, model, 
-                    rawGeo._vb, rawGeo._vb._ia._vertexStride);
-                BindIndexBuffer(metalContext, model, rawGeo._ib);
+                auto ib = LoadIndexBuffer(model, rawGeo._ib);
+				metalContext.Bind(ib, rawGeo._ib._format);
 
                 metalContext.Bind(drawCall._topology);
                 metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
@@ -333,17 +317,19 @@ namespace ToolsRig
                 sysContants._objectToWorld = skelTransforms[
                     skelBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
 
+				auto vb0 = LoadVertexBuffer(model, rawGeo._vb);
+				auto vb1 = LoadVertexBuffer(model, rawGeo._animatedVertexElements);
+				VertexBufferView vbvs[] = { &vb0, &vb1 };
+
                 auto shaderProgram = _object->_materialBinder->Apply(
                     metalContext, parserContext, techniqueIndex,
                     _object->_parameters, sysContants, 
-                    _object->_searchRules, std::make_pair(metalVertInput, eleCount));
+                    _object->_searchRules, MakeIteratorRange(metalVertInput, metalVertInput+eleCount),
+					MakeIteratorRange(vbvs));
                 if (!shaderProgram) return;
 
-                BindVertexBuffer(
-                    metalContext, model, 
-                    rawGeo._vb, rawGeo._vb._ia._vertexStride,
-                    rawGeo._animatedVertexElements, rawGeo._animatedVertexElements._ia._vertexStride);
-                BindIndexBuffer(metalContext, model, rawGeo._ib);
+				auto ib = LoadIndexBuffer(model, rawGeo._ib);
+                metalContext.Bind(ib, rawGeo._ib._format);
 
                 metalContext.Bind(drawCall._topology);
                 metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);

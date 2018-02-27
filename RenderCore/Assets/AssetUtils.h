@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../IDevice_Forward.h"
 #include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
 #include <vector>
 
@@ -15,6 +16,9 @@ namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace Assets
 {
+	IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data);
+	IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data);
+
     /// <summary>Set the RES_HAS technique materials parameter</summary>
     /// There are a few standard RES_HAS shader parameters that are defined by
     /// the resources that are bound to a technique material. This function builds

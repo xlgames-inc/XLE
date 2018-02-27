@@ -11,8 +11,10 @@
 #include "../../Assets/AssetsCore.h"		// (for ResChar)
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
+#include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; class PredefinedCBLayout; class Material;  } }
+namespace RenderCore { class VertexBufferView; }
 namespace Assets { class DirectorySearchRules; }
 
 namespace ToolsRig
@@ -45,7 +47,8 @@ namespace ToolsRig
             const RenderCore::Techniques::Material& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            const RenderCore::InputLayout& geoInputLayout) = 0;
+            const RenderCore::InputLayout& geoInputLayout,
+			IteratorRange<const RenderCore::VertexBufferView*> vbvs) = 0;
         virtual ~IMaterialBinder();
 
     protected:
@@ -69,7 +72,8 @@ namespace ToolsRig
             const RenderCore::Techniques::Material& mat,
             const SystemConstants& sysConstants,
             const ::Assets::DirectorySearchRules& searchRules,
-            const RenderCore::InputLayout& geoInputLayout);
+            const RenderCore::InputLayout& geoInputLayout,
+			IteratorRange<const RenderCore::VertexBufferView*> vbvs);
         
         MaterialBinder(StringSection<::Assets::ResChar> shaderTypeName);
         virtual ~MaterialBinder();

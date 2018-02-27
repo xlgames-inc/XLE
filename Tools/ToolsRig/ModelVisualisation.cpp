@@ -27,6 +27,7 @@
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -113,7 +114,9 @@ namespace ToolsRig
                 captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             using namespace RenderCore;
-            Metal::ConstantBuffer drawCallIndexBuffer(nullptr, sizeof(unsigned)*4);
+            Metal::ConstantBuffer drawCallIndexBuffer(
+				Metal::GetObjectFactory(), 
+				CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(sizeof(unsigned)*4), "drawCallIndex"));
             metalContext->BindGS(MakeResourceList(drawCallIndexBuffer));
 
             if (Tweakable("RenderSkinned", false)) {
@@ -359,8 +362,11 @@ namespace ToolsRig
         using namespace RenderCore;
         if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
 
+			AttachmentViewDesc v_mainColor {0u};
+			AttachmentViewDesc v_mainDepth {2u};
+			SubpassDesc mainPass { {v_mainColor}, v_mainDepth };
             Techniques::RenderPassInstance rpi(
-                context, FrameBufferDesc({RenderCore::SubpassDesc{{0u}, 2u}}),
+				context, FrameBufferDesc{mainPass},
                 0u, parserContext.GetNamedResources());
 
             if (_pimpl->_settings->_drawWireframe) {
@@ -432,8 +438,10 @@ namespace ToolsRig
                 }
 
                 {
+					AttachmentViewDesc v_mainColor {0u};
+					SubpassDesc mainPass { {v_mainColor} };
                     Techniques::RenderPassInstance rpi(
-                        context, FrameBufferDesc({SubpassDesc{{0u}}}),
+						context, FrameBufferDesc{mainPass},
                         0u, parserContext.GetNamedResources());
                     ExecuteHighlightByStencil(
                         context, parserContext.GetNamedResources(), 

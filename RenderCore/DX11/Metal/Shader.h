@@ -154,7 +154,7 @@ namespace RenderCore { namespace Metal_DX11
 	class ComputeShader
 	{
 	public:
-		explicit ComputeShader(const CompiledShaderByteCode& byteCode);
+		ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& byteCode);
 		ComputeShader();
 		~ComputeShader();
 
@@ -162,6 +162,12 @@ namespace RenderCore { namespace Metal_DX11
 		UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _validationCallback; }
+
+		// Legacy asset based API --
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ComputeShader>&,
+			StringSection<::Assets::ResChar> codeName,
+			StringSection<::Assets::ResChar> definesTable = {});
 
 	private:
 		intrusive_ptr<ID3D::ComputeShader>      _underlying;

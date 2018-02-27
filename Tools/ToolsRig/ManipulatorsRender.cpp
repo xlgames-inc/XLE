@@ -98,7 +98,7 @@ namespace ToolsRig
         Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if 0 // GFXAPI_ACTIVE == GFXAPI_DX11 platformtemp
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
             // unbind the depth buffer
@@ -168,7 +168,7 @@ namespace ToolsRig
         const Float3& mins, const Float3& maxs,
 		RectangleHighlightType type)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if 0 // GFXAPI_ACTIVE == GFXAPI_DX11 platformtemp
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
                 
             // unbind the depth buffer
@@ -291,13 +291,15 @@ namespace ToolsRig
                 auto transformPacket = Techniques::MakeLocalTransformPacket(
                     localToWorld, ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
                 shader._shader.Apply(
-                    metalContext, parserContext, 
-                    { transformPacket, shader._cbLayout->BuildCBDataAsPkt(matParams) });
+					metalContext, parserContext, {});
+
+				ConstantBufferView cbvs[] = { transformPacket, shader._cbLayout->BuildCBDataAsPkt(matParams) };
+				shader._shader._boundUniforms->Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
 
                 auto& commonRes = Techniques::CommonResources();
                 metalContext.Bind(commonRes._blendStraightAlpha);
                 metalContext.Bind(commonRes._dssReadOnly);
-                metalContext.Unbind<Metal::VertexBuffer>();
+                // metalContext.Unbind<Metal::VertexBuffer>();
                 metalContext.Bind(Topology::TriangleList);
                 
                 const unsigned vertexCount = 32 * 6;	// (must agree with the shader!)
@@ -330,25 +332,27 @@ namespace ToolsRig
             InputElementDesc( "TEXCOORD", 0, Format::R32G32_FLOAT )
         };
 
-        Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-        metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
+        auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vertices));
 
         const auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
             "xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
-        Metal::BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
-        metalContext.Bind(boundVertexInputLayout);
+        Metal::BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
+		VertexBufferView vbvs[] = {&vertexBuffer};
+        boundVertexInputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
         metalContext.Bind(shaderProgram);
 
         Metal::ViewportDesc viewport(metalContext);
         float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
-        Metal::ConstantBuffer reciprocalViewportDimensions(constants, sizeof(constants));
+        auto reciprocalViewportDimensions = MakeSharedPkt(constants);
         const Metal::ShaderResourceView* resources[] = { &srv };
-        const Metal::ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions };
-        Metal::BoundUniforms boundLayout(shaderProgram);
-        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1);
-        boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
-        boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
+        ConstantBufferView cbvs[] = { reciprocalViewportDimensions };
+		UniformsStreamInterface interf;
+		interf.BindConstantBuffer(0, {Hash64("ReciprocalViewportDimensionsCB")});
+        interf.BindShaderResource(0, Hash64("DiffuseTexture"));
+
+		Metal::BoundUniforms boundLayout(shaderProgram, Metal::PipelineLayoutConfig{}, {}, interf);
+		boundLayout.Apply(metalContext, 1, {MakeIteratorRange(cbvs), UniformsStream::MakeResources(MakeIteratorRange(resources))});
 
         metalContext.Bind(Metal::BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
         metalContext.Bind(Topology::TriangleStrip);

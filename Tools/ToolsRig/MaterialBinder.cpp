@@ -45,11 +45,9 @@ namespace ToolsRig
         const RenderCore::Techniques::Material& mat,
         const SystemConstants& sysConstants,
         const ::Assets::DirectorySearchRules& searchRules,
-        const RenderCore::InputLayout& geoInputLayout)
+        const RenderCore::InputLayout& geoInputLayout, 
+		IteratorRange<const RenderCore::VertexBufferView*> vbvs)
     {
-        using namespace RenderCore;
-        using namespace RenderCore::Techniques;
-
         ParameterBox materialParameters = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
         RenderCore::Assets::ShaderVariationSet material(geoInputLayout, {}, materialParameters);
 
@@ -61,7 +59,7 @@ namespace ToolsRig
             // we must bind the shader program & the bound layout
             // but we're not using the BoundUniforms in the ResolvedShader object
         metalContext.Bind(*variation._shader._shaderProgram);
-        metalContext.Bind(*variation._shader._boundLayout);
+		variation._shader._boundLayout->Apply(metalContext, vbvs);
 
             // Instead of using ResolvedShader::_boundUniforms, let's
             // look at the reflection information for the shader program
@@ -103,7 +101,7 @@ namespace ToolsRig
         return 0;
     }
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if 0 // GFXAPI_ACTIVE == GFXAPI_DX11 platformtemp
     static void WriteParameter(
         RenderCore::SharedPkt& result,
         const ParameterBox& constants,
@@ -254,7 +252,7 @@ namespace ToolsRig
         using namespace RenderCore;
         std::vector<const Metal::ShaderResourceView*> result;
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if 0 // GFXAPI_ACTIVE == GFXAPI_DX11 platformtemp
         std::vector<uint64> alreadyBound;
 
             //
@@ -352,7 +350,7 @@ namespace ToolsRig
     {
         using namespace RenderCore;
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
+#if 0 // GFXAPI_ACTIVE == GFXAPI_DX11 platformtemp
 
                 //
                 //      Constants / Resources
