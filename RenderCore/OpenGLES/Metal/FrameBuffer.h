@@ -46,6 +46,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 			unsigned _rtvClearValue[s_maxMRTs];
 			LoadStore _dsvLoad;
 			unsigned _dsvClearValue;
+            bool _dsvHasDepth, _dsvHasStencil;
 
             intrusive_ptr<OpenGL::FrameBuffer> _frameBuffer;
         };

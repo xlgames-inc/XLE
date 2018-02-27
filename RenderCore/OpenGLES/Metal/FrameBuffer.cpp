@@ -92,6 +92,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 				sp._rtvClearValue[r] = clearValueIterator++;
 			}
 
+            sp._dsvHasDepth = sp._dsvHasStencil = false;
+
 			if (spDesc._depthStencil._resourceName != ~0u) {
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
 				if (!resource)
@@ -99,6 +101,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				sp._dsvClearValue = clearValueIterator++;
+                auto resolvedFormat = ResolveFormat(sp._dsv.GetResource()->GetDesc()._textureDesc._format, sp._dsv._window._format, FormatUsage::DSV);
+                auto components = GetComponents(resolvedFormat);
+                sp._dsvHasDepth = (components == FormatComponents::Depth) || (components == FormatComponents::DepthStencil);
+                sp._dsvHasStencil = (components == FormatComponents::Stencil) || (components == FormatComponents::DepthStencil);
 			}
 
             GLenum drawBuffers[dimof(Subpass::_rtvs)] = { GL_NONE, GL_NONE, GL_NONE, GL_NONE };
@@ -184,12 +190,19 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
-        if (s._dsvLoad == LoadStore::Clear_ClearStencil) {
+        bool clearDepth =
+                (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil)
+            &&  (s._dsvHasDepth);
+        bool clearStencil =
+                (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil)
+            &&  (s._dsvHasStencil);
+
+        if (clearDepth && clearStencil) {
             glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
-        } else if (s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil) {
-            glClearBufferfi(GL_DEPTH, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
-        } else if (s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil) {
-            glClearBufferfi(GL_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+        } else if (clearDepth) {
+            glClearBufferfv(GL_DEPTH, 0, &clearValues[s._dsvClearValue]._depthStencil._depth);
+        } else if (clearStencil)  {
+            glClearBufferiv(GL_STENCIL, 0, (const GLint*)&clearValues[s._dsvClearValue]._depthStencil._stencil);
         }
 
         GLenum attachmentsToInvalidate[s_maxMRTs+1];
