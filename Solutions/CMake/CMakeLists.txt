@@ -7,6 +7,7 @@ message("Build type: ${CMAKE_BUILD_TYPE}")
 # Note that we have to explicitly set the exception handling settings for visual studio to get around
 # a hack in the cmake generator for visual studio that always sets the exception handling key to
 # something; even if we've got a better setting in one of our inherit properties files
+if (FALSE)
 set(CMAKE_C_FLAGS "" CACHE STRING "Clear CMake Settings" FORCE)
 set(CMAKE_CXX_FLAGS "" CACHE STRING "Clear CMake Settings" FORCE)
 
@@ -27,10 +28,11 @@ if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     set(CMAKE_EXE_LINKER_FLAGS "-Wl,--gc-sections,--whole-archive,-z,muldefs" CACHE STRING "Linker flags for clang" FORCE)
 endif ()
 
+set(LINK_FLAGS "" CACHE STRING "Clear CMake Settings" FORCE)
+endif ()
+
 set(WARNING_FLAGS "-Wno-unknown-pragmas -Werror=implicit-function-declaration -Wno-unused-local-typedef")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ${WARNING_FLAGS}")
-
-set(LINK_FLAGS "" CACHE STRING "Clear CMake Settings" FORCE)
 
 get_filename_component(XLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
 get_filename_component(FOREIGN_DIR "${XLE_DIR}/Foreign/" ABSOLUTE)
