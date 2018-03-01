@@ -124,3 +124,9 @@ extern void glVertexAttribDivisor(uint32_t index, uint32_t divisor);
 #define GL_MAP_UNSYNCHRONIZED_BIT                        0x0020
 
 #endif // !HACK_GLES_3
+
+// DavidJ -- HACK -- find the right numbers / bracket in protection
+#define GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG 0xf000
+#define GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG 0xf001
+#define GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG 0xf002
+#define GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG 0xf003

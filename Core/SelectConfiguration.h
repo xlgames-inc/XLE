@@ -40,7 +40,7 @@
 
 #else
 
-    #pragma error("Cannot determine C libraries and STL type. Platform unsupported!")
+    #error "Cannot determine C libraries and STL type. Platform unsupported!"
 
 #endif
 
