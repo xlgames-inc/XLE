@@ -44,13 +44,13 @@ namespace RenderCore
     };
 
     ///
-    /// <summary>Represents a set of back buffer for rendering to a window</summary>
+    /// <summary>Represents a set of back buffers for rendering to a window</summary>
     ///
     /// For most platforms we require 1 or more back buffers, and some output
-    /// window to render on. This is want the presentation chain is for.
+    /// window to render on. This is what the presentation chain is for.
     ///
     /// Normally there is only one RenderCore::Device, but sometimes we need multiple
-    /// PresentationChains (for example, if we want to render to multiple windows, in
+    /// PresentationChains (for example, if we want to render to multiple windows), in
     /// an editor.
     ///
     /// PresentationChain closely matches IDXGISwapChain behaviour in windows.
@@ -119,14 +119,13 @@ namespace RenderCore
         /// this is would be a HWND value</param>
         /// <param name="width">Width of the presentation chain. RenderCore can't call GetClientRect() on the
         /// window directly, because that would require adding a linker reference to windows dlls. But normally,
-        /// with and height are the same size as the window client area. If a different size is used, the behaviour
+        /// width and height are the same size as the window client area. If a different size is used, the behaviour
         /// might be different on different platforms (but on windows, the output is stretched.</param>
         /// <param name="height">see <paramref name="width"/></param>
         virtual std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformWindowHandle, unsigned width, unsigned height) = 0;
 
         /// <summary>Looks for compatibility with another interface</summary>
         /// Some implementations of IDevice might provide extension interfaces.
-        /// to extensions.
         ///
         /// Note that reference counting behaviour is not the same as DirectX/COM QueryInterface.
         /// RenderCore objects don't have reference counting built it. So we can't increase

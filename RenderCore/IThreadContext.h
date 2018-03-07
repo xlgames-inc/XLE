@@ -33,7 +33,7 @@ namespace RenderCore
     /// themselves are not-thread-safe -- because they are only called from a single thread.
     /// We need to store the context state on a thread level, because each thread can be working
     /// with a different state, and each thread wants to assume that other threads won't interfere
-    /// with it's own state.
+    /// with its own state.
     ///
     /// Each device can have only one immediate context. But this can interact directly
     /// with the GPU, and send commands. The thread that owns the immediate context is the primary

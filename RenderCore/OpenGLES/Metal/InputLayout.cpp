@@ -177,7 +177,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
             assert(_bindings.size() <= _maxVertexAttributes);
         } else {
-            // note -- if layouts is empty, we must spit errors for alls attributes, because they are
+            // note -- if layouts is empty, we must spit errors for all attributes, because they are
             // all unbound
 
             for (int attrIndex=0; attrIndex<activeAttributeCount; ++attrIndex) {
