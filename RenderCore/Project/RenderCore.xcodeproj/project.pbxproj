@@ -25,14 +25,11 @@
 		8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */; };
 		8F2D1B031FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
 		8F2D1B041FD61B080028A531 /* RenderUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */; };
-		8F2D1B051FD61B080028A531 /* FlexUtil.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1ADF1FD61B060028A531 /* FlexUtil.h */; };
-		8F2D1B061FD61B080028A531 /* FlexBegin.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE01FD61B060028A531 /* FlexBegin.h */; };
 		8F2D1B071FD61B080028A531 /* Annotator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE11FD61B060028A531 /* Annotator.cpp */; };
 		8F2D1B081FD61B080028A531 /* Annotator.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE11FD61B060028A531 /* Annotator.cpp */; };
 		8F2D1B091FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
 		8F2D1B0A1FD61B080028A531 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE21FD61B060028A531 /* Format.cpp */; };
 		8F2D1B0B1FD61B080028A531 /* IAnnotator.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE31FD61B060028A531 /* IAnnotator.h */; };
-		8F2D1B0C1FD61B080028A531 /* FlexEnd.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE41FD61B060028A531 /* FlexEnd.h */; };
 		8F2D1B0D1FD61B080028A531 /* ShaderService.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE51FD61B060028A531 /* ShaderService.h */; };
 		8F2D1B0E1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */; };
 		8F2D1B0F1FD61B080028A531 /* ShaderLangUtil.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */; };
@@ -41,7 +38,6 @@
 		8F2D1B121FD61B080028A531 /* ResourceDesc.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AE91FD61B070028A531 /* ResourceDesc.h */; };
 		8F2D1B131FD61B080028A531 /* IThreadContext.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AEA1FD61B070028A531 /* IThreadContext.h */; };
 		8F2D1B141FD61B080028A531 /* Types.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AEB1FD61B070028A531 /* Types.h */; };
-		8F2D1B171FD61B080028A531 /* FlexForward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AED1FD61B080028A531 /* FlexForward.h */; };
 		8F2D1B181FD61B080028A531 /* FrameBufferDesc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */; };
 		8F2D1B191FD61B080028A531 /* FrameBufferDesc.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */; };
 		8F2D1B1A1FD61B080028A531 /* Types_Forward.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1AEF1FD61B080028A531 /* Types_Forward.h */; };
@@ -51,6 +47,7 @@
 		8F5468301FF4444F0058F307 /* UniformsStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F54682E1FF4444E0058F307 /* UniformsStream.cpp */; };
 		8F5468311FF4444F0058F307 /* UniformsStream.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F54682F1FF4444F0058F307 /* UniformsStream.h */; };
 		8F5468321FF445590058F307 /* UniformsStream.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F54682E1FF4444E0058F307 /* UniformsStream.cpp */; };
+		BE299E67202D2F9B00E97A63 /* RenderPass.h in Headers */ = {isa = PBXBuildFile; fileRef = BE299E66202D2F9B00E97A63 /* RenderPass.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -85,12 +82,9 @@
 		8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MinimalShaderSource.cpp; path = ../MinimalShaderSource.cpp; sourceTree = "<group>"; };
 		8F2D1ADD1FD61B050028A531 /* IAnnotator_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator_Forward.h; path = ../IAnnotator_Forward.h; sourceTree = "<group>"; };
 		8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = RenderUtils.cpp; path = ../RenderUtils.cpp; sourceTree = "<group>"; };
-		8F2D1ADF1FD61B060028A531 /* FlexUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexUtil.h; path = ../FlexUtil.h; sourceTree = "<group>"; };
-		8F2D1AE01FD61B060028A531 /* FlexBegin.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexBegin.h; path = ../FlexBegin.h; sourceTree = "<group>"; };
-		8F2D1AE11FD61B060028A531 /* Annotator.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Annotator.cpp; path = ../Annotator.cpp; sourceTree = "<group>"; };
+		8F2D1AE11FD61B060028A531 /* Annotator.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = Annotator.cpp; path = ../Annotator.cpp; sourceTree = "<group>"; };
 		8F2D1AE21FD61B060028A531 /* Format.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = Format.cpp; path = ../Format.cpp; sourceTree = "<group>"; };
 		8F2D1AE31FD61B060028A531 /* IAnnotator.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAnnotator.h; path = ../IAnnotator.h; sourceTree = "<group>"; };
-		8F2D1AE41FD61B060028A531 /* FlexEnd.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexEnd.h; path = ../FlexEnd.h; sourceTree = "<group>"; };
 		8F2D1AE51FD61B060028A531 /* ShaderService.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderService.h; path = ../ShaderService.h; sourceTree = "<group>"; };
 		8F2D1AE61FD61B060028A531 /* ShaderLangUtil.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderLangUtil.cpp; path = ../ShaderLangUtil.cpp; sourceTree = "<group>"; };
 		8F2D1AE71FD61B070028A531 /* ShaderLangUtil.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ShaderLangUtil.h; path = ../ShaderLangUtil.h; sourceTree = "<group>"; };
@@ -98,7 +92,6 @@
 		8F2D1AE91FD61B070028A531 /* ResourceDesc.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ResourceDesc.h; path = ../ResourceDesc.h; sourceTree = "<group>"; };
 		8F2D1AEA1FD61B070028A531 /* IThreadContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IThreadContext.h; path = ../IThreadContext.h; sourceTree = "<group>"; };
 		8F2D1AEB1FD61B070028A531 /* Types.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Types.h; path = ../Types.h; sourceTree = "<group>"; };
-		8F2D1AED1FD61B080028A531 /* FlexForward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FlexForward.h; path = ../FlexForward.h; sourceTree = "<group>"; };
 		8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FrameBufferDesc.cpp; path = ../FrameBufferDesc.cpp; sourceTree = "<group>"; };
 		8F2D1AEF1FD61B080028A531 /* Types_Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Types_Forward.h; path = ../Types_Forward.h; sourceTree = "<group>"; };
 		8F2D1AF01FD61B080028A531 /* RenderUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderUtils.h; path = ../RenderUtils.h; sourceTree = "<group>"; };
@@ -123,6 +116,7 @@
 		8F54682E1FF4444E0058F307 /* UniformsStream.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UniformsStream.cpp; path = ../UniformsStream.cpp; sourceTree = "<group>"; };
 		8F54682F1FF4444F0058F307 /* UniformsStream.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UniformsStream.h; path = ../UniformsStream.h; sourceTree = "<group>"; };
 		8F6177D01FF5A75C008515DE /* BufferView.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = BufferView.h; path = ../BufferView.h; sourceTree = "<group>"; };
+		BE299E66202D2F9B00E97A63 /* RenderPass.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = RenderPass.h; path = ../Techniques/RenderPass.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -150,10 +144,6 @@
 				8F6177D01FF5A75C008515DE /* BufferView.h */,
 				8F2D1AC51FD619E60028A531 /* Config */,
 				8F2D1AD51FD61B050028A531 /* Documentation.h */,
-				8F2D1AE01FD61B060028A531 /* FlexBegin.h */,
-				8F2D1AE41FD61B060028A531 /* FlexEnd.h */,
-				8F2D1AED1FD61B080028A531 /* FlexForward.h */,
-				8F2D1ADF1FD61B060028A531 /* FlexUtil.h */,
 				8F2D1AE21FD61B060028A531 /* Format.cpp */,
 				8F2D1AE81FD61B070028A531 /* Format.h */,
 				8F2D1AEE1FD61B080028A531 /* FrameBufferDesc.cpp */,
@@ -170,6 +160,7 @@
 				8F2D1ADC1FD61B050028A531 /* MinimalShaderSource.cpp */,
 				8F2D1AF11FD61B080028A531 /* MinimalShaderSource.h */,
 				8F2D1AB41FD619910028A531 /* Products */,
+				BE299E66202D2F9B00E97A63 /* RenderPass.h */,
 				8F2D1ADE1FD61B050028A531 /* RenderUtils.cpp */,
 				8F2D1AF01FD61B080028A531 /* RenderUtils.h */,
 				8F2D1AE91FD61B070028A531 /* ResourceDesc.h */,
@@ -249,8 +240,8 @@
 				8F2D1B141FD61B080028A531 /* Types.h in Headers */,
 				8F2D1AF81FD61B080028A531 /* ResourceList.h in Headers */,
 				8F2D1B1C1FD61B080028A531 /* MinimalShaderSource.h in Headers */,
+				BE299E67202D2F9B00E97A63 /* RenderPass.h in Headers */,
 				8F2D1B1B1FD61B080028A531 /* RenderUtils.h in Headers */,
-				8F2D1B0C1FD61B080028A531 /* FlexEnd.h in Headers */,
 				8F2D1B0D1FD61B080028A531 /* ShaderService.h in Headers */,
 				8F2D1AF61FD61B080028A531 /* IThreadContext_Forward.h in Headers */,
 				8F2D1AF71FD61B080028A531 /* Documentation.h in Headers */,
@@ -258,16 +249,13 @@
 				8F2D1B111FD61B080028A531 /* Format.h in Headers */,
 				8F2D1AFE1FD61B080028A531 /* ResourceUtils.h in Headers */,
 				8F2D1B101FD61B080028A531 /* ShaderLangUtil.h in Headers */,
-				8F2D1B061FD61B080028A531 /* FlexBegin.h in Headers */,
 				8F5468311FF4444F0058F307 /* UniformsStream.h in Headers */,
-				8F2D1B171FD61B080028A531 /* FlexForward.h in Headers */,
 				8F2D1B0B1FD61B080028A531 /* IAnnotator.h in Headers */,
 				8F2D1B121FD61B080028A531 /* ResourceDesc.h in Headers */,
 				8F2D1B1A1FD61B080028A531 /* Types_Forward.h in Headers */,
 				8F2D1B021FD61B080028A531 /* IAnnotator_Forward.h in Headers */,
 				8F2D1AFF1FD61B080028A531 /* IDevice_Forward.h in Headers */,
 				8F2D1AF31FD61B080028A531 /* FrameBufferDesc.h in Headers */,
-				8F2D1B051FD61B080028A531 /* FlexUtil.h in Headers */,
 				8F2D1B131FD61B080028A531 /* IThreadContext.h in Headers */,
 				8F2D1B1D1FD61B080028A531 /* Init.h in Headers */,
 			);

@@ -724,6 +724,7 @@ namespace RenderCore
 			#define _EXP(X, Y, Z, U)    case Format::X##_##Y: return STRINGIZE(X##_##Y);
                 #include "Metal/Detail/DXGICompatibleFormats.h"
             #undef _EXP
+        case Format::D24_UNORM_S8_UINT: return "D24_UNORM_S8_UINT";
         case Format::D32_SFLOAT_S8_UINT: return "D32_FLOAT_S8_UINT";
         case Format::S8_UINT: return "S8_UINT";
         case Format::Matrix4x4: return "Matrix4x4";
@@ -739,6 +740,7 @@ namespace RenderCore
             #include "Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
 
+        if (!XlEqStringI(name, "D24_UNORM_S8_UINT")) return Format::D24_UNORM_S8_UINT;
         if (!XlEqStringI(name, "D32_FLOAT_S8_UINT")) return Format::D32_SFLOAT_S8_UINT;
         if (!XlEqStringI(name, "S8_UINT")) return Format::S8_UINT;
         if (!XlEqStringI(name, "Matrix4x4")) return Format::Matrix4x4;

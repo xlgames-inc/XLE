@@ -68,7 +68,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 #endif
 
-    protected:
+        GraphicsPipeline();
+        GraphicsPipeline(const GraphicsPipeline&) = delete;
+        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
+        ~GraphicsPipeline();
+
+    private:
         unsigned    _nativeTopology;
         unsigned    _indicesFormat;
         unsigned    _indexFormatBytes;

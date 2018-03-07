@@ -205,7 +205,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i._attributeLocation, i._size, i._type, i._isNormalized,
                     i._stride,
                     (const void*)(size_t)(vb._offset + i._offset));
+#if HACK_PLATFORM_IOS
                 glVertexAttribDivisor(i._attributeLocation, i._instanceDataRate);
+#endif
             }
             attributeIterator += bindingCount;
         }

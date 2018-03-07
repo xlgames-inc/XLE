@@ -258,6 +258,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         ++s_nextSubpass;
     }
 
+    void EndSubpass(DeviceContext& context)
+    {
+    }
+
     void EndRenderPass(DeviceContext& context)
     {
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important

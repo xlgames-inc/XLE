@@ -8,6 +8,8 @@
 
 #include <stdint.h>
 
+#import <AvailabilityMacros.h> // for __IPHONE_OS_VERSION_MAX_ALLOWED
+
 // iOS vs macOS
 #if __IPHONE_OS_VERSION_MAX_ALLOWED
     #define HACK_PLATFORM_IOS 1

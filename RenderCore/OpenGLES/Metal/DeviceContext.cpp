@@ -166,11 +166,19 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 #endif
 
-    DeviceContext::DeviceContext()
+    GraphicsPipeline::GraphicsPipeline()
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
         _indexFormatBytes = 2;
         _nativeTopology = GL_TRIANGLES;
+    }
+
+    GraphicsPipeline::~GraphicsPipeline()
+    {
+    }
+
+    DeviceContext::DeviceContext()
+    {
     }
 
     DeviceContext::~DeviceContext()

@@ -87,6 +87,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+    void EndSubpass(DeviceContext& context);
     void EndRenderPass(DeviceContext& context);
 
 }}

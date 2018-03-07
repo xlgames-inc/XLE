@@ -14,6 +14,7 @@
 #include "../Format.h"
 #include "../ResourceUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
+#include <cmath>
 
 namespace RenderCore { namespace Techniques
 {
@@ -54,11 +55,13 @@ namespace RenderCore { namespace Techniques
 
     void            RenderPassInstance::NextSubpass()
     {
+        Metal::EndSubpass(*_attachedContext);
         Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
     }
 
     void            RenderPassInstance::End()
     {
+        Metal::EndSubpass(*_attachedContext);
         Metal::EndRenderPass(*_attachedContext);
     }
 
@@ -107,7 +110,7 @@ namespace RenderCore { namespace Techniques
 
         Metal::FrameBufferPool cache;
         _frameBuffer = cache.BuildFrameBuffer(
-            Metal::GetObjectFactory(context), layout, 
+            Metal::GetObjectFactory(context), layout,
             namedResources.GetFrameBufferProperties(),
             *_namedAttachments,
             hashName);
