@@ -1,0 +1,91 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#pragma once
+
+#include "TextureView.h"
+#include "../../FrameBufferDesc.h"
+#include "../../../Externals/Misc/OCPtr.h"
+
+@class MTLRenderPassDescriptor;
+
+namespace RenderCore { namespace Metal_AppleMetal
+{
+    class ObjectFactory;
+    class RenderTargetView;
+    class ShaderResourceView;
+    class DepthStencilView;
+    class DeviceContext;
+
+    class FrameBuffer
+    {
+    public:
+        void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+
+        /* TODO -- Metal equivalent */ //OpenGL::FrameBuffer* GetSubpassUnderlyingFramebuffer(unsigned subpassIndex);
+        unsigned GetSubpassCount() const { return _subpassCount; }
+
+        FrameBuffer(
+            ObjectFactory& factory,
+            const FrameBufferDesc& fbDesc,
+            const INamedAttachments& namedResources);
+        FrameBuffer();
+        ~FrameBuffer();
+    private:
+        static const unsigned s_maxMRTs = 4u;
+        static const unsigned s_maxSubpasses = 4u;
+
+        class Subpass
+        {
+        public:
+            TBC::OCPtr<MTLRenderPassDescriptor> _renderPassDescriptor;
+
+#if 0
+            /* KenD -- Metal TODO -- clear values - the iterator has to be stored within the subpass;
+             * when the subpass begins and is bound, the clear values will be set.
+             * Skipping that implementation for now.
+             */
+            unsigned _rtvClearValue[s_maxMRTs];
+            unsigned _dsvClearValue;
+#endif
+        };
+        Subpass     _subpasses[s_maxSubpasses];
+        unsigned    _subpassCount;
+    };
+
+    /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
+    /// Client code typically just wants to define the size and formats of frame buffers, without
+    /// manually retaining and managing the objects themselves. It's a result of typical usage patterns
+    /// of RenderPassInstance.
+    ///
+    /// This helper class allows client code to simply declare what it needs and the actual management
+    /// of the device objects will be handled within the cache.
+    class FrameBufferPool
+    {
+    public:
+        std::shared_ptr<FrameBuffer> BuildFrameBuffer(
+            ObjectFactory& factory,
+            const FrameBufferDesc& desc,
+            const FrameBufferProperties& props,
+            const INamedAttachments& namedResources,
+            uint64 hashName);
+
+        FrameBufferPool();
+        ~FrameBufferPool();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+    void BeginRenderPass(
+        DeviceContext& context,
+        FrameBuffer& frameBuffer,
+        const FrameBufferDesc& layout,
+        const FrameBufferProperties& props,
+        IteratorRange<const ClearValue*> clearValues);
+
+    void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+    void EndSubpass(DeviceContext& context);
+    void EndRenderPass(DeviceContext& context);
+}}

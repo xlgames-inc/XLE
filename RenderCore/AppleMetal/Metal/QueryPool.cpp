@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "QueryPool.h"
-#include <assert.h>
+#include "DeviceContext.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -30,22 +30,14 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     #if defined(GPUANNOTATIONS_ENABLE)
 
-        /*
-        #if GL_EXT_debug_marker
-            GLvoid glInsertEventMarkerEXT(GLsizei length, const GLchar *marker);
-            GLvoid glPushGroupMarkerEXT(GLsizei length, const GLchar *marker);
-            GLvoid glPopGroupMarkerEXT(void);
-        #endif
-        */
-
         void GPUAnnotation::Begin(DeviceContext& context, const char annotationName[])
         {
-            assert(0);
+            context.PushDebugGroup(annotationName);
         }
 
         void GPUAnnotation::End(DeviceContext& context)
         {
-            assert(0);
+            context.PopDebugGroup();
         }
 
         GPUAnnotation::GPUAnnotation(DeviceContext& context, const char annotationName[])

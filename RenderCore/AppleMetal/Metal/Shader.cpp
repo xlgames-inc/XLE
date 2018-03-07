@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Shader.h"
+#include "Device.h"
 #include "../../ShaderService.h"
 #include "../../RenderUtils.h"
 #include "../../Types.h"
@@ -13,6 +14,12 @@
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include <iostream>
+
+#include "IncludeAppleMetal.h"
+#import <Metal/MTLLibrary.h>
+#import <Foundation/NSObject.h>
+
+static id<MTLLibrary> s_defaultLibrary = nil;
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -58,8 +65,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         const ShaderService::ResId& shaderPath,
         StringSection<::Assets::ResChar> definesTable) const
     {
-        assert(0);
-        return false;
+        // KenD -- Metal TODO -- consider compiling Metal shaders from source code; for now, just using Metal library
+        return true;
     }
 
     std::string ShaderCompiler::MakeShaderMetricsString(const void* byteCode, size_t byteCodeSize) const { return std::string(); }
@@ -71,6 +78,11 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
+        // KenD -- Metal HACK -- holding on to a static Metal library for now.  We should cache it, but we might consider a different approach to construction
+        auto* dev = (ImplAppleMetal::Device*)device.QueryInterface(typeid(ImplAppleMetal::Device).hash_code());
+        id<MTLDevice> mtlDev = dev->GetUnderlying();
+        s_defaultLibrary = [mtlDev newDefaultLibrary];
+
         return std::make_shared<ShaderCompiler>();
     }
 
@@ -79,6 +91,8 @@ namespace RenderCore { namespace Metal_AppleMetal
     ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& vertexShader,
                                     const CompiledShaderByteCode& fragmentShader)
     {
+        // KenD -- Metal TODO -- architecture should support CompiledShaderByteCode
+        assert(0);
         _guid = g_nextShaderProgramGUID++;
     }
 
@@ -86,5 +100,13 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
     }
 
-}}
+    ShaderProgram::ShaderProgram(const std::string& vertexFunctionName, const std::string& fragmentFunctionName)
+    {
+        _vf = [s_defaultLibrary newFunctionWithName:[NSString stringWithCString:vertexFunctionName.c_str() encoding:NSUTF8StringEncoding]];
+        _ff = [s_defaultLibrary newFunctionWithName:[NSString stringWithCString:fragmentFunctionName.c_str() encoding:NSUTF8StringEncoding]];
 
+        _depVal = std::make_shared<Assets::DependencyValidation>();
+
+        _guid = g_nextShaderProgramGUID++;
+    }
+}}

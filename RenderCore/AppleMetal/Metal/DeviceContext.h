@@ -13,6 +13,10 @@
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include <assert.h>
 
+@class MTLRenderPassDescriptor;
+@protocol MTLCommandBuffer;
+@protocol MTLDevice;
+
 namespace RenderCore { namespace Metal_AppleMetal
 {
     class ShaderResourceView;
@@ -21,6 +25,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     class BoundInputLayout;
     class ShaderProgram;
     class BlendState;
+    class ViewportDesc;
 
     class RasterizationDesc;
     class DepthStencilDesc;
@@ -37,6 +42,32 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     using CommandListPtr = intrusive_ptr<CommandList>;
 
+    class ReflectionInformation
+    {
+    public:
+        /* This contains the vertex and fragment mappings for the hashed name of a shader function argument
+         * and its type and index.s
+         * For example, the vertex function might have "metalUniforms" with hashName 1234567, type Buffer, index 3,
+         * and the fragment function might have "colorMap" with hashName 7654321, type Texture, index 1.
+         * The same argument might be in both the vertex and fragment functions, but could have different
+         * indices in the argument table.
+         */
+        enum MappingType {
+            Buffer,
+            Texture,
+            Sampler,
+            Unknown
+        };
+        struct Mapping {
+            uint64_t hashName = ~0ull;
+            MappingType type = Unknown;
+            unsigned index = ~0u;
+        };
+
+        std::vector<Mapping> _vfMappings;
+        std::vector<Mapping> _ffMappings;
+    };
+
     class GraphicsPipeline
     {
     public:
@@ -52,12 +83,41 @@ namespace RenderCore { namespace Metal_AppleMetal
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
+        void Bind(const ViewportDesc& viewport);
+
+        void Bind(MTLVertexDescriptor* descriptor);
+
+        enum ShaderTarget { Vertex, Fragment };
+        void Bind(id<MTLBuffer> buffer, unsigned offset, unsigned bufferIndex, ShaderTarget target);
+        void Bind(const void* bytes, unsigned length, unsigned bufferIndex, ShaderTarget target);
+        void Bind(id<MTLTexture> texture, unsigned textureIndex, ShaderTarget target);
+
+        const ReflectionInformation& GetReflectionInformation(TBC::OCPtr<id> vf, TBC::OCPtr<id> ff);
+
+        void FinalizePipeline();
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-#if HACK_PLATFORM_IOS
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-#endif
+
+        void            HoldDevice(id<MTLDevice>);
+        void            HoldCommandBuffer(id<MTLCommandBuffer>);
+        void            ReleaseCommandBuffer();
+        void            CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
+        void            EndEncoding();
+        void            DestroyRenderCommandEncoder();
+
+        void            PushDebugGroup(const char annotationName[]);
+        void            PopDebugGroup();
+
+        GraphicsPipeline();
+        GraphicsPipeline(const GraphicsPipeline&) = delete;
+        GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
+        virtual ~GraphicsPipeline();
+
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,36 +129,16 @@ namespace RenderCore { namespace Metal_AppleMetal
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
 
-        // static intrusive_ptr<DeviceContext> GetImmediateContext(IDevice* device);
-        // static intrusive_ptr<DeviceContext> CreateDeferredContext(IDevice* device);
-
         static void PrepareForDestruction(IDevice* device);
-
-        unsigned FeatureLevel() const { return 300u; }
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
         DeviceContext();
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
-        ~DeviceContext();
+        virtual ~DeviceContext();
     };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class ObjectFactory
-    {
-    public:
-        ObjectFactory();
-        ~ObjectFactory();
-
-        ObjectFactory& operator=(const ObjectFactory&) = delete;
-        ObjectFactory(const ObjectFactory&) = delete;
-    };
-
-    ObjectFactory& GetObjectFactory(IDevice& device);
-    ObjectFactory& GetObjectFactory(DeviceContext&);
-    ObjectFactory& GetObjectFactory();
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 

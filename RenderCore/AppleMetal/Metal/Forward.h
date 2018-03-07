@@ -16,7 +16,6 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class RenderTargetView;
     class DepthStencilView;
     class FrameBuffer;
-    class INamedAttachments;
     class StencilDesc;
     class DepthStencilDesc;
     class RasterizationDesc;
@@ -27,4 +26,3 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class PipelineLayoutConfig;
 
 }}
-

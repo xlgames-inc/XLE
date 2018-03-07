@@ -25,8 +25,6 @@
 		8F46A0D0202140290003948C /* InputLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0AF202140280003948C /* InputLayout.h */; };
 		8F46A0D3202140290003948C /* Resource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B1202140280003948C /* Resource.cpp */; };
 		8F46A0D4202140290003948C /* Resource.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B1202140280003948C /* Resource.cpp */; };
-		8F46A0D5202140290003948C /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B2202140280003948C /* Format.cpp */; };
-		8F46A0D6202140290003948C /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B2202140280003948C /* Format.cpp */; };
 		8F46A0D7202140290003948C /* QueryPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B3202140280003948C /* QueryPool.cpp */; };
 		8F46A0D8202140290003948C /* QueryPool.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F46A0B3202140280003948C /* QueryPool.cpp */; };
 		8F46A0D9202140290003948C /* QueryPool.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F46A0B4202140280003948C /* QueryPool.h */; };
@@ -55,29 +53,32 @@
 		8F7B6C6D20212AEC006D0079 /* Device.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F7B6C6A20212AEC006D0079 /* Device.mm */; };
 		8F7B6C6E20212AEC006D0079 /* Device.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F7B6C6B20212AEC006D0079 /* Device.h */; };
 		8F7B6C6F20212AEC006D0079 /* Device.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F7B6C6B20212AEC006D0079 /* Device.h */; };
-		8F7B6C8A20212D3A006D0079 /* IncludeAppleMetal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F7B6C8920212D3A006D0079 /* IncludeAppleMetal.h */; };
-		8F7B6C8B20212D3A006D0079 /* IncludeAppleMetal.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F7B6C8920212D3A006D0079 /* IncludeAppleMetal.h */; };
+		BE4C1C032033DF5E00A941D4 /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE4C1C022033DF5E00A941D4 /* Format.cpp */; };
+		BE4C1C072033E21C00A941D4 /* FrameBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE4C1C062033E21C00A941D4 /* FrameBuffer.cpp */; };
+		BE4C1C082033E21C00A941D4 /* FrameBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE4C1C062033E21C00A941D4 /* FrameBuffer.cpp */; };
+		BE5DFC5C2033FCBE0036CAF1 /* ObjectFactory.mm in Sources */ = {isa = PBXBuildFile; fileRef = BE5DFC5B2033FCBE0036CAF1 /* ObjectFactory.mm */; };
+		BE5DFC5D20340DC30036CAF1 /* ObjectFactory.mm in Sources */ = {isa = PBXBuildFile; fileRef = BE5DFC5B2033FCBE0036CAF1 /* ObjectFactory.mm */; };
+		BE7DCC89204A04EC0021020A /* Format.cpp in Sources */ = {isa = PBXBuildFile; fileRef = BE4C1C022033DF5E00A941D4 /* Format.cpp */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXFileReference section */
 		8F46A0A8202140270003948C /* Shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Shader.h; sourceTree = "<group>"; };
-		8F46A0A9202140270003948C /* DeviceContext.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = DeviceContext.cpp; sourceTree = "<group>"; };
+		8F46A0A9202140270003948C /* DeviceContext.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = DeviceContext.cpp; sourceTree = "<group>"; };
 		8F46A0AA202140270003948C /* PipelineLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PipelineLayout.cpp; sourceTree = "<group>"; };
 		8F46A0AB202140270003948C /* State.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = State.cpp; sourceTree = "<group>"; };
 		8F46A0AC202140280003948C /* Resource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Resource.h; sourceTree = "<group>"; };
 		8F46A0AD202140280003948C /* PipelineLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PipelineLayout.h; sourceTree = "<group>"; };
-		8F46A0AE202140280003948C /* Buffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Buffer.cpp; sourceTree = "<group>"; };
+		8F46A0AE202140280003948C /* Buffer.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Buffer.cpp; sourceTree = "<group>"; };
 		8F46A0AF202140280003948C /* InputLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = InputLayout.h; sourceTree = "<group>"; };
-		8F46A0B1202140280003948C /* Resource.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Resource.cpp; sourceTree = "<group>"; };
-		8F46A0B2202140280003948C /* Format.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Format.cpp; sourceTree = "<group>"; };
-		8F46A0B3202140280003948C /* QueryPool.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = QueryPool.cpp; sourceTree = "<group>"; };
+		8F46A0B1202140280003948C /* Resource.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Resource.cpp; sourceTree = "<group>"; };
+		8F46A0B3202140280003948C /* QueryPool.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = QueryPool.cpp; sourceTree = "<group>"; };
 		8F46A0B4202140280003948C /* QueryPool.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = QueryPool.h; sourceTree = "<group>"; };
 		8F46A0B5202140280003948C /* Forward.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Forward.h; sourceTree = "<group>"; };
-		8F46A0B6202140280003948C /* TextureView.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = TextureView.cpp; sourceTree = "<group>"; };
-		8F46A0B7202140280003948C /* InputLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = InputLayout.cpp; sourceTree = "<group>"; };
+		8F46A0B6202140280003948C /* TextureView.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = TextureView.cpp; sourceTree = "<group>"; };
+		8F46A0B7202140280003948C /* InputLayout.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = InputLayout.cpp; sourceTree = "<group>"; };
 		8F46A0B8202140280003948C /* Buffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Buffer.h; sourceTree = "<group>"; };
 		8F46A0BA202140290003948C /* TextureView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = TextureView.h; sourceTree = "<group>"; };
-		8F46A0BB202140290003948C /* Shader.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Shader.cpp; sourceTree = "<group>"; };
+		8F46A0BB202140290003948C /* Shader.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Shader.cpp; sourceTree = "<group>"; };
 		8F46A0BC202140290003948C /* State.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = State.h; sourceTree = "<group>"; };
 		8F46A0BD202140290003948C /* DeviceContext.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = DeviceContext.h; sourceTree = "<group>"; };
 		8F46A0BE202140290003948C /* Format.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Format.h; sourceTree = "<group>"; };
@@ -92,7 +93,11 @@
 		8F7B6C6920212AC9006D0079 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
 		8F7B6C6A20212AEC006D0079 /* Device.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Device.mm; path = ../AppleMetal/Device.mm; sourceTree = "<group>"; };
 		8F7B6C6B20212AEC006D0079 /* Device.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Device.h; path = ../AppleMetal/Device.h; sourceTree = "<group>"; };
-		8F7B6C8920212D3A006D0079 /* IncludeAppleMetal.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = IncludeAppleMetal.h; sourceTree = "<group>"; };
+		BE4C1C022033DF5E00A941D4 /* Format.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Format.cpp; sourceTree = "<group>"; };
+		BE4C1C042033DFB700A941D4 /* FrameBuffer.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = FrameBuffer.h; sourceTree = "<group>"; };
+		BE4C1C052033E15B00A941D4 /* ObjectFactory.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ObjectFactory.h; sourceTree = "<group>"; };
+		BE4C1C062033E21C00A941D4 /* FrameBuffer.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; path = FrameBuffer.cpp; sourceTree = "<group>"; };
+		BE5DFC5B2033FCBE0036CAF1 /* ObjectFactory.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; path = ObjectFactory.mm; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -152,12 +157,16 @@
 				8F46A0B8202140280003948C /* Buffer.h */,
 				8F46A0A9202140270003948C /* DeviceContext.cpp */,
 				8F46A0BD202140290003948C /* DeviceContext.h */,
-				8F46A0B2202140280003948C /* Format.cpp */,
+				BE4C1C022033DF5E00A941D4 /* Format.cpp */,
 				8F46A0BE202140290003948C /* Format.h */,
 				8F46A0B5202140280003948C /* Forward.h */,
+				BE4C1C062033E21C00A941D4 /* FrameBuffer.cpp */,
+				BE4C1C042033DFB700A941D4 /* FrameBuffer.h */,
 				8F46A0C0202140290003948C /* IncludeAppleMetal.h */,
 				8F46A0B7202140280003948C /* InputLayout.cpp */,
 				8F46A0AF202140280003948C /* InputLayout.h */,
+				BE4C1C052033E15B00A941D4 /* ObjectFactory.h */,
+				BE5DFC5B2033FCBE0036CAF1 /* ObjectFactory.mm */,
 				8F46A0AA202140270003948C /* PipelineLayout.cpp */,
 				8F46A0AD202140280003948C /* PipelineLayout.h */,
 				8F46A0B3202140280003948C /* QueryPool.cpp */,
@@ -166,11 +175,10 @@
 				8F46A0AC202140280003948C /* Resource.h */,
 				8F46A0BB202140290003948C /* Shader.cpp */,
 				8F46A0A8202140270003948C /* Shader.h */,
-				8F46A0B6202140280003948C /* TextureView.cpp */,
-				8F46A0BA202140290003948C /* TextureView.h */,
 				8F46A0AB202140270003948C /* State.cpp */,
 				8F46A0BC202140290003948C /* State.h */,
-				8F7B6C8920212D3A006D0079 /* IncludeAppleMetal.h */,
+				8F46A0B6202140280003948C /* TextureView.cpp */,
+				8F46A0BA202140290003948C /* TextureView.h */,
 				8F46A0F3202149980003948C /* Types.h */,
 			);
 			name = Metal;
@@ -195,7 +203,6 @@
 				8F46A0ED202140290003948C /* Format.h in Headers */,
 				8F46A0C9202140290003948C /* Resource.h in Headers */,
 				8F46A0C1202140290003948C /* Shader.h in Headers */,
-				8F7B6C8A20212D3A006D0079 /* IncludeAppleMetal.h in Headers */,
 				8F7B6C6E20212AEC006D0079 /* Device.h in Headers */,
 				8F46A0EB202140290003948C /* DeviceContext.h in Headers */,
 			);
@@ -216,7 +223,6 @@
 				8F46A0EE202140290003948C /* Format.h in Headers */,
 				8F46A0CA202140290003948C /* Resource.h in Headers */,
 				8F46A0C2202140290003948C /* Shader.h in Headers */,
-				8F7B6C8B20212D3A006D0079 /* IncludeAppleMetal.h in Headers */,
 				8F7B6C6F20212AEC006D0079 /* Device.h in Headers */,
 				8F46A0EC202140290003948C /* DeviceContext.h in Headers */,
 			);
@@ -296,16 +302,18 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F46A0C5202140290003948C /* PipelineLayout.cpp in Sources */,
+				BE4C1C072033E21C00A941D4 /* FrameBuffer.cpp in Sources */,
 				8F46A0CD202140290003948C /* Buffer.cpp in Sources */,
 				8F7B6C6C20212AEC006D0079 /* Device.mm in Sources */,
 				8F46A0C3202140290003948C /* DeviceContext.cpp in Sources */,
 				8F46A0DF202140290003948C /* InputLayout.cpp in Sources */,
 				8F46A0C7202140290003948C /* State.cpp in Sources */,
 				8F46A0D3202140290003948C /* Resource.cpp in Sources */,
+				BE4C1C032033DF5E00A941D4 /* Format.cpp in Sources */,
 				8F46A0D7202140290003948C /* QueryPool.cpp in Sources */,
-				8F46A0D5202140290003948C /* Format.cpp in Sources */,
 				8F46A0E7202140290003948C /* Shader.cpp in Sources */,
 				8F46A0DD202140290003948C /* TextureView.cpp in Sources */,
+				BE5DFC5C2033FCBE0036CAF1 /* ObjectFactory.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -316,14 +324,16 @@
 				8F46A0C6202140290003948C /* PipelineLayout.cpp in Sources */,
 				8F46A0CE202140290003948C /* Buffer.cpp in Sources */,
 				8F7B6C6D20212AEC006D0079 /* Device.mm in Sources */,
+				BE7DCC89204A04EC0021020A /* Format.cpp in Sources */,
 				8F46A0C4202140290003948C /* DeviceContext.cpp in Sources */,
+				BE4C1C082033E21C00A941D4 /* FrameBuffer.cpp in Sources */,
 				8F46A0E0202140290003948C /* InputLayout.cpp in Sources */,
 				8F46A0C8202140290003948C /* State.cpp in Sources */,
 				8F46A0D4202140290003948C /* Resource.cpp in Sources */,
 				8F46A0D8202140290003948C /* QueryPool.cpp in Sources */,
-				8F46A0D6202140290003948C /* Format.cpp in Sources */,
 				8F46A0E8202140290003948C /* Shader.cpp in Sources */,
 				8F46A0DE202140290003948C /* TextureView.cpp in Sources */,
+				BE5DFC5D20340DC30036CAF1 /* ObjectFactory.mm in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include "Metal/IncludeAppleMetal.h"
+#include "Metal/DeviceContext.h" // for ObjectFactory
 #include <QuartzCore/CAMetalLayer.h>
 
 #if PLATFORMOS_TARGET == PLATFORMOS_OSX
@@ -30,13 +31,16 @@ namespace RenderCore { namespace ImplAppleMetal
         id<CAMetalDrawable> nextDrawable = [presChain.GetUnderlyingLayer() nextDrawable];
 
         id<MTLTexture> texture = nextDrawable.texture;
-        (void)texture;
-        // todo return this texture as an IResourcePtr
 
         _activeFrameDrawable = nextDrawable;
 
+        // Each thread will have its own command buffer, which is provided to the device context to create command encoders
         _commandBuffer = [_immediateCommandQueue.get() commandBuffer];
-        return nullptr;
+
+        GetDeviceContext()->HoldCommandBuffer(_commandBuffer);
+
+        // KenD -- This is constructing a RenderBuffer, but we don't really differentiate between RenderBuffer and Texture really.  The binding is specified as RenderTarget.
+        return std::make_shared<Metal_AppleMetal::Resource>(texture, Metal_AppleMetal::ExtractRenderBufferDesc(texture));
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
@@ -47,6 +51,8 @@ namespace RenderCore { namespace ImplAppleMetal
             [_commandBuffer.get() presentDrawable:_activeFrameDrawable.get()];
         }
         [_commandBuffer.get() commit];
+
+        GetDeviceContext()->ReleaseCommandBuffer();
 
         _activeFrameDrawable = nullptr;
         _commandBuffer = nullptr;
@@ -77,6 +83,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
     const std::shared_ptr<Metal_AppleMetal::DeviceContext>&  ThreadContext::GetDeviceContext()
     {
+        assert(_devContext);
         return _devContext;
     }
 
@@ -85,7 +92,12 @@ namespace RenderCore { namespace ImplAppleMetal
         const std::shared_ptr<Device>& device)
     : _immediateCommandQueue(immediateCommandQueue)
     , _device(device)
-    {}
+    {
+        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>();
+
+        // KenD -- needed a way for the device context to access the MTLDevice
+        _devContext->HoldDevice(device->GetUnderlying());
+    }
 
     ThreadContext::ThreadContext(
         id<MTLCommandBuffer> commandBuffer,
@@ -93,9 +105,11 @@ namespace RenderCore { namespace ImplAppleMetal
     : _device(device)
     , _commandBuffer(commandBuffer)
     {
+        assert(0);
     }
 
-    ThreadContext::~ThreadContext() {}
+    ThreadContext::~ThreadContext() {
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -115,6 +129,7 @@ namespace RenderCore { namespace ImplAppleMetal
     {
         _underlying = underlying;
         _immediateCommandQueue = [_underlying.get() newCommandQueue];
+        _objectFactory = std::make_shared<Metal_AppleMetal::ObjectFactory>(_underlying.get());
     }
 
     Device::~Device()
@@ -131,14 +146,15 @@ namespace RenderCore { namespace ImplAppleMetal
 
     void* Device::QueryInterface(size_t guid)
     {
+        if (guid == typeid(Device).hash_code()) {
+            return this;
+        }
         return nullptr;
     }
 
     IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
-        // hack -- only getting a single subresource here!
-        // return std::make_shared<Metal_OpenGLES::Resource>(*_objectFactory, desc, init);
-        return nullptr;
+        return Metal_AppleMetal::CreateResource(*_objectFactory, desc, init);
     }
 
     DeviceDesc Device::GetDesc()
@@ -155,10 +171,11 @@ namespace RenderCore { namespace ImplAppleMetal
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()
     {
-        if (!_immediateContext)
+        if (!_immediateContext) {
             _immediateContext = std::make_shared<ThreadContext>(
                 (id<MTLCommandQueue>)_immediateCommandQueue.get(),
                 shared_from_this());
+        }
         return _immediateContext;
     }
 
@@ -183,9 +200,8 @@ namespace RenderCore { namespace ImplAppleMetal
         if (![view.layer isKindOfClass:CAMetalLayer.class])
             Throw(std::runtime_error("Layer in UIView passed to PresentationChain::PresentationChain is not of type CAMetalLayer"));
 
-        // todo -- configure layer here
         auto* metalLayer = (CAMetalLayer*)view.layer;
-        metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm_sRGB;
+        metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
         metalLayer.framebufferOnly = YES;
         metalLayer.drawableSize = CGSizeMake(width, height);
         metalLayer.device = device;
