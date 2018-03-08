@@ -2,8 +2,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "Device.h"
+#include "Device_EGL.h"
 #include "Metal/DeviceContext.h"
+#include "../IAnnotator.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -12,37 +13,38 @@
 #include <assert.h>
 #include "IncludeGLES.h"
 
-namespace RenderCore
+namespace RenderCore { namespace ImplOpenGLES
 {
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Device::Device()
     {
-        _display = EGL_NO_DISPLAY;
-        _config = nullptr;
+        auto display = EGL_NO_DISPLAY;
 
             //
             //      Create a EGL "display" object
             //
             //
-        EGL::Display displayTemp = eglGetDisplay(EGL_DEFAULT_DISPLAY);
+        EGLDisplay displayTemp = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         if (displayTemp == EGL_NO_DISPLAY) {
             Throw(::Exceptions::BasicLabel("Failure while creating display"));
         }
 
-        DestructorPointer<EGL::Display, decltype(&eglTerminate)> display(displayTemp, &eglTerminate);
+        display = displayTemp;
+
+        //DestructorPointer<EGLDisplay, decltype(&eglTerminate)> display(displayTemp, &eglTerminate);
 
         EGLint majorVersion = 0, minorVersion = 0;
         EGLint configCount = 0;
         if (!eglInitialize(display, &majorVersion, &minorVersion)) {
-            Throw(::Exceptions::BasicLabel("Failure while creating display"));
+            Throw(::Exceptions::BasicLabel("Failure while initalizing display"));
         }
 
         if (!eglGetConfigs(display, NULL, 0, &configCount)) {
             Throw(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
         }
 
-        std::vector<EGL::Config> configs(configCount);
+        std::vector<EGLConfig> configs(configCount);
         if (!eglGetConfigs(display, AsPointer(configs.begin()), configs.size(), &configCount)) {
             Throw(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
         }
@@ -148,7 +150,7 @@ namespace RenderCore
             EGL_NONE,                       EGL_NONE
         };
 
-        EGL::Config config = nullptr;
+        EGLConfig config = nullptr;
         if (!eglChooseConfig(display, configAttribList, &config, 1, &configCount)) {
             Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig"));
         }
@@ -170,84 +172,144 @@ namespace RenderCore
             //
 
         EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
-        EGL::Display contextTemp = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
-        if (contextTemp == EGL_NO_CONTEXT) {
+        EGLContext context = eglCreateContext(display, config, EGL_NO_CONTEXT, contextAttribs);
+        if (context == EGL_NO_CONTEXT) {
             Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
         }
 
             // (here, contextDestroyer just binds the first parameter to eglDestroyContext)
-        auto contextDestroyer = [=](EGL::Context context) {eglDestroyContext(displayTemp, context);};
-        DestructorPointer<EGL::Context, decltype(contextDestroyer)> context(contextTemp, contextDestroyer);
+        //auto contextDestroyer = [=](EGLContext context) {eglDestroyContext(displayTemp, context);};
+        //DestructorPointer<EGLContext, decltype(contextDestroyer)> context(contextTemp, contextDestroyer);
 
             //
             //      Initialisation is complete. We can commit to our member pointers now.
             //
 
-        intrusive_ptr<Metal_OpenGLES::DeviceContext> finalContext = moveptr(new Metal_OpenGLES::DeviceContext(display, context.release()));
+        _sharedContext = std::make_shared<EGLContext>(context);
 
-        _display = display.release();
-        _immediateContext = std::move(finalContext);
-        _config = config;
+        _display = std::make_shared<EGLDisplay>(display);
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
+        _config = std::make_shared<EGLConfig>(config);
     }
 
     Device::~Device()
     {
-        if (_display != EGL_NO_DISPLAY) {
-            EGLBoolean result = eglTerminate(_display);
+        if (*_display != EGL_NO_DISPLAY) {
+            EGLBoolean result = eglTerminate(*_display);
             (void)result; assert(result);
             _display = nullptr;
         }
     }
 
-    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue)
+    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
     {
-        std::unique_ptr<IPresentationChain> result = std::make_unique<PresentationChain>(_display, _config, platformValue);
+        std::unique_ptr<IPresentationChain> result = std::make_unique<PresentationChain>(*_objectFactory, _sharedContext, _display, _config, platformValue, width, height);
 
             //      Angle project problem! We need to all eglMakeCurrent before
             //      we can create an results (vertex buffers, index buffers, textures, etc)
-        auto presChain = checked_cast<PresentationChain*>(result.get());
-        EGL::Surface underlyingSurface = presChain->GetUnderlyingSurface();
-        if (!eglMakeCurrent(    _display,   
+        /*auto presChain = checked_cast<PresentationChain*>(result.get());
+        EGLSurface underlyingSurface = *(presChain->GetSurface());
+        if (!eglMakeCurrent(    *_display,   
                                 underlyingSurface, 
                                 underlyingSurface, 
-                                _immediateContext->GetUnderlying())) {
+                                _sharedContext.get())) {
             Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
-        }
+        }*/
 
         return std::move(result);
     }
 
-    void    Device::BeginFrame(IPresentationChain* presentationChain)
+    IResourcePtr    ThreadContext::BeginFrame(IPresentationChain &presentationChain)
     {
-        auto presChain = checked_cast<PresentationChain*>(presentationChain);
+        assert(!_activeFrameContext);
+        _activeFrameContext = nullptr;
+        auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
+        _activeFrameContext = presChain.GetEGLContext();
+        _activeFrameRenderbuffer = presChain.GetFrameRenderbuffer();
+        if (!_activeFrameContext) {
+            _activeFrameContext = _sharedContext;
+        }
+        _activeFrameBuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
 
             //
             //      Make the immediate context the current context
             //      (with the presentation chain surface
             //
-        EGL::Surface underlyingSurface = presChain->GetUnderlyingSurface();
-        if (!eglMakeCurrent(    _display,   
-                                underlyingSurface, 
-                                underlyingSurface, 
-                                _immediateContext->GetUnderlying())) {
+        if (!eglMakeCurrent(    *presChain.GetSurface(),
+                                (void*)_activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle(), 
+                                (void*)_activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle(), 
+                                _activeFrameContext.get())) {
             Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
         }
 
         EGLint width, height;
-        eglQuerySurface(_display, underlyingSurface, EGL_WIDTH, &width);
-        eglQuerySurface(_display, underlyingSurface, EGL_HEIGHT, &height);
+        eglQuerySurface(*presChain.GetSurface(), (void*)_activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle(), EGL_WIDTH, &width);
+        eglQuerySurface(*presChain.GetSurface(), (void*)_activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle(), EGL_HEIGHT, &height);
         
         glViewport(0, 0, width, height);
         glClearColor(1.f, 0.5f, 0.5f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
+
+        glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER,  GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+
+        return _activeFrameRenderbuffer;
     }
 
-    void* Device::QueryInterface(const GUID& guid)
+    void ThreadContext::Present(IPresentationChain& presentationChain) {
+        auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
+        assert(!presChain.GetEGLContext() || presChain.GetEGLContext() == _activeFrameContext);
+        auto deviceStrong = _device.lock();
+        if (!deviceStrong) {
+            return;
+        }
+        auto &device = *deviceStrong;
+		if (_activeFrameContext) {
+            glBindRenderbuffer(GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+            eglSwapBuffers(*(device.GetDisplay()), (void*)_activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+        }
+        _activeFrameRenderbuffer.reset();
+        _activeFrameBuffer.reset();
+        _activeFrameContext = nullptr;
+        eglMakeCurrent(*(device.GetDisplay()),
+            EGL_NO_SURFACE,
+            EGL_NO_SURFACE,
+            _sharedContext.get());
+    }
+
+    bool                        ThreadContext::IsImmediate() const { return false; }
+    ThreadContextStateDesc      ThreadContext::GetStateDesc() const { return {}; }
+    std::shared_ptr<IDevice>    ThreadContext::GetDevice() const { return _device.lock(); }
+    void                        ThreadContext::IncrFrameId() {}
+    void                        ThreadContext::InvalidateCachedState() const {}
+
+    ThreadContext::ThreadContext(const std::shared_ptr<EGLContext> &sharedContext, const std::shared_ptr<Device>& device)
+    : _device(device)
+    , _sharedContext(sharedContext)
+    {}
+
+    ThreadContext::~ThreadContext() {}
+
+    IAnnotator&                 ThreadContext::GetAnnotator()
+    {
+        if (!_annotator) {
+            auto d = _device.lock();
+            assert(d);
+            _annotator = CreateAnnotator(*d);
+        }
+        return *_annotator;
+    }
+
+    void* Device::QueryInterface(size_t guid)
     {
         return nullptr;
     }
 
-    #if !FLEX_USE_VTABLE_Device
+    DeviceDesc Device::GetDesc() {
+        return DeviceDesc { "OpenGLES-EGL", "", "" };
+    }
+
+    #if !FLEX_USE_VTABLE_Device && 0
         namespace Detail
         {
             void* Ignore_Device::QueryInterface(const GUID& guid)
@@ -257,7 +319,7 @@ namespace RenderCore
         }
     #endif
     
-    void* DeviceOpenGLES::QueryInterface(const GUID& guid)
+    void* DeviceOpenGLES::QueryInterface(size_t guid)
     {
         // if (guid == __uuidof(IDeviceOpenGLES)) {
         //     return (IDeviceOpenGLES*)this;
@@ -269,26 +331,46 @@ namespace RenderCore
     DeviceOpenGLES::DeviceOpenGLES() {}
     DeviceOpenGLES::~DeviceOpenGLES() {}
 
-    intrusive_ptr<Metal_OpenGLES::DeviceContext>   DeviceOpenGLES::CreateDeferredContext()
+    std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
-        EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
-        EGL::Context contextTemp = eglCreateContext(_display, _config, _immediateContext->GetUnderlying(), contextAttribs);
+        return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        /*EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
+        EGLContext contextTemp = eglCreateContext(_display, _config, _immediateContext->GetUnderlying(), contextAttribs);
         if (contextTemp == EGL_NO_CONTEXT) {
             Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
         }
 
-        return moveptr(new Metal_OpenGLES::DeviceContext(_display, contextTemp));
+        return moveptr(new Metal_OpenGLES::DeviceContext(_display, contextTemp));*/
     }
 
-    intrusive_ptr<Metal_OpenGLES::DeviceContext>   DeviceOpenGLES::GetImmediateContext()
+    std::shared_ptr<IThreadContext>   Device::GetImmediateContext() {
+        if (!_immediateContext) {
+            _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        }
+        return _immediateContext;
+    }
+    std::shared_ptr<IThreadContext>   DeviceOpenGLES::GetImmediateContext()
     {
+        if (!_immediateContext) {
+            _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        }
         return _immediateContext;
     }
 
+	IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
+	{
+		return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
+	} 
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PresentationChain::PresentationChain(EGL::Display display, EGL::Config config, const void* platformValue)
-    : _display(display)
+    PresentationChain::PresentationChain(
+            Metal_OpenGLES::ObjectFactory &objFactory,
+            std::shared_ptr<EGLContext> eglContext,
+            std::shared_ptr<EGLDisplay> display,
+            std::shared_ptr<EGLConfig> config,
+            const void* platformValue, unsigned width, unsigned height)
+    : _eglContext(eglContext)
     {
             //
             //      Create the main output surface
@@ -309,42 +391,107 @@ namespace RenderCore
 
             EGL_NONE,                           EGL_NONE
         };
-        EGL::Surface surfaceTemp = eglCreateWindowSurface(
-            display, config, 
+        EGLSurface surfaceTemp = eglCreateWindowSurface(
+            *display, *config, 
             EGLNativeWindowType(platformValue), surfaceAttribList);
         if (surfaceTemp == EGL_NO_SURFACE) {
             Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface"));
         }
 
-        _surface = surfaceTemp;
+        _surface = std::make_shared<EGLSurface>(surfaceTemp);
+
+        if (!eglMakeCurrent(*display, *_surface, *_surface, *eglContext)) {
+            Throw(::Exceptions::BasicLabel("Failure making EGL window surface current"));
+        }
+
+        auto frameRenderbuffer = objFactory.CreateRenderBuffer();
+        glBindRenderbuffer(GL_RENDERBUFFER, frameRenderbuffer->AsRawGLHandle());
+        glRenderbufferStorage(GL_RENDERBUFFER,  GL_RGBA8, width, height);
+
+        _frameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(frameRenderbuffer);
+
+        _desc = std::make_shared<PresentationChainDesc>();
+        auto resDesc = ExtractDesc(*_frameRenderbuffer);
+        assert(resDesc._type == ResourceDesc::Type::Texture);
+        _desc->_width = resDesc._textureDesc._width;
+        _desc->_height = resDesc._textureDesc._height;
+        _desc->_format = resDesc._textureDesc._format;
+        _desc->_samples = resDesc._textureDesc._samples;
     }
 
+    const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const {
+        return _desc;
+    }
+
+
+    void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/ {
+        assert(0); // not implemented
+    }
     PresentationChain::~PresentationChain()
     {
-        if (_surface != EGL_NO_SURFACE) {
-            EGLBoolean result = eglDestroySurface(_display, _surface);
+        /*if (_surface && *_surface != EGL_NO_SURFACE) {
+            EGLBoolean result = eglDestroySurface(*_display, *_surface);
             (void)result; assert(result);
             _surface = nullptr;
-        }
+        }*/
     }
 
-    void            PresentationChain::Present()
+    ThreadContextOpenGLES::ThreadContextOpenGLES(const std::shared_ptr<EGLContext> &sharedContext, const std::shared_ptr<Device>& device)
+    : ThreadContext(sharedContext, device)
+    {
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>();
+    }
+
+    ThreadContextOpenGLES::~ThreadContextOpenGLES() {}
+
+    const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  ThreadContextOpenGLES::GetDeviceContext()
+    {
+        return _deviceContext;
+    }
+
+    void*       ThreadContextOpenGLES::QueryInterface(size_t guid)
+    {
+        if (guid == typeid(IThreadContextOpenGLES).hash_code()) {
+            return (IThreadContextOpenGLES*)this;
+        }
+        return ThreadContext::QueryInterface(guid);
+    }
+
+    /*void            PresentationChain::Present()
     {
         EGLBoolean result = eglSwapBuffers(_display, _surface);
         (void)result; assert(result);
-    }
+    }*/
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
+    Metal_OpenGLES::DeviceContext *DeviceOpenGLES::GetImmediateDeviceContext() {
+        return nullptr;
+    }
+    //
+    //
 
-    render_dll_export std::unique_ptr<IDevice>    CreateDevice()
+    render_dll_export std::shared_ptr<IDevice>    CreateDevice()
     {
-        return std::make_unique<DeviceOpenGLES>();
+        return std::make_shared<DeviceOpenGLES>();
     }
 
-    render_dll_export Metal_OpenGLES::GlobalResources&        GetGlobalResources()
+    void*                       ThreadContext::QueryInterface(size_t guid) {
+        if (guid == typeid(EGLContext).hash_code()) {
+            return (EGLContext*)(*_sharedContext);
+        }
+        return nullptr;
+    }
+
+    /*render_dll_export Metal_OpenGLES::GlobalResources&        GetGlobalResources()
     {
         static Metal_OpenGLES::GlobalResources gGlobalResources;
         return gGlobalResources;
-    }
-}
+    }*/
+} }
 
+namespace RenderCore
+{
+    IDeviceOpenGLES::~IDeviceOpenGLES() {}
+    IThreadContextOpenGLES::~IThreadContextOpenGLES() {}
+    void *IThreadContext::QueryInterface(size_t guid) {return nullptr;}
+}

@@ -3,10 +3,15 @@
 
 #include "../IDevice.h"
 #include "IDeviceOpenGLES.h"
+#include "ObjectFactory.h"
+#include "Metal/Resource.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
+#include "../IThreadContext.h"
 
-namespace RenderCore
+#include <EGL/egl.h>
+
+namespace RenderCore { namespace ImplOpenGLES
 {
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -15,14 +20,29 @@ namespace RenderCore
     public:
         void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
+        const std::shared_ptr<EGLContext> GetEGLContext() const {return _eglContext; }
+        const std::shared_ptr<Metal_OpenGLES::Resource>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
+        const std::shared_ptr<EGLSurface>& GetSurface() const { return _surface; }
 
-        PresentationChain();
+        PresentationChain(
+                Metal_OpenGLES::ObjectFactory &objFactory,
+                std::shared_ptr<EGLContext> sharedContext,
+                std::shared_ptr<EGLDisplay> display,
+                std::shared_ptr<EGLConfig> config,
+                const void *platformValue, unsigned width, unsigned height);
         ~PresentationChain();
+    private:
+       std::shared_ptr<EGLSurface> _surface;
+       std::shared_ptr<EGLContext> _eglContext;
+       std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
+       std::shared_ptr<PresentationChainDesc> _desc;
     };
+
+    class Device;
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class ThreadContext : public Basic_ThreadContext
+    class ThreadContext : public Base_ThreadContext
     {
     public:
         IResourcePtr BeginFrame(IPresentationChain& presentationChain);
@@ -33,19 +53,40 @@ namespace RenderCore
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        IncrFrameId();
         void                        InvalidateCachedState() const;
+        virtual void *        QueryInterface(size_t guid);
 
         IAnnotator&                 GetAnnotator();
 
-        ThreadContext();
+        ThreadContext(const std::shared_ptr<EGLContext> &sharedContext, const std::shared_ptr<Device> &device);
         ~ThreadContext();
+
+    private:
+        std::weak_ptr<Device> _device;
+        std::unique_ptr<IAnnotator> _annotator;
+        std::shared_ptr<EGLContext> _sharedContext;
+        std::shared_ptr<EGLContext> _activeFrameContext;
+        std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
     };
+
+   
+    class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
+    {
+    public:
+        const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
+        virtual void*       QueryInterface(size_t guid);
+        ThreadContextOpenGLES(const std::shared_ptr<EGLContext> &sharedContext, const std::shared_ptr<Device>& device);
+        ~ThreadContextOpenGLES();
+    private:
+        std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
+    }; 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device :  public Base_Device, noncopyable
+    class Device :  public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
-        std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformValue);
+        std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformValue, unsigned width, unsigned height);
         void* QueryInterface(size_t guid);
 
         std::shared_ptr<IThreadContext> GetImmediateContext();
@@ -53,24 +94,31 @@ namespace RenderCore
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
         IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
-        DeviceDesc GetDesc() IPURE;
+        DeviceDesc GetDesc();
+
+        const std::shared_ptr<EGLDisplay> GetDisplay() const {return _display;};
 
         Device();
         ~Device();
 
     protected:
-        intrusive_ptr<Metal_OpenGLES::DeviceContext>   _immediateContext;
+        std::shared_ptr<ThreadContextOpenGLES>   _immediateContext;
+		std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
+		std::shared_ptr<EGLContext> _sharedContext;
+        std::shared_ptr<EGLDisplay> _display;
+        std::shared_ptr<EGLConfig> _config;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
     {
     public:
-        intrusive_ptr<Metal_OpenGLES::DeviceContext>    GetImmediateContext();
+        std::shared_ptr<IThreadContext>    GetImmediateContext();
         virtual void* QueryInterface(size_t guid);
+        virtual Metal_OpenGLES::DeviceContext *GetImmediateDeviceContext();
 
         DeviceOpenGLES();
         ~DeviceOpenGLES();
     };
 
 ////////////////////////////////////////////////////////////////////////////////
-}
+} }

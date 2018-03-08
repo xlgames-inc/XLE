@@ -350,10 +350,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::R8G8B8A8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGBA8_SNORM};
         case Format::R8G8B8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGB8_SNORM};
 
-        case Format::RGB_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG};
-        case Format::RGBA_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG};
-        case Format::RGB_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG};
-        case Format::RGBA_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG};
+        //case Format::RGB_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG};
+        //case Format::RGBA_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG};
+        //case Format::RGB_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG};
+        //case Format::RGBA_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG};
         case Format::RGBA_PVRTC2_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV2_IMG};
         case Format::RGBA_PVRTC2_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG};
         case Format::RGB_ETC1_UNORM: return {0, 0, GL_ETC1_RGB8_OES};
