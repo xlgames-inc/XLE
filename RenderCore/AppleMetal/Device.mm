@@ -208,6 +208,10 @@ namespace RenderCore { namespace ImplAppleMetal
         // metalLayer.colorSpace = nil;     <-- only OSX?
 
         _layer = metalLayer;
+
+        _desc = std::make_shared<PresentationChainDesc>();
+        _desc->_width = width;
+        _desc->_height = height;
     }
 
     PresentationChain::~PresentationChain()
@@ -221,8 +225,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
-        static std::shared_ptr<PresentationChainDesc> dummy;
-        return dummy;
+        return _desc;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

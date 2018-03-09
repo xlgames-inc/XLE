@@ -43,6 +43,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
     private:
         TBC::OCPtr<CAMetalLayer> _layer;
+        std::shared_ptr<PresentationChainDesc> _desc;
     };
 
 ////////////////////////////////////////////////////////////////////////////////

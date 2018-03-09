@@ -102,6 +102,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     ShaderProgram::ShaderProgram(const std::string& vertexFunctionName, const std::string& fragmentFunctionName)
     {
+        assert(s_defaultLibrary);
         _vf = [s_defaultLibrary newFunctionWithName:[NSString stringWithCString:vertexFunctionName.c_str() encoding:NSUTF8StringEncoding]];
         _ff = [s_defaultLibrary newFunctionWithName:[NSString stringWithCString:fragmentFunctionName.c_str() encoding:NSUTF8StringEncoding]];
 
