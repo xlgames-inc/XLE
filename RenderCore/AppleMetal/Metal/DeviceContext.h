@@ -98,6 +98,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
+        void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
 
         void            HoldDevice(id<MTLDevice>);

@@ -420,6 +420,19 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->ClearTextureBindings();
     }
 
+    void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
+    {
+        FinalizePipeline();
+        assert(_pimpl->_commandEncoder);
+
+        [_pimpl->_commandEncoder drawPrimitives:_pimpl->_primitiveType
+                                    vertexStart:startVertexLocation
+                                    vertexCount:vertexCount
+                                  instanceCount:instanceCount];
+
+        _pimpl->ClearTextureBindings();
+    }
+
     void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);
