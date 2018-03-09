@@ -18,22 +18,22 @@ namespace RenderCore { namespace ImplOpenGLES
     class PresentationChain : public Base_PresentationChain
     {
     public:
-        void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
+        void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        const std::shared_ptr<EGLContext> GetEGLContext() const {return _eglContext; }
+        EGLContext GetEGLContext() const {return _eglContext; }
         const std::shared_ptr<Metal_OpenGLES::Resource>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
-        const std::shared_ptr<EGLSurface>& GetSurface() const { return _surface; }
+        EGLSurface GetSurface() const { return _surface; }
 
         PresentationChain(
                 Metal_OpenGLES::ObjectFactory &objFactory,
-                std::shared_ptr<EGLContext> sharedContext,
-                std::shared_ptr<EGLDisplay> display,
-                std::shared_ptr<EGLConfig> config,
+                EGLContext sharedContext,
+                EGLDisplay display,
+                EGLConfig config,
                 const void *platformValue, unsigned width, unsigned height);
         ~PresentationChain();
     private:
-       std::shared_ptr<EGLSurface> _surface;
-       std::shared_ptr<EGLContext> _eglContext;
+       EGLSurface _surface;
+       EGLContext _eglContext;
        std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
        std::shared_ptr<PresentationChainDesc> _desc;
     };
@@ -53,18 +53,18 @@ namespace RenderCore { namespace ImplOpenGLES
         std::shared_ptr<IDevice>    GetDevice() const;
         void                        IncrFrameId();
         void                        InvalidateCachedState() const;
-        virtual void *        QueryInterface(size_t guid);
+        virtual void *              QueryInterface(size_t guid);
 
         IAnnotator&                 GetAnnotator();
 
-        ThreadContext(const std::shared_ptr<EGLContext> &sharedContext, const std::shared_ptr<Device> &device);
+        ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device> &device);
         ~ThreadContext();
 
     private:
         std::weak_ptr<Device> _device;
         std::unique_ptr<IAnnotator> _annotator;
-        std::shared_ptr<EGLContext> _sharedContext;
-        std::shared_ptr<EGLContext> _activeFrameContext;
+        EGLContext _sharedContext;
+        EGLContext _activeFrameContext;
         std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
         intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
     };
@@ -75,7 +75,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
         virtual void*       QueryInterface(size_t guid);
-        ThreadContextOpenGLES(const std::shared_ptr<EGLContext> &sharedContext, const std::shared_ptr<Device>& device);
+        ThreadContextOpenGLES(EGLContext sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
     private:
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
@@ -96,7 +96,7 @@ namespace RenderCore { namespace ImplOpenGLES
         IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
         DeviceDesc GetDesc();
 
-        const std::shared_ptr<EGLDisplay> GetDisplay() const {return _display;};
+        EGLDisplay GetDisplay() const {return _display;};
 
         Device();
         ~Device();
@@ -104,9 +104,9 @@ namespace RenderCore { namespace ImplOpenGLES
     protected:
         std::shared_ptr<ThreadContextOpenGLES>   _immediateContext;
 		std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
-		std::shared_ptr<EGLContext> _sharedContext;
-        std::shared_ptr<EGLDisplay> _display;
-        std::shared_ptr<EGLConfig> _config;
+		EGLContext _sharedContext;
+        EGLDisplay _display;
+        EGLConfig  _config;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
