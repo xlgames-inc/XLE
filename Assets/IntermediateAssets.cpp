@@ -269,7 +269,7 @@ namespace Assets { namespace IntermediateAssets
 		BasicFile file;
 		if (MainFileSystem::TryOpen(file, buffer, "wb") != IFileSystem::IOReason::Success)
 			return nullptr;
-		auto stream = OpenFileOutput(file);
+		auto stream = OpenFileOutput(std::move(file));
         data.SaveToOutputStream(*stream);
 
         return result;
@@ -351,11 +351,12 @@ namespace Assets { namespace IntermediateAssets
 
                         // Opening without sharing to prevent other instances of XLE apps from using
                         // the same directory.
-                    _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
-					auto stream = OpenFileOutput(*_markerFile);
+                    auto stream = OpenFileOutput(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
                     OutputStreamFormatter formatter(*stream);
                     formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);
                     formatter.Flush();
+
+                    _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
 					break;
 				}
 			}

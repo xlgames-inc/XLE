@@ -14,12 +14,13 @@ namespace RenderCore
 
     std::shared_ptr<IDevice>    CreateDevice(UnderlyingAPI api)
     {
-         switch (api) {
-         default:
-         //case UnderlyingAPI::DX11: return ImplDX11::CreateDevice();
-         //case UnderlyingAPI::Vulkan: return ImplVulkan::CreateDevice();
-         case UnderlyingAPI::OpenGLES: return ImplOpenGLES::CreateDevice();
-         }
+        // switch (api) {
+        // default:
+        // case UnderlyingAPI::DX11: return ImplDX11::CreateDevice();
+        // case UnderlyingAPI::Vulkan: return ImplVulkan::CreateDevice();
+        // case UnderlyingAPI::OpenGLES: return ImplOpenGLES::CreateDevice();
+        // }
+        return nullptr;
     }
 }
 

@@ -70,7 +70,7 @@ namespace Utility
 			return { (uint64_t)fileData.st_size, (uint64_t)fileData.st_mtime, (uint64_t)fileData.st_ctime };
 		}
 
-		std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
+		/*std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
 		{
             	struct stat fdata;
 			auto result = stat((const char*)filename, &fdata);
@@ -82,7 +82,7 @@ namespace Utility
 		{
 			assert(0);
             	return {};
-		}
+		}*/
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
 		{

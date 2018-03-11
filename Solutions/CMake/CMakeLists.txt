@@ -3,6 +3,8 @@ project(GlobalCMake CXX C)
 
 message("Build type: ${CMAKE_BUILD_TYPE}")
 
+if (FALSE)
+
 # Unset all of the default projection configuration settings provided by cmake
 # Note that we have to explicitly set the exception handling settings for visual studio to get around
 # a hack in the cmake generator for visual studio that always sets the exception handling key to
@@ -33,6 +35,8 @@ endif ()
 
 set(WARNING_FLAGS "-Wno-unknown-pragmas -Werror=implicit-function-declaration -Wno-unused-local-typedef")
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -std=c++14 ${WARNING_FLAGS}")
+
+endif()
 
 get_filename_component(XLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
 get_filename_component(FOREIGN_DIR "${XLE_DIR}/Foreign/" ABSOLUTE)
@@ -69,6 +73,7 @@ add_subdirectory(../../Assets Assets)
 add_subdirectory(../../ConsoleRig ConsoleRig)
 add_subdirectory(../../RenderCore RenderCore)
 add_subdirectory(../../Foreign ForeignMisc)
+add_subdirectory(../../Subset XLESubset)
 #add_subdirectory(../../ShaderParser ShaderParser)
 #add_subdirectory(../../Samples/ShaderScan Samples/ShaderScan)
 

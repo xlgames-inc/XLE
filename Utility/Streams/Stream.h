@@ -49,7 +49,7 @@ namespace Utility
     };
 
     std::unique_ptr<OutputStream>   OpenFileOutput(const char* path, const char* mode);
-    std::unique_ptr<OutputStream>   OpenFileOutput(const BasicFile&);
+    std::unique_ptr<OutputStream>   OpenFileOutput(BasicFile&&);
 
 }
 

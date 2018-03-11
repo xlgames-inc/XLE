@@ -1,5 +1,4 @@
 file(GLOB Src "*.cpp" "OpenGLES/Metal/*.cpp")
-set(Src "${Src}" "Init.cpp")
 set(Src "${Src}" "OpenGLES/Device_EGL.cpp")
 set(Src "${Src}" "GeoProc/GeometryAlgorithm.cpp" "GeoProc/GeoProcUtil.cpp" "GeoProc/MeshDatabase.cpp" "Assets/LocalCompiledShaderSource.cpp" "Assets/RawMaterial.cpp" "Techniques/PredefinedCBLayout.cpp" "Techniques/RenderPass.cpp" "Techniques/TechniqueMaterial.cpp" "OpenGLES/Metal/PipelineLayout.cpp" "OpenGLES/Metal/InputLayout.cpp")
 file(GLOB Headers "*.h" "Techniques/*.h")

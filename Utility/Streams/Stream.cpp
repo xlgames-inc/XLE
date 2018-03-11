@@ -72,7 +72,7 @@ public:
     virtual void Flush();
 
     FileOutputStream(const char filename[], const char openMode[]);
-    FileOutputStream(const BasicFile& copyFrom);
+    FileOutputStream(BasicFile&& moveFrom);
 private:
     BasicFile _file;
 };
@@ -81,8 +81,8 @@ FileOutputStream::FileOutputStream(const char filename[], const char openMode[])
 : _file(RawFS::BasicFile((const utf8*)filename, openMode, FileShareMode::Read))
 {}
 
-FileOutputStream::FileOutputStream(const BasicFile& copyFrom)
-: _file(copyFrom)
+FileOutputStream::FileOutputStream(BasicFile&& moveFrom)
+: _file(std::move(moveFrom))
 {}
 
 auto FileOutputStream::Tell() -> size_type
@@ -139,9 +139,9 @@ std::unique_ptr<OutputStream> OpenFileOutput(const char* path, const char* mode)
     return std::make_unique<FileOutputStream>(path, mode);
 }
 
-std::unique_ptr<OutputStream> OpenFileOutput(const BasicFile& copyFrom)
+std::unique_ptr<OutputStream> OpenFileOutput(BasicFile&& moveFrom)
 {
-    return std::make_unique<FileOutputStream>(copyFrom);
+    return std::make_unique<FileOutputStream>(std::move(moveFrom));
 }
 
 // --------------------------------------------------------------------------
