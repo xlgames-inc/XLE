@@ -17,7 +17,23 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         SetUniformCommandGroup result;
         auto s = LowerBound(_structs, uniformStructName);
-        if (s == _structs.end()) return result;
+        if (s == _structs.end()) {
+#if DEBUG
+            // Try internals instead in a debug build, and throw an exception if found
+            for (const auto &ele : inputElements) {
+                const auto &found = FindUniform(ele._semanticHash);
+                if (found._bindingName == 0) {
+                    continue;
+                }
+                auto basicType = GLUniformTypeAsTypeDesc(found._type);
+                auto inputBasicType = AsImpliedType(ele._nativeFormat);
+                if (basicType == inputBasicType) {
+                    Throw(Exceptions::BasicLabel("Found a uniform outside of a struct. All uniforms must be located within structs. Problem uniform: %s", found._name));
+                }
+            }
+#endif
+            return result;
+        }
 
         for (const auto& i:s->second._uniforms) {
             auto bindingName = i._bindingName;
