@@ -170,7 +170,7 @@ namespace RenderCore { namespace ImplOpenGLES
             //          One context to rule them all.
             //
 
-        EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
+        EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE, EGL_NONE };
         _sharedContext = eglCreateContext(_display, _config, EGL_NO_CONTEXT, contextAttribs);
         if (_sharedContext == EGL_NO_CONTEXT) {
             Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
@@ -245,7 +245,7 @@ namespace RenderCore { namespace ImplOpenGLES
         eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_HEIGHT, &height);
         
         glViewport(0, 0, width, height);
-        glClearColor(1.f, 0.5f, 0.5f, 1.f);
+        glClearColor(1.f, 1.0f, 1.0f, 1.f);
         glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
 
         glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
@@ -263,15 +263,21 @@ namespace RenderCore { namespace ImplOpenGLES
         }
         auto &device = *deviceStrong;
 		if (_activeFrameContext) {
-            glBindRenderbuffer(GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+            glBlitFramebuffer(
+                    0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
+                    0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
+                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
             eglSwapBuffers(device.GetDisplay(), presChain.GetSurface());
         }
         _activeFrameRenderbuffer.reset();
         _activeFrameBuffer.reset();
         _activeFrameContext = nullptr;
         eglMakeCurrent(device.GetDisplay(),
-            EGL_NO_SURFACE,
-            EGL_NO_SURFACE,
+            presChain.GetSurface(),
+            presChain.GetSurface(),
             _sharedContext);
     }
 
