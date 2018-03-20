@@ -12,7 +12,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void SamplerState::Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws
     {
-        if (_prebuiltSamplerMipmaps) {
+        if (false) { // _prebuiltSamplerMipmaps) {
             glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
         } else {
             #if defined(_DEBUG)

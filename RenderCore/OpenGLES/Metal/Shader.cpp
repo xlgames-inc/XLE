@@ -109,7 +109,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             // hack for version string for OSX
             const GLchar* versionDecl = isFragmentShader ? "#version 120\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#version 120\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 0\n";
         #else
-            const GLchar* versionDecl = isFragmentShader ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#version 300 es\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 0\n";
+            const GLchar* versionDecl = isFragmentShader ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 1\n" : "#version 300 es\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 1\n";
         #endif
 
         const GLchar* shaderSourcePointers[3] { versionDecl, definesPreambleStr.data(), (const GLchar*)sourceCode };
@@ -129,7 +129,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errors->data());
 
                     std::cout << "Failure in shader:" << std::endl << versionDecl << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
-                    std::cout << "Errors:" << std::endl << (const char*)errors->data();
+                    const char* e = (const char*)errors->data();
+                    std::cout << "Errors:" << std::endl << e << std::endl;
                 }
             #endif
 

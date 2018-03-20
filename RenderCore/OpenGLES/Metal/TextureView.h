@@ -34,7 +34,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
     public:
         bool IsGood() const { return _resource && (_resource->IsBackBuffer() || _resource->GetTexture().get() != nullptr || _resource->GetRenderBuffer().get() != nullptr); }
-        const std::shared_ptr<Resource>& GetResource() { return _resource; }
+        const std::shared_ptr<Resource>& GetResource() const { return _resource; }
 
         RenderTargetView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
         explicit RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
@@ -50,7 +50,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
     public:
         bool IsGood() const { return _resource && (_resource->GetTexture().get() != nullptr || _resource->GetRenderBuffer().get() != nullptr); }
-        const std::shared_ptr<Resource>& GetResource() { return _resource; }
+        const std::shared_ptr<Resource>& GetResource() const { return _resource; }
 
         DepthStencilView(const ObjectFactory& factory, const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
         explicit DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());

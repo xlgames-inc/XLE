@@ -13,7 +13,7 @@ namespace Utility { namespace Threading
     #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
         #define xl_thread_call __stdcall
     #else
-        #define xl_thread_call 
+        #define xl_thread_call __attribute((stdcall))
     #endif
 
     class Thread

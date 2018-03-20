@@ -49,6 +49,7 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Failure in eglGetConfigs"));
         }
 
+#if 0
         for (auto i = configs.begin(); i!=configs.end(); ++i) {
             EGLint bufferSize, redSize, greenSize, blueSize, luminanceSize, alphaSize, alphaMaskSize;
             EGLint bindToTextureRGB, bindToTextureRGBA, colorBufferType, configCaveat, configId, conformant;
@@ -106,6 +107,7 @@ namespace RenderCore { namespace ImplOpenGLES
                 OutputDebugString(outputString.c_str());
             #endif
         }
+#endif
 
 
             //
@@ -215,24 +217,19 @@ namespace RenderCore { namespace ImplOpenGLES
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain &presentationChain)
     {
-        assert(!_activeFrameContext);
-        _activeFrameContext = nullptr;
-        auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
-        _activeFrameContext = presChain.GetEGLContext();
-        _activeFrameRenderbuffer = presChain.GetFrameRenderbuffer();
-        if (!_activeFrameContext) {
-            _activeFrameContext = _sharedContext;
-        }
-        _activeFrameBuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
         auto deviceStrong = _device.lock();
         if (!deviceStrong) {
             Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
         }
 
+        assert(!_activeFrameContext);        
+        _activeFrameContext = deviceStrong->GetSharedContext();
+
             //
             //      Make the immediate context the current context
             //      (with the presentation chain surface
             //
+        auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
         if (!eglMakeCurrent(    deviceStrong->GetDisplay(),
                                 presChain.GetSurface(),
                                 presChain.GetSurface(),
@@ -244,41 +241,66 @@ namespace RenderCore { namespace ImplOpenGLES
         eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_WIDTH, &width);
         eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_HEIGHT, &height);
         
-        glViewport(0, 0, width, height);
-        glClearColor(1.f, 1.0f, 1.0f, 1.f);
-        glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
+        // auto tex = Metal_OpenGLES::GetObjectFactory().CreateTexture();
+        // _activeFrameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(
+        //    tex,
+        //    CreateDesc(
+        //        BindFlag::RenderTarget,
+        //        0, GPUAccess::Write,
+        //        TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),
+        //        "MainRenderbuffer"));
+        // glBindTexture(GL_TEXTURE_2D, tex->AsRawGLHandle());
+        // eglBindTexImage(deviceStrong->GetDisplay(), presChain.GetSurface(), tex->AsRawGLHandle());
 
-        glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER,  GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+        auto backBufferDesc = CreateDesc(
+            BindFlag::RenderTarget, 0, GPUAccess::Write,
+            TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
+            "backbuffer");
+        _activeFrameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(
+            Metal_OpenGLES::Resource::CreateBackBuffer(backBufferDesc));
+
+        glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        glViewport(0, 0, width, height);
+
+        // glClearColor(1.f, 1.0f, 1.0f, 1.f);
+        // glClearDepthf(1.0f);
+        // glClear(GL_COLOR_BUFFER_BIT|GL_DEPTH_BUFFER_BIT|GL_STENCIL_BUFFER_BIT);
+
+        /*glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER,  GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());*/
 
         return _activeFrameRenderbuffer;
     }
 
     void ThreadContext::Present(IPresentationChain& presentationChain) {
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
-        assert(!presChain.GetEGLContext() || presChain.GetEGLContext() == _activeFrameContext);
+
         auto deviceStrong = _device.lock();
         if (!deviceStrong) {
             Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
         }
-        auto &device = *deviceStrong;
+        /*if (_activeFrameRenderbuffer) {
+            eglReleaseTexImage(
+                deviceStrong->GetDisplay(), presChain.GetSurface(), 
+                _activeFrameRenderbuffer->GetTexture()->AsRawGLHandle());
+                _activeFrameRenderbuffer.reset();
+        }*/
 		if (_activeFrameContext) {
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
+            /*glBindFramebuffer(GL_READ_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
             glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
             glBlitFramebuffer(
                     0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
                     0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
                     GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-            eglSwapBuffers(device.GetDisplay(), presChain.GetSurface());
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);*/
+            eglSwapBuffers(deviceStrong->GetDisplay(), presChain.GetSurface());
+            _activeFrameContext = nullptr;
         }
-        _activeFrameRenderbuffer.reset();
-        _activeFrameBuffer.reset();
-        _activeFrameContext = nullptr;
-        eglMakeCurrent(device.GetDisplay(),
-            presChain.GetSurface(),
-            presChain.GetSurface(),
-            _sharedContext);
+        /*eglMakeCurrent(
+            deviceStrong->GetDisplay(),
+            EGL_NO_SURFACE,
+            EGL_NO_SURFACE,
+            _sharedContext);*/
     }
 
     bool                        ThreadContext::IsImmediate() const { return false; }
@@ -290,7 +312,9 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContext::ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device>& device)
     : _sharedContext(sharedContext)
     , _device(device)
-    {}
+    {
+        _activeFrameContext = nullptr;
+    }
 
     ThreadContext::~ThreadContext() {}
 
@@ -374,7 +398,6 @@ namespace RenderCore { namespace ImplOpenGLES
             EGLDisplay display,
             EGLConfig config,
             const void* platformValue, unsigned width, unsigned height)
-    : _eglContext(eglContext)
     {
             //
             //      Create the main output surface
@@ -408,19 +431,22 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Failure making EGL window surface current"));
         }
 
-        auto frameRenderbuffer = objFactory.CreateRenderBuffer();
-        glBindRenderbuffer(GL_RENDERBUFFER, frameRenderbuffer->AsRawGLHandle());
-        glRenderbufferStorage(GL_RENDERBUFFER,  GL_RGBA8, width, height);
+        #if 0
+            auto frameRenderbuffer = objFactory.CreateRenderBuffer();
+            glBindRenderbuffer(GL_RENDERBUFFER, frameRenderbuffer->AsRawGLHandle());
+            glRenderbufferStorage(GL_RENDERBUFFER, GL_RGBA8, width, height);
 
-        _frameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(frameRenderbuffer);
+            _frameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(frameRenderbuffer);
 
-        _desc = std::make_shared<PresentationChainDesc>();
-        auto resDesc = ExtractDesc(*_frameRenderbuffer);
-        assert(resDesc._type == ResourceDesc::Type::Texture);
-        _desc->_width = resDesc._textureDesc._width;
-        _desc->_height = resDesc._textureDesc._height;
-        _desc->_format = resDesc._textureDesc._format;
-        _desc->_samples = resDesc._textureDesc._samples;
+            _desc = std::make_shared<PresentationChainDesc>();
+            auto resDesc = ExtractDesc(*_frameRenderbuffer);
+            assert(resDesc._type == ResourceDesc::Type::Texture);
+            _desc->_width = resDesc._textureDesc._width;
+            _desc->_height = resDesc._textureDesc._height;
+            _desc->_format = resDesc._textureDesc._format;
+            _desc->_samples = resDesc._textureDesc._samples;
+        #else
+        #endif
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const {
@@ -429,7 +455,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/ {
-        assert(0); // not implemented
+        //assert(0); // not implemented
     }
     PresentationChain::~PresentationChain()
     {

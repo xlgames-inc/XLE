@@ -6,7 +6,8 @@ file(GLOB ThreadingSrc "Threading/*.cpp")
 file(GLOB ProfilingSrc "Profiling/*.cpp")
 file(GLOB MetaSrc "Meta/*.cpp")
 file(GLOB LinuxSrc "Linux/*.cpp" "Streams/Linux/*.cpp")
+file(GLOB WinAPISrc "WinAPI/*.cpp" "Streams/WinAPI/*.cpp" "Threading/WinAPI/*.cpp")
 
-BasicLibrary(Utility "${Src};${Headers};${StreamsSrc};${ThreadingSrc};${LinuxSrc};${ProfilingSrc};${MetaSrc}")
+BasicLibrary(Utility "${Src};${Headers};${StreamsSrc};${ThreadingSrc};${WinAPISrc};${ProfilingSrc};${MetaSrc}")
 
 include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})

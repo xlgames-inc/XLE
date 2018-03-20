@@ -180,7 +180,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             Throw(::Exceptions::BasicLabel("Attempting to set invalid subpass"));
 
         const auto& s = _subpasses[subpassIndex];
-        glBindFramebuffer(GL_FRAMEBUFFER, s._frameBuffer->AsRawGLHandle());
+        // DavidJ -- hack because can't figure out how to get this working correctly using EGL
+        if (s._rtvCount == 1 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->IsBackBuffer()) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        } else {
+            glBindFramebuffer(GL_FRAMEBUFFER, s._frameBuffer->AsRawGLHandle());
+        }
+        // glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
         for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
             auto attachmentIdx = s._rtvs[rtv];

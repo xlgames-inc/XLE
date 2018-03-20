@@ -20,7 +20,6 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        EGLContext GetEGLContext() const {return _eglContext; }
         const std::shared_ptr<Metal_OpenGLES::Resource>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
         EGLSurface GetSurface() const { return _surface; }
 
@@ -33,7 +32,6 @@ namespace RenderCore { namespace ImplOpenGLES
         ~PresentationChain();
     private:
        EGLSurface _surface;
-       EGLContext _eglContext;
        std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
        std::shared_ptr<PresentationChainDesc> _desc;
     };
@@ -63,10 +61,11 @@ namespace RenderCore { namespace ImplOpenGLES
     private:
         std::weak_ptr<Device> _device;
         std::unique_ptr<IAnnotator> _annotator;
+
         EGLContext _sharedContext;
         EGLContext _activeFrameContext;
+
         std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
-        intrusive_ptr<OpenGL::FrameBuffer> _activeFrameBuffer;
     };
 
    
@@ -96,7 +95,8 @@ namespace RenderCore { namespace ImplOpenGLES
         IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
         DeviceDesc GetDesc();
 
-        EGLDisplay GetDisplay() const {return _display;};
+        EGLDisplay GetDisplay() const { return _display; };
+        EGLContext GetSharedContext() const { return _sharedContext; }
 
         Device();
         ~Device();
