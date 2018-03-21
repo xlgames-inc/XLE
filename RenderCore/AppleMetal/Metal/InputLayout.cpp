@@ -156,20 +156,19 @@ namespace RenderCore { namespace Metal_AppleMetal
             // Populate MTLVertexAttributeDescriptorArray
             for (const auto& e : layouts[l]._elements) {
                 auto found = hashToLocation.find(e._semanticHash);
-#if DEBUG
                 if (found == hashToLocation.end()) {
+                    /* There may be some data that is provided or specified in the layout that the shader will not use,
+                     * such as bitangents or normals.
+                     * That's okay - the shader is relatively simple compared to the vertex.
+                     * However, it is a problem if the shader expects an attribute that is not provided by the input.
+                     */
+#if DEBUG
                     //PrintMissingVertexAttribute(e._semanticHash);
+#endif
                     continue;
                 }
-#endif
-                /* There may be some data that is provided or specified in the layout that the shader will not use,
-                 * such as bitangents or normals.
-                 * That's okay - the shader is relatively simple compared to the vertex.
-                 * However, it is a problem if the shader expects an attribute that is not provided by the input.
-                 */
 
                 unsigned attributeLoc = found->second;
-
                 desc.attributes[attributeLoc].bufferIndex = l;
                 desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
                 desc.attributes[attributeLoc].offset = CalculateVertexStride(MakeIteratorRange(layouts[l]._elements.begin(), &e), false);
