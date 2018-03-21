@@ -26,7 +26,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             using BitField = unsigned;
         };
         void Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset = 0u, UpdateFlags::BitField flags = 0u);
-        bool IsGood() const { return false; }
+        bool IsGood() const { return _underlyingBuffer.get() != nullptr; }
 
         Buffer();
         Buffer( ObjectFactory& factory, const ResourceDesc& desc,

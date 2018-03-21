@@ -11,6 +11,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 {
     void Buffer::Update(DeviceContext& context, const void* data, size_t dataSize, size_t writeOffset, UpdateFlags::BitField flags)
     {
+        /* KenD -- Metal TODO -- implement updating buffer (required for DynamicGeoBuffer and other cases like non-tracking particle emitters) */
+        //assert(0);
     }
 
     Buffer::Buffer( ObjectFactory& factory, const ResourceDesc& desc,

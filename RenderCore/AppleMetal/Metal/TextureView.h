@@ -14,7 +14,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
     public:
         TBC::OCPtr<id>              GetUnderlying() const { return _resource->GetTexture(); }
-        bool                        IsGood() const { return _resource->GetTexture().get() != nullptr; }
+        bool                        IsGood() const { return _resource != nullptr && _resource->GetTexture().get() != nullptr; }
         bool                        HasMipMaps() const { return _hasMipMaps; }
         const std::shared_ptr<Resource>& GetResource() const { return _resource; }
 

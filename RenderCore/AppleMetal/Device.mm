@@ -200,6 +200,11 @@ namespace RenderCore { namespace ImplAppleMetal
         if (![view.layer isKindOfClass:CAMetalLayer.class])
             Throw(std::runtime_error("Layer in UIView passed to PresentationChain::PresentationChain is not of type CAMetalLayer"));
 
+        /* KenD -- Metal Hack -- a bit of a hack to double the width and height for higher resolation (mimics retina displays);
+         * tried changing the contentsScale of the CAMetalLayer, but that didn't have a noticeable effect. */
+        width *= 2.0;
+        height *= 2.0;
+
         auto* metalLayer = (CAMetalLayer*)view.layer;
         metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
         metalLayer.framebufferOnly = YES;

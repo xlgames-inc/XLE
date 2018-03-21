@@ -275,7 +275,26 @@ namespace RenderCore { namespace Metal_AppleMetal
             case Format::R32G32_FLOAT: return MTLVertexFormatFloat2;
             case Format::R32G32B32_FLOAT: return MTLVertexFormatFloat3;
             case Format::R32G32B32A32_FLOAT: return MTLVertexFormatFloat4;
-            default: assert(0); return MTLVertexFormatInvalid;
+
+            case Format::R8G8B8A8_UNORM: return MTLVertexFormatUChar4Normalized;
+            case Format::R16G16B16A16_SNORM: return MTLVertexFormatShort4Normalized;
+
+            case Format::R16G16B16A16_FLOAT: return MTLVertexFormatHalf4;
+
+            default: break;
         }
+
+#if DEBUG
+        static NSMutableSet* missingFormats = [[NSMutableSet set] retain];
+        NSUInteger c = missingFormats.count;
+        [missingFormats addObject:[NSString stringWithCString:AsString(fmt) encoding:NSUTF8StringEncoding]];
+        if (missingFormats.count > c) {
+            NSLog(@"================> Missing MTLVertexFormat for RenderCore::Formats %@", missingFormats);
+        }
+#else
+        assert(0); // aggressive failure for now
+#endif
+
+        return MTLVertexFormatInvalid;
     }
 }}

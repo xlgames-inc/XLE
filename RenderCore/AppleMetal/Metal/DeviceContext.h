@@ -14,6 +14,7 @@
 #include <assert.h>
 
 @class MTLRenderPassDescriptor;
+@class MTLRenderPipelineReflection;
 @protocol MTLCommandBuffer;
 @protocol MTLDevice;
 
@@ -66,6 +67,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         std::vector<Mapping> _vfMappings;
         std::vector<Mapping> _ffMappings;
+
+        TBC::OCPtr<MTLRenderPipelineReflection> _debugReflection;
     };
 
     class GraphicsPipeline

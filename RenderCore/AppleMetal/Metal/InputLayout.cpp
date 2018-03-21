@@ -88,6 +88,35 @@ namespace RenderCore { namespace Metal_AppleMetal
             knownAttrs[@(Hash64("in_modelMatrix_4e") + 0)] = @"in_modelMatrix_4e0";
             knownAttrs[@(Hash64("in_modelMatrix_4e") + 1)] = @"in_modelMatrix_4e1";
             knownAttrs[@(Hash64("in_modelMatrix_4e") + 2)] = @"in_modelMatrix_4e2";
+
+            knownAttrs[@(Hash64("a_cc3Bitangent"))] = @"a_cc3Bitangent";
+            knownAttrs[@(Hash64("a_cc3BoneIndices"))] = @"a_cc3BoneIndices";
+            knownAttrs[@(Hash64("a_cc3BoneWeights"))] = @"a_cc3BoneWeights";
+            knownAttrs[@(Hash64("a_cc3Color"))] = @"a_cc3Color";
+            knownAttrs[@(Hash64("a_cc3Normal"))] = @"a_cc3Normal";
+            knownAttrs[@(Hash64("a_cc3Position"))] = @"a_cc3Position";
+            knownAttrs[@(Hash64("a_cc3Tangent"))] = @"a_cc3Tangent";
+            knownAttrs[@(Hash64("a_cc3TexCoord"))] = @"a_cc3TexCoord";
+        }
+
+        NSLog(@"==================> Missing %@ (%llu)", knownAttrs[@(missingSemanticHash)], missingSemanticHash);
+    }
+
+    void PrintMissingTextureBinding(uint64 missingSemanticHash)
+    {
+        static NSMutableDictionary* knownAttrs = nil;
+        if (!knownAttrs) {
+            knownAttrs = [[NSMutableDictionary alloc] init];
+
+            knownAttrs[@(Hash64("u_irradianceMap"))] = @"u_irradianceMap";
+            knownAttrs[@(Hash64("u_reflectionMap"))] = @"u_reflectionMap";
+            knownAttrs[@(Hash64("SpecularIBL"))] = @"SpecularIBL";
+            knownAttrs[@(Hash64("u_shadowMap"))] = @"u_shadowMap";
+            knownAttrs[@(Hash64("u_shadowRotateTable"))] = @"u_shadowRotateTable";
+
+            knownAttrs[@(Hash64("s_cc3Texture2Ds")+0)] = @"s_cc3Texture2Ds0";
+            knownAttrs[@(Hash64("s_cc3Texture2Ds")+1)] = @"s_cc3Texture2Ds1";
+            knownAttrs[@(Hash64("s_cc3Texture2Ds")+2)] = @"s_cc3Texture2Ds2";
         }
 
         NSLog(@"==================> Missing %@ (%llu)", knownAttrs[@(missingSemanticHash)], missingSemanticHash);
@@ -129,10 +158,16 @@ namespace RenderCore { namespace Metal_AppleMetal
                 auto found = hashToLocation.find(e._semanticHash);
 #if DEBUG
                 if (found == hashToLocation.end()) {
-                    PrintMissingVertexAttribute(e._semanticHash);
+                    //PrintMissingVertexAttribute(e._semanticHash);
+                    continue;
                 }
 #endif
-                assert(found != hashToLocation.end());
+                /* There may be some data that is provided or specified in the layout that the shader will not use,
+                 * such as bitangents or normals.
+                 * That's okay - the shader is relatively simple compared to the vertex.
+                 * However, it is a problem if the shader expects an attribute that is not provided by the input.
+                 */
+
                 unsigned attributeLoc = found->second;
 
                 desc.attributes[attributeLoc].bufferIndex = l;
@@ -211,6 +246,38 @@ namespace RenderCore { namespace Metal_AppleMetal
                 }
             }
         }
+
+        // Ensure that constant buffer binding indices don't overlap with vertex buffer - this is one cause of a GPU hang.
+        // Likewise, ensure that other bindings don't overlap.
+        MTLRenderPipelineReflection* renderReflection = reflectionInformation._debugReflection.get();
+        {
+            /* Iterate over vertex and function arguments, ensuring that index in each argument table is not used more than once */
+            const NSArray<MTLArgument*>* argumentSets[] = { renderReflection.vertexArguments, renderReflection.fragmentArguments };
+            for (unsigned as=0; as < dimof(argumentSets); ++as) {
+                uint32_t bufferArgTable = 0u;
+                uint32_t textureArgTable = 0u;
+                uint32_t samplerArgTable = 0u;
+                for (MTLArgument* arg in argumentSets[as]) {
+                    uint32_t intendedIndex = (1 << arg.index);
+                    if (arg.type == MTLArgumentTypeBuffer) {
+                        if ((intendedIndex & bufferArgTable) != 0) {
+                            NSLog(@"================> %@ is using buffer index %lu, which is already in use.  This could cause stomping of data and a GPU hang if accessed in a shader.", arg.name, (unsigned long)arg.index);
+                        }
+                        assert((intendedIndex & bufferArgTable) == 0);
+                        bufferArgTable |= intendedIndex;
+                    } else if (arg.type == MTLArgumentTypeTexture) {
+                        if ((intendedIndex & textureArgTable) != 0) {
+                            NSLog(@"================> %@ is using texture index %lu, which is already in use.", arg.name, (unsigned long)arg.index);
+                        }
+                        assert((intendedIndex & textureArgTable) == 0);
+                        textureArgTable |= intendedIndex;
+                    } else if (arg.type == MTLArgumentTypeSampler) {
+                        assert((intendedIndex & samplerArgTable) == 0);
+                        samplerArgTable |= intendedIndex;
+                    }
+                }
+            }
+        }
 #endif
 
         // KenD -- Metal optimization -- the binding lookup could probably be improved by reorganizing the iteration and ordering
@@ -234,6 +301,34 @@ namespace RenderCore { namespace Metal_AppleMetal
                         const auto& pkt = constantBuffer._packet;
                         const void* constantBufferData = pkt.get();
                         unsigned length = (unsigned)pkt.size();
+
+#if DEBUG
+                        {
+                            NSArray<MTLArgument*>* arguments = nil;
+                            if (mappingSet.second == GraphicsPipeline::ShaderTarget::Vertex) {
+                                arguments = renderReflection.vertexArguments;
+                            } else if (mappingSet.second == GraphicsPipeline::ShaderTarget::Fragment) {
+                                arguments = renderReflection.fragmentArguments;
+                            } else {
+                                assert(0);
+                            }
+                            for (MTLArgument* arg in arguments) {
+                                if (arg.type == MTLArgumentTypeBuffer) {
+                                    if (arg.index == map.index) {
+                                        assert(length == arg.bufferDataSize);
+                                        assert(BuildSemanticHash([arg.name cStringUsingEncoding:NSUTF8StringEncoding]) == cb.hashName);
+
+                                        MTLPointerType* ptrType = arg.bufferPointerType;
+                                        MTLStructType* structType = ptrType.elementStructType;
+                                        if (structType) {
+                                            /* Metal TODO -- examine elements, comparing pipeline layout with struct, ensuring the offset is reasonable */
+                                        }
+                                    }
+                                }
+                            }
+                        }
+#endif
+
                         context.Bind(constantBufferData, length, map.index, mappingSet.second);
                         break;
                     }
@@ -252,6 +347,12 @@ namespace RenderCore { namespace Metal_AppleMetal
                     const auto& map = mappings[r];
                     if (srv.hashName == map.hashName) {
                         const auto& shaderResource = *(ShaderResourceView*)stream._resources[srv.slot];
+
+                        if (!shaderResource.IsGood()) {
+                            PrintMissingTextureBinding(srv.hashName);
+                            NSLog(@"================> Error in texture when trying to bind");
+                            continue;
+                        }
                         const auto& texture = shaderResource.GetUnderlying();
                         id<MTLTexture> mtlTexture = texture.get();
                         context.Bind(mtlTexture, map.index, mappingSet.second);

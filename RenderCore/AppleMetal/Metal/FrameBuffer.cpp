@@ -114,7 +114,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                 desc.colorAttachments[o].loadAction = NonStencilLoadActionFromRenderCore(attachmentView._loadFromPreviousPhase);
                 desc.colorAttachments[o].storeAction = NonStencilStoreActionFromRenderCore(attachmentView._storeToNextPhase);
                 /* KenD -- Metal TODO -- alter clearColor when binding */
-                desc.colorAttachments[o].clearColor = MTLClearColorMake(0.0, 0.2, 0.2, 1.0);
+                desc.colorAttachments[o].clearColor = MTLClearColorMake(0.8, 0.2, 0.2, 1.0);
             }
 
             if (spDesc._depthStencil._resourceName != ~0u) {

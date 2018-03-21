@@ -109,6 +109,11 @@ namespace RenderCore { namespace Metal_AppleMetal
 
             assert(textureDesc.width != 0);
             _underlyingTexture = factory.CreateTexture(textureDesc);
+#if DEBUG
+            if (desc._name[0]) {
+                [_underlyingTexture.get() setLabel:[NSString stringWithCString:desc._name encoding:NSUTF8StringEncoding]];
+            }
+#endif
             [textureDesc release];
 
             unsigned faceCount = 6; // cube map
@@ -170,7 +175,12 @@ namespace RenderCore { namespace Metal_AppleMetal
                 _underlyingBuffer = factory.CreateBuffer(initializer({0,0})._data.begin(), desc._linearBufferDesc._sizeInBytes);
             } else {
                 // KenD -- Metal TODO -- support creating linear buffers with different access modes; also consider different binding types
-                assert(0);
+                // Dynamic geo buffer has cpu access write | write dynamic; gpu access read.
+                const void* bytes = nullptr;
+                if (initializer) {
+                    bytes = initializer({0,0})._data.begin();
+                }
+                _underlyingBuffer = factory.CreateBuffer(bytes, desc._linearBufferDesc._sizeInBytes);
             }
         } else {
             assert(0);

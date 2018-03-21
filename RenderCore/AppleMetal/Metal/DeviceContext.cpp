@@ -140,6 +140,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         void ClearTextureBindings()
         {
 #if DEBUG
+            /* KenD -- instead of clearing texture bindings, do not.  It seems drawable sequencer counts on bindings lingering. */
+            return;
+
             /* KenD -- clear all texture bindings so that they don't spill over to or pollute subsequent draws.
              * I have found that even if a texture isn't set for a draw call, a is_null_texture check may fail in the fragment shader.
              */
@@ -149,6 +152,21 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
 #endif
         }
+
+        void CheckCommandBufferError()
+        {
+            id<MTLCommandBuffer> buffer = _commandBuffer.get();
+            if (buffer.error) {
+                NSLog(@"================> %@", buffer.error);
+            }
+        }
+
+        uint32_t _boundVertexBuffers = 0u;
+        uint32_t _boundVertexTextures = 0u;
+        uint32_t _boundVertexSamplers = 0u;
+        uint32_t _boundFragmentBuffers = 0u;
+        uint32_t _boundFragmentTextures = 0u;
+        uint32_t _boundFragmentSamplers = 0u;
     };
 
     void GraphicsPipeline::Bind(const IndexBufferView& IB)
@@ -260,8 +278,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
         if (target == Vertex) {
             [_pimpl->_commandEncoder setVertexBuffer:buffer offset:offset atIndex:bufferIndex];
+            _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
         } else if (target == Fragment) {
             [_pimpl->_commandEncoder setFragmentBuffer:buffer offset:offset atIndex:bufferIndex];
+            _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
         }
     }
 
@@ -271,8 +291,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
         if (target == Vertex) {
             [_pimpl->_commandEncoder setVertexBytes:bytes length:length atIndex:bufferIndex];
+            _pimpl->_boundVertexBuffers |= (1 << bufferIndex);
         } else if (target == Fragment) {
             [_pimpl->_commandEncoder setFragmentBytes:bytes length:length atIndex:bufferIndex];
+            _pimpl->_boundFragmentBuffers |= (1 << bufferIndex);
         }
     }
 
@@ -282,8 +304,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
         if (target == Vertex) {
             [_pimpl->_commandEncoder setVertexTexture:texture atIndex:textureIndex];
+            _pimpl->_boundVertexTextures |= (1 << textureIndex);
         } else if (target == Fragment) {
             [_pimpl->_commandEncoder setFragmentTexture:texture atIndex:textureIndex];
+            _pimpl->_boundFragmentTextures |= (1 << textureIndex);
         }
     }
 
@@ -351,6 +375,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         // src arguments, dst mappings
         ReflectionInformation ri;
+        ri._debugReflection = reflection;
         const std::pair<NSArray<MTLArgument*>*, std::vector<ReflectionInformation::Mapping>*> srcArgumentsDstMappings[] = { std::make_pair(reflection.vertexArguments, &ri._vfMappings), std::make_pair(reflection.fragmentArguments, &ri._ffMappings) };
 
         for (unsigned am=0; am < dimof(srcArgumentsDstMappings); ++am) {
@@ -359,6 +384,20 @@ namespace RenderCore { namespace Metal_AppleMetal
 
                 const char* argName = [arg.name cStringUsingEncoding:NSUTF8StringEncoding];
                 auto argHash = BuildSemanticHash(argName);
+                /* KenD -- Metal HACK -- Unlike vertex attributes, which are bound via semantic hash,
+                 * textures in material use standard hash.  However, the exception
+                 * is for textures that have "array indexor syntax."
+                 * (see CC3Material's `setTexture:forBindingName:`
+                 *  and `HashVariableName` in ShaderIntrospection)
+                 *
+                 * This hack is incomplete and should take into account all arrays of textures;
+                 * currently, the only used array of textures is s_cc3Texture2Ds.
+                 */
+                if (arg.type == MTLArgumentTypeTexture) {
+                    if ([arg.name rangeOfString:@"s_cc3Texture2Ds"].location == NSNotFound) {
+                        argHash = Hash64(argName);
+                    }
+                }
                 ReflectionInformation::MappingType argType = AsReflectionMappingType(arg.type);
                 riMap->emplace_back(
                     ReflectionInformation::Mapping{argHash,
@@ -372,7 +411,63 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void GraphicsPipeline::FinalizePipeline()
     {
+#if DEBUG
+        {
+            auto& reflectionInformation = GetReflectionInformation([_pimpl->_pipelineDescriptor.get() vertexFunction],
+                                                                   [_pimpl->_pipelineDescriptor.get() fragmentFunction]);
+            MTLRenderPipelineReflection* renderReflection = reflectionInformation._debugReflection.get();
+
+            /* Expected to be bound */
+            const NSArray<MTLArgument*>* argumentSets[] = { renderReflection.vertexArguments, renderReflection.fragmentArguments };
+            for (unsigned as=0; as < dimof(argumentSets); ++as) {
+                uint32_t activeBuffers = 0u;
+                uint32_t activeTextures = 0u;
+                uint32_t activeSamplers = 0u;
+                const auto maxTextures = 31u;
+                NSString* textureNames[maxTextures];
+                for (MTLArgument* arg in argumentSets[as]) {
+                    if (arg.active) {
+                        uint32_t intendedIndex = (1 << arg.index);
+                        if (arg.type == MTLArgumentTypeBuffer) {
+                            activeBuffers |= intendedIndex;
+                        } else if (arg.type == MTLArgumentTypeTexture) {
+                            activeTextures |= intendedIndex;
+                            textureNames[arg.index] = [arg.name copy];
+                        } else if (arg.type == MTLArgumentTypeSampler) {
+                            activeSamplers |= intendedIndex;
+                        }
+                    }
+                }
+
+                /* Check that the arguments expected by the shader are actually bound.
+                 * It's okay if some things were bound that are not actually active.
+                 */
+                if (as == 0) {
+                    assert((activeBuffers & _pimpl->_boundVertexBuffers) == activeBuffers);
+                    assert((activeTextures & _pimpl->_boundVertexTextures) == activeTextures);
+                    assert((activeSamplers & _pimpl->_boundVertexSamplers) == activeSamplers);
+                } else if (as == 1) {
+                    assert((activeBuffers & _pimpl->_boundFragmentBuffers) == activeBuffers);
+                    assert((activeTextures & _pimpl->_boundFragmentTextures) == activeTextures);
+                    assert((activeSamplers & _pimpl->_boundFragmentSamplers) == activeSamplers);
+                    for (int i=0; i < maxTextures; ++i) {
+                        if ((activeTextures & (1 << i)) && !(_pimpl->_boundFragmentTextures & (1 << i))) {
+                            NSLog(@"================> Expected fragment texture is not bound to index: %@ (%d)", textureNames[i], i);
+                        }
+                    }
+                }
+            }
+        }
+#endif
+
         assert(_pimpl->_commandEncoder);
+        if (_pimpl->_viewport.width == 0) {
+            Log(Error) << "Manually setting viewport because it was not already set!" << std::endl;
+            _pimpl->_viewport.width = 2048;
+            _pimpl->_viewport.height = 1536;
+            _pimpl->_viewport.znear = -1;
+            _pimpl->_viewport.zfar = 1;
+        }
         [_pimpl->_commandEncoder setViewport:_pimpl->_viewport];
 
         // At this point, the MTLPipelineDescriptor should be fully set up for what will be encoded next.
@@ -414,8 +509,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_indexBuffer
-                                     indexBufferOffset:startIndexLocation];
-        /* KenD -- verify for Metal -- startIndexLocation */
+                                     indexBufferOffset:startIndexLocation * _pimpl->_indexFormatBytes];
 
         _pimpl->ClearTextureBindings();
     }
@@ -444,7 +538,7 @@ namespace RenderCore { namespace Metal_AppleMetal
                                             indexCount:indexCount
                                              indexType:_pimpl->_indexType
                                            indexBuffer:_pimpl->_indexBuffer
-                                     indexBufferOffset:startIndexLocation
+                                     indexBufferOffset:startIndexLocation * _pimpl->_indexFormatBytes
                                          instanceCount:instanceCount];
 
         _pimpl->ClearTextureBindings();
@@ -452,6 +546,17 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void            GraphicsPipeline::CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor)
     {
+        {
+            /* When the command encoder was destroyed, previously bound textures and buffers would no longer be bound. */
+            _pimpl->_boundVertexBuffers = 0u;
+            _pimpl->_boundVertexTextures = 0u;
+            _pimpl->_boundVertexSamplers = 0u;
+            _pimpl->_boundFragmentBuffers = 0u;
+            _pimpl->_boundFragmentTextures = 0u;
+            _pimpl->_boundFragmentSamplers = 0u;
+        }
+
+        _pimpl->CheckCommandBufferError();
 
         assert(!_pimpl->_commandEncoder);
         // renderCommandEncoderWithDescriptor: returns an autoreleased object, so don't use TBC::moveptr when constructing the OCPtr; the assignment operator is acceptable and will retain the object
@@ -510,10 +615,14 @@ namespace RenderCore { namespace Metal_AppleMetal
         /* Hold for the duration of the frame */
         assert(!_pimpl->_commandBuffer);
         _pimpl->_commandBuffer = commandBuffer;
+
+        _pimpl->CheckCommandBufferError();
     }
 
     void            GraphicsPipeline::ReleaseCommandBuffer()
     {
+        _pimpl->CheckCommandBufferError();
+
         /* The command encoder should have been released when the subpass was finished,
          * now we release the command buffer */
         assert(!_pimpl->_commandEncoder);
@@ -537,7 +646,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_indexType = MTLIndexTypeUInt16;
-        _pimpl->_indexFormatBytes = 2;
+        _pimpl->_indexFormatBytes = 2; // two bytes for MTLIndexTypeUInt16
         _pimpl->_primitiveType = MTLPrimitiveTypeTriangle;
     }
 

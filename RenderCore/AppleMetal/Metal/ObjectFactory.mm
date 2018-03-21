@@ -37,9 +37,14 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert([_mtlDevice conformsToProtocol:@protocol(MTLDevice)]);
         id<MTLDevice> device = (id<MTLDevice>)_mtlDevice;
 
-        return TBC::OCPtr<AplMtlBuffer>(TBC::moveptr([device newBufferWithBytes:bytes
-            length:length
-            options:MTLResourceStorageModeShared]));
+        if (bytes) {
+            return TBC::OCPtr<AplMtlBuffer>(TBC::moveptr([device newBufferWithBytes:bytes
+                length:length
+                options:MTLResourceStorageModeShared]));
+        } else {
+            return TBC::OCPtr<AplMtlBuffer>(TBC::moveptr([device newBufferWithLength:length
+                options:MTLResourceStorageModeShared]));
+        }
     }
 
     ////////////////////////////////////////////////////////////////////////////////////////////////
