@@ -120,14 +120,14 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         s = [[NSString stringWithCString:definesPreamble.str().c_str() encoding:NSUTF8StringEncoding] stringByAppendingString:s];
 
-        s = [s stringByReplacingOccurrencesOfString:@"__VERSION__" withString:@"200"];
+        s = [s stringByReplacingOccurrencesOfString:@"__VERSION__" withString:@"110"];
 
         auto definesPreambleStr = definesPreamble.str();
         const char* shaderSourcePointers[3] { versionDecl, definesPreambleStr.data(), (const char*)sourceCode };
         unsigned shaderSourceLengths[3] = { (unsigned)std::strlen(versionDecl), (unsigned)definesPreambleStr.size(), (unsigned)sourceCodeLength };
 
         MTLCompileOptions* options = [[MTLCompileOptions alloc] init];
-        options.languageVersion = MTLLanguageVersion2_0;
+        options.languageVersion = MTLLanguageVersion1_1;
         [preprocessorMacros release];
         NSError* error = NULL;
         id<MTLLibrary> newLibrary = [_device.get() newLibraryWithSource:s

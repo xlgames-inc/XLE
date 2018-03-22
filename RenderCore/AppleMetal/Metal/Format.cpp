@@ -17,12 +17,6 @@ namespace RenderCore { namespace Metal_AppleMetal
             case Format::R32G32B32A32_UINT: return MTLPixelFormatRGBA32Uint;
             case Format::R32G32B32A32_SINT: return MTLPixelFormatRGBA32Sint;
 
-#if 0
-            case Format::R32G32B32_FLOAT: return {GL_RGB, GL_FLOAT, GL_RGB32F};
-            case Format::R32G32B32_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_INT, GL_RGB32UI};
-            case Format::R32G32B32_SINT: return {GL_RGB_INTEGER, GL_INT, GL_RGB32I};
-#endif
-
             case Format::R16G16B16A16_FLOAT: return MTLPixelFormatRGBA16Float;
             case Format::R16G16B16A16_UNORM: return MTLPixelFormatRGBA16Unorm;
             case Format::R16G16B16A16_UINT: return MTLPixelFormatRGBA16Uint;
@@ -53,21 +47,12 @@ namespace RenderCore { namespace Metal_AppleMetal
             case Format::R32_UINT: return MTLPixelFormatR32Uint;
             case Format::R32_SINT: return MTLPixelFormatR32Sint;
 
-#if 0
-            case Format::R8G8B8_UNORM: return {GL_RGB, GL_UNSIGNED_BYTE, GL_RGB8};
-            case Format::R8G8B8_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_BYTE, GL_RGB8UI};
-            case Format::R8G8B8_SNORM: return {GL_RGB, GL_BYTE, GL_RGB8_SNORM};
-            case Format::R8G8B8_SINT: return {GL_RGB_INTEGER, GL_BYTE, GL_RGB8I};
-#endif
             case Format::R8G8_UNORM: return MTLPixelFormatRG8Unorm;
             case Format::R8G8_UINT: return MTLPixelFormatRG8Uint;
             case Format::R8G8_SNORM: return MTLPixelFormatRG8Snorm;
             case Format::R8G8_SINT: return MTLPixelFormatRG8Sint;
 
             case Format::R16_FLOAT: return MTLPixelFormatR16Float;
-#if !HACK_PLATFORM_IOS
-            case Format::D16_UNORM: return MTLPixelFormatDepth16Unorm;
-#endif
             case Format::R16_UNORM: return MTLPixelFormatR16Unorm;
             case Format::R16_UINT: return MTLPixelFormatR16Uint;
             case Format::R16_SNORM: return MTLPixelFormatR16Snorm;
@@ -80,51 +65,94 @@ namespace RenderCore { namespace Metal_AppleMetal
             case Format::A8_UNORM: return MTLPixelFormatA8Unorm;
 
             case Format::R9G9B9E5_SHAREDEXP: return MTLPixelFormatRGB9E5Float;
-#if HACK_PLATFORM_IOS
-            case Format::B5G6R5_UNORM: return MTLPixelFormatB5G6R5Unorm;
-            case Format::B5G5R5A1_UNORM: return MTLPixelFormatA1BGR5Unorm;
-            case Format::R4G4B4A4_UNORM: return MTLPixelFormatABGR4Unorm;
-#endif
-
-#if !HACK_PLATFORM_IOS
-            case Format::D24_UNORM_S8_UINT: return MTLPixelFormatDepth24Unorm_Stencil8;
-#endif
             case Format::D32_SFLOAT_S8_UINT: return MTLPixelFormatDepth32Float_Stencil8;
             case Format::R8G8B8A8_UNORM_SRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
-#if 0
-            case Format::R8G8B8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGB8_SNORM};
-
-            case Format::RGB_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG};
-            case Format::RGBA_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG};
-            case Format::RGB_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG};
-            case Format::RGBA_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG};
-            case Format::RGBA_PVRTC2_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV2_IMG};
-            case Format::RGBA_PVRTC2_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG};
-            case Format::RGB_ETC1_UNORM: return {0, 0, GL_ETC1_RGB8_OES};
-
-            case Format::RGB_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGB8_ETC2};
-            case Format::RGBA_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGBA8_ETC2_EAC};
-            case Format::RGBA1_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2};
-
-            case Format::RGB_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ETC2};
-            case Format::RGBA_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC};
-            case Format::RGBA1_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2};
-
-            case Format::RGB_PVRTC1_2BPP_UNORM_SRGB:
-            case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB:
-            case Format::RGB_PVRTC1_4BPP_UNORM_SRGB:
-            case Format::RGBA_PVRTC1_4BPP_UNORM_SRGB:
-            case Format::RGBA_PVRTC2_2BPP_UNORM_SRGB:
-            case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB:
-            case Format::RGB_ETC1_UNORM_SRGB:
-#endif
 
             case Format::B8G8R8A8_UNORM: return MTLPixelFormatBGRA8Unorm;
+
+            //////////// missing formats ////////////
+            case Format::R32G32B32_FLOAT:
+            case Format::R32G32B32_UINT:
+            case Format::R32G32B32_SINT:
+
+            case Format::R8G8B8_UNORM:
+            case Format::R8G8B8_UINT:
+            case Format::R8G8B8_SNORM:
+            case Format::R8G8B8_SINT:
+            case Format::R8G8B8_UNORM_SRGB:
+
+            case Format::RGB_ETC1_UNORM:
+            case Format::RGB_ETC1_UNORM_SRGB:
+            case Format::RGBA_ETC2_UNORM:
+            case Format::RGBA_ETC2_UNORM_SRGB:
 
             default: break;
         }
 
+#if TARGET_OS_OSX
+        const bool OSXOnlyFormats = true;
+        if (OSXOnlyFormats) {
+            switch (fmt)
+            {
+            case Format::D16_UNORM: return MTLPixelFormatDepth16Unorm;
+            case Format::D24_UNORM_S8_UINT: return MTLPixelFormatDepth24Unorm_Stencil8;
+
+            case Format::BC1_UNORM: return MTLPixelFormatBC1_RGBA;
+            case Format::BC1_UNORM_SRGB: return MTLPixelFormatBC1_RGBA_sRGB;
+            case Format::BC2_UNORM: return MTLPixelFormatBC2_RGBA;
+            case Format::BC2_UNORM_SRGB: return MTLPixelFormatBC2_RGBA_sRGB;
+            case Format::BC3_UNORM: return MTLPixelFormatBC3_RGBA;
+            case Format::BC3_UNORM_SRGB: return MTLPixelFormatBC3_RGBA_sRGB;
+
+            case Format::BC4_UNORM: return MTLPixelFormatBC4_RUnorm;
+            case Format::BC4_SNORM: return MTLPixelFormatBC4_RSnorm;
+            case Format::BC5_UNORM: return MTLPixelFormatBC5_RGUnorm;
+            case Format::BC5_SNORM: return MTLPixelFormatBC5_RGSnorm;
+
+            case Format::BC6H_UF16: return MTLPixelFormatBC6H_RGBUfloat;
+            case Format::BC6H_SF16: return MTLPixelFormatBC6H_RGBFloat;
+            case Format::BC7_UNORM: return MTLPixelFormatBC7_RGBAUnorm;
+            case Format::BC7_UNORM_SRGB: return MTLPixelFormatBC7_RGBAUnorm_sRGB;
+            default: break;
+            }
+        }
+#endif
+
+#if TARGET_OS_IPHONE
+        const bool IOSOnlyFormats = true;
+        if (IOSOnlyFormats) {
+            switch (fmt)
+            {
+            case Format::B5G6R5_UNORM: return MTLPixelFormatB5G6R5Unorm;
+            case Format::B5G5R5A1_UNORM: return MTLPixelFormatA1BGR5Unorm;
+            case Format::R4G4B4A4_UNORM: return MTLPixelFormatABGR4Unorm;
+
+            case Format::RGB_PVRTC1_2BPP_UNORM: return MTLPixelFormatPVRTC_RGB_2BPP;
+            case Format::RGB_PVRTC1_4BPP_UNORM: return MTLPixelFormatPVRTC_RGB_4BPP;
+            case Format::RGBA_PVRTC1_2BPP_UNORM: /* DavidJ -- assuming compatibility */
+            case Format::RGBA_PVRTC2_2BPP_UNORM: return MTLPixelFormatPVRTC_RGBA_2BPP;
+            case Format::RGBA_PVRTC1_4BPP_UNORM: /* DavidJ -- assuming compatibility */
+            case Format::RGBA_PVRTC2_4BPP_UNORM: return MTLPixelFormatPVRTC_RGBA_4BPP;
+
+            case Format::RGB_PVRTC1_2BPP_UNORM_SRGB: return MTLPixelFormatPVRTC_RGB_2BPP_sRGB;
+            case Format::RGB_PVRTC1_4BPP_UNORM_SRGB: return MTLPixelFormatPVRTC_RGB_4BPP_sRGB;
+            case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB: /* DavidJ -- assuming compatibility */
+            case Format::RGBA_PVRTC2_2BPP_UNORM_SRGB: return MTLPixelFormatPVRTC_RGBA_2BPP_sRGB;
+            case Format::RGBA_PVRTC1_4BPP_UNORM_SRGB: /* DavidJ -- assuming compatibility */
+            case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB: return MTLPixelFormatPVRTC_RGBA_4BPP_sRGB;
+
+            case Format::RGB_ETC2_UNORM: return MTLPixelFormatETC2_RGB8;
+            case Format::RGBA1_ETC2_UNORM: return MTLPixelFormatETC2_RGB8A1_sRGB;
+            case Format::RGB_ETC2_UNORM_SRGB: return MTLPixelFormatETC2_RGB8_sRGB;
+            case Format::RGBA1_ETC2_UNORM_SRGB: return MTLPixelFormatETC2_RGB8A1;
+
+            default: break;
+            }
+        }
+#endif
+
         // KenD -- Metal doesn't have a 24-bit format, which is quite unfortunate
+        /*
 #if DEBUG
         static NSMutableSet* missingFormats = [[NSMutableSet set] retain];
         NSUInteger c = missingFormats.count;
@@ -135,8 +163,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 #else
         assert(0); // aggressive failure for now
 #endif
+        */
 
-        return MTLPixelFormatBGRA8Unorm;
+        return MTLPixelFormatInvalid;
     }
 
     RenderCore::Format AsRenderCoreFormat(MTLPixelFormat fmt)
@@ -147,12 +176,6 @@ namespace RenderCore { namespace Metal_AppleMetal
             case MTLPixelFormatRGBA32Float: return Format::R32G32B32A32_FLOAT;
             case MTLPixelFormatRGBA32Uint: return Format::R32G32B32A32_UINT;
             case MTLPixelFormatRGBA32Sint: return Format::R32G32B32A32_SINT;
-
-#if 0
-            case {GL_RGB, GL_FLOAT, GL_RGB32F}: return Format::R32G32B32_FLOAT;
-            case {GL_RGB_INTEGER, GL_UNSIGNED_INT, GL_RGB32UI}: return Format::R32G32B32_UINT;
-            case {GL_RGB_INTEGER, GL_INT, GL_RGB32I}: return Format::R32G32B32_SINT;
-#endif
 
             case MTLPixelFormatRGBA16Float: return Format::R16G16B16A16_FLOAT;
             case MTLPixelFormatRGBA16Unorm: return Format::R16G16B16A16_UNORM;
@@ -184,21 +207,12 @@ namespace RenderCore { namespace Metal_AppleMetal
             case MTLPixelFormatR32Uint: return Format::R32_UINT;
             case MTLPixelFormatR32Sint: return Format::R32_SINT;
 
-#if 0
-            case {GL_RGB, GL_UNSIGNED_BYTE, GL_RGB8}: return Format::R8G8B8_UNORM;
-            case {GL_RGB_INTEGER, GL_UNSIGNED_BYTE, GL_RGB8UI}: return Format::R8G8B8_UINT;
-            case {GL_RGB, GL_BYTE, GL_RGB8_SNORM}: return Format::R8G8B8_SNORM;
-            case {GL_RGB_INTEGER, GL_BYTE, GL_RGB8I}: return Format::R8G8B8_SINT;
-#endif
             case MTLPixelFormatRG8Unorm: return Format::R8G8_UNORM;
             case MTLPixelFormatRG8Uint: return Format::R8G8_UINT;
             case MTLPixelFormatRG8Snorm: return Format::R8G8_SNORM;
             case MTLPixelFormatRG8Sint: return Format::R8G8_SINT;
 
             case MTLPixelFormatR16Float: return Format::R16_FLOAT;
-#if !HACK_PLATFORM_IOS
-            case MTLPixelFormatDepth16Unorm: return Format::D16_UNORM;
-#endif
             case MTLPixelFormatR16Unorm: return Format::R16_UNORM;
             case MTLPixelFormatR16Uint: return Format::R16_UINT;
             case MTLPixelFormatR16Snorm: return Format::R16_SNORM;
@@ -211,18 +225,19 @@ namespace RenderCore { namespace Metal_AppleMetal
             case MTLPixelFormatA8Unorm: return Format::A8_UNORM;
 
             case MTLPixelFormatRGB9E5Float: return Format::R9G9B9E5_SHAREDEXP;
-#if HACK_PLATFORM_IOS
-            case MTLPixelFormatB5G6R5Unorm: return Format::B5G6R5_UNORM;
-            case MTLPixelFormatA1BGR5Unorm: return Format::B5G5R5A1_UNORM;
-            case MTLPixelFormatABGR4Unorm: return Format::R4G4B4A4_UNORM;
-#endif
-
-#if !HACK_PLATFORM_IOS
-            case MTLPixelFormatDepth24Unorm_Stencil8: return Format::D24_UNORM_S8_UINT;
-#endif
             case MTLPixelFormatDepth32Float_Stencil8: return Format::D32_SFLOAT_S8_UINT;
             case MTLPixelFormatRGBA8Unorm_sRGB: return Format::R8G8B8A8_UNORM_SRGB;
+
 #if 0
+            case {GL_RGB, GL_UNSIGNED_BYTE, GL_RGB8}: return Format::R8G8B8_UNORM;
+            case {GL_RGB_INTEGER, GL_UNSIGNED_BYTE, GL_RGB8UI}: return Format::R8G8B8_UINT;
+            case {GL_RGB, GL_BYTE, GL_RGB8_SNORM}: return Format::R8G8B8_SNORM;
+            case {GL_RGB_INTEGER, GL_BYTE, GL_RGB8I}: return Format::R8G8B8_SINT;
+
+            case {GL_RGB, GL_FLOAT, GL_RGB32F}: return Format::R32G32B32_FLOAT;
+            case {GL_RGB_INTEGER, GL_UNSIGNED_INT, GL_RGB32UI}: return Format::R32G32B32_UINT;
+            case {GL_RGB_INTEGER, GL_INT, GL_RGB32I}: return Format::R32G32B32_SINT;
+
             case {GL_RGBA, GL_BYTE, GL_RGB8_SNORM}: return Format::R8G8B8_UNORM_SRGB;
 
             case {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG}: return Format::RGB_PVRTC1_2BPP_UNORM;
@@ -255,6 +270,64 @@ namespace RenderCore { namespace Metal_AppleMetal
             default: break;
         }
 
+
+#if TARGET_OS_OSX
+        const bool OSXOnlyFormats = true;
+        if (OSXOnlyFormats) {
+            switch (fmt)
+            {
+            case MTLPixelFormatDepth16Unorm: return Format::D16_UNORM;
+            case MTLPixelFormatDepth24Unorm_Stencil8: return Format::D24_UNORM_S8_UINT;
+
+            case MTLPixelFormatBC1_RGBA: return Format::BC1_UNORM;
+            case MTLPixelFormatBC1_RGBA_sRGB: return Format::BC1_UNORM_SRGB;
+            case MTLPixelFormatBC2_RGBA: return Format::BC2_UNORM;
+            case MTLPixelFormatBC2_RGBA_sRGB: return Format::BC2_UNORM_SRGB;
+            case MTLPixelFormatBC3_RGBA: return Format::BC3_UNORM;
+            case MTLPixelFormatBC3_RGBA_sRGB: return Format::BC3_UNORM_SRGB;
+
+            case MTLPixelFormatBC4_RUnorm: return Format::BC4_UNORM;
+            case MTLPixelFormatBC4_RSnorm: return Format::BC4_SNORM;
+            case MTLPixelFormatBC5_RGUnorm: return Format::BC5_UNORM;
+            case MTLPixelFormatBC5_RGSnorm: return Format::BC5_SNORM;
+
+            case MTLPixelFormatBC6H_RGBUfloat: return Format::BC6H_UF16;
+            case MTLPixelFormatBC6H_RGBFloat: return Format::BC6H_SF16;
+            case MTLPixelFormatBC7_RGBAUnorm: return Format::BC7_UNORM;
+            case MTLPixelFormatBC7_RGBAUnorm_sRGB: return Format::BC7_UNORM_SRGB;
+            default: break;
+            }
+        }
+#endif
+
+#if TARGET_OS_IPHONE
+        const bool IOSOnlyFormats = true;
+        if (IOSOnlyFormats) {
+            switch (fmt)
+            {
+            case MTLPixelFormatB5G6R5Unorm: return Format::B5G6R5_UNORM;
+            case MTLPixelFormatA1BGR5Unorm: return Format::B5G5R5A1_UNORM;
+            case MTLPixelFormatABGR4Unorm: return Format::R4G4B4A4_UNORM;
+
+            case MTLPixelFormatPVRTC_RGB_2BPP: return Format::RGB_PVRTC1_2BPP_UNORM;
+            case MTLPixelFormatPVRTC_RGB_4BPP: return Format::RGB_PVRTC1_4BPP_UNORM;
+            case MTLPixelFormatPVRTC_RGBA_2BPP: return Format::RGBA_PVRTC2_2BPP_UNORM;
+            case MTLPixelFormatPVRTC_RGBA_4BPP: return Format::RGBA_PVRTC2_4BPP_UNORM;
+
+            case MTLPixelFormatPVRTC_RGB_2BPP_sRGB: return Format::RGB_PVRTC1_2BPP_UNORM_SRGB;
+            case MTLPixelFormatPVRTC_RGB_4BPP_sRGB: return Format::RGB_PVRTC1_4BPP_UNORM_SRGB;
+            case MTLPixelFormatPVRTC_RGBA_2BPP_sRGB: return Format::RGBA_PVRTC2_2BPP_UNORM_SRGB;
+            case MTLPixelFormatPVRTC_RGBA_4BPP_sRGB: return Format::RGBA_PVRTC2_4BPP_UNORM_SRGB;
+
+            case MTLPixelFormatETC2_RGB8: return Format::RGB_ETC2_UNORM;
+            case MTLPixelFormatETC2_RGB8A1_sRGB: return Format::RGBA1_ETC2_UNORM;
+            case MTLPixelFormatETC2_RGB8_sRGB: return Format::RGB_ETC2_UNORM_SRGB;
+            case MTLPixelFormatETC2_RGB8A1: return Format::RGBA1_ETC2_UNORM_SRGB;
+            }
+        }
+#endif
+
+        /*
 #if DEBUG
         static NSMutableSet* missingFormats = [[NSMutableSet set] retain];
         NSUInteger c = missingFormats.count;
@@ -265,6 +338,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 #else
         assert(0); // aggressive failure for now
 #endif
+        */
 
         return Format::Unknown;
     }

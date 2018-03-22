@@ -317,11 +317,14 @@ namespace RenderCore { namespace Metal_AppleMetal
                                         assert(length == arg.bufferDataSize);
                                         assert(BuildSemanticHash([arg.name cStringUsingEncoding:NSUTF8StringEncoding]) == cb.hashName);
 
+/* Only in Metal shading language 2.0 -- newer versions of Xcode warned about this, but I ignored it */
+#if 0
                                         MTLPointerType* ptrType = arg.bufferPointerType;
                                         MTLStructType* structType = ptrType.elementStructType;
                                         if (structType) {
                                             /* Metal TODO -- examine elements, comparing pipeline layout with struct, ensuring the offset is reasonable */
                                         }
+#endif
                                     }
                                 }
                             }
@@ -348,8 +351,10 @@ namespace RenderCore { namespace Metal_AppleMetal
                         const auto& shaderResource = *(ShaderResourceView*)stream._resources[srv.slot];
 
                         if (!shaderResource.IsGood()) {
-                            PrintMissingTextureBinding(srv.hashName);
-                            NSLog(@"================> Error in texture when trying to bind");
+                            #if DEBUG
+                                PrintMissingTextureBinding(srv.hashName);
+                                NSLog(@"================> Error in texture when trying to bind");
+                            #endif
                             continue;
                         }
                         const auto& texture = shaderResource.GetUnderlying();

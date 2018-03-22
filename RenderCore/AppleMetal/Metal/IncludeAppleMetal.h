@@ -4,6 +4,4 @@
 
 #pragma once
 
-#include "../../../Utility/PlatformHacks.h"
-
 #include <Metal/Metal.h>
