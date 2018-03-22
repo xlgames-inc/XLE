@@ -146,38 +146,55 @@ namespace RenderCore { namespace Metal_OpenGLES
             (const void*)(size_t)(_indexFormatBytes * startIndexLocation));
     }
 
-#if HACK_PLATFORM_IOS
     void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
-        glDrawArraysInstanced(
-            GLenum(_nativeTopology),
-            startVertexLocation, vertexCount,
-            instanceCount);
+        #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
+            assert(_featureSet & FeatureSet::GLES300);
+            glDrawArraysInstanced(
+                GLenum(_nativeTopology),
+                startVertexLocation, vertexCount,
+                instanceCount);
+        #else
+            glDrawArraysInstancedARB(
+                GLenum(_nativeTopology),
+                startVertexLocation, vertexCount,
+                instanceCount);
+        #endif
     }
 
     void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
-        glDrawElementsInstanced(
-            GLenum(_nativeTopology), GLsizei(indexCount),
-            GLenum(_indicesFormat),
-            (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
-            instanceCount);
+        #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
+            assert(_featureSet & FeatureSet::GLES300);
+            glDrawElementsInstanced(
+                GLenum(_nativeTopology), GLsizei(indexCount),
+                GLenum(_indicesFormat),
+                (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
+                instanceCount);
+        #else
+            glDrawElementsInstancedARB(
+                GLenum(_nativeTopology), GLsizei(indexCount),
+                GLenum(_indicesFormat),
+                (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
+                instanceCount);
+        #endif
     }
-#endif
 
-    GraphicsPipeline::GraphicsPipeline()
+    GraphicsPipeline::GraphicsPipeline(FeatureSet::BitField featureSet)
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
         _indexFormatBytes = 2;
         _nativeTopology = GL_TRIANGLES;
+        _featureSet = featureSet;
     }
 
     GraphicsPipeline::~GraphicsPipeline()
     {
     }
 
-    DeviceContext::DeviceContext()
+    DeviceContext::DeviceContext(FeatureSet::BitField featureSet)
+    : GraphicsPipeline(featureSet)
     {
     }
 
@@ -206,32 +223,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (tc) return tc->GetDeviceContext();
         return dummy;
     }
-
-#if 0
-    intrusive_ptr<DeviceContext>        DeviceContext::GetImmediateContext(IDevice* device)
-    {
-        if (device) {
-            IDeviceOpenGLES* openGLESDevice = 
-                (IDeviceOpenGLES*)device->QueryInterface(*(GUID*)nullptr);
-            if (openGLESDevice) {
-                return openGLESDevice->GetImmediateContext();
-            }
-        }
-        return intrusive_ptr<DeviceContext>();
-    }
-
-    intrusive_ptr<DeviceContext>        DeviceContext::CreateDeferredContext(IDevice* device)
-    {
-        if (device) {
-            IDeviceOpenGLES* openGLESDevice = 
-                (IDeviceOpenGLES*)device->QueryInterface(*(GUID*)nullptr);
-            if (openGLESDevice) {
-                return openGLESDevice->CreateDeferredContext();
-            }
-        }
-        return intrusive_ptr<DeviceContext>();
-    }
-#endif
 
 }}
 

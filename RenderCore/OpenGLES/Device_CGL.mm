@@ -17,6 +17,10 @@
 
 namespace RenderCore { namespace ImplOpenGLES
 {
+    static Metal_OpenGLES::FeatureSet::BitField GetFeatureSet()
+    {
+        return Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::GLES300;
+    }
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
@@ -131,7 +135,7 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContextOpenGLES::ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
     : ThreadContext(sharedContext, device)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>();
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(GetFeatureSet());
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}
@@ -140,7 +144,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Device::Device()
     {
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(GetFeatureSet());
 
         /*CGLPixelFormatAttribute*/
         unsigned pixelAttrs[] = {
@@ -186,6 +190,11 @@ namespace RenderCore { namespace ImplOpenGLES
     IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
         return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
+    }
+
+    FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+    {
+        return FormatCapability::Supported;
     }
 
     DeviceDesc Device::GetDesc()

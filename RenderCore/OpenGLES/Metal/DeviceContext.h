@@ -9,6 +9,7 @@
 #include "InputLayout.h"
 #include "ObjectFactory.h"
 #include "TextureView.h"
+#include "Format.h"     // (for FeatureSet)
 #include "../IDeviceOpenGLES.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
@@ -17,9 +18,6 @@
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include <assert.h>
 #include "IncludeGLES.h"
-
-// typedef void*       EGLDisplay;
-// typedef void*       EGLContext;
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -63,12 +61,12 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-#if HACK_PLATFORM_IOS
         void DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation=0);
         void DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
-#endif
 
-        GraphicsPipeline();
+        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+
+        GraphicsPipeline(FeatureSet::BitField featureSet);
         GraphicsPipeline(const GraphicsPipeline&) = delete;
         GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
         ~GraphicsPipeline();
@@ -77,6 +75,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned    _nativeTopology;
         unsigned    _indicesFormat;
         unsigned    _indexFormatBytes;
+        FeatureSet::BitField _featureSet;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -88,26 +87,15 @@ namespace RenderCore { namespace Metal_OpenGLES
         CommandListPtr  ResolveCommandList();
         void            CommitCommandList(CommandList& commandList);
 
-        // static intrusive_ptr<DeviceContext> GetImmediateContext(IDevice* device);
-        // static intrusive_ptr<DeviceContext> CreateDeferredContext(IDevice* device);
-
         static void PrepareForDestruction(IDevice* device);
-
-        unsigned FeatureLevel() const { return 300u; }
-
-        // EGL::Context        GetUnderlying() { return _underlyingContext; }
 
         static const std::shared_ptr<DeviceContext>& Get(IThreadContext& threadContext);
 
-        DeviceContext();
+        DeviceContext(FeatureSet::BitField featureSet);
         DeviceContext(const DeviceContext&) = delete;
         DeviceContext& operator=(const DeviceContext&) = delete;
         ~DeviceContext();
     private:
-        // EGL::Display        _display;
-        // EGL::Context        _underlyingContext;
-        // DeviceContext(EGLDisplay display, EGLContext underlyingContext);
-
         friend class Device;
         friend class DeviceOpenGLES;
     };

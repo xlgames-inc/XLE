@@ -18,9 +18,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
         glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
 
-        if (    flags & UpdateFlags::UnsynchronizedWrite
-            &&  context.FeatureLevel() >= 300) {
-
+        if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
             auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
             if (flags & UpdateFlags::UnsynchronizedWrite)
                 glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;

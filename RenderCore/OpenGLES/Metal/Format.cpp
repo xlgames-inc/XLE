@@ -278,93 +278,94 @@ namespace RenderCore { namespace Metal_OpenGLES
         using namespace RenderCore;
         switch (fmt)
         {
-        case Format::R32G32B32A32_FLOAT: return {GL_RGBA, GL_FLOAT, GL_RGBA32F};
-        case Format::R32G32B32A32_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_INT, GL_RGBA32UI};
-        case Format::R32G32B32A32_SINT: return {GL_RGBA_INTEGER, GL_INT, GL_RGBA32I};
+        case Format::R32G32B32A32_FLOAT: return {GL_RGBA, GL_FLOAT, GL_RGBA32F, FeatureSet::GLES300, 0};
+        case Format::R32G32B32A32_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_INT, GL_RGBA32UI, FeatureSet::GLES300, 0};
+        case Format::R32G32B32A32_SINT: return {GL_RGBA_INTEGER, GL_INT, GL_RGBA32I, FeatureSet::GLES300, 0};
 
-        case Format::R32G32B32_FLOAT: return {GL_RGB, GL_FLOAT, GL_RGB32F};
-        case Format::R32G32B32_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_INT, GL_RGB32UI};
-        case Format::R32G32B32_SINT: return {GL_RGB_INTEGER, GL_INT, GL_RGB32I};
+        case Format::R32G32B32_FLOAT: return {GL_RGB, GL_FLOAT, GL_RGB32F, FeatureSet::GLES300, 0};
+        case Format::R32G32B32_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_INT, GL_RGB32UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R32G32B32_SINT: return {GL_RGB_INTEGER, GL_INT, GL_RGB32I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R16G16B16A16_FLOAT: return {GL_RGBA, GL_HALF_FLOAT, GL_RGBA16F};
-        case Format::R16G16B16A16_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT, 0};
-        case Format::R16G16B16A16_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_SHORT, GL_RGBA16UI};
-        case Format::R16G16B16A16_SNORM: return {GL_RGBA, GL_SHORT, 0};
-        case Format::R16G16B16A16_SINT: return {GL_RGBA_INTEGER, GL_SHORT, GL_RGBA16I};
+        case Format::R16G16B16A16_FLOAT: return {GL_RGBA, GL_HALF_FLOAT, GL_RGBA16F, FeatureSet::GLES300, 0};
+        case Format::R16G16B16A16_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT, 0, FeatureSet::GLES300, 0};
+        case Format::R16G16B16A16_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_SHORT, GL_RGBA16UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R16G16B16A16_SNORM: return {GL_RGBA, GL_SHORT, 0, FeatureSet::GLES300, 0};
+        case Format::R16G16B16A16_SINT: return {GL_RGBA_INTEGER, GL_SHORT, GL_RGBA16I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R32G32_FLOAT: return {GL_RG, GL_FLOAT, GL_RG32F};
-        case Format::R32G32_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_INT, GL_RG32UI};
-        case Format::R32G32_SINT: return {GL_RG_INTEGER, GL_INT, GL_RG32I};
+        case Format::R32G32_FLOAT: return {GL_RG, GL_FLOAT, GL_RG32F, FeatureSet::GLES300, 0};
+        case Format::R32G32_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_INT, GL_RG32UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R32G32_SINT: return {GL_RG_INTEGER, GL_INT, GL_RG32I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R10G10B10A2_UNORM: return {GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, GL_RGB10_A2};
-        case Format::R10G10B10A2_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV, GL_RGB10_A2UI};
-        case Format::R11G11B10_FLOAT: return {GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_R11F_G11F_B10F};
+        case Format::R10G10B10A2_UNORM: return {GL_RGBA, GL_UNSIGNED_INT_2_10_10_10_REV, GL_RGB10_A2, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R10G10B10A2_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_INT_2_10_10_10_REV, GL_RGB10_A2UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R11G11B10_FLOAT: return {GL_RGB, GL_UNSIGNED_INT_10F_11F_11F_REV, GL_R11F_G11F_B10F, FeatureSet::GLES300, 0};
 
-        case Format::R8G8B8A8_UNORM: return {GL_RGBA, GL_UNSIGNED_BYTE, GL_RGBA8};
-        case Format::R8G8B8A8_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, GL_RGBA8UI};
-        case Format::R8G8B8A8_SNORM: return {GL_RGBA, GL_BYTE, GL_RGBA8_SNORM};
-        case Format::R8G8B8A8_SINT: return {GL_RGBA_INTEGER, GL_BYTE, GL_RGBA8I};
+        case Format::R8G8B8A8_UNORM: return {GL_RGBA, GL_UNSIGNED_BYTE, GL_RGBA8, FeatureSet::GLES200, FeatureSet::GLES300};
+        case Format::R8G8B8A8_UINT: return {GL_RGBA_INTEGER, GL_UNSIGNED_BYTE, GL_RGBA8UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R8G8B8A8_SNORM: return {GL_RGBA, GL_BYTE, GL_RGBA8_SNORM, FeatureSet::GLES300, 0};
+        case Format::R8G8B8A8_SINT: return {GL_RGBA_INTEGER, GL_BYTE, GL_RGBA8I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R16G16_FLOAT: return {GL_RG, GL_HALF_FLOAT, GL_RG16F};
-        case Format::R16G16_UNORM: return {GL_RG, GL_UNSIGNED_SHORT, 0};
-        case Format::R16G16_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_SHORT, GL_RG16UI};
-        case Format::R16G16_SNORM: return {GL_RG, GL_SHORT, 0};
-        case Format::R16G16_SINT: return {GL_RG_INTEGER, GL_SHORT, GL_RG16I};
+        case Format::R16G16_FLOAT: return {GL_RG, GL_HALF_FLOAT, GL_RG16F, FeatureSet::GLES300, 0};
+        case Format::R16G16_UNORM: return {GL_RG, GL_UNSIGNED_SHORT, 0, FeatureSet::GLES300, 0};
+        case Format::R16G16_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_SHORT, GL_RG16UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R16G16_SNORM: return {GL_RG, GL_SHORT, 0, FeatureSet::GLES300, 0};
+        case Format::R16G16_SINT: return {GL_RG_INTEGER, GL_SHORT, GL_RG16I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::D32_FLOAT: return {GL_DEPTH_COMPONENT, GL_FLOAT, GL_DEPTH_COMPONENT32F};
-        case Format::R32_FLOAT: return {GL_RED, GL_FLOAT, GL_R32F};
-        case Format::R32_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_INT, GL_R32UI};
-        case Format::R32_SINT: return {GL_RED_INTEGER, GL_INT, GL_R32I};
+        case Format::D32_FLOAT: return {GL_DEPTH_COMPONENT, GL_FLOAT, GL_DEPTH_COMPONENT32F, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R32_FLOAT: return {GL_RED, GL_FLOAT, GL_R32F, FeatureSet::GLES300, 0};
+        case Format::R32_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_INT, GL_R32UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R32_SINT: return {GL_RED_INTEGER, GL_INT, GL_R32I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R8G8B8_UNORM: return {GL_RGB, GL_UNSIGNED_BYTE, GL_RGB8};
-        case Format::R8G8B8_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_BYTE, GL_RGB8UI};
-        case Format::R8G8B8_SNORM: return {GL_RGB, GL_BYTE, GL_RGB8_SNORM};
-        case Format::R8G8B8_SINT: return {GL_RGB_INTEGER, GL_BYTE, GL_RGB8I};
+        case Format::R8G8B8_UNORM: return {GL_RGB, GL_UNSIGNED_BYTE, GL_RGB8, FeatureSet::GLES200, FeatureSet::GLES300};
+        case Format::R8G8B8_UINT: return {GL_RGB_INTEGER, GL_UNSIGNED_BYTE, GL_RGB8UI, FeatureSet::GLES300, 0};
+        case Format::R8G8B8_SNORM: return {GL_RGB, GL_BYTE, GL_RGB8_SNORM, FeatureSet::GLES300, 0};
+        case Format::R8G8B8_SINT: return {GL_RGB_INTEGER, GL_BYTE, GL_RGB8I, FeatureSet::GLES300, 0};
 
-        case Format::R8G8_UNORM: return {GL_RG, GL_UNSIGNED_BYTE, GL_RG8};
-        case Format::R8G8_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_BYTE, GL_RG8UI};
-        case Format::R8G8_SNORM: return {GL_RG, GL_BYTE, GL_RG8_SNORM};
-        case Format::R8G8_SINT: return {GL_RG_INTEGER, GL_BYTE, GL_RG8I};
+        case Format::R8G8_UNORM: return {GL_RG, GL_UNSIGNED_BYTE, GL_RG8, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R8G8_UINT: return {GL_RG_INTEGER, GL_UNSIGNED_BYTE, GL_RG8UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R8G8_SNORM: return {GL_RG, GL_BYTE, GL_RG8_SNORM, FeatureSet::GLES300, 0};
+        case Format::R8G8_SINT: return {GL_RG_INTEGER, GL_BYTE, GL_RG8I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R16_FLOAT: return {GL_RED, GL_HALF_FLOAT, GL_R16F};
-        case Format::D16_UNORM: return {GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, GL_DEPTH_COMPONENT16};
-        case Format::R16_UNORM: return {GL_RED, GL_UNSIGNED_SHORT, 0};
-        case Format::R16_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_SHORT, GL_R16UI};
-        case Format::R16_SNORM: return {GL_RED, GL_SHORT, 0};
-        case Format::R16_SINT: return {GL_RED_INTEGER, GL_SHORT, GL_R16I};
+        case Format::R16_FLOAT: return {GL_RED, GL_HALF_FLOAT, GL_R16F, FeatureSet::GLES300, 0};
+        case Format::D16_UNORM: return {GL_DEPTH_COMPONENT, GL_UNSIGNED_SHORT, GL_DEPTH_COMPONENT16, FeatureSet::GLES300, FeatureSet::GLES200};
+        case Format::R16_UNORM: return {GL_RED, GL_UNSIGNED_SHORT, 0, FeatureSet::GLES300, 0};
+        case Format::R16_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_SHORT, GL_R16UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R16_SNORM: return {GL_RED, GL_SHORT, 0, FeatureSet::GLES300, 0};
+        case Format::R16_SINT: return {GL_RED_INTEGER, GL_SHORT, GL_R16I, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R8_UNORM: return {GL_RED, GL_UNSIGNED_BYTE, GL_R8};
-        case Format::R8_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_BYTE, GL_R8UI};
-        case Format::R8_SNORM: return {GL_RED, GL_BYTE, GL_R8_SNORM};
-        case Format::R8_SINT: return {GL_RED_INTEGER, GL_BYTE, GL_R8I};
-        case Format::A8_UNORM: return {GL_ALPHA, GL_UNSIGNED_BYTE, GL_R8};
+        case Format::R8_UNORM: return {GL_RED, GL_UNSIGNED_BYTE, GL_R8, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R8_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_BYTE, GL_R8UI, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R8_SNORM: return {GL_RED, GL_BYTE, GL_R8_SNORM, FeatureSet::GLES300, 0};
+        case Format::R8_SINT: return {GL_RED_INTEGER, GL_BYTE, GL_R8I, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::A8_UNORM: return {GL_ALPHA, GL_UNSIGNED_BYTE, GL_R8, FeatureSet::GLES200, FeatureSet::GLES300};
 
-        case Format::R9G9B9E5_SHAREDEXP: return {GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, GL_RGB9_E5};
-        case Format::B5G6R5_UNORM: return {GL_RGB, GL_UNSIGNED_SHORT_5_6_5, GL_RGB565};
-        case Format::B5G5R5A1_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, GL_RGB5_A1};
-        case Format::R4G4B4A4_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4};
+        case Format::R9G9B9E5_SHAREDEXP: return {GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, GL_RGB9_E5, FeatureSet::GLES300, 0};
+        case Format::B5G6R5_UNORM: return {GL_RGB, GL_UNSIGNED_SHORT_5_6_5, GL_RGB565, FeatureSet::GLES200, FeatureSet::GLES200};
+        case Format::B5G5R5A1_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, GL_RGB5_A1, FeatureSet::GLES200, FeatureSet::GLES200};
+        case Format::R4G4B4A4_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, FeatureSet::GLES200, FeatureSet::GLES200};
 
-        case Format::D24_UNORM_S8_UINT: return {GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH24_STENCIL8};
-        case Format::D32_SFLOAT_S8_UINT: return {GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_DEPTH32F_STENCIL8};
+        case Format::D24_UNORM_S8_UINT: return {GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH24_STENCIL8, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::D32_SFLOAT_S8_UINT: return {GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_DEPTH32F_STENCIL8, FeatureSet::GLES300, FeatureSet::GLES300};
 
-        case Format::R8G8B8A8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGBA8_SNORM};
-        case Format::R8G8B8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_RGB8_SNORM};
+        case Format::R8G8B8A8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_SRGB8_ALPHA8, FeatureSet::GLES300, FeatureSet::GLES300};
+        case Format::R8G8B8_UNORM_SRGB: return {GL_RGBA, GL_BYTE, GL_SRGB8, FeatureSet::GLES300, 0};
 
-        //case Format::RGB_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG};
-        //case Format::RGBA_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG};
-        //case Format::RGB_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG};
-        //case Format::RGBA_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG};
-        case Format::RGBA_PVRTC2_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV2_IMG};
-        case Format::RGBA_PVRTC2_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG};
-        case Format::RGB_ETC1_UNORM: return {0, 0, GL_ETC1_RGB8_OES};
+        case Format::RGB_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_2BPPV1_IMG, FeatureSet::PVRTC, 0};
+        case Format::RGBA_PVRTC1_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV1_IMG, FeatureSet::PVRTC, 0};
+        case Format::RGB_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGB_PVRTC_4BPPV1_IMG, FeatureSet::PVRTC, 0};
+        case Format::RGBA_PVRTC1_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV1_IMG, FeatureSet::PVRTC, 0};
+        case Format::RGBA_PVRTC2_2BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_2BPPV2_IMG, FeatureSet::PVRTC, 0};
+        case Format::RGBA_PVRTC2_4BPP_UNORM: return {0, 0, GL_COMPRESSED_RGBA_PVRTC_4BPPV2_IMG, FeatureSet::PVRTC, 0};
 
-        case Format::RGB_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGB8_ETC2};
-        case Format::RGBA_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGBA8_ETC2_EAC};
-        case Format::RGBA1_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2};
+        case Format::RGB_ETC1_UNORM: return {0, 0, GL_ETC1_RGB8_OES, FeatureSet::ETC1TC, 0};
 
-        case Format::RGB_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ETC2};
-        case Format::RGBA_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC};
-        case Format::RGBA1_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2};
+        case Format::RGB_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGB8_ETC2, FeatureSet::ETC2TC, 0};
+        case Format::RGBA_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGBA8_ETC2_EAC, FeatureSet::ETC2TC, 0};
+        case Format::RGBA1_ETC2_UNORM: return {0, 0, GL_COMPRESSED_RGB8_PUNCHTHROUGH_ALPHA1_ETC2, FeatureSet::ETC2TC, 0};
+
+        case Format::RGB_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ETC2, FeatureSet::ETC2TC, 0};
+        case Format::RGBA_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, FeatureSet::ETC2TC, 0};
+        case Format::RGBA1_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2, FeatureSet::ETC2TC, 0};
 
         case Format::RGB_PVRTC1_2BPP_UNORM_SRGB:
         case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB:
@@ -373,7 +374,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::RGBA_PVRTC2_2BPP_UNORM_SRGB:
         case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB:
         case Format::RGB_ETC1_UNORM_SRGB:
-
             break;
         }
 
@@ -555,24 +555,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         default:
             assert(0);
             return GL_CCW;
-        }
-    }
-
-    GLenum AsGLenum(CompareOp compare)
-    {
-        switch (compare) {
-        case CompareOp::Never: return GL_NEVER;
-        case CompareOp::Less: return GL_LESS;
-        case CompareOp::Equal: return GL_EQUAL;
-        case CompareOp::LessEqual: return GL_LEQUAL;
-        case CompareOp::Greater: return GL_GREATER;
-        case CompareOp::NotEqual: return GL_NOTEQUAL;
-        case CompareOp::GreaterEqual: return GL_GEQUAL;
-        case CompareOp::Always: return GL_ALWAYS;
-
-        default:
-            assert(0);
-            return GL_ALWAYS;
         }
     }
 

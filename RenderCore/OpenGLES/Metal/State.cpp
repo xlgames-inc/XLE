@@ -51,7 +51,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    static GLenum AsGLenum(CompareOp comparison)
+    GLenum AsGLenum(CompareOp comparison)
     {
         switch (comparison) {
         case CompareOp::Less:           return GL_LESS;

@@ -102,6 +102,7 @@ namespace RenderCore { namespace ImplAppleMetal
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
         IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
         DeviceDesc GetDesc();
+        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
 
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 

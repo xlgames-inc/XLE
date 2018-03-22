@@ -12,6 +12,7 @@
 #include "PipelineLayout.h"
 #include "State.h"
 #include "Resource.h"
+#include "DeviceContext.h"
 #include "../../Types.h"
 #include "../../Format.h"
 #include "../../BufferView.h"
@@ -190,8 +191,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    void BoundInputLayout::Apply(DeviceContext&, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
+        auto featureSet = devContext.GetFeatureSet();
+
         unsigned attributeIterator = 0;
         for (unsigned b=0; b<unsigned(_bindingsByVertexBuffer.size()); ++b) {
             auto bindingCount = _bindingsByVertexBuffer[b];
@@ -205,9 +208,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i._attributeLocation, i._size, i._type, i._isNormalized,
                     i._stride,
                     (const void*)(size_t)(vb._offset + i._offset));
-#if HACK_PLATFORM_IOS
-                glVertexAttribDivisor(i._attributeLocation, i._instanceDataRate);
-#endif
+
+                if (featureSet & FeatureSet::GLES300)
+                    glVertexAttribDivisor(i._attributeLocation, i._instanceDataRate);
             }
             attributeIterator += bindingCount;
         }

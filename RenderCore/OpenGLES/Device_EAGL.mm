@@ -18,6 +18,19 @@
 
 namespace RenderCore { namespace ImplOpenGLES
 {
+    static Metal_OpenGLES::FeatureSet::BitField AsGLESFeatureSet(EAGLRenderingAPI api)
+    {
+        Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200;
+        switch (api) {
+        default:
+        case kEAGLRenderingAPIOpenGLES1: assert(0); break;
+        case kEAGLRenderingAPIOpenGLES2: featureSet = Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::ETC1TC; break;
+        case kEAGLRenderingAPIOpenGLES3: featureSet = Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::GLES300 | Metal_OpenGLES::FeatureSet::ETC1TC | Metal_OpenGLES::FeatureSet::ETC2TC; break;
+        }
+        // All Apple / EAGL devices can support PVR textures
+        featureSet |= Metal_OpenGLES::FeatureSet::PVRTC;
+        return featureSet;
+    }
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
@@ -103,7 +116,8 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContextOpenGLES::ThreadContextOpenGLES(EAGLContext* sharedContext, const std::shared_ptr<Device>& device)
     : ThreadContext(sharedContext, device)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>();
+        auto featureSet = AsGLESFeatureSet(sharedContext.API);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}
@@ -115,7 +129,8 @@ namespace RenderCore { namespace ImplOpenGLES
         auto* t = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
         _sharedContext = TBC::moveptr(t);
         [EAGLContext setCurrentContext:_sharedContext.get()];
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
+        auto featureSet = AsGLESFeatureSet(_sharedContext.get().API);
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
     }
 
     Device::~Device()
@@ -143,6 +158,23 @@ namespace RenderCore { namespace ImplOpenGLES
     DeviceDesc Device::GetDesc()
     {
         return DeviceDesc { "OpenGLES-EAGL", "", "" };
+    }
+
+    FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+    {
+        auto activeFeatureSet = _objectFactory->GetFeatureSet();
+        auto glFmt = Metal_OpenGLES::AsTexelFormatType(format);
+        if (glFmt._internalFormat == GL_NONE)
+            return FormatCapability::NotSupported;
+
+        bool supported = true;
+        if (bindingType & BindFlag::ShaderResource) {
+            supported &= activeFeatureSet >= glFmt._textureFeatureSet;
+        } else if ((bindingType & BindFlag::RenderTarget) || (bindingType & BindFlag::DepthStencil)) {
+            supported &= activeFeatureSet >= glFmt._renderbufferFeatureSet;
+        }
+
+        return supported ? FormatCapability::Supported : FormatCapability::NotSupported;
     }
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()

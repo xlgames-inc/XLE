@@ -75,10 +75,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     intrusive_ptr<GlObject<GlObject_Type::Sampler> >             ObjectFactory::CreateSampler()
     {
-        RawGLHandle result = RawGLHandle_Invalid;
-        glGenSamplers(1, &result);
-        auto temp = (GlObject<GlObject_Type::Sampler>*)(size_t)result;
-        return intrusive_ptr<GlObject<GlObject_Type::Sampler> >(temp);
+        if (_featureSet & FeatureSet::GLES300) {
+            RawGLHandle result = RawGLHandle_Invalid;
+            glGenSamplers(1, &result);
+            auto temp = (GlObject<GlObject_Type::Sampler>*)(size_t)result;
+            return intrusive_ptr<GlObject<GlObject_Type::Sampler> >(temp);
+        } else {
+            return intrusive_ptr<GlObject<GlObject_Type::Sampler> >();
+        }
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -307,7 +311,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
-    ObjectFactory::ObjectFactory()
+    ObjectFactory::ObjectFactory(FeatureSet::BitField featureSet)
+    : _featureSet(featureSet)
     {
         assert(s_objectFactory_instance == nullptr);
         s_objectFactory_instance = this;

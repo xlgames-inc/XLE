@@ -45,6 +45,8 @@
 		8F5DCB8D2023E8FE0022BA7E /* FrameBuffer.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F5DCB8B2023E8FD0022BA7E /* FrameBuffer.h */; };
 		8F5DCB8E2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */; };
 		8F5DCB8F2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */; };
+		8F6354E1206417FC008A2A0F /* FakeGLES.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6354DF206417FC008A2A0F /* FakeGLES.cpp */; };
+		8F6354E2206417FC008A2A0F /* FakeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6354E0206417FC008A2A0F /* FakeGLES.h */; };
 		8F6576871FFEFA2B009052A0 /* PipelineLayout.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6576851FFEFA2A009052A0 /* PipelineLayout.h */; };
 		8F6576881FFEFA2B009052A0 /* PipelineLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */; };
 		8F6576891FFEFA31009052A0 /* PipelineLayout.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */; };
@@ -103,6 +105,8 @@
 		8F3BAC72201953F900442BBB /* Device_CGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Device_CGL.h; path = ../OpenGLES/Device_CGL.h; sourceTree = "<group>"; };
 		8F5DCB8B2023E8FD0022BA7E /* FrameBuffer.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = FrameBuffer.h; path = ../OpenGLES/Metal/FrameBuffer.h; sourceTree = "<group>"; };
 		8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = FrameBuffer.cpp; path = ../OpenGLES/Metal/FrameBuffer.cpp; sourceTree = "<group>"; };
+		8F6354DF206417FC008A2A0F /* FakeGLES.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = FakeGLES.cpp; path = ../OpenGLES/Metal/FakeGLES.cpp; sourceTree = "<group>"; };
+		8F6354E0206417FC008A2A0F /* FakeGLES.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = FakeGLES.h; path = ../OpenGLES/Metal/FakeGLES.h; sourceTree = "<group>"; };
 		8F6576851FFEFA2A009052A0 /* PipelineLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = PipelineLayout.h; path = ../OpenGLES/Metal/PipelineLayout.h; sourceTree = "<group>"; };
 		8F6576861FFEFA2B009052A0 /* PipelineLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = PipelineLayout.cpp; path = ../OpenGLES/Metal/PipelineLayout.cpp; sourceTree = "<group>"; };
 		8F8167041FDF32BE00284B80 /* Resource.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Resource.cpp; path = ../OpenGLES/Metal/Resource.cpp; sourceTree = "<group>"; };
@@ -161,6 +165,8 @@
 				8F2D1B6C1FD629370028A531 /* TextureView.cpp */,
 				8F2D1B721FD629380028A531 /* TextureView.h */,
 				8F2D1B5F1FD629360028A531 /* Types.h */,
+				8F6354DF206417FC008A2A0F /* FakeGLES.cpp */,
+				8F6354E0206417FC008A2A0F /* FakeGLES.h */,
 			);
 			name = Metal;
 			sourceTree = "<group>";
@@ -210,6 +216,7 @@
 				8F5DCB8D2023E8FE0022BA7E /* FrameBuffer.h in Headers */,
 				8F2D1B8B1FD629380028A531 /* Shader.h in Headers */,
 				8F860C961FE8AAA700B77C9F /* Forward.h in Headers */,
+				8F6354E2206417FC008A2A0F /* FakeGLES.h in Headers */,
 				8F212B4A1FD75FBF00599B22 /* IDeviceOpenGLES.h in Headers */,
 				8F3BAC74201953F900442BBB /* Device_CGL.h in Headers */,
 				8F2D1B901FD629380028A531 /* TextureView.h in Headers */,
@@ -336,6 +343,7 @@
 				8F2D1B7E1FD629380028A531 /* InputLayout.cpp in Sources */,
 				8F2D1B751FD629380028A531 /* Buffer.cpp in Sources */,
 				8F6576881FFEFA2B009052A0 /* PipelineLayout.cpp in Sources */,
+				8F6354E1206417FC008A2A0F /* FakeGLES.cpp in Sources */,
 				8F5DCB8E2023E8FE0022BA7E /* FrameBuffer.cpp in Sources */,
 				8F2D1B841FD629380028A531 /* DeviceContext.cpp in Sources */,
 				8F8167061FDF32BE00284B80 /* Resource.cpp in Sources */,

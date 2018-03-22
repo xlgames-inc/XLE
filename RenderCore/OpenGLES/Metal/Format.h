@@ -21,11 +21,27 @@ namespace RenderCore { namespace Metal_OpenGLES
     std::tuple<GLint, GLenum, bool> AsVertexAttributePointer(Format fmt);
     Format VertexAttributePointerAsFormat(GLint size, GLenum type, bool normalized);
 
+    namespace FeatureSet
+    {
+        enum Flags
+        {
+            GLES200     = (1<<0),
+            GLES300     = (1<<1),
+            PVRTC       = (1<<2),
+            ETC1TC      = (1<<3),
+            ETC2TC      = (1<<4)
+        };
+        using BitField = unsigned;
+    };
+
     struct glPixelFormat
     {
         GLenum _format;
         GLenum _type;
         GLenum _internalFormat;     // (the sized/compressed format)
+
+        FeatureSet::BitField _textureFeatureSet;
+        FeatureSet::BitField _renderbufferFeatureSet;
     };
 
     glPixelFormat AsTexelFormatType(Format fmt);

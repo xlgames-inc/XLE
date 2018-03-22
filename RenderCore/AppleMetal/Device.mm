@@ -162,6 +162,11 @@ namespace RenderCore { namespace ImplAppleMetal
         return DeviceDesc { "AppleMetal", "", "" };
     }
 
+    FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+    {
+        return FormatCapability::Supported;
+    }
+
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
         return std::make_unique<ThreadContext>(

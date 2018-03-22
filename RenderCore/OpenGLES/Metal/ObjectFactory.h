@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "Format.h"     // (for FeatureSet)
 #include "../../../Core/Exceptions.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include <unordered_map>
@@ -74,13 +75,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         signed  IndexedGLType_Release(RawGLHandle object) never_throws;
         void    ReportLeaks();
 
-        ObjectFactory();
+        FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+
+        ObjectFactory(FeatureSet::BitField featureSet);
         ~ObjectFactory();
 
         ObjectFactory& operator=(const ObjectFactory&) = delete;
         ObjectFactory(const ObjectFactory&) = delete;
     private:
         std::unordered_map<RawGLHandle, signed> _refCountTable;
+        FeatureSet::BitField _featureSet;
     };
 
     class DeviceContext;
