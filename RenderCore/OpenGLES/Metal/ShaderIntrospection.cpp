@@ -28,7 +28,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto basicType = GLUniformTypeAsTypeDesc(found._type);
                 auto inputBasicType = AsImpliedType(ele._nativeFormat);
                 if (basicType == inputBasicType) {
-                    Throw(Exceptions::BasicLabel("Found a uniform outside of a struct. All uniforms must be located within structs. Problem uniform: %s", found._name));
+                    Throw(Exceptions::BasicLabel("Found a uniform outside of a struct. All uniforms must be located within structs. Problem uniform: %s", found._name.c_str()));
                 }
             }
 #endif

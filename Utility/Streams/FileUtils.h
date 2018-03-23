@@ -19,8 +19,8 @@
 #if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 	#include <optional>
 #else
-	// #include <experimental/optional>
-	// namespace std { template <typename T> using optional = experimental::optional<T>; }
+     #include <experimental/optional>
+     namespace std { template <typename T> using optional = experimental::optional<T>; }
 #endif
 
 namespace Utility 
@@ -153,9 +153,9 @@ namespace Utility
 		XL_UTILITY_API bool DoesFileExist(StringSection<char> filename);
 		XL_UTILITY_API bool DoesDirectoryExist(StringSection<char> filename);
 
-		// XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
-		// XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
-		
+        XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[]);
+        XL_UTILITY_API std::optional<FileAttributes> TryGetFileAttributes(const utf16 filename[]);
+
 		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<char> filename);
 		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf8> filename);
 		XL_UTILITY_API void CreateDirectoryRecursive(StringSection<utf16> filename);
