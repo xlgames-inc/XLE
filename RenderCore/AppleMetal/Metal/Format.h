@@ -5,11 +5,10 @@
 #pragma once
 
 #include "../../Format.h"
+#include "IncludeAppleMetal.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
-    /* KenD -- These functions are implemented, but we are avoiding declaring MTL types
-     * here to avoid header inclusion */
-//    MTLPixelFormat AsMTLPixelFormat(RenderCore::Format fmt);
-//    RenderCore::Format AsRenderCoreFormat(MTLPixelFormat fmt);
+    MTLPixelFormat AsMTLPixelFormat(RenderCore::Format fmt);
+    RenderCore::Format AsRenderCoreFormat(MTLPixelFormat fmt);
 }}

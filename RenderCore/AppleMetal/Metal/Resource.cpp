@@ -69,6 +69,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
 
             textureDesc.pixelFormat = AsMTLPixelFormat(desc._textureDesc._format);
+            assert(textureDesc.pixelFormat != MTLPixelFormatInvalid);
 
             textureDesc.width = desc._textureDesc._width;
             textureDesc.height = desc._textureDesc._height;
@@ -96,11 +97,11 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
 
             textureDesc.usage = MTLTextureUsageUnknown;
-            if (desc._gpuAccess & GPUAccess::Read) {
+            if (desc._bindFlags & BindFlag::ShaderResource) {
                 textureDesc.usage |= MTLTextureUsageShaderRead;
-            }
-            if (desc._gpuAccess & GPUAccess::Write) {
-                textureDesc.usage |= MTLTextureUsageShaderWrite;
+                if (desc._gpuAccess & GPUAccess::Write) {
+                    textureDesc.usage |= MTLTextureUsageShaderWrite;
+                }
             }
             if (desc._bindFlags & BindFlag::RenderTarget ||
                 desc._bindFlags & BindFlag::DepthStencil) {
@@ -129,6 +130,7 @@ namespace RenderCore { namespace Metal_AppleMetal
              * Ideally, the texture loader would load into a format supported by the device.
              */
             if (bytesPerTexel == 3) {
+                assert(0);
                 return;
             }
 
@@ -143,24 +145,18 @@ namespace RenderCore { namespace Metal_AppleMetal
              5              -Z
              */
 
-            unsigned bytesPerImage = 0;
-
             for (unsigned f=0; f < faceCount; ++f) {
                 if (initializer) {
                     for (unsigned m=0; m < desc._textureDesc._mipCount; ++m) {
                         auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
                         auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
                         auto subRes = initializer({m, f});
-                        auto bytesPerRow = bytesPerTexel * mipWidth;
-                        if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
-                            bytesPerImage = bytesPerRow * mipHeight;
-                        }
                         [_underlyingTexture replaceRegion:MTLRegionMake2D(0, 0, mipWidth, mipHeight)
                                               mipmapLevel:m
                                                     slice:f
                                                 withBytes:subRes._data.begin()
-                                              bytesPerRow:bytesPerRow
-                                            bytesPerImage:bytesPerImage];
+                                              bytesPerRow:subRes._pitches._rowPitch
+                                            bytesPerImage:subRes._pitches._slicePitch];
                     }
                 } else {
                     // KenD -- in the case where we don't have initialization data, leave the texture as is

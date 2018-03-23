@@ -7,6 +7,7 @@
 #include <assert.h>
 
 #include "Metal/IncludeAppleMetal.h"
+#include "Metal/Format.h"
 #include "Metal/DeviceContext.h" // for ObjectFactory
 #include <QuartzCore/CAMetalLayer.h>
 
@@ -164,7 +165,8 @@ namespace RenderCore { namespace ImplAppleMetal
 
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
     {
-        return FormatCapability::Supported;
+        auto mtlFormat = Metal_AppleMetal::AsMTLPixelFormat(format);
+        return (mtlFormat != MTLPixelFormatInvalid) ? FormatCapability::Supported : FormatCapability::NotSupported;
     }
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
