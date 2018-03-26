@@ -8,7 +8,7 @@
 
 /**************************************************/
 /* Uncomment the following to use Metal as gfx api -- tryMetal */
-#define SELECT_APPLEMETAL
+//#define SELECT_APPLEMETAL
 /**************************************************/
 
 #include "../../Core/SelectConfiguration.h"
