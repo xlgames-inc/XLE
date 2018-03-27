@@ -98,7 +98,6 @@
 		8F9418211FDA01DC00DADA27 /* lutf8lib.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417D41FDA01DA00DADA27 /* lutf8lib.c */; };
 		8F9418221FDA01DC00DADA27 /* lauxlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417D51FDA01DA00DADA27 /* lauxlib.c */; };
 		8F9418231FDA01DC00DADA27 /* lauxlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417D51FDA01DA00DADA27 /* lauxlib.c */; };
-		8F9418251FDA01DC00DADA27 /* lua.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417D61FDA01DA00DADA27 /* lua.c */; };
 		8F9418261FDA01DC00DADA27 /* ltable.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F9417D71FDA01DA00DADA27 /* ltable.h */; };
 		8F9418271FDA01DC00DADA27 /* lua.hpp in Headers */ = {isa = PBXBuildFile; fileRef = 8F9417D81FDA01DA00DADA27 /* lua.hpp */; };
 		8F9418281FDA01DC00DADA27 /* lstrlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417D91FDA01DA00DADA27 /* lstrlib.c */; };
@@ -137,7 +136,6 @@
 		8F9418491FDA01DC00DADA27 /* liolib.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417ED1FDA01DB00DADA27 /* liolib.c */; };
 		8F94184A1FDA01DC00DADA27 /* lopcodes.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417EE1FDA01DB00DADA27 /* lopcodes.c */; };
 		8F94184B1FDA01DC00DADA27 /* lopcodes.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417EE1FDA01DB00DADA27 /* lopcodes.c */; };
-		8F94184D1FDA01DC00DADA27 /* luac.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417EF1FDA01DB00DADA27 /* luac.c */; };
 		8F94184E1FDA01DC00DADA27 /* lprefix.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F9417F01FDA01DB00DADA27 /* lprefix.h */; };
 		8F94184F1FDA01DC00DADA27 /* lzio.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417F11FDA01DB00DADA27 /* lzio.c */; };
 		8F9418501FDA01DC00DADA27 /* lzio.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417F11FDA01DB00DADA27 /* lzio.c */; };
@@ -774,7 +772,6 @@
 				8FA3F73B1EDD157B003EF623 /* MurmurHash2.cpp in Sources */,
 				8F9417FA1FDA01DC00DADA27 /* ltm.c in Sources */,
 				8F9417FC1FDA01DC00DADA27 /* lbitlib.c in Sources */,
-				8F94184D1FDA01DC00DADA27 /* luac.c in Sources */,
 				8F9418211FDA01DC00DADA27 /* lutf8lib.c in Sources */,
 				8F94185C1FDA01FE00DADA27 /* LocalCompiledShaderSource.cpp in Sources */,
 				8FA3F73D1EDD157B003EF623 /* MurmurHash3.cpp in Sources */,
@@ -806,7 +803,6 @@
 				8F9418451FDA01DC00DADA27 /* ldump.c in Sources */,
 				8F2DB61B2017F403009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418321FDA01DC00DADA27 /* lparser.c in Sources */,
-				8F9418251FDA01DC00DADA27 /* lua.c in Sources */,
 				8FA3F75B1EDD157B003EF623 /* DebuggingDisplay.cpp in Sources */,
 				8F94182E1FDA01DC00DADA27 /* lcode.c in Sources */,
 				8F9418151FDA01DC00DADA27 /* ltablib.c in Sources */,
