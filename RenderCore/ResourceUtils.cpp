@@ -198,9 +198,9 @@ namespace RenderCore
     {
         // Given the texture description, where do we expect to find the requested
         // subresource?
-        // For a single arrayLayer, we will jsut have the biggest mipmap, followed by the full mipchain
-        // If there are more array layers, they will follow on afterwards
-        // So, each array layer is stored contigously with it's full array chain.
+        // For a single arrayLayer, we will just have the biggest mipmap, followed by the full mipchain.
+        // If there are more array layers, they will follow on afterwards.
+        // So, each array layer is stored contiguously with its full array chain.
         //
         // Could also perhaps align the start of each array layer to some convenient boundary
         // (eg, 16 bytes?)
