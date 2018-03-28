@@ -168,7 +168,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static uint32_t g_nextShaderProgramGUID = 0;
 
-    ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& vertexShader,
+    ShaderProgram::ShaderProgram(   ObjectFactory& factory,
+                                    const CompiledShaderByteCode& vertexShader,
                                     const CompiledShaderByteCode& fragmentShader)
     {
         auto vsByteCode = vertexShader.GetByteCode();
@@ -182,7 +183,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
         Assets::RegisterAssetDependency(_depVal, fragmentShader.GetDependencyValidation());
 
-        auto newProgramIndex = GetObjectFactory().CreateShaderProgram();
+        auto newProgramIndex = factory.CreateShaderProgram();
         glAttachShader  (newProgramIndex->AsRawGLHandle(), vs->AsRawGLHandle());
         glAttachShader  (newProgramIndex->AsRawGLHandle(), fs->AsRawGLHandle());
         glLinkProgram   (newProgramIndex->AsRawGLHandle());

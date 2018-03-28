@@ -33,7 +33,7 @@
 
 namespace RenderCore { namespace Assets 
 {
-    static const bool CompileInBackground = false;
+    static const bool CompileInBackground = true;
     using ::Assets::ResChar;
     using ResId = ShaderService::ResId;
 

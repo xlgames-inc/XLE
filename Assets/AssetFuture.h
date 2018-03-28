@@ -116,12 +116,13 @@ namespace Assets
 			// prevent assets from changing in the middle of a single frame.
 		std::unique_lock<decltype(_lock)> lock(_lock);
 		if (_pollingFunction) {
-			auto pollingFunction = std::move(_pollingFunction);
+			std::function<bool(AssetFuture<AssetType>&)> pollingFunction;
+            std::swap(pollingFunction, _pollingFunction);
 			lock = {};
 			bool pollingResult = pollingFunction(*this);
 			lock = std::unique_lock<decltype(_lock)>(_lock);
 			assert(!_pollingFunction);
-			if (pollingResult) _pollingFunction = std::move(pollingFunction);
+			if (pollingResult) std::swap(pollingFunction, _pollingFunction);
 		}
 		if (_state == AssetState::Pending && _pendingState != AssetState::Pending) {
 			_actualized = std::move(_pending);

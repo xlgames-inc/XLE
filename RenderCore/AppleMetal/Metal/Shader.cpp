@@ -184,7 +184,8 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     static uint32_t g_nextShaderProgramGUID = 0;
 
-    ShaderProgram::ShaderProgram(   const CompiledShaderByteCode& vertexShader,
+    ShaderProgram::ShaderProgram(   ObjectFactory&,
+                                    const CompiledShaderByteCode& vertexShader,
                                     const CompiledShaderByteCode& fragmentShader)
     {
         /* Get the vertex and fragment function from the MTLLibraries */

@@ -13,13 +13,15 @@ namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
+    class ObjectFactory;
+
     class ShaderProgram
     {
     public:
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
         uint32_t GetGUID() const { return _guid; }
 
-        ShaderProgram(const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
+        ShaderProgram(ObjectFactory& factory, const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
         ~ShaderProgram();
 
         /* KenD -- Metal TODO -- shader construction will need to account for shader variants and conditional compilation, possibly with function constants */

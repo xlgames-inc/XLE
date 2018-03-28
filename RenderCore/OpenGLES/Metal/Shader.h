@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
         uint32_t GetGUID() const { return _guid; }
 
-        ShaderProgram(const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
+        ShaderProgram(ObjectFactory& factory, const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
         ~ShaderProgram();
     private:
         intrusive_ptr<OpenGL::ShaderProgram>    _underlying;
