@@ -15,6 +15,23 @@
 
 namespace RenderCore { namespace ImplOpenGLES
 {
+    static unsigned s_glesVersion = 300;        // always assume this version of GLES
+
+    static Metal_OpenGLES::FeatureSet::BitField AsGLESFeatureSet(unsigned glesVersion)
+    {
+        Metal_OpenGLES::FeatureSet::BitField featureSet = 0;
+        if (glesVersion >= 200) {
+            featureSet |= Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::ETC1TC;
+        }
+        
+        if (glesVersion >= 200) {            
+            featureSet |= Metal_OpenGLES::FeatureSet::GLES300 | Metal_OpenGLES::FeatureSet::ETC2TC;
+        }
+
+        assert(featureSet != 0);
+        return featureSet;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     Device::Device()
@@ -186,7 +203,8 @@ namespace RenderCore { namespace ImplOpenGLES
             //      Initialisation is complete. We can commit to our member pointers now.
             //
 
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>();
+        auto featureSet = AsGLESFeatureSet(s_glesVersion);
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
     }
 
     Device::~Device()
@@ -337,6 +355,23 @@ namespace RenderCore { namespace ImplOpenGLES
         return DeviceDesc { "OpenGLES-EGL", "", "" };
     }
 
+    FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+    {
+        auto activeFeatureSet = _objectFactory->GetFeatureSet();
+        auto glFmt = Metal_OpenGLES::AsTexelFormatType(format);
+        if (glFmt._internalFormat == GL_NONE)
+            return FormatCapability::NotSupported;
+
+        bool supported = true;
+        if (bindingType & BindFlag::ShaderResource) {
+            supported &= activeFeatureSet >= glFmt._textureFeatureSet;
+        } else if ((bindingType & BindFlag::RenderTarget) || (bindingType & BindFlag::DepthStencil)) {
+            supported &= activeFeatureSet >= glFmt._renderbufferFeatureSet;
+        }
+
+        return supported ? FormatCapability::Supported : FormatCapability::NotSupported;
+    }
+
     #if !FLEX_USE_VTABLE_Device && 0
         namespace Detail
         {
@@ -469,7 +504,8 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContextOpenGLES::ThreadContextOpenGLES(EGLContext sharedContext, const std::shared_ptr<Device>& device)
     : ThreadContext(sharedContext, device)
     {
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>();
+        auto featureSet = AsGLESFeatureSet(s_glesVersion);
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
     }
 
     ThreadContextOpenGLES::~ThreadContextOpenGLES() {}

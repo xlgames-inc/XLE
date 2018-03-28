@@ -94,6 +94,7 @@ namespace RenderCore { namespace ImplOpenGLES
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
         IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
         DeviceDesc GetDesc();
+        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
 
         EGLDisplay GetDisplay() const { return _display; };
         EGLContext GetSharedContext() const { return _sharedContext; }
