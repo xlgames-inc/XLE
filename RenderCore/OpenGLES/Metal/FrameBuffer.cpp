@@ -183,6 +183,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         // DavidJ -- hack because can't figure out how to get this working correctly using EGL
         if (s._rtvCount == 1 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->IsBackBuffer()) {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            glClearColor(0,1,0,1);
+            glClear(GL_COLOR_BUFFER_BIT);
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, s._frameBuffer->AsRawGLHandle());
         }
@@ -274,33 +276,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class FrameBufferPool::Pimpl 
-    {
-    public:
-    };
-
-    std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-		ObjectFactory& factory,
-		const FrameBufferDesc& desc,
-        const FrameBufferProperties& props,
-        const INamedAttachments& namedResources,
-        uint64 hashName)
-    {
-        return std::make_shared<FrameBuffer>(factory, desc, namedResources);
-    }
-
-    FrameBufferPool::FrameBufferPool()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
-
-    FrameBufferPool::~FrameBufferPool()
-    {}
-
-
 
 }}
 

@@ -31,6 +31,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         return nullptr;
     }
 
+    uint64_t Resource::GetGUID() const
+    {
+        assert(0);
+        return 0;
+    }
+
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
         const SubResourceInitData& initData)

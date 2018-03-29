@@ -34,6 +34,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         const bool IsBackBuffer() { return false; }
 
         virtual void*       QueryInterface(size_t guid);
+        virtual uint64_t    GetGUID() const;
 
         Resource(
             ObjectFactory& factory, const Desc& desc,

@@ -21,5 +21,6 @@ namespace RenderCore { namespace Metal_OpenGLES {
     class BlendState;
     class ViewportDesc;
     class PipelineLayoutConfig;
+    class ObjectFactory;
 
 }}

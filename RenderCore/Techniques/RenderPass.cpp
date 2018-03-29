@@ -13,6 +13,7 @@
 #include "../Metal/Resource.h"
 #include "../Format.h"
 #include "../ResourceUtils.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/ArithmeticUtils.h"
 #include <cmath>
 
@@ -98,40 +99,113 @@ namespace RenderCore { namespace Techniques
         return std::make_shared<NamedAttachmentsWrapper>(namedRes);
     }
 
-    RenderPassInstance::RenderPassInstance(
-        Metal::DeviceContext& context,
-        const FrameBufferDesc& layout,
-        uint64 hashName,
-        AttachmentPool& namedResources,
-        const RenderPassBeginDesc& beginInfo)
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class FrameBufferPool::Pimpl
     {
-        // We need to allocate the particular frame buffer we're going to use
-        // And then we'll call BeginRenderPass to begin the render pass
+    public:
+        class Entry
+        {
+        public:
+            uint64_t _hash = 0;
+            unsigned _tickId = 0;
+            std::shared_ptr<Metal::FrameBuffer> _fb;
+        };
+        Entry _entries[5];
+        unsigned _currentTickId = 0;
 
-        _namedAttachments = std::make_shared<NamedAttachmentsWrapper>(namedResources);
+        void IncreaseTickId();
+    };
 
-        Metal::FrameBufferPool cache;
-        _frameBuffer = cache.BuildFrameBuffer(
-            Metal::GetObjectFactory(context), layout,
-            namedResources.GetFrameBufferProperties(),
-            *_namedAttachments,
-            hashName);
-        assert(_frameBuffer);
-
-        Metal::BeginRenderPass(context, *_frameBuffer, layout, namedResources.GetFrameBufferProperties(), beginInfo._clearValues);
-        _attachedContext = &context;
+    void FrameBufferPool::Pimpl::IncreaseTickId()
+    {
+        // look for old FBs, and evict; then just increase the tick id
+        const unsigned evictionRange = 10;
+        for (auto&e:_entries)
+            if ((e._tickId + evictionRange) < _currentTickId)
+                e._fb.reset();
+        ++_currentTickId;
     }
+
+    std::shared_ptr<Metal::FrameBuffer> FrameBufferPool::BuildFrameBuffer(
+        Metal::ObjectFactory& factory,
+        const FrameBufferDesc& desc,
+        AttachmentPool& attachmentPool)
+    {
+        // 1. Find the attachments referenced by the given framebuffer
+        // 2. Ensure those attachments are instantiated in attachmentPool
+        // 3. Build a hash from the GUIDs of the referenced attachments
+        // 4. Find a framebuffer in the pool with the right hash, or create a new one
+        std::vector<AttachmentName> uniqueAttachments;
+        for (const auto&s:desc.GetSubpasses()) {
+            for (const auto&a:s._output) uniqueAttachments.push_back(a._resourceName);
+            for (const auto&a:s._input) uniqueAttachments.push_back(a._resourceName);
+            for (const auto&a:s._preserve) uniqueAttachments.push_back(a._resourceName);
+            for (const auto&a:s._resolve) uniqueAttachments.push_back(a._resourceName);
+            if (s._depthStencil._resourceName != ~0u)
+                uniqueAttachments.push_back(s._depthStencil._resourceName);
+        }
+        // (make unique set)
+        uniqueAttachments.erase(
+            std::unique(uniqueAttachments.begin(), uniqueAttachments.end()),
+            uniqueAttachments.end());
+
+        uint64_t hashValue = DefaultSeed64;
+        for (const auto a:uniqueAttachments)
+            hashValue = HashCombine(attachmentPool.GetResource(a)->GetGUID(), hashValue);
+        assert(hashValue != 0);     // using 0 has a sentinel, so this will cause some problems
+
+        unsigned earliestEntry = 0;
+        unsigned tickIdOfEarliestEntry = ~0u;
+        for (unsigned c=0; c<dimof(_pimpl->_entries); ++c) {
+            if (_pimpl->_entries[c]._hash == hashValue) {
+                _pimpl->_entries[c]._tickId = _pimpl->_currentTickId;
+                _pimpl->IncreaseTickId();
+                return _pimpl->_entries[c]._fb;
+            }
+            if (_pimpl->_entries[c]._tickId < tickIdOfEarliestEntry) {
+                tickIdOfEarliestEntry = _pimpl->_entries[c]._tickId;
+                earliestEntry = c;
+            }
+        }
+
+        // Can't find it; we're just going to overwrite the oldest entry with a new one
+        assert(earliestEntry < dimof(_pimpl->_entries));
+        if (_pimpl->_entries[earliestEntry]._fb) {
+            Log(Warning) << "Overwriting tail in FrameBufferPool(). There may be too many different framebuffers required from the same pool" << std::endl;
+        }
+
+        auto namedAttachments = MakeNamedAttachmentsWrapper(attachmentPool);
+        _pimpl->_entries[earliestEntry]._fb = std::make_shared<Metal::FrameBuffer>(
+            Metal::GetObjectFactory(),
+            desc, *namedAttachments);
+        _pimpl->_entries[earliestEntry]._tickId = _pimpl->_currentTickId;
+        _pimpl->_entries[earliestEntry]._hash = hashValue;
+        _pimpl->IncreaseTickId();
+        return _pimpl->_entries[earliestEntry]._fb;
+    }
+
+    FrameBufferPool::FrameBufferPool()
+    {
+        _pimpl = std::make_unique<Pimpl>();
+    }
+
+    FrameBufferPool::~FrameBufferPool()
+    {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     RenderPassInstance::RenderPassInstance(
         IThreadContext& context,
+        const std::shared_ptr<Metal::FrameBuffer>& frameBuffer,
         const FrameBufferDesc& layout,
-        uint64 hashName,
         AttachmentPool& namedResources,
         const RenderPassBeginDesc& beginInfo)
-    : RenderPassInstance(
-        *Metal::DeviceContext::Get(context),
-        layout, hashName, namedResources, beginInfo)
-    {}
+    {
+        _attachedContext = Metal::DeviceContext::Get(context).get();
+        _frameBuffer = frameBuffer;
+        Metal::BeginRenderPass(*_attachedContext, *_frameBuffer, layout, namedResources.GetFrameBufferProperties(), beginInfo._clearValues);
+    }
     
     RenderPassInstance::~RenderPassInstance() 
     {

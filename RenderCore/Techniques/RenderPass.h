@@ -108,7 +108,7 @@ namespace RenderCore { namespace Techniques
         AttachmentPool& namedResources,
         FrameBufferDescFragment&& fragment);
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class RenderPassBeginDesc
     {
@@ -125,6 +125,30 @@ namespace RenderCore { namespace Techniques
         : _clearValues(clearValues)
         {}
     };
+
+    /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
+    /// Client code typically just wants to define the size and formats of frame buffers, without
+    /// manually retaining and managing the objects themselves. It's a result of typical usage patterns
+    /// of RenderPassInstance.
+    ///
+    /// This helper class allows client code to simply declare what it needs and the actual management
+    /// of the device objects will be handled within the cache.
+    class FrameBufferPool
+    {
+    public:
+        std::shared_ptr<Metal::FrameBuffer> BuildFrameBuffer(
+            Metal::ObjectFactory& factory,
+            const FrameBufferDesc& desc,
+            AttachmentPool& attachmentPool);
+
+        FrameBufferPool();
+        ~FrameBufferPool();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     /// <summary>Begins and ends a render pass on the given context</summary>
     /// Creates and begins a render pass using the given frame buffer layout. This will also automatically
@@ -144,21 +168,14 @@ namespace RenderCore { namespace Techniques
         void End();
 
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
-        const INamedAttachments& GetNamedAttachments() const { return *_namedAttachments; }
-
-        RenderPassInstance(
-            Metal::DeviceContext& context,
-            const FrameBufferDesc& layout,
-            uint64 hashName,
-            AttachmentPool& namedResources,
-            const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         RenderPassInstance(
             IThreadContext& context,
+            const std::shared_ptr<Metal::FrameBuffer>& frameBuffer,
             const FrameBufferDesc& layout,
-            uint64 hashName,
             AttachmentPool& namedResources,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
+
         ~RenderPassInstance();
 
         RenderPassInstance();
@@ -167,7 +184,6 @@ namespace RenderCore { namespace Techniques
 
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
-        std::shared_ptr<INamedAttachments> _namedAttachments;
         Metal::DeviceContext* _attachedContext;
     };
 

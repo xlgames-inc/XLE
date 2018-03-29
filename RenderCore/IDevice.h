@@ -176,6 +176,7 @@ namespace RenderCore
     public:
 		virtual ResourceDesc	GetDesc() const = 0;
         virtual void*			QueryInterface(size_t guid) = 0;
+        virtual uint64_t        GetGUID() const = 0;
         ~IResource();
     };
 

@@ -28,6 +28,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         const bool IsBackBuffer() { return _isBackBuffer; }
 
         virtual void*       QueryInterface(size_t guid);
+        virtual uint64_t    GetGUID() const;
 
         Resource(
             ObjectFactory& factory, const Desc& desc,
@@ -50,6 +51,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         std::vector<uint8_t> _constantBuffer;
         bool _isBackBuffer;
         Desc _desc;
+        uint64_t _guid;
     };
 
     GLenum AsBufferTarget(BindFlag::BitField bindFlags);

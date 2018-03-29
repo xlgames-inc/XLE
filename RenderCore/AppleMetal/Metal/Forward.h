@@ -24,5 +24,6 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class BlendState;
     class ViewportDesc;
     class PipelineLayoutConfig;
+    class ObjectFactory;
 
 }}
