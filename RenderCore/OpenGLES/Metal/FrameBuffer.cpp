@@ -116,8 +116,24 @@ namespace RenderCore { namespace Metal_OpenGLES
                 assert(sp._rtvCount <= maxDrawBuffers);
             #endif
 
-            sp._frameBuffer = factory.CreateFrameBuffer();
-            glBindFramebuffer(GL_FRAMEBUFFER, sp._frameBuffer->AsRawGLHandle());
+            bool bindingToBackbuffer = false;
+            for (unsigned rtv=0; rtv<sp._rtvCount; ++rtv) {
+                assert(sp._rtvs[rtv].IsGood());
+
+                auto& res = *sp._rtvs[rtv].GetResource();
+                if (res.IsBackBuffer()) {
+                    bindingToBackbuffer = true;
+                    break;
+                }
+            }
+            if (bindingToBackbuffer) {
+                sp._frameBuffer = intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >(0);
+                glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            } else {
+                sp._frameBuffer = factory.CreateFrameBuffer();
+                glBindFramebuffer(GL_FRAMEBUFFER, sp._frameBuffer->AsRawGLHandle());
+            }
+
             for (unsigned rtv=0; rtv<sp._rtvCount; ++rtv) {
                 assert(sp._rtvs[rtv].IsGood());
 
