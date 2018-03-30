@@ -83,7 +83,7 @@ namespace Assets
 		// version number is bad). We could attempt to push this into a background thread, also
 
 		auto existingArtifact = marker->GetExistingAsset();
-		if (existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
+		if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
 			bool doRecompile = false;
 			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
 			if (!doRecompile) return;

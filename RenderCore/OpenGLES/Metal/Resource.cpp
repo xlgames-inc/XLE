@@ -146,11 +146,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
                     auto bindTarget = GL_TEXTURE_2D;
-                    #if PLATFORMOS_ACTIVE == PLATFORMOS_OSX     // DavidJ -- temporary hack -- glTexStorage path not working for me on OSX (pixel format compatibility issue?) -- falling back to old path
-                        bool useTexStorage = false;
-                    #else
-                        bool useTexStorage = true;
-                    #endif
+                    bool useTexStorage = factory.GetFeatureSet() & FeatureSet::GLES300;
                     if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
                         assert(desc._textureDesc._height == 1);
                         assert(desc._textureDesc._arrayCount <= 1);

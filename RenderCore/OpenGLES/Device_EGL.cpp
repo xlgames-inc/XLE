@@ -332,9 +332,8 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContext::ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device>& device)
     : _sharedContext(sharedContext)
     , _device(device)
-    {
-        _activeFrameContext = nullptr;
-    }
+    , _activeFrameContext(nullptr)
+    {}
 
     ThreadContext::~ThreadContext() {}
 
