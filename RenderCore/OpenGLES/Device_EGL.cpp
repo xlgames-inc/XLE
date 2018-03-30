@@ -24,7 +24,7 @@ namespace RenderCore { namespace ImplOpenGLES
             featureSet |= Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::ETC1TC;
         }
         
-        if (glesVersion >= 200) {            
+        if (glesVersion >= 300) {            
             featureSet |= Metal_OpenGLES::FeatureSet::GLES300 | Metal_OpenGLES::FeatureSet::ETC2TC;
         }
 
