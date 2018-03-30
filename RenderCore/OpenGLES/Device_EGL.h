@@ -30,6 +30,8 @@ namespace RenderCore { namespace ImplOpenGLES
                 EGLConfig config,
                 const void *platformValue, unsigned width, unsigned height);
         ~PresentationChain();
+
+        ResourceDesc _backBufferDesc;
     private:
        EGLSurface _surface;
        std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
