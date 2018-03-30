@@ -185,6 +185,13 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_entries[earliestEntry]._fb;
     }
 
+    void FrameBufferPool::Reset()
+    {
+        // just destroy and recreate "Pimpl" to start again from scratch
+        _pimpl.reset();
+        _pimpl = std::make_unique<Pimpl>();
+    }
+
     FrameBufferPool::FrameBufferPool()
     {
         _pimpl = std::make_unique<Pimpl>();

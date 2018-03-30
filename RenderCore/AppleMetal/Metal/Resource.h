@@ -54,6 +54,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         TBC::OCPtr<AplMtlTexture> _underlyingTexture; // id<MTLTexture>
         //TBC::OCPtr<id> _underlyingRenderBuffer; // id<MTLTexture>
         Desc _desc;
+        uint64_t _guid;
     };
 
     inline RawMTLHandle GetBufferRawMTLHandle(const IResource& resource)

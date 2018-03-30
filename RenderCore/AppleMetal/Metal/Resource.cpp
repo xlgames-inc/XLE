@@ -33,9 +33,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     uint64_t Resource::GetGUID() const
     {
-        assert(0);
-        return 0;
+        return _guid;
     }
+
+    static uint64_t s_nextResourceGUID = 0;
 
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,
@@ -50,6 +51,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         ObjectFactory& factory, const Desc& desc,
         const IDevice::ResourceInitializer& initializer)
     : _desc(desc)
+    , _guid(s_nextResourceGUID++)
     {
         /* Overview: This is the base constructor for the Resource.
          * The ObjectFactory uses the MTLDevice to create the actual MTLTexture or MTLBuffer.
@@ -192,6 +194,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     Resource::Resource(const id<MTLTexture>& texture, const ResourceDesc& desc)
     : _underlyingTexture(texture)
     , _desc(desc)
+    , _guid(s_nextResourceGUID++)
     {
         // KenD -- this wraps a MTL resource in an IResource, such as with the drawable for the current framebuffer
 
@@ -203,6 +206,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     Resource::Resource(const IResourcePtr& res, const ResourceDesc& desc)
     : _desc(desc)
+    , _guid(s_nextResourceGUID++)
     {
         std::shared_ptr<Resource> resource = AsResource(res);
         if (resource->GetBuffer()) {
@@ -214,7 +218,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
-    Resource::Resource() {}
+    Resource::Resource() : _guid(s_nextResourceGUID++) {}
     Resource::~Resource() {}
 
     ResourceDesc ExtractDesc(const IResource& input)

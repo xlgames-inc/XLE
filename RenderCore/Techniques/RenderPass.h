@@ -141,6 +141,8 @@ namespace RenderCore { namespace Techniques
             const FrameBufferDesc& desc,
             AttachmentPool& attachmentPool);
 
+        void Reset();
+
         FrameBufferPool();
         ~FrameBufferPool();
     private:
