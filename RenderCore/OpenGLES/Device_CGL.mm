@@ -19,7 +19,7 @@ namespace RenderCore { namespace ImplOpenGLES
 {
     static Metal_OpenGLES::FeatureSet::BitField GetFeatureSet()
     {
-        return Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::GLES300;
+        return Metal_OpenGLES::FeatureSet::GLES200;
     }
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
@@ -194,7 +194,19 @@ namespace RenderCore { namespace ImplOpenGLES
 
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
     {
-        return FormatCapability::Supported;
+        auto activeFeatureSet = _objectFactory->GetFeatureSet();
+        auto glFmt = Metal_OpenGLES::AsTexelFormatType(format);
+        if (glFmt._internalFormat == GL_NONE)
+            return FormatCapability::NotSupported;
+
+        bool supported = true;
+        if (bindingType & BindFlag::ShaderResource) {
+            supported &= (activeFeatureSet & glFmt._textureFeatureSet);
+        } else if ((bindingType & BindFlag::RenderTarget) || (bindingType & BindFlag::DepthStencil)) {
+            supported &= (activeFeatureSet & glFmt._renderbufferFeatureSet);
+        }
+
+        return supported ? FormatCapability::Supported : FormatCapability::NotSupported;
     }
 
     DeviceDesc Device::GetDesc()
