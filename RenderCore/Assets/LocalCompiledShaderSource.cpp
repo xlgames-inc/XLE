@@ -33,7 +33,7 @@
 
 namespace RenderCore { namespace Assets 
 {
-    static const bool CompileInBackground = true;
+    static const bool CompileInBackground = false;
     using ::Assets::ResChar;
     using ResId = ShaderService::ResId;
 
@@ -279,6 +279,8 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
     {
+		return nullptr;
+
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
