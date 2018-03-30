@@ -52,7 +52,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (presChain._fakeBackBuffer)
             return presChain._fakeBackBuffer;
 
-        return std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(presChain._backBufferDesc));
+        return presChain._backBufferResource;
     }
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
@@ -251,7 +251,25 @@ namespace RenderCore { namespace ImplOpenGLES
         CGLContextObj sharedContext,
         const void* platformValue, unsigned width, unsigned height)
     {
-        id objCObj = (id)platformValue;
+        _backBufferDesc = CreateDesc(
+            BindFlag::RenderTarget, 0, GPUAccess::Write,
+            TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
+            "backbuffer");
+
+        _sharedContext = sharedContext;
+        _platformValue = platformValue;
+        CreateUnderlyingContext(objFactory);
+    }
+
+    PresentationChain::~PresentationChain()
+    {
+    }
+
+    void PresentationChain::CreateUnderlyingContext(Metal_OpenGLES::ObjectFactory& objFactory)
+    {
+        _nsContext = nullptr;
+
+        id objCObj = (id)_platformValue;
         if ([objCObj isKindOfClass:NSOpenGLView.class]) {
             _nsContext = ((NSOpenGLView*)objCObj).openGLContext;
         } else {
@@ -274,7 +292,7 @@ namespace RenderCore { namespace ImplOpenGLES
             (void)virtualScreenCount;
 
             CGLContextObj context;
-            error = CGLCreateContext(pixelFormat, sharedContext, &context);
+            error = CGLCreateContext(pixelFormat, _sharedContext, &context);
             assert(!error);
             assert(context);
             CGLReleasePixelFormat(pixelFormat);
@@ -282,15 +300,10 @@ namespace RenderCore { namespace ImplOpenGLES
             _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
             CGLReleaseContext(context);
 
-            _nsContext.get().view = (NSView*)platformValue;
+            _nsContext.get().view = (NSView*)_platformValue;
         }
 
-        _backBufferDesc = CreateDesc(
-            BindFlag::RenderTarget, 0, GPUAccess::Write,
-            TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
-            "backbuffer");
-
-        const bool useFakeBackbuffer = true;
+        const bool useFakeBackbuffer = false;
         if (useFakeBackbuffer) {
             _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
 
@@ -304,31 +317,21 @@ namespace RenderCore { namespace ImplOpenGLES
             glDrawBuffers(1, drawBuffers);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         }
-    }
 
-    PresentationChain::~PresentationChain()
-    {
+        _backBufferResource = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
     }
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
+        if (    newWidth == _backBufferDesc._textureDesc._width
+            &&  newHeight == _backBufferDesc._textureDesc._height)
+            return;
+            
         _backBufferDesc._textureDesc._width = newWidth;
         _backBufferDesc._textureDesc._height = newHeight;
 
-        // recreate the "fake back buffer" if we created one previously
-        if (_fakeBackBuffer) {
-            auto& objFactory = Metal_OpenGLES::GetObjectFactory(*_fakeBackBuffer);
-            _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
-
-            _fakeBackBufferFrameBuffer = objFactory.CreateFrameBuffer();
-            glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferFrameBuffer->AsRawGLHandle());
-            glFramebufferRenderbuffer(
-                GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER,
-                _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
-            GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-            glDrawBuffers(1, drawBuffers);
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        }
+        auto& objFactory = Metal_OpenGLES::GetObjectFactory(*_fakeBackBuffer);
+        CreateUnderlyingContext(objFactory);
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const

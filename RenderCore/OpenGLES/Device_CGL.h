@@ -33,10 +33,15 @@ namespace RenderCore { namespace ImplOpenGLES
 
         ResourceDesc _backBufferDesc;
         std::shared_ptr<Metal_OpenGLES::Resource> _fakeBackBuffer;
+        std::shared_ptr<Metal_OpenGLES::Resource> _backBufferResource;
         intrusive_ptr<OpenGL::FrameBuffer> _fakeBackBufferFrameBuffer;
 
     private:
         TBC::OCPtr<NSOpenGLContext> _nsContext;
+        CGLContextObj _sharedContext;
+        const void* _platformValue;
+
+        void CreateUnderlyingContext(Metal_OpenGLES::ObjectFactory& objFactory);
     };
 
 ////////////////////////////////////////////////////////////////////////////////
