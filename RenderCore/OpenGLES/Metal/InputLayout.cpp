@@ -107,6 +107,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (bindingStart != (unsigned)_bindings.size())
                 _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
+
+        CheckGLError("Construct BoundInputLayout");
     }
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& program)
@@ -189,6 +191,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
             }
         }
+
+        CheckGLError("Construct BoundInputLayout");
     }
 
     void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
@@ -232,6 +236,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         for (; c<_maxVertexAttributes; ++c)
             glDisableVertexAttribArray(c);
+
+        CheckGLError("Apply BoundInputLayout");
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -282,6 +288,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         // a single uniform set operation can be used for multiple texture bindings
         if (streamIdx == 0 && !_textureAssignmentCommands._commands.empty())
             Bind(context, _textureAssignmentCommands, MakeIteratorRange(_textureAssignmentByteData));
+
+        CheckGLError("Apply BoundUniforms");
     }
 
     static GLenum DimensionalityForUniformType(GLenum uniformType)
@@ -429,6 +437,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             i = i2;
         }
+
+        CheckGLError("Construct BoundUniforms");
     }
 
     BoundUniforms::~BoundUniforms() {}

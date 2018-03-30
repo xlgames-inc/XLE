@@ -15,6 +15,8 @@ namespace RenderCore { class IDevice; class IResource; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    void CheckGLError(const char context[]);
+    
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     using RawGLHandle = uint32_t;

@@ -153,6 +153,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
+        CheckGLError("Construct ShaderIntrospection");
     }
 
     ShaderIntrospection::~ShaderIntrospection()
@@ -221,6 +222,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 break;
             }
         }
+
+        CheckGLError("Bind SetUniformCommandGroup");
     }
 
 }}

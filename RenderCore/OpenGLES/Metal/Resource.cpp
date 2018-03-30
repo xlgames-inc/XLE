@@ -89,12 +89,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         : IDevice::ResourceInitializer{})
     {}
 
-    static void checkError()
-    {
-        /*auto error = glGetError();
-        assert(error == GL_NO_ERROR);*/
-    }
-
     /*
     static GLenum AsBindingQuery(GLenum binding)
     {
@@ -114,8 +108,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     , _isBackBuffer(false)
     , _guid(s_nextResourceGUID++)
     {
-        checkError();
-
         if (desc._type == ResourceDesc::Type::LinearBuffer) {
 
             SubResourceInitData initData;
@@ -137,6 +129,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
                 (*GetGLWrappers()->BufferData)(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
             }
+
+            CheckGLError("Creating linear buffer resource");
 
         } else {
 
@@ -238,17 +232,19 @@ namespace RenderCore { namespace Metal_OpenGLES
                     // glBindTexture(bindTarget, prevTexture);
                 }
 
+                CheckGLError("Creating texture resource");
+
             } else {
 
                 _underlyingRenderBuffer = factory.CreateRenderBuffer();
                 glBindRenderbuffer(GL_RENDERBUFFER, _underlyingRenderBuffer->AsRawGLHandle());
                 glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
 
+                CheckGLError("Creating render buffer resource");
+
             }
 
         }
-
-        checkError();
     }
 
     Resource::Resource(const intrusive_ptr<OpenGL::Texture>& texture, const ResourceDesc& desc)

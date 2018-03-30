@@ -328,5 +328,16 @@ namespace RenderCore { namespace Metal_OpenGLES
     ObjectFactory& GetObjectFactory(IResource&) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
     ObjectFactory& GetObjectFactory() { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
 
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void CheckGLError(const char context[])
+    {
+        auto e = glGetError();
+        if (e) {
+            Log(Error) << "Encountered OpenGL error (" << e << ") in context (" << context << ")" << std::endl;
+            // OutputDebugString(XlDynFormatString("Encountered OpenGL error (%i) in context (%s)", e, context).c_str());
+        }
+    }
+
 }}
 

@@ -35,6 +35,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_FUNC, _compareFunc);
         }
 
+        CheckGLError("SamplerState::Apply");
+
         // (border color set elsewhere. Anisotrophy requires an extension)
     }
 
@@ -71,6 +73,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         AddressMode addressU, AddressMode addressV, AddressMode addressW,
         CompareOp comparison)
     {
+        CheckGLError("Construct Sampler State (start)");
+
         switch (filter) {
         case FilterMode::Bilinear:
         case FilterMode::ComparisonBilinear:
@@ -122,6 +126,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
         }
+
+        CheckGLError("Construct Sampler State");
     }
 
     BlendState::BlendState() {}
@@ -135,6 +141,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDisable(GL_SAMPLE_ALPHA_TO_COVERAGE);
         glDisable(GL_SAMPLE_COVERAGE);
         glSampleCoverage(1.f, GL_FALSE);
+
+        CheckGLError("Apply BlendState");
     }
 
     ViewportDesc::ViewportDesc(DeviceContext& viewport)
@@ -148,6 +156,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         Height       = float(viewportParameters[3]);
 
         glGetFloatv(GL_DEPTH_RANGE, &MinDepth); // (get MinDepth & MaxDepth)
+
+        CheckGLError("GetViewport");
     }
     
 }}

@@ -205,6 +205,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
         auto featureSet = AsGLESFeatureSet(s_glesVersion);
         _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
+
+        Metal_OpenGLES::CheckGLError("End of Device constructor");
     }
 
     Device::~Device()
@@ -434,6 +436,8 @@ namespace RenderCore { namespace ImplOpenGLES
             EGLConfig config,
             const void* platformValue, unsigned width, unsigned height)
     {
+        Metal_OpenGLES::CheckGLError("Start of PresentationChain constructor");
+
             //
             //      Create the main output surface
             //
@@ -480,14 +484,14 @@ namespace RenderCore { namespace ImplOpenGLES
             _desc->_height = resDesc._textureDesc._height;
             _desc->_format = resDesc._textureDesc._format;
             _desc->_samples = resDesc._textureDesc._samples;
-        #else
         #endif
+
+		Metal_OpenGLES::CheckGLError("End of PresentationChain constructor");
     }
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const {
         return _desc;
     }
-
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/ {
         //assert(0); // not implemented

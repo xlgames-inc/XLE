@@ -38,6 +38,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         assert(IB._indexFormat == Format::R32_UINT || IB._indexFormat == Format::R16_UINT || IB._indexFormat == Format::R8_UINT);
         _indicesFormat = AsGLIndexBufferType(IB._indexFormat);
         _indexFormatBytes = BitsPerPixel(IB._indexFormat) / 8;
+        CheckGLError("Bind IndexBufferView");
     }
 
     void GraphicsPipeline::Bind(Topology topology)
@@ -48,6 +49,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     void GraphicsPipeline::Bind(const ShaderProgram& shaderProgram)
     {
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
+        CheckGLError("Bind ShaderProgram");
     }
 
     void GraphicsPipeline::Bind(const BlendState& blender)
@@ -79,10 +81,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             glDisable(GL_CULL_FACE);
         }
         glFrontFace(AsGLenum(desc._frontFaceWinding));
+        CheckGLError("Bind RasterizationState");
     }
 
     void GraphicsPipeline::Bind(const DepthStencilDesc& desc)
     {
+        CheckGLError("Bind DepthStencilState (start)");
+
         glDepthFunc(AsGLenum(desc._depthTest));
         glDepthMask(desc._depthWrite ? GL_TRUE : GL_FALSE);
 
@@ -118,6 +123,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         } else {
             glDisable(GL_STENCIL_TEST);
         }
+        CheckGLError("Bind DepthStencilState");
     }
 
     void GraphicsPipeline::Bind(const ViewportDesc& viewport)
@@ -130,20 +136,26 @@ namespace RenderCore { namespace Metal_OpenGLES
         #else
             glDepthRange(viewport.MinDepth, viewport.MaxDepth);
         #endif
+
+        CheckGLError("Bind Viewport");
     }
 
     void GraphicsPipeline::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         glDrawArrays(GLenum(_nativeTopology), startVertexLocation, vertexCount);
+        CheckGLError("Draw()");
     }
 
     void GraphicsPipeline::DrawIndexed(unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
     {
+        CheckGLError("before DrawIndexed()");
+
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         glDrawElements(
             GLenum(_nativeTopology), GLsizei(indexCount),
             GLenum(_indicesFormat),
             (const void*)(size_t)(_indexFormatBytes * startIndexLocation));
+        CheckGLError("DrawIndexed()");
     }
 
     void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
@@ -160,6 +172,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 startVertexLocation, vertexCount,
                 instanceCount);
         #endif
+        CheckGLError("DrawInstances()");
     }
 
     void GraphicsPipeline::DrawIndexedInstances(unsigned indexCount, unsigned instanceCount, unsigned startIndexLocation, unsigned baseVertexLocation)
@@ -179,6 +192,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
                 instanceCount);
         #endif
+        CheckGLError("DrawIndexedInstances()");
     }
 
     GraphicsPipeline::GraphicsPipeline(FeatureSet::BitField featureSet)
