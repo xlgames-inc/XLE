@@ -41,6 +41,15 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind IndexBufferView");
     }
 
+    void GraphicsPipeline::UnbindInputLayout()
+    {
+        #if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
+            glBindVertexArray(0);
+        #endif
+        glBindBuffer(GL_ARRAY_BUFFER, 0);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
+    }
+
     void GraphicsPipeline::Bind(Topology topology)
     {
         _nativeTopology = AsGLenum(topology);
