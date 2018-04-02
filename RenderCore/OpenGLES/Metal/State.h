@@ -66,11 +66,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     class SamplerState
     {
     public:
-        SamplerState(   FilterMode filter = FilterMode::Trilinear,
+        SamplerState(   FilterMode filter,
                         AddressMode addressU = AddressMode::Wrap,
                         AddressMode addressV = AddressMode::Wrap,
                         AddressMode addressW = AddressMode::Wrap,
                         CompareOp comparison = CompareOp::Never);
+        SamplerState();
 
         void Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws;
 

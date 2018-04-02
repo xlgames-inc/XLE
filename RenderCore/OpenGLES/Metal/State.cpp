@@ -130,6 +130,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Construct Sampler State");
     }
 
+    SamplerState::SamplerState()
+    {
+        _minFilter = GL_LINEAR_MIPMAP_LINEAR;
+        _maxFilter = GL_LINEAR;
+        _compareFunc = AsGLenum(CompareOp::Never);
+        _compareMode = GL_NONE;
+        _wrapS = AsGLenum(AddressMode::Wrap);
+        _wrapT = AsGLenum(AddressMode::Wrap);
+        _wrapR = AsGLenum(AddressMode::Wrap);
+        // Note -- default constructor must not invoke ObjectFactory::CreateSampler(), because
+        // it is used pre-operator= sometimes, when the default constructor is expected to be low overhead
+    }
+
     BlendState::BlendState() {}
     void BlendState::Apply() const never_throws
     {
