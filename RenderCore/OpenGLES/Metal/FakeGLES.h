@@ -30,6 +30,7 @@ extern void glClearBufferiv (uint32_t buffer, int32_t drawbuffer, const int32_t 
 extern void glInvalidateFramebuffer (uint32_t target, int32_t numAttachments, const uint32_t* attachments);
 extern void glVertexAttribDivisor(uint32_t index, uint32_t divisor);
 
+#define glClearDepthf       glClearDepth
 
 #if defined(__cplusplus)
     }

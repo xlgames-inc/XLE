@@ -204,27 +204,56 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         // glBindFramebuffer(GL_FRAMEBUFFER, 0);
 
-        for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
-            auto attachmentIdx = s._rtvs[rtv];
-            auto load = s._rtvLoad[rtv];
-            if (load == LoadStore::Clear) {
-                glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
-            }
+        bool clearDepth = false, clearStencil = false;
+        if (s._dsv.IsGood()) {
+            clearDepth =
+                    (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil)
+                &&  (s._dsvHasDepth);
+            clearStencil =
+                    (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil)
+                &&  (s._dsvHasStencil);
         }
 
-        bool clearDepth =
-                (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil)
-            &&  (s._dsvHasDepth);
-        bool clearStencil =
-                (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil)
-            &&  (s._dsvHasStencil);
+        // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
+        // For ES2, we have to drop back to the older API
+        bool useNewClearAPI = context.GetFeatureSet() & FeatureSet::GLES300;
+        if (useNewClearAPI) {
+            for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
+                auto attachmentIdx = s._rtvs[rtv];
+                auto load = s._rtvLoad[rtv];
+                if (load == LoadStore::Clear) {
+                    glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                }
+            }
 
-        if (clearDepth && clearStencil) {
-            glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
-        } else if (clearDepth) {
-            glClearBufferfv(GL_DEPTH, 0, &clearValues[s._dsvClearValue]._depthStencil._depth);
-        } else if (clearStencil)  {
-            glClearBufferiv(GL_STENCIL, 0, (const GLint*)&clearValues[s._dsvClearValue]._depthStencil._stencil);
+            if (clearDepth && clearStencil) {
+                glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+            } else if (clearDepth) {
+                glClearBufferfv(GL_DEPTH, 0, &clearValues[s._dsvClearValue]._depthStencil._depth);
+            } else if (clearStencil)  {
+                glClearBufferiv(GL_STENCIL, 0, (const GLint*)&clearValues[s._dsvClearValue]._depthStencil._stencil);
+            }
+        } else {
+            assert(s._rtvCount <= 1);
+            bool clearColor = (s._rtvCount != 0) && s._rtvLoad[0] == LoadStore::Clear;
+
+            unsigned clearBits = 0;
+            if (clearColor) {
+                const float* clear = clearValues[s._rtvClearValue[0]]._float;
+                glClearColor(clear[0], clear[1], clear[2], clear[3]);
+                clearBits |= GL_COLOR_BUFFER_BIT;
+            }
+            if (clearDepth) {
+                glClearDepthf(clearValues[s._dsvClearValue]._depthStencil._depth);
+                clearBits |= GL_DEPTH_BUFFER_BIT;
+            }
+            if (clearStencil) {
+                glClearStencil(clearValues[s._dsvClearValue]._depthStencil._stencil);
+                clearBits |= GL_STENCIL_BUFFER_BIT;
+            }
+
+            if (clearBits)
+                glClear(clearBits);
         }
 
         GLenum attachmentsToInvalidate[s_maxMRTs+1];
