@@ -11,6 +11,7 @@
 #include "Buffer.h"
 #include "Format.h"
 #include "../../IThreadContext.h"
+#include "../../../ConsoleRig/Log.h"
 
 #include "IncludeGLES.h"
 #include <assert.h>
@@ -31,13 +32,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void GraphicsPipeline::Bind(const IndexBufferView& IB)
     {
-        assert(IB._offset == 0);    // (not supported currently... But we could safe it up for the draw call)
-        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, GetBufferRawGLHandle(*IB._resource));
+		auto ibBuffer = GetBufferRawGLHandle(*IB._resource);
+        glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, ibBuffer);
 
         // Note that Format::R32_UINT is only supported on OGLES3.0+
         assert(IB._indexFormat == Format::R32_UINT || IB._indexFormat == Format::R16_UINT || IB._indexFormat == Format::R8_UINT);
         _indicesFormat = AsGLIndexBufferType(IB._indexFormat);
         _indexFormatBytes = BitsPerPixel(IB._indexFormat) / 8;
+        _indexBufferOffsetBytes = IB._offset;
         CheckGLError("Bind IndexBufferView");
     }
 
@@ -163,7 +165,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         glDrawElements(
             GLenum(_nativeTopology), GLsizei(indexCount),
             GLenum(_indicesFormat),
-            (const void*)(size_t)(_indexFormatBytes * startIndexLocation));
+            (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes));
         CheckGLError("DrawIndexed()");
     }
 
@@ -192,13 +194,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             glDrawElementsInstanced(
                 GLenum(_nativeTopology), GLsizei(indexCount),
                 GLenum(_indicesFormat),
-                (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
+                (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
                 instanceCount);
         #else
             glDrawElementsInstancedARB(
                 GLenum(_nativeTopology), GLsizei(indexCount),
                 GLenum(_indicesFormat),
-                (const void*)(size_t)(_indexFormatBytes * startIndexLocation),
+                (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
                 instanceCount);
         #endif
         CheckGLError("DrawIndexedInstances()");

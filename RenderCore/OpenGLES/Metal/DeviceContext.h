@@ -75,6 +75,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned    _nativeTopology;
         unsigned    _indicesFormat;
         unsigned    _indexFormatBytes;
+        unsigned    _indexBufferOffsetBytes;
         FeatureSet::BitField _featureSet;
     };
 
