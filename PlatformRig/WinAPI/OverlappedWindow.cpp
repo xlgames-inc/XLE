@@ -261,6 +261,4 @@ namespace PlatformRig
             : PumpResult::Continue;
     }
 
-    IWindowHandler::~IWindowHandler() {}
-
 }

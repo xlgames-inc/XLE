@@ -18,8 +18,12 @@ set(Src
     "../SceneEngine/FiniteResourceHeap.cpp"
     "../SceneEngine/GenericGridPartitioning.cpp"
     "../SceneEngine/GenericQuadTree.cpp"
-    )
-BasicLibrary(XLESubset "${Src}")
+)
+set(WinSrc
+    "../PlatformRig/WinAPI/InputTranslator.cpp"
+    "../PlatformRig/WinAPI/OverlappedWindow.cpp"
+)
+BasicLibrary(XLESubset "${Src};${WinSrc}")
 
 # Foreign Common 
 include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR})

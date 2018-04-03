@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "InputTranslator.h"
+#include "../InputTranslator.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 #include "../Utility/PtrUtils.h"
 
