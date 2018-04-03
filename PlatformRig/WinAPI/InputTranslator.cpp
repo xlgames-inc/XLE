@@ -7,6 +7,7 @@
 #include "InputTranslator.h"
 #include "../RenderOverlays/DebuggingDisplay.h"
 #include "../Utility/PtrUtils.h"
+
 #include "../Core/WinAPI/IncludeWindows.h"
 
 namespace PlatformRig
