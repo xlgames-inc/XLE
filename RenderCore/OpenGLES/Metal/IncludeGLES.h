@@ -15,6 +15,12 @@
 	#include <GLES2/gl2.h>
 	#include <GLES2/gl2ext.h>
 	#include <GLES3/gl3.h>
+#elif PLATFORMOS_TARGET == PLATFORMOS_ANDROID
+    #include <GLES/gl.h>
+    #include <OpenGLES/ES3/gl.h>
+    #include <OpenGLES/ES2/glext.h>
+    #include <OpenGLES/ES3/glext.h>
+    #define glClearDepth glClearDepthf
 #else
 	// Real GLES
 	#include <OpenGLES/ES3/gl.h>
