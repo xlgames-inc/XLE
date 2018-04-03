@@ -199,8 +199,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         // DavidJ -- hack because can't figure out how to get this working correctly using EGL
         if (s._rtvCount == 1 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->IsBackBuffer()) {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
-            glClearColor(0,1,0,1);
-            glClear(GL_COLOR_BUFFER_BIT);
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, s._frameBuffer->AsRawGLHandle());
         }
