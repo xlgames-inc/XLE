@@ -18,7 +18,7 @@ namespace PlatformRig
     {
     public:
         virtual void    OnResize(unsigned newWidth, unsigned newHeight) = 0;
-        virtual ~IWindowHandler();
+        virtual ~IWindowHandler() {}
     };
 
     /// <summary>An independent window in OS presentation scheme</summary>
