@@ -11,8 +11,6 @@ set(Src
     "../PlatformRig/DebuggingDisplays/HistoricalProfilerDisplay.cpp"
     "../PlatformRig/DebuggingDisplays/CPUProfileDisplay.cpp"
     "../PlatformRig/PlatformRigUtil.cpp"
-    "../PlatformRig/InputTranslator.cpp"
-    "../PlatformRig/WinAPI/OverlappedWindow.cpp"
     "../RenderOverlays/DebuggingDisplay.cpp"
     "../RenderOverlays/Font_Dummy.cpp"
     "../RenderOverlays/IOverlayContext.cpp"

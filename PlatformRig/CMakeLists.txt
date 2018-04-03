@@ -1,7 +1,11 @@
 file(GLOB Src "*.cpp")
 file(GLOB Headers "*.h")
 
-BasicLibrary(PlatformRig "${Src}" "${Headers}")
+if (WIN32)
+    file(GLOB WinSrc "WinAPI/*.cpp")
+endif()
+
+BasicLibrary(PlatformRig "${Src};${WinSrc}" "${Headers}")
 
 # Foreign Common 
 include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR})
