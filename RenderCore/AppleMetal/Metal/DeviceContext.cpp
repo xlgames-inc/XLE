@@ -486,6 +486,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         /* Metal TODO -- non-rasterized passes, multisampling */
     }
 
+    void GraphicsPipeline::UnbindInputLayout()
+    {
+    }
+
     void GraphicsPipeline::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
         FinalizePipeline();

@@ -52,4 +52,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     ObjectFactory& GetObjectFactory(IDevice& device);
     ObjectFactory& GetObjectFactory(DeviceContext&);
     ObjectFactory& GetObjectFactory();
+
+    void CheckGLError(const char context[]);
 }}

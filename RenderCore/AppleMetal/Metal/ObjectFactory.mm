@@ -66,4 +66,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     ObjectFactory& GetObjectFactory(IDevice& device) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
     ObjectFactory& GetObjectFactory(DeviceContext&) { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
     ObjectFactory& GetObjectFactory() { assert(s_objectFactory_instance); return *s_objectFactory_instance; }
+
+    void CheckGLError(const char context[]) {}
 }}

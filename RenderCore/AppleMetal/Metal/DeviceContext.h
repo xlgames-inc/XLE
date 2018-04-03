@@ -76,6 +76,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     public:
         template<int Count> void Bind(const ResourceList<VertexBufferView, Count>& VBs);
         void Bind(const IndexBufferView& IB);
+        void UnbindInputLayout();
 
         template<int Count> void BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
         template<int Count> void BindPS(const ResourceList<SamplerState, Count>& samplerStates);
