@@ -104,16 +104,50 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
 
+        bool supportsGLES300 = strstr((const char*)sourceCode, "SUPPORT_GLSL300");
 
         #if PLATFORMOS_TARGET == PLATFORMOS_OSX
             // hack for version string for OSX
-            const GLchar* versionDecl = isFragmentShader ? "#version 120\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n" : "#version 120\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 0\n";
+            const GLchar* versionDecl = isFragmentShader
+                ? "#version 120\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
+                : "#version 120\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 0\n"
+                ;
+            (void)supportsGLES300;
         #else
-            const GLchar* versionDecl = isFragmentShader ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 1\n" : "#version 300 es\n#define NEW_UNIFORM_API 1\n#define CC3_PLATFORM_WINDOWS 1\n";
+            const GLchar* versionDecl;
+            if (supportsGLES300) {
+                versionDecl = isFragmentShader
+                    ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
+                    : "#version 300 es\n#define NEW_UNIFORM_API 1\n";
+            } else {
+                versionDecl = isFragmentShader
+                    ? "#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
+                    : "#define NEW_UNIFORM_API 1\n";
+            }
         #endif
 
-        const GLchar* shaderSourcePointers[3] { versionDecl, definesPreambleStr.data(), (const GLchar*)sourceCode };
-        GLint shaderSourceLengths[3] = { (GLint)std::strlen(versionDecl), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
+        // DavidJ -- hack -- make this platform preamble configurable, and set when constructing
+        //      the ShaderCompiler
+        const char* platformPreamble =
+            #if APPORTABLE
+                "#define CC3_PLATFORM_IOS 0\n"
+                "#define CC3_PLATFORM_OSX 0\n"
+                #ifdef _WIN32
+                    "#define CC3_PLATFORM_ANDROID 0\n"
+                    "#define CC3_PLATFORM_WINDOWS 1\n";
+                #else
+                    "#define CC3_PLATFORM_ANDROID 1\n"
+                    "#define CC3_PLATFORM_WINDOWS 0\n";
+                #endif
+            #else
+                "#define CC3_PLATFORM_IOS 1\n"
+                "#define CC3_PLATFORM_OSX 0\n"
+                "#define CC3_PLATFORM_ANDROID 0\n"
+                "#define CC3_PLATFORM_WINDOWS 0\n";
+            #endif    // APPORTABLE
+
+        const GLchar* shaderSourcePointers[4] { versionDecl, platformPreamble, definesPreambleStr.data(), (const GLchar*)sourceCode };
+        GLint shaderSourceLengths[4] = { (GLint)std::strlen(versionDecl), (GLint)std::strlen(platformPreamble), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
 
         glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
         glCompileShader (newShader->AsRawGLHandle());
