@@ -12,6 +12,7 @@
 #include "../../../Assets/DepVal.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/Streams/FileUtils.h"
+#include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "IncludeGLES.h"
@@ -162,9 +163,26 @@ namespace RenderCore { namespace Metal_OpenGLES
                     errors = std::make_shared<std::vector<uint8>>(infoLen);
                     glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errors->data());
 
-                    std::cout << "Failure in shader:" << std::endl << versionDecl << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
                     const char* e = (const char*)errors->data();
-                    std::cout << "Errors:" << std::endl << e << std::endl;
+					#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+						Log(Error) << "Failure during shader compile. Errors:" << std::endl << e << std::endl;
+						std::stringstream str;
+						str << versionDecl << platformPreamble << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
+						str << e << std::endl;
+						auto logString = str.str();
+						auto hash = Hash64(logString);
+						StringMeld<MaxPath> logFileName;
+						auto splitter = MakeFileNameSplitter(shaderPath._filename);
+						logFileName << "ShaderCompileError_" << splitter.File().AsString() << "_" << splitter.Extension().AsString() << "_" << std::hex << hash;
+						auto* file = fopen(logFileName.get(), "wb");
+						fwrite(logString.data(), 1, logString.size(), file);
+						fclose(file);
+						Log(Error) << "Debug log written to " << logFileName.get() << std::endl;
+					#else
+						Log(Error) << "Failure during shader compile. Shader source follows:" << std::endl;
+						Log(Error) << versionDecl << platformPreamble << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
+						Log(Error) << "Errors:" << std::endl << e << std::endl;
+					#endif
                 }
             #endif
 
