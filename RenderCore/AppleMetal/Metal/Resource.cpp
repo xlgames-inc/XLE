@@ -148,18 +148,31 @@ namespace RenderCore { namespace Metal_AppleMetal
              5              -Z
              */
 
+            auto hasPVRTCPixelFormat = HasPVRTCPixelFormat(desc._textureDesc._format);
+
             for (unsigned f=0; f < faceCount; ++f) {
                 if (initializer) {
                     for (unsigned m=0; m < desc._textureDesc._mipCount; ++m) {
                         auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
                         auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
                         auto subRes = initializer({m, f});
+                        auto bytesPerRow = subRes._pitches._rowPitch;
+                        auto bytesPerImage = subRes._pitches._slicePitch;
+                        if (hasPVRTCPixelFormat) {
+                            /* From Apple documentation on replaceRegion...:
+                             *    This method is supported if you are copying to an entire texture with a PVRTC pixel format; in
+                             *    which case, bytesPerRow and bytesPerImage must both be set to 0. This method is not
+                             *    supported for copying to a subregion of a texture that has a PVRTC pixel format.
+                             */
+                            bytesPerRow = 0;
+                            bytesPerImage = 0;
+                        }
                         [_underlyingTexture replaceRegion:MTLRegionMake2D(0, 0, mipWidth, mipHeight)
                                               mipmapLevel:m
                                                     slice:f
                                                 withBytes:subRes._data.begin()
-                                              bytesPerRow:subRes._pitches._rowPitch
-                                            bytesPerImage:subRes._pitches._slicePitch];
+                                              bytesPerRow:bytesPerRow
+                                            bytesPerImage:bytesPerImage];
                     }
                 } else {
                     // KenD -- in the case where we don't have initialization data, leave the texture as is
