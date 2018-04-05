@@ -248,6 +248,24 @@ namespace RenderCore
         }
     }
 
+    bool        HasPVRTCPixelFormat(Format format)
+    {
+        FormatPrefix::Enum prefix = GetPrefix(format);
+        using namespace FormatPrefix;
+        switch (prefix) {
+            case RGB_PVRTC1_2BPP:
+            case RGB_PVRTC1_4BPP:
+            case RGBA_PVRTC1_2BPP:
+            case RGBA_PVRTC1_4BPP:
+            case RGBA_PVRTC2_2BPP:
+            case RGBA_PVRTC2_4BPP:
+                return true;
+
+            default:
+                return false;
+        }
+    }
+
     Format FindFormat(
         FormatCompressionType compression, 
         FormatComponents components,

@@ -74,6 +74,8 @@ namespace RenderCore
     };
     CompressionParameters    GetCompressionParameters(Format format);
 
+    bool        HasPVRTCPixelFormat(Format format);
+
 	Format FindFormat(
         FormatCompressionType compression, 
         FormatComponents components,
