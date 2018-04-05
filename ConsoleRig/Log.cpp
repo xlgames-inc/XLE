@@ -165,6 +165,7 @@ namespace ConsoleRig
                     break;
                 }
 
+            case Blob::CharacterData:
             case Blob::EndElement:
             case Blob::None:
                 return;

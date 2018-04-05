@@ -60,6 +60,7 @@ namespace Utility
                 break;
                     
             case Blob::AttributeValue:
+            case Blob::CharacterData:
                 assert(0);
                 break;
 
