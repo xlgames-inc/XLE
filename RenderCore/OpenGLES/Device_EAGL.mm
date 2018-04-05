@@ -169,9 +169,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
         bool supported = true;
         if (bindingType & BindFlag::ShaderResource) {
-            supported &= (activeFeatureSet & glFmt._textureFeatureSet);
+            supported = (activeFeatureSet & glFmt._textureFeatureSet);
         } else if ((bindingType & BindFlag::RenderTarget) || (bindingType & BindFlag::DepthStencil)) {
-            supported &= (activeFeatureSet & glFmt._renderbufferFeatureSet);
+            supported = (activeFeatureSet & glFmt._renderbufferFeatureSet);
         }
 
         return supported ? FormatCapability::Supported : FormatCapability::NotSupported;
