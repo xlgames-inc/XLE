@@ -19,10 +19,12 @@ set(Src
     "../SceneEngine/GenericGridPartitioning.cpp"
     "../SceneEngine/GenericQuadTree.cpp"
 )
-set(WinSrc
-    "../PlatformRig/WinAPI/InputTranslator.cpp"
-    "../PlatformRig/WinAPI/OverlappedWindow.cpp"
-)
+if (WIN32)
+    set(WinSrc
+        "../PlatformRig/WinAPI/InputTranslator.cpp"
+        "../PlatformRig/WinAPI/OverlappedWindow.cpp"
+    )
+endif()
 BasicLibrary(XLESubset "${Src};${WinSrc}")
 
 # Foreign Common 
