@@ -16,8 +16,8 @@
 #include <share.h>
 #include <time.h>
 
-#include <Psapi.h>
-#include <Shellapi.h>
+#include <psapi.h>
+#include <shellapi.h>
 
 namespace Utility
 {
