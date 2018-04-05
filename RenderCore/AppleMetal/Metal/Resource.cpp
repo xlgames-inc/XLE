@@ -11,9 +11,6 @@
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
-    extern MTLPixelFormat AsMTLPixelFormat(RenderCore::Format fmt);
-    extern RenderCore::Format AsRenderCoreFormat(MTLPixelFormat fmt);
-
     static std::shared_ptr<Resource> AsResource(const IResourcePtr& rp)
     {
         auto* res = (Resource*)rp->QueryInterface(typeid(Resource).hash_code());
@@ -131,11 +128,9 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
 
             unsigned bytesPerTexel = BitsPerPixel(desc._textureDesc._format) / 8u;
-            /* KenD -- Metal HACK/TODO -- if there were three bytes per pixel, we probably expanded it
-             * to a four byte format in AsMTLPixelFormat.
-             * Because Metal device doesn't support three-byte formats, we just skip out early without
-             * trying to populate the texture.
-             * Ideally, the texture loader would load into a format supported by the device.
+            /* Metal does not support three-byte formats, so the texture content loader should have
+             * expanded a three-byte format into a four-byte format.
+             * If not, we skip out early without trying to populate the texture.
              */
             if (bytesPerTexel == 3) {
                 assert(0);

@@ -443,18 +443,23 @@ namespace RenderCore { namespace Metal_AppleMetal
                  * It's okay if some things were bound that are not actually active.
                  */
                 if (as == 0) {
+                    for (int i=0; i < maxTextures; ++i) {
+                        if ((activeTextures & (1 << i)) && !(_pimpl->_boundVertexTextures & (1 << i))) {
+                            Log(Error) << "Expected vertex texture is not bound to index: " << textureNames[i].UTF8String << " (" << i << ")" << std::endl;
+                        }
+                    }
                     assert((activeBuffers & _pimpl->_boundVertexBuffers) == activeBuffers);
                     assert((activeTextures & _pimpl->_boundVertexTextures) == activeTextures);
                     assert((activeSamplers & _pimpl->_boundVertexSamplers) == activeSamplers);
                 } else if (as == 1) {
+                    for (int i=0; i < maxTextures; ++i) {
+                        if ((activeTextures & (1 << i)) && !(_pimpl->_boundFragmentTextures & (1 << i))) {
+                            Log(Error) << "Expected fragment texture is not bound to index: " << textureNames[i].UTF8String << " (" << i << ")" << std::endl;
+                        }
+                    }
                     assert((activeBuffers & _pimpl->_boundFragmentBuffers) == activeBuffers);
                     assert((activeTextures & _pimpl->_boundFragmentTextures) == activeTextures);
                     assert((activeSamplers & _pimpl->_boundFragmentSamplers) == activeSamplers);
-                    for (int i=0; i < maxTextures; ++i) {
-                        if ((activeTextures & (1 << i)) && !(_pimpl->_boundFragmentTextures & (1 << i))) {
-                            NSLog(@"================> Expected fragment texture is not bound to index: %@ (%d)", textureNames[i], i);
-                        }
-                    }
                 }
             }
         }
