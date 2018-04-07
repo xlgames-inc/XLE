@@ -278,7 +278,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (res.GetResource()) {
                 glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
             } else {
-                Log(Warning) << "Null resource in BoundUniforms binding operation" << std::endl;
+                #if 0 // defined(_DEBUG)
+                    Log(Warning) << "Null resource while binding SRV to texture uniform (" << srv._name << ")" << std::endl;
+                #endif
             }
             sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
         }
@@ -336,6 +338,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         return false;
     }
 
+    static std::string AdaptNameForIndex(const std::string& name, unsigned elementIdx, unsigned uniformElementCount)
+    {
+        // If the input uniform name already has [], then modify the string to insert the particular
+        // element idx we're actually interested in... 
+        // Otherwise we will just append the indexor to the end of the string name
+        if (name.size() >= 2 && name[name.size()-1] == ']') {
+            auto i = name.begin() + (name.size()-2);
+            while (i > name.begin() && *i >= '0' && *i <= '9') --i;
+            if (*i == '[')
+                return std::string(name.begin(), i+1) + std::to_string(elementIdx) + "]";
+        }
+
+        if (elementIdx != 0 || uniformElementCount > 1)
+            return name + "[" + std::to_string(elementIdx) + "]";
+        return name;
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     BoundUniforms::BoundUniforms(
@@ -369,7 +388,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup)});
+                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup) 
+                        #if defined(_DEBUG)
+                            , cmdGroup._name
+                        #endif
+                        });
                     _boundUniformBufferSlots[s] |= (1ull << uint64_t(slot));
                 }
             }
@@ -390,13 +413,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                         textureUnitAccumulator++;
                     }
                     auto dim = DimensionalityForUniformType(uniform._type);
+                    auto elementIndex = unsigned(binding - uniform._bindingName);
                     assert(dim != GL_NONE);
-                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim});
+                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim 
+                        #if defined(_DEBUG)
+                            , AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount)
+                        #endif
+                        });
 
                     // Record the command to set the uniform. Note that this
                     // is made a little more complicated due to array uniforms.
                     assert((binding - uniform._bindingName) < uniform._elementCount);
-                    uniformSets.push_back({uniform._location, unsigned(binding - uniform._bindingName), textureUnit, uniform._type, uniform._elementCount});
+                    uniformSets.push_back({uniform._location, elementIndex, textureUnit, uniform._type, uniform._elementCount});
 
                     _boundResourceSlots[s] |= (1ull << uint64_t(slot));
                 }

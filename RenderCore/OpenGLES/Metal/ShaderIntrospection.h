@@ -23,6 +23,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         struct SetCommand { int _location; GLenum _type; unsigned _count; size_t _dataOffset; };
         std::vector<SetCommand> _commands;
+        DEBUG_ONLY(std::string _name;)
     };
 
     class ShaderIntrospection
@@ -43,16 +44,19 @@ namespace RenderCore { namespace Metal_OpenGLES
             DEBUG_ONLY(std::string _name;)
         };
 
-        Uniform                FindUniform(HashType uniformName) const;
-
-        ShaderIntrospection(const ShaderProgram& shader);
-        ~ShaderIntrospection();
-    private:
         class Struct
         {
         public:
             std::vector<Uniform> _uniforms;
+            DEBUG_ONLY(std::string _name;)
         };
+
+        Uniform     FindUniform(HashType uniformName) const;
+        Struct      FindStruct(HashType structName) const;
+
+        ShaderIntrospection(const ShaderProgram& shader);
+        ~ShaderIntrospection();
+    private:
         std::vector<std::pair<HashType, Struct>> _structs;
     };
 

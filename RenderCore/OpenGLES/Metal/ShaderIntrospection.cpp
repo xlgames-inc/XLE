@@ -57,6 +57,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
+        #if defined(_DEBUG)
+            result._name = s->second._name;
+        #endif
+
         return result;
     }
 
@@ -71,6 +75,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (i == globals->second._uniforms.end()) return {0,0,0,0};
 
         return *i;
+    }
+
+    auto ShaderIntrospection::FindStruct(HashType structName) const -> Struct
+    {
+        auto str = LowerBound(_structs, structName);
+        if (str != _structs.end() || str->first == structName)
+            return str->second;
+        return {};
     }
 
     static uint64_t HashVariableName(StringSection<> name)

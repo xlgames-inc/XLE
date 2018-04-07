@@ -38,7 +38,7 @@ namespace Assets
 
 	private:
 		AssetState _state;
-		ResChar _initializer[MaxPath];
+		DEBUG_ONLY(ResChar _initializer[MaxPath];)
     };
 
 }

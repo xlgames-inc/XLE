@@ -81,9 +81,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         BoundUniforms(BoundUniforms&& moveFrom) never_throws;
         BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
     private:
-        struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; };
+        struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; DEBUG_ONLY(std::string _name;) };
         std::vector<CB> _cbs;
-        struct SRV { unsigned _stream, _slot; unsigned _textureUnit; GLenum _dimensionality; };
+        struct SRV { unsigned _stream, _slot; unsigned _textureUnit; GLenum _dimensionality; DEBUG_ONLY(std::string _name;) };
         std::vector<SRV> _srvs;
 
         SetUniformCommandGroup  _textureAssignmentCommands;
