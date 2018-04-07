@@ -148,7 +148,8 @@ namespace RenderCore { namespace Metal_AppleMetal
              5              -Z
              */
 
-            auto hasPVRTCPixelFormat = HasPVRTCPixelFormat(desc._textureDesc._format);
+            /* The only BlockCompression type expected to be used with Metal would be PVRTC */
+            auto hasPVRTCPixelFormat = GetCompressionType(desc._textureDesc._format) == FormatCompressionType::BlockCompression;
 
             for (unsigned f=0; f < faceCount; ++f) {
                 if (initializer) {
