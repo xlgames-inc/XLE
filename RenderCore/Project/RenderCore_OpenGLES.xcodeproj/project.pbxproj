@@ -113,6 +113,7 @@
 		8F8167091FDF612100284B80 /* ShaderIntrospection.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = ShaderIntrospection.h; path = ../OpenGLES/Metal/ShaderIntrospection.h; sourceTree = "<group>"; };
 		8F81670A1FDF65CA00284B80 /* ShaderIntrospection.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = ShaderIntrospection.cpp; path = ../OpenGLES/Metal/ShaderIntrospection.cpp; sourceTree = "<group>"; };
 		8F860C951FE8AAA700B77C9F /* Forward.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; name = Forward.h; path = ../OpenGLES/Metal/Forward.h; sourceTree = "<group>"; };
+		BE6450922078244E00F97BEB /* Device_EGL.cpp */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.cpp.cpp; name = Device_EGL.cpp; path = ../OpenGLES/Device_EGL.cpp; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -179,6 +180,7 @@
 				8F3BAC71201953F900442BBB /* Device_CGL.mm */,
 				8F212B511FD7651D00599B22 /* Device_EAGL.h */,
 				8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */,
+				BE6450922078244E00F97BEB /* Device_EGL.cpp */,
 				8F212B481FD75FBF00599B22 /* Device_EGL.h */,
 				8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */,
 				8F212B461FD75FA600599B22 /* Metal */,
