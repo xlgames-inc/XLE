@@ -200,3 +200,6 @@ _EXP( RGBA1_ETC2,     TYPELESS,   BlockCompression,   4 )
 _EXP( RGBA1_ETC2,     UNORM,      BlockCompression,   4 )
 _EXP( RGBA1_ETC2,     UNORM_SRGB, BlockCompression,   4 )
 
+_EXP( RGB_ATITC,      TYPELESS,   BlockCompression,   4 )
+_EXP( RGBA_ATITC,     TYPELESS,   BlockCompression,   8 )
+

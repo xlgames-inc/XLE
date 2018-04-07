@@ -30,6 +30,11 @@ namespace RenderCore { namespace ImplOpenGLES
             featureSet |= Metal_OpenGLES::FeatureSet::GLES300 | Metal_OpenGLES::FeatureSet::ETC2TC;
         }
 
+        /* TODO: include ATITC support in feature set if there are appropriate OpenGL extensions
+         *   "AMD_compressed_ATC_texture"
+         *   "ATI_texture_compression_atitc"
+         */
+
         assert(featureSet != 0);
         return featureSet;
     }

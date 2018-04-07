@@ -43,6 +43,7 @@ namespace RenderCore
             RGB_PVRTC1_2BPP, RGB_PVRTC1_4BPP, RGBA_PVRTC1_2BPP, RGBA_PVRTC1_4BPP,
             RGBA_PVRTC2_2BPP, RGBA_PVRTC2_4BPP,
             RGB_ETC1, RGB_ETC2, RGBA_ETC2, RGBA1_ETC2,
+            RGB_ATITC, RGBA_ATITC,
 
             Unknown
         };
