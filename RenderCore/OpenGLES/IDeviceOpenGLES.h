@@ -20,7 +20,6 @@ namespace RenderCore
     class IDeviceOpenGLES
     {
     public:
-        virtual Metal_OpenGLES::DeviceContext * GetImmediateDeviceContext() = 0;
         ~IDeviceOpenGLES();
     };
 

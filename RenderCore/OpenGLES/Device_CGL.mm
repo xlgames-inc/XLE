@@ -236,11 +236,6 @@ namespace RenderCore { namespace ImplOpenGLES
         return nullptr;
     }
 
-    Metal_OpenGLES::DeviceContext * DeviceOpenGLES::GetImmediateDeviceContext()
-    {
-        return nullptr;
-    }
-
     DeviceOpenGLES::DeviceOpenGLES() {}
     DeviceOpenGLES::~DeviceOpenGLES() {}
 

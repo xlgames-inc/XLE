@@ -20,7 +20,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        const std::shared_ptr<Metal_OpenGLES::Resource>& GetFrameRenderbuffer() const { return _frameRenderbuffer; }
+        const std::shared_ptr<Metal_OpenGLES::Resource>& GetTargetRenderbuffer() const { return _targetRenderbuffer; }
         EGLSurface GetSurface() const { return _surface; }
 
         PresentationChain(
@@ -30,12 +30,11 @@ namespace RenderCore { namespace ImplOpenGLES
                 EGLConfig config,
                 const void *platformValue, unsigned width, unsigned height);
         ~PresentationChain();
-
-        ResourceDesc _backBufferDesc;
     private:
        EGLSurface _surface;
-       std::shared_ptr<Metal_OpenGLES::Resource> _frameRenderbuffer;
+       std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
        std::shared_ptr<PresentationChainDesc> _desc;
+       ResourceDesc _backBufferDesc;
     };
 
     class Device;
@@ -67,7 +66,8 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLContext _sharedContext;
         EGLContext _activeFrameContext;
 
-        std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
+        std::shared_ptr<Metal_OpenGLES::Resource> _activeTargetRenderbuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _temporaryFramebuffer;
     };
 
    
@@ -117,7 +117,6 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         std::shared_ptr<IThreadContext>    GetImmediateContext();
         virtual void* QueryInterface(size_t guid);
-        virtual Metal_OpenGLES::DeviceContext *GetImmediateDeviceContext();
 
         DeviceOpenGLES();
         ~DeviceOpenGLES();

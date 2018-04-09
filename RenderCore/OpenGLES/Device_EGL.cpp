@@ -5,6 +5,7 @@
 #include "Device_EGL.h"
 #include "Metal/DeviceContext.h"
 #include "../IAnnotator.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -13,9 +14,9 @@
 #include <assert.h>
 #include "IncludeGLES.h"
 
-#define RENDERBUFFER 0
 namespace RenderCore { namespace ImplOpenGLES
 {
+    static const bool s_useFakeBackBuffer = false;
     static unsigned s_glesVersion = 300;        // always assume this version of GLES
 
     static Metal_OpenGLES::FeatureSet::BitField AsGLESFeatureSet(unsigned glesVersion)
@@ -220,20 +221,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
     {
-        std::unique_ptr<IPresentationChain> result = std::make_unique<PresentationChain>(*_objectFactory, _sharedContext, _display, _config, platformValue, width, height);
-
-            //      Angle project problem! We need to all eglMakeCurrent before
-            //      we can create an results (vertex buffers, index buffers, textures, etc)
-        /*auto presChain = checked_cast<PresentationChain*>(result.get());
-        EGLSurface underlyingSurface = *(presChain->GetSurface());
-        if (!eglMakeCurrent(    *_display,   
-                                underlyingSurface, 
-                                underlyingSurface, 
-                                _sharedContext.get())) {
-            Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
-        }*/
-
-        return std::move(result);
+        return std::make_unique<PresentationChain>(*_objectFactory, _sharedContext, _display, _config, platformValue, width, height);
     }
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain &presentationChain)
@@ -243,7 +231,8 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
         }
 
-        assert(!_activeFrameContext);        
+        assert(!_activeFrameContext);   
+        assert(!_activeTargetRenderbuffer);     
         _activeFrameContext = deviceStrong->GetSharedContext();
 
             //
@@ -258,40 +247,29 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
         }
 
-        EGLint width, height;
-        eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_WIDTH, &width);
-        eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_HEIGHT, &height);
-        
-        // auto tex = Metal_OpenGLES::GetObjectFactory().CreateTexture();
-        // _activeFrameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(
-        //    tex,
-        //    CreateDesc(
-        //        BindFlag::RenderTarget,
-        //        0, GPUAccess::Write,
-        //        TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),
-        //        "MainRenderbuffer"));
-        // glBindTexture(GL_TEXTURE_2D, tex->AsRawGLHandle());
-        // eglBindTexImage(deviceStrong->GetDisplay(), presChain.GetSurface(), tex->AsRawGLHandle());
+        const auto& presentationChainDesc = presentationChain.GetDesc();
+        #if defined(_DEBUG)
+            EGLint width, height;
+            eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_WIDTH, &width);
+            eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_HEIGHT, &height);
 
-        auto backBufferDesc = CreateDesc(
-            BindFlag::RenderTarget, 0, GPUAccess::Write,
-            TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
-            "backbuffer");
-        _activeFrameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(
-            Metal_OpenGLES::Resource::CreateBackBuffer(backBufferDesc));
+            if (    width != presentationChainDesc->_width
+                ||  height != presentationChainDesc->_height) {
+                Log(Warning) << "Presentation chain no longer matches size of the display -- do you need to call resize()?" << std::endl;
+            }
+        #endif
 
-        glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        glViewport(0, 0, width, height);
+        _activeTargetRenderbuffer = presChain.GetTargetRenderbuffer();
+        if (_activeTargetRenderbuffer->IsBackBuffer()) {
+            glBindFramebuffer(GL_FRAMEBUFFER, 0);
+        } else {
+            _temporaryFramebuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
+            glBindFramebuffer(GL_FRAMEBUFFER, _temporaryFramebuffer->AsRawGLHandle());
+            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeTargetRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+        }
 
-#if RENDERBUFFER
-        _activeFrameRenderbuffer = presChain.GetFrameRenderbuffer();
-        _activeFrameBuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER,  GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
-        return _activeFrameRenderbuffer;
-#else
-        return std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(presChain._backBufferDesc));
-#endif
-
+        glViewport(0, 0, presentationChainDesc->_width, presentationChainDesc->_height);
+        return _activeTargetRenderbuffer;
     }
 
     void ThreadContext::Present(IPresentationChain& presentationChain) {
@@ -302,21 +280,23 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
         }
         auto &device = *deviceStrong;
-		if (_activeFrameContext) {
-#if RENDERBUFFER
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
-            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-            glBlitFramebuffer(
-                    0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
-                    0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
-                    GL_COLOR_BUFFER_BIT, GL_NEAREST);
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-            eglSwapBuffers(deviceStrong->GetDisplay(), presChain.GetSurface());
-            _activeFrameContext = nullptr;
-            glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
-#endif
+		if (_activeTargetRenderbuffer) {
+            // if _activeTargetRenderbuffer is not marked as the back buffer, it means we're
+            // in fake-back-buffer mode. In this case, we must copy the contents to the
+            // framebuffer 0, so they will be available to present
+            if (!_activeTargetRenderbuffer->IsBackBuffer()) {
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, _temporaryFramebuffer->AsRawGLHandle());
+                glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
+                glBlitFramebuffer(
+                        0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
+                        0, 0, presChain.GetDesc()->_width, presChain.GetDesc()->_height,
+                        GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
+                _temporaryFramebuffer = nullptr;
+            }
             eglSwapBuffers(device.GetDisplay(), presChain.GetSurface());
         }
+        _activeTargetRenderbuffer = nullptr;
         _activeFrameContext = nullptr;
         /*eglMakeCurrent(
             deviceStrong->GetDisplay(),
@@ -374,24 +354,13 @@ namespace RenderCore { namespace ImplOpenGLES
 
         return supported ? FormatCapability::Supported : FormatCapability::NotSupported;
     }
-
-    #if !FLEX_USE_VTABLE_Device && 0
-        namespace Detail
-        {
-            void* Ignore_Device::QueryInterface(const GUID& guid)
-            {
-                return nullptr;
-            }
-        }
-    #endif
     
     void* DeviceOpenGLES::QueryInterface(size_t guid)
     {
-        // if (guid == __uuidof(IDeviceOpenGLES)) {
-        //     return (IDeviceOpenGLES*)this;
-        // }
-        // return NULL;
-        return (IDeviceOpenGLES*)this;
+        if (guid == typeid(IDeviceOpenGLES).hash_code()) {
+            return (IDeviceOpenGLES*)this;
+        }
+        return nullptr;
     }
 
     DeviceOpenGLES::DeviceOpenGLES() {}
@@ -471,27 +440,23 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Failure making EGL window surface current"));
         }
 
-#if RENDERBUFFER
-        auto frameRenderbuffer = objFactory.CreateRenderBuffer();
-        glBindRenderbuffer(GL_RENDERBUFFER, frameRenderbuffer->AsRawGLHandle());
-        glRenderbufferStorage(GL_RENDERBUFFER,  GL_RGBA8, width, height);
-        _frameRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(frameRenderbuffer);
-        auto resDesc = ExtractDesc(*_frameRenderbuffer);
-#else
         _backBufferDesc = CreateDesc(
-                BindFlag::RenderTarget, 0, GPUAccess::Write,
-                TextureDesc::Plain2D(width, height, Format::R8G8B8_UNORM),        // SRGB?
-                "backbuffer");
-        auto resDesc = _backBufferDesc;
-#endif
+            BindFlag::RenderTarget, 0, GPUAccess::Write,
+            TextureDesc::Plain2D(width, height, Format::R8G8B8_UNORM),        // SRGB?
+            "backbuffer");
 
+        if (s_useFakeBackBuffer) {
+            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
+        } else {
+            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
+        }
 
         _desc = std::make_shared<PresentationChainDesc>();
-        assert(resDesc._type == ResourceDesc::Type::Texture);
-        _desc->_width = resDesc._textureDesc._width;
-        _desc->_height = resDesc._textureDesc._height;
-        _desc->_format = resDesc._textureDesc._format;
-        _desc->_samples = resDesc._textureDesc._samples;
+        assert(_backBufferDesc._type == ResourceDesc::Type::Texture);
+        _desc->_width = _backBufferDesc._textureDesc._width;
+        _desc->_height = _backBufferDesc._textureDesc._height;
+        _desc->_format = _backBufferDesc._textureDesc._format;
+        _desc->_samples = _backBufferDesc._textureDesc._samples;
 
 		Metal_OpenGLES::CheckGLError("End of PresentationChain constructor");
     }
@@ -501,8 +466,22 @@ namespace RenderCore { namespace ImplOpenGLES
     }
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/ {
-        //assert(0); // not implemented
+        if (    newWidth == _backBufferDesc._textureDesc._width 
+            &&  newHeight == _backBufferDesc._textureDesc._height)
+            return;
+
+        _backBufferDesc._textureDesc._width = newWidth;
+        _backBufferDesc._textureDesc._height = newHeight;
+        _desc->_width = _backBufferDesc._textureDesc._width;
+        _desc->_height = _backBufferDesc._textureDesc._height;
+
+        if (s_useFakeBackBuffer) {
+            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::GetObjectFactory(), _backBufferDesc);
+        } else {
+            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
+        }
     }
+
     PresentationChain::~PresentationChain()
     {
         /*if (_surface && *_surface != EGL_NO_SURFACE) {
@@ -534,19 +513,7 @@ namespace RenderCore { namespace ImplOpenGLES
         return ThreadContext::QueryInterface(guid);
     }
 
-    /*void            PresentationChain::Present()
-    {
-        EGLBoolean result = eglSwapBuffers(_display, _surface);
-        (void)result; assert(result);
-    }*/
-
     //////////////////////////////////////////////////////////////////////////////////////////////////
-    Metal_OpenGLES::DeviceContext *DeviceOpenGLES::GetImmediateDeviceContext() {
-        return nullptr;
-    }
-    //
-    //
-
     render_dll_export std::shared_ptr<IDevice>    CreateDevice()
     {
         return std::make_shared<DeviceOpenGLES>();
@@ -558,12 +525,6 @@ namespace RenderCore { namespace ImplOpenGLES
         }
         return nullptr;
     }
-
-    /*render_dll_export Metal_OpenGLES::GlobalResources&        GetGlobalResources()
-    {
-        static Metal_OpenGLES::GlobalResources gGlobalResources;
-        return gGlobalResources;
-    }*/
 } }
 
 namespace RenderCore
