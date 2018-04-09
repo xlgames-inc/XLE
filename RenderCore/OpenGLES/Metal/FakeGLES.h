@@ -53,9 +53,17 @@ extern void glVertexAttribDivisor(uint32_t index, uint32_t divisor);
 #define GL_UNSIGNED_INT_5_9_9_9_REV                      0x8C3E
 #define GL_RGBA_INTEGER                                  0x8D99
 #define GL_RED_INTEGER                                   0x8D94
-
+#define GL_SAMPLER_2D_ARRAY                              0x8DC1
+#define GL_SAMPLER_2D_ARRAY_SHADOW                       0x8DC4
+#define GL_SAMPLER_CUBE_SHADOW                           0x8DC5
 #define GL_INT_SAMPLER_2D                                0x8DCA
+#define GL_INT_SAMPLER_3D                                0x8DCB
+#define GL_INT_SAMPLER_CUBE                              0x8DCC
+#define GL_INT_SAMPLER_2D_ARRAY                          0x8DCF
 #define GL_UNSIGNED_INT_SAMPLER_2D                       0x8DD2
+#define GL_UNSIGNED_INT_SAMPLER_3D                       0x8DD3
+#define GL_UNSIGNED_INT_SAMPLER_CUBE                     0x8DD4
+#define GL_UNSIGNED_INT_SAMPLER_2D_ARRAY                 0x8DD7
 #define GL_R8_SNORM                                      0x8F94
 #define GL_RG8_SNORM                                     0x8F95
 #define GL_RGB8_SNORM                                    0x8F96

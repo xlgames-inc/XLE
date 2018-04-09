@@ -157,7 +157,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         };
         payload = std::make_shared<std::vector<uint8>>(sizeof(OutputBlob));
         OutputBlob& output = *(OutputBlob*)payload->data();
-        output._hdr = ShaderService::ShaderHeader { shaderPath._shaderModel, false };
+        StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+        identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "-" << std::hex << hashCode;
+        output._hdr = ShaderService::ShaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
         output._hashCode = hashCode;
         return true;
     }
