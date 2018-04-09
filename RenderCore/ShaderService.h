@@ -52,13 +52,14 @@ namespace RenderCore
         class ShaderHeader
         {
         public:
-            static const auto Version = 1u;
+            static const auto Version = 2u;
             unsigned _version = Version;
+            char _identifier[128];
 			char _shaderModel[8];
             unsigned _dynamicLinkageEnabled = false;
 
-			ShaderHeader() {}
-			ShaderHeader(StringSection<char> shaderModel, bool dynamicLinkageEnabled = false);
+			ShaderHeader() { _identifier[0] = '\0'; _shaderModel[0] = '\0'; }
+			ShaderHeader(StringSection<char> identifier, StringSection<char> shaderModel, bool dynamicLinkageEnabled = false);
         };
 
         class IShaderSource
@@ -159,6 +160,7 @@ namespace RenderCore
     {
     public:
         IteratorRange<const void*>  GetByteCode() const;
+        StringSection<>             GetIdentifier() const;
         
 		ShaderStage		GetStage() const;
         bool            DynamicLinkingEnabled() const;

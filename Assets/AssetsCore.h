@@ -113,6 +113,7 @@ namespace Assets
 			const Blob&			GetActualizationLog() const { return _actualizationLog; }
 
 			virtual bool CustomReport() const;
+            virtual const char* what() const noexcept;
 
 			ConstructionError(Reason reason, const DepValPtr&, const Blob& actualizationLog) never_throws;
 			ConstructionError(Reason reason, const DepValPtr&, const char format[], ...) never_throws;

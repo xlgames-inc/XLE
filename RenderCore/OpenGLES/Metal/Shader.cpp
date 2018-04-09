@@ -201,7 +201,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
         payload = std::make_shared<std::vector<uint8>>(sizeof(OutputBlob));
         OutputBlob& output = *(OutputBlob*)payload->data();
-        output._hdr = ShaderService::ShaderHeader { shaderPath._shaderModel, false };
+        StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+        identifier << shaderPath._filename << "-" << shaderPath._entryPoint << "-" << std::hex << hashCode;
+        output._hdr = ShaderService::ShaderHeader { identifier.AsStringSection(), shaderPath._shaderModel, false };
         output._hashCode = hashCode;
         return true;
     }
@@ -248,10 +250,20 @@ namespace RenderCore { namespace Metal_OpenGLES
             ::Assets::Blob errorsLog;
             glGetProgramiv(newProgramIndex->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
             if ( infoLen > 1 ) {
-                errorsLog = std::make_shared<std::vector<uint8_t>>(sizeof(char) * infoLen);
-                glGetProgramInfoLog(newProgramIndex->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errorsLog->data());
+                std::string buffer;
+                buffer.resize(infoLen);
+                glGetProgramInfoLog(newProgramIndex->AsRawGLHandle(), infoLen, nullptr, (GLchar*)buffer.data());
 
-                Log(Warning) << (const char*)errorsLog->data() << std::endl;
+                std::stringstream str;
+                str << "While linking (" << vertexShader.GetIdentifier() << ") & (" << fragmentShader.GetIdentifier() << "): ";
+                str << buffer;
+                buffer = str.str();
+
+                Log(Warning) << buffer << std::endl;
+                errorsLog = std::make_shared<std::vector<uint8_t>>(buffer.size()+1);
+                auto d = errorsLog->begin();
+                for (auto s:buffer) *d++ = s;
+                *d = '\0';
             }
 
             Throw(::Assets::Exceptions::ConstructionError(

@@ -475,13 +475,32 @@ namespace Assets
 		bool ConstructionError::CustomReport() const
 		{
 			if (_actualizationLog) {
-				Log(Error) << "Error during asset construction:" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
+				Log(Error) << "Error during asset construction: " << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
 			}
 			else {
 				Log(Error) << "Error during asset construction (unspecified)" << std::endl;
 			}
 			return true;
 		}
+
+        const char* ConstructionError::what() const noexcept
+        {
+            static char buffer[4096];
+            if (_actualizationLog) {
+                strcpy(buffer, "Error during asset construction: ");
+                auto* d = buffer;
+                while (*d) ++d;
+                auto* end = &buffer[dimof(buffer)-2];
+                for (auto s:*_actualizationLog) {
+                    if (d == end) break;
+                    *d++ = s;
+                }
+                *d = '\0';
+            } else {
+                strcpy(buffer, "Error during asset construction (unspecified)");
+            }
+            return buffer;
+        }
 
 		ConstructionError::ConstructionError(Reason reason, const DepValPtr& depVal, const Blob& actualizationLog) never_throws
 		: _reason(reason), _depVal(depVal)
