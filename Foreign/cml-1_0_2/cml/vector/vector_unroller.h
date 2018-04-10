@@ -52,18 +52,18 @@ class VectorAssignmentUnroller
     template<int N, int Last, bool can_unroll> struct Eval;
 
     /* The vector type being assigned to: */
-    typedef cml::vector<E,AT> vector_type;
+    typedef cml::vector<E,AT> assigned_vector_type;
 
     /* Record traits for the arguments: */
-    typedef ExprTraits<vector_type> dest_traits;
-    typedef ExprTraits<SrcT> src_traits;
+    typedef ExprTraits<assigned_vector_type> dest_traits;
+    typedef ExprTraits<SrcT> record_src_traits;
 
     /** Evaluate the binary operator for the first Len-1 elements. */
     template<int N, int Last> struct Eval<N,Last,true> {
-        void operator()(vector_type& dest, const SrcT& src) const {
+        void operator()(assigned_vector_type& dest, const SrcT& src) const {
 
             /* Apply to current N: */
-            OpT().apply(dest[N], src_traits().get(src,N));
+            OpT().apply(dest[N], record_src_traits().get(src,N));
             /* Note: we don't need get(), since dest is a vector. */
 
             /* Apply to N+1: */
@@ -73,10 +73,10 @@ class VectorAssignmentUnroller
 
     /** Evaluate the binary operator at element Last. */
     template<int Last> struct Eval<Last,Last,true> {
-        void operator()(vector_type& dest, const SrcT& src) const {
+        void operator()(assigned_vector_type& dest, const SrcT& src) const {
 
             /* Apply to last element: */
-            OpT().apply(dest[Last], src_traits().get(src,Last));
+            OpT().apply(dest[Last], record_src_traits().get(src,Last));
             /* Note: we don't need get(), since dest is a vector. */
         }
     };
@@ -88,9 +88,9 @@ class VectorAssignmentUnroller
      * CML_VECTOR_UNROLL_LIMIT
      */
     template<int N, int Last> struct Eval<N,Last,false> {
-        void operator()(vector_type& dest, const SrcT& src) const {
+        void operator()(assigned_vector_type& dest, const SrcT& src) const {
             for(size_t i = 0; i <= Last; ++i) {
-                OpT().apply(dest[i], src_traits().get(src,i));
+                OpT().apply(dest[i], record_src_traits().get(src,i));
                 /* Note: we don't need get(), since dest is a vector. */
             }
         }
@@ -100,7 +100,7 @@ class VectorAssignmentUnroller
   public:
 
     /** Unroll assignment to a fixed-sized vector. */
-    void operator()(vector_type& dest, const SrcT& src, cml::fixed_size_tag)
+    void operator()(assigned_vector_type& dest, const SrcT& src, cml::fixed_size_tag)
     {
         typedef cml::vector<E,AT> vector_type;
         enum { Len = vector_type::array_size };
@@ -129,11 +129,11 @@ class VectorAssignmentUnroller
   private:
     /* XXX Blah, a temp. hack to fix the auto-resizing stuff below. */
     size_t CheckOrResize(
-            vector_type& dest, const SrcT& src, cml::resizable_tag)
+            assigned_vector_type& dest, const SrcT& src, cml::resizable_tag)
     {
 #if defined(CML_AUTOMATIC_VECTOR_RESIZE_ON_ASSIGNMENT)
         /* Get the size of src.  This also causes src to check its size: */
-        size_t N = std::max(dest.size(),src_traits().size(src));
+        size_t N = std::max(dest.size(),record_src_traits().size(src));
 
         /* Set the destination vector's size: */
         cml::et::detail::Resize(dest,N);
@@ -145,7 +145,7 @@ class VectorAssignmentUnroller
     }
 
     size_t CheckOrResize(
-            vector_type& dest, const SrcT& src, cml::not_resizable_tag)
+            assigned_vector_type& dest, const SrcT& src, cml::not_resizable_tag)
     {
         return CheckedSize(dest,src,dynamic_size_tag());
     }
@@ -154,12 +154,12 @@ class VectorAssignmentUnroller
     
 
     /** Just use a loop to assign to a runtime-sized vector. */
-    void operator()(vector_type& dest, const SrcT& src, cml::dynamic_size_tag)
+    void operator()(assigned_vector_type& dest, const SrcT& src, cml::dynamic_size_tag)
     {
         /* Shorthand: */
         typedef ExprTraits<SrcT> src_traits;
         size_t N = this->CheckOrResize(
-                dest,src,typename vector_type::resizing_tag());
+                dest,src,typename assigned_vector_type::resizing_tag());
         for(size_t i = 0; i < N; ++i) {
             OpT().apply(dest[i], src_traits().get(src,i));
             /* Note: we don't need get(), since dest is a vector. */

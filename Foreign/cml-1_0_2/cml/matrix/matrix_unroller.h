@@ -52,11 +52,11 @@ class MatrixAssignmentUnroller
   protected:
 
     /* The matrix type being assigned to: */
-    typedef cml::matrix<E,AT,BO,L> matrix_type;
+    typedef cml::matrix<E,AT,BO,L> assigned_matrix_type;
 
     /* Record traits for the arguments: */
-    typedef ExprTraits<matrix_type> dest_traits;
-    typedef ExprTraits<SrcT> src_traits;
+    typedef ExprTraits<assigned_matrix_type> record_dest_traits;
+    typedef ExprTraits<SrcT> record_src_traits;
 
 #if defined(CML_2D_UNROLLER)
 
@@ -138,10 +138,10 @@ class MatrixAssignmentUnroller
 
     /** Evaluate the binary operator using a loop. */
     template<int R, int C, int LastRow, int LastCol> struct Eval {
-        void operator()(matrix_type& dest, const SrcT& src) const {
+        void operator()(assigned_matrix_type& dest, const SrcT& src) const {
             for(size_t i = 0; i <= LastRow; ++i) {
                 for(size_t j = 0; j <= LastCol; ++j) {
-                    OpT().apply(dest(i,j), src_traits().get(src,i,j));
+                    OpT().apply(dest(i,j), record_src_traits().get(src,i,j));
                 }
             }
         }
@@ -195,15 +195,15 @@ class MatrixAssignmentUnroller
   private:
     /* XXX Blah, a temp. hack to fix the auto-resizing stuff below. */
     matrix_size hack_actual_size(
-        matrix_type& dest, const SrcT& /*src*/, scalar_result_tag
+        assigned_matrix_type& dest, const SrcT& /*src*/, scalar_result_tag
         )
     {
-        typedef ExprTraits<matrix_type> dest_traits;
+        typedef ExprTraits<assigned_matrix_type> dest_traits;
         return dest_traits().size(dest);
     }
 
     matrix_size hack_actual_size(
-        matrix_type& /*dest*/, const SrcT& src, matrix_result_tag
+        assigned_matrix_type& /*dest*/, const SrcT& src, matrix_result_tag
         )
     {
         typedef ExprTraits<SrcT> src_traits;
@@ -211,12 +211,12 @@ class MatrixAssignmentUnroller
     }
 
     matrix_size CheckOrResize(
-            matrix_type& dest, const SrcT& src, cml::resizable_tag)
+            assigned_matrix_type& dest, const SrcT& src, cml::resizable_tag)
     {
 #if defined(CML_AUTOMATIC_MATRIX_RESIZE_ON_ASSIGNMENT)
         /* Get the size of src.  This also causes src to check its size: */
         matrix_size N = hack_actual_size(
-            dest, src, typename src_traits::result_tag());
+            dest, src, typename record_src_traits::result_tag());
 
         /* Set the destination matrix's size: */
         dest.resize(N.first,N.second);
@@ -227,7 +227,7 @@ class MatrixAssignmentUnroller
     }
 
     matrix_size CheckOrResize(
-            matrix_type& dest, const SrcT& src, cml::not_resizable_tag)
+            assigned_matrix_type& dest, const SrcT& src, cml::not_resizable_tag)
     {
         return CheckedSize(dest,src,dynamic_size_tag());
     }
@@ -243,11 +243,11 @@ class MatrixAssignmentUnroller
      * @todo This needs to be specialized for efficient row-major or col-major
      * layout access.
      */
-    void operator()(matrix_type& dest, const SrcT& src, cml::dynamic_size_tag)
+    void operator()(assigned_matrix_type& dest, const SrcT& src, cml::dynamic_size_tag)
     {
         typedef ExprTraits<SrcT> src_traits;
         matrix_size N = this->CheckOrResize(
-                dest,src,typename matrix_type::resizing_tag());
+                dest,src,typename assigned_matrix_type::resizing_tag());
         for(size_t i = 0; i < N.first; ++i) {
             for(size_t j = 0; j < N.second; ++j) {
                 OpT().apply(dest(i,j), src_traits().get(src,i,j));
