@@ -146,7 +146,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                     ||  desc._textureDesc._dimensionality == TextureDesc::Dimensionality::CubeMap) {
 
                     auto bindTarget = GL_TEXTURE_2D;
+
+
+#if APPORTABLE // glTexStorage2D is not yet supported in Apportable
+                    bool useTexStorage = false;
+#else
                     bool useTexStorage = factory.GetFeatureSet() & FeatureSet::GLES300;
+#endif
                     if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
                         assert(desc._textureDesc._height == 1);
                         assert(desc._textureDesc._arrayCount <= 1);
