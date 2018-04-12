@@ -199,6 +199,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return nullptr;
     }
 
+    Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
+    {
+        return AsGLESFeatureSet(_sharedContext.get().API);
+    }
+
     DeviceOpenGLES::DeviceOpenGLES() {}
     DeviceOpenGLES::~DeviceOpenGLES() {}
 

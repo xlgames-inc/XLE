@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Metal/Format.h"
 #include <memory>
 
 namespace RenderCore
@@ -20,14 +21,15 @@ namespace RenderCore
     class IDeviceOpenGLES
     {
     public:
-        ~IDeviceOpenGLES();
+        virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() = 0;
+        virtual ~IDeviceOpenGLES();
     };
 
     class IThreadContextOpenGLES
     {
     public:
         virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() = 0;
-        ~IThreadContextOpenGLES();
+        virtual ~IThreadContextOpenGLES();
     };
 
     using Base_DeviceOpenGLES = IDeviceOpenGLES;

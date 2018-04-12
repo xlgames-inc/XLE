@@ -116,6 +116,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
     public:
         std::shared_ptr<IThreadContext>    GetImmediateContext();
+        Metal_OpenGLES::FeatureSet::BitField GetFeatureSet();
         virtual void* QueryInterface(size_t guid);
 
         DeviceOpenGLES();
