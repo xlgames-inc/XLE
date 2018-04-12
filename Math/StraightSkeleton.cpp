@@ -1264,14 +1264,6 @@ namespace XLEMath
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void ReplaceVertex(IteratorRange<WavefrontEdge*> segs, unsigned oldVertex, unsigned newVertex)
-	{
-		for (auto& s:segs) {
-			if (s._head == oldVertex) s._head = newVertex;
-			if (s._tail == oldVertex) s._tail = newVertex;
-		}
-	}
-
 	T1(Primitive) void Graph<Primitive>::ValidateState()
 	{
 		#if defined(EXTRA_VALIDATION)

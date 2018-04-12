@@ -166,8 +166,8 @@ namespace Assets
 		std::vector<uint8>&& request, Encoding encoding, MountingTree::Pimpl* pimpl)
 	: _request(std::move(request))
 	, _encoding(encoding)
-	, _pimpl(pimpl)
 	, _nextMountToTest(0)
+	, _pimpl(pimpl)
 	{
 		// get the mounts lock to make sure we get the correct value from _changeId
 		ScopedLock(pimpl->_mountsLock);
@@ -176,9 +176,9 @@ namespace Assets
 
 	MountingTree::EnumerableLookup::EnumerableLookup()
 	: _encoding(Encoding::UTF8)
-	, _pimpl(nullptr)
 	, _nextMountToTest(0)
 	, _changeId(0)
+	, _pimpl(nullptr)
 	{}
 
 	template<typename CharType>

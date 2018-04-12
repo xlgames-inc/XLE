@@ -45,7 +45,7 @@ namespace RenderCore
     {
     public:
         GPUProfilerBlock(IThreadContext& context, const char name[])
-        : _name(name), _context(&context)
+        : _context(&context), _name(name)
         {
             _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::ProfileBegin);
         }
@@ -66,7 +66,7 @@ namespace RenderCore
     {
     public:
         GPUAnnotation(IThreadContext& context, const char name[])
-        : _name(name), _context(&context)
+        : _context(&context), _name(name)
         {
             _context->GetAnnotator().Event(*_context, _name, IAnnotator::EventTypes::MarkerBegin);
         }

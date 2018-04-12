@@ -93,10 +93,10 @@ namespace Assets
 
     ArchiveCache::PendingCommit::PendingCommit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush)
         : _id(id)
-        #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-        , _attachedString(attachedString)
-        #endif
         , _onFlush(std::forward<std::function<void()>>(onFlush))
+        #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+            , _attachedString(attachedString)
+        #endif
     {
         _data = std::move(data);
     }

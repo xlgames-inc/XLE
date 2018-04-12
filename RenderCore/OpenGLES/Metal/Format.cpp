@@ -274,6 +274,8 @@ namespace RenderCore { namespace Metal_OpenGLES
     #define GL_ETC1_RGB8_OES                  0x8D64
     #endif /* GL_OES_compressed_ETC1_RGB8_texture */
 
+#pragma clang diagnostic ignored "-Wswitch" // (enumeration values not used)
+
     glPixelFormat AsTexelFormatType(RenderCore::Format fmt)
     {
         using namespace RenderCore;

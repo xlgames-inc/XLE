@@ -77,7 +77,7 @@ namespace RenderCore { namespace Assets
         intermediateStore.MakeIntermediateName(intName, dimof(intName), intName);
         auto newArchive = std::make_shared<::Assets::ArchiveCache>(intName, _versionString.c_str(), _buildDateString.c_str());
         _archives.insert(existing, std::make_pair(hashedName, newArchive));
-        return std::move(newArchive);
+        return newArchive;
     }
 
     void ShaderCacheSet::LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore)

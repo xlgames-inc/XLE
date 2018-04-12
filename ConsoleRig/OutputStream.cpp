@@ -104,8 +104,8 @@ namespace ConsoleRig
     }
 
     BufferedOutputStream::BufferedOutputStream(std::shared_ptr<Utility::OutputStream> nextStream)
-    :       _nextStream(std::move(nextStream))
-    ,       _bufferPosition(0)
+    :   _bufferPosition(0)
+    ,   _nextStream(std::move(nextStream))
     {
     }
 

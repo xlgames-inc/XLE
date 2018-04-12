@@ -22,7 +22,7 @@ namespace RenderCore { namespace ImplOpenGLES
     static Metal_OpenGLES::FeatureSet::BitField AsGLESFeatureSet(unsigned glesVersion)
     {
         Metal_OpenGLES::FeatureSet::BitField featureSet = 0;
-        if (glesVersion >= 200) {
+        if (glesVersion >= 200u) {
             featureSet |= Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::ETC1TC;
         }
         

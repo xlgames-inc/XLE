@@ -25,6 +25,7 @@ namespace Utility
 #else
 			auto result = mkdir(dn, 0);
 #endif
+			(void)result;
 			// assert(result == 0);
 		}
 		void CreateDirectory_Int(const utf8* dn)    { CreateDirectory_Int((const char*)dn); }

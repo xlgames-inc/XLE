@@ -148,7 +148,7 @@ namespace RenderCore { namespace Techniques
     {
         std::vector<uint8> cbData(_cbSize, uint8(0));
         WriteBuffer(AsPointer(cbData.begin()), parameters);
-        return std::move(cbData);
+        return cbData;
     }
 
     SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters) const
@@ -156,7 +156,7 @@ namespace RenderCore { namespace Techniques
         SharedPkt result = MakeSharedPktSize(_cbSize);
         std::memset(result.begin(), 0, _cbSize);
         WriteBuffer(result.begin(), parameters);
-        return std::move(result);
+        return result;
     }
     
     uint64_t PredefinedCBLayout::CalculateHash() const

@@ -354,7 +354,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             }
         }
 
-        return std::move(unifiedVertexIndexToPositionIndex);
+        return unifiedVertexIndexToPositionIndex;
     }
 
     void MeshDatabase::WriteStream(
@@ -584,7 +584,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             // as 1) cause debug layer errors.
         result._vertexStride = CeilToMultiple(result._vertexStride, 4u);
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -686,7 +686,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             result[c] = std::make_pair(q, c);
         }
 
-        return std::move(result);
+        return result;
     }
 
     static bool SortQuantizedSet(

@@ -51,6 +51,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return half_float::detail::half2float(input);
     }
 
+#pragma clang diagnostic ignored "-Wswitch"     // (enumeration values not handled)
+
     static Float4 AsFloat4(const void* rawData, Format nativeFormat)
     {   
             //

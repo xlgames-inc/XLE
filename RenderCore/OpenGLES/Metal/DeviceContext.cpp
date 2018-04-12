@@ -68,6 +68,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         blender.Apply();
     }
 
+#pragma clang diagnostic ignored "-Wunused-function"        // SetUnmanagedStates() not used in this file
+
     static void SetUnmanagedStates()
     {
         // The following render states are not managed by RenderCore, but we can use this function

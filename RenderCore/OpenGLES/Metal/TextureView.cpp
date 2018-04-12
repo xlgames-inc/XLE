@@ -8,14 +8,6 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    static Resource AsResource(IResource& resource)
-    {
-        auto* result = (Resource*)resource.QueryInterface(typeid(Resource).hash_code());
-        if (!result)
-            Throw(::Exceptions::BasicLabel("Unexpected resource type passed to texture view"));
-        return *result;
-    }
-
     static std::shared_ptr<Resource> AsResource(const std::shared_ptr<IResource>& resource)
     {
         auto* result = (Resource*)resource->QueryInterface(typeid(Resource).hash_code());
