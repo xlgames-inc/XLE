@@ -277,12 +277,12 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             if (res.GetResource()) {
                 glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+                sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
             } else {
                 #if 0 // defined(_DEBUG)
                     Log(Warning) << "Null resource while binding SRV to texture uniform (" << srv._name << ")" << std::endl;
                 #endif
             }
-            sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
         }
 
         // Commit changes to texture uniforms
