@@ -59,7 +59,7 @@ namespace RenderCore { namespace ImplOpenGLES
         ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device> &device);
         ~ThreadContext();
 
-    private:
+    protected:
         std::weak_ptr<Device> _device;
         std::unique_ptr<IAnnotator> _annotator;
 
@@ -75,6 +75,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
     public:
         const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
+        virtual bool        IsBoundToCurrentThread();
         virtual void*       QueryInterface(size_t guid);
         ThreadContextOpenGLES(EGLContext sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();

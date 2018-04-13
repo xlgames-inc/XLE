@@ -29,6 +29,7 @@ namespace RenderCore
     {
     public:
         virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() = 0;
+        virtual bool IsBoundToCurrentThread() = 0;
         virtual ~IThreadContextOpenGLES();
     };
 

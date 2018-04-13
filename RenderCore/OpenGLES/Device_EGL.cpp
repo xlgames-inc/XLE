@@ -523,6 +523,14 @@ namespace RenderCore { namespace ImplOpenGLES
         return ThreadContext::QueryInterface(guid);
     }
 
+    bool        ThreadContextOpenGLES::IsBoundToCurrentThread()
+    {
+        EGLContext currentContext = eglGetCurrentContext();
+        if (_activeFrameContext)
+            return _activeFrameContext == currentContext;
+        return _sharedContext == currentContext;
+    }
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
     render_dll_export std::shared_ptr<IDevice>    CreateDevice()
     {

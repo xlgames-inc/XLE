@@ -132,6 +132,14 @@ namespace RenderCore { namespace ImplOpenGLES
         return nullptr;
     }
 
+    bool        ThreadContextOpenGLES::IsBoundToCurrentThread()
+    {
+        CGLContextObj currentContext = CGLGetCurrentContext();
+        if (_activeFrameContext)
+            return _activeFrameContext == currentContext;
+        return _sharedContext == currentContext;
+    }
+
     ThreadContextOpenGLES::ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
     : ThreadContext(sharedContext, device)
     {
