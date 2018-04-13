@@ -199,6 +199,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         auto featureSet = devContext.GetFeatureSet();
 
+        uint32_t instanceFlags = 0u;
+        uint32_t intanceDataRate[32];
+
         unsigned attributeIterator = 0;
         for (unsigned b=0; b<unsigned(_bindingsByVertexBuffer.size()); ++b) {
             auto bindingCount = _bindingsByVertexBuffer[b];
@@ -213,29 +216,37 @@ namespace RenderCore { namespace Metal_OpenGLES
                     i._stride,
                     (const void*)(size_t)(vb._offset + i._offset));
 
-                if (featureSet & FeatureSet::GLES300)
-                    glVertexAttribDivisor(i._attributeLocation, i._instanceDataRate);
+                instanceFlags |= ((i._instanceDataRate!=0)<<i._attributeLocation);
+                intanceDataRate[i._attributeLocation] = i._instanceDataRate;
             }
             attributeIterator += bindingCount;
+        }
+
+        if (featureSet & FeatureSet::GLES300) {
+            auto differences = (devContext._instancedVertexAttrib & _attributeState) | instanceFlags;
+            int firstActive = xl_ctz4(differences);
+            int lastActive = 32u - xl_clz4(differences);
+            for (int c=firstActive; c<lastActive; ++c)
+                if (_attributeState & (1<<c))
+                    glVertexAttribDivisor(c, intanceDataRate[c]);
+            devContext._instancedVertexAttrib = (devContext._instancedVertexAttrib & ~_attributeState) | instanceFlags;
         }
 
         // set enable/disable flags --
         // Note that this method cannot support more than 32 vertex attributes
 
-        int firstActive = xl_ctz4(_attributeState);
-        int lastActive = 32u - xl_clz4(_attributeState);
+        auto differences = devContext._activeVertexAttrib ^ _attributeState;
+        int firstActive = xl_ctz4(differences);
+        int lastActive = 32u - xl_clz4(differences);
 
-        int c=0;
-        for (; c<firstActive; ++c)
-            glDisableVertexAttribArray(c);
-        for (; c<lastActive; ++c)
+        for (int c=firstActive; c<lastActive; ++c)
             if (_attributeState & (1<<c)) {
                 glEnableVertexAttribArray(c);
             } else {
                 glDisableVertexAttribArray(c);
             }
-        for (; c<_maxVertexAttributes; ++c)
-            glDisableVertexAttribArray(c);
+
+        devContext._activeVertexAttrib = _attributeState;
 
         CheckGLError("Apply BoundInputLayout");
     }

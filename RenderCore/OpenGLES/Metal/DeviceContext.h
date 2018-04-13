@@ -71,6 +71,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
         ~GraphicsPipeline();
 
+        unsigned    _activeVertexAttrib;
+        unsigned    _instancedVertexAttrib;
+
     private:
         unsigned    _nativeTopology;
         unsigned    _indicesFormat;
