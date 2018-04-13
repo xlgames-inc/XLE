@@ -41,7 +41,7 @@ namespace Utility
         bool _isRecordingKnownEvents;
 
         #if !defined(NDEBUG)
-            uint32 _threadId;
+            size_t _threadId;
             static const unsigned s_maxStackDepth = 16;
             uint32 _aeStack[s_maxStackDepth];
             uint32 _aeStackI;

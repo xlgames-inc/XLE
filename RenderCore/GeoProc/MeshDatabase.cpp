@@ -39,7 +39,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
         dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
         if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale;
+            float scale = 1.0f;
             if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
                 dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
         }
@@ -66,7 +66,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         dst[2] = (srcComponentCount > 2) ? AsFloat32(src[2]) : 0.f;
         dst[3] = (srcComponentCount > 3) ? AsFloat32(src[3]) : 1.f;
         if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale;
+            float scale = 1.0f;
             if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
                 dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
         }
@@ -96,7 +96,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		dst[2] = (srcComponentCount > 2) ? UNorm16AsFloat32(src[2]) : 0.f;
 		dst[3] = (srcComponentCount > 3) ? UNorm16AsFloat32(src[3]) : 1.f;
 		if (processingFlags & ProcessingFlags::Renormalize) {
-			float scale;
+			float scale = 1.0f;
 			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
 				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
 		}
@@ -125,7 +125,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		dst[2] = (srcComponentCount > 2) ? SNorm16AsFloat32(src[2]) : 0.f;
 		dst[3] = (srcComponentCount > 3) ? SNorm16AsFloat32(src[3]) : 1.f;
 		if (processingFlags & ProcessingFlags::Renormalize) {
-			float scale;
+			float scale = 1.0f;
 			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
 				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
 		}

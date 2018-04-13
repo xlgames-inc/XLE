@@ -297,7 +297,7 @@ struct inverse_f
         }
 
         /* Swap columns if necessary */
-        for (int i = N-1; i >= 0; --i) {
+        for (int i = int(N-1); i >= 0; --i) {
             if (row_index[i] != col_index[i]) {
                 /*Z.col_op_swap(row_index[i],col_index[i]);*/
                 for (size_t j = 0; j < Z.rows(); ++j) {
