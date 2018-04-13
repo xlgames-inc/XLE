@@ -73,6 +73,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         unsigned    _activeVertexAttrib;
         unsigned    _instancedVertexAttrib;
+        uint64_t    _texUnitsSetToCube;
 
     private:
         unsigned    _nativeTopology;

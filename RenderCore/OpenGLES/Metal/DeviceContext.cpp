@@ -215,6 +215,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         _nativeTopology = GL_TRIANGLES;
         _featureSet = featureSet;
         _activeVertexAttrib = 0;
+        _instancedVertexAttrib = 0;
+        _texUnitsSetToCube = 0;
     }
 
     GraphicsPipeline::~GraphicsPipeline()

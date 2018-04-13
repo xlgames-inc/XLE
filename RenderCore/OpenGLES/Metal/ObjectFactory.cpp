@@ -332,11 +332,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void CheckGLError(const char context[])
     {
-        auto e = glGetError();
-        if (e) {
-            Log(Error) << "Encountered OpenGL error (" << e << ") in context (" << context << ")" << std::endl;
-            // OutputDebugString(XlDynFormatString("Encountered OpenGL error (%i) in context (%s)", e, context).c_str());
-        }
+        #if defined(_DEBUG)
+            auto e = glGetError();
+            if (e) {
+                Log(Error) << "Encountered OpenGL error (" << e << ") in context (" << context << ")" << std::endl;
+                // OutputDebugString(XlDynFormatString("Encountered OpenGL error (%i) in context (%s)", e, context).c_str());
+            }
+        #endif
     }
 
 }}
