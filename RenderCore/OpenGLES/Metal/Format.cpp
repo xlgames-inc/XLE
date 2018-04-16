@@ -340,7 +340,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::R8_UINT: return {GL_RED_INTEGER, GL_UNSIGNED_BYTE, GL_R8UI, FeatureSet::GLES300, FeatureSet::GLES300};
         case Format::R8_SNORM: return {GL_RED, GL_BYTE, GL_R8_SNORM, FeatureSet::GLES300, 0};
         case Format::R8_SINT: return {GL_RED_INTEGER, GL_BYTE, GL_R8I, FeatureSet::GLES300, FeatureSet::GLES300};
-        case Format::A8_UNORM: return {GL_ALPHA, GL_UNSIGNED_BYTE, GL_R8, FeatureSet::GLES200, FeatureSet::GLES300};
+        case Format::A8_UNORM: return {GL_ALPHA, GL_UNSIGNED_BYTE, GL_ALPHA, FeatureSet::GLES200, FeatureSet::GLES300};
 
         case Format::R9G9B9E5_SHAREDEXP: return {GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, GL_RGB9_E5, FeatureSet::GLES300, 0};
         case Format::B5G6R5_UNORM: return {GL_RGB, GL_UNSIGNED_SHORT_5_6_5, GL_RGB565, FeatureSet::GLES200, FeatureSet::GLES200};
