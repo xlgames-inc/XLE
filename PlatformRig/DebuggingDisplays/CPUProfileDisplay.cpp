@@ -16,6 +16,9 @@
 
 namespace PlatformRig { namespace Overlays
 {
+    float g_fpsDisplay = 0.f;
+	float g_loadDisplay = 0.f;
+
     static float AsMilliseconds(uint64 profilerTime)
     {
         static float freqMult = 1000.f / GetPerformanceCounterFrequency();
@@ -270,10 +273,33 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext& context, Layout& layout,
         Interactables&interactables, InterfaceState& interfaceState)
     {
-        const auto& resolvedEvents = _pimpl->_resolvedEvents;
-        Layout tableView(layout.GetMaximumSize());
-        static ProfilerTableSettings settings;
-        DrawProfilerTable(resolvedEvents, _pimpl->_toggledItems, settings, &context, layout, interactables, interfaceState);
+        if (true) {
+            const auto &resolvedEvents = _pimpl->_resolvedEvents;
+            Layout tableView(layout.GetMaximumSize());
+            static ProfilerTableSettings settings;
+            DrawProfilerTable(resolvedEvents, _pimpl->_toggledItems, settings, &context, layout,
+                              interactables, interfaceState);
+        }
+
+	    {
+		    TextStyle fpsStyle{64};
+		    context.DrawText(
+			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
+			                                         layout.GetMaximumSize()._topLeft[1])),
+			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
+			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
+			    StringMeld<64>() << std::setprecision(2) << g_fpsDisplay);
+	    }
+
+	    {
+		    TextStyle fpsStyle{32};
+		    context.DrawText(
+			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
+			                                         layout.GetMaximumSize()._topLeft[1] + 64)),
+			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
+			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
+			    StringMeld<64>() << std::setprecision(2) << g_loadDisplay * 100.f << "%");
+	    }
     }
 
     bool HierarchicalProfilerDisplay::ProcessInput(
