@@ -291,6 +291,10 @@ namespace Utility
         assert(_aeStackI==0);
         static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
 
+        _frameMarkers[_frameMarkerNext] = GetPerformanceCounter();
+        _frameMarkerCount = std::min(_frameMarkerNext+1, (unsigned)dimof(_frameMarkers));
+        _frameMarkerNext = (_frameMarkerNext+1) % (unsigned)dimof(_frameMarkers);
+
         std::swap(_events[0], _events[1]);  // (actually only the first 2 would be used)
         std::swap(_idAtEventsStart[0], _idAtEventsStart[1]);
         _idAtEventsStart[0] = _workingId;
@@ -304,6 +308,24 @@ namespace Utility
         Publish(MakeIteratorRange(_events[1]));
     }
 
+    uint64_t HierarchicalCPUProfiler::GetAverageFrameInterval()
+    {
+        if (_frameMarkerCount < 2) return 0.f;
+        const auto limit = (unsigned)dimof(_frameMarkers);
+        unsigned iterator = (_frameMarkerNext + limit - _frameMarkerCount) % limit;
+        auto prev = _frameMarkers[iterator];
+        iterator = (iterator+1) % limit;
+        uint64 accumulator = 0;
+        for (unsigned c=0; c<(_frameMarkerCount-1); ++c) {
+            auto t = _frameMarkers[iterator];
+            accumulator += t - prev;
+            prev = t;
+            iterator = (iterator+1) % limit;
+        }
+        assert(iterator == _frameMarkerNext);
+        return accumulator / (_frameMarkerCount-1);
+    }
+
     HierarchicalCPUProfiler::HierarchicalCPUProfiler()
     {
         _workingId = 0;
@@ -313,6 +335,8 @@ namespace Utility
         }
 
         _events[0].push_back(_idAtEventsStart[0]);
+
+        _frameMarkerCount = _frameMarkerNext = 0;
 
         #if !defined(NDEBUG)
             _threadId = XlGetCurrentThreadId();

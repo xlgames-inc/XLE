@@ -127,6 +127,8 @@ namespace Utility
         void        EndEvent(EventId eventId);
         void        EndFrame();
 
+        uint64_t    GetAverageFrameInterval();
+
         HierarchicalCPUProfiler();
         ~HierarchicalCPUProfiler();
     private:
@@ -135,6 +137,9 @@ namespace Utility
 
         uint32 _workingId;
         uint32 _idAtEventsStart[s_bufferCount];
+
+        uint64_t _frameMarkers[512];
+        unsigned _frameMarkerNext, _frameMarkerCount;
 
         #if !defined(NDEBUG)
             size_t _threadId;
