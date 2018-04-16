@@ -15,6 +15,7 @@
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Core/SelectConfiguration.h"
 #include "IncludeGLES.h"
 
 #include <iostream>
@@ -130,22 +131,27 @@ namespace RenderCore { namespace Metal_OpenGLES
         // DavidJ -- hack -- make this platform preamble configurable, and set when constructing
         //      the ShaderCompiler
         const char* platformPreamble =
-            #if APPORTABLE
+            #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
                 "#define CC3_PLATFORM_IOS 0\n"
                 "#define CC3_PLATFORM_OSX 0\n"
-                #ifdef _WIN32
-                    "#define CC3_PLATFORM_ANDROID 0\n"
-                    "#define CC3_PLATFORM_WINDOWS 1\n";
-                #else
-                    "#define CC3_PLATFORM_ANDROID 1\n"
-                    "#define CC3_PLATFORM_WINDOWS 0\n";
-                #endif
-            #else
+                "#define CC3_PLATFORM_ANDROID 0\n"
+                "#define CC3_PLATFORM_WINDOWS 1\n";
+            #elif PLATFORMOS_TARGET == PLATFORMOS_ANDROID
+                "#define CC3_PLATFORM_IOS 0\n"
+                "#define CC3_PLATFORM_OSX 0\n"
+                "#define CC3_PLATFORM_ANDROID 1\n"
+                "#define CC3_PLATFORM_WINDOWS 0\n";
+            #elif PLATFORMOS_TARGET == PLATFORMOS_IOS
                 "#define CC3_PLATFORM_IOS 1\n"
                 "#define CC3_PLATFORM_OSX 0\n"
                 "#define CC3_PLATFORM_ANDROID 0\n"
                 "#define CC3_PLATFORM_WINDOWS 0\n";
-            #endif    // APPORTABLE
+            #elif PLATFORMOS_TARGET == PLATFORMOS_OSX
+                "#define CC3_PLATFORM_IOS 0\n"
+                "#define CC3_PLATFORM_OSX 1\n"
+                "#define CC3_PLATFORM_ANDROID 0\n"
+                "#define CC3_PLATFORM_WINDOWS 0\n";
+            #endif
 
         const GLchar* shaderSourcePointers[4] { versionDecl, platformPreamble, definesPreambleStr.data(), (const GLchar*)sourceCode };
         GLint shaderSourceLengths[4] = { (GLint)std::strlen(versionDecl), (GLint)std::strlen(platformPreamble), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
