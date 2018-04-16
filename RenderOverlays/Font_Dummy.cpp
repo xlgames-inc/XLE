@@ -7,7 +7,8 @@
 namespace RenderOverlays
 {
     std::shared_ptr<Font> GetX2Font(const char* , int , FontTexKind) { return nullptr; }
-    TextStyle::TextStyle(const std::shared_ptr<Font>& , const DrawTextOptions& ) {}
+    TextStyle::TextStyle(const std::shared_ptr<Font>&, const DrawTextOptions& options) : _pointSize(0) {}
+    TextStyle::TextStyle(unsigned pointSize, const DrawTextOptions& options) : _pointSize(pointSize), _options(options) {}
     TextStyle::~TextStyle() {}
 }
 
