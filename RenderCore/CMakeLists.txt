@@ -1,6 +1,34 @@
-file(GLOB Src "*.cpp" "OpenGLES/Metal/*.cpp")
+set(Src
+    "${Src}"
+    "Annotator.cpp"
+    "Format.cpp"
+    "FrameBufferDesc.cpp"
+    "Init.cpp"
+    "MinimalShaderSource.cpp"
+    "RenderUtils.cpp"
+    "ResourceUtils.cpp"
+    "ShaderLangUtil.cpp"
+    "ShaderService.cpp"
+    "UniformsStream.cpp"
+    "Version.cpp"
+    )
 set(Src "${Src}" "OpenGLES/Device_EGL.cpp")
-set(Src "${Src}" "OpenGLES/Metal/PipelineLayout.cpp" "OpenGLES/Metal/InputLayout.cpp")
+set(Src
+    "${Src}"
+    "OpenGLES/Metal/Buffer.cpp"
+    "OpenGLES/Metal/DeviceContext.cpp"
+    "OpenGLES/Metal/Format.cpp"
+    "OpenGLES/Metal/FrameBuffer.cpp"
+    "OpenGLES/Metal/InputLayout.cpp"
+    "OpenGLES/Metal/ObjectFactory.cpp"
+    "OpenGLES/Metal/PipelineLayout.cpp"
+    "OpenGLES/Metal/QueryPool.cpp"
+    "OpenGLES/Metal/Resource.cpp"
+    "OpenGLES/Metal/Shader.cpp"
+    "OpenGLES/Metal/ShaderIntrospection.cpp"
+    "OpenGLES/Metal/State.cpp"
+    "OpenGLES/Metal/TextureView.cpp"
+    )
 file(GLOB Headers "*.h")
 
 add_definitions("-DGL_EXT_debug_marker=0")
@@ -8,4 +36,4 @@ add_definitions("-DGL_EXT_debug_marker=0")
 BasicLibrary(RenderCore "${Src}" "${Headers}")
 
 # Foreign Common 
-include_directories(Metal/ OpenGLES/Metal ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR})
+include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR})
