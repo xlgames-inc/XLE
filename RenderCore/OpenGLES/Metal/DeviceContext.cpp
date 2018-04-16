@@ -217,6 +217,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _activeVertexAttrib = 0;
         _instancedVertexAttrib = 0;
         _texUnitsSetToCube = 0;
+        _boundVAO = 0;
     }
 
     GraphicsPipeline::~GraphicsPipeline()

@@ -22,7 +22,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     using RawGLHandle = uint32_t;
     static const RawGLHandle   RawGLHandle_Invalid = 0;
 
-    namespace GlObject_Type { enum Enum { Shader, ShaderProgram, Texture, RenderBuffer, FrameBuffer, Buffer, Resource, Sampler }; }
+    namespace GlObject_Type { enum Enum { Shader, ShaderProgram, Texture, RenderBuffer, FrameBuffer, Buffer, Resource, Sampler, VAO }; }
     namespace ShaderType    { enum Enum { VertexShader, FragmentShader }; }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -58,6 +58,7 @@ namespace OpenGL
     using FrameBuffer   = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::FrameBuffer>;
     using Resource      = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Resource>;
     using Sampler       = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::Sampler>;
+    using VAO           = RenderCore::Metal_OpenGLES::GlObject<RenderCore::Metal_OpenGLES::GlObject_Type::VAO>;
 }
     
 namespace RenderCore { namespace Metal_OpenGLES
@@ -72,6 +73,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >    CreateFrameBuffer();
         intrusive_ptr<GlObject<GlObject_Type::Buffer> >         CreateBuffer();
         intrusive_ptr<GlObject<GlObject_Type::Sampler> >        CreateSampler();
+        intrusive_ptr<GlObject<GlObject_Type::VAO> >            CreateVAO();
 
         signed  IndexedGLType_AddRef(RawGLHandle object) never_throws;
         signed  IndexedGLType_Release(RawGLHandle object) never_throws;

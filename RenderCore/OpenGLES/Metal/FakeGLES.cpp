@@ -23,5 +23,12 @@ extern "C" void glClearBufferiv (uint32_t buffer, int32_t drawbuffer, const int3
 extern "C" void glInvalidateFramebuffer (uint32_t target, int32_t numAttachments, const uint32_t* attachments) {}
 extern "C" void glVertexAttribDivisor(uint32_t index, uint32_t divisor) {}
 
-#endif
+extern "C" void glBindVertexArray (uint32_t array) {}
+extern "C" void glDeleteVertexArrays (int32_t n, const uint32_t *arrays) {}
+extern "C" void glGenVertexArrays (int32_t n, uint32_t *arrays)
+{
+    for (unsigned c=0; c<n; ++c)
+        arrays[c] = 0;
+}
 
+#endif

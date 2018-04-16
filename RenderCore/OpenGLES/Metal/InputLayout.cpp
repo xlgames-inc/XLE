@@ -195,12 +195,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Construct BoundInputLayout");
     }
 
-    void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool useCache) const never_throws
     {
         auto featureSet = devContext.GetFeatureSet();
 
         uint32_t instanceFlags = 0u;
-        uint32_t intanceDataRate[32];
+        uint32_t instanceDataRate[32];
 
         unsigned attributeIterator = 0;
         for (unsigned b=0; b<unsigned(_bindingsByVertexBuffer.size()); ++b) {
@@ -217,38 +217,109 @@ namespace RenderCore { namespace Metal_OpenGLES
                     (const void*)(size_t)(vb._offset + i._offset));
 
                 instanceFlags |= ((i._instanceDataRate!=0)<<i._attributeLocation);
-                intanceDataRate[i._attributeLocation] = i._instanceDataRate;
+                instanceDataRate[i._attributeLocation] = i._instanceDataRate;
             }
             attributeIterator += bindingCount;
         }
 
-        if (featureSet & FeatureSet::GLES300) {
-            auto differences = (devContext._instancedVertexAttrib & _attributeState) | instanceFlags;
-            int firstActive = xl_ctz4(differences);
-            int lastActive = 32u - xl_clz4(differences);
-            for (int c=firstActive; c<lastActive; ++c)
-                if (_attributeState & (1<<c))
-                    glVertexAttribDivisor(c, intanceDataRate[c]);
-            devContext._instancedVertexAttrib = (devContext._instancedVertexAttrib & ~_attributeState) | instanceFlags;
-        }
-
-        // set enable/disable flags --
-        // Note that this method cannot support more than 32 vertex attributes
-
-        auto differences = devContext._activeVertexAttrib ^ _attributeState;
-        int firstActive = xl_ctz4(differences);
-        int lastActive = 32u - xl_clz4(differences);
-
-        for (int c=firstActive; c<lastActive; ++c)
-            if (_attributeState & (1<<c)) {
-                glEnableVertexAttribArray(c);
-            } else {
-                glDisableVertexAttribArray(c);
+        if (useCache) {
+            if (featureSet & FeatureSet::GLES300) {
+                auto differences = (devContext._instancedVertexAttrib & _attributeState) | instanceFlags;
+                int firstActive = xl_ctz4(differences);
+                int lastActive = 32u - xl_clz4(differences);
+                for (int c=firstActive; c<lastActive; ++c)
+                    if (_attributeState & (1<<c))
+                        glVertexAttribDivisor(c, instanceDataRate[c]);
+                devContext._instancedVertexAttrib = (devContext._instancedVertexAttrib & ~_attributeState) | instanceFlags;
             }
 
-        devContext._activeVertexAttrib = _attributeState;
+            // set enable/disable flags --
+            // Note that this method cannot support more than 32 vertex attributes
+
+            auto differences = devContext._activeVertexAttrib ^ _attributeState;
+            int firstActive = xl_ctz4(differences);
+            int lastActive = 32u - xl_clz4(differences);
+
+            for (int c=firstActive; c<lastActive; ++c)
+                if (_attributeState & (1<<c)) {
+                    glEnableVertexAttribArray(c);
+                } else {
+                    glDisableVertexAttribArray(c);
+                }
+
+            devContext._activeVertexAttrib = _attributeState;
+        } else {
+            GLint maxAttribs = 0;
+            glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
+            if (featureSet & FeatureSet::GLES300) {
+                for (int c=0; c<std::min(32, maxAttribs); ++c)
+                    if (_attributeState & (1<<c))
+                        glVertexAttribDivisor(c, instanceDataRate[c]);
+            }
+            for (int c=0; c<std::min(32, maxAttribs); ++c)
+                if (_attributeState & (1<<c)) {
+                    glEnableVertexAttribArray(c);
+                } else {
+                    glDisableVertexAttribArray(c);
+                }
+        }
 
         CheckGLError("Apply BoundInputLayout");
+    }
+
+    static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
+    {
+        // if (devContext._boundVAO == vao) return;
+        
+        auto featureSet = devContext.GetFeatureSet();
+        if (featureSet & FeatureSet::GLES300) {
+            glBindVertexArray(vao);
+        } else {
+            #if GL_APPLE_vertex_array_object
+                glBindVertexArrayAPPLE(vao);
+            #else
+                glBindVertexArrayOES(vao);
+            #endif
+        }
+        devContext._boundVAO = vao;
+    }
+
+    static uint64_t Hash(IteratorRange<const VertexBufferView*> vertexBuffers)
+    {
+        auto hash = DefaultSeed64;
+        for (auto& vbv:vertexBuffers) {
+            hash = HashCombine(hash, vbv._resource->GetGUID());
+            if (vbv._offset)
+                hash = HashCombine(hash, vbv._offset);
+        }
+        return hash;
+    }
+
+    void BoundInputLayout::Apply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
+    {
+        if (_vao) {
+            // The "vao" binds this input layout to a specific set of vertex buffers (passed to CreateVAO())
+            // If you hit this assert, it means that the vertex buffers passed to CreateVAO don't match what's
+            // passed to this function. That won't work; you need to either clone the BoundInputLayout for
+            // each set of vertex buffers you want to use, or just don't call CreateVAO at all.
+            assert(_vaoBindingHash == Hash(vertexBuffers));
+            BindVAO(devContext, _vao->AsRawGLHandle());
+        } else {
+            BindVAO(devContext, 0);
+            UnderlyingApply(devContext, vertexBuffers);
+        }
+    }
+
+    void BoundInputLayout::CreateVAO(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers)
+    {
+        _vao = nullptr;
+
+        _vao = GetObjectFactory(devContext).CreateVAO();
+        if (!_vao) return;
+
+        BindVAO(devContext, _vao->AsRawGLHandle());
+        UnderlyingApply(devContext, vertexBuffers, false);
+        _vaoBindingHash = Hash(vertexBuffers);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

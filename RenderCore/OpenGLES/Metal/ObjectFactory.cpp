@@ -85,6 +85,25 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    intrusive_ptr<GlObject<GlObject_Type::VAO> >             ObjectFactory::CreateVAO()
+    {
+        if (_featureSet & FeatureSet::GLES300) {
+            RawGLHandle result = RawGLHandle_Invalid;
+            glGenVertexArrays(1, &result);
+            auto temp = (GlObject<GlObject_Type::VAO>*)(size_t)result;
+            return intrusive_ptr<GlObject<GlObject_Type::VAO> >(temp);
+        } else {
+            RawGLHandle result = RawGLHandle_Invalid;
+            #if GL_APPLE_vertex_array_object
+                glGenVertexArraysAPPLE(1, &result);
+            #else
+                glGenVertexArraysOES(1, &result);
+            #endif
+            auto temp = (GlObject<GlObject_Type::VAO>*)(size_t)result;
+            return intrusive_ptr<GlObject<GlObject_Type::VAO> >(temp);
+        }
+    }
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace Detail
@@ -144,6 +163,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         {
             glDeleteSamplers(1, (GLuint*)&object);
         }
+
+        template<> void Destroy<GlObject_Type::VAO>(RawGLHandle object)
+        {
+            if (GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300) {
+                glDeleteVertexArrays(1, (GLuint*)&object);
+            } else {
+                #if GL_APPLE_vertex_array_object
+                    glDeleteVertexArraysAPPLE(1, &object);
+                #else
+                    glDeleteVertexArraysOES(1, &object);
+                #endif
+            }
+        }
     }
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,6 +217,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     template class GlObject<GlObject_Type::Buffer>;
     template class GlObject<GlObject_Type::Resource>;
     template class GlObject<GlObject_Type::Sampler>;
+    template class GlObject<GlObject_Type::VAO>;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

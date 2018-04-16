@@ -23,6 +23,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
     public:
         void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
+        void CreateVAO(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers);
 
         BoundInputLayout() : _attributeState(0) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
@@ -53,6 +54,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         uint32_t _attributeState;
 
         uint32_t _maxVertexAttributes;
+
+        intrusive_ptr<OpenGL::VAO> _vao;
+        uint64_t _vaoBindingHash;
+
+        void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool useCache = true) const never_throws;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
