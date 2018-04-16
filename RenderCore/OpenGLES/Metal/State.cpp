@@ -12,9 +12,12 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void SamplerState::Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws
     {
+        #if !APPORTABLE
         if (_prebuiltSamplerMipmaps) {
             glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
-        } else {
+        } else
+		#endif
+        {
             #if defined(_DEBUG)
                 // expecting GL_ACTIVE_TEXTURE to be already set to the expected texture unit
                 // (which will normally be the case when binding texture, then sampler)
@@ -23,7 +26,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 assert(activeTexture == GL_TEXTURE0 + textureUnit);
             #endif
 
-            glBindSampler(textureUnit, 0);
+            #if !APPORTABLE
+                glBindSampler(textureUnit, 0);
+            #endif
 
             glTexParameteri(bindingTarget, GL_TEXTURE_MIN_FILTER, enableMipmaps ? _minFilter : _maxFilter);
             glTexParameteri(bindingTarget, GL_TEXTURE_MAG_FILTER, _maxFilter);
@@ -103,7 +108,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         _wrapR = AsGLenum(addressW);
 
         auto& objectFactory = GetObjectFactory();
-        _prebuiltSamplerMipmaps = objectFactory.CreateSampler();
+        #if !APPORTABLE
+            _prebuiltSamplerMipmaps = objectFactory.CreateSampler();
+        #endif
         if (_prebuiltSamplerMipmaps) {
             glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _minFilter);
             glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
@@ -115,7 +122,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
         }
 
-        _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
+        #if !APPORTABLE
+            _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
+        #endif
         if (_prebuiltSamplerNoMipmaps) {
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter);
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);

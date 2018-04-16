@@ -356,7 +356,10 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (res.GetResource()) {
                 glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
                 glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
-                sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
+                if (res.GetResource()->_lastBoundSampler != &sampler) {
+                    sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
+                    res.GetResource()->_lastBoundSampler = &sampler;
+                }
 
                 auto setToCube = srv._dimensionality != GL_TEXTURE_2D;
                 assert(srv._textureUnit < 64);

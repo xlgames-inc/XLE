@@ -52,6 +52,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool _isBackBuffer;
         Desc _desc;
         uint64_t _guid;
+
+    public:
+        const void* _lastBoundSampler = nullptr;
     };
 
     GLenum AsBufferTarget(BindFlag::BitField bindFlags);
