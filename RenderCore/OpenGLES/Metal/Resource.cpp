@@ -192,6 +192,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                             faceCount = 1;
                         }
 
+                        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+
                         for (unsigned f=0; f<faceCount; ++f) {
                             if (initializer) {
                                 for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
@@ -228,6 +230,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                                 }
                             }
                         }
+
+                        glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
 
                     }
 
