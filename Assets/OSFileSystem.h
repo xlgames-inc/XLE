@@ -11,5 +11,5 @@
 namespace Assets
 {
 	class IFileSystem;
-	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root = StringSection<utf8>());
+	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root = StringSection<utf8>(), bool ignorePaths = false);
 }

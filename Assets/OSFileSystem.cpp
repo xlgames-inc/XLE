@@ -95,12 +95,13 @@ namespace Assets
 		virtual IOReason	TryMonitor(const Marker& marker, const std::shared_ptr<IFileMonitor>& evnt);
 		virtual	FileDesc	TryGetDesc(const Marker& marker);
 
-		FileSystem_OS(StringSection<utf8> root);
+		FileSystem_OS(StringSection<utf8> root, bool ignorePaths);
 		~FileSystem_OS();
 
 	protected:
 		std::basic_string<utf8> _rootUTF8;
 		std::basic_string<utf16> _rootUTF16;
+		bool _ignorePaths;
 	};
 
 	auto FileSystem_OS::TryTranslate(Marker& result, StringSection<utf8> filename) -> TranslateResult
@@ -119,8 +120,15 @@ namespace Assets
 		*(uint16*)out = 1;
 		utf8* dst = (utf8*)PtrAdd(out, 2);
 		std::copy(_rootUTF8.begin(), _rootUTF8.end(), dst);
-		std::copy(filename.begin(), filename.end(), &dst[_rootUTF8.size()]);
-		dst[_rootUTF8.size() + filename.Length()] = 0;
+		if (!_ignorePaths) {
+			std::copy(filename.begin(), filename.end(), &dst[_rootUTF8.size()]);
+			dst[_rootUTF8.size() + filename.Length()] = 0;
+		} else {
+			auto splitName = MakeFileNameSplitter(filename);
+			auto flattenedName = splitName.FileAndExtension();
+			std::copy(flattenedName.begin(), flattenedName.end(), &dst[_rootUTF8.size()]);
+			dst[_rootUTF8.size() + flattenedName.size()] = 0;
+		}
 		return TranslateResult::Success;
 	}
 
@@ -131,8 +139,15 @@ namespace Assets
 		*(uint16*)out = 2;
 		uint16* dst = (uint16*)PtrAdd(out, 2);
 		std::copy(_rootUTF16.begin(), _rootUTF16.end(), dst);
-		std::copy(filename.begin(), filename.end(), &dst[_rootUTF16.size()]);
-		dst[_rootUTF16.size() + filename.Length()] = 0;
+		if (!_ignorePaths) {
+			std::copy(filename.begin(), filename.end(), &dst[_rootUTF16.size()]);
+			dst[_rootUTF16.size() + filename.Length()] = 0;
+		} else {
+			auto splitName = MakeFileNameSplitter(filename);
+			auto flattenedName = splitName.FileAndExtension();
+			std::copy(flattenedName.begin(), flattenedName.end(), &dst[_rootUTF16.size()]);
+			dst[_rootUTF16.size() + flattenedName.size()] = 0;
+		}
 		return TranslateResult::Success;
 	}
 
@@ -254,7 +269,8 @@ namespace Assets
 		return FileDesc{ std::basic_string<utf8>(), FileDesc::State::DoesNotExist };
 	}
 
-	FileSystem_OS::FileSystem_OS(StringSection<utf8> root)
+	FileSystem_OS::FileSystem_OS(StringSection<utf8> root, bool ignorePaths)
+	: _ignorePaths(ignorePaths)
 	{
 		if (!root.IsEmpty()) {
 			_rootUTF8 = root.AsString() + u("/");
@@ -271,9 +287,9 @@ namespace Assets
 	FileSystem_OS::~FileSystem_OS() {}
 
 
-	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root)
+	std::shared_ptr<IFileSystem>	CreateFileSystem_OS(StringSection<utf8> root, bool flattenPaths)
 	{
-		return std::make_shared<FileSystem_OS>(root);
+		return std::make_shared<FileSystem_OS>(root, flattenPaths);
 	}
 
 }
