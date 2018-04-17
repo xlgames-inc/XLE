@@ -12,7 +12,7 @@
 #include <type_traits>
 #include <iostream>
 #include <assert.h>
-#include "IncludeGLES.h"
+#include "Metal/IncludeGLES.h"
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -245,12 +245,19 @@ namespace RenderCore { namespace ImplOpenGLES
             //      (with the presentation chain surface
             //
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
-        if (!eglMakeCurrent(    deviceStrong->GetDisplay(),
-                                presChain.GetSurface(),
-                                presChain.GetSurface(),
-                                _activeFrameContext)) {
-            Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
-        }
+	    auto currentContext = eglGetCurrentContext();
+	    if (    currentContext != _activeFrameContext
+		    || _currentPresentationChainGUID != presChain.GetGUID()) {
+
+	        if (!eglMakeCurrent(    deviceStrong->GetDisplay(),
+	                                presChain.GetSurface(),
+	                                presChain.GetSurface(),
+	                                _activeFrameContext)) {
+	            Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
+	        }
+
+		    _currentPresentationChainGUID = presChain.GetGUID();
+	    }
 
         const auto& presentationChainDesc = presentationChain.GetDesc();
         #if defined(_DEBUG)
@@ -265,15 +272,12 @@ namespace RenderCore { namespace ImplOpenGLES
         #endif
 
         _activeTargetRenderbuffer = presChain.GetTargetRenderbuffer();
-        if (_activeTargetRenderbuffer->IsBackBuffer()) {
-            glBindFramebuffer(GL_FRAMEBUFFER, 0);
-        } else {
+        if (!_activeTargetRenderbuffer->IsBackBuffer()) {
             _temporaryFramebuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, _temporaryFramebuffer->AsRawGLHandle());
             glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeTargetRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
         }
 
-        glViewport(0, 0, presentationChainDesc->_width, presentationChainDesc->_height);
         return _activeTargetRenderbuffer;
     }
 
@@ -303,11 +307,6 @@ namespace RenderCore { namespace ImplOpenGLES
         }
         _activeTargetRenderbuffer = nullptr;
         _activeFrameContext = nullptr;
-        /*eglMakeCurrent(
-            deviceStrong->GetDisplay(),
-            EGL_NO_SURFACE,
-            EGL_NO_SURFACE,
-            _sharedContext);*/
     }
 
     bool                        ThreadContext::IsImmediate() const { return false; }
@@ -320,6 +319,7 @@ namespace RenderCore { namespace ImplOpenGLES
     : _sharedContext(sharedContext)
     , _device(device)
     , _activeFrameContext(nullptr)
+    , _currentPresentationChainGUID(0)
     {}
 
     ThreadContext::~ThreadContext() {}
@@ -379,16 +379,10 @@ namespace RenderCore { namespace ImplOpenGLES
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
         return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
-        /*EGLint contextAttribs[]  = { EGL_CONTEXT_CLIENT_VERSION, 2, EGL_NONE, EGL_NONE };
-        EGLContext contextTemp = eglCreateContext(_display, _config, _immediateContext->GetUnderlying(), contextAttribs);
-        if (contextTemp == EGL_NO_CONTEXT) {
-            Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
-        }
-
-        return moveptr(new Metal_OpenGLES::DeviceContext(_display, contextTemp));*/
     }
 
-    std::shared_ptr<IThreadContext>   Device::GetImmediateContext() {
+    std::shared_ptr<IThreadContext>   Device::GetImmediateContext()
+    {
         if (!_immediateContext) {
             _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
         }
@@ -409,14 +403,18 @@ namespace RenderCore { namespace ImplOpenGLES
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static unsigned s_nextPresentationChainGUID = 1;
+
     PresentationChain::PresentationChain(
-            Metal_OpenGLES::ObjectFactory &objFactory,
-            EGLContext eglContext,
-            EGLDisplay display,
-            EGLConfig config,
-            const void* platformValue, unsigned width, unsigned height)
+        Metal_OpenGLES::ObjectFactory &objFactory,
+        EGLContext eglContext,
+        EGLDisplay display,
+        EGLConfig config,
+        const void* platformValue, unsigned width, unsigned height)
     {
         Metal_OpenGLES::CheckGLError("Start of PresentationChain constructor");
+
+	    _guid = s_nextPresentationChainGUID++;
 
             //
             //      Create the main output surface
@@ -437,6 +435,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
             EGL_NONE,                           EGL_NONE
         };
+
         EGLSurface surfaceTemp = eglCreateWindowSurface(
             display, config,
             EGLNativeWindowType(platformValue), surfaceAttribList);
@@ -471,11 +470,13 @@ namespace RenderCore { namespace ImplOpenGLES
 		Metal_OpenGLES::CheckGLError("End of PresentationChain constructor");
     }
 
-    const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const {
+    const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
+    {
         return _desc;
     }
 
-    void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/ {
+    void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/
+    {
         if (    newWidth == _backBufferDesc._textureDesc._width 
             &&  newHeight == _backBufferDesc._textureDesc._height)
             return;
@@ -491,6 +492,11 @@ namespace RenderCore { namespace ImplOpenGLES
             _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
         }
     }
+
+	EGLSurface PresentationChain::GetSurface() const
+	{
+		return _surface;
+	}
 
     PresentationChain::~PresentationChain()
     {

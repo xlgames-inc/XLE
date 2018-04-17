@@ -3,7 +3,7 @@
 
 #include "../IDevice.h"
 #include "IDeviceOpenGLES.h"
-#include "ObjectFactory.h"
+#include "Metal/ObjectFactory.h"
 #include "Metal/Resource.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/IntrusivePtr.h"
@@ -21,7 +21,8 @@ namespace RenderCore { namespace ImplOpenGLES
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
         const std::shared_ptr<Metal_OpenGLES::Resource>& GetTargetRenderbuffer() const { return _targetRenderbuffer; }
-        EGLSurface GetSurface() const { return _surface; }
+        EGLSurface GetSurface() const;
+	    unsigned GetGUID() const { return _guid; }
 
         PresentationChain(
                 Metal_OpenGLES::ObjectFactory &objFactory,
@@ -31,10 +32,11 @@ namespace RenderCore { namespace ImplOpenGLES
                 const void *platformValue, unsigned width, unsigned height);
         ~PresentationChain();
     private:
-       EGLSurface _surface;
-       std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
-       std::shared_ptr<PresentationChainDesc> _desc;
-       ResourceDesc _backBufferDesc;
+		EGLSurface _surface;
+		std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
+		std::shared_ptr<PresentationChainDesc> _desc;
+		ResourceDesc _backBufferDesc;
+	    unsigned _guid;
     };
 
     class Device;
@@ -65,6 +67,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
         EGLContext _sharedContext;
         EGLContext _activeFrameContext;
+	    unsigned _currentPresentationChainGUID;
 
         std::shared_ptr<Metal_OpenGLES::Resource> _activeTargetRenderbuffer;
         intrusive_ptr<OpenGL::FrameBuffer> _temporaryFramebuffer;
