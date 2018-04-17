@@ -18,14 +18,17 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto bindTarget = AsBufferTarget(GetDesc()._bindFlags);
         glBindBuffer(bindTarget, GetBuffer()->AsRawGLHandle());
 
-        if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
-            auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
-            if (flags & UpdateFlags::UnsynchronizedWrite)
-                glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
-            void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
-            std::memcpy(mappedData, data, dataSize);
-            glUnmapBuffer(bindTarget);
-        } else {
+        #if !APPORTABLE
+            if ((flags & UpdateFlags::UnsynchronizedWrite) && (context.GetFeatureSet() & FeatureSet::GLES300)) {
+                auto glFlags = GL_MAP_WRITE_BIT | GL_MAP_INVALIDATE_RANGE_BIT;
+                if (flags & UpdateFlags::UnsynchronizedWrite)
+                    glFlags |= GL_MAP_UNSYNCHRONIZED_BIT;
+                void* mappedData = glMapBufferRange(bindTarget, writeOffset, dataSize, glFlags);
+                std::memcpy(mappedData, data, dataSize);
+                glUnmapBuffer(bindTarget);
+            } else
+		#endif
+        {
             glBufferSubData(bindTarget, 0, dataSize, data);
         }
     }
