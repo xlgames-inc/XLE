@@ -311,7 +311,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     signed ObjectFactory::IndexedGLType_AddRef(unsigned object) never_throws
     {
-            //  not thread safe!
+        ScopedLock(_refCountTableLock);
         auto i = _refCountTable.find(object);
         if (i==_refCountTable.end()) {
             _refCountTable.insert(std::make_pair(object, 1));
@@ -322,7 +322,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     signed ObjectFactory::IndexedGLType_Release(unsigned object) never_throws
     {
-            //  not thread safe!
+        ScopedLock(_refCountTableLock);
         auto i = _refCountTable.find(object);
         if (i==_refCountTable.end()) {
             assert(0);
@@ -337,6 +337,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void ObjectFactory::ReportLeaks()
     {
+        ScopedLock(_refCountTableLock);
         Log(Warning) << "[OpenGL Leaks] " << _refCountTable.size() << " objects remain" << std::endl;
         auto count=0u;
         for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {

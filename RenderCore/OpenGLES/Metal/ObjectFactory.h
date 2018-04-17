@@ -7,6 +7,7 @@
 #include "Format.h"     // (for FeatureSet)
 #include "../../../Core/Exceptions.h"
 #include "../../../Utility/IntrusivePtr.h"
+#include "../../../Utility/Threading/Mutex.h"
 #include <unordered_map>
 
 typedef uint32_t GLenum;
@@ -88,6 +89,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         ObjectFactory(const ObjectFactory&) = delete;
     private:
         std::unordered_map<RawGLHandle, signed> _refCountTable;
+        Threading::Mutex _refCountTableLock;
         FeatureSet::BitField _featureSet;
     };
 

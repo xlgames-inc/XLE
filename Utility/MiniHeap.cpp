@@ -9,6 +9,7 @@
 #include "HeapUtils.h"
 #include "PtrUtils.h"
 #include "Threading/ThreadingUtils.h"
+#include "Threading/Mutex.h"
 #include <assert.h>
 
 namespace Utility
@@ -170,6 +171,7 @@ namespace Utility
     public:
         std::vector<FixedSizePage>  _fixedSizePages[FixedSizeHeapCount];
         std::vector<FreePage>       _freePages;
+        Threading::Mutex            _lock;
     };
 
     struct SplitMarker { unsigned _pageCat, _pageIndex, _blockIndex; };
@@ -235,6 +237,8 @@ namespace Utility
             return Allocation(PtrAdd(heapAlloc, sizeof(MainHeapExtraData)), MainHeapMarker);
         }
 
+        ScopedLock(_pimpl->_lock);
+
             //  Attempt to allocate in a fixed size page, if the 
             //  allocation is small;
         auto fixedSizeHeap = HeapIndexForBlockSize(size);
@@ -286,6 +290,8 @@ namespace Utility
     void        MiniHeap::Free(void* ptr) 
     {
         if (!ptr) return;   // (delete nullptr is valid, but evaluates to nothing)
+
+        ScopedLock(_pimpl->_lock);
 
             //  Unfortunately, the block-searching behavior here is very slow.
             //  Most alternative implementations would probably be faster
@@ -342,6 +348,8 @@ namespace Utility
             return;
         }
 
+        ScopedLock(_pimpl->_lock);
+
         auto m = Split(marker._marker);
         if (m._pageCat < FixedSizeHeapCount) {
             if (m._pageIndex >= _pimpl->_fixedSizePages[m._pageCat].size()) {
@@ -394,6 +402,8 @@ namespace Utility
             if (oldRefCount == 1) { free(exdata); }
             return;
         }
+
+        ScopedLock(_pimpl->_lock);
 
         auto m = Split(marker._marker);
         if (m._pageCat < FixedSizeHeapCount) {
