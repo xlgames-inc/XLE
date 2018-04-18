@@ -57,6 +57,8 @@ namespace RenderCore { namespace Assets
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
+        void ClearCaches();
+        
         void StallOnPendingOperations(bool cancelAll);
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }

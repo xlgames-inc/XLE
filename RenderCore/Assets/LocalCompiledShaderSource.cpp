@@ -48,6 +48,8 @@ namespace RenderCore { namespace Assets
 
         void LogStats(const ::Assets::IntermediateAssets::Store& intermediateStore);
 
+        void Clear();
+        
         ShaderCacheSet(const DeviceDesc& devDesc);
         ~ShaderCacheSet();
     protected:
@@ -196,6 +198,11 @@ namespace RenderCore { namespace Assets
 		Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
     }
 
+    void ShaderCacheSet::Clear() {
+        ScopedLock(_archivesLock);
+        _archives.clear();
+    }
+    
     ShaderCacheSet::ShaderCacheSet(const DeviceDesc& devDesc)
     {
         _baseFolderName = std::string(devDesc._underlyingAPI) + "/";
@@ -511,6 +518,10 @@ namespace RenderCore { namespace Assets
         return nullptr;
     }
 
+    void LocalCompiledShaderSource::ClearCaches() {
+        _shaderCacheSet->Clear();
+    }
+    
     void LocalCompiledShaderSource::StallOnPendingOperations(bool cancelAll)
     {
     }

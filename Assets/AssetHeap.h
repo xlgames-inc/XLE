@@ -154,7 +154,12 @@ namespace Assets
 		DefaultAssetHeap<AssetType>::~DefaultAssetHeap() {}
 	
 	template<typename AssetType>
-		void            DefaultAssetHeap<AssetType>::Clear() {}
+		void DefaultAssetHeap<AssetType>::Clear()
+    {
+        ScopedLock(_lock);
+        _assets.clear();
+        _shadowingAssets.clear();
+    }
 
 	template<typename AssetType>
 		auto DefaultAssetHeap<AssetType>::LogRecords() const -> std::vector<AssetHeapRecord>

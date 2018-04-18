@@ -180,6 +180,13 @@ namespace RenderCore
         _shaderSources.push_back(shaderSource);
     }
 
+    void ShaderService::DestroyAllShaders()
+    {
+        for (auto &source : _shaderSources) {
+            source->ClearCaches();
+        }
+    }
+
     ShaderService* ShaderService::s_instance = nullptr;
     void ShaderService::SetInstance(ShaderService* instance)
     {

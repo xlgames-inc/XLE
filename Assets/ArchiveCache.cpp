@@ -205,6 +205,7 @@ namespace Assets
 
     void ArchiveCache::FlushToDisk()
     {
+        return; // HACK: We don't want this functionality, as of now. Should probably refactor this instead.
         ScopedLock(_pendingBlocksLock);
         if (_pendingBlocks.empty()) { return; }
 

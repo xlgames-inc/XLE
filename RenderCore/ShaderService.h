@@ -73,6 +73,8 @@ namespace RenderCore
                 StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 				StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const = 0;
 
+            virtual void ClearCaches() = 0;
+            
             virtual ~IShaderSource();
         };
 
@@ -115,6 +117,8 @@ namespace RenderCore
             StringSection<::Assets::ResChar> initializer, 
             const ILowLevelCompiler* compiler = nullptr);
 
+        void DestroyAllShaders();
+        
         static ShaderService& GetInstance() { assert(s_instance); return *s_instance; }
         static void SetInstance(ShaderService*);
 

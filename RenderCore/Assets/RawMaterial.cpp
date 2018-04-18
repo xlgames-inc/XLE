@@ -274,6 +274,11 @@ namespace RenderCore { namespace Assets
                     break;
                 }
 
+            case Blob::AttributeValue:
+            case Blob::CharacterData:
+                Throw(FormatException("Unexpected element", formatter.GetLocation()));
+                break;
+
             case Blob::EndElement:
             case Blob::None:
                 return result;
@@ -324,6 +329,11 @@ namespace RenderCore { namespace Assets
                         Throw(FormatException("Expecting end element", formatter.GetLocation()));
                     break;
                 }
+
+            case Blob::AttributeValue:
+            case Blob::CharacterData:
+                Throw(FormatException("Unexpected element", formatter.GetLocation()));
+                break;
 
             case Blob::EndElement:
             case Blob::None:
