@@ -222,7 +222,7 @@ namespace Assets
 		// Given the filename in the "marker", try to find some basic information about the file.
 		// In this version, we're not going to open the file. We'll just query the information from 
 		// the filesystem directory table.
-#if 0
+#ifndef _WIN32
 		auto type = *(uint16*)AsPointer(marker.cbegin());
 		if (type == 1) {
 			std::basic_string<utf8> str((const utf8*)PtrAdd(AsPointer(marker.begin()), 2));
