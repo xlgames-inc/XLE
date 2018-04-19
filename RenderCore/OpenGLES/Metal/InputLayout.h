@@ -24,8 +24,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         void Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
         void CreateVAO(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers);
+        bool AllAttributesBound() const { return _allAttributesBound; }
 
-        BoundInputLayout() : _attributeState(0) {}
+        BoundInputLayout() : _attributeState(0), _maxVertexAttributes(0), _vaoBindingHash(0), _allAttributesBound(true) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
 
         struct SlotBinding
@@ -58,7 +59,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         intrusive_ptr<OpenGL::VAO> _vao;
         uint64_t _vaoBindingHash;
 
+        bool _allAttributesBound;
+
         void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool useCache = true) const never_throws;
+        bool CalculateAllAttributesBound(const ShaderProgram& program);
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

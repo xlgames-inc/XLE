@@ -38,6 +38,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         size_t elementsCount = layout.size();
         _bindings.reserve(elementsCount);
         _attributeState = 0;
+        _allAttributesBound = false;
 
         unsigned vbMax = 0;
         for (const auto&l:layout)
@@ -82,7 +83,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     attribute = glGetAttribLocation(programIndex->AsRawGLHandle(), elements[c]._semanticName.c_str());
                 }
 
-                if (attribute < 0 || attribute >= _maxVertexAttributes) {
+                if (attribute < 0) {
                         //  Binding failure! Write a warning, but ignore it. The binding is
                         //  still valid even if one or more attributes fail
                     Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
@@ -108,12 +109,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                 _bindingsByVertexBuffer.push_back(unsigned(_bindings.size() - bindingStart));
         }
 
+        _allAttributesBound = CalculateAllAttributesBound(program);
+
         CheckGLError("Construct BoundInputLayout");
     }
 
     BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& program)
     {
         _attributeState = 0;
+        _allAttributesBound = false;
 
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 
@@ -192,7 +196,45 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
+        _allAttributesBound = CalculateAllAttributesBound(program);
+
         CheckGLError("Construct BoundInputLayout");
+    }
+
+    bool BoundInputLayout::CalculateAllAttributesBound(const ShaderProgram& program)
+    {
+        auto programHandle = program.GetUnderlying()->AsRawGLHandle();
+
+        int activeAttributeCount = 0, activeAttributeMaxLength = 0;
+        glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTES, &activeAttributeCount);
+        glGetProgramiv(programHandle, GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &activeAttributeMaxLength);
+        GLchar buffer[activeAttributeMaxLength];
+
+        for (unsigned attrIndex = 0; attrIndex < activeAttributeCount; ++attrIndex) {
+            GLint size; GLenum type;
+            GLsizei nameLen;
+            glGetActiveAttrib(programHandle, attrIndex, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
+
+            // ignore "gl" system attributes
+            if (!strncmp(buffer, "gl_", 3)) continue;
+
+            auto location = glGetAttribLocation(programHandle, buffer);
+
+            bool hasBoundAttribute = false;
+            for (const auto&b:_bindings) {
+                if (b._attributeLocation == location) {
+                    hasBoundAttribute = true;
+                    break;
+                }
+            }
+
+            if (!hasBoundAttribute) {
+                Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding." << std::endl;
+                return false;
+            }
+        }
+
+        return true;
     }
 
     void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool useCache) const never_throws
@@ -251,16 +293,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             devContext._activeVertexAttrib = _attributeState;
         } else {
-            GLint maxAttribs = 0;
-            glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, &maxAttribs);
             #if !APPORTABLE
             if (featureSet & FeatureSet::GLES300) {
-                for (int c=0; c<std::min(32, maxAttribs); ++c)
+                for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                     if (_attributeState & (1<<c))
                         glVertexAttribDivisor(c, instanceDataRate[c]);
             }
             #endif
-            for (int c=0; c<std::min(32, maxAttribs); ++c)
+            for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                 if (_attributeState & (1<<c)) {
                     glEnableVertexAttribArray(c);
                 } else {
@@ -273,7 +313,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
     {
-        // if (devContext._boundVAO == vao) return;
+        if (devContext._boundVAO == vao) return;
         
         auto featureSet = devContext.GetFeatureSet();
         if (featureSet & FeatureSet::GLES300) {
@@ -324,6 +364,22 @@ namespace RenderCore { namespace Metal_OpenGLES
         BindVAO(devContext, _vao->AsRawGLHandle());
         UnderlyingApply(devContext, vertexBuffers, false);
         _vaoBindingHash = Hash(vertexBuffers);
+
+        // Reset cached state in devContext
+        // When a vao other than 0 is bound, it's unclear to me how calls to glEnableVertexAttribArray, etc,
+        // affect VAO 0. Let's just play safe, and reset everything to default, and clear out the cached values
+        // in DeviceContext
+        BindVAO(devContext, 0);
+        #if !APPORTABLE
+        if (devContext.GetFeatureSet() & FeatureSet::GLES300) {
+            for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
+                glVertexAttribDivisor(c, 0);
+            devContext._instancedVertexAttrib = 0;
+        }
+        #endif
+        for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
+            glDisableVertexAttribArray(c);
+        devContext._activeVertexAttrib = 0;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
