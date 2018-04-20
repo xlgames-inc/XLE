@@ -468,7 +468,6 @@ namespace Utility
 			return { uint64(attribs.nFileSizeHigh) << 32 | uint64(attribs.nFileSizeLow), AsUInt64(attribs.ftLastWriteTime), AsUInt64(attribs.ftLastAccessTime) };
 		}
 
-#if 0
 		std::optional<FileAttributes> TryGetFileAttributes(const utf8 filename[])
 		{
 			WIN32_FILE_ATTRIBUTE_DATA attribs;
@@ -488,7 +487,6 @@ namespace Utility
 				&attribs);
 			return (result) ? AsFileAttributes(attribs) : std::optional<FileAttributes>{};
 		}
-#endif
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
 		{
