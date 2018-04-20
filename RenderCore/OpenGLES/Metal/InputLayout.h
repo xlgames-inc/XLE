@@ -78,6 +78,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         uint64_t _boundUniformBufferSlots[4];
         uint64_t _boundResourceSlots[4];
 
+        #if defined(_DEBUG)
+        std::vector<ShaderIntrospection::Uniform> _unboundUniforms;
+        #endif
+
         BoundUniforms(
             const ShaderProgram& shader,
             const PipelineLayoutConfig& pipelineLayout,

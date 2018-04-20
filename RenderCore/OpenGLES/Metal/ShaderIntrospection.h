@@ -42,7 +42,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             int         _elementCount;
 
             DEBUG_ONLY(std::string _name;)
+            DEBUG_ONLY(bool _isBound;)
         };
+
+#if _DEBUG
+        std::vector<Uniform> UnboundUniforms() const;
+        void MarkBound(HashType uniformName);
+#endif
 
         class Struct
         {

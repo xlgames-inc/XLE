@@ -54,6 +54,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                         }
                     #endif*/
                 }
+
+                #if defined(_DEBUG)
+                const_cast<Uniform&>(i)._isBound = true;
+                #endif
             }
         }
 
@@ -66,6 +70,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     auto ShaderIntrospection::FindUniform(HashType uniformName) const -> Uniform
     {
+        // This only finds global uniforms
         auto globals = LowerBound(_structs, 0ull);
         if (globals == _structs.end() || globals->first != 0) return {0,0,0,0};
 
@@ -136,7 +141,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto i = LowerBound(_structs, structNameHash);
                 if (i==_structs.end() || i->first != structNameHash)
-                    i = _structs.insert(i, std::make_pair(structNameHash, Struct{}));
+                    i = _structs.insert(i, std::make_pair(structNameHash, Struct{{}
+                    #if defined(_DEBUG)
+                        , structName.AsString()
+                    #endif
+                        }));
 
                 i->second._uniforms.emplace_back(
                     Uniform {
@@ -145,13 +154,18 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                         #if defined(_DEBUG)
                             , fullName.AsString()
+                            , false
                         #endif
                     });
             } else {
                 // for global uniform, add into dummy struct at "0"
                 auto i = LowerBound(_structs, HashType(0));
                 if (i==_structs.end() || i->first != 0)
-                    i = _structs.insert(i, std::make_pair(0, Struct{}));
+                    i = _structs.insert(i, std::make_pair(0, Struct{{}
+                    #if defined(_DEBUG)
+                        , "global"
+                    #endif
+                        }));
 
                 i->second._uniforms.emplace_back(
                     Uniform {
@@ -160,6 +174,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                         #if defined(_DEBUG)
                             , fullName.AsString()
+                            , false
                         #endif
                     });
             }
@@ -238,4 +253,36 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind SetUniformCommandGroup");
     }
 
+    #if defined(_DEBUG)
+    auto ShaderIntrospection::UnboundUniforms() const -> std::vector<Uniform>
+    {
+        std::vector<Uniform> un;
+        for (auto& hs : _structs) {
+            for (auto& u : hs.second._uniforms) {
+                if (!u._isBound) {
+                    un.push_back(u);
+                }
+            }
+        }
+        return un;
+    }
+
+    void ShaderIntrospection::MarkBound(HashType uniformName)
+    {
+        // This only applies to global uniforms
+        auto globals = LowerBound(_structs, 0ull);
+        if (globals == _structs.end() || globals->first != 0) {
+            return;
+        }
+
+        auto i = std::find_if(
+            globals->second._uniforms.begin(), globals->second._uniforms.end(),
+            [uniformName](const Uniform& u) { return (uniformName >= u._bindingName) && (uniformName < u._bindingName+u._elementCount); });
+        if (i == globals->second._uniforms.end()) {
+            return;
+        }
+
+        i->_isBound = true;
+    }
+    #endif
 }}

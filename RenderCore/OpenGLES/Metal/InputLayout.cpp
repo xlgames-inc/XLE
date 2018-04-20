@@ -561,6 +561,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto uniform = introspection.FindUniform(binding);
                 if (uniform._elementCount != 0) {
+                    #if defined(_DEBUG)
+                        introspection.MarkBound(binding);
+                    #endif
                     // assign a texture unit for this binding
                     auto textureUnit = pipelineLayout.GetFixedTextureUnit(binding);
                     if (textureUnit == ~0u) {
@@ -585,6 +588,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
             }
         }
+        #if defined(_DEBUG)
+            _unboundUniforms = introspection.UnboundUniforms();
+        #endif
 
         // sort the uniform sets to collect up sequential sets on the same uniforms
         std::sort(
@@ -639,6 +645,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     , _srvs(std::move(moveFrom._srvs))
     , _textureAssignmentCommands(std::move(moveFrom._textureAssignmentCommands))
     , _textureAssignmentByteData(std::move(moveFrom._textureAssignmentByteData))
+    #if defined(_DEBUG)
+    , _unboundUniforms(std::move(moveFrom._unboundUniforms))
+    #endif
     {
         for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {
             _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
@@ -660,6 +669,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             moveFrom._boundUniformBufferSlots[c] = 0ull;
             moveFrom._boundResourceSlots[c] = 0ull;
         }
+        #if defined(_DEBUG)
+            _unboundUniforms = std::move(moveFrom._unboundUniforms);
+        #endif
         return *this;
     }
 
