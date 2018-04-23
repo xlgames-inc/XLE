@@ -283,12 +283,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             #if !APPORTABLE
             if (featureSet & FeatureSet::GLES300) {
                 auto differences = (devContext._instancedVertexAttrib & _attributeState) | instanceFlags;
-                int firstActive = xl_ctz4(differences);
-                int lastActive = 32u - xl_clz4(differences);
-                for (int c=firstActive; c<lastActive; ++c)
-                    if (_attributeState & (1<<c))
-                        glVertexAttribDivisor(c, instanceDataRate[c]);
-                devContext._instancedVertexAttrib = (devContext._instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                if (differences) {
+                    int firstActive = xl_ctz4(differences);
+                    int lastActive = 32u - xl_clz4(differences);
+                    for (int c=firstActive; c<lastActive; ++c)
+                        if (_attributeState & (1<<c))
+                            glVertexAttribDivisor(c, instanceDataRate[c]);
+                    devContext._instancedVertexAttrib = (devContext._instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                }
             }
             #endif
 
@@ -296,17 +298,19 @@ namespace RenderCore { namespace Metal_OpenGLES
             // Note that this method cannot support more than 32 vertex attributes
 
             auto differences = devContext._activeVertexAttrib ^ _attributeState;
-            int firstActive = xl_ctz4(differences);
-            int lastActive = 32u - xl_clz4(differences);
+            if (differences) {
+                int firstActive = xl_ctz4(differences);
+                int lastActive = 32u - xl_clz4(differences);
 
-            for (int c=firstActive; c<lastActive; ++c)
-                if (_attributeState & (1<<c)) {
-                    glEnableVertexAttribArray(c);
-                } else {
-                    glDisableVertexAttribArray(c);
-                }
+                for (int c=firstActive; c<lastActive; ++c)
+                    if (_attributeState & (1<<c)) {
+                        glEnableVertexAttribArray(c);
+                    } else {
+                        glDisableVertexAttribArray(c);
+                    }
 
-            devContext._activeVertexAttrib = _attributeState;
+                devContext._activeVertexAttrib = _attributeState;
+            }
         } else {
             #if !APPORTABLE
             if (featureSet & FeatureSet::GLES300) {
