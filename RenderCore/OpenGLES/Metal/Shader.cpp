@@ -241,41 +241,39 @@ namespace RenderCore { namespace Metal_OpenGLES
         GLint compileStatus = 0;
         glGetShaderiv   (newShader->AsRawGLHandle(), GL_COMPILE_STATUS, &compileStatus);
         if (!compileStatus) {
-            #if defined(_DEBUG)
-                GLint infoLen = 0;
-                glGetShaderiv(newShader->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
-                if ( infoLen > 1 ) {
-                    auto infoLog = std::make_unique<char[]>(infoLen);
-                    glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)infoLog.get());
+            GLint infoLen = 0;
+            glGetShaderiv(newShader->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
+            if ( infoLen > 1 ) {
+                auto infoLog = std::make_unique<char[]>(infoLen);
+                glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)infoLog.get());
 
-                    auto preambleLineCount = NewLineCount(shaderSourcePointers[0]) + NewLineCount(shaderSourcePointers[1]) + NewLineCount(shaderSourcePointers[2]);
-                    auto errorMessages = DecodeCompilerErrorLog(
-                        MakeStringSection(infoLog.get(), PtrAdd(infoLog.get(), infoLen)),
-                        preambleLineCount, sourceLineMarkers);
+                auto preambleLineCount = NewLineCount(shaderSourcePointers[0]) + NewLineCount(shaderSourcePointers[1]) + NewLineCount(shaderSourcePointers[2]);
+                auto errorMessages = DecodeCompilerErrorLog(
+                    MakeStringSection(infoLog.get(), PtrAdd(infoLog.get(), infoLen)),
+                    preambleLineCount, sourceLineMarkers);
 
-                    std::stringstream translatedErrors;
-                    for (const auto&e:errorMessages) {
-                            /* note -- add one to go from zero-based line number to one-based for output */
-                        translatedErrors << e._sourceFile << ": " << (e._line+1) << ": " << e._msg << std::endl;
-                    }
-
-                    Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
-                    Log(Error) << translatedErrors.str() << std::endl;
-
-					{
-						std::stringstream str;
-                        str << "Failure during shader compile. Errors follow:" << std::endl;
-                        str << translatedErrors.str() << std::endl;
-                        str << "---------------------------------------------" << std::endl;
-                        str << "Full source:" << std::endl;
-                        for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
-                            str << shaderSourcePointers[c] << std::endl;
-						auto logString = str.str();
-
-                        errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(logString.begin()), (const uint8_t*)AsPointer(logString.end()));
-					}
+                std::stringstream translatedErrors;
+                for (const auto&e:errorMessages) {
+                        /* note -- add one to go from zero-based line number to one-based for output */
+                    translatedErrors << e._sourceFile << ": " << (e._line+1) << ": " << e._msg << std::endl;
                 }
-            #endif
+
+                Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
+                Log(Error) << translatedErrors.str() << std::endl;
+
+                {
+                    std::stringstream str;
+                    str << "Failure during shader compile. Errors follow:" << std::endl;
+                    str << translatedErrors.str() << std::endl;
+                    str << "---------------------------------------------" << std::endl;
+                    str << "Full source:" << std::endl;
+                    for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
+                        str << shaderSourcePointers[c] << std::endl;
+                    auto logString = str.str();
+
+                    errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(logString.begin()), (const uint8_t*)AsPointer(logString.end()));
+                }
+            }
 
             return false;
         }
