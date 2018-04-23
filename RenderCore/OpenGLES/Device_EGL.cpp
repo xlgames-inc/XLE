@@ -440,7 +440,8 @@ namespace RenderCore { namespace ImplOpenGLES
             display, config,
             EGLNativeWindowType(platformValue), surfaceAttribList);
         if (surfaceTemp == EGL_NO_SURFACE) {
-            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface"));
+            auto error = eglGetError();
+            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface %x", error));
         }
 
         _surface = surfaceTemp;
