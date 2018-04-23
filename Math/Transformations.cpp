@@ -479,7 +479,6 @@ namespace XLEMath
         transform(2,0) *= scale._scale[2]; transform(2,1) *= scale._scale[2]; transform(2,2) *= scale._scale[2]; transform(2,3) *= scale._scale[2];
     }
 
-
     Float3          TransformPoint(const Float3x4& transform, Float3 pt)
     {
         return transform * Expand(pt, 1.f);
@@ -599,7 +598,11 @@ namespace XLEMath
             rotationScalePart(2,0), rotationScalePart(2,1), rotationScalePart(2,2), translationPart[2],
             0, 0, 0, 1);
     }
-
+    
+    Float4          TransformPlane(const Float4x4& transform, Float4 plane)
+    {
+        return  Transpose(Inverse(transform)) * plane;
+    }
 
         ////////////////////////////////////////////////////////////////
 
