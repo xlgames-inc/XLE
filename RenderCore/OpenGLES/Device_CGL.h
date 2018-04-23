@@ -40,6 +40,7 @@ namespace RenderCore { namespace ImplOpenGLES
         TBC::OCPtr<NSOpenGLContext> _nsContext;
         CGLContextObj _sharedContext;
         const void* _platformValue;
+        std::shared_ptr<PresentationChainDesc> _desc;
 
         void CreateUnderlyingContext(Metal_OpenGLES::ObjectFactory& objFactory);
     };

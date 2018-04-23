@@ -22,6 +22,8 @@ namespace RenderCore { namespace ImplOpenGLES
         return Metal_OpenGLES::FeatureSet::GLES200;
     }
 
+    float MagicOSXScaleFactor() { return 2.0f; }
+
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain& presentationChain)
     {
         assert(!_activeFrameContext);
@@ -41,9 +43,14 @@ namespace RenderCore { namespace ImplOpenGLES
         /*glBindFramebuffer(GL_FRAMEBUFFER, 0);
         GLint objectType = ~0, objectName = ~0u;
         glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_TYPE, &objectType);
-        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &objectName);*/
+        glGetFramebufferAttachmentParameteriv(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_FRAMEBUFFER_ATTACHMENT_OBJECT_NAME, &objectName);
 
-        /*GLint swapRectangle[4] = {0,0,0,0};
+        glBindRenderbuffer(GL_RENDERBUFFER, objectName);
+        GLint rbWidth, rbHeight;
+        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &rbWidth);
+        glGetRenderbufferParameteriv(GL_RENDERBUFFER, GL_RENDERBUFFER_WIDTH, &rbHeight);
+
+        GLint swapRectangle[4] = {0,0,0,0};
         GLint backingSize[2] = {0,0};
         auto err = CGLGetParameter(_activeFrameContext, kCGLCPSwapRectangle, swapRectangle);
         err = CGLGetParameter(_activeFrameContext, kCGLCPSurfaceBackingSize, backingSize);
@@ -62,11 +69,21 @@ namespace RenderCore { namespace ImplOpenGLES
         if (_activeFrameContext) {
             // If using "fake back buffer" mode, blt to the true back buffer
             if (presChain._fakeBackBuffer) {
+
+                /*
+                    The coordinates used with glBltFramebuffer with framebuffer 0 appear to be
+                    view coordinates (as opposed to "backing" coordinates). Backing coordinates are
+                    true pixel coordinates.
+                    Since we're using backing coordinates everywhere else, we need to convert here
+                */
+                NSSize dstSize = NSMakeSize(presChain._backBufferDesc._textureDesc._width, presChain._backBufferDesc._textureDesc._height);
+                dstSize = [presChain.GetUnderlying().get().view convertSizeFromBacking:dstSize];
+
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, presChain._fakeBackBufferFrameBuffer->AsRawGLHandle());
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
                 glBlitFramebuffer(
                     0, 0, presChain._backBufferDesc._textureDesc._width, presChain._backBufferDesc._textureDesc._height,
-                    0, 0, presChain._backBufferDesc._textureDesc._width, presChain._backBufferDesc._textureDesc._height,
+                    0, 0, (GLint)(MagicOSXScaleFactor() * dstSize.width), (GLint)(MagicOSXScaleFactor() * dstSize.height),
                     GL_COLOR_BUFFER_BIT, GL_NEAREST);
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
             }
@@ -263,6 +280,9 @@ namespace RenderCore { namespace ImplOpenGLES
             BindFlag::RenderTarget, 0, GPUAccess::Write,
             TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM),        // SRGB?
             "backbuffer");
+        _desc = std::make_shared<PresentationChainDesc>();
+        _desc->_width = width;
+        _desc->_height = height;
 
         _sharedContext = sharedContext;
         _platformValue = platformValue;
@@ -289,6 +309,8 @@ namespace RenderCore { namespace ImplOpenGLES
                 kCGLPFAAlphaSize, 8,
                 kCGLPFABackingStore, 0,
                 kCGLPFAAccelerated, 1,
+                kCGLPFADepthSize, 24,
+                kCGLPFAStencilSize, 8,
                 0,
             };
 
@@ -311,7 +333,7 @@ namespace RenderCore { namespace ImplOpenGLES
             _nsContext.get().view = (NSView*)_platformValue;
         }
 
-        const bool useFakeBackbuffer = false;
+        const bool useFakeBackbuffer = true;
         if (useFakeBackbuffer) {
             _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
 
@@ -337,6 +359,8 @@ namespace RenderCore { namespace ImplOpenGLES
             
         _backBufferDesc._textureDesc._width = newWidth;
         _backBufferDesc._textureDesc._height = newHeight;
+        _desc->_width = _backBufferDesc._textureDesc._width;
+        _desc->_height = _backBufferDesc._textureDesc._height;
 
         auto& objFactory = Metal_OpenGLES::GetObjectFactory(*_fakeBackBuffer);
         CreateUnderlyingContext(objFactory);
@@ -344,8 +368,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     const std::shared_ptr<PresentationChainDesc>& PresentationChain::GetDesc() const
     {
-        static std::shared_ptr<PresentationChainDesc> dummy;
-        return dummy;
+        return _desc;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
