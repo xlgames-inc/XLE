@@ -281,11 +281,10 @@ namespace Assets { namespace IntermediateAssets
             //  We want a directory that isn't currently being used, and
             //  that matches the version string.
 
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-
         ResChar buffer[MaxPath];
 
 		if (!universal) {
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 			_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", baseDirectory, configString);
 
 			std::string goodBranchDir;
@@ -360,19 +359,17 @@ namespace Assets { namespace IntermediateAssets
 					break;
 				}
 			}
+#else
+            auto goodBranchDir = baseDirectory;
+#endif
 
 			_baseDirectory = goodBranchDir;
 		} else {
 			// This is the "universal" store directory. A single directory is used by all
 			// versions of the game.
-			_snprintf_s(buffer, _TRUNCATE, "%s/u", baseDirectory);
+			snprintf(buffer, dimof(buffer), "%s/u", baseDirectory);
 			_baseDirectory = buffer;
 		}
-#else
-        #if defined(TEMP_HACK)
-            assert(0);
-        #endif
-#endif
     }
 
     Store::~Store() 

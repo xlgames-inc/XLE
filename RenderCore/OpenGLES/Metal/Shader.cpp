@@ -15,10 +15,12 @@
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/Conversion.h"
 #include "../../../Core/SelectConfiguration.h"
 #include "IncludeGLES.h"
 
 #include <iostream>
+#include <regex>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -38,7 +40,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
             const ShaderService::ResId& shaderPath,
-            StringSection<::Assets::ResChar> definesTable) const;
+            StringSection<::Assets::ResChar> definesTable,
+            IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -60,13 +63,89 @@ namespace RenderCore { namespace Metal_OpenGLES
             XlCopyString(destination, destinationCount, inputShaderModel);
     }
 
+    static unsigned NewLineCount(const char* str)
+    {
+        unsigned result = 0;
+        for (auto i=str; *i != '\0'; ++i)
+            if (*i == '\n') ++result;
+        return result;
+    }
+
+    struct ErrorMessage
+    {
+    public:
+        std::string     _sourceFile;
+        unsigned        _line;      // (this is a zero-base line number)
+        std::string     _msg;
+    };
+    static std::vector<ErrorMessage> DecodeCompilerErrorLog(
+        StringSection<> compilerLog,
+        unsigned preambleLineCount,
+        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers)
+    {
+        std::vector<ErrorMessage> errorMessages;
+        const char* i = compilerLog.begin();
+        const char* endi = compilerLog.end();
+        if (((endi-i) >= 1) && *(endi-1) == '\0') --endi;   // if there's a null terminator, drop back once
+        for (; i!=endi;) {
+            while (i != endi && (*i == '\n' || *i == '\r')) ++i;
+
+            auto nexti = i;
+            while (nexti != endi && *nexti != '\n' && *nexti != '\r') ++nexti;
+
+            auto line = MakeStringSection(i, nexti);
+            if (line.IsEmpty()) break;
+
+            static std::regex appleStyle(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--");
+            std::cmatch match;
+            bool a = std::regex_match(line.begin(), line.end(), match, appleStyle);
+            if (a && match.size() >= 5) {
+                std::stringstream str;
+                str << match[1].str() << ": " << match[4].str();
+                auto line = Conversion::Convert<unsigned>(MakeStringSection(match[3].first, match[3].second));
+                line --; // (to zero base number)
+                errorMessages.push_back({std::string{}, line, str.str()});
+            } else {
+                errorMessages.push_back({std::string{}, ~0u, line.AsString()});
+            }
+
+            i = nexti;
+        }
+
+        // Remap line numbers into the source file name/lines from before preprocessing
+        if (!sourceLineMarkers.empty()) {
+            for (auto&e:errorMessages) {
+                if (e._line == ~0u) continue;
+
+                if (e._line < preambleLineCount) {
+                    e._sourceFile = "<<in preamble>>";
+                    continue;
+                }
+
+                e._line -= preambleLineCount;
+                auto m = sourceLineMarkers.end()-1;
+                while (m >= sourceLineMarkers.begin()) {
+                    if (m->_processedSourceLine <= e._line) {
+                        e._line = e._line - m->_processedSourceLine + m->_sourceLine;
+                        e._sourceFile = m->_sourceName;
+                        break;
+                    }
+                    --m;
+                }
+            }
+        }
+
+        return errorMessages;
+    }
+
     bool OGLESShaderCompiler::DoLowLevelCompile(
         /*out*/ Payload& payload,
         /*out*/ Payload& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
-        StringSection<::Assets::ResChar> definesTable) const
+        StringSection<::Assets::ResChar> definesTable,
+        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
     {
         ShaderType::Enum shaderType = ShaderType::FragmentShader;
         if (shaderPath._shaderModel[0] == 'v') {
@@ -94,9 +173,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (definition < defineEnd) {
                     auto e = definition+1;
                     while (e < defineEnd && std::isspace(*e)) ++e;
-                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << std::endl;
+                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << "\n";
                 } else {
-                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << std::endl;
+                    definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << "\n";
                 }
 
                 p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
@@ -153,7 +232,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 "#define CC3_PLATFORM_WINDOWS 0\n";
             #endif
 
-        const GLchar* shaderSourcePointers[4] { versionDecl, platformPreamble, definesPreambleStr.data(), (const GLchar*)sourceCode };
+        const GLchar* shaderSourcePointers[4] { versionDecl, platformPreamble, definesPreambleStr.c_str(), (const GLchar*)sourceCode };
         GLint shaderSourceLengths[4] = { (GLint)std::strlen(versionDecl), (GLint)std::strlen(platformPreamble), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
 
         glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
@@ -166,29 +245,35 @@ namespace RenderCore { namespace Metal_OpenGLES
                 GLint infoLen = 0;
                 glGetShaderiv(newShader->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
                 if ( infoLen > 1 ) {
-                    errors = std::make_shared<std::vector<uint8>>(infoLen);
-                    glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)errors->data());
+                    auto infoLog = std::make_unique<char[]>(infoLen);
+                    glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)infoLog.get());
 
-                    const char* e = (const char*)errors->data();
-					#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-						Log(Error) << "Failure during shader compile. Errors:" << std::endl << e << std::endl;
+                    auto preambleLineCount = NewLineCount(shaderSourcePointers[0]) + NewLineCount(shaderSourcePointers[1]) + NewLineCount(shaderSourcePointers[2]);
+                    auto errorMessages = DecodeCompilerErrorLog(
+                        MakeStringSection(infoLog.get(), PtrAdd(infoLog.get(), infoLen)),
+                        preambleLineCount, sourceLineMarkers);
+
+                    std::stringstream translatedErrors;
+                    for (const auto&e:errorMessages) {
+                            /* note -- add one to go from zero-based line number to one-based for output */
+                        translatedErrors << e._sourceFile << ": " << (e._line+1) << ": " << e._msg << std::endl;
+                    }
+
+                    Log(Error) << "Failure during shader compile. Errors follow:" << std::endl;
+                    Log(Error) << translatedErrors.str() << std::endl;
+
+					{
 						std::stringstream str;
-						str << versionDecl << platformPreamble << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
-						str << e << std::endl;
+                        str << "Failure during shader compile. Errors follow:" << std::endl;
+                        str << translatedErrors.str() << std::endl;
+                        str << "---------------------------------------------" << std::endl;
+                        str << "Full source:" << std::endl;
+                        for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
+                            str << shaderSourcePointers[c] << std::endl;
 						auto logString = str.str();
-						auto hash = Hash64(logString);
-						StringMeld<MaxPath> logFileName;
-						auto splitter = MakeFileNameSplitter(shaderPath._filename);
-						logFileName << "ShaderCompileError_" << splitter.File().AsString() << "_" << splitter.Extension().AsString() << "_" << std::hex << hash;
-						auto* file = fopen(logFileName.get(), "wb");
-						fwrite(logString.data(), 1, logString.size(), file);
-						fclose(file);
-						Log(Error) << "Debug log written to " << logFileName.get() << std::endl;
-					#else
-						Log(Error) << "Failure during shader compile. Shader source follows:" << std::endl;
-						Log(Error) << versionDecl << platformPreamble << definesPreambleStr << (const GLchar*)sourceCode << std::endl;
-						Log(Error) << "Errors:" << std::endl << e << std::endl;
-					#endif
+
+                        errors = std::make_shared<std::vector<uint8_t>>((const uint8_t*)AsPointer(logString.begin()), (const uint8_t*)AsPointer(logString.end()));
+					}
                 }
             #endif
 

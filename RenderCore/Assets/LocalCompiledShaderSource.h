@@ -25,14 +25,8 @@ namespace RenderCore { namespace Assets
         struct SourceCodeWithRemapping
         {
         public:
-            struct LineMarker
-            {
-                std::string _sourceName;
-                unsigned _sourceLine;
-                unsigned _processedSourceLine;
-            };
             std::string _processedSource;
-            std::vector<LineMarker> _lineMarkers;
+            std::vector<ShaderService::SourceLineMarker> _lineMarkers;
             std::vector<::Assets::DependentFileState> _dependencies;
         };
 
@@ -63,6 +57,10 @@ namespace RenderCore { namespace Assets
 
         ShaderCacheSet& GetCacheSet() { return *_shaderCacheSet; }
 
+        // enable "WriteErrorLogFiles" to write out a little text file in the directory "shader_error"
+        // for each shader compile error
+        void SetWriteErrorLogFiles(bool newValue) { _writeErrorLogFiles = newValue; }
+
         LocalCompiledShaderSource(
             std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
             std::shared_ptr<ISourceCodePreprocessor> preprocessor,
@@ -72,6 +70,7 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
         std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
         std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
+        bool _writeErrorLogFiles = false;
 
         class Marker;
     };

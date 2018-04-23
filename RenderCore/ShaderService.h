@@ -78,6 +78,14 @@ namespace RenderCore
             virtual ~IShaderSource();
         };
 
+        /* Represents source line number remapping (eg, during some preprocessing step) */
+        struct SourceLineMarker
+        {
+            std::string _sourceName;
+            unsigned    _sourceLine;
+            unsigned    _processedSourceLine;
+        };
+
         class ILowLevelCompiler
         {
         public:
@@ -94,7 +102,8 @@ namespace RenderCore
                 /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
                 const void* sourceCode, size_t sourceCodeLength,
                 const ResId& shaderPath,
-                StringSection<::Assets::ResChar> definesTable) const = 0;
+                StringSection<::Assets::ResChar> definesTable,
+                IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const = 0;
 
             virtual std::string MakeShaderMetricsString(
                 const void* byteCode, size_t byteCodeSize) const = 0;

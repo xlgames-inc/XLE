@@ -337,7 +337,8 @@ namespace RenderCore { namespace Assets
 					success = c->_compiler->DoLowLevelCompile(
 						payload, errors, deps,
 						preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(), resId,
-						definesTable.c_str());
+						definesTable.c_str(),
+                        MakeIteratorRange(preprocessedOutput._lineMarkers));
 
 				} else {
 					deps.push_back(::Assets::IntermediateAssets::Store::GetDependentFileState(resId._filename));
@@ -423,6 +424,20 @@ namespace RenderCore { namespace Assets
 						MakeIteratorRange(depsAsVector), false); });
 				(void)archiveCacheAttachment;
 			}
+
+                // Commit errors to disk if enabled
+            if (c->_writeErrorLogFiles && errors && !errors->empty()) {
+                auto hash = Hash64(AsPointer(errors->begin()), AsPointer(errors->end()));
+                StringMeld<MaxPath> logFileName;
+                auto splitter = MakeFileNameSplitter(resId._filename);
+                logFileName << "shader_error/ShaderCompileError_" << splitter.File().AsString() << "_" << splitter.Extension().AsString() << "_" << std::hex << hash << ".txt";
+                char finalLogFileName[MaxPath];
+                store->MakeIntermediateName(finalLogFileName, logFileName.AsStringSection());
+                RawFS::CreateDirectoryRecursive(MakeFileNameSplitter(finalLogFileName).DriveAndPath());
+                auto file = ::Assets::MainFileSystem::OpenFileInterface(finalLogFileName, "wb");
+                file->Write(errors->data(), errors->size());
+                Log(Error) << "Debug log written to " << logFileName.get() << std::endl;
+            }
 
                 // Create the artifact and add it to the compile marker
 			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));

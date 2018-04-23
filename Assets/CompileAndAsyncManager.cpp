@@ -129,8 +129,8 @@ namespace Assets
         #endif
 
 		_pimpl = std::make_unique<Pimpl>();
-		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString, storeConfigString);
-		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("Int", storeVersionString, storeConfigString, true);
+		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("int", storeVersionString, storeConfigString);
+		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("int", storeVersionString, storeConfigString, true);
 
 		_pimpl->_intMan = std::make_unique<IntermediateAssets::CompilerSet>();
     }

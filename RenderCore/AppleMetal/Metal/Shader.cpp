@@ -40,7 +40,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
             const ShaderService::ResId& shaderPath,
-            StringSection<::Assets::ResChar> definesTable) const;
+            StringSection<::Assets::ResChar> definesTable,
+            IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -70,7 +71,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
-        StringSection<::Assets::ResChar> definesTable) const
+        StringSection<::Assets::ResChar> definesTable,
+        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
     {
         std::stringstream definesPreamble;
         NSMutableDictionary* preprocessorMacros = [[NSMutableDictionary alloc] init];

@@ -23,7 +23,7 @@ namespace Utility
 #ifdef MINGW
             auto result = mkdir(dn);
 #else
-			auto result = mkdir(dn, 0);
+			auto result = mkdir(dn, 0775);
 #endif
 			(void)result;
 			// assert(result == 0);
