@@ -241,15 +241,15 @@ namespace Serialization
 
         const Header& h = *(const Header*)block;
         const NascentBlockSerializer::InternalPointer* ptrTable = 
-            (const NascentBlockSerializer::InternalPointer*)PtrAdd(block, sizeof(Header)+h._rawMemorySize);
+            (const NascentBlockSerializer::InternalPointer*)PtrAdd(block, ptrdiff_t(sizeof(Header)+h._rawMemorySize));
 
         for (unsigned c=0; c<h._internalPointerCount; ++c) {
             const NascentBlockSerializer::InternalPointer& ptr = ptrTable[c];
             if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Unknown) {
-                SetPtr(PtrAdd(block, sizeof(Header)+ptr._pointerOffset),
+                SetPtr(PtrAdd(block, ptrdiff_t(sizeof(Header)+ptr._pointerOffset)),
                        ptr._subBlockOffset + size_t(base) + sizeof(Header));
             } else if (ptr._specialBuffer == NascentBlockSerializer::SpecialBuffer::Vector) {
-                uint64_t* o = (uint64_t*)PtrAdd(block, sizeof(Header)+ptr._pointerOffset);
+                uint64_t* o = (uint64_t*)PtrAdd(block, ptrdiff_t(sizeof(Header)+ptr._pointerOffset));
                 SetPtr(&o[0], ptr._subBlockOffset + size_t(base) + sizeof(Header));
                 SetPtr(&o[1], ptr._subBlockOffset + ptr._subBlockSize + size_t(base) + sizeof(Header));
                 SetPtr(&o[2], 0);
@@ -275,7 +275,7 @@ namespace Serialization
     size_t          Block_GetSize(const void* block)
     {
         const Header& h = *(const Header*)block;
-        return h._rawMemorySize + h._internalPointerCount * sizeof(NascentBlockSerializer::InternalPointer) + sizeof(Header);
+        return size_t(h._rawMemorySize + h._internalPointerCount * sizeof(NascentBlockSerializer::InternalPointer) + sizeof(Header));
     }
 
     std::unique_ptr<uint8[]>  Block_Duplicate(const void* block)

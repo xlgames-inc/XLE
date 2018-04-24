@@ -180,7 +180,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
         const Rect upButton = coordinates.UpArrow();
         const Rect downButton = coordinates.DownArrow();
-        const Rect scrollArea = coordinates.ScrollArea();
 
         DrawFilledElipse(context, upButton, fillColour);
         DrawFilledElipse(context, downButton, fillColour);
@@ -1006,9 +1005,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
             const InteractableId backButtonId = InteractableId_Make("PanelControls_BackButton");
             if (topMostWidget >= backButtonId && topMostWidget < backButtonId + _panels.size()) {
-                if (!_panels[topMostWidget-backButtonId]._backButton.empty()) {
-                    SwitchToScreen(topMostWidget-backButtonId, _panels[topMostWidget-backButtonId]._backButton.c_str());
-                    _panels[topMostWidget-backButtonId]._backButton = std::string();
+                if (!_panels[size_t(topMostWidget-backButtonId)]._backButton.empty()) {
+                    SwitchToScreen(topMostWidget-backButtonId, _panels[size_t(topMostWidget-backButtonId)]._backButton.c_str());
+                    _panels[size_t(topMostWidget-backButtonId)]._backButton = std::string();
                     return true;
                 }
             }
