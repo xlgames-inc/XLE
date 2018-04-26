@@ -42,7 +42,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         CheckGLError("SamplerState::Apply");
 
-        // (border color set elsewhere. Anisotrophy requires an extension)
+        // (border color set elsewhere. Anisotropy requires an extension)
     }
 
     static GLenum AsGLenum(AddressMode addressMode)
@@ -126,7 +126,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
         #endif
         if (_prebuiltSamplerNoMipmaps) {
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter);
+            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter); /* intentionally using maxFilter in non-mipmap case */
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
             glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
