@@ -17,6 +17,7 @@ namespace Assets
     public:
         void AddSearchDirectory(StringSection<ResChar> dir);
         void AddSearchDirectoryFromFilename(StringSection<ResChar> filename);
+        std::string AnySearchDirectory() const;
 
         void ResolveFile(
             ResChar destination[], unsigned destinationCount, 

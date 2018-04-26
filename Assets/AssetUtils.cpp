@@ -213,6 +213,12 @@ namespace Assets
         AddSearchDirectory(MakeFileNameSplitter(filename).DriveAndPath());
     }
 
+    std::string DirectorySearchRules::AnySearchDirectory() const
+    {
+        assert(_startPointCount > 0);
+        return std::string(&_buffer[_startOffsets[0]]);
+    }
+    
     bool DirectorySearchRules::HasDirectory(StringSection<ResChar> dir)
     {
         const ResChar* b = _buffer;
