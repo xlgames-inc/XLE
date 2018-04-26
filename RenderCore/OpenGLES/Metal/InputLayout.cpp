@@ -447,7 +447,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (res.GetResource()) {
                 glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
                 glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
-                if (res.GetResource()->_lastBoundSampler != &sampler) {
+                /* KenD -- Disabling optimization of sampler bindings for now.
+                 * The optimization only works if setting texture parameters rather than sampler parameters.
+                 * TODO: On platforms where sampler state is separate from texture state,
+                 * the optimization should be on the DeviceContext rather than on the resource.
+                 */
+                static bool forceSamplerApplication = true;
+                if (forceSamplerApplication || res.GetResource()->_lastBoundSampler != &sampler) {
                     sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
                     res.GetResource()->_lastBoundSampler = &sampler;
                 }
