@@ -149,6 +149,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                 GLsizei nameLen;
                 glGetActiveAttrib(programHandle, attrIndex, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
                 if (!nameLen) continue;
+                
+                // ignore "gl" system attributes
+                if (!strncmp(buffer, "gl_", 3)) continue;
+
                 GLint attrLoc = glGetAttribLocation(programHandle, buffer);
 
                 auto semanticIdx = nameLen;
