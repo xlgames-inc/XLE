@@ -336,7 +336,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
     {
-        #if defined(_DEBUG) && !defined(DISABLE_ATTRIBUTE_BINDING_CHECK) // GL_VERTEX_ARRAY_BINDING is only available in OpenGL ES
+        #if defined(_DEBUG) && !defined(DISABLE_ATTRIBUTE_BINDING_CHECK) && !APPORTABLE // GL_VERTEX_ARRAY_BINDING is only available in OpenGL ES
         {
             // Expecting proper VAO to be bound (this was added after discovering that _boundVAO might match vao, but the actually bound vertex attrib object was not a match)
             GLint activeVAO = 0;
