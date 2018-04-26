@@ -45,9 +45,17 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void GraphicsPipeline::UnbindInputLayout()
     {
-        #if defined(GL_ES_VERSION_3_0) || defined(GL_ES_VERSION_2_0)
+        if (_featureSet & FeatureSet::GLES300) {
             glBindVertexArray(0);
-        #endif
+        } else {
+            #if GL_APPLE_vertex_array_object
+                glBindVertexArrayAPPLE(0);
+            #else
+                glBindVertexArrayOES(0);
+            #endif
+        }
+        _boundVAO = 0;
+
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
