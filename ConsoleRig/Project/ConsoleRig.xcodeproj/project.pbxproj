@@ -253,6 +253,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				WARNING_CFLAGS = "-Wno-error=undefined-bool-conversion";
 			};
 			name = Debug;
 		};
@@ -270,6 +271,7 @@
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
 				SKIP_INSTALL = YES;
+				WARNING_CFLAGS = "-Wno-error=undefined-bool-conversion";
 			};
 			name = Release;
 		};

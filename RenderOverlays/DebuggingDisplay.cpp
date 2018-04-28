@@ -1005,9 +1005,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
             const InteractableId backButtonId = InteractableId_Make("PanelControls_BackButton");
             if (topMostWidget >= backButtonId && topMostWidget < backButtonId + _panels.size()) {
-                if (!_panels[size_t(topMostWidget-backButtonId)]._backButton.empty()) {
-                    SwitchToScreen(topMostWidget-backButtonId, _panels[size_t(topMostWidget-backButtonId)]._backButton.c_str());
-                    _panels[size_t(topMostWidget-backButtonId)]._backButton = std::string();
+                unsigned panelIndex = (unsigned)(topMostWidget-backButtonId);
+                if (!_panels[panelIndex]._backButton.empty()) {
+                    SwitchToScreen(panelIndex, _panels[panelIndex]._backButton.c_str());
+                    _panels[panelIndex]._backButton = std::string();
                     return true;
                 }
             }

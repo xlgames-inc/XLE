@@ -16,6 +16,7 @@
 #include "../Utility/IteratorUtils.h"
 #include <algorithm>
 
+#pragma GCC diagnostic ignored "-Wmultichar"
 namespace Assets
 {
     static const uint64 ChunkType_ArchiveDirectory = ConstHash64<'Arch', 'ive', 'Dir'>::Value;

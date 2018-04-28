@@ -93,6 +93,8 @@ namespace XLEMath
         void        Deallocate(const Rectangle& rect);
 
         std::pair<UInt2, UInt2> LargestFreeBlock() const;
+        size_t _numOfFreeRectangles = 0;
+        void RebuildFreeRects();
 
         RectanglePacker_MaxRects();
         RectanglePacker_MaxRects(UInt2 initialSpace);
@@ -108,7 +110,6 @@ namespace XLEMath
         std::vector<std::pair<unsigned, unsigned>> _freeRectsByWidth;
         std::vector<std::pair<unsigned, unsigned>> _freeRectsByHeight;
 
-        void RebuildFreeRects();
     };
 }
 

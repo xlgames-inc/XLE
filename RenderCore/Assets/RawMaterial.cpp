@@ -282,6 +282,8 @@ namespace RenderCore { namespace Assets
             case Blob::EndElement:
             case Blob::None:
                 return result;
+            default:
+                assert(0);
             }
         }
     }
@@ -338,6 +340,8 @@ namespace RenderCore { namespace Assets
             case Blob::EndElement:
             case Blob::None:
                 return;
+            default:
+                assert(0);
             }
         }
     }
@@ -451,6 +455,22 @@ namespace RenderCore { namespace Assets
         if (existing == deps.cend())
             deps.push_back(depState);
     }
+
+    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+    
+
+#if defined(HAS_XLE_FULLASSETS)
+    auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
+        -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
+    {
+
+        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
+            return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
+        } else {
+            return ::Assets::GetDivergentAsset<RawMaterial>(initializer);
+        }
+    }
+#endif
 
 	void MergeIn_Stall(
 		Techniques::Material& result,

@@ -59,7 +59,7 @@ namespace RenderCore { namespace Techniques
 
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
-        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;?\s*)--");
+        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;.*)--");
 
         unsigned cbIterator = 0;
         const char* iterator = source.begin();
@@ -148,7 +148,7 @@ namespace RenderCore { namespace Techniques
     {
         std::vector<uint8> cbData(_cbSize, uint8(0));
         WriteBuffer(AsPointer(cbData.begin()), parameters);
-        return cbData;
+        return std::move(cbData);
     }
 
     SharedPkt PredefinedCBLayout::BuildCBDataAsPkt(const ParameterBox& parameters) const
@@ -156,7 +156,7 @@ namespace RenderCore { namespace Techniques
         SharedPkt result = MakeSharedPktSize(_cbSize);
         std::memset(result.begin(), 0, _cbSize);
         WriteBuffer(result.begin(), parameters);
-        return result;
+        return std::move(result);
     }
     
     uint64_t PredefinedCBLayout::CalculateHash() const

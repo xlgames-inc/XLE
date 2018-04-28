@@ -601,6 +601,10 @@ namespace XLEMath
     }
 
 
+    Float4          TransformPlane(const Float4x4& transform, Float4 plane)
+    {
+        return  Transpose(Inverse(transform)) * plane;
+    }
         ////////////////////////////////////////////////////////////////
 
     ArbitraryRotation::ArbitraryRotation(const Float3x3& rotationMatrix)
