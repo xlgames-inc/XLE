@@ -30,10 +30,13 @@ namespace RenderCore { namespace ImplOpenGLES
             featureSet |= Metal_OpenGLES::FeatureSet::GLES300 | Metal_OpenGLES::FeatureSet::ETC2TC;
         }
 
-        /* TODO: include ATITC support in feature set if there are appropriate OpenGL extensions
-         *   "AMD_compressed_ATC_texture"
-         *   "ATI_texture_compression_atitc"
-         */
+        const char* extensionsString = (const char*)glGetString(GL_EXTENSIONS);
+        if (extensionsString) {
+            if (    strstr(extensionsString, "AMD_compressed_ATC_texture")
+                ||  strstr(extensionsString, "ATI_texture_compression_atitc")) {
+                featureSet |= Metal_OpenGLES::FeatureSet::ATITC;
+            }
+        }
 
         assert(featureSet != 0);
         return featureSet;
@@ -202,6 +205,10 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
         }
 
+	    if (!eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, _sharedContext)) {
+		    Throw(::Exceptions::BasicLabel("Failure in initial eglMakeCurrent"));
+	    }
+
             // (here, contextDestroyer just binds the first parameter to eglDestroyContext)
         //auto contextDestroyer = [=](EGLContext context) {eglDestroyContext(_displayTemp, context);};
         //DestructorPointer<EGLContext, decltype(contextDestroyer)> context(contextTemp, contextDestroyer);
@@ -352,9 +359,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
         bool supported = true;
         if (bindingType & BindFlag::ShaderResource) {
-            supported &= (activeFeatureSet & glFmt._textureFeatureSet);
+            supported &= !!(activeFeatureSet & glFmt._textureFeatureSet);
         } else if ((bindingType & BindFlag::RenderTarget) || (bindingType & BindFlag::DepthStencil)) {
-            supported &= (activeFeatureSet & glFmt._renderbufferFeatureSet);
+            supported &= !!(activeFeatureSet & glFmt._renderbufferFeatureSet);
         }
 
         return supported ? FormatCapability::Supported : FormatCapability::NotSupported;

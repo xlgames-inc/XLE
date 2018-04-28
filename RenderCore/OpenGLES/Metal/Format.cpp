@@ -272,7 +272,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     #ifndef GL_OES_compressed_ETC1_RGB8_texture
     #define GL_ETC1_RGB8_OES                  0x8D64
-    #endif /* GL_OES_compressed_ETC1_RGB8_texture */
+	#endif /* GL_OES_compressed_ETC1_RGB8_texture */
+
+    #ifndef GL_AMD_compressed_ATC_texture
+    #define GL_ATC_RGB_AMD                                          0x8C92
+    #define GL_ATC_RGBA_EXPLICIT_ALPHA_AMD                          0x8C93
+    #define GL_ATC_RGBA_INTERPOLATED_ALPHA_AMD                      0x87EE
+    #endif /* GL_AMD_compressed_ATC_texture */
 
 #pragma clang diagnostic ignored "-Wswitch" // (enumeration values not used)
 
@@ -370,8 +376,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::RGBA_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_ALPHA8_ETC2_EAC, FeatureSet::ETC2TC, 0};
         case Format::RGBA1_ETC2_UNORM_SRGB: return {0, 0, GL_COMPRESSED_SRGB8_PUNCHTHROUGH_ALPHA1_ETC2, FeatureSet::ETC2TC, 0};
 
-        case Format::RGB_ATITC_TYPELESS:
-        case Format::RGBA_ATITC_TYPELESS:
+        case Format::RGB_ATITC_UNORM: return {0, 0, GL_ATC_RGB_AMD, FeatureSet::ATITC, 0};
+        case Format::RGBA_ATITC_UNORM: return {0, 0, GL_ATC_RGBA_EXPLICIT_ALPHA_AMD, FeatureSet::ATITC, 0};        // see also ATC_RGBA_INTERPOLATED_ALPHA_AMD
 
         case Format::RGB_PVRTC1_2BPP_UNORM_SRGB:
         case Format::RGBA_PVRTC1_2BPP_UNORM_SRGB:

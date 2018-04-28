@@ -200,10 +200,6 @@ namespace RenderCore
         case BC4:
         case BC5:
         case BC7:   // (can be used for higher precision data)
-        case RGB_ETC1:
-        case RGB_ETC2:
-        case RGBA_ETC2:
-        case RGBA1_ETC2:
             return CompressionParameters { 4, 4, 16, 8 };
         case BC6H:
             return CompressionParameters { 4, 4, 16, 16 };
@@ -221,6 +217,20 @@ namespace RenderCore
 
         case RGBA_PVRTC2_4BPP:
             return CompressionParameters { 4, 4, 8, 8 };
+
+        case RGB_ETC1:
+        case RGB_ETC2:
+        case RGBA1_ETC2:
+            return CompressionParameters { 4, 4, 8, 8 };
+
+        case RGBA_ETC2:
+            return CompressionParameters { 4, 4, 16, 8 };
+
+        case RGB_ATITC:
+            return CompressionParameters { 4, 4, 8, 8 };
+
+        case RGBA_ATITC:
+            return CompressionParameters { 4, 4, 16, 8 };
 
         default:
             return CompressionParameters { 1, 1, BitsPerPixel(format)/8, GetComponentPrecision(format) };
