@@ -8,6 +8,7 @@
 
 #include "UTFUtils.h"
 #include "StringUtils.h"
+#include "IteratorUtils.h"
 #include "Streams/Serialization.h"
 #include "../Core/Types.h"
 #include <string>
@@ -133,6 +134,8 @@ namespace Utility
         void            SetParameter(const utf8 name[], const char* stringDataBegin);
         void            SetParameter(const utf8 name[], const std::string& stringData);
         T1(Type) void   SetParameter(const utf8 name[], Type value);
+
+        void            SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type);
         
         ////////////////////////////////////////////////////////////////////////////////////////
             //      G E T                                                   //
@@ -229,6 +232,10 @@ namespace Utility
         const void*         GetValue(size_t index) const;
         uint64              CalculateHash() const;
         uint64              CalculateParameterNamesHash() const;
+
+        void SetParameter(
+            ParameterNameHash hash, const utf8 name[], const void* value,
+            const ImpliedTyping::TypeDesc& insertType);
     };
 
     #pragma pack(pop)

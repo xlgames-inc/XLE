@@ -841,7 +841,18 @@ namespace Utility
         const utf8 name[], const void* value, 
         const ImpliedTyping::TypeDesc& insertType)
     {
-        auto hash = MakeParameterNameHash(name);
+        SetParameter(MakeParameterNameHash(name), name, value, insertType);
+    }
+
+    void ParameterBox::SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type)
+    {
+        SetParameter(nameHash, nullptr, data.begin(), type);
+    }
+
+    void ParameterBox::SetParameter(
+        ParameterNameHash hash, const utf8 name[], const void* value,
+        const ImpliedTyping::TypeDesc& insertType)
+    {
         const auto valueSize = insertType.GetSize();
         auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), hash);
         if (i==_hashNames.cend()) {
@@ -853,8 +864,12 @@ namespace Utility
             
             _values.insert(_values.end(), (const uint8*)value, (const uint8*)PtrAdd(value, valueSize));
 
-            auto nameLength = XlStringLen(name)+1;
-            _names.insert(_names.end(), name, &name[nameLength]);
+            if (name) {
+                auto nameLength = XlStringLen(name)+1;
+                _names.insert(_names.end(), name, &name[nameLength]);
+            } else {
+                _names.push_back(0);
+            }
 
             _offsets.push_back(std::make_pair(unsigned(nameOffset), unsigned(valueOffset)));
             _types.push_back(insertType);
@@ -869,7 +884,7 @@ namespace Utility
                 // insert new value in the middle somewhere
             _hashNames.insert(i, hash);
 
-            const auto nameLength = XlStringLen(name)+1;
+            const auto nameLength = (name?XlStringLen(name):0)+1;
             auto dstOffsets = _offsets[index];
 
             _offsets.insert(_offsets.begin()+index, dstOffsets);
@@ -881,9 +896,13 @@ namespace Utility
             _values.insert(
                 _values.cbegin()+dstOffsets.second, 
                 (uint8*)value, (uint8*)PtrAdd(value, valueSize));
-            _names.insert(
-                _names.cbegin()+dstOffsets.first, 
-                name, &name[nameLength]);
+            if (name) {
+                _names.insert(
+                    _names.cbegin()+dstOffsets.first,
+                    name, &name[nameLength]);
+            } else {
+                _names.insert(_names.cbegin()+dstOffsets.first, 0);
+            }
             _types.insert(_types.begin() + index, insertType);
 
             _cachedHash = 0;
@@ -895,7 +914,7 @@ namespace Utility
         const auto offset = _offsets[index];
         const auto& existingType = _types[index];
 
-        assert(!XlCompareString(&_names[offset.first], name));
+        assert(!name || !XlCompareString(&_names[offset.first], name));
 
         if (existingType.GetSize() == valueSize) {
 

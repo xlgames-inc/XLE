@@ -235,7 +235,7 @@ namespace Utility
 			assert(pos >= _begin && pos <= _end);
 			auto idx = pos - _begin;
 			if ((_end+1) > _capacity) {
-				Expand();
+				Expand(size()+1);
 			}
 			// note -- assuming move operators never throw! If we get an exception during
 			// a move operator, we cannot reverse this operation.
