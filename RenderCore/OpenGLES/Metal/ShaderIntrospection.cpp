@@ -141,14 +141,19 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto i = LowerBound(_structs, structNameHash);
                 if (i==_structs.end() || i->first != structNameHash)
-                    i = _structs.insert(i, std::make_pair(structNameHash, Struct{{}, structName.AsString()}));
+                    i = _structs.insert(i, std::make_pair(structNameHash, Struct{{}
+                    #if defined(_DEBUG)
+                        , structName.AsString()
+                    #endif
+                        }));
 
                 i->second._uniforms.emplace_back(
                     Uniform {
                         HashVariableName(MakeStringSection(firstDot+1, fullName.end())),
-                        location, type, size, fullName.AsString()
+                        location, type, size
 
                         #if defined(_DEBUG)
+                            , fullName.AsString()
                             , false
                         #endif
                     });
@@ -156,13 +161,19 @@ namespace RenderCore { namespace Metal_OpenGLES
                 // for global uniform, add into dummy struct at "0"
                 auto i = LowerBound(_structs, HashType(0));
                 if (i==_structs.end() || i->first != 0)
-                    i = _structs.insert(i, std::make_pair(0, Struct{{}, "global"}));
+                    i = _structs.insert(i, std::make_pair(0, Struct{{}
+                    #if defined(_DEBUG)
+                        , "global"
+                    #endif
+                        }));
 
                 i->second._uniforms.emplace_back(
                     Uniform {
                         HashVariableName(fullName),
-                        location, type, size, fullName.AsString()
+                        location, type, size
+
                         #if defined(_DEBUG)
+                            , fullName.AsString()
                             , false
                         #endif
                     });

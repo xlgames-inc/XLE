@@ -41,7 +41,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             GLenum      _type;
             int         _elementCount;
 
-            std::string _name;
+            DEBUG_ONLY(std::string _name;)
             DEBUG_ONLY(bool _isBound;)
         };
 
@@ -54,7 +54,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         {
         public:
             std::vector<Uniform> _uniforms;
-            std::string _name;
+            DEBUG_ONLY(std::string _name;)
         };
 
         Uniform     FindUniform(HashType uniformName) const;
