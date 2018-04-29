@@ -43,6 +43,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         Resource();
         ~Resource();
 
+        mutable uint64_t _lastBoundSamplerState = ~0u;
+
         static Resource CreateBackBuffer(const Desc& desc);
     protected:
         intrusive_ptr<OpenGL::Buffer> _underlyingBuffer;

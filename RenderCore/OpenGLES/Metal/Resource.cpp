@@ -75,7 +75,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return _guid;
     }
 
-    static uint64_t s_nextResourceGUID = 0;
+    static uint64_t s_nextResourceGUID = 1;
 
     Resource::Resource(
         ObjectFactory& factory, const Desc& desc,

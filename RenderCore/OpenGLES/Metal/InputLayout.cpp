@@ -256,7 +256,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         return true;
     }
 
-    void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool useCache) const never_throws
+    void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
         auto featureSet = devContext.GetFeatureSet();
 
@@ -283,17 +283,19 @@ namespace RenderCore { namespace Metal_OpenGLES
             attributeIterator += bindingCount;
         }
 
-        if (useCache) {
+        auto* capture = devContext.GetCapturedStates();
+
+        if (capture) {
             #if !PGDROID
             if (featureSet & FeatureSet::GLES300) {
-                auto differences = (devContext._instancedVertexAttrib & _attributeState) | instanceFlags;
+                auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
                 if (differences) {
                     int firstActive = xl_ctz4(differences);
                     int lastActive = 32u - xl_clz4(differences);
                     for (int c=firstActive; c<lastActive; ++c)
                         if (_attributeState & (1<<c))
                             glVertexAttribDivisor(c, instanceDataRate[c]);
-                    devContext._instancedVertexAttrib = (devContext._instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                    capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
                 }
             }
             #endif
@@ -301,7 +303,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             // set enable/disable flags --
             // Note that this method cannot support more than 32 vertex attributes
 
-            auto differences = devContext._activeVertexAttrib ^ _attributeState;
+            auto differences = capture->_activeVertexAttrib ^ _attributeState;
             if (differences) {
                 int firstActive = xl_ctz4(differences);
                 int lastActive = 32u - xl_clz4(differences);
@@ -313,7 +315,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         glDisableVertexAttribArray(c);
                     }
 
-                devContext._activeVertexAttrib = _attributeState;
+                capture->_activeVertexAttrib = _attributeState;
             }
         } else {
             #if !PGDROID
@@ -336,19 +338,12 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static void BindVAO(DeviceContext& devContext, RawGLHandle vao)
     {
-        #if defined(_DEBUG) && !defined(DISABLE_ATTRIBUTE_BINDING_CHECK) && !APPORTABLE // GL_VERTEX_ARRAY_BINDING is only available in OpenGL ES
-        {
-            // Expecting proper VAO to be bound (this was added after discovering that _boundVAO might match vao, but the actually bound vertex attrib object was not a match)
-            GLint activeVAO = 0;
-            glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &activeVAO);
-
-            if (devContext._boundVAO == vao) {
-                assert(activeVAO == devContext._boundVAO);
-            }
+        auto* capture = devContext.GetCapturedStates();
+        if (capture) {
+            capture->VerifyIntegrity();
+            if (capture->_boundVAO == vao) return;
+            capture->_boundVAO = vao;
         }
-        #endif
-
-        if (devContext._boundVAO == vao) return;
         
         auto featureSet = devContext.GetFeatureSet();
         if (featureSet & FeatureSet::GLES300) {
@@ -360,7 +355,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glBindVertexArrayOES(vao);
             #endif
         }
-        devContext._boundVAO = vao;
     }
 
     static uint64_t Hash(IteratorRange<const VertexBufferView*> vertexBuffers)
@@ -396,8 +390,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         _vao = GetObjectFactory(devContext).CreateVAO();
         if (!_vao) return;
 
+        auto* originalCapture = devContext.GetCapturedStates();
+        if (originalCapture)
+            devContext.EndStateCapture();
+
         BindVAO(devContext, _vao->AsRawGLHandle());
-        UnderlyingApply(devContext, vertexBuffers, false);
+        UnderlyingApply(devContext, vertexBuffers);
         _vaoBindingHash = Hash(vertexBuffers);
 
         // Reset cached state in devContext
@@ -405,16 +403,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         // affect VAO 0. Let's just play safe, and reset everything to default, and clear out the cached values
         // in DeviceContext
         BindVAO(devContext, 0);
-        #if !PGDROID
-        if (devContext.GetFeatureSet() & FeatureSet::GLES300) {
-            for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
-                glVertexAttribDivisor(c, 0);
-            devContext._instancedVertexAttrib = 0;
-        }
-        #endif
-        for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
-            glDisableVertexAttribArray(c);
-        devContext._activeVertexAttrib = 0;
+        if (originalCapture)
+            devContext.BeginStateCapture(*originalCapture);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -442,6 +432,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         }
 
+        auto* capture = context.GetCapturedStates();
+
         for (const auto&srv:_srvs) {
             if (srv._stream != streamIdx) continue;
             assert(srv._slot < stream._resources.size());
@@ -451,9 +443,13 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (res.GetResource()) {
                 glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
                 glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
-                sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
+                if (capture) {
+                    sampler.Apply(*capture, srv._textureUnit, srv._dimensionality, res.GetResource().get(), res.HasMipMaps());
+                } else {
+                    sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
+                }
 
-                auto setToCube = srv._dimensionality != GL_TEXTURE_2D;
+                /*auto setToCube = srv._dimensionality != GL_TEXTURE_2D;
                 assert(srv._textureUnit < 64);
                 auto existingSetToCube = !!(context._texUnitsSetToCube & (1ull<<uint64_t(srv._textureUnit)));
                 if (setToCube != existingSetToCube) {
@@ -463,7 +459,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     context._texUnitsSetToCube
                         = (context._texUnitsSetToCube & ~(1ull<<uint64_t(srv._textureUnit)))
                         | (uint64_t(setToCube)<<uint64_t(srv._textureUnit));
-                }
+                }*/
 
             } else {
                 #if 0 // defined(_DEBUG)

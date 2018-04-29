@@ -5,10 +5,62 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "State.h"
+#include "DeviceContext.h"
 #include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+
+    void SamplerState::Apply(
+        CapturedStates& capture,
+        unsigned textureUnit, unsigned bindingTarget,
+        const Resource* res,
+        bool enableMipmaps) const never_throws
+    {
+        unsigned guid = enableMipmaps ? _guid : (_guid+1);
+        if (_prebuiltSamplerMipmaps) {
+            assert(textureUnit < capture._samplerStateBindings.size());
+            if (capture._samplerStateBindings[textureUnit] != guid) {
+                glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
+                capture._samplerStateBindings[textureUnit] = guid;
+            }
+        } else {
+            #if defined(_DEBUG)
+                // expecting GL_ACTIVE_TEXTURE to be already set to the expected texture unit
+                // (which will normally be the case when binding texture, then sampler)
+                GLint activeTexture = 0;
+                glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+                assert(activeTexture == GL_TEXTURE0 + textureUnit);
+            #endif
+
+            if (capture._samplerStateBindings[textureUnit] != 0) {
+                glBindSampler(textureUnit, 0);
+                capture._samplerStateBindings[textureUnit] = 0;
+            }
+
+            if (res) {
+                // note -- here we incorporate the guid inside the capture object, to ensure that
+                //      we rebind everything after every call to BeginStateCapture
+                auto captureGUID = uint64_t(capture._captureGUID) << 32ull | uint64_t(guid);
+                if (res->_lastBoundSamplerState == captureGUID)
+                    return; // early-out because there's no change
+                res->_lastBoundSamplerState = captureGUID;
+            }
+
+            glTexParameteri(bindingTarget, GL_TEXTURE_MIN_FILTER, enableMipmaps ? _minFilter : _maxFilter);
+            glTexParameteri(bindingTarget, GL_TEXTURE_MAG_FILTER, _maxFilter);
+            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_S, _wrapS);
+            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_T, _wrapT);
+            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
+
+            glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_MODE, _compareMode);
+            glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+        }
+
+        CheckGLError("SamplerState::Apply");
+
+        // (border color set elsewhere. Anisotropy requires an extension)
+    }
 
     void SamplerState::Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws
     {
@@ -68,11 +120,16 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    static unsigned s_nextSamplerStateGUID = 1;
+
     SamplerState::SamplerState(
         FilterMode filter,
         AddressMode addressU, AddressMode addressV, AddressMode addressW,
         CompareOp comparison)
+    : _guid(s_nextSamplerStateGUID)
     {
+        s_nextSamplerStateGUID += 2;
+
         CheckGLError("Construct Sampler State (start)");
 
         switch (filter) {
@@ -131,7 +188,9 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 
     SamplerState::SamplerState()
+    : _guid(s_nextSamplerStateGUID)
     {
+        s_nextSamplerStateGUID += 2;
         _minFilter = GL_LINEAR_MIPMAP_LINEAR;
         _maxFilter = GL_LINEAR;
         _compareFunc = AsGLenum(CompareOp::Never);

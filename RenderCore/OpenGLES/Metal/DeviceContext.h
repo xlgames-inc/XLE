@@ -17,6 +17,8 @@
 #include "../../BufferView.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include <assert.h>
+#include <vector>
+#include <utility>
 #include "IncludeGLES.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -42,6 +44,24 @@ namespace RenderCore { namespace Metal_OpenGLES
     };
 
     using CommandListPtr = intrusive_ptr<CommandList>;
+
+    class CapturedStates
+    {
+    public:
+        RawGLHandle     _boundVAO = ~0u;
+        unsigned        _activeVertexAttrib = 0;
+        unsigned        _instancedVertexAttrib = 0;
+        unsigned        _captureGUID = ~0u;
+
+        std::vector<unsigned> _samplerStateBindings;
+        std::vector<std::pair<uint64_t, uint64_t>> _customBindings;
+
+        void VerifyIntegrity();
+    };
+
+    #if !defined(_DEBUG)
+        inline void CapturedStates::VerifyIntegrity() {}
+    #endif
 
     class GraphicsPipeline
     {
@@ -71,10 +91,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
         ~GraphicsPipeline();
 
-        unsigned    _activeVertexAttrib;
-        unsigned    _instancedVertexAttrib;
-        uint64_t    _texUnitsSetToCube;
-        RawGLHandle _boundVAO;
+        CapturedStates* GetCapturedStates() { return _capturedStates; }
+        void        BeginStateCapture(CapturedStates& capturedStates);
+        void        EndStateCapture();
 
     private:
         unsigned    _nativeTopology;
@@ -82,6 +101,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned    _indexFormatBytes;
         unsigned    _indexBufferOffsetBytes;
         FeatureSet::BitField _featureSet;
+
+        CapturedStates* _capturedStates;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////

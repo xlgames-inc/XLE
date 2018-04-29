@@ -63,6 +63,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class Resource;
+    class CapturedStates;
+
     class SamplerState
     {
     public:
@@ -72,6 +75,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                         AddressMode addressW = AddressMode::Wrap,
                         CompareOp comparison = CompareOp::Never);
         SamplerState();
+
+        void Apply(
+            CapturedStates& capture,
+            unsigned textureUnit, unsigned bindingTarget,
+            const Resource* res,
+            bool enableMipmaps) const never_throws;
 
         void Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws;
 
@@ -85,6 +94,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         intrusive_ptr<OpenGL::Sampler> _prebuiltSamplerMipmaps;
         intrusive_ptr<OpenGL::Sampler> _prebuiltSamplerNoMipmaps;
+
+        unsigned _guid;
     };
 
     class BlendState

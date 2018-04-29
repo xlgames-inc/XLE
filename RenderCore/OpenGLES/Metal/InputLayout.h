@@ -61,7 +61,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         bool _allAttributesBound;
 
-        void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers, bool useCache = true) const never_throws;
+        void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
         bool CalculateAllAttributesBound(const ShaderProgram& program);
     };
 

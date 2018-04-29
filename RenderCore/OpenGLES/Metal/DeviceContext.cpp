@@ -54,7 +54,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glBindVertexArrayOES(0);
             #endif
         }
-        _boundVAO = 0;
+        if (_capturedStates)
+            _capturedStates->_boundVAO = 0;
 
         glBindBuffer(GL_ARRAY_BUFFER, 0);
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
@@ -216,16 +217,65 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("DrawIndexedInstances()");
     }
 
+    static unsigned s_nextCapturedStatesGUID = 1;
+
+    void GraphicsPipeline::BeginStateCapture(CapturedStates& capturedStates)
+    {
+        assert(!_capturedStates);
+        _capturedStates = &capturedStates;
+
+        ///////////////////////////////////////////////////////
+            //      Vertex attrib
+        GLint maxVertexAttributes = 0;
+        glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&maxVertexAttributes);
+        for (unsigned v=0; v<maxVertexAttributes; ++v) {
+            glDisableVertexAttribArray(v);
+            if (_featureSet & FeatureSet::GLES300)
+                glVertexAttribDivisor(v, 0);
+        }
+
+        capturedStates._activeVertexAttrib = 0;
+        capturedStates._instancedVertexAttrib = 0;
+        capturedStates._boundVAO = ~0u;      // (unknown state)
+
+        GLint maxTextureUnits = 0;
+        glGetIntegerv(GL_MAX_COMBINED_TEXTURE_IMAGE_UNITS, (GLint*)&maxTextureUnits);
+        capturedStates._samplerStateBindings.resize(maxTextureUnits);
+        for (unsigned c=0; c<maxTextureUnits; ++c)
+            capturedStates._samplerStateBindings[c] = ~0u;
+
+        capturedStates._customBindings.clear();
+        capturedStates._captureGUID = s_nextCapturedStatesGUID++;
+
+        ///////////////////////////////////////////////////////
+            //      Misc
+        // capturedStates._texUnitsSetToCube = 0;
+    }
+
+    void GraphicsPipeline::EndStateCapture()
+    {
+        assert(_capturedStates != nullptr);
+        _capturedStates = nullptr;
+    }
+
+    #if defined(_DEBUG)
+        void CapturedStates::VerifyIntegrity()
+        {
+            if (_boundVAO != ~0u) {
+                GLint activeVAO = 0;
+                glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &activeVAO);
+                assert(_boundVAO == activeVAO);
+            }
+        }
+    #endif
+
     GraphicsPipeline::GraphicsPipeline(FeatureSet::BitField featureSet)
     {
         _indicesFormat = AsGLIndexBufferType(Format::R16_UINT);
         _indexFormatBytes = 2;
         _nativeTopology = GL_TRIANGLES;
         _featureSet = featureSet;
-        _activeVertexAttrib = 0;
-        _instancedVertexAttrib = 0;
-        _texUnitsSetToCube = 0;
-        _boundVAO = 0;
+        _capturedStates = nullptr;
     }
 
     GraphicsPipeline::~GraphicsPipeline()

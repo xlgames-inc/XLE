@@ -120,6 +120,8 @@ extern void glGenVertexArrays (int32_t n, uint32_t *arrays);
 #define GL_MAP_FLUSH_EXPLICIT_BIT                        0x0010
 #define GL_MAP_UNSYNCHRONIZED_BIT                        0x0020
 
+#define GL_VERTEX_ARRAY_BINDING                         0x85B5
+
 #endif
 
 
