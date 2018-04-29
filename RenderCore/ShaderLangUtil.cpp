@@ -37,7 +37,8 @@ namespace RenderCore
             { "uint", TypeCat::UInt32 },
             { "dword", TypeCat::UInt32 },
             { "int", TypeCat::Int32 },
-            { "byte", TypeCat::UInt8 }
+            { "byte", TypeCat::UInt8 },
+            { "bool", TypeCat::Bool }
             // "half", "double" not supported
         };
         for (unsigned c=0; c<dimof(baseTypes); ++c) {

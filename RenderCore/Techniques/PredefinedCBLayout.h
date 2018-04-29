@@ -24,6 +24,12 @@ namespace RenderCore { namespace Techniques
             uint64_t _hash64;
             ImpliedTyping::TypeDesc _type;
             unsigned _offset;
+            unsigned _arrayElementCount;
+            unsigned _arrayElementStride;
+
+            #if defined(_DEBUG)
+                std::string _name;
+            #endif
         };
         std::vector<Element> _elements;
         ParameterBox _defaults;

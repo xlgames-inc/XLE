@@ -15,6 +15,7 @@
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/Conversion.h"
 #include <regex>
 
 namespace RenderCore { namespace Techniques
@@ -59,7 +60,7 @@ namespace RenderCore { namespace Techniques
 
     void PredefinedCBLayout::Parse(StringSection<char> source)
     {
-        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:=\s*([^;]*))?;.*)--");
+        std::regex parseStatement(R"--((\w*)\s+(\w*)\s*(?:\[(\d*)\])?\s*(?:=\s*([^;]*))?;.*)--");
 
         unsigned cbIterator = 0;
         const char* iterator = source.begin();
@@ -77,10 +78,12 @@ namespace RenderCore { namespace Techniques
 
             std::match_results<const char*> match;
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
-            if (a && match.size() >= 3) {
+            if (a && match.size() >= 4) {
                 Element e;
                 std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
-                // e._name = name;
+                #if defined(_DEBUG)
+                    e._name = Conversion::Convert<std::string>(name);
+                #endif
                 e._hash = ParameterBox::MakeParameterNameHash(name);
                 e._hash64 = Hash64(AsPointer(name.begin()), AsPointer(name.end()));
                 e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
@@ -97,14 +100,26 @@ namespace RenderCore { namespace Techniques
                     cbIterator = CeilToMultiplePow2(cbIterator, 16);
                 }
 
+                unsigned arrayElementCount = 1;
+                if (match.size() > 3 && match[3].matched) {
+                    arrayElementCount = Conversion::Convert<unsigned>(match[3].str());
+                }
+
                 e._offset = cbIterator;
-                cbIterator += size;
+                e._arrayElementCount = arrayElementCount;
+                e._arrayElementStride = (arrayElementCount>1) ? CeilToMultiplePow2(size, 16) : size;
+                if (arrayElementCount != 0)
+                    cbIterator += (arrayElementCount-1) * e._arrayElementStride + size;
                 _elements.push_back(e);
 
-                if (match.size() > 3 && match[3].matched) {
+                if (match.size() > 4 && match[4].matched) {
+
+                    if (arrayElementCount > 1)
+                        Log(Warning) << "Attempting to provide an default for an array type in PredefinedCBLayout (this isn't supported): " << std::string(lineStart, iterator) << std::endl;
+
                     uint8 buffer0[256], buffer1[256];
                     auto defaultType = ImpliedTyping::Parse(
-                        match[3].first, match[3].second,
+                        match[4].first, match[4].second,
                         buffer0, dimof(buffer0));
 
                     if (!(defaultType == e._type)) {
@@ -135,12 +150,14 @@ namespace RenderCore { namespace Techniques
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
-            bool gotValue = parameters.GetParameter(
-                c->_hash, PtrAdd(dst, c->_offset),
-                c->_type);
+            for (auto e=0; e<c->_arrayElementCount; e++) {
+                bool gotValue = parameters.GetParameter(
+                    c->_hash + e, PtrAdd(dst, c->_offset + e * c->_arrayElementStride),
+                    c->_type);
 
-            if (!gotValue)
-                _defaults.GetParameter(c->_hash, PtrAdd(dst, c->_offset), c->_type);
+                if (!gotValue)
+                    _defaults.GetParameter(c->_hash + e, PtrAdd(dst, c->_offset), c->_type);
+            }
         }
     }
 
