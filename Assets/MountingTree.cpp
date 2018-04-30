@@ -29,8 +29,10 @@ namespace Assets
 		uint32				_changeId = 0;
 		Threading::Mutex	_mountsLock;
 		bool				_hasAtLeastOneMount;
+		AbsolutePathMode    _absolutePathMode;
 
-		Pimpl(const FilenameRules& rules) : _rules(rules), _hasAtLeastOneMount(false) {}
+		Pimpl(const FilenameRules &rules) : _rules(rules), _hasAtLeastOneMount(false),
+		                                    _absolutePathMode(AbsolutePathMode::MountingTree) {}
 	};
 
 	template<typename CharType>
@@ -198,7 +200,8 @@ namespace Assets
 		if (filename.IsEmpty()) return EnumerableLookup();
 
 		// todo -- fall back to raw filesystem in this case
-		if (IsRawFilesystem(filename)) return EnumerableLookup();
+		if (_pimpl->_absolutePathMode == AbsolutePathMode::RawOS && IsRawFilesystem(filename))
+			return EnumerableLookup();
 
 		if (!_pimpl->_hasAtLeastOneMount) return EnumerableLookup();
 
@@ -237,7 +240,8 @@ namespace Assets
 	auto MountingTree::Lookup(StringSection<utf16> filename) -> EnumerableLookup
 	{
 		if (filename.IsEmpty()) return EnumerableLookup();
-		if (IsRawFilesystem(filename)) return EnumerableLookup();
+		if (_pimpl->_absolutePathMode == AbsolutePathMode::RawOS && IsRawFilesystem(filename))
+			return EnumerableLookup();
 		if (!_pimpl->_hasAtLeastOneMount) return EnumerableLookup();
 		std::vector<uint8> request((const uint8*)filename.begin(), (const uint8*)filename.end());
 		return EnumerableLookup
@@ -279,6 +283,11 @@ namespace Assets
 			_pimpl->_mounts.erase(i);
 
 		_pimpl->_hasAtLeastOneMount = !_pimpl->_mounts.empty();
+	}
+
+	void MountingTree::SetAbsolutePathMode(AbsolutePathMode newMode)
+	{
+		_pimpl->_absolutePathMode = newMode;
 	}
 
 	MountingTree::MountingTree(FilenameRules& rules)
