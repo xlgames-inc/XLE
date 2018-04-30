@@ -20,12 +20,11 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
-        const std::shared_ptr<Metal_OpenGLES::Resource>& GetTargetRenderbuffer() const { return _targetRenderbuffer; }
+        const std::shared_ptr<Metal_OpenGLES::Resource>& GetTargetRenderbuffer();
         EGLSurface GetSurface() const;
 	    unsigned GetGUID() const { return _guid; }
 
         PresentationChain(
-                Metal_OpenGLES::ObjectFactory &objFactory,
                 EGLContext sharedContext,
                 EGLDisplay display,
                 EGLConfig config,

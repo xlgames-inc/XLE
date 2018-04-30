@@ -205,20 +205,9 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
         }
 
-	    if (!eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, _sharedContext)) {
-		    Throw(::Exceptions::BasicLabel("Failure in initial eglMakeCurrent"));
-	    }
-
             // (here, contextDestroyer just binds the first parameter to eglDestroyContext)
         //auto contextDestroyer = [=](EGLContext context) {eglDestroyContext(_displayTemp, context);};
         //DestructorPointer<EGLContext, decltype(contextDestroyer)> context(contextTemp, contextDestroyer);
-
-            //
-            //      Initialisation is complete. We can commit to our member pointers now.
-            //
-
-        auto featureSet = AsGLESFeatureSet(s_glesVersion);
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
 
         Metal_OpenGLES::CheckGLError("End of Device constructor");
     }
@@ -233,7 +222,16 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
     {
-        return std::make_unique<PresentationChain>(*_objectFactory, _sharedContext, _display, _config, platformValue, width, height);
+        auto result = std::make_unique<PresentationChain>(_sharedContext, _display, _config, platformValue, width, height);
+        // We can only construct the object factory after the first presentation chain is called. This is because
+        // we can't call eglMakeCurrent until at least one presentation chain has been constructed; and we can't
+        // call any opengl functions until we call eglMakeCurrent. In particular, we can't call glGetString(), which is
+        // required to calculate the feature set used to construct the object factory.
+        if (!_objectFactory) {
+            auto featureSet = AsGLESFeatureSet(s_glesVersion);
+            _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
+        }
+        return result;
     }
 
     IResourcePtr    ThreadContext::BeginFrame(IPresentationChain &presentationChain)
@@ -385,11 +383,13 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
+        assert(_objectFactory);
         return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
     }
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()
     {
+        assert(_objectFactory);
         if (!_immediateContext) {
             _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
         }
@@ -397,6 +397,7 @@ namespace RenderCore { namespace ImplOpenGLES
     }
     std::shared_ptr<IThreadContext>   DeviceOpenGLES::GetImmediateContext()
     {
+        assert(_objectFactory);
         if (!_immediateContext) {
             _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
         }
@@ -405,6 +406,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
 	IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
 	{
+        assert(_objectFactory);
 		return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
 	} 
 
@@ -413,7 +415,6 @@ namespace RenderCore { namespace ImplOpenGLES
 	static unsigned s_nextPresentationChainGUID = 1;
 
     PresentationChain::PresentationChain(
-        Metal_OpenGLES::ObjectFactory &objFactory,
         EGLContext eglContext,
         EGLDisplay display,
         EGLConfig config,
@@ -462,12 +463,6 @@ namespace RenderCore { namespace ImplOpenGLES
             TextureDesc::Plain2D(width, height, Format::R8G8B8_UNORM),        // SRGB?
             "backbuffer");
 
-        if (s_useFakeBackBuffer) {
-            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
-        } else {
-            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
-        }
-
         _desc = std::make_shared<PresentationChainDesc>();
         assert(_backBufferDesc._type == ResourceDesc::Type::Texture);
         _desc->_width = _backBufferDesc._textureDesc._width;
@@ -483,6 +478,18 @@ namespace RenderCore { namespace ImplOpenGLES
         return _desc;
     }
 
+    const std::shared_ptr<Metal_OpenGLES::Resource>& PresentationChain::GetTargetRenderbuffer()
+    {
+        if (!_targetRenderbuffer) {
+            if (s_useFakeBackBuffer) {
+                _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::GetObjectFactory(), _backBufferDesc);
+            } else {
+                _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
+            }
+        }
+        return _targetRenderbuffer;
+    }
+
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/
     {
         if (    newWidth == _backBufferDesc._textureDesc._width 
@@ -494,11 +501,7 @@ namespace RenderCore { namespace ImplOpenGLES
         _desc->_width = _backBufferDesc._textureDesc._width;
         _desc->_height = _backBufferDesc._textureDesc._height;
 
-        if (s_useFakeBackBuffer) {
-            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::GetObjectFactory(), _backBufferDesc);
-        } else {
-            _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
-        }
+        _targetRenderbuffer.reset(); // (it will be reconstructed on next call to GetTargetRenderbuffer()
     }
 
 	EGLSurface PresentationChain::GetSurface() const
