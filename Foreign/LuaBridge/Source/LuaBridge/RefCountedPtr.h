@@ -51,7 +51,7 @@ struct RefCountedPtrBase
   {
     size_t operator () (const void * const v) const
     {
-      static __gnu_cxx::hash<unsigned int> H;
+      static __gnu_cxx::hash<uintptr_t> H;
       return H(uintptr_t(v));
     }
   };
