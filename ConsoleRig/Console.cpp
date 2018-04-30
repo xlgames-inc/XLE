@@ -21,7 +21,6 @@
 
     #include <lua.hpp>
     #include <LuaBridge.h>
-    #include <RefCountedPtr.h>
 
 #if defined(DEBUG_NEW)
     #define new DEBUG_NEW
