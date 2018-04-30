@@ -288,6 +288,7 @@
 				);
 				INSTALL_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "-Wno-error=undefined-bool-conversion";
 			};
 			name = Debug;
 		};
@@ -304,6 +305,7 @@
 				);
 				INSTALL_PATH = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
+				WARNING_CFLAGS = "-Wno-error=undefined-bool-conversion";
 			};
 			name = Release;
 		};
