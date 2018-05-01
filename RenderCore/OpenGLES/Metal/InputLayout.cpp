@@ -284,7 +284,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         if (useCache) {
-            #if !APPORTABLE
+            #if !PGDROID
             if (featureSet & FeatureSet::GLES300) {
                 auto differences = (devContext._instancedVertexAttrib & _attributeState) | instanceFlags;
                 if (differences) {
@@ -316,7 +316,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 devContext._activeVertexAttrib = _attributeState;
             }
         } else {
-            #if !APPORTABLE
+            #if !PGDROID
             if (featureSet & FeatureSet::GLES300) {
                 for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                     if (_attributeState & (1<<c))
@@ -405,7 +405,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // affect VAO 0. Let's just play safe, and reset everything to default, and clear out the cached values
         // in DeviceContext
         BindVAO(devContext, 0);
-        #if !APPORTABLE
+        #if !PGDROID
         if (devContext.GetFeatureSet() & FeatureSet::GLES300) {
             for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                 glVertexAttribDivisor(c, 0);
