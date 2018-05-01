@@ -323,6 +323,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             case MTLPixelFormatETC2_RGB8A1_sRGB: return Format::RGBA1_ETC2_UNORM;
             case MTLPixelFormatETC2_RGB8_sRGB: return Format::RGB_ETC2_UNORM_SRGB;
             case MTLPixelFormatETC2_RGB8A1: return Format::RGBA1_ETC2_UNORM_SRGB;
+            default: break;
             }
         }
 #endif
