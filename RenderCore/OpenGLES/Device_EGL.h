@@ -113,6 +113,8 @@ namespace RenderCore { namespace ImplOpenGLES
 		EGLContext _sharedContext;
         EGLDisplay _display;
         EGLConfig  _config;
+
+        std::shared_ptr<Metal_OpenGLES::ObjectFactory> GetObjectFactory();
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES

@@ -220,6 +220,19 @@ namespace RenderCore { namespace ImplOpenGLES
         }
     }
 
+    std::shared_ptr<Metal_OpenGLES::ObjectFactory> Device::GetObjectFactory()
+    {
+        // We can construct the object factory before creating the first presentation chain if we're not on Android.
+#if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
+        if (!_objectFactory) {
+            auto featureSet = AsGLESFeatureSet(s_glesVersion);
+            _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
+        }
+#endif
+        assert(_objectFactory);
+        return _objectFactory;
+    }
+
     std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
     {
         auto result = std::make_unique<PresentationChain>(_sharedContext, _display, _config, platformValue, width, height);
@@ -350,7 +363,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
     {
-        auto activeFeatureSet = _objectFactory->GetFeatureSet();
+        auto activeFeatureSet = GetObjectFactory()->GetFeatureSet();
         auto glFmt = Metal_OpenGLES::AsTexelFormatType(format);
         if (glFmt._internalFormat == GL_NONE)
             return FormatCapability::NotSupported;
@@ -375,7 +388,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
     {
-        return _objectFactory->GetFeatureSet();
+        return GetObjectFactory()->GetFeatureSet();
     }
 
     DeviceOpenGLES::DeviceOpenGLES() {}
