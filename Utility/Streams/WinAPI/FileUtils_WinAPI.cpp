@@ -41,6 +41,9 @@ namespace Utility
         case ERROR_PATH_NOT_FOUND:
             return Exceptions::IOException::Reason::FileNotFound;
 
+        case ERROR_BAD_PATHNAME:
+            return Exceptions::IOException::Reason::Invalid;
+
         case ERROR_ACCESS_DENIED:
             return Exceptions::IOException::Reason::AccessDenied;
 
