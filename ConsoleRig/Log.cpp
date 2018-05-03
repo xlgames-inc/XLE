@@ -344,7 +344,7 @@ namespace ConsoleRig
     {
     }
 
-
+    std::ostream* g_fakeOStream = nullptr;
 }
 
 ConsoleRig::MessageTarget<> Error("Error");

@@ -258,7 +258,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
-        auto featureSet = devContext.GetFeatureSet();
+        #if !PGDROID
+            auto featureSet = devContext.GetFeatureSet();
+        #endif
 
         uint32_t instanceFlags = 0u;
         uint32_t instanceDataRate[32];

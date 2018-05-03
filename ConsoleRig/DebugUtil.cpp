@@ -32,8 +32,10 @@
 
 //////////////////////////////////
 
-static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
-static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
+#if defined(REDIRECT_COUT)
+    static auto Fn_CoutRedirectModule = ConstHash64<'cout', 'redi', 'rect'>::Value;
+    static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
+#endif
 
 namespace ConsoleRig
 {
@@ -95,14 +97,14 @@ namespace ConsoleRig
 
     void DebugUtil_Startup()
     {
-        auto currentModule = GetCurrentModuleId();
-        auto& serv = GlobalServices::GetCrossModule()._services;
-
             // It can be handy to redirect std::cout to the debugger output
             // window in Visual Studio (etc)
             // We can do this with an adapter to connect out DebufferWarningStream
             // object to a c++ std::stream_buf
         #if defined(REDIRECT_COUT)
+
+            auto currentModule = GetCurrentModuleId();
+            auto& serv = GlobalServices::GetCrossModule()._services;
             
             bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
             if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
@@ -134,10 +136,10 @@ namespace ConsoleRig
 
     void DebugUtil_Shutdown()
     {
-        auto& serv = GlobalServices::GetCrossModule()._services;
-        auto currentModule = GetCurrentModuleId();
-
         #if defined(REDIRECT_COUT)
+            auto& serv = GlobalServices::GetCrossModule()._services;
+            auto currentModule = GetCurrentModuleId();
+
             ModuleId testModule = 0;
             if (serv.TryCall<ModuleId>(testModule, Fn_CoutRedirectModule) && (testModule == currentModule)) {
                 if (s_oldCoutStreamBuf)

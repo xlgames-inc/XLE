@@ -163,7 +163,11 @@ namespace ConsoleRig
 	#endif
     #define Log(X) ::std::basic_ostream<typename std::remove_reference<decltype(X)>::type::char_type, typename std::remove_reference<decltype(X)>::type::traits_type>(&X) << MakeSourceLocation
 #else
-    #define Log(X) if (true) {} else *((std::ostream*)nullptr)
+    // DavidJ -- HACK -- we need to disable the warning "dangling-else" for this construct
+    //      unfortunately, it has to be done globally because this evaluates to a macro
+    #pragma GCC diagnostic ignored "-Wdangling-else"
+    extern std::ostream* g_fakeOStream;
+    #define Log(X) if (true) {} else (*::ConsoleRig::g_fakeOStream)
 #endif
 
 }

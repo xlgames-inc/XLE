@@ -26,6 +26,8 @@
     #define new DEBUG_NEW
 #endif
 
+#pragma GCC diagnostic ignored "-Wundefined-bool-conversion"
+
 namespace ConsoleRig
 {
 

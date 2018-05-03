@@ -277,8 +277,8 @@ namespace RenderCore { namespace ImplOpenGLES
 		    _currentPresentationChainGUID = presChain.GetGUID();
 	    }
 
-        const auto& presentationChainDesc = presentationChain.GetDesc();
         #if defined(_DEBUG)
+            const auto& presentationChainDesc = presentationChain.GetDesc();
             EGLint width, height;
             eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_WIDTH, &width);
             eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_HEIGHT, &height);
