@@ -103,6 +103,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
         EGLDisplay GetDisplay() const { return _display; };
         EGLContext GetSharedContext() const { return _sharedContext; }
+        EGLConfig GetConfig() const { return _config; }
 
         Device();
         ~Device();

@@ -354,6 +354,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void* Device::QueryInterface(size_t guid)
     {
+        if (guid == typeid(Device).hash_code()) {
+            return (Device*)this;
+        }
         return nullptr;
     }
 
@@ -383,7 +386,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (guid == typeid(IDeviceOpenGLES).hash_code()) {
             return (IDeviceOpenGLES*)this;
         }
-        return nullptr;
+        return Device::QueryInterface(guid);
     }
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
