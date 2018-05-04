@@ -12,6 +12,10 @@
 #include "../Foreign/Hash/MurmurHash3.h"
 #include <assert.h>
 
+// Some platforms don't support unaligned reads of integer types. Let's take a cautious
+// route and just enforce the buffer to always be aligned to the integer size
+#define ENFORCE_ALIGNED_READS 1
+
 namespace Utility
 {
     uint64 Hash64(const void* begin, const void* end, uint64 seed)
@@ -31,19 +35,13 @@ namespace Utility
         const bool crossPlatformHash = true;
         auto sizeInBytes = size_t(end)-size_t(begin);
 
-        #if PLATFORMOS_TARGET == PLATFORMOS_ANDROID
+        #if ENFORCE_ALIGNED_READS
             // We must ensure that we're only performing aligned reads
-            static uint64_t fixedBuffer[256/sizeof(uint64_t)] __attribute__((aligned(16)));
-            std::unique_ptr<uint64_t[], PODAlignedDeletor> variableBuffer;
+            uint64_t fixedBuffer[sizeInBytes/sizeof(uint64_t)] __attribute__((aligned(16)));
             if (size_t(begin) & 0x7) {
-                if (sizeInBytes <= sizeof(fixedBuffer)) {
-                    std::memcpy(fixedBuffer, begin, sizeInBytes);
-                    begin = fixedBuffer;
-                } else {
-                    variableBuffer.reset((uint64_t*)XlMemAlign(sizeInBytes, sizeof(uint64_t)));
-                    std::memcpy(variableBuffer.get(), begin, sizeInBytes);
-                    begin = variableBuffer.get();
-                }
+                std::memcpy(fixedBuffer, begin, sizeInBytes);
+                begin = fixedBuffer;
+                end = PtrAdd(begin, sizeInBytes);
             }
             assert((size_t(begin) & 0x7) == 0);
         #endif
@@ -72,6 +70,18 @@ namespace Utility
 
     uint32 Hash32(const void* begin, const void* end, uint32 seed)
     {
+        #if ENFORCE_ALIGNED_READS
+            // We must ensure that we're only performing aligned reads
+            auto sizeInBytes = size_t(end)-size_t(begin);
+            uint32_t fixedBuffer[sizeInBytes/sizeof(uint32_t)] __attribute__((aligned(4)));
+            if (size_t(begin) & 0x3) {
+                std::memcpy(fixedBuffer, begin, sizeInBytes);
+                begin = fixedBuffer;
+                end = PtrAdd(begin, sizeInBytes);
+            }
+            assert((size_t(begin) & 0x3) == 0);
+        #endif
+
         uint32 temp;
         MurmurHash3_x86_32(begin, int(size_t(end)-size_t(begin)), seed, &temp);
         return temp;
