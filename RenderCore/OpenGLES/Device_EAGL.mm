@@ -56,8 +56,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void        ThreadContext::Present(IPresentationChain& presentationChain)
     {
-        auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
-        assert(!presChain.GetEAGLContext() || presChain.GetEAGLContext() == _activeFrameContext);
+        #if !defined(NDEBUG)
+            auto& presChain = *checked_cast<PresentationChain*>(&presentationChain);
+            assert(!presChain.GetEAGLContext() || presChain.GetEAGLContext() == _activeFrameContext);
+        #endif
         if (_activeFrameContext) {
             glBindRenderbuffer(GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
             [_activeFrameContext.get() presentRenderbuffer:GL_RENDERBUFFER];
