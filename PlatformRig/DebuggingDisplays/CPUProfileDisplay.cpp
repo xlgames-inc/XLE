@@ -8,6 +8,7 @@
 #include "../../RenderOverlays/Font.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+#include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
 #include <stack>
@@ -260,13 +261,16 @@ namespace PlatformRig { namespace Overlays
         IHierarchicalProfiler::ListenerId _listenerId;
         std::vector<uint64> _toggledItems;
         std::vector<IHierarchicalProfiler::ResolvedEvent> _resolvedEvents;
+        Threading::Mutex _resolvedEventsLock;
 
         void IngestFrameData(IteratorRange<const void*> rawData);
     };
 
     void HierarchicalProfilerDisplay::Pimpl::IngestFrameData(IteratorRange<const void*> rawData)
     {
-        _resolvedEvents = IHierarchicalProfiler::CalculateResolvedEvents(rawData);
+        auto resolvedEvents = IHierarchicalProfiler::CalculateResolvedEvents(rawData);
+        ScopedLock(_resolvedEventsLock);
+        _resolvedEvents = resolvedEvents;
     }
 
     void HierarchicalProfilerDisplay::Render(
@@ -274,7 +278,11 @@ namespace PlatformRig { namespace Overlays
         Interactables&interactables, InterfaceState& interfaceState)
     {
         if (true) {
-            const auto &resolvedEvents = _pimpl->_resolvedEvents;
+            std::vector<IHierarchicalProfiler::ResolvedEvent> resolvedEvents;
+            {
+                ScopedLock(_pimpl->_resolvedEventsLock);
+                resolvedEvents = _pimpl->_resolvedEvents;
+            }
             Layout tableView(layout.GetMaximumSize());
             static ProfilerTableSettings settings;
             DrawProfilerTable(resolvedEvents, _pimpl->_toggledItems, settings, &context, layout,

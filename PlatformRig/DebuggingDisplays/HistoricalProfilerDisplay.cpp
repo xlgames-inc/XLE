@@ -1,5 +1,6 @@
 #include "HistoricalProfilerDisplay.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+#include "../../Utility/Threading/Mutex.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/StringUtils.h"
 #include <stack>
@@ -47,6 +48,7 @@ namespace PlatformRig { namespace Overlays
 
         std::vector<std::pair<const char*, TrackingLabel>> _trackingLabels;
         IHierarchicalProfiler::ListenerId _listenerId;
+        Threading::Mutex _trackingLabelsLock;
 
         void IngestFrameData(IteratorRange<const void*> rawData);
 
@@ -78,10 +80,16 @@ namespace PlatformRig { namespace Overlays
     {
         static const InteractableId sectionToolsId = InteractableId_Make("GPUProfilerSectionTools");
 
+        std::vector<std::pair<const char*, Pimpl::TrackingLabel>> trackingLabels;
+        {
+            ScopedLock(_pimpl->_trackingLabelsLock);
+            trackingLabels = _pimpl->_trackingLabels;
+        }
+
         unsigned sectionHeight = 96;
-        for (unsigned sectionIndex=0; sectionIndex < _pimpl->_trackingLabels.size(); ++sectionIndex) {
-            const char* label = _pimpl->_trackingLabels[sectionIndex].first;
-            Pimpl::TrackingLabel& section = _pimpl->_trackingLabels[sectionIndex].second;
+        for (unsigned sectionIndex=0; sectionIndex < trackingLabels.size(); ++sectionIndex) {
+            const char* label = trackingLabels[sectionIndex].first;
+            Pimpl::TrackingLabel& section = trackingLabels[sectionIndex].second;
             if (section._flags & unsigned(Pimpl::TrackingLabel::Flags::Hide))
                 continue;
 
@@ -171,6 +179,7 @@ namespace PlatformRig { namespace Overlays
                 const InteractableId baseHideButton  = InteractableId_Make("GPUProfiler_Hide");
                 const InteractableId baseResetButton  = InteractableId_Make("GPUProfiler_Reset");
 
+                ScopedLock(_pimpl->_trackingLabelsLock);
                 if (topMostWidget >= basePauseButton && topMostWidget < basePauseButton + _pimpl->_trackingLabels.size()) {
                     auto& section = _pimpl->_trackingLabels[size_t(topMostWidget-basePauseButton)];
                     section.second._flags = section.second._flags ^ unsigned(Pimpl::TrackingLabel::Flags::Pause);
@@ -195,6 +204,7 @@ namespace PlatformRig { namespace Overlays
     {
         auto resolvedEvents = IHierarchicalProfiler::CalculateResolvedEvents(rawData);
 
+        ScopedLock(_trackingLabelsLock);
         // find any occurance of the labels we're tracking; and add them in
         std::vector<bool> alreadyAddThisFrame(_trackingLabels.size(), false);
         for (const auto&evnt:resolvedEvents) {
@@ -214,6 +224,7 @@ namespace PlatformRig { namespace Overlays
 
     void    HistoricalProfilerDisplay::TrackLabel(const char label[])
     {
+        ScopedLock(_pimpl->_trackingLabelsLock);
         auto i = std::find_if(_pimpl->_trackingLabels.begin(), _pimpl->_trackingLabels.end(), [label](const std::pair<const char*, Pimpl::TrackingLabel>&p) { return p.first == label; });
         if (i == _pimpl->_trackingLabels.end())
             _pimpl->_trackingLabels.push_back({label, Pimpl::TrackingLabel{}});
@@ -221,6 +232,7 @@ namespace PlatformRig { namespace Overlays
 
     void    HistoricalProfilerDisplay::UntrackLabel(const char label[])
     {
+        ScopedLock(_pimpl->_trackingLabelsLock);
         auto i = std::find_if(_pimpl->_trackingLabels.begin(), _pimpl->_trackingLabels.end(), [label](const std::pair<const char*, Pimpl::TrackingLabel>&p) { return p.first == label; });
         if (i != _pimpl->_trackingLabels.end())
             _pimpl->_trackingLabels.erase(i);
