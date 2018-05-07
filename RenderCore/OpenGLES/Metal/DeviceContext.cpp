@@ -230,8 +230,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         glGetIntegerv(GL_MAX_VERTEX_ATTRIBS, (GLint*)&maxVertexAttributes);
         for (unsigned v=0; v<maxVertexAttributes; ++v) {
             glDisableVertexAttribArray(v);
-            if (_featureSet & FeatureSet::GLES300)
-                glVertexAttribDivisor(v, 0);
+            #if !defined(PGDROID)
+                if (_featureSet & FeatureSet::GLES300)
+                    glVertexAttribDivisor(v, 0);
+            #endif
         }
 
         capturedStates._activeVertexAttrib = 0;
