@@ -85,6 +85,7 @@ namespace Utility
                 f._moveConstructor(
                     tempBuffer.get(), 
                     PtrAdd(AsPointer(_buffer.begin()), f._offset));
+                f._destructor(PtrAdd(AsPointer(_buffer.begin()), f._offset));
             } else {
                 auto newOffset = f._offset;
                 if (newOffset > displaceStart) {

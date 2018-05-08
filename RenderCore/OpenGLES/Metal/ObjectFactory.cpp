@@ -3,7 +3,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ObjectFactory.h"
+#include "Resource.h"       // (for DescribeUnknownObject)
 #include "../../../Utility/StringFormat.h"
+#include "../../../Utility/IteratorUtils.h"
 #include "../IDeviceOpenGLES.h"
 #include "IncludeGLES.h"
 #include <assert.h>
@@ -14,8 +16,12 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    static ObjectFactory* s_objectFactory_instance = nullptr;
+
     signed  IndexedGLType_AddRef(RawGLHandle object) never_throws;
     signed  IndexedGLType_Release(RawGLHandle object) never_throws;
+
+    void DestroyGLESCachedShaders();
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -341,7 +347,14 @@ namespace RenderCore { namespace Metal_OpenGLES
         Log(Warning) << "[OpenGL Leaks] " << _refCountTable.size() << " objects remain" << std::endl;
         auto count=0u;
         for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
-            Log(Warning) << "  [" << count << "] Object (" << i->first << ") has (" << i->second << ") refs" << std::endl;
+            auto typeAndId = SeparateRefCountId(i->first);
+            Log(Warning) << "  [" << count << "] Object (" << typeAndId.first << "," << typeAndId.second << ") has (" << i->second << ") refs" << std::endl;
+        }
+
+        for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
+            auto typeAndId = SeparateRefCountId(i->first);
+            Log(Warning) << "------ Object (" << typeAndId.first << "," << typeAndId.second << "): " << std::endl;
+            Log(Warning) << DescribeUnknownObject(i->first) << std::endl;
         }
     }
 
@@ -354,6 +367,13 @@ namespace RenderCore { namespace Metal_OpenGLES
     ObjectFactory::~ObjectFactory()
     {
         assert(s_objectFactory_instance == this);
+
+        DestroyGLESCachedShaders();
+
+        #if defined(_DEBUG)
+            ReportLeaks();
+        #endif
+
         s_objectFactory_instance = nullptr;
     }
 

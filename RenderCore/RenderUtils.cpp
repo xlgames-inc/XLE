@@ -13,9 +13,7 @@
 #include "IThreadContext.h"
 #include "IAnnotator.h"
 
-#if defined(HAS_XLE_CONSOLE_RIG)
-    #include "../ConsoleRig/GlobalServices.h"
-#endif
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
 
@@ -80,7 +78,6 @@ namespace RenderCore
         if (!MainHeap) {
                 // initialize our global from the global services
                 // this will ensure that the same object will be used across multiple DLLs
-#if defined(HAS_XLE_CONSOLE_RIG)
             static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
             auto& services = ConsoleRig::GlobalServices::GetCrossModule()._services;
             if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
@@ -91,10 +88,6 @@ namespace RenderCore
             } else {
                 MainHeap = services.Call<MiniHeap*>(Fn_GetStorage);
             }
-#else
-            static auto refHolder = std::make_unique<MiniHeap>();
-            MainHeap = refHolder.get();
-#endif
         }
 
         return *MainHeap;

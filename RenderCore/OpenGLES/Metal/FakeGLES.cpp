@@ -17,6 +17,8 @@ extern "C" void glGenSamplers (int32_t count, uint32_t* samplers)
 }
 extern "C" void glDeleteSamplers (int32_t count, const uint32_t* samplers) {}
 extern "C" uint8_t glIsSampler (uint32_t sampler) { return 0; }
+extern "C" uint8_t glIsTransformFeedback (uint32_t) { return 0; }
+extern "C" uint8_t glIsVertexArray (uint32_t) { return 0; }
 extern "C" void glClearBufferfv (uint32_t buffer, int32_t drawbuffer, const float *value) {}
 extern "C" void glClearBufferfi (uint32_t buffer, int32_t drawbuffer, float depth, int32_t stencil) {}
 extern "C" void glClearBufferiv (uint32_t buffer, int32_t drawbuffer, const int32_t *value) {}

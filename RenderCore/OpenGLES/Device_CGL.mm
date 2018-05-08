@@ -195,6 +195,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Device::~Device()
     {
+        _objectFactory.reset();
         CGLSetCurrentContext(nullptr);
         CGLReleaseContext(_sharedContext);
     }

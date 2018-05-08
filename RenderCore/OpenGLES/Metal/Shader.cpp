@@ -370,5 +370,10 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
     }
 
+    void DestroyGLESCachedShaders()
+    {
+        decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
+    }
+
 }}
 

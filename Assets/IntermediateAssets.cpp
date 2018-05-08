@@ -374,8 +374,6 @@ namespace Assets { namespace IntermediateAssets
 
     Store::~Store() 
     {
-        decltype(RetainedRecords) temp;
-        temp.swap(RetainedRecords);
     }
 
 	class CompilerSet::Pimpl

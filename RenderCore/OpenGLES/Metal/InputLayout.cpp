@@ -450,19 +450,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                 } else {
                     sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
                 }
-
-                /*auto setToCube = srv._dimensionality != GL_TEXTURE_2D;
-                assert(srv._textureUnit < 64);
-                auto existingSetToCube = !!(context._texUnitsSetToCube & (1ull<<uint64_t(srv._textureUnit)));
-                if (setToCube != existingSetToCube) {
-                    GLenum otherTarget = (setToCube) ? GL_TEXTURE_2D : GL_TEXTURE_CUBE_MAP;
-                    glBindTexture(otherTarget, 0);
-                    assert(uint64_t(setToCube)==0 || uint64_t(setToCube)==1);
-                    context._texUnitsSetToCube
-                        = (context._texUnitsSetToCube & ~(1ull<<uint64_t(srv._textureUnit)))
-                        | (uint64_t(setToCube)<<uint64_t(srv._textureUnit));
-                }*/
-
             } else {
                 #if 0 // defined(_DEBUG)
                     Log(Warning) << "Null resource while binding SRV to texture uniform (" << srv._name << ")" << std::endl;

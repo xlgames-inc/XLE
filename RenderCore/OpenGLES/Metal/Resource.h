@@ -72,6 +72,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     ResourceDesc ExtractDesc(OpenGL::RenderBuffer* renderbuffer);
     ResourceDesc ExtractDesc(OpenGL::Texture* renderbuffer);
     ResourceDesc ExtractDesc(OpenGL::Buffer* renderbuffer);
+    std::string DescribeUnknownObject(unsigned glName);
 }}
 
 

@@ -3,6 +3,7 @@
 #include "Format.h"
 #include "../../ResourceUtils.h"
 #include "IncludeGLES.h"
+#include <sstream>
 
 #include "../../../../CoreServices/GLWrappers.h"
 
@@ -354,6 +355,64 @@ namespace RenderCore { namespace Metal_OpenGLES
             accessFlags.first, accessFlags.second,
             LinearBufferDesc::Create(size),
             "");
+    }
+
+    std::string DescribeUnknownObject(unsigned glName)
+    {
+        std::stringstream str;
+        bool started = false;
+        if (glIsBuffer(glName)) {
+            auto desc = ExtractDesc((OpenGL::Buffer*)(size_t)glName);
+            str << "[Buffer] Bytes: " << desc._linearBufferDesc._sizeInBytes << " BindFlags: 0x" << std::hex << desc._bindFlags << std::dec;
+            started = true;
+        }
+        if (glIsFramebuffer(glName)) {
+            if (started) str << std::endl;
+            str << "[FrameBuffer]";
+            started = true;
+        }
+        if (glIsProgram(glName)) {
+            if (started) str << std::endl;
+            str << "[Program]";
+            started = true;
+        }
+        if (glIsQuery(glName)) {
+            if (started) str << std::endl;
+            str << "[Query]";
+            started = true;
+        }
+        if (glIsRenderbuffer(glName)) {
+            if (started) str << std::endl;
+            auto desc = ExtractDesc((OpenGL::RenderBuffer*)(size_t)glName);
+            str << "[Renderbuffer] " << desc._textureDesc._width << "x" << desc._textureDesc._height;
+            started = true;
+        }
+        if (glIsSampler(glName)) {
+            if (started) str << std::endl;
+            str << "[Sampler]";
+            started = true;
+        }
+        if (glIsShader(glName)) {
+            if (started) str << std::endl;
+            str << "[Shader]";
+            started = true;
+        }
+        if (glIsTexture(glName)) {
+            if (started) str << std::endl;
+            str << "[Texture] ";
+            started = true;
+        }
+        if (glIsTransformFeedback(glName)) {
+            if (started) str << std::endl;
+            str << "[TransformFeedback]";
+            started = true;
+        }
+        if (glIsVertexArray(glName)) {
+            if (started) str << std::endl;
+            str << "[VertexArray]";
+            started = true;
+        }
+        return str.str();
     }
 
 }}

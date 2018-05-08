@@ -349,8 +349,8 @@ namespace RenderCore { namespace Techniques
 
 	Metal::ShaderResourceView* AttachmentPool::GetSRV(AttachmentName resName, const TextureViewDesc& window) const
 	{
-		if (resName >= s_maxBoundTargets) return {};
-		if (!_pimpl->_attachments[resName]) return {};
+		if (resName >= s_maxBoundTargets) return nullptr;
+		if (!_pimpl->_attachments[resName]) return nullptr;
 		return _pimpl->_srvPool.GetView(_pimpl->_attachments[resName], window);
 	}
 

@@ -234,6 +234,11 @@ namespace Assets
 		s_defaultFileSystem = defaultFileSystem;
 	}
 
+    void MainFileSystem::Shutdown()
+    {
+        Init(nullptr, nullptr);
+    }
+
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, const char openMode[], FileShareMode::BitField shareMode)
 	{
 		result = FileObject();
