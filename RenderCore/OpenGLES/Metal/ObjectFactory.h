@@ -76,8 +76,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         intrusive_ptr<GlObject<GlObject_Type::Sampler> >        CreateSampler();
         intrusive_ptr<GlObject<GlObject_Type::VAO> >            CreateVAO();
 
-        signed  IndexedGLType_AddRef(RawGLHandle object) never_throws;
-        signed  IndexedGLType_Release(RawGLHandle object) never_throws;
+        signed  IndexedGLType_AddRef(unsigned type, RawGLHandle object) never_throws;
+        signed  IndexedGLType_Release(unsigned type, RawGLHandle object) never_throws;
         void    ReportLeaks();
 
         FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
@@ -88,7 +88,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         ObjectFactory& operator=(const ObjectFactory&) = delete;
         ObjectFactory(const ObjectFactory&) = delete;
     private:
-        std::unordered_map<RawGLHandle, signed> _refCountTable;
+        std::vector<std::pair<uint64_t, signed>> _refCountTable;
         Threading::Mutex _refCountTableLock;
         FeatureSet::BitField _featureSet;
     };

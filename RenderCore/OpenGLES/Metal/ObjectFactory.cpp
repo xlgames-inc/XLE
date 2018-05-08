@@ -189,19 +189,26 @@ namespace RenderCore { namespace Metal_OpenGLES
     template<int Type>
         signed      GlObject<Type>::AddRef() const never_throws
     {
+        assert(s_objectFactory_instance);
         auto& objectFactory = GetObjectFactory();
-        return objectFactory.IndexedGLType_AddRef(AsRawGLHandle());
+        return objectFactory.IndexedGLType_AddRef(Type, AsRawGLHandle());
     }
 
     template<int Type>
         signed      GlObject<Type>::Release() const never_throws
     {
-        auto& objectFactory = GetObjectFactory();
-        signed result = objectFactory.IndexedGLType_Release(AsRawGLHandle());
-        if (result == 0) {
+        if (s_objectFactory_instance) {
+            auto& objectFactory = *s_objectFactory_instance;
+            signed result = objectFactory.IndexedGLType_Release(Type, AsRawGLHandle());
+            if (result == 0) {
+                Detail::Destroy<Type>(AsRawGLHandle());
+            }
+            return result;
+        } else {
+            Log(Error) << "Attempting to release reference count on OpenGL object after the ObjectFactory has been destroyed. Falling back to immediate destroy" << std::endl;
             Detail::Destroy<Type>(AsRawGLHandle());
+            return 0;
         }
-        return result;
     }
 
     template<int Type>
@@ -313,24 +320,35 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ObjectFactory* s_objectFactory_instance = nullptr;
-
-    signed ObjectFactory::IndexedGLType_AddRef(unsigned object) never_throws
+    static uint64_t RefCountId(unsigned type, unsigned object)
     {
-        ScopedLock(_refCountTableLock);
-        auto i = _refCountTable.find(object);
-        if (i==_refCountTable.end()) {
-            _refCountTable.insert(std::make_pair(object, 1));
-            return 1;
-        }
-        return ++i->second;
+        return (uint64_t(type) << 32ull) | object;
     }
 
-    signed ObjectFactory::IndexedGLType_Release(unsigned object) never_throws
+    static std::pair<unsigned, unsigned> SeparateRefCountId(uint64_t id)
+    {
+        return {id >> 32ull, unsigned(id)};
+    }
+
+    signed ObjectFactory::IndexedGLType_AddRef(unsigned type, unsigned object) never_throws
     {
         ScopedLock(_refCountTableLock);
-        auto i = _refCountTable.find(object);
-        if (i==_refCountTable.end()) {
+        auto id = RefCountId(type, object);
+        auto i = LowerBound(_refCountTable, id);
+        if (i==_refCountTable.end() || i->first != id) {
+            _refCountTable.insert(i, std::make_pair(id, 1));
+            return 1;
+        }
+        auto result = ++i->second;
+        return result;
+    }
+
+    signed ObjectFactory::IndexedGLType_Release(unsigned type, unsigned object) never_throws
+    {
+        ScopedLock(_refCountTableLock);
+        auto id = RefCountId(type, object);
+        auto i = LowerBound(_refCountTable, id);
+        if (i==_refCountTable.end() || i->first != id) {
             assert(0);
             return -1;
         }
@@ -354,7 +372,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
             auto typeAndId = SeparateRefCountId(i->first);
             Log(Warning) << "------ Object (" << typeAndId.first << "," << typeAndId.second << "): " << std::endl;
-            Log(Warning) << DescribeUnknownObject(i->first) << std::endl;
+            Log(Warning) << DescribeUnknownObject(typeAndId.second) << std::endl;
         }
     }
 
