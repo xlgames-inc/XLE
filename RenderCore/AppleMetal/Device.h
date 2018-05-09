@@ -36,9 +36,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
         CAMetalLayer* GetUnderlyingLayer() const { return _layer; }
 
-        PresentationChain(
-            id<MTLDevice> device,
-            const void* platformValue, unsigned width, unsigned height);
+        PresentationChain(id<MTLDevice> device, const void* platformValue, const PresentationChainDesc &desc);
         ~PresentationChain();
 
     private:
@@ -93,7 +91,7 @@ namespace RenderCore { namespace ImplAppleMetal
     {
     public:
         std::unique_ptr<IPresentationChain> CreatePresentationChain(
-            const void* platformValue, unsigned width, unsigned height);
+            const void* platformValue, const PresentationChainDesc &desc);
         void* QueryInterface(size_t guid);
 
         std::shared_ptr<IThreadContext> GetImmediateContext();

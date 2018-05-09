@@ -137,12 +137,9 @@ namespace RenderCore { namespace ImplAppleMetal
     {
     }
 
-    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(
-        const void* platformValue, unsigned width, unsigned height)
+    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, const PresentationChainDesc &desc)
     {
-        return std::make_unique<PresentationChain>(
-            _underlying.get(),
-            platformValue, width, height);
+        return std::make_unique<PresentationChain>(_underlying.get(), platformValue, desc);
     }
 
     void* Device::QueryInterface(size_t guid)
@@ -188,9 +185,7 @@ namespace RenderCore { namespace ImplAppleMetal
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    PresentationChain::PresentationChain(
-        id<MTLDevice> device,
-        const void* platformValue, unsigned width, unsigned height)
+    PresentationChain::PresentationChain(id<MTLDevice> device, const void* platformValue, const PresentationChainDesc &desc)
     {
         #if PLATFORMOS_TARGET == PLATFORMOS_OSX
             if (![((NSObject*)platformValue) isKindOfClass:NSView.class])
@@ -207,23 +202,21 @@ namespace RenderCore { namespace ImplAppleMetal
         if (![view.layer isKindOfClass:CAMetalLayer.class])
             Throw(std::runtime_error("Layer in UIView passed to PresentationChain::PresentationChain is not of type CAMetalLayer"));
 
+        _desc = std::make_shared<PresentationChainDesc>(desc);
+
         /* KenD -- Metal Hack -- a bit of a hack to double the width and height for higher resolation (mimics retina displays);
          * tried changing the contentsScale of the CAMetalLayer, but that didn't have a noticeable effect. */
-        width *= 2.0;
-        height *= 2.0;
+        _desc->_width *= 2.0;
+        _desc->_height *= 2.0;
 
         auto* metalLayer = (CAMetalLayer*)view.layer;
         metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
         metalLayer.framebufferOnly = YES;
-        metalLayer.drawableSize = CGSizeMake(width, height);
+        metalLayer.drawableSize = CGSizeMake(_desc->_width, _desc->_height);
         metalLayer.device = device;
         // metalLayer.colorSpace = nil;     <-- only OSX?
 
         _layer = metalLayer;
-
-        _desc = std::make_shared<PresentationChainDesc>();
-        _desc->_width = width;
-        _desc->_height = height;
     }
 
     PresentationChain::~PresentationChain()
