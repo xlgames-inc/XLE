@@ -125,12 +125,12 @@ namespace RenderCore
         /// creates the buffers necessary to render to that window.
         /// <param name="platformWindowHandle">A platform specific value representing a window. On windows,
         /// this is would be a HWND value</param>
-        /// <param name="width">Width of the presentation chain. RenderCore can't call GetClientRect() on the
+        /// <param name="desc">The description struct that specifies the width, height, color format and msaa
+        /// sample count of the back buffer. RenderCore can't call GetClientRect() on the
         /// window directly, because that would require adding a linker reference to windows dlls. But normally,
         /// width and height are the same size as the window client area. If a different size is used, the behaviour
-        /// might be different on different platforms (but on windows, the output is stretched.</param>
-        /// <param name="height">see <paramref name="width"/></param>
-        virtual std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformWindowHandle, unsigned width, unsigned height) = 0;
+        /// might be different on different platforms (but on windows, the output is stretched. </param>
+        virtual std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc) = 0;
 
         /// <summary>Looks for compatibility with another interface</summary>
         /// Some implementations of IDevice might provide extension interfaces.

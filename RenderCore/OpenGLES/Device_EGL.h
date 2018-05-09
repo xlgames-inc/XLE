@@ -18,46 +18,43 @@ namespace RenderCore { namespace ImplOpenGLES
     class PresentationChain : public Base_PresentationChain
     {
     public:
-        void Resize(unsigned newWidth, unsigned newHeight) /*override*/;
-        const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
+        virtual void Resize(unsigned newWidth, unsigned newHeight) override;
+        virtual const std::shared_ptr<PresentationChainDesc>& GetDesc() const override { return _desc; }
+
         const std::shared_ptr<Metal_OpenGLES::Resource>& GetTargetRenderbuffer();
-        EGLSurface GetSurface() const;
-	    unsigned GetGUID() const { return _guid; }
 
-        PresentationChain(
-                EGLContext sharedContext,
-                EGLDisplay display,
-                EGLConfig config,
-                const void *platformValue, unsigned width, unsigned height);
+        unsigned GetGUID() const { return _guid; }
+        EGLSurface GetSurface() const { return _surface; }
+
+        PresentationChain(EGLContext sharedContext, EGLDisplay display, EGLConfig *config, const void *platformValue, const PresentationChainDesc& desc);
         ~PresentationChain();
-    private:
-		EGLSurface _surface;
-		std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
-		std::shared_ptr<PresentationChainDesc> _desc;
-		ResourceDesc _backBufferDesc;
-	    unsigned _guid;
-    };
 
-    class Device;
+    private:
+        unsigned _guid;
+        EGLSurface _surface;
+        std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
+        std::shared_ptr<PresentationChainDesc> _desc;
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 
+    class Device;
+    
     class ThreadContext : public Base_ThreadContext
     {
     public:
-        IResourcePtr BeginFrame(IPresentationChain& presentationChain);
-        void        Present(IPresentationChain& presentationChain) /*override*/;
+        virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
+        virtual void Present(IPresentationChain& presentationChain) override;
 
-        bool                        IsImmediate() const;
-        ThreadContextStateDesc      GetStateDesc() const;
-        std::shared_ptr<IDevice>    GetDevice() const;
-        void                        IncrFrameId();
-        void                        InvalidateCachedState() const;
-        virtual void *              QueryInterface(size_t guid);
+        virtual void* QueryInterface(size_t guid) override;
+        virtual bool IsImmediate() const override { return false; }
+        virtual std::shared_ptr<IDevice> GetDevice() const override;
+        virtual void InvalidateCachedState() const override {}
 
-        IAnnotator&                 GetAnnotator();
+        virtual IAnnotator& GetAnnotator() override;
+        virtual ThreadContextStateDesc GetStateDesc() const override { return {}; }
 
-        void        MakeDeferredContext();
+        void MakeDeferredContext();
 
         ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device> &device);
         ~ThreadContext();
@@ -70,57 +67,60 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLContext _activeFrameContext = EGL_NO_CONTEXT;
         EGLContext _deferredContext = EGL_NO_CONTEXT;
         EGLSurface _dummyPBufferSurface = EGL_NO_SURFACE;
-	    unsigned _currentPresentationChainGUID;
+        unsigned _currentPresentationChainGUID;
 
         std::shared_ptr<Metal_OpenGLES::Resource> _activeTargetRenderbuffer;
         intrusive_ptr<OpenGL::FrameBuffer> _temporaryFramebuffer;
     };
 
-   
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
     {
     public:
-        const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
-        virtual bool        IsBoundToCurrentThread();
-		virtual bool 		BindToCurrentThread();
-		virtual void 		UnbindFromCurrentThread();
-        virtual void*       QueryInterface(size_t guid);
-        virtual std::shared_ptr<IThreadContext> Clone();
+        virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() override { return _deviceContext; }
+        virtual bool IsBoundToCurrentThread() override;
+        virtual bool BindToCurrentThread() override;
+        virtual void UnbindFromCurrentThread() override;
+        virtual void* QueryInterface(size_t guid) override;
+        virtual std::shared_ptr<IThreadContext> Clone() override;
+
         ThreadContextOpenGLES(EGLContext sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
+
     private:
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
     }; 
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device :  public Base_Device, public std::enable_shared_from_this<Device>
+    class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
-        std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformValue, unsigned width, unsigned height);
-        void* QueryInterface(size_t guid);
+        virtual std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc) override;
 
-        std::shared_ptr<IThreadContext> GetImmediateContext();
-        std::unique_ptr<IThreadContext> CreateDeferredContext();
+        virtual void* QueryInterface(size_t guid) override;
+
+        virtual std::shared_ptr<IThreadContext> GetImmediateContext() override;
+        virtual std::unique_ptr<IThreadContext> CreateDeferredContext() override;
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
-        DeviceDesc GetDesc();
-        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+        virtual IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
+        virtual FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
-        EGLDisplay GetDisplay() const { return _display; };
+        virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EGL", "", "" }; }
+
         EGLContext GetSharedContext() const { return _sharedContext; }
+        EGLDisplay GetDisplay() const { return _display; };
         EGLConfig GetConfig() const { return _config; }
 
         Device();
         ~Device();
 
     protected:
-        std::shared_ptr<ThreadContextOpenGLES>   _immediateContext;
-		std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
-		EGLContext _sharedContext;
+        std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
+        std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
+        EGLContext _sharedContext;
         EGLDisplay _display;
-        EGLConfig  _config;
+        EGLConfig _config;
 
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> GetObjectFactory();
     };
@@ -128,8 +128,8 @@ namespace RenderCore { namespace ImplOpenGLES
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
     {
     public:
-        Metal_OpenGLES::FeatureSet::BitField GetFeatureSet();
-        virtual void* QueryInterface(size_t guid);
+        virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
+        virtual void* QueryInterface(size_t guid) override;
 
         DeviceOpenGLES();
         ~DeviceOpenGLES();

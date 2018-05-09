@@ -31,7 +31,6 @@ namespace RenderCore
     public:
         virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() = 0;
         virtual std::shared_ptr<IThreadContext> Clone() = 0;
-
         virtual bool IsBoundToCurrentThread() = 0;
         virtual bool BindToCurrentThread() = 0;
         virtual void UnbindFromCurrentThread() = 0;

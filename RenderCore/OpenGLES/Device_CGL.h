@@ -9,11 +9,11 @@
 #include "../../Utility/IntrusivePtr.h"
 #include "../../../Externals/Misc/OCPtr.h"
 
-namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Resource; }}
+namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Resource; } }
 
 @class NSOpenGLContext;
-typedef struct _CGLContextObject       *CGLContextObj;
-typedef struct _CGLPixelFormatObject   *CGLPixelFormatObj;
+typedef struct _CGLContextObject *CGLContextObj;
+typedef struct _CGLPixelFormatObject *CGLPixelFormatObj;
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -22,28 +22,30 @@ namespace RenderCore { namespace ImplOpenGLES
     class PresentationChain : public Base_PresentationChain
     {
     public:
-        void                Resize(unsigned newWidth, unsigned newHeight) /*override*/;
-        const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
+        virtual void Resize(unsigned newWidth, unsigned newHeight) override;
+        virtual const std::shared_ptr<PresentationChainDesc>& GetDesc() const override { return _desc; }
+
         const TBC::OCPtr<NSOpenGLContext>& GetUnderlying() { return _nsContext; }
 
-        PresentationChain(
-            Metal_OpenGLES::ObjectFactory& objFactory,
-            CGLContextObj sharedContext,
-            const void* platformValue, unsigned width, unsigned height);
+        PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& desc);
         ~PresentationChain();
-
-        ResourceDesc _backBufferDesc;
-        std::shared_ptr<Metal_OpenGLES::Resource> _fakeBackBuffer;
-        std::shared_ptr<Metal_OpenGLES::Resource> _backBufferResource;
-        intrusive_ptr<OpenGL::FrameBuffer> _fakeBackBufferFrameBuffer;
 
     private:
         TBC::OCPtr<NSOpenGLContext> _nsContext;
         CGLContextObj _sharedContext;
         const void* _platformValue;
         std::shared_ptr<PresentationChainDesc> _desc;
+        ResourceDesc _backBufferDesc;
+
+        std::shared_ptr<Metal_OpenGLES::Resource> _backBufferResource;
+        std::shared_ptr<Metal_OpenGLES::Resource> _fakeBackBuffer;
+        std::shared_ptr<Metal_OpenGLES::Resource> _fakeBackBufferResolveBuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _fakeBackBufferFrameBuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _fakeBackBufferResolveFrameBuffer;
 
         void CreateUnderlyingContext(Metal_OpenGLES::ObjectFactory& objFactory);
+
+        friend class ThreadContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -53,25 +55,24 @@ namespace RenderCore { namespace ImplOpenGLES
     class ThreadContext : public Base_ThreadContext
     {
     public:
-        IResourcePtr BeginFrame(IPresentationChain& presentationChain);
-        void        Present(IPresentationChain& presentationChain) /*override*/;
+        virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
+        virtual void Present(IPresentationChain& presentationChain) override;
 
-        bool                        IsImmediate() const;
-        ThreadContextStateDesc      GetStateDesc() const;
-        std::shared_ptr<IDevice>    GetDevice() const;
-        void                        IncrFrameId();
-        void                        InvalidateCachedState() const;
+        virtual bool IsImmediate() const override { return false; }
+        virtual std::shared_ptr<IDevice> GetDevice() const override;
+        virtual void InvalidateCachedState() const override {}
 
-        IAnnotator&                 GetAnnotator();
+        virtual IAnnotator& GetAnnotator() override;
+        virtual ThreadContextStateDesc GetStateDesc() const override { return {}; }
 
-        CGLContextObj               GetSharedContext() { return _sharedContext; }
-        CGLContextObj               GetActiveFrameContext() { return _activeFrameContext; }
+        CGLContextObj GetSharedContext() { return _sharedContext; }
+        CGLContextObj GetActiveFrameContext() { return _activeFrameContext; }
 
         ThreadContext(CGLContextObj sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContext();
 
     protected:
-        std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
+        std::weak_ptr<Device> _device; // (must be weak, because Device holds a shared_ptr to the immediate context)
         std::unique_ptr<IAnnotator> _annotator;
 
         CGLContextObj _activeFrameContext;
@@ -81,33 +82,37 @@ namespace RenderCore { namespace ImplOpenGLES
     class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
     {
     public:
-        const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
-        virtual bool        IsBoundToCurrentThread();
-        virtual bool        BindToCurrentThread();
-        virtual void        UnbindFromCurrentThread();
-        virtual void*       QueryInterface(size_t guid);
-        virtual std::shared_ptr<IThreadContext> Clone();
+        virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() override { return _deviceContext; }
+        virtual bool IsBoundToCurrentThread() override;
+        virtual bool BindToCurrentThread() override;
+        virtual void UnbindFromCurrentThread() override;
+        virtual void* QueryInterface(size_t guid) override;
+        virtual std::shared_ptr<IThreadContext> Clone() override;
+
         ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
+
     private:
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
 
-    class Device :  public Base_Device, public std::enable_shared_from_this<Device>
+    class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
-        std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformValue, unsigned width, unsigned height);
-        void* QueryInterface(size_t guid);
+        virtual std::unique_ptr<IPresentationChain> CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc) override;
 
-        std::shared_ptr<IThreadContext> GetImmediateContext();
-        std::unique_ptr<IThreadContext> CreateDeferredContext();
+        virtual void* QueryInterface(size_t guid) override;
+
+        virtual std::shared_ptr<IThreadContext> GetImmediateContext() override;
+        virtual std::unique_ptr<IThreadContext> CreateDeferredContext() override;
 
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
-        IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init);
-        DeviceDesc GetDesc();
-        FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
+        virtual IResourcePtr CreateResource(const ResourceDesc& desc, const ResourceInitializer& init) override;
+        virtual FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
+
+        virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-CGL", "", "" }; }
 
         Device();
         ~Device();
@@ -123,9 +128,10 @@ namespace RenderCore { namespace ImplOpenGLES
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES
     {
     public:
-        virtual void* QueryInterface(size_t guid);
-        virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet();
-        Metal_OpenGLES::DeviceContext * GetImmediateDeviceContext();
+        virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
+        virtual void* QueryInterface(size_t guid) override;
+
+        Metal_OpenGLES::DeviceContext *GetImmediateDeviceContext();
 
         DeviceOpenGLES();
         ~DeviceOpenGLES();
@@ -133,4 +139,3 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////
 }}
-

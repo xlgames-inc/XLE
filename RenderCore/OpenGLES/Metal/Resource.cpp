@@ -231,26 +231,24 @@ namespace RenderCore { namespace Metal_OpenGLES
                                 }
                             }
                         }
-
                         glPixelStorei(GL_UNPACK_ALIGNMENT, 4);
-
                     }
-
                     // glBindTexture(bindTarget, prevTexture);
                 }
 
                 CheckGLError("Creating texture resource");
-
             } else {
-
                 _underlyingRenderBuffer = factory.CreateRenderBuffer();
                 glBindRenderbuffer(GL_RENDERBUFFER, _underlyingRenderBuffer->AsRawGLHandle());
-                glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+
+                if (desc._textureDesc._samples._sampleCount > 1) {
+                     glRenderbufferStorageMultisample(GL_RENDERBUFFER, desc._textureDesc._samples._sampleCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                } else {
+                    glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                }
 
                 CheckGLError("Creating render buffer resource");
-
             }
-
         }
     }
 
