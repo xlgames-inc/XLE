@@ -167,6 +167,37 @@
 		AF7478AF200ED2B700F891DB /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = AF7478AE200ED2B700F891DB /* IncludeGLES.h */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXContainerItemProxy section */
+		AF31764820A41776005F4F91 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF31763F20A41776005F4F91 /* freetype.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = AE058C48B1394AD7B9C73CAD;
+			remoteInfo = freetype;
+		};
+		AF31764C20A417AF005F4F91 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF31763F20A41776005F4F91 /* freetype.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = 0B427040DAF64EC3B5394E42;
+			remoteInfo = "freetype-mac";
+		};
+		AF31768C20A418B8005F4F91 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF31763F20A41776005F4F91 /* freetype.xcodeproj */;
+			proxyType = 1;
+			remoteGlobalIDString = AF31765020A41897005F4F91;
+			remoteInfo = "freetype-ios";
+		};
+		AF31768F20A418B8005F4F91 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = AF31763F20A41776005F4F91 /* freetype.xcodeproj */;
+			proxyType = 2;
+			remoteGlobalIDString = AF31768B20A41897005F4F91;
+			remoteInfo = "freetype-ios";
+		};
+/* End PBXContainerItemProxy section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		8FA3F7301EDD14E4003EF623 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -292,6 +323,7 @@
 		8F9418591FDA01FE00DADA27 /* LocalCompiledShaderSource.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = LocalCompiledShaderSource.cpp; path = ../../RenderCore/Assets/LocalCompiledShaderSource.cpp; sourceTree = "<group>"; };
 		8F94185A1FDA01FE00DADA27 /* LocalCompiledShaderSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LocalCompiledShaderSource.h; path = ../../RenderCore/Assets/LocalCompiledShaderSource.h; sourceTree = "<group>"; };
 		8FA3F7321EDD14E4003EF623 /* libXLESubsetIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		AF31763F20A41776005F4F91 /* freetype.xcodeproj */ = {isa = PBXFileReference; lastKnownFileType = "wrapper.pb-project"; name = freetype.xcodeproj; path = ../../Foreign/FreeType/xcode/freetype.xcodeproj; sourceTree = "<group>"; };
 		AF7478AE200ED2B700F891DB /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../../RenderCore/OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -462,6 +494,7 @@
 		8F707BDE1EA6CAB200DEC600 /* Foreign */ = {
 			isa = PBXGroup;
 			children = (
+				AF31763F20A41776005F4F91 /* freetype.xcodeproj */,
 				8F707BDF1EA6CB0A00DEC600 /* Hash */,
 				8F9417BB1FDA01C000DADA27 /* Lua */,
 			);
@@ -563,6 +596,15 @@
 			path = ../../Foreign/Lua/src;
 			sourceTree = "<group>";
 		};
+		AF31764020A41776005F4F91 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				AF31764920A41776005F4F91 /* libfreetype.a */,
+				AF31769020A418B8005F4F91 /* libfreetype-ios.a */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
 /* End PBXGroup section */
 
 /* Begin PBXHeadersBuildPhase section */
@@ -639,6 +681,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				AF31764D20A417AF005F4F91 /* PBXTargetDependency */,
 			);
 			name = XLESubsetMac;
 			productName = XLESubset;
@@ -656,6 +699,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				AF31768D20A418B8005F4F91 /* PBXTargetDependency */,
 			);
 			name = XLESubsetIOS;
 			productName = XLESubsetIOS;
@@ -691,6 +735,12 @@
 			mainGroup = 8F707B521EA6C41F00DEC600;
 			productRefGroup = 8F707B5C1EA6C41F00DEC600 /* Products */;
 			projectDirPath = "";
+			projectReferences = (
+				{
+					ProductGroup = AF31764020A41776005F4F91 /* Products */;
+					ProjectRef = AF31763F20A41776005F4F91 /* freetype.xcodeproj */;
+				},
+			);
 			projectRoot = "";
 			targets = (
 				8F707B5A1EA6C41F00DEC600 /* XLESubsetMac */,
@@ -698,6 +748,23 @@
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXReferenceProxy section */
+		AF31764920A41776005F4F91 /* libfreetype.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = libfreetype.a;
+			remoteRef = AF31764820A41776005F4F91 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+		AF31769020A418B8005F4F91 /* libfreetype-ios.a */ = {
+			isa = PBXReferenceProxy;
+			fileType = archive.ar;
+			path = "libfreetype-ios.a";
+			remoteRef = AF31768F20A418B8005F4F91 /* PBXContainerItemProxy */;
+			sourceTree = BUILT_PRODUCTS_DIR;
+		};
+/* End PBXReferenceProxy section */
 
 /* Begin PBXSourcesBuildPhase section */
 		8F707B571EA6C41F00DEC600 /* Sources */ = {
@@ -821,6 +888,19 @@
 			runOnlyForDeploymentPostprocessing = 0;
 		};
 /* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		AF31764D20A417AF005F4F91 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "freetype-mac";
+			targetProxy = AF31764C20A417AF005F4F91 /* PBXContainerItemProxy */;
+		};
+		AF31768D20A418B8005F4F91 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = "freetype-ios";
+			targetProxy = AF31768C20A418B8005F4F91 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
 
 /* Begin XCBuildConfiguration section */
 		8F707B5D1EA6C41F00DEC600 /* Debug */ = {
