@@ -324,7 +324,60 @@ namespace RenderCore { namespace ImplOpenGLES
             eglSwapBuffers(device.GetDisplay(), presChain.GetSurface());
         }
         _activeTargetRenderbuffer = nullptr;
-        _activeFrameContext = nullptr;
+        _activeFrameContext = EGL_NO_CONTEXT;
+    }
+
+    void        ThreadContext::MakeDeferredContext()
+    {
+        auto d = _device.lock();
+        assert(d);
+
+        auto display = d->GetDisplay();
+        if (_dummyPBufferSurface != EGL_NO_SURFACE) {
+            eglDestroySurface(display, _dummyPBufferSurface);
+            _dummyPBufferSurface = EGL_NO_SURFACE;
+        }
+
+        if (_deferredContext != EGL_NO_CONTEXT) {
+            if (_deferredContext == eglGetCurrentContext())
+                eglMakeCurrent(_deferredContext, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            eglDestroyContext(display, _deferredContext);
+            _deferredContext = EGL_NO_CONTEXT;
+        }
+
+        // Turn this into a deferred context by creating a surface with a dummy 1x1 pbuffer
+        EGLint configAttribsList[] = {
+            // EGL_CONFORMANT,         glesBit,
+            // EGL_RENDERABLE_TYPE,    glesBit,
+            EGL_SURFACE_TYPE,       EGL_PBUFFER_BIT,
+            EGL_CONFIG_CAVEAT,      EGL_NONE,
+            EGL_NONE
+        };
+
+        EGLConfig config;
+
+        EGLint numConfig = 0;
+        if (eglChooseConfig(display, configAttribsList, &config, 1, &numConfig) != EGL_TRUE || numConfig == 0)
+            Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig in MakeDeferredContext"));
+
+        int pbufferAttribsList[] = {
+            EGL_WIDTH, 1,
+            EGL_HEIGHT, 1,
+            EGL_NONE
+        };
+
+        _dummyPBufferSurface = eglCreatePbufferSurface(d->GetDisplay(), config, pbufferAttribsList);
+        if (_dummyPBufferSurface == EGL_NO_SURFACE)
+            Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface in MakeDeferredContext"));
+
+        EGLint contextAttribsList[] = {
+            EGL_CONTEXT_CLIENT_VERSION, 3,
+            EGL_NONE, EGL_NONE
+        };
+
+        _deferredContext = eglCreateContext(display, config, _sharedContext, contextAttribsList);
+        if (_deferredContext == EGL_NO_CONTEXT)
+            Throw(::Exceptions::BasicLabel("Failure in _activeFrameContext in MakeDeferredContext"));
     }
 
     bool                        ThreadContext::IsImmediate() const { return false; }
@@ -336,11 +389,27 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContext::ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device>& device)
     : _sharedContext(sharedContext)
     , _device(device)
-    , _activeFrameContext(nullptr)
     , _currentPresentationChainGUID(0)
     {}
 
-    ThreadContext::~ThreadContext() {}
+    ThreadContext::~ThreadContext()
+    {
+        auto d = _device.lock();
+        assert(d);
+
+        auto display = d->GetDisplay();
+        if (_dummyPBufferSurface != EGL_NO_SURFACE) {
+            eglDestroySurface(display, _dummyPBufferSurface);
+            _dummyPBufferSurface = EGL_NO_SURFACE;
+        }
+
+        if (_deferredContext != EGL_NO_CONTEXT) {
+            if (_deferredContext == eglGetCurrentContext())
+                eglMakeCurrent(_deferredContext, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            eglDestroyContext(display, _deferredContext);
+            _deferredContext = EGL_NO_CONTEXT;
+        }
+    }
 
     IAnnotator&                 ThreadContext::GetAnnotator()
     {
@@ -380,7 +449,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
         return supported ? FormatCapability::Supported : FormatCapability::NotSupported;
     }
-    
+
     void* DeviceOpenGLES::QueryInterface(size_t guid)
     {
         if (guid == typeid(IDeviceOpenGLES).hash_code()) {
@@ -400,18 +469,12 @@ namespace RenderCore { namespace ImplOpenGLES
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
         assert(_objectFactory);
-        return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        auto result = std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        result->MakeDeferredContext();
+        return result;
     }
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()
-    {
-        assert(_objectFactory);
-        if (!_immediateContext) {
-            _immediateContext = std::make_shared<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
-        }
-        return _immediateContext;
-    }
-    std::shared_ptr<IThreadContext>   DeviceOpenGLES::GetImmediateContext()
     {
         assert(_objectFactory);
         if (!_immediateContext) {
@@ -424,7 +487,7 @@ namespace RenderCore { namespace ImplOpenGLES
 	{
         assert(_objectFactory);
 		return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
-	} 
+	}
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -508,7 +571,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight) /*override*/
     {
-        if (    newWidth == _backBufferDesc._textureDesc._width 
+        if (    newWidth == _backBufferDesc._textureDesc._width
             &&  newHeight == _backBufferDesc._textureDesc._height)
             return;
 
@@ -559,9 +622,37 @@ namespace RenderCore { namespace ImplOpenGLES
     bool        ThreadContextOpenGLES::IsBoundToCurrentThread()
     {
         EGLContext currentContext = eglGetCurrentContext();
-        if (_activeFrameContext)
+        if (_activeFrameContext != EGL_NO_CONTEXT)
             return _activeFrameContext == currentContext;
+        if (_deferredContext != EGL_NO_CONTEXT)
+            return _deferredContext == currentContext;
         return _sharedContext == currentContext;
+    }
+
+    bool 		ThreadContextOpenGLES::BindToCurrentThread()
+    {
+        if (_deferredContext != EGL_NO_CONTEXT) {
+            auto d = _device.lock();
+            assert(d);
+            return eglMakeCurrent(d->GetDisplay(), _dummyPBufferSurface, _dummyPBufferSurface, _deferredContext);
+        } else {
+            return false;
+        }
+    }
+
+    void 		ThreadContextOpenGLES::UnbindFromCurrentThread()
+    {
+        assert(IsBoundToCurrentThread());
+        auto d = _device.lock();
+        assert(d);
+        eglMakeCurrent(d->GetDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+    }
+
+    std::shared_ptr<IThreadContext> ThreadContextOpenGLES::Clone()
+    {
+        // Clone is odd -- we need to return a new ThreadContext that uses the same
+        // underlying EGLContext, but has a new DeviceContext
+        return std::make_shared<ThreadContextOpenGLES>(_sharedContext, _device.lock());
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

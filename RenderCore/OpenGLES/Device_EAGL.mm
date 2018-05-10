@@ -88,9 +88,19 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void*                       ThreadContext::QueryInterface(size_t guid) {
         if (guid == typeid(EAGLContext).hash_code()) {
-            return (EAGLContext*)_sharedContext;
+            if (_activeFrameContext)
+                return _activeFrameContext.get();
+            if (_deferredContext)
+                return _deferredContext.get();
+            return _sharedContext.get();
         }
         return nullptr;
+    }
+
+    void        ThreadContext::MakeDeferredContext()
+    {
+        auto* t = [[EAGLContext alloc] initWithAPI:_sharedContext.get().API sharegroup:_sharedContext.get().sharegroup];
+        _deferredContext = TBC::moveptr(t);
     }
 
     ThreadContext::ThreadContext(EAGLContext* sharedContext, const std::shared_ptr<Device>& device)
@@ -120,7 +130,31 @@ namespace RenderCore { namespace ImplOpenGLES
         EAGLContext* currentContext = EAGLContext.currentContext;
         if (_activeFrameContext)
             return currentContext == _activeFrameContext.get();
+        if (_deferredContext)
+            return currentContext == _deferredContext.get();
         return currentContext == _sharedContext.get();
+    }
+
+    bool        ThreadContextOpenGLES::BindToCurrentThread()
+    {
+        if (_deferredContext) {
+            EAGLContext.currentContext = _deferredContext.get();
+            return IsBoundToCurrentThread();
+        } else {
+            return false;
+        }
+    }
+
+    void        ThreadContextOpenGLES::UnbindFromCurrentThread()
+    {
+        assert(IsBoundToCurrentThread());
+        glFlush();
+        EAGLContext.currentContext = nil;
+    }
+
+    std::shared_ptr<IThreadContext> ThreadContextOpenGLES::Clone()
+    {
+        return nullptr;
     }
 
     ThreadContextOpenGLES::ThreadContextOpenGLES(EAGLContext* sharedContext, const std::shared_ptr<Device>& device)
@@ -189,7 +223,9 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
-        return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        auto result = std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        result->MakeDeferredContext();
+        return result;
     }
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()

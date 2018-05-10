@@ -157,6 +157,23 @@ namespace RenderCore { namespace ImplOpenGLES
         return _sharedContext == currentContext;
     }
 
+    bool        ThreadContextOpenGLES::BindToCurrentThread()
+    {
+        auto error = CGLSetCurrentContext(_activeFrameContext ? _activeFrameContext : _sharedContext);
+        return error == kCGLNoError;
+    }
+
+    void        ThreadContextOpenGLES::UnbindFromCurrentThread()
+    {
+        glFlush();
+        CGLSetCurrentContext(nullptr);
+    }
+
+    std::shared_ptr<IThreadContext> ThreadContextOpenGLES::Clone()
+    {
+        return nullptr;
+    }
+
     ThreadContextOpenGLES::ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device)
     : ThreadContext(sharedContext, device)
     {
@@ -178,14 +195,12 @@ namespace RenderCore { namespace ImplOpenGLES
         };
 
         int virtualScreenCount;
-        CGLPixelFormatObj pixelFormat;
-        auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &pixelFormat, &virtualScreenCount);
+        auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &_mainPixelFormat, &virtualScreenCount);
         assert(!error);
-        assert(pixelFormat);
+        assert(_mainPixelFormat);
         (void)virtualScreenCount;
 
-        error = CGLCreateContext(pixelFormat, nullptr, &_sharedContext);
-        CGLReleasePixelFormat(pixelFormat);
+        error = CGLCreateContext(_mainPixelFormat, nullptr, &_sharedContext);
 
         assert(!error);
         assert(_sharedContext);
@@ -198,6 +213,7 @@ namespace RenderCore { namespace ImplOpenGLES
         _objectFactory.reset();
         CGLSetCurrentContext(nullptr);
         CGLReleaseContext(_sharedContext);
+        CGLReleasePixelFormat(_mainPixelFormat);
     }
 
     std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
@@ -242,7 +258,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
     std::unique_ptr<IThreadContext>   Device::CreateDeferredContext()
     {
-        return std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
+        CGLContextObj deferredContext = 0;
+        auto error = CGLCreateContext(_mainPixelFormat, _sharedContext, &deferredContext);
+        assert(!error);
+        return std::make_unique<ThreadContextOpenGLES>(deferredContext, shared_from_this());
     }
 
     std::shared_ptr<IThreadContext>   Device::GetImmediateContext()

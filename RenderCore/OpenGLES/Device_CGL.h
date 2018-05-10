@@ -13,6 +13,7 @@ namespace RenderCore { namespace Metal_OpenGLES { class ObjectFactory; class Res
 
 @class NSOpenGLContext;
 typedef struct _CGLContextObject       *CGLContextObj;
+typedef struct _CGLPixelFormatObject   *CGLPixelFormatObj;
 
 namespace RenderCore { namespace ImplOpenGLES
 {
@@ -82,7 +83,10 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
         virtual bool        IsBoundToCurrentThread();
+        virtual bool        BindToCurrentThread();
+        virtual void        UnbindFromCurrentThread();
         virtual void*       QueryInterface(size_t guid);
+        virtual std::shared_ptr<IThreadContext> Clone();
         ThreadContextOpenGLES(CGLContextObj sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
     private:
@@ -112,6 +116,8 @@ namespace RenderCore { namespace ImplOpenGLES
         std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
         CGLContextObj _sharedContext;
+
+        CGLPixelFormatObj _mainPixelFormat;
     };
 
     class DeviceOpenGLES : public Device, public Base_DeviceOpenGLES

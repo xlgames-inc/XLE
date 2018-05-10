@@ -57,6 +57,8 @@ namespace RenderCore { namespace ImplOpenGLES
         IAnnotator&                 GetAnnotator();
         virtual void*               QueryInterface(size_t guid);
 
+        void        MakeDeferredContext();
+
         ThreadContext(EAGLContext* sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContext();
 
@@ -65,6 +67,7 @@ namespace RenderCore { namespace ImplOpenGLES
         std::unique_ptr<IAnnotator> _annotator;
 
         TBC::OCPtr<EAGLContext> _activeFrameContext;
+        TBC::OCPtr<EAGLContext> _deferredContext;
         TBC::OCPtr<EAGLContext> _sharedContext;
 
         std::shared_ptr<Metal_OpenGLES::Resource> _activeFrameRenderbuffer;
@@ -76,7 +79,10 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         const std::shared_ptr<Metal_OpenGLES::DeviceContext>&  GetDeviceContext();
         virtual bool        IsBoundToCurrentThread();
+        virtual bool        BindToCurrentThread();
+        virtual void        UnbindFromCurrentThread();
         virtual void*       QueryInterface(size_t guid);
+        virtual std::shared_ptr<IThreadContext> Clone();
         ThreadContextOpenGLES(EAGLContext* sharedContext, const std::shared_ptr<Device>& device);
         ~ThreadContextOpenGLES();
     private:
