@@ -627,7 +627,7 @@
 			buildSettings = {
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/build;
+				SYMROOT = "$(PROJECT_DIR)/xcode/build";
 			};
 			name = RelWithDebInfo;
 		};
@@ -636,7 +636,7 @@
 			buildSettings = {
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/build;
+				SYMROOT = "$(PROJECT_DIR)/xcode/build";
 			};
 			name = MinSizeRel;
 		};
@@ -655,15 +655,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -672,7 +672,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = freetype;
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -698,15 +698,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -715,7 +715,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = freetype;
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -741,15 +741,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -758,7 +758,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = freetype;
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -784,15 +784,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -801,7 +801,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -827,15 +827,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -844,7 +844,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -870,15 +870,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -887,7 +887,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -913,15 +913,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -930,7 +930,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -956,15 +956,15 @@
 				);
 				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
 				HEADER_SEARCH_PATHS = (
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/include/freetype2,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/include,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/truetype,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/sfnt,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/autofit,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/smooth,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/raster,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psaux,
-					/Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/src/psnames,
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
 				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
@@ -973,7 +973,7 @@
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = freetype;
 				SECTORDER_FLAGS = "";
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode;
+				SYMROOT = "$(PROJECT_DIR)/xcode";
 				USE_HEADERMAP = NO;
 				WARNING_CFLAGS = (
 					"-Wmost",
@@ -989,7 +989,7 @@
 			buildSettings = {
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/build;
+				SYMROOT = "$(PROJECT_DIR)/xcode/build";
 			};
 			name = Debug;
 		};
@@ -998,7 +998,7 @@
 			buildSettings = {
 				ONLY_ACTIVE_ARCH = YES;
 				SDKROOT = iphoneos;
-				SYMROOT = /Users/thiago/repositories/dragons3d/Externals/cocos3d/XLE/Foreign/FreeType/xcode/build;
+				SYMROOT = "$(PROJECT_DIR)/xcode/build";
 			};
 			name = Release;
 		};
