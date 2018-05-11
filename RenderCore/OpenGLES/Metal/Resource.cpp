@@ -243,14 +243,15 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 // apportable doesn't properly wrap glRenderbufferStorageMultisample()
                 #if defined(PGDROID)
-                    bool useMultisampleRenderbuffer = false;
-                #elif PLATFORMOS_TARGET == PLATFORMOS_OSX
-                    bool useMultisampleRenderbuffer = true;
+                    bool supportsMultisampleRenderbuffer = false;
+                // in "fake GLES" mode (ex. in OSX), the feature is backed by OpenGL
+                #elif !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+                    bool supportsMultisampleRenderbuffer = true;
                 #else
-                    bool useMultisampleRenderbuffer = factory.GetFeatureSet() & FeatureSet::GLES300;
+                    bool supportsMultisampleRenderbuffer = factory.GetFeatureSet() & FeatureSet::GLES300;
                 #endif
 
-                if (useMultisampleRenderbuffer && desc._textureDesc._samples._sampleCount > 1) {
+                if (supportsMultisampleRenderbuffer && desc._textureDesc._samples._sampleCount > 1) {
                      glRenderbufferStorageMultisample(GL_RENDERBUFFER, desc._textureDesc._samples._sampleCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
                 } else {
                     glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
