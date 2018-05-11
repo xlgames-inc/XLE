@@ -275,23 +275,20 @@ namespace RenderCore { namespace ImplOpenGLES
 
     ThreadContext::ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device>& device)
         : _sharedContext(sharedContext), _device(device), _currentPresentationChainGUID(0)
+        , _display(device->GetDisplay())
     {}
 
     ThreadContext::~ThreadContext()
     {
-        auto d = _device.lock();
-        assert(d);
-
-        auto display = d->GetDisplay();
         if (_dummyPBufferSurface != EGL_NO_SURFACE) {
-            eglDestroySurface(display, _dummyPBufferSurface);
+            eglDestroySurface(_display, _dummyPBufferSurface);
             _dummyPBufferSurface = EGL_NO_SURFACE;
         }
 
         if (_deferredContext != EGL_NO_CONTEXT) {
             if (_deferredContext == eglGetCurrentContext())
                 eglMakeCurrent(_deferredContext, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-            eglDestroyContext(display, _deferredContext);
+            eglDestroyContext(_display, _deferredContext);
             _deferredContext = EGL_NO_CONTEXT;
         }
     }
@@ -311,7 +308,7 @@ namespace RenderCore { namespace ImplOpenGLES
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
         auto currentContext = eglGetCurrentContext();
         if (currentContext != _activeFrameContext || _currentPresentationChainGUID != presChain.GetGUID()) {
-            if (!eglMakeCurrent(deviceStrong->GetDisplay(), presChain.GetSurface(), presChain.GetSurface(), _activeFrameContext)) {
+            if (!eglMakeCurrent(_display, presChain.GetSurface(), presChain.GetSurface(), _activeFrameContext)) {
                 Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
             }
             _currentPresentationChainGUID = presChain.GetGUID();
@@ -320,8 +317,8 @@ namespace RenderCore { namespace ImplOpenGLES
         #if defined(_DEBUG)
             const auto& presentationChainDesc = presentationChain.GetDesc();
             EGLint width, height;
-            eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_WIDTH, &width);
-            eglQuerySurface(deviceStrong->GetDisplay(), presChain.GetSurface(), EGL_HEIGHT, &height);
+            eglQuerySurface(_display, presChain.GetSurface(), EGL_WIDTH, &width);
+            eglQuerySurface(_display, presChain.GetSurface(), EGL_HEIGHT, &height);
 
             if (width != presentationChainDesc->_width || height != presentationChainDesc->_height) {
                 Log(Warning) << "Presentation chain no longer matches size of the display -- do you need to call resize()?" << std::endl;
@@ -358,7 +355,7 @@ namespace RenderCore { namespace ImplOpenGLES
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
                 _temporaryFramebuffer = nullptr;
             }
-            eglSwapBuffers(device.GetDisplay(), presChain.GetSurface());
+            eglSwapBuffers(_display, presChain.GetSurface());
         }
         _activeTargetRenderbuffer = nullptr;
         _activeFrameContext = EGL_NO_CONTEXT;
@@ -366,19 +363,15 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void ThreadContext::MakeDeferredContext()
     {
-        auto d = _device.lock();
-        assert(d);
-
-        auto display = d->GetDisplay();
         if (_dummyPBufferSurface != EGL_NO_SURFACE) {
-            eglDestroySurface(display, _dummyPBufferSurface);
+            eglDestroySurface(_display, _dummyPBufferSurface);
             _dummyPBufferSurface = EGL_NO_SURFACE;
         }
 
         if (_deferredContext != EGL_NO_CONTEXT) {
             if (_deferredContext == eglGetCurrentContext())
                 eglMakeCurrent(_deferredContext, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-            eglDestroyContext(display, _deferredContext);
+            eglDestroyContext(_display, _deferredContext);
             _deferredContext = EGL_NO_CONTEXT;
         }
 
@@ -394,7 +387,7 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLConfig config;
 
         EGLint numConfig = 0;
-        if (eglChooseConfig(display, configAttribsList, &config, 1, &numConfig) != EGL_TRUE || numConfig == 0)
+        if (eglChooseConfig(_display, configAttribsList, &config, 1, &numConfig) != EGL_TRUE || numConfig == 0)
             Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig in MakeDeferredContext"));
 
         int pbufferAttribsList[] = {
@@ -403,7 +396,7 @@ namespace RenderCore { namespace ImplOpenGLES
             EGL_NONE
         };
 
-        _dummyPBufferSurface = eglCreatePbufferSurface(d->GetDisplay(), config, pbufferAttribsList);
+        _dummyPBufferSurface = eglCreatePbufferSurface(_display, config, pbufferAttribsList);
         if (_dummyPBufferSurface == EGL_NO_SURFACE)
             Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface in MakeDeferredContext"));
 
@@ -412,7 +405,7 @@ namespace RenderCore { namespace ImplOpenGLES
             EGL_NONE, EGL_NONE
         };
 
-        _deferredContext = eglCreateContext(display, config, _sharedContext, contextAttribsList);
+        _deferredContext = eglCreateContext(_display, config, _sharedContext, contextAttribsList);
         if (_deferredContext == EGL_NO_CONTEXT)
             Throw(::Exceptions::BasicLabel("Failure in _activeFrameContext in MakeDeferredContext"));
     }
@@ -474,9 +467,11 @@ namespace RenderCore { namespace ImplOpenGLES
     bool ThreadContextOpenGLES::BindToCurrentThread()
     {
         if (_deferredContext != EGL_NO_CONTEXT) {
-            auto d = _device.lock();
-            assert(d);
-            return eglMakeCurrent(d->GetDisplay(), _dummyPBufferSurface, _dummyPBufferSurface, _deferredContext);
+            // Ensure that the IDevice is still alive. If you hit this assert, it means that the device
+            // may have been destroyed before this call was made. Since the device cleans up _display
+            // in it's destructor, it will turn the subsequent eglMakeCurrent into an invalid call
+            assert(_device.lock());
+            return eglMakeCurrent(_display, _dummyPBufferSurface, _dummyPBufferSurface, _deferredContext);
         } else {
             return false;
         }
@@ -485,9 +480,7 @@ namespace RenderCore { namespace ImplOpenGLES
     void ThreadContextOpenGLES::UnbindFromCurrentThread()
     {
         assert(IsBoundToCurrentThread());
-        auto d = _device.lock();
-        assert(d);
-        eglMakeCurrent(d->GetDisplay(), EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+        eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
 
     std::shared_ptr<IThreadContext> ThreadContextOpenGLES::Clone()

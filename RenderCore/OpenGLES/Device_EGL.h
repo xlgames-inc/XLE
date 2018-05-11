@@ -68,6 +68,7 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLContext _deferredContext = EGL_NO_CONTEXT;
         EGLSurface _dummyPBufferSurface = EGL_NO_SURFACE;
         unsigned _currentPresentationChainGUID;
+        EGLDisplay _display;
 
         std::shared_ptr<Metal_OpenGLES::Resource> _activeTargetRenderbuffer;
         intrusive_ptr<OpenGL::FrameBuffer> _temporaryFramebuffer;
