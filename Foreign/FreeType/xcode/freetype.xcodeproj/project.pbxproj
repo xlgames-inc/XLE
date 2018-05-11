@@ -186,6 +186,10 @@
 		8B74234EDF9B4E27997871CB /* ftheader.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftheader.h; path = include/config/ftheader.h; sourceTree = SOURCE_ROOT; };
 		8E4C757313A64580B31DBDC7 /* ftstroke.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftstroke.h; path = include/ftstroke.h; sourceTree = SOURCE_ROOT; };
 		8E964A2CD2394677BAFAFD8F /* type42.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = type42.c; path = src/type42/type42.c; sourceTree = SOURCE_ROOT; };
+		8FB4AF8A20A5284600C9F32B /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		8FB4AF8B20A5284600C9F32B /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		8FB4AF8C20A5284700C9F32B /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		8FB4AF8D20A5284700C9F32B /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
 		917674A3D46D44D6A1DC1CD1 /* ftsynth.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftsynth.h; path = include/ftsynth.h; sourceTree = SOURCE_ROOT; };
 		938D8F3EE621467685DFDFE2 /* ftstream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftstream.h; path = include/internal/ftstream.h; sourceTree = SOURCE_ROOT; };
 		943A48D02D6D4FE6A5BA1ED9 /* ftxf86.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = ftxf86.c; path = src/base/ftxf86.c; sourceTree = SOURCE_ROOT; };
@@ -200,7 +204,7 @@
 		A4C1570FCB3741D4AEC299B5 /* fterrdef.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = fterrdef.h; path = include/fterrdef.h; sourceTree = SOURCE_ROOT; };
 		A6E13B1A83B1418F9C49F2F8 /* ftlcdfil.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = ftlcdfil.c; path = src/base/ftlcdfil.c; sourceTree = SOURCE_ROOT; };
 		AB944CF0F728450FB73215EF /* ftbzip2.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = ftbzip2.c; path = src/bzip2/ftbzip2.c; sourceTree = SOURCE_ROOT; };
-		AE058C48B1394AD7B9C73CAD /* libfreetype.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libfreetype.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		AE058C48B1394AD7B9C73CAD /* libfreetype-mac.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = "libfreetype-mac.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		AF058717C60F4A03BBDB9F87 /* ftpfr.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftpfr.h; path = include/ftpfr.h; sourceTree = SOURCE_ROOT; };
 		AF31768B20A41897005F4F91 /* libfreetype-ios.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = "libfreetype-ios.a"; sourceTree = BUILT_PRODUCTS_DIR; };
 		B5C7C616E8214CBAB6A06CB5 /* smooth.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = smooth.c; path = src/smooth/smooth.c; sourceTree = SOURCE_ROOT; };
@@ -257,7 +261,7 @@
 		090330E0282A44F987885FCA /* Products */ = {
 			isa = PBXGroup;
 			children = (
-				AE058C48B1394AD7B9C73CAD /* libfreetype.a */,
+				AE058C48B1394AD7B9C73CAD /* libfreetype-mac.a */,
 				AF31768B20A41897005F4F91 /* libfreetype-ios.a */,
 			);
 			name = Products;
@@ -343,6 +347,7 @@
 		49FC82B165704679AE129977 = {
 			isa = PBXGroup;
 			children = (
+				8FB4AF8920A5281300C9F32B /* Config */,
 				54F544251447418ABD1AE2DF /* dist */,
 				05C54649B7EF406E9BBD8FBC /* freetype */,
 				6B31CF037B44444EAA232B76 /* ALL_BUILD */,
@@ -427,6 +432,17 @@
 			name = ALL_BUILD;
 			sourceTree = "<group>";
 		};
+		8FB4AF8920A5281300C9F32B /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				8FB4AF8B20A5284600C9F32B /* Core.xcconfig */,
+				8FB4AF8C20A5284700C9F32B /* CoreDebug.xcconfig */,
+				8FB4AF8A20A5284600C9F32B /* CoreRelease.xcconfig */,
+				8FB4AF8D20A5284700C9F32B /* CoreWarnings.xcconfig */,
+			);
+			path = Config;
+			sourceTree = "<group>";
+		};
 		9BF53758ECA84E138503DAB8 /* CMake Rules */ = {
 			isa = PBXGroup;
 			children = (
@@ -456,7 +472,7 @@
 			);
 			name = "freetype-mac";
 			productName = freetype;
-			productReference = AE058C48B1394AD7B9C73CAD /* libfreetype.a */;
+			productReference = AE058C48B1394AD7B9C73CAD /* libfreetype-mac.a */;
 			productType = "com.apple.product-type.library.static";
 		};
 		AF31765020A41897005F4F91 /* freetype-ios */ = {
@@ -622,383 +638,91 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
-		141F3C7503BF46C2B915AD87 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SYMROOT = "$(PROJECT_DIR)/xcode/build";
-			};
-			name = RelWithDebInfo;
-		};
-		3D719ECA640F47B2A657344A /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SYMROOT = "$(PROJECT_DIR)/xcode/build";
-			};
-			name = MinSizeRel;
-		};
-		67392A660797479FBEB63DE7 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 2;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "       -DNDEBUG  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = freetype;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
-			};
-			name = RelWithDebInfo;
-		};
 		97A2F69A84D248ADA2FA938C /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
-				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "    ";
-				OTHER_LIBTOOLFLAGS = " ";
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = freetype;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Debug;
-		};
-		9FDB52811B2741948897FC2C /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = s;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "    -DNDEBUG  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = freetype;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
-			};
-			name = MinSizeRel;
 		};
 		AF31768720A41897005F4F91 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 0;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "    ";
-				OTHER_LIBTOOLFLAGS = " ";
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
+				SDKROOT = iphoneos;
 			};
 			name = Debug;
 		};
 		AF31768820A41897005F4F91 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
 				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "    -DNDEBUG  ";
-				OTHER_LIBTOOLFLAGS = " ";
 				OTHER_REZFLAGS = "";
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
+				SDKROOT = iphoneos;
 			};
 			name = Release;
-		};
-		AF31768920A41897005F4F91 /* MinSizeRel */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = s;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "    -DNDEBUG  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
-			};
-			name = MinSizeRel;
-		};
-		AF31768A20A41897005F4F91 /* RelWithDebInfo */ = {
-			isa = XCBuildConfiguration;
-			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = YES;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 2;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
-				INSTALL_PATH = "";
-				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "       -DNDEBUG  ";
-				OTHER_LIBTOOLFLAGS = " ";
-				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = "$(TARGET_NAME)";
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
-			};
-			name = RelWithDebInfo;
 		};
 		C805B964FF4746DE8E5F98BF /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
-				COMBINE_HIDPI_IMAGES = YES;
-				EXECUTABLE_PREFIX = lib;
-				EXECUTABLE_SUFFIX = .a;
-				GCC_GENERATE_DEBUGGING_SYMBOLS = NO;
-				GCC_INLINES_ARE_PRIVATE_EXTERN = NO;
-				GCC_OPTIMIZATION_LEVEL = 3;
-				GCC_PREPROCESSOR_DEFINITIONS = (
-					"'CMAKE_INTDIR=\"$(CONFIGURATION)$(EFFECTIVE_PLATFORM_NAME)\"'",
-					FT2_BUILD_LIBRARY,
-				);
-				GCC_SYMBOLS_PRIVATE_EXTERN = NO;
-				HEADER_SEARCH_PATHS = (
-					"$(PROJECT_DIR)/xcode/include/freetype2",
-					"$(PROJECT_DIR)/include",
-					"$(PROJECT_DIR)/src/truetype",
-					"$(PROJECT_DIR)/src/sfnt",
-					"$(PROJECT_DIR)/src/autofit",
-					"$(PROJECT_DIR)/src/smooth",
-					"$(PROJECT_DIR)/src/raster",
-					"$(PROJECT_DIR)/src/psaux",
-					"$(PROJECT_DIR)/src/psnames",
-				);
-				INSTALL_PATH = "";
 				LIBRARY_STYLE = STATIC;
-				OTHER_CFLAGS = "    -DNDEBUG  ";
-				OTHER_LIBTOOLFLAGS = " ";
 				OTHER_REZFLAGS = "";
-				PRODUCT_NAME = freetype;
-				SECTORDER_FLAGS = "";
-				SYMROOT = "$(PROJECT_DIR)/xcode";
-				USE_HEADERMAP = NO;
-				WARNING_CFLAGS = (
-					"-Wmost",
-					"-Wno-four-char-constants",
-					"-Wno-unknown-pragmas",
-					"$(inherited)",
-				);
+				PRODUCT_NAME = "$(TARGET_NAME)";
 			};
 			name = Release;
 		};
 		C9D4B8869FB4401FB4657DFB /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8FB4AF8C20A5284700C9F32B /* CoreDebug.xcconfig */;
 			buildSettings = {
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SYMROOT = "$(PROJECT_DIR)/xcode/build";
+				GCC_PREPROCESSOR_DEFINITIONS = FT2_BUILD_LIBRARY;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../..",
+					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/eigen",
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
+				);
 			};
 			name = Debug;
 		};
 		E863791260C04ECEA6BF2193 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 8FB4AF8A20A5284600C9F32B /* CoreRelease.xcconfig */;
 			buildSettings = {
-				ONLY_ACTIVE_ARCH = YES;
-				SDKROOT = iphoneos;
-				SYMROOT = "$(PROJECT_DIR)/xcode/build";
+				GCC_PREPROCESSOR_DEFINITIONS = FT2_BUILD_LIBRARY;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
+				HEADER_SEARCH_PATHS = (
+					"$(inherited)",
+					"$(PROJECT_DIR)/../..",
+					"$(PROJECT_DIR)/../../Foreign/cml-1_0_2",
+					"$(PROJECT_DIR)/../../Foreign/eigen",
+					"$(PROJECT_DIR)/xcode/include/freetype2",
+					"$(PROJECT_DIR)/include",
+					"$(PROJECT_DIR)/src/truetype",
+					"$(PROJECT_DIR)/src/sfnt",
+					"$(PROJECT_DIR)/src/autofit",
+					"$(PROJECT_DIR)/src/smooth",
+					"$(PROJECT_DIR)/src/raster",
+					"$(PROJECT_DIR)/src/psaux",
+					"$(PROJECT_DIR)/src/psnames",
+				);
 			};
 			name = Release;
 		};
@@ -1010,33 +734,27 @@
 			buildConfigurations = (
 				97A2F69A84D248ADA2FA938C /* Debug */,
 				C805B964FF4746DE8E5F98BF /* Release */,
-				9FDB52811B2741948897FC2C /* MinSizeRel */,
-				67392A660797479FBEB63DE7 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		AF31768620A41897005F4F91 /* Build configuration list for PBXNativeTarget "freetype-ios" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				AF31768720A41897005F4F91 /* Debug */,
 				AF31768820A41897005F4F91 /* Release */,
-				AF31768920A41897005F4F91 /* MinSizeRel */,
-				AF31768A20A41897005F4F91 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 		D9D07C41161F43F3A9597868 /* Build configuration list for PBXProject "freetype" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (
 				C9D4B8869FB4401FB4657DFB /* Debug */,
 				E863791260C04ECEA6BF2193 /* Release */,
-				3D719ECA640F47B2A657344A /* MinSizeRel */,
-				141F3C7503BF46C2B915AD87 /* RelWithDebInfo */,
 			);
 			defaultConfigurationIsVisible = 0;
-			defaultConfigurationName = Debug;
+			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
 	};
