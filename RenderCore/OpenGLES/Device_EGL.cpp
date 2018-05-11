@@ -343,7 +343,6 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!deviceStrong) {
             Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
         }
-        auto &device = *deviceStrong;
         if (_activeTargetRenderbuffer) {
             // if _activeTargetRenderbuffer is not marked as the back buffer, it means we're
             // in fake-back-buffer mode. In this case, we must copy the contents to the
