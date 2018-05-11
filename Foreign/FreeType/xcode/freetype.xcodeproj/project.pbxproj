@@ -186,10 +186,6 @@
 		8B74234EDF9B4E27997871CB /* ftheader.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftheader.h; path = include/config/ftheader.h; sourceTree = SOURCE_ROOT; };
 		8E4C757313A64580B31DBDC7 /* ftstroke.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftstroke.h; path = include/ftstroke.h; sourceTree = SOURCE_ROOT; };
 		8E964A2CD2394677BAFAFD8F /* type42.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = type42.c; path = src/type42/type42.c; sourceTree = SOURCE_ROOT; };
-		8FB4AF8A20A5284600C9F32B /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
-		8FB4AF8B20A5284600C9F32B /* Core.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
-		8FB4AF8C20A5284700C9F32B /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
-		8FB4AF8D20A5284700C9F32B /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
 		917674A3D46D44D6A1DC1CD1 /* ftsynth.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftsynth.h; path = include/ftsynth.h; sourceTree = SOURCE_ROOT; };
 		938D8F3EE621467685DFDFE2 /* ftstream.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftstream.h; path = include/internal/ftstream.h; sourceTree = SOURCE_ROOT; };
 		943A48D02D6D4FE6A5BA1ED9 /* ftxf86.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = ftxf86.c; path = src/base/ftxf86.c; sourceTree = SOURCE_ROOT; };
@@ -211,6 +207,10 @@
 		B669FBF5EF4946F8BB7A6C5F /* ftutil.c */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.c; fileEncoding = 4; name = ftutil.c; path = src/base/ftutil.c; sourceTree = SOURCE_ROOT; };
 		B8E57380913C4F6983BA1CDA /* ftstdlib.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftstdlib.h; path = include/config/ftstdlib.h; sourceTree = SOURCE_ROOT; };
 		B98B802F23B948BAB0215EA2 /* fttrigon.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = fttrigon.h; path = include/fttrigon.h; sourceTree = SOURCE_ROOT; };
+		BED6018D20A61987006BDC01 /* Core.xcconfig */ = {isa = PBXFileReference; lastKnownFileType = text.xcconfig; name = Core.xcconfig; path = ../../Solutions/Core.xcconfig; sourceTree = "<group>"; };
+		BED6018E20A619D7006BDC01 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
+		BED6018F20A619D7006BDC01 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
+		BED6019020A619D7006BDC01 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
 		C18AFA124D454735BD6AC726 /* ftpic.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftpic.h; path = include/internal/ftpic.h; sourceTree = SOURCE_ROOT; };
 		C23C7B5B625D4560BE7878CC /* ftautoh.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftautoh.h; path = include/ftautoh.h; sourceTree = SOURCE_ROOT; };
 		C3A542FF76E74E52AD2A4F34 /* ftmodapi.h */ = {isa = PBXFileReference; explicitFileType = sourcecode.c.h; fileEncoding = 4; name = ftmodapi.h; path = include/ftmodapi.h; sourceTree = SOURCE_ROOT; };
@@ -347,7 +347,7 @@
 		49FC82B165704679AE129977 = {
 			isa = PBXGroup;
 			children = (
-				8FB4AF8920A5281300C9F32B /* Config */,
+				BED6018C20A6197C006BDC01 /* Config */,
 				54F544251447418ABD1AE2DF /* dist */,
 				05C54649B7EF406E9BBD8FBC /* freetype */,
 				6B31CF037B44444EAA232B76 /* ALL_BUILD */,
@@ -432,22 +432,22 @@
 			name = ALL_BUILD;
 			sourceTree = "<group>";
 		};
-		8FB4AF8920A5281300C9F32B /* Config */ = {
-			isa = PBXGroup;
-			children = (
-				8FB4AF8B20A5284600C9F32B /* Core.xcconfig */,
-				8FB4AF8C20A5284700C9F32B /* CoreDebug.xcconfig */,
-				8FB4AF8A20A5284600C9F32B /* CoreRelease.xcconfig */,
-				8FB4AF8D20A5284700C9F32B /* CoreWarnings.xcconfig */,
-			);
-			path = Config;
-			sourceTree = "<group>";
-		};
 		9BF53758ECA84E138503DAB8 /* CMake Rules */ = {
 			isa = PBXGroup;
 			children = (
 			);
 			name = "CMake Rules";
+			sourceTree = "<group>";
+		};
+		BED6018C20A6197C006BDC01 /* Config */ = {
+			isa = PBXGroup;
+			children = (
+				BED6018D20A61987006BDC01 /* Core.xcconfig */,
+				BED6018F20A619D7006BDC01 /* CoreDebug.xcconfig */,
+				BED6018E20A619D7006BDC01 /* CoreRelease.xcconfig */,
+				BED6019020A619D7006BDC01 /* CoreWarnings.xcconfig */,
+			);
+			name = Config;
 			sourceTree = "<group>";
 		};
 		E57F2B6ECF204D39A9E9D9A8 /* CMake Rules */ = {
@@ -680,7 +680,7 @@
 		};
 		C9D4B8869FB4401FB4657DFB /* Debug */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8FB4AF8C20A5284700C9F32B /* CoreDebug.xcconfig */;
+			baseConfigurationReference = BED6018F20A619D7006BDC01 /* CoreDebug.xcconfig */;
 			buildSettings = {
 				GCC_PREPROCESSOR_DEFINITIONS = FT2_BUILD_LIBRARY;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
@@ -704,7 +704,7 @@
 		};
 		E863791260C04ECEA6BF2193 /* Release */ = {
 			isa = XCBuildConfiguration;
-			baseConfigurationReference = 8FB4AF8A20A5284600C9F32B /* CoreRelease.xcconfig */;
+			baseConfigurationReference = BED6018E20A619D7006BDC01 /* CoreRelease.xcconfig */;
 			buildSettings = {
 				GCC_PREPROCESSOR_DEFINITIONS = FT2_BUILD_LIBRARY;
 				GCC_WARN_64_TO_32_BIT_CONVERSION = NO;
