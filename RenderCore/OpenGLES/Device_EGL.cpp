@@ -52,7 +52,7 @@ namespace RenderCore { namespace ImplOpenGLES
         configAttribs.push_back(EGL_DEPTH_SIZE); configAttribs.push_back(24);
         configAttribs.push_back(EGL_STENCIL_SIZE); configAttribs.push_back(8);
         configAttribs.push_back(EGL_SAMPLE_BUFFERS); configAttribs.push_back(msaaSamples._sampleCount > 1 ? 1 : 0);
-        configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back(msaaSamples._sampleCount);
+        configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back(msaaSamples._sampleCount > 1 ? msaaSamples._sampleCount : 0);
         configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
 
         EGLConfig config;
@@ -226,11 +226,12 @@ namespace RenderCore { namespace ImplOpenGLES
         _surface = eglCreateWindowSurface(display, *config, EGLNativeWindowType(platformValue), surfaceAttribList);
         if (_surface == EGL_NO_SURFACE) {
             auto error = eglGetError();
-            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface %x", error));
+            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: %x", error));
         }
 
         if (!eglMakeCurrent(display, _surface, _surface, eglContext)) {
-            Throw(::Exceptions::BasicLabel("Failure making EGL window surface current"));
+            auto error = eglGetError();
+            Throw(::Exceptions::BasicLabel("Failure making EGL window surface current with error: %x", error));
         }
 
         Metal_OpenGLES::CheckGLError("End of PresentationChain constructor");
@@ -468,7 +469,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (_deferredContext != EGL_NO_CONTEXT) {
             // Ensure that the IDevice is still alive. If you hit this assert, it means that the device
             // may have been destroyed before this call was made. Since the device cleans up _display
-            // in it's destructor, it will turn the subsequent eglMakeCurrent into an invalid call
+            // in its destructor, it will turn the subsequent eglMakeCurrent into an invalid call
             assert(_device.lock());
             return eglMakeCurrent(_display, _dummyPBufferSurface, _dummyPBufferSurface, _deferredContext);
         } else {
