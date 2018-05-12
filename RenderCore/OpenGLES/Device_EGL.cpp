@@ -8,16 +8,17 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
+#include "../../Utility/BitUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <iostream>
+#include <sstream>
 #include <assert.h>
+#include <experimental/optional>
 #include "Metal/IncludeGLES.h"
 
 namespace RenderCore { namespace ImplOpenGLES
 {
-    static unsigned s_glesVersion = 300u; // always assume this version of GLES
-
     static Metal_OpenGLES::FeatureSet::BitField AsGLESFeatureSet(unsigned glesVersion)
     {
         Metal_OpenGLES::FeatureSet::BitField featureSet = 0;
@@ -40,7 +41,268 @@ namespace RenderCore { namespace ImplOpenGLES
         return featureSet;
     }
 
-    static EGLConfig GetEGLSurfaceConfig(EGLDisplay display, Format colorFormat = Format::R8G8B8_UNORM, TextureSamples msaaSamples = TextureSamples::Create(0, 0))
+//////////////////////////////////////////////////////////////////////////////////////////////////
+
+    const char* ConfigAttributeToName(EGLint attribute)
+    {
+        switch (attribute) {
+        case EGL_ALPHA_SIZE: return "EGL_ALPHA_SIZE";
+        case EGL_ALPHA_MASK_SIZE: return "EGL_ALPHA_MASK_SIZE";
+        case EGL_BIND_TO_TEXTURE_RGB: return "EGL_BIND_TO_TEXTURE_RGB";
+        case EGL_BIND_TO_TEXTURE_RGBA: return "EGL_BIND_TO_TEXTURE_RGBA";
+        case EGL_BLUE_SIZE: return "EGL_BLUE_SIZE";
+        case EGL_BUFFER_SIZE: return "EGL_BUFFER_SIZE";
+        case EGL_COLOR_BUFFER_TYPE: return "EGL_COLOR_BUFFER_TYPE";
+        case EGL_CONFIG_CAVEAT: return "EGL_CONFIG_CAVEAT";
+        case EGL_CONFIG_ID: return "EGL_CONFIG_ID";
+        case EGL_CONFORMANT: return "EGL_CONFORMANT";
+        case EGL_DEPTH_SIZE: return "EGL_DEPTH_SIZE";
+        case EGL_GREEN_SIZE: return "EGL_GREEN_SIZE";
+        case EGL_LEVEL: return "EGL_LEVEL";
+        case EGL_LUMINANCE_SIZE: return "EGL_LUMINANCE_SIZE";
+        case EGL_MAX_PBUFFER_WIDTH: return "EGL_MAX_PBUFFER_WIDTH";
+        case EGL_MAX_PBUFFER_HEIGHT: return "EGL_MAX_PBUFFER_HEIGHT";
+        case EGL_MAX_PBUFFER_PIXELS: return "EGL_MAX_PBUFFER_PIXELS";
+        case EGL_MAX_SWAP_INTERVAL: return "EGL_MAX_SWAP_INTERVAL";
+        case EGL_MIN_SWAP_INTERVAL: return "EGL_MIN_SWAP_INTERVAL";
+        case EGL_NATIVE_RENDERABLE: return "EGL_NATIVE_RENDERABLE";
+        case EGL_NATIVE_VISUAL_ID: return "EGL_NATIVE_VISUAL_ID";
+        case EGL_NATIVE_VISUAL_TYPE: return "EGL_NATIVE_VISUAL_TYPE";
+        case EGL_RED_SIZE: return "EGL_RED_SIZE";
+        case EGL_RENDERABLE_TYPE: return "EGL_RENDERABLE_TYPE";
+        case EGL_SAMPLE_BUFFERS: return "EGL_SAMPLE_BUFFERS";
+        case EGL_SAMPLES: return "EGL_SAMPLES";
+        case EGL_STENCIL_SIZE: return "EGL_STENCIL_SIZE";
+        case EGL_SURFACE_TYPE: return "EGL_SURFACE_TYPE";
+        case EGL_TRANSPARENT_TYPE: return "EGL_TRANSPARENT_TYPE";
+        case EGL_TRANSPARENT_RED_VALUE: return "EGL_TRANSPARENT_RED_VALUE";
+        case EGL_TRANSPARENT_GREEN_VALUE: return "EGL_TRANSPARENT_GREEN_VALUE";
+        case EGL_TRANSPARENT_BLUE_VALUE: return "EGL_TRANSPARENT_BLUE_VALUE";
+        default: return "<<unknown>>";
+        }
+    }
+
+    const char* ErrorToName(EGLint errorCode)
+    {
+        switch (errorCode) {
+        case EGL_SUCCESS: return "EGL_SUCCESS";
+        case EGL_NOT_INITIALIZED: return "EGL_NOT_INITIALIZED";
+        case EGL_BAD_ACCESS: return "EGL_BAD_ACCESS";
+        case EGL_BAD_ALLOC: return "EGL_BAD_ALLOC";
+        case EGL_BAD_ATTRIBUTE: return "EGL_BAD_ATTRIBUTE";
+        case EGL_BAD_CONTEXT: return "EGL_BAD_CONTEXT";
+        case EGL_BAD_CONFIG: return "EGL_BAD_CONFIG";
+        case EGL_BAD_CURRENT_SURFACE: return "EGL_BAD_CURRENT_SURFACE";
+        case EGL_BAD_DISPLAY: return "EGL_BAD_DISPLAY";
+        case EGL_BAD_SURFACE: return "EGL_BAD_SURFACE";
+        case EGL_BAD_MATCH: return "EGL_BAD_MATCH";
+        case EGL_BAD_PARAMETER: return "EGL_BAD_PARAMETER";
+        case EGL_BAD_NATIVE_PIXMAP: return "EGL_BAD_NATIVE_PIXMAP";
+        case EGL_BAD_NATIVE_WINDOW: return "EGL_BAD_NATIVE_WINDOW";
+        case EGL_CONTEXT_LOST: return "EGL_CONTEXT_LOST";
+        default: return "<<unknown>>";
+        }
+    }
+
+    template<typename Stream, typename Type>
+        Stream& StreamConfigAttrib(Stream& str, EGLDisplay display, EGLConfig cfg, EGLint attribute, Type toStringFn)
+    {
+        EGLint value = 0;
+        auto successful = eglGetConfigAttrib(display, cfg, attribute, &value);
+        if (successful) {
+            str << "[" << ConfigAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
+        } else {
+            str << "Failed querying attribute: (" << ConfigAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
+        }
+        return str;
+    }
+
+    namespace Conv
+    {
+        static std::string IntToString(EGLint i) { return std::to_string(i); }
+        static std::string HexIntToString(EGLint i) { char buffer[32]; XlI32toA(i, buffer, dimof(buffer), 16); return "0x" + std::string(buffer); }
+        static std::string BoolToString(EGLint i) { return i ? "true" : "false"; }
+
+        static std::string RenderableTypeBitsToString(EGLint renderableTypeBits)
+        {
+            std::pair<unsigned, const char*> bitNames[] =  {
+                { IntegerLog2(uint32_t(EGL_OPENGL_ES_BIT)), "EGL_OPENGL_ES_BIT" },
+                { IntegerLog2(uint32_t(EGL_OPENVG_BIT)), "EGL_OPENVG_BIT" },
+                { IntegerLog2(uint32_t(EGL_OPENGL_ES2_BIT)), "EGL_OPENGL_ES2_BIT" },
+                { IntegerLog2(uint32_t(EGL_OPENGL_ES3_BIT)), "EGL_OPENGL_ES3_BIT" },
+                { IntegerLog2(uint32_t(EGL_OPENGL_BIT)), "EGL_OPENGL_BIT" }
+            };
+            std::stringstream str;
+            bool started = false;
+            for (unsigned c=0; c<32; ++c) {
+                if (!(renderableTypeBits & (1<<c))) continue;
+                if (started)
+                    str << " | ";
+                bool gotBitName = false;
+                for (auto& n:bitNames) {
+                    if (n.first == c) {
+                        str << n.second;
+                        started = gotBitName = true;
+                        break;
+                    }
+                }
+
+                if (!gotBitName)
+                    str << HexIntToString(1<<c);
+            }
+            return str.str();
+        }
+
+        static std::string SurfaceTypeBitsToString(EGLint surfaceTypeBits)
+        {
+            std::pair<unsigned, const char*> bitNames[] =  {
+                { IntegerLog2(uint32_t(EGL_PBUFFER_BIT)), "EGL_PBUFFER_BIT" },
+                { IntegerLog2(uint32_t(EGL_PIXMAP_BIT)), "EGL_PIXMAP_BIT" },
+                { IntegerLog2(uint32_t(EGL_WINDOW_BIT)), "EGL_WINDOW_BIT" },
+                { IntegerLog2(uint32_t(EGL_VG_COLORSPACE_LINEAR_BIT)), "EGL_VG_COLORSPACE_LINEAR_BIT" },
+                { IntegerLog2(uint32_t(EGL_VG_ALPHA_FORMAT_PRE_BIT)), "EGL_VG_ALPHA_FORMAT_PRE_BIT" },
+                { IntegerLog2(uint32_t(EGL_MULTISAMPLE_RESOLVE_BOX_BIT)), "EGL_MULTISAMPLE_RESOLVE_BOX_BIT" },
+                { IntegerLog2(uint32_t(EGL_SWAP_BEHAVIOR_PRESERVED_BIT)), "EGL_SWAP_BEHAVIOR_PRESERVED_BIT" }
+            };
+            std::stringstream str;
+            bool started = false;
+            for (unsigned c=0; c<32; ++c) {
+                if (!(surfaceTypeBits & (1<<c))) continue;
+                if (started)
+                    str << " | ";
+                bool gotBitName = false;
+                for (auto& n:bitNames) {
+                    if (n.first == c) {
+                        str << n.second;
+                        started = gotBitName = true;
+                        break;
+                    }
+                }
+
+                if (!gotBitName)
+                    str << HexIntToString(1<<c);
+            }
+            return str.str();
+        }
+    }
+
+    template<typename Stream>
+        Stream& StreamConfig(Stream&& str, EGLDisplay display, EGLConfig cfg)
+    {
+        StreamConfigAttrib(str, display, cfg, EGL_ALPHA_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_ALPHA_MASK_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_BIND_TO_TEXTURE_RGB, Conv::BoolToString);
+        StreamConfigAttrib(str, display, cfg, EGL_BIND_TO_TEXTURE_RGBA, Conv::BoolToString);
+        StreamConfigAttrib(str, display, cfg, EGL_BLUE_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_BUFFER_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_COLOR_BUFFER_TYPE, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_RGB_BUFFER: return "EGL_RGB_BUFFER";
+            case EGL_LUMINANCE_BUFFER: return "EGL_LUMINANCE_BUFFER";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamConfigAttrib(str, display, cfg, EGL_CONFIG_CAVEAT, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_NONE: return "EGL_NONE";
+            case EGL_SLOW_CONFIG: return "EGL_SLOW_CONFIG";
+            #if defined(EGL_NON_CONFORMANT_CONFIG)
+                case EGL_NON_CONFORMANT_CONFIG:  return "EGL_NON_CONFORMANT_CONFIG";        // (from our headers)
+            #endif
+            #if defined(EGL_NON_CONFORMANT)
+                case EGL_NON_CONFORMANT: return "EGL_NON_CONFORMANT";                    // (from the spec)
+            #endif
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamConfigAttrib(str, display, cfg, EGL_CONFIG_ID, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_CONFORMANT, Conv::RenderableTypeBitsToString);
+        StreamConfigAttrib(str, display, cfg, EGL_DEPTH_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_GREEN_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_LEVEL, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_LUMINANCE_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_MAX_PBUFFER_WIDTH, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_MAX_PBUFFER_HEIGHT, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_MAX_PBUFFER_PIXELS, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_MAX_SWAP_INTERVAL, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_MIN_SWAP_INTERVAL, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_NATIVE_RENDERABLE, Conv::BoolToString);
+        StreamConfigAttrib(str, display, cfg, EGL_NATIVE_VISUAL_ID, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_NATIVE_VISUAL_TYPE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_RED_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_RENDERABLE_TYPE, Conv::RenderableTypeBitsToString);
+        StreamConfigAttrib(str, display, cfg, EGL_SAMPLE_BUFFERS, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_SAMPLES, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_STENCIL_SIZE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_SURFACE_TYPE, Conv::SurfaceTypeBitsToString);
+        StreamConfigAttrib(str, display, cfg, EGL_TRANSPARENT_TYPE, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_TRANSPARENT_RGB: return "EGL_TRANSPARENT_RGB";
+            case EGL_NONE: return "EGL_NONE";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamConfigAttrib(str, display, cfg, EGL_TRANSPARENT_RED_VALUE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_TRANSPARENT_GREEN_VALUE, Conv::IntToString);
+        StreamConfigAttrib(str, display, cfg, EGL_TRANSPARENT_BLUE_VALUE, Conv::IntToString);
+
+
+        return str;
+    }
+
+    template<typename Stream>
+        Stream& StreamConfigs(Stream&& str, EGLDisplay display)
+    {
+        EGLint configCount = 0;
+        if (!eglGetConfigs(display, nullptr, 0, &configCount)) {
+            str << "Failure getting config count for display (" << ErrorToName(eglGetError()) << ")" << std::endl;
+            return str;
+        }
+
+        std::vector<EGLConfig> configs(configCount);
+        if (!eglGetConfigs(display, configs.data(), configCount, &configCount)) {
+            str << "Failure getting configs for display (" << ErrorToName(eglGetError()) << ")" << std::endl;
+            return str;
+        }
+        str << "Got (" << configs.size() << ") EGL configs" << std::endl;
+        for (auto c=configs.begin(); c!=configs.end(); ++c) {
+            str << "----[" << std::distance(configs.begin(), c) << "]----" << std::endl;
+            StreamConfig(str, display, *c);
+        }
+        return str;
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static std::experimental::optional<EGLConfig> TryGetEGLSharedConfig(EGLDisplay display)
+    {
+        EGLint renderableTypesToCheck[] = {
+            EGL_OPENGL_ES3_BIT, EGL_OPENGL_ES2_BIT
+        };
+
+        // Select a configuration to use for the "shared" starter context
+
+        for (unsigned c=0; c<dimof(renderableTypesToCheck); ++c) {
+            std::vector<EGLint> configAttribs;
+            // Note that by requesting a conformant configuration, and setting EGL_CONFIG_CAVEAT to none,
+            // we're specific requesting a conformant API
+            configAttribs.push_back(EGL_RENDERABLE_TYPE); configAttribs.push_back(renderableTypesToCheck[c]);
+            configAttribs.push_back(EGL_CONFORMANT); configAttribs.push_back(renderableTypesToCheck[c]);
+            // configAttribs.push_back(EGL_SURFACE_TYPE); configAttribs.push_back(EGL_PBUFFER_BIT);
+            configAttribs.push_back(EGL_CONFIG_CAVEAT); configAttribs.push_back(EGL_NONE);
+            configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
+
+            EGLConfig config;
+            EGLint numConfigs = 0;
+            auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), &config, 1, &numConfigs);
+            if (chooseConfigResult && numConfigs == 1) {
+                return config;
+            }
+        }
+
+        return {};
+    }
+
+    static std::experimental::optional<EGLConfig> TryGetEGLSurfaceConfig(
+        EGLDisplay display, EGLint renderableType, Format colorFormat = Format::R8G8B8_UNORM,
+        TextureSamples msaaSamples = TextureSamples::Create(0, 0))
     {
         assert(colorFormat == Format::R8G8B8_UNORM);
 
@@ -53,34 +315,64 @@ namespace RenderCore { namespace ImplOpenGLES
         configAttribs.push_back(EGL_STENCIL_SIZE); configAttribs.push_back(8);
         configAttribs.push_back(EGL_SAMPLE_BUFFERS); configAttribs.push_back(msaaSamples._sampleCount > 1 ? 1 : 0);
         configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back(msaaSamples._sampleCount > 1 ? msaaSamples._sampleCount : 0);
+        configAttribs.push_back(EGL_RENDERABLE_TYPE); configAttribs.push_back(renderableType);
+        configAttribs.push_back(EGL_SURFACE_TYPE); configAttribs.push_back(EGL_WINDOW_BIT);
         configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
 
         EGLConfig config;
-        EGLint numConfigs;
-        if (!eglChooseConfig(display, configAttribs.data(), &config, 1, &numConfigs)) {
-            Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig"));
+        EGLint numConfigs = 0;
+        auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), &config, 1, &numConfigs);
+        if (chooseConfigResult && numConfigs == 1)
+            return config;
+
+        if (!chooseConfigResult) {
+            Log(Error) << "eglChooseConfig returned error code with error: (" << ErrorToName(eglGetError()) << ")" << std::endl;
         }
 
-        return config;
+        return {};
     }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static unsigned RenderableTypeAsGLESVersion(unsigned renderableType)
+    {
+        if (renderableType&EGL_OPENGL_ES3_BIT) return 300;
+        if (renderableType&EGL_OPENGL_ES2_BIT) return 200;
+        if (renderableType&EGL_OPENGL_ES_BIT) return 100;
+        return 0;
+    }
 
     Device::Device()
     {
         // Create EGL display object
         _display = eglGetDisplay(EGL_DEFAULT_DISPLAY);
         if (_display == EGL_NO_DISPLAY) {
-            Throw(::Exceptions::BasicLabel("Failure while creating _display"));
+            Throw(::Exceptions::BasicLabel("Failure while get EGL display (%s)", ErrorToName(eglGetError())));
         }
 
         EGLint majorVersion = 0, minorVersion = 0;
         if (!eglInitialize(_display, &majorVersion, &minorVersion)) {
-            Throw(::Exceptions::BasicLabel("Failure while initalizing _display"));
+            Throw(::Exceptions::BasicLabel("Failure while initializing EGL display (%s)", ErrorToName(eglGetError())));
         }
 
+        StreamConfigs(Log(Warning), _display);
+
         // Build default EGL surface config
-        _config = GetEGLSurfaceConfig(_display);
+        auto config = TryGetEGLSharedConfig(_display);
+        if (!config) {
+            Throw(::Exceptions::BasicLabel("Could not select a valid configuration while starting OpenGL"));
+        }
+        EGLint apiRes = 0;
+        bool res = eglGetConfigAttrib(_display, config.value(), EGL_RENDERABLE_TYPE, &apiRes);
+        assert(res);
+        if (!(apiRes&EGL_OPENGL_ES3_BIT)) {
+            Throw(::Exceptions::BasicLabel("Device does not support OpenGLES3.0"));
+        }
+
+        Log(Warning) << "Immediate context selected config:" << std::endl;
+        StreamConfig(Log(Warning), _display, config.value());
+
+        _config = config.value();
 
         // Collect version information, useful for reporting to the log file
         #if defined(_DEBUG)
@@ -92,13 +384,14 @@ namespace RenderCore { namespace ImplOpenGLES
         #endif
 
         // Build the immediate context
-        EGLint contextAttribs[] = { EGL_CONTEXT_CLIENT_VERSION, 3, EGL_NONE, EGL_NONE };
+        EGLint contextAttribs[] = {
+            EGL_CONTEXT_CLIENT_VERSION, RenderableTypeAsGLESVersion(apiRes) / 100,
+            EGL_NONE, EGL_NONE
+        };
         _sharedContext = eglCreateContext(_display, _config, EGL_NO_CONTEXT, contextAttribs);
         if (_sharedContext == EGL_NO_CONTEXT) {
-            Throw(::Exceptions::BasicLabel("Failure while creating the immediate context"));
+            Throw(::Exceptions::BasicLabel("Failure while creating the immediate context (%s)", ErrorToName(eglGetError())));
         }
-
-        Metal_OpenGLES::CheckGLError("End of Device constructor");
     }
 
     Device::~Device()
@@ -110,15 +403,23 @@ namespace RenderCore { namespace ImplOpenGLES
         }
     }
 
+    unsigned Device::GetGLESVersion() const
+    {
+        EGLint renderableType = 0;
+        bool res = eglGetConfigAttrib(_display, _config, EGL_RENDERABLE_TYPE, &renderableType);
+        assert(res);
+        return RenderableTypeAsGLESVersion(renderableType);
+    }
+
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc)
     {
-        auto result = std::make_unique<PresentationChain>(_sharedContext, _display, &_config, platformWindowHandle, desc);
+        auto result = std::make_unique<PresentationChain>(_display, _sharedContext, _config, platformWindowHandle, desc);
         // We can only construct the object factory after the first presentation chain is created. This is because
         // we can't call eglMakeCurrent until at least one presentation chain has been constructed; and we can't
         // call any opengl functions until we call eglMakeCurrent. In particular, we can't call glGetString(), which is
         // required to calculate the feature set used to construct the object factory.
         if (!_objectFactory) {
-            auto featureSet = AsGLESFeatureSet(s_glesVersion);
+            auto featureSet = AsGLESFeatureSet(GetGLESVersion());
             _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
         }
 
@@ -130,7 +431,7 @@ namespace RenderCore { namespace ImplOpenGLES
         // We can construct the object factory before creating the first presentation chain if we're not on Android.
         #if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
             if (!_objectFactory) {
-                auto featureSet = AsGLESFeatureSet(s_glesVersion);
+                auto featureSet = AsGLESFeatureSet(GetGLESVersion());
                 _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
             }
         #endif
@@ -210,40 +511,63 @@ namespace RenderCore { namespace ImplOpenGLES
 
     static unsigned s_nextPresentationChainGUID = 1;
 
-    PresentationChain::PresentationChain(EGLContext eglContext, EGLDisplay display, EGLConfig *config, const void* platformValue, const PresentationChainDesc& desc)
+    PresentationChain::PresentationChain(EGLDisplay display, EGLContext sharedContext, EGLConfig sharedContextCfg, const void* platformValue, const PresentationChainDesc& desc)
     {
         Metal_OpenGLES::CheckGLError("Start of PresentationChain constructor");
 
         _guid = s_nextPresentationChainGUID++;
         _desc = std::make_shared<PresentationChainDesc>(desc);
+        _display = display;
+
+        EGLint renderableType = 0;
+        bool res = eglGetConfigAttrib(display, sharedContextCfg, EGL_RENDERABLE_TYPE, &renderableType);
+        assert(res);
 
         // Create a new EGLConfig based on format requested by presentation chain, then update the Device::_config
-        *config = GetEGLSurfaceConfig(display, desc._format, desc._samples);
+        auto config = TryGetEGLSurfaceConfig(display, renderableType, desc._format, desc._samples);
+        if (!config) {
+            Throw(::Exceptions::BasicLabel("Could not select valid configuration for presentation chain"));
+        }
+
+        Log(Warning) << "Presentation chain selected config:" << std::endl;
+        StreamConfig(Log(Warning), display, config.value());
 
         // Create the main output surface
         // This must be tied to the window in Win32 -- so we can't begin construction of this until we build the presentation chain.
-        const EGLint surfaceAttribList[] = { EGL_RENDER_BUFFER, EGL_BACK_BUFFER, EGL_NONE, EGL_NONE};
-        _surface = eglCreateWindowSurface(display, *config, EGLNativeWindowType(platformValue), surfaceAttribList);
+        const EGLint surfaceAttribList[] = { EGL_RENDER_BUFFER, EGL_BACK_BUFFER, EGL_NONE, EGL_NONE };
+        _surface = eglCreateWindowSurface(display, config.value(), EGLNativeWindowType(platformValue), surfaceAttribList);
         if (_surface == EGL_NO_SURFACE) {
-            auto error = eglGetError();
-            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: %x", error));
+            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: (%s)", ErrorToName(eglGetError())));
         }
 
-        if (!eglMakeCurrent(display, _surface, _surface, eglContext)) {
-            auto error = eglGetError();
-            Throw(::Exceptions::BasicLabel("Failure making EGL window surface current with error: %x", error));
+        EGLint contextAttribs[] = {
+            EGL_CONTEXT_CLIENT_VERSION, RenderableTypeAsGLESVersion(renderableType) / 100,
+            EGL_NONE, EGL_NONE
+        };
+        _surfaceBoundContext = eglCreateContext(display, config.value(), sharedContext, contextAttribs);
+        if (_surfaceBoundContext == EGL_NO_CONTEXT) {
+            Throw(::Exceptions::BasicLabel("Failure while creating the surface bound context (%s)", ErrorToName(eglGetError())));
         }
 
-        Metal_OpenGLES::CheckGLError("End of PresentationChain constructor");
+        if (!eglMakeCurrent(display, _surface, _surface, _surfaceBoundContext)) {
+            Throw(::Exceptions::BasicLabel("Failure making EGL window surface current with error (%s)", ErrorToName(eglGetError())));
+        }
     }
 
     PresentationChain::~PresentationChain()
     {
-        /*if (_surface && *_surface != EGL_NO_SURFACE) {
-         EGLBoolean result = eglDestroySurface(*_display, *_surface);
-         (void)result; assert(result);
-         _surface = nullptr;
-         }*/
+        if (_surface != EGL_NO_SURFACE) {
+            if (_surface == eglGetCurrentSurface(EGL_READ) || _surface == eglGetCurrentSurface(EGL_DRAW))
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            EGLBoolean result = eglDestroySurface(_display, _surface);
+            (void)result; assert(result);
+        }
+        if (_surfaceBoundContext != EGL_NO_CONTEXT) {
+            if (_surfaceBoundContext == eglGetCurrentContext())
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            EGLBoolean result = eglDestroyContext(_display, _surfaceBoundContext);
+            (void)result; assert(result);
+        }
     }
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
@@ -282,13 +606,15 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContext::~ThreadContext()
     {
         if (_dummyPBufferSurface != EGL_NO_SURFACE) {
+            if (_dummyPBufferSurface == eglGetCurrentSurface(EGL_READ) || _dummyPBufferSurface == eglGetCurrentSurface(EGL_DRAW))
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
             eglDestroySurface(_display, _dummyPBufferSurface);
             _dummyPBufferSurface = EGL_NO_SURFACE;
         }
 
         if (_deferredContext != EGL_NO_CONTEXT) {
             if (_deferredContext == eglGetCurrentContext())
-                eglMakeCurrent(_deferredContext, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
             eglDestroyContext(_display, _deferredContext);
             _deferredContext = EGL_NO_CONTEXT;
         }
@@ -296,21 +622,23 @@ namespace RenderCore { namespace ImplOpenGLES
 
     IResourcePtr ThreadContext::BeginFrame(IPresentationChain &presentationChain)
     {
-        auto deviceStrong = _device.lock();
-        if (!deviceStrong) {
-            Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
-        }
+        // Ensure that the IDevice still exists. If you run into this issue, it means that the device
+        // that created this ThreadContext has already been destroyed -- which will be an issue, because
+        // the device deletes _display when it is destroyed.
+        assert(_device.lock());
+
+        auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
 
         assert(!_activeFrameContext);   
-        assert(!_activeTargetRenderbuffer);     
-        _activeFrameContext = deviceStrong->GetSharedContext();
+        assert(!_activeTargetRenderbuffer);
+        assert(presChain.GetDisplay() == _display);
+        _activeFrameContext = presChain.GetSurfaceBoundContext();
 
         // Make the immediate context the current context (with the presentation chain surface)
-        auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
         auto currentContext = eglGetCurrentContext();
         if (currentContext != _activeFrameContext || _currentPresentationChainGUID != presChain.GetGUID()) {
             if (!eglMakeCurrent(_display, presChain.GetSurface(), presChain.GetSurface(), _activeFrameContext)) {
-                Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent"));
+                Throw(::Exceptions::BasicLabel("Failure in eglMakeCurrent with error: (%s)", ErrorToName(eglGetError())));
             }
             _currentPresentationChainGUID = presChain.GetGUID();
         }
@@ -339,11 +667,7 @@ namespace RenderCore { namespace ImplOpenGLES
     void ThreadContext::Present(IPresentationChain& presentationChain)
     {
         auto &presChain = *checked_cast<PresentationChain*>(&presentationChain);
-
-        auto deviceStrong = _device.lock();
-        if (!deviceStrong) {
-            Throw(::Exceptions::BasicLabel("Weak ref to device, device was freed!"));
-        }
+        assert(presChain.GetSurfaceBoundContext() == _activeFrameContext);
         if (_activeTargetRenderbuffer) {
             // if _activeTargetRenderbuffer is not marked as the back buffer, it means we're
             // in fake-back-buffer mode. In this case, we must copy the contents to the
@@ -378,7 +702,7 @@ namespace RenderCore { namespace ImplOpenGLES
         // Turn this into a deferred context by creating a surface with a dummy 1x1 pbuffer
         EGLint configAttribsList[] = {
             // EGL_CONFORMANT,         glesBit,
-            // EGL_RENDERABLE_TYPE,    glesBit,
+            EGL_RENDERABLE_TYPE,    EGL_OPENGL_ES3_BIT,
             EGL_SURFACE_TYPE,       EGL_PBUFFER_BIT,
             EGL_CONFIG_CAVEAT,      EGL_NONE,
             EGL_NONE
@@ -389,6 +713,9 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLint numConfig = 0;
         if (eglChooseConfig(_display, configAttribsList, &config, 1, &numConfig) != EGL_TRUE || numConfig == 0)
             Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig in MakeDeferredContext"));
+
+        Log(Warning) << "Immediate context selected config:" << std::endl;
+        StreamConfig(Log(Warning), _display, config);
 
         int pbufferAttribsList[] = {
             EGL_WIDTH, 1,
@@ -407,7 +734,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
         _deferredContext = eglCreateContext(_display, config, _sharedContext, contextAttribsList);
         if (_deferredContext == EGL_NO_CONTEXT)
-            Throw(::Exceptions::BasicLabel("Failure in _activeFrameContext in MakeDeferredContext"));
+            Throw(::Exceptions::BasicLabel("Failure in eglCreateContext in MakeDeferredContext"));
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
@@ -430,7 +757,7 @@ namespace RenderCore { namespace ImplOpenGLES
     ThreadContextOpenGLES::ThreadContextOpenGLES(EGLContext sharedContext, const std::shared_ptr<Device>& device)
         : ThreadContext(sharedContext, device)
     {
-        auto featureSet = AsGLESFeatureSet(s_glesVersion);
+        auto featureSet = AsGLESFeatureSet(device->GetGLESVersion());
         _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
     }
 

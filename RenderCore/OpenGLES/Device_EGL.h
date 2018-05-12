@@ -25,13 +25,17 @@ namespace RenderCore { namespace ImplOpenGLES
 
         unsigned GetGUID() const { return _guid; }
         EGLSurface GetSurface() const { return _surface; }
+        EGLContext GetSurfaceBoundContext() const { return _surfaceBoundContext; }
+        EGLDisplay GetDisplay() const { return _display; }
 
-        PresentationChain(EGLContext sharedContext, EGLDisplay display, EGLConfig *config, const void *platformValue, const PresentationChainDesc& desc);
+        PresentationChain(EGLDisplay display, EGLContext sharedContext, EGLConfig sharedContextCfg, const void *platformValue, const PresentationChainDesc& desc);
         ~PresentationChain();
 
     private:
         unsigned _guid;
         EGLSurface _surface;
+        EGLContext _surfaceBoundContext;
+        EGLDisplay _display;
         std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
         std::shared_ptr<PresentationChainDesc> _desc;
     };
@@ -112,6 +116,7 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLContext GetSharedContext() const { return _sharedContext; }
         EGLDisplay GetDisplay() const { return _display; };
         EGLConfig GetConfig() const { return _config; }
+        unsigned GetGLESVersion() const;
 
         Device();
         ~Device();
