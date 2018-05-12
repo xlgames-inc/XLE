@@ -25,16 +25,14 @@ namespace RenderCore { namespace ImplOpenGLES
 
         unsigned GetGUID() const { return _guid; }
         EGLSurface GetSurface() const { return _surface; }
-        EGLContext GetSurfaceBoundContext() const { return _surfaceBoundContext; }
         EGLDisplay GetDisplay() const { return _display; }
 
-        PresentationChain(EGLDisplay display, EGLContext sharedContext, EGLConfig sharedContextCfg, const void *platformValue, const PresentationChainDesc& desc);
+        PresentationChain(EGLDisplay display, EGLConfig sharedContextCfg, const void *platformValue, const PresentationChainDesc& desc);
         ~PresentationChain();
 
     private:
         unsigned _guid;
         EGLSurface _surface;
-        EGLContext _surfaceBoundContext;
         EGLDisplay _display;
         std::shared_ptr<Metal_OpenGLES::Resource> _targetRenderbuffer;
         std::shared_ptr<PresentationChainDesc> _desc;
@@ -44,7 +42,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     class Device;
     
-    class ThreadContext : public Base_ThreadContext
+    class ThreadContext : public IThreadContext, public IThreadContextOpenGLES
     {
     public:
         virtual IResourcePtr BeginFrame(IPresentationChain& presentationChain) override;
@@ -58,42 +56,35 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual IAnnotator& GetAnnotator() override;
         virtual ThreadContextStateDesc GetStateDesc() const override { return {}; }
 
-        void MakeDeferredContext();
-
-        ThreadContext(EGLContext sharedContext, const std::shared_ptr<Device> &device);
-        ~ThreadContext();
-
-    protected:
-        std::weak_ptr<Device> _device;
-        std::unique_ptr<IAnnotator> _annotator;
-
-        EGLContext _sharedContext = EGL_NO_CONTEXT;
-        EGLContext _activeFrameContext = EGL_NO_CONTEXT;
-        EGLContext _deferredContext = EGL_NO_CONTEXT;
-        EGLSurface _dummyPBufferSurface = EGL_NO_SURFACE;
-        unsigned _currentPresentationChainGUID;
-        EGLDisplay _display;
-
-        std::shared_ptr<Metal_OpenGLES::Resource> _activeTargetRenderbuffer;
-        intrusive_ptr<OpenGL::FrameBuffer> _temporaryFramebuffer;
-    };
-
-    class ThreadContextOpenGLES : public ThreadContext, public Base_ThreadContextOpenGLES
-    {
-    public:
         virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() override { return _deviceContext; }
         virtual bool IsBoundToCurrentThread() override;
         virtual bool BindToCurrentThread() override;
         virtual void UnbindFromCurrentThread() override;
-        virtual void* QueryInterface(size_t guid) override;
         virtual std::shared_ptr<IThreadContext> Clone() override;
 
-        ThreadContextOpenGLES(EGLContext sharedContext, const std::shared_ptr<Device>& device);
-        ~ThreadContextOpenGLES();
+        EGLContext GetUnderlying() { return _context; }
 
-    private:
+        ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, const std::shared_ptr<Device>& device);
+        ~ThreadContext();
+
+        ThreadContext(const ThreadContext&) = delete;
+        ThreadContext& operator=(const ThreadContext&) = delete;
+
+        // The following constructor is only used by Clone()
+        ThreadContext(EGLDisplay display, EGLContext context, EGLSurface dummySurface, const std::weak_ptr<Device>& device, unsigned featureSet);
+    protected:
+        EGLContext _context = EGL_NO_CONTEXT;
+        EGLSurface _dummySurface = EGL_NO_SURFACE;
+        unsigned _currentPresentationChainGUID;
+        EGLDisplay _display = EGL_NO_DISPLAY;
+
+        std::weak_ptr<Device> _device;
+        std::unique_ptr<IAnnotator> _annotator;
         std::shared_ptr<Metal_OpenGLES::DeviceContext> _deviceContext;
-    }; 
+
+        std::shared_ptr<Metal_OpenGLES::Resource> _activeTargetRenderbuffer;
+        intrusive_ptr<OpenGL::FrameBuffer> _temporaryFramebuffer;
+    };
 
 ////////////////////////////////////////////////////////////////////////////////
 
@@ -113,20 +104,19 @@ namespace RenderCore { namespace ImplOpenGLES
 
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EGL", "", "" }; }
 
-        EGLContext GetSharedContext() const { return _sharedContext; }
         EGLDisplay GetDisplay() const { return _display; };
-        EGLConfig GetConfig() const { return _config; }
         unsigned GetGLESVersion() const;
 
         Device();
         ~Device();
 
     protected:
-        std::shared_ptr<ThreadContextOpenGLES> _immediateContext;
+        std::shared_ptr<ThreadContext> _rootContext;
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
-        EGLContext _sharedContext;
-        EGLDisplay _display;
-        EGLConfig _config;
+
+        EGLConfig _rootContextConfig = nullptr;
+        EGLDisplay _display = EGL_NO_DISPLAY;
+        unsigned _glesVersion = 0;
 
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> GetObjectFactory();
     };
