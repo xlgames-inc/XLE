@@ -184,6 +184,18 @@ namespace RenderCore
 
     unsigned    GetComponentPrecision(Format format)
     {
+        switch (format) {
+        case Format::R10G10B10A2_TYPELESS:
+        case Format::R10G10B10A2_UNORM:
+        case Format::R10G10B10A2_UINT:
+        case Format::R11G11B10_FLOAT:
+            return 10;
+        case Format::B5G6R5_UNORM:
+        case Format::B5G5R5A1_UNORM:
+            return 5;
+        case Format::R4G4B4A4_UNORM:
+            return 4;
+        }
         auto componentCount = GetComponentCount(GetComponents(format));
         auto bpp = BitsPerPixel(format);
         return componentCount ? bpp / componentCount : bpp;

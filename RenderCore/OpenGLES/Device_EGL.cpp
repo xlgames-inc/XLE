@@ -82,6 +82,38 @@ namespace RenderCore { namespace ImplOpenGLES
         }
     }
 
+    const char* ContextAttributeToName(EGLint attribute)
+    {
+        switch (attribute) {
+        case EGL_CONFIG_ID: return "EGL_CONFIG_ID";
+        case EGL_CONTEXT_CLIENT_TYPE: return "EGL_CONTEXT_CLIENT_TYPE";
+        case EGL_CONTEXT_CLIENT_VERSION: return "EGL_CONTEXT_CLIENT_VERSION";
+        case EGL_RENDER_BUFFER: return "EGL_RENDER_BUFFER";
+        default: return "<<unknown>>";
+        }
+    }
+
+    const char* SurfaceAttributeToName(EGLint attribute)
+    {
+        switch (attribute) {
+        case EGL_CONFIG_ID: return "EGL_CONFIG_ID";
+        case EGL_HEIGHT: return "EGL_HEIGHT";
+        case EGL_HORIZONTAL_RESOLUTION: return "EGL_HORIZONTAL_RESOLUTION";
+        case EGL_LARGEST_PBUFFER: return "EGL_LARGEST_PBUFFER";
+        case EGL_MIPMAP_LEVEL: return "EGL_MIPMAP_LEVEL";
+        case EGL_MIPMAP_TEXTURE: return "EGL_MIPMAP_TEXTURE";
+        case EGL_MULTISAMPLE_RESOLVE: return "EGL_MULTISAMPLE_RESOLVE";
+        case EGL_PIXEL_ASPECT_RATIO: return "EGL_PIXEL_ASPECT_RATIO";
+        case EGL_RENDER_BUFFER: return "EGL_RENDER_BUFFER";
+        case EGL_SWAP_BEHAVIOR: return "EGL_SWAP_BEHAVIOR";
+        case EGL_TEXTURE_FORMAT: return "EGL_TEXTURE_FORMAT";
+        case EGL_TEXTURE_TARGET: return "EGL_TEXTURE_TARGET";
+        case EGL_VERTICAL_RESOLUTION: return "EGL_VERTICAL_RESOLUTION";
+        case EGL_WIDTH: return "EGL_WIDTH";
+        default: return "<<unknown>>";
+        }
+    }
+
     const char* ErrorToName(EGLint errorCode)
     {
         switch (errorCode) {
@@ -110,9 +142,35 @@ namespace RenderCore { namespace ImplOpenGLES
         EGLint value = 0;
         auto successful = eglGetConfigAttrib(display, cfg, attribute, &value);
         if (successful) {
-            str << "[" << ConfigAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
+            str << "    [" << ConfigAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
         } else {
-            str << "Failed querying attribute: (" << ConfigAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
+            str << "    Failed querying cfg attribute: (" << ConfigAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
+        }
+        return str;
+    }
+
+    template<typename Stream, typename Type>
+        Stream& StreamContextAttrib(Stream& str, EGLDisplay display, EGLContext context, EGLint attribute, Type toStringFn)
+    {
+        EGLint value = 0;
+        auto successful = eglQueryContext(display, context, attribute, &value);
+        if (successful) {
+            str << "    [" << ContextAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
+        } else {
+            str << "    Failed querying context attribute: (" << ContextAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
+        }
+        return str;
+    }
+
+    template<typename Stream, typename Type>
+        Stream& StreamSurfaceAttrib(Stream& str, EGLDisplay display, EGLSurface surface, EGLint attribute, Type toStringFn)
+    {
+        EGLint value = 0;
+        auto successful = eglQuerySurface(display, surface, attribute, &value);
+        if (successful) {
+            str << "    [" << SurfaceAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
+        } else {
+            str << "    Failed querying surface attribute: (" << SurfaceAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
         }
         return str;
     }
@@ -184,6 +242,39 @@ namespace RenderCore { namespace ImplOpenGLES
             }
             return str.str();
         }
+
+        static Format GetTargetFormat(EGLDisplay display, EGLConfig cfg)
+        {
+            EGLint red, green, blue, alpha;
+            if (    eglGetConfigAttrib(display, cfg, EGL_RED_SIZE, &red)
+                &&  eglGetConfigAttrib(display, cfg, EGL_GREEN_SIZE, &green)
+                &&  eglGetConfigAttrib(display, cfg, EGL_BLUE_SIZE, &blue)
+                &&  eglGetConfigAttrib(display, cfg, EGL_ALPHA_SIZE, &alpha)) {
+                if (red == 5 && green == 6 && blue == 5 && alpha == 0) return Format::B5G6R5_UNORM;
+                if (red == 5 && green == 5 && blue == 5 && alpha == 1) return Format::B5G5R5A1_UNORM;
+                if (alpha == 0) {
+                    if (red == green && blue == green)
+                        return FindFormat(FormatCompressionType::None, FormatComponents::RGB, FormatComponentType::UNorm, red);
+                } else {
+                    if (red == green && blue == green && alpha == green)
+                        return FindFormat(FormatCompressionType::None, FormatComponents::RGBAlpha, FormatComponentType::UNorm, red);
+                }
+            }
+            return Format::Unknown;
+        }
+
+        static Format GetDepthStencilFormat(EGLDisplay display, EGLConfig cfg)
+        {
+            EGLint depth, stencil;
+            if (    eglGetConfigAttrib(display, cfg, EGL_DEPTH_SIZE, &depth)
+                &&  eglGetConfigAttrib(display, cfg, EGL_STENCIL_SIZE, &stencil)) {
+                if (depth == 24) return Format::D24_UNORM_S8_UINT;
+                else if (depth == 32 && stencil == 0) return Format::D32_FLOAT;
+                else if (depth == 32 && stencil == 8) return Format::D32_SFLOAT_S8_UINT;
+                else if (depth == 16 && stencil == 0) return Format::D16_UNORM;
+            }
+            return Format::Unknown;
+        }
     }
 
     template<typename Stream>
@@ -243,13 +334,40 @@ namespace RenderCore { namespace ImplOpenGLES
         StreamConfigAttrib(str, display, cfg, EGL_TRANSPARENT_GREEN_VALUE, Conv::IntToString);
         StreamConfigAttrib(str, display, cfg, EGL_TRANSPARENT_BLUE_VALUE, Conv::IntToString);
 
-
         return str;
     }
 
     template<typename Stream>
-        Stream& StreamConfigs(Stream&& str, EGLDisplay display)
+        Stream& StreamConfigShort(Stream&& str, EGLDisplay display, EGLConfig cfg)
     {
+        EGLint renderable, width, height, surfaceType;
+        EGLint samples, sampleBuffers;
+        if (    eglGetConfigAttrib(display, cfg, EGL_RENDERABLE_TYPE, &renderable)
+            &&  eglGetConfigAttrib(display, cfg, EGL_MAX_PBUFFER_WIDTH, &width)
+            &&  eglGetConfigAttrib(display, cfg, EGL_MAX_PBUFFER_HEIGHT, &height)
+            &&  eglGetConfigAttrib(display, cfg, EGL_SAMPLES, &samples)
+            &&  eglGetConfigAttrib(display, cfg, EGL_SAMPLE_BUFFERS, &sampleBuffers)
+            &&  eglGetConfigAttrib(display, cfg, EGL_SURFACE_TYPE, &surfaceType)) {
+            str << ((renderable & EGL_OPENGL_ES3_BIT) ? "ES3 " : ((renderable & EGL_OPENGL_ES2_BIT) ? "ES2 " : ((renderable & EGL_OPENGL_ES_BIT) ? "ES1 " : "Unknown ")));
+            str << AsString(Conv::GetTargetFormat(display, cfg)) << ", " << AsString(Conv::GetDepthStencilFormat(display, cfg));
+            str << " " << width << "x" << height;
+            if (sampleBuffers) str << "(msaa " << samples << ")";
+            str << " (" << Conv::SurfaceTypeBitsToString(surfaceType) << ")";
+            return str;
+        }
+        return str << "No short description";
+    }
+
+    template<typename Stream>
+        Stream& operator<<(Stream&& str, EGLDisplay display)
+    {
+        str << "EGL_CLIENT_APIS: " << eglQueryString(display, EGL_CLIENT_APIS) << std::endl;
+        str << "EGL_VENDOR: " << eglQueryString(display, EGL_VENDOR) << std::endl;
+        str << "EGL_VERSION: " << eglQueryString(display, EGL_VERSION) << std::endl;
+        str << "EGL_EXTENSIONS: " << eglQueryString(display, EGL_EXTENSIONS) << std::endl;
+
+        // Write out some information about the available configurations
+
         EGLint configCount = 0;
         if (!eglGetConfigs(display, nullptr, 0, &configCount)) {
             str << "Failure getting config count for display (" << ErrorToName(eglGetError()) << ")" << std::endl;
@@ -261,11 +379,86 @@ namespace RenderCore { namespace ImplOpenGLES
             str << "Failure getting configs for display (" << ErrorToName(eglGetError()) << ")" << std::endl;
             return str;
         }
+
         str << "Got (" << configs.size() << ") EGL configs" << std::endl;
+        for (auto c=configs.begin(); c!=configs.end(); ++c) {
+            str << "[" << std::distance(configs.begin(), c) << "] ";
+            StreamConfigShort(str, display, *c) << std::endl;
+        }
+
         for (auto c=configs.begin(); c!=configs.end(); ++c) {
             str << "----[" << std::distance(configs.begin(), c) << "]----" << std::endl;
             StreamConfig(str, display, *c);
         }
+        return str;
+    }
+
+    template<typename Stream>
+        Stream& StreamContext(Stream&& str, EGLDisplay display, EGLContext context)
+    {
+        StreamContextAttrib(str, display, context, EGL_CONFIG_ID, Conv::IntToString);
+        StreamContextAttrib(str, display, context, EGL_CONTEXT_CLIENT_TYPE, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_OPENGL_API: return "EGL_OPENGL_API";
+            case EGL_OPENGL_ES_API: return "EGL_OPENGL_ES_API";
+            case EGL_OPENVG_API: return "EGL_OPENVG_API";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamContextAttrib(str, display, context, EGL_CONTEXT_CLIENT_VERSION, Conv::IntToString);
+        StreamContextAttrib(str, display, context, EGL_RENDER_BUFFER, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_SINGLE_BUFFER: return "EGL_SINGLE_BUFFER";
+            case EGL_BACK_BUFFER: return "EGL_BACK_BUFFER";
+            case EGL_NONE: return "EGL_NONE";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        return str;
+    }
+
+    template<typename Stream>
+        Stream& StreamSurface(Stream&& str, EGLDisplay display, EGLSurface surface)
+    {
+        StreamSurfaceAttrib(str, display, surface, EGL_CONFIG_ID, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_HEIGHT, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_HORIZONTAL_RESOLUTION, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_LARGEST_PBUFFER, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_MIPMAP_LEVEL, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_MIPMAP_TEXTURE, Conv::BoolToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_MULTISAMPLE_RESOLVE, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_MULTISAMPLE_RESOLVE_DEFAULT: return "EGL_MULTISAMPLE_RESOLVE_DEFAULT";
+            case EGL_MULTISAMPLE_RESOLVE_BOX: return "EGL_MULTISAMPLE_RESOLVE_BOX";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamSurfaceAttrib(str, display, surface, EGL_PIXEL_ASPECT_RATIO, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_RENDER_BUFFER, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_BACK_BUFFER: return "EGL_BACK_BUFFER";
+            case EGL_SINGLE_BUFFER: return "EGL_SINGLE_BUFFER";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamSurfaceAttrib(str, display, surface, EGL_SWAP_BEHAVIOR, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_BUFFER_PRESERVED: return "EGL_BUFFER_PRESERVED";
+            case EGL_BUFFER_DESTROYED: return "EGL_BUFFER_DESTROYED";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamSurfaceAttrib(str, display, surface, EGL_TEXTURE_FORMAT, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_NO_TEXTURE: return "EGL_NO_TEXTURE";
+            case EGL_TEXTURE_RGB: return "EGL_TEXTURE_RGB";
+            case EGL_TEXTURE_RGBA: return "EGL_TEXTURE_RGBA";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamSurfaceAttrib(str, display, surface, EGL_TEXTURE_TARGET, [](EGLint i) -> std::string {
+            switch (i) {
+            case EGL_NO_TEXTURE: return "EGL_NO_TEXTURE";
+            case EGL_TEXTURE_2D: return "EGL_TEXTURE_2D";
+            default: return std::string("<<unknown>>: ") + Conv::IntToString(i);
+            }});
+        StreamSurfaceAttrib(str, display, surface, EGL_VERTICAL_RESOLUTION, Conv::IntToString);
+        StreamSurfaceAttrib(str, display, surface, EGL_WIDTH, Conv::IntToString);
+
         return str;
     }
 
@@ -354,8 +547,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!eglInitialize(_display, &majorVersion, &minorVersion)) {
             Throw(::Exceptions::BasicLabel("Failure while initializing EGL display (%s)", ErrorToName(eglGetError())));
         }
-
-        StreamConfigs(Log(Warning), _display);
+        (void)majorVersion; (void)minorVersion;
 
         // Build default EGL surface config
         auto config = TryGetEGLSharedConfig(_display);
@@ -369,19 +561,10 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Device does not support OpenGLES3.0"));
         }
 
-        Log(Warning) << "Immediate context selected config:" << std::endl;
-        StreamConfig(Log(Warning), _display, config.value());
+        Log(Verbose) << "Immediate context selected config:" << std::endl;
+        StreamConfig(Log(Verbose), _display, config.value());
 
         _config = config.value();
-
-        // Collect version information, useful for reporting to the log file
-        #if defined(_DEBUG)
-            const char* versionMain = eglQueryString(_display, EGL_VERSION);
-            const char* versionVendor = eglQueryString(_display, EGL_VENDOR);
-            const char* versionClientAPIs = eglQueryString(_display, EGL_CLIENT_APIS);
-            const char* versionExtensions = eglQueryString(_display, EGL_EXTENSIONS);
-            (void)versionMain; (void)versionVendor; (void)versionClientAPIs; (void)versionExtensions;
-        #endif
 
         // Build the immediate context
         EGLint contextAttribs[] = {
@@ -392,10 +575,20 @@ namespace RenderCore { namespace ImplOpenGLES
         if (_sharedContext == EGL_NO_CONTEXT) {
             Throw(::Exceptions::BasicLabel("Failure while creating the immediate context (%s)", ErrorToName(eglGetError())));
         }
+
+        Log(Verbose) << _display;
+        Log(Verbose) << "Shared context:" << std::endl;
+        StreamContext(Log(Verbose), _display, _sharedContext);
     }
 
     Device::~Device()
     {
+        if (_sharedContext != EGL_NO_CONTEXT) {
+            if (_sharedContext == eglGetCurrentContext())
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            EGLBoolean result = eglDestroyContext(_display, _sharedContext);
+            (void)result; assert(result);
+        }
         if (_display != EGL_NO_DISPLAY) {
             EGLBoolean result = eglTerminate(_display);
             (void)result;
@@ -529,8 +722,8 @@ namespace RenderCore { namespace ImplOpenGLES
             Throw(::Exceptions::BasicLabel("Could not select valid configuration for presentation chain"));
         }
 
-        Log(Warning) << "Presentation chain selected config:" << std::endl;
-        StreamConfig(Log(Warning), display, config.value());
+        Log(Verbose) << "Presentation chain selected config:" << std::endl;
+        StreamConfig(Log(Verbose), display, config.value());
 
         // Create the main output surface
         // This must be tied to the window in Win32 -- so we can't begin construction of this until we build the presentation chain.
@@ -552,6 +745,11 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!eglMakeCurrent(display, _surface, _surface, _surfaceBoundContext)) {
             Throw(::Exceptions::BasicLabel("Failure making EGL window surface current with error (%s)", ErrorToName(eglGetError())));
         }
+
+        Log(Verbose) << "Presentation chain context:" << std::endl;
+        StreamContext(Log(Verbose), _display, _surfaceBoundContext);
+        Log(Verbose) << "Presentation chain surface:" << std::endl;
+        StreamSurface(Log(Verbose), _display, _surface);
     }
 
     PresentationChain::~PresentationChain()
@@ -643,7 +841,7 @@ namespace RenderCore { namespace ImplOpenGLES
             _currentPresentationChainGUID = presChain.GetGUID();
         }
 
-        #if defined(_DEBUG)
+        #if 0 // defined(_DEBUG)
             const auto& presentationChainDesc = presentationChain.GetDesc();
             EGLint width, height;
             eglQuerySurface(_display, presChain.GetSurface(), EGL_WIDTH, &width);
@@ -714,8 +912,8 @@ namespace RenderCore { namespace ImplOpenGLES
         if (eglChooseConfig(_display, configAttribsList, &config, 1, &numConfig) != EGL_TRUE || numConfig == 0)
             Throw(::Exceptions::BasicLabel("Failure in eglChooseConfig in MakeDeferredContext"));
 
-        Log(Warning) << "Immediate context selected config:" << std::endl;
-        StreamConfig(Log(Warning), _display, config);
+        Log(Verbose) << "Immediate context selected config:" << std::endl;
+        StreamConfig(Log(Verbose), _display, config);
 
         int pbufferAttribsList[] = {
             EGL_WIDTH, 1,
