@@ -23,6 +23,7 @@ namespace RenderCore
     {
     public:
         virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() = 0;
+        virtual unsigned GetNativeFormatCode() = 0;
         virtual ~IDeviceOpenGLES();
     };
 
@@ -30,10 +31,12 @@ namespace RenderCore
     {
     public:
         virtual const std::shared_ptr<Metal_OpenGLES::DeviceContext>& GetDeviceContext() = 0;
-        virtual std::shared_ptr<IThreadContext> Clone() = 0;
+
         virtual bool IsBoundToCurrentThread() = 0;
         virtual bool BindToCurrentThread() = 0;
         virtual void UnbindFromCurrentThread() = 0;
+
+        virtual std::shared_ptr<IThreadContext> Clone() = 0;
 
         virtual ~IThreadContextOpenGLES();
     };

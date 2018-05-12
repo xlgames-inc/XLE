@@ -36,6 +36,7 @@ namespace RenderCore { namespace ImplOpenGLES
                 featureSet |= Metal_OpenGLES::FeatureSet::ATITC;
             }
         }
+        Log(Verbose) << "In AsGLESFeatureSet, extensionsString: " << extensionsString << std::endl;
 
         assert(featureSet != 0);
         return featureSet;
@@ -150,7 +151,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
             _rootContextConfig = config.value();
             _glesVersion = GetGLESVersionFromConfig(_display, config.value());
-            _rootContext = std::make_shared<ThreadContext>(_display, _rootContextConfig, EGL_NO_CONTEXT, shared_from_this());
+            _rootContext = std::make_shared<ThreadContext>(_display, _rootContextConfig, EGL_NO_CONTEXT, 0, shared_from_this());
 
             #if defined(_DEBUG)
                 Log(Verbose) << "Root context:" << std::endl;
@@ -159,13 +160,19 @@ namespace RenderCore { namespace ImplOpenGLES
 
             auto result = std::make_unique<PresentationChain>(_display, _rootContextConfig, platformWindowHandle, desc);
 
+            // Finally, set this context & surface current, so we have at least something current to
+            // start calling opengl commands.
+            if (!eglMakeCurrent(_display, result->GetSurface(), result->GetSurface(), _rootContext->GetUnderlying()))
+                Throw(::Exceptions::BasicLabel("Failure while setting EGL root context current (%s)", ErrorToName(eglGetError())));
+
             // We can only construct the object factory after the first presentation chain is created. This is because
             // we can't call eglMakeCurrent until at least one presentation chain has been constructed; and we can't
             // call any opengl functions until we call eglMakeCurrent. In particular, we can't call glGetString(), which is
             // required to calculate the feature set used to construct the object factory.
-            auto featureSet = _rootContext->GetDeviceContext()->GetFeatureSet();
+            auto featureSet = AsGLESFeatureSet(_glesVersion);
             assert(!_objectFactory);
             _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(featureSet);
+            _rootContext->SetFeatureSet(featureSet);
             return result;
         } else {
             // Ensure that the requested parameters are compatible with the root config that has
@@ -190,7 +197,7 @@ namespace RenderCore { namespace ImplOpenGLES
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
         assert(_objectFactory);
-        return std::make_unique<ThreadContext>(_display, _rootContextConfig, _rootContext->GetUnderlying(), shared_from_this());
+        return std::make_unique<ThreadContext>(_display, _rootContextConfig, _rootContext->GetUnderlying(), _rootContext->GetFeatureSet(), shared_from_this());
     }
 
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
@@ -240,6 +247,16 @@ namespace RenderCore { namespace ImplOpenGLES
         return Device::QueryInterface(guid);
     }
 
+    unsigned DeviceOpenGLES::GetNativeFormatCode()
+    {
+        EGLint format = 0;
+        if (!eglGetConfigAttrib(_display, _rootContextConfig, EGL_NATIVE_VISUAL_ID, &format)) {
+            Log(Warning) << "Failure while getting native visual id from root context config" << std::endl;
+        }
+
+        return format;
+    }
+
     DeviceOpenGLES::DeviceOpenGLES() {}
     DeviceOpenGLES::~DeviceOpenGLES() {}
 
@@ -273,7 +290,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     void PresentationChain::Resize(unsigned newWidth, unsigned newHeight)
     {
-        if (newWidth != _desc->_width && newHeight != _desc->_height) {
+        if (newWidth != _desc->_width || newHeight != _desc->_height) {
             _desc->_width = newWidth;
             _desc->_height = newHeight;
 
@@ -406,6 +423,7 @@ namespace RenderCore { namespace ImplOpenGLES
     void ThreadContext::UnbindFromCurrentThread()
     {
         assert(IsBoundToCurrentThread());
+        glFlush();
         eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
     }
 
@@ -413,17 +431,28 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         // Clone is odd -- we need to return a new ThreadContext that uses the same
         // underlying EGLContext, but has a new DeviceContext
-        return std::make_shared<ThreadContext>(_display, _context, _dummySurface, _device, _deviceContext->GetFeatureSet());
+        return std::make_shared<ThreadContext>(_display, _context, _dummySurface, _deviceContext->GetFeatureSet(), _device.lock(), true);
     }
 
-    ThreadContext::ThreadContext(EGLDisplay display, EGLContext context, EGLSurface dummySurface, const std::weak_ptr<Device>& device, unsigned featureSet)
-    : _display(display), _context(context), _dummySurface(dummySurface)
-    , _device(device), _currentPresentationChainGUID(0)
+    void ThreadContext::SetFeatureSet(unsigned featureSet)
     {
         _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
     }
 
-    ThreadContext::ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, const std::shared_ptr<Device>& device)
+    unsigned ThreadContext::GetFeatureSet() const
+    {
+        return _deviceContext->GetFeatureSet();
+    }
+
+    ThreadContext::ThreadContext(EGLDisplay display, EGLContext context, EGLSurface dummySurface, unsigned featureSet, const std::shared_ptr<Device>& device, bool)
+    : _display(display), _context(context), _dummySurface(dummySurface)
+    , _device(device), _currentPresentationChainGUID(0)
+    , _clonedContext(true)
+    {
+        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+    }
+
+    ThreadContext::ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, unsigned featureSet, const std::shared_ptr<Device>& device)
     : _device(device), _currentPresentationChainGUID(0)
     , _display(display)
     {
@@ -434,44 +463,44 @@ namespace RenderCore { namespace ImplOpenGLES
             EGL_CONTEXT_CLIENT_VERSION, glesVersion / 100,
             EGL_NONE, EGL_NONE
         };
-        _context = eglCreateContext(_display, cfgForNewContext, EGL_NO_CONTEXT, contextAttribs);
+        _context = eglCreateContext(_display, cfgForNewContext, rootContext, contextAttribs);
         if (_context == EGL_NO_CONTEXT)
             Throw(::Exceptions::BasicLabel("Failure while creating EGL context (%s)", ErrorToName(eglGetError())));
 
-        Log(Verbose) << "Created EGL context: " << std::endl;
-        StreamContext(Log(Verbose), display, _context);
-
+        // create a "dummy PBuffer" so we can use this context for non-rendering operations (such as
+        // loading & initialization)
         int pbufferAttribsList[] = {
-            EGL_WIDTH, 1,
-            EGL_HEIGHT, 1,
-            EGL_NONE
+            EGL_WIDTH, 1, EGL_HEIGHT, 1,
+            EGL_NONE, EGL_NONE
         };
-
         _dummySurface = eglCreatePbufferSurface(_display, cfgForNewContext, pbufferAttribsList);
         if (_dummySurface == EGL_NO_SURFACE)
             Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface (%s)", ErrorToName(eglGetError())));
 
-        if (!eglMakeCurrent(_display, _dummySurface, _dummySurface, _context))
-            Throw(::Exceptions::BasicLabel("Failure making dummy EGL surface current with error (%s)", ErrorToName(eglGetError())));
+        Log(Verbose) << "Created EGL context: " << std::endl;
+        StreamContext(Log(Verbose), display, _context);
 
-        auto featureSet = AsGLESFeatureSet(glesVersion);
-        _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
+        if (featureSet)
+            _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
     }
 
     ThreadContext::~ThreadContext()
     {
-        if (_dummySurface != EGL_NO_SURFACE) {
-            if (_dummySurface == eglGetCurrentSurface(EGL_READ) || _dummySurface == eglGetCurrentSurface(EGL_DRAW))
-                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-            eglDestroySurface(_display, _dummySurface);
-            _dummySurface = EGL_NO_SURFACE;
-        }
+        if (!_clonedContext) {
+            if (_dummySurface != EGL_NO_SURFACE) {
+                if (_dummySurface == eglGetCurrentSurface(EGL_READ) ||
+                    _dummySurface == eglGetCurrentSurface(EGL_DRAW))
+                    eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroySurface(_display, _dummySurface);
+                _dummySurface = EGL_NO_SURFACE;
+            }
 
-        if (_context != EGL_NO_CONTEXT) {
-            if (_context == eglGetCurrentContext())
-                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
-            eglDestroyContext(_display, _context);
-            _context = EGL_NO_CONTEXT;
+            if (_context != EGL_NO_CONTEXT) {
+                if (_context == eglGetCurrentContext())
+                    eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+                eglDestroyContext(_display, _context);
+                _context = EGL_NO_CONTEXT;
+            }
         }
     }
 

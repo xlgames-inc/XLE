@@ -49,13 +49,15 @@ namespace RenderCore { namespace ImplOpenGLES
     template<typename Stream, typename Type>
         Stream& StreamContextAttrib(Stream& str, EGLDisplay display, EGLContext context, EGLint attribute, Type toStringFn)
     {
-        EGLint value = 0;
-        auto successful = eglQueryContext(display, context, attribute, &value);
-        if (successful) {
-            str << "    [" << ContextAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
-        } else {
-            str << "    Failed querying context attribute: (" << ContextAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
-        }
+        #if !defined(PGDROID)
+            EGLint value = 0;
+            auto successful = eglQueryContext(display, context, attribute, &value);
+            if (successful) {
+                str << "    [" << ContextAttributeToName(attribute) << "]: " << (toStringFn)(value) << std::endl;
+            } else {
+                str << "    Failed querying context attribute: (" << ContextAttributeToName(attribute) << ") due to error (" << ErrorToName(eglGetError()) << ")" << std::endl;
+            }
+        #endif
         return str;
     }
 

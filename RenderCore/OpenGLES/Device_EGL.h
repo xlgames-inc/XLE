@@ -62,21 +62,25 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual void UnbindFromCurrentThread() override;
         virtual std::shared_ptr<IThreadContext> Clone() override;
 
+        void SetFeatureSet(unsigned featureSet);
+        unsigned GetFeatureSet() const;
+
         EGLContext GetUnderlying() { return _context; }
 
-        ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, const std::shared_ptr<Device>& device);
+        ThreadContext(EGLDisplay display, EGLConfig cfgForNewContext, EGLContext rootContext, unsigned featureSet, const std::shared_ptr<Device>& device);
         ~ThreadContext();
 
         ThreadContext(const ThreadContext&) = delete;
         ThreadContext& operator=(const ThreadContext&) = delete;
 
         // The following constructor is only used by Clone()
-        ThreadContext(EGLDisplay display, EGLContext context, EGLSurface dummySurface, const std::weak_ptr<Device>& device, unsigned featureSet);
+        ThreadContext(EGLDisplay display, EGLContext context, EGLSurface dummySurface, unsigned featureSet, const std::shared_ptr<Device>& device, bool);
     protected:
         EGLContext _context = EGL_NO_CONTEXT;
         EGLSurface _dummySurface = EGL_NO_SURFACE;
         unsigned _currentPresentationChainGUID;
         EGLDisplay _display = EGL_NO_DISPLAY;
+        bool _clonedContext = false;
 
         std::weak_ptr<Device> _device;
         std::unique_ptr<IAnnotator> _annotator;
@@ -105,6 +109,7 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EGL", "", "" }; }
 
         EGLDisplay GetDisplay() const { return _display; };
+        EGLConfig GetRootContextConfig() const { return _rootContextConfig; }
         unsigned GetGLESVersion() const;
 
         Device();
@@ -126,6 +131,7 @@ namespace RenderCore { namespace ImplOpenGLES
     public:
         virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
         virtual void* QueryInterface(size_t guid) override;
+        virtual unsigned GetNativeFormatCode() override;
 
         DeviceOpenGLES();
         ~DeviceOpenGLES();
