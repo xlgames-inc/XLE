@@ -12,7 +12,7 @@ set(Src
     "UniformsStream.cpp"
     "Version.cpp"
     )
-set(Src "${Src}" "OpenGLES/Device_EGL.cpp")
+set(Src "${Src}" "OpenGLES/Device_EGL.cpp" "OpenGLES/EGLUtils.cpp")
 set(Src
     "${Src}"
     "OpenGLES/Metal/Buffer.cpp"
