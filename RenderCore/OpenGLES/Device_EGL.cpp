@@ -6,6 +6,7 @@
 #include "EGLUtils.h"
 #include "Metal/DeviceContext.h"
 #include "../IAnnotator.h"
+#include "../Format.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Core/Exceptions.h"
@@ -76,29 +77,101 @@ namespace RenderCore { namespace ImplOpenGLES
     static std::experimental::optional<EGLConfig> TryGetEGLSurfaceConfig(
         EGLDisplay display, EGLint renderableType, const PresentationChainDesc& desc)
     {
-        assert(desc._format == Format::R8G8B8_UNORM);
+        auto requestedPrecision = GetComponentPrecision(desc._format);
+        auto components = GetComponents(desc._format);
+        if (components != FormatComponents::RGB && components != FormatComponents::RGBAlpha) {
+            Log(Warning) << "Presentation chain format was not a RGB or RGBA format. Treating as if a RGB format as requested." << std::endl;
+        }
+        auto requestHasAlpha = components == FormatComponents::RGBAlpha;
 
-        std::vector<EGLint> configAttribs;
-        configAttribs.push_back(EGL_RED_SIZE); configAttribs.push_back(8);
-        configAttribs.push_back(EGL_GREEN_SIZE); configAttribs.push_back(8);
-        configAttribs.push_back(EGL_BLUE_SIZE); configAttribs.push_back(8);
-        configAttribs.push_back(EGL_ALPHA_SIZE); configAttribs.push_back(EGL_DONT_CARE);
-        configAttribs.push_back(EGL_DEPTH_SIZE); configAttribs.push_back(24);
-        configAttribs.push_back(EGL_STENCIL_SIZE); configAttribs.push_back(8);
-        configAttribs.push_back(EGL_SAMPLE_BUFFERS); configAttribs.push_back(desc._samples._sampleCount > 1 ? 1 : 0);
-        configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back(msaaSamples._sampleCount > 1 ? msaaSamples._sampleCount : 0);
-        configAttribs.push_back(EGL_RENDERABLE_TYPE); configAttribs.push_back(renderableType);
-        configAttribs.push_back(EGL_SURFACE_TYPE); configAttribs.push_back(EGL_WINDOW_BIT|EGL_PBUFFER_BIT);
-        configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
+        // Select a priority order for target color format, based on desc._format
+        struct TargetRequest { EGLint r, g, b, a; };
+        std::vector<TargetRequest> targetFallbackOrder;
+        {
+            TargetRequest A { 5, 5, 5, 1 };
+            TargetRequest B { 5, 6, 5, EGL_DONT_CARE };
+            TargetRequest C { 8, 8, 8, requestHasAlpha ? 8 : EGL_DONT_CARE };
+            TargetRequest D { 10, 10, 10, requestHasAlpha ? 2 : EGL_DONT_CARE };
+            TargetRequest E { 11, 11, 10, EGL_DONT_CARE };
+            TargetRequest F { 4, 4, 4, 4 };
+            if (requestedPrecision >= 10) { // HDR
+                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ D, C, F, A, E, B } : std::vector<TargetRequest>{ E, D, C, B, A, F };
+            } else if (requestedPrecision >= 8) { // 8-bit
+                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ C, A, D, F, B, E } : std::vector<TargetRequest>{ C, B, A, E, D, F };
+            } else if (requestedPrecision >= 5) { // low precision
+                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ A, F, C, D, B, E } : std::vector<TargetRequest>{ B, A, F, C, D, E };
+            } else {
+                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ F, A, C, D, B, E } : std::vector<TargetRequest>{ F, B, A, C, D, E };
+            }
+        }
 
-        EGLConfig config;
-        EGLint numConfigs = 0;
-        auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), &config, 1, &numConfigs);
-        if (chooseConfigResult && numConfigs == 1)
-            return config;
+        struct DepthStencilRequest { EGLint d, s; };
+        std::vector<DepthStencilRequest> depthStencilFallbackOrder = {
+            { 24, EGL_DONT_CARE },
+            { 16, EGL_DONT_CARE },
+            { EGL_DONT_CARE, EGL_DONT_CARE }
+        };
 
-        if (!chooseConfigResult) {
-            Log(Error) << "eglChooseConfig returned error code with error: (" << ErrorToName(eglGetError()) << ")" << std::endl;
+        // select a priority order for MSAA sample requests
+        // Note that due to the ordering here, the system will prefer to select a less desired
+        // target format with the right number of MSAA samples; even if there is a matching color
+        // format with non-matching MSAA samples.
+        std::vector<GLint> sampleCounts;
+        if (desc._samples._sampleCount > 1) {
+            sampleCounts = { desc._samples._sampleCount, 0 };
+        } else {
+            sampleCounts = { 0 };
+        }
+
+        for (auto s:sampleCounts) {
+            for (const auto&d:depthStencilFallbackOrder) {
+                for (const auto&t:targetFallbackOrder) {
+                    std::vector<EGLint> configAttribs;
+                    configAttribs.push_back(EGL_RED_SIZE); configAttribs.push_back(t.r);
+                    configAttribs.push_back(EGL_GREEN_SIZE); configAttribs.push_back(t.g);
+                    configAttribs.push_back(EGL_BLUE_SIZE); configAttribs.push_back(t.b);
+                    if (t.a != EGL_DONT_CARE) {
+                        configAttribs.push_back(EGL_ALPHA_SIZE);
+                        configAttribs.push_back(t.a);
+                    }
+                    if (d.d != EGL_DONT_CARE) {
+                        configAttribs.push_back(EGL_DEPTH_SIZE);
+                        configAttribs.push_back(d.d);
+                    }
+                    if (d.s != EGL_DONT_CARE) {
+                        configAttribs.push_back(EGL_STENCIL_SIZE);
+                        configAttribs.push_back(d.s);
+                    }
+                    configAttribs.push_back(EGL_SAMPLE_BUFFERS); configAttribs.push_back(s > 1 ? 1 : 0);
+                    configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back(s > 1 : s : 0);
+                    configAttribs.push_back(EGL_RENDERABLE_TYPE); configAttribs.push_back(renderableType);
+                    configAttribs.push_back(EGL_CONFIG_CAVEAT); configAttribs.push_back(EGL_NONE);
+                    configAttribs.push_back(EGL_BUFFER_SIZE); configAttribs.push_back(16);
+                    // configAttribs.push_back(EGL_SURFACE_TYPE); configAttribs.push_back(EGL_WINDOW_BIT|EGL_PBUFFER_BIT);
+                    configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
+
+                    EGLint numConfigs = 0;
+                    auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), NULL, 0, &numConfigs);
+                    if (chooseConfigResult && numConfigs > 1) {
+                        std::vector<EGLConfig> configs(numConfigs);
+                        chooseConfigResult = eglChooseConfig(display, configAttribs.data(), configs.data(), (EGLint)configs.size(), &numConfigs);
+                        if (chooseConfigResult) {
+                            Log(Warning) << "Selected configs:" << std::endl;
+                            for (unsigned c = 0; c < configs.size(); ++c) {
+                                EGLint id = -1;
+                                eglGetConfigAttrib(display, configs[c], EGL_CONFIG_ID, &id);
+                                Log(Warning) << "[" << id << "] ";
+                                StreamConfigShort(Log(Warning), display, configs[c]) << std::endl;
+                            }
+                            return configs[0];
+                        }
+                    }
+
+                    if (!chooseConfigResult) {
+                        Log(Error) << "eglChooseConfig returned error code with error: (" << ErrorToName(eglGetError()) << ")" << std::endl;
+                    }
+                }
+            }
         }
 
         return {};
@@ -477,8 +550,10 @@ namespace RenderCore { namespace ImplOpenGLES
         if (_dummySurface == EGL_NO_SURFACE)
             Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface (%s)", ErrorToName(eglGetError())));
 
-        Log(Verbose) << "Created EGL context: " << std::endl;
-        StreamContext(Log(Verbose), display, _context);
+        #if defined(_DEBUG)
+            Log(Verbose) << "Created EGL context: " << std::endl;
+            StreamContext(Log(Verbose), display, _context);
+        #endif
 
         if (featureSet)
             _deviceContext = std::make_shared<Metal_OpenGLES::DeviceContext>(featureSet);
