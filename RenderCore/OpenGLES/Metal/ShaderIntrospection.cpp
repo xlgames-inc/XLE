@@ -101,6 +101,18 @@ namespace RenderCore { namespace Metal_OpenGLES
         return Hash64(name);
     }
 
+    std::pair<StringSection<>, StringSection<>> FindStructSeparator(StringSection<> input)
+    {
+        for (auto i=input.begin(); i!=input.end(); i++) {
+            if (*i == '.') return {{input.begin(), i}, {i+1, input.end()}};
+            // An underscore also works like a fake struct separator.
+            // However, ignore the underscore if it's the first or second character
+            // so that prefixes like "u_" aren't considered structs.
+            if (i > (input.begin()+1) && *i == '_') return {{input.begin(), i}, {i+1, input.end()}};
+        }
+        return {input, {}};
+    }
+
     ShaderIntrospection::ShaderIntrospection(const ShaderProgram& program)
     {
         // Iterate through the shader interface and pull out the information that's interesting
@@ -129,11 +141,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             ////////////////////////////////////////////////
             auto fullName = MakeStringSection(nameBuffer);
-            auto firstDot = std::find(fullName.begin(), fullName.end(), '.');
-            if (firstDot != fullName.end()) {
-                assert(std::find(firstDot+1, fullName.end(), '.'));     // can't support multiple layers of indirection
+            auto separatedNames = FindStructSeparator(fullName);
+            if (!separatedNames.second.IsEmpty()) {
+                assert(std::find(separatedNames.second.begin(), separatedNames.second.end(), '.'));     // can't support nested structures
 
-                auto structName = MakeStringSection(fullName.begin(), firstDot);
+                auto structName = separatedNames.first;
                 auto structNameHash = Hash64(structName);
 
                 auto i = LowerBound(_structs, structNameHash);
@@ -146,7 +158,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 i->second._uniforms.emplace_back(
                     Uniform {
-                        HashVariableName(MakeStringSection(firstDot+1, fullName.end())),
+                        HashVariableName(separatedNames.second),
                         location, type, size
 
                         #if defined(STORE_UNIFORM_NAMES)
