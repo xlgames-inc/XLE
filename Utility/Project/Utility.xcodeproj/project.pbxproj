@@ -10,7 +10,6 @@
 		8F2DB61D2017F858009F52AB /* FileUtils_Linux.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */; };
 		8F2DB6282017F8CF009F52AB /* FileUtils_Linux.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */; };
 		8F707BDD1EA6CAA400DEC600 /* System_Apple.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */; };
-		8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */; };
 		8F707BEC1EA6CB6F00DEC600 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
 		8F90567E1FA2749D0020DDB5 /* SuppressionProfiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */; };
 		8F90567F1FA2749D0020DDB5 /* SuppressionProfiler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F90567D1FA2749D0020DDB5 /* SuppressionProfiler.h */; };
@@ -21,7 +20,6 @@
 		8FA3F7BC1EDD17DE003EF623 /* CPUProfiler.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D281EA688D1009BD9B0 /* CPUProfiler.cpp */; };
 		8FA3F7BD1EDD17DE003EF623 /* Data.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D2C1EA688D1009BD9B0 /* Data.cpp */; };
 		8FA3F7BE1EDD17DE003EF623 /* DataSerialize.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D2E1EA688D1009BD9B0 /* DataSerialize.cpp */; };
-		8FA3F7BF1EDD17DE003EF623 /* FileSystemMonitor_Stubs.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */; };
 		8FA3F7C01EDD17DE003EF623 /* FileUtils_stdio.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */; };
 		8FA3F7C11EDD17DE003EF623 /* FileUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D311EA688D1009BD9B0 /* FileUtils.cpp */; };
 		8FA3F7C21EDD17DE003EF623 /* PathUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D331EA688D1009BD9B0 /* PathUtils.cpp */; };
@@ -132,8 +130,8 @@
 
 /* Begin PBXFileReference section */
 		8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_Linux.cpp; sourceTree = "<group>"; };
+		8F4DEE9720A8C9D5003EA5FE /* FileSystemMonitor_Linux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Linux.cpp; sourceTree = "<group>"; };
 		8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System_Apple.cpp; sourceTree = "<group>"; };
-		8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Stubs.cpp; sourceTree = "<group>"; };
 		8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_stdio.cpp; sourceTree = "<group>"; };
 		8F90567C1FA2749D0020DDB5 /* SuppressionProfiler.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = SuppressionProfiler.cpp; sourceTree = "<group>"; };
 		8F90567D1FA2749D0020DDB5 /* SuppressionProfiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = SuppressionProfiler.h; sourceTree = "<group>"; };
@@ -357,7 +355,6 @@
 				8FD85D2D1EA688D1009BD9B0 /* Data.h */,
 				8FD85D2E1EA688D1009BD9B0 /* DataSerialize.cpp */,
 				8FD85D2F1EA688D1009BD9B0 /* DataSerialize.h */,
-				8F707BE91EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp */,
 				8FD85D301EA688D1009BD9B0 /* FileSystemMonitor.h */,
 				8FD85D311EA688D1009BD9B0 /* FileUtils.cpp */,
 				8FD85D321EA688D1009BD9B0 /* FileUtils.h */,
@@ -397,6 +394,7 @@
 		BE7DC0442065832E00685CE6 /* Linux */ = {
 			isa = PBXGroup;
 			children = (
+				8F4DEE9720A8C9D5003EA5FE /* FileSystemMonitor_Linux.cpp */,
 				8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */,
 				8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */,
 			);
@@ -546,7 +544,6 @@
 				8FA3F7BC1EDD17DE003EF623 /* CPUProfiler.cpp in Sources */,
 				8FA3F7BD1EDD17DE003EF623 /* Data.cpp in Sources */,
 				8FA3F7BE1EDD17DE003EF623 /* DataSerialize.cpp in Sources */,
-				8FA3F7BF1EDD17DE003EF623 /* FileSystemMonitor_Stubs.cpp in Sources */,
 				8FA3F7C01EDD17DE003EF623 /* FileUtils_stdio.cpp in Sources */,
 				8FA3F7C11EDD17DE003EF623 /* FileUtils.cpp in Sources */,
 				8FA3F7C21EDD17DE003EF623 /* PathUtils.cpp in Sources */,
@@ -597,7 +594,6 @@
 				8FD85D841EA688D1009BD9B0 /* Stream.cpp in Sources */,
 				8F90567E1FA2749D0020DDB5 /* SuppressionProfiler.cpp in Sources */,
 				8FD85D7A1EA688D1009BD9B0 /* Data.cpp in Sources */,
-				8F707BEA1EA6CB4300DEC600 /* FileSystemMonitor_Stubs.cpp in Sources */,
 				8FD85D881EA688D1009BD9B0 /* StreamFormatter.cpp in Sources */,
 				8FD85D5C1EA688D1009BD9B0 /* Conversion.cpp in Sources */,
 				8FD85D5A1EA688D1009BD9B0 /* BitUtils.cpp in Sources */,

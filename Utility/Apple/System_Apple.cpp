@@ -26,7 +26,35 @@ namespace Utility
         mach_timebase_info(&tbInfo);
         return tbInfo.denom * 1000000000 / tbInfo.numer;
     }
+}
 
+#include "FileSystemMonitor.h"
+#include "FileUtils.h"
+#include "../StringUtils.h"
+
+namespace Utility
+{
+    void AttachFileSystemMonitor(StringSection<utf16> directoryName,
+                                 StringSection<utf16> filename,
+                                 std::shared_ptr<OnChangeCallback> callback) {
+
+    }
+
+    void AttachFileSystemMonitor(StringSection<utf8> directoryName,
+                                 StringSection<utf8> filename,
+                                 std::shared_ptr<OnChangeCallback> callback) {
+
+    }
+
+    void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename) {
+
+    }
+
+    void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename) {
+
+    }
+
+    OnChangeCallback::~OnChangeCallback() {}
 }
 
 #else
