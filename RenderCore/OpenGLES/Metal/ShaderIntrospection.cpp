@@ -18,7 +18,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         SetUniformCommandGroup result;
         auto s = LowerBound(_structs, uniformStructName);
-        if (s == _structs.end()) {
+        if (s == _structs.end() || s->first != uniformStructName) {
             #if _DEBUG
                 // Try internals instead in a debug build, and throw an exception if found
                 for (const auto &ele : inputElements) {
@@ -83,7 +83,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     auto ShaderIntrospection::FindStruct(HashType structName) const -> Struct
     {
         auto str = LowerBound(_structs, structName);
-        if (str != _structs.end() || str->first == structName)
+        if (str != _structs.end() && str->first == structName)
             return str->second;
         return {};
     }

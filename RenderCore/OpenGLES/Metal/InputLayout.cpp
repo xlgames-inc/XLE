@@ -183,6 +183,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     });
 
                     foundBinding = true;
+                    break;
                 }
 
                 if (foundBinding) {
@@ -640,10 +641,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             // unsigned maxIndex = (i2-1)->_index;
             unsigned elementCount = i->_elementCount;
             auto dataOffsetStart = _textureAssignmentByteData.size();
-            _textureAssignmentByteData.resize(dataOffsetStart+sizeof(GLuint)*(elementCount+1), 0u);
+            _textureAssignmentByteData.resize(dataOffsetStart+sizeof(GLuint)*elementCount, 0u);
             GLuint* dst = (GLuint*)&_textureAssignmentByteData[dataOffsetStart];
             for (auto q=i; q<i2; ++q) {
                 assert(q->_index < elementCount);
+                assert(q->_type == i->_type);
                 dst[q->_index] = q->_value;
             }
             _textureAssignmentCommands._commands.push_back(
