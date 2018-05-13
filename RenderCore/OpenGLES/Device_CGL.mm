@@ -112,6 +112,11 @@ namespace RenderCore { namespace ImplOpenGLES
         return _objectFactory->GetFeatureSet();
     }
 
+    unsigned DeviceOpenGLES::GetNativeFormatCode()
+    {
+        return 0;
+    }
+
     void* DeviceOpenGLES::QueryInterface(size_t guid)
     {
         if (guid == typeid(IDeviceOpenGLES).hash_code()) {

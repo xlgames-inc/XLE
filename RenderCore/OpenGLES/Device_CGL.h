@@ -129,6 +129,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
     public:
         virtual Metal_OpenGLES::FeatureSet::BitField GetFeatureSet() override;
+        virtual unsigned GetNativeFormatCode() override;
         virtual void* QueryInterface(size_t guid) override;
 
         Metal_OpenGLES::DeviceContext *GetImmediateDeviceContext();
