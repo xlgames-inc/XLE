@@ -375,6 +375,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         glAttachShader  (newProgramIndex->AsRawGLHandle(), vs->AsRawGLHandle());
         glAttachShader  (newProgramIndex->AsRawGLHandle(), fs->AsRawGLHandle());
         glLinkProgram   (newProgramIndex->AsRawGLHandle());
+        glDetachShader  (newProgramIndex->AsRawGLHandle(), fs->AsRawGLHandle());
+        glDetachShader  (newProgramIndex->AsRawGLHandle(), vs->AsRawGLHandle());
 
         GLint linkStatus = 0;
         glGetProgramiv   (newProgramIndex->AsRawGLHandle(), GL_LINK_STATUS, &linkStatus);
