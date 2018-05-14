@@ -235,6 +235,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         const GLchar* shaderSourcePointers[4] { versionDecl, platformPreamble, definesPreambleStr.c_str(), (const GLchar*)sourceCode };
         GLint shaderSourceLengths[4] = { (GLint)std::strlen(versionDecl), (GLint)std::strlen(platformPreamble), (GLint)definesPreambleStr.size(), (GLint)sourceCodeLength };
 
+        Log(Verbose) << "Compiling: " << shaderPath._filename << std::endl;
+
         glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
         glCompileShader (newShader->AsRawGLHandle());
 
@@ -278,6 +280,19 @@ namespace RenderCore { namespace Metal_OpenGLES
             return false;
         }
 
+        // Log the shader info log, even if compile was successful
+        #if defined(_DEBUG)
+            {
+                GLint infoLen = 0;
+                glGetShaderiv(newShader->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
+                if ( infoLen > 1 ) {
+                    auto infoLog = std::make_unique<char[]>(infoLen);
+                    glGetShaderInfoLog(newShader->AsRawGLHandle(), infoLen, nullptr, (GLchar*)infoLog.get());
+                    Log(Verbose) << "Shader log: " << (GLchar*)infoLog.get() << std::endl;
+                }
+            }
+        #endif
+
         uint64_t hashCode = DefaultSeed64;
         for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
             hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
@@ -311,6 +326,19 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static uint32_t g_nextShaderProgramGUID = 0;
 
+    static std::string GetProgramInfoLog(RawGLHandle program)
+    {
+        GLint infoLen = 0;
+        glGetProgramiv(program, GL_INFO_LOG_LENGTH, &infoLen);
+        if (infoLen > 1) {
+            std::string buffer;
+            buffer.resize(infoLen);
+            glGetProgramInfoLog(program, infoLen, nullptr, (GLchar*)buffer.data());
+            return buffer;
+        }
+        return {};
+    }
+
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
                                     const CompiledShaderByteCode& vertexShader,
                                     const CompiledShaderByteCode& fragmentShader)
@@ -326,6 +354,23 @@ namespace RenderCore { namespace Metal_OpenGLES
         Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
         Assets::RegisterAssetDependency(_depVal, fragmentShader.GetDependencyValidation());
 
+        GLint vsType = 0, vsCompileStatus = 0;
+        GLint fsType = 0, fsCompileStatus = 0;
+        glGetShaderiv(vs->AsRawGLHandle(), GL_SHADER_TYPE, &vsType);
+        glGetShaderiv(vs->AsRawGLHandle(), GL_COMPILE_STATUS, &vsCompileStatus);
+        glGetShaderiv(fs->AsRawGLHandle(), GL_SHADER_TYPE, &fsType);
+        glGetShaderiv(fs->AsRawGLHandle(), GL_COMPILE_STATUS, &fsCompileStatus);
+        if (!vsCompileStatus || !fsCompileStatus)
+            Throw(::Assets::Exceptions::ConstructionError(
+                ::Assets::Exceptions::ConstructionError::Reason::Unknown,
+                _depVal,
+                "Cannot build shader program because either vs or fs has bad compile status"));
+        if (vsType != GL_VERTEX_SHADER || fsType != GL_FRAGMENT_SHADER)
+            Throw(::Assets::Exceptions::ConstructionError(
+                ::Assets::Exceptions::ConstructionError::Reason::Unknown,
+                _depVal,
+                "Cannot build shader program because shader types don't match expected"));
+
         auto newProgramIndex = factory.CreateShaderProgram();
         glAttachShader  (newProgramIndex->AsRawGLHandle(), vs->AsRawGLHandle());
         glAttachShader  (newProgramIndex->AsRawGLHandle(), fs->AsRawGLHandle());
@@ -335,16 +380,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         glGetProgramiv   (newProgramIndex->AsRawGLHandle(), GL_LINK_STATUS, &linkStatus);
         if (!linkStatus) {
 
-            GLint infoLen = 0;
             ::Assets::Blob errorsLog;
-            glGetProgramiv(newProgramIndex->AsRawGLHandle(), GL_INFO_LOG_LENGTH, &infoLen);
-            if ( infoLen > 1 ) {
-                std::string buffer;
-                buffer.resize(infoLen);
-                glGetProgramInfoLog(newProgramIndex->AsRawGLHandle(), infoLen, nullptr, (GLchar*)buffer.data());
+            {
+                auto buffer = GetProgramInfoLog(newProgramIndex->AsRawGLHandle());
 
                 std::stringstream str;
-                str << "While linking (" << vertexShader.GetIdentifier() << ") & (" << fragmentShader.GetIdentifier() << "): ";
+                str << "Failure while linking of shaders (" << vertexShader.GetIdentifier() << ") & (" << fragmentShader.GetIdentifier() << "): ";
                 str << buffer;
                 buffer = str.str();
 
@@ -361,6 +402,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                 errorsLog));
         }
 
+        #if defined(_DEBUG)
+            std::stringstream str;
+            str << "[VS:" << vertexShader.GetIdentifier() << "][FS:" << fragmentShader.GetIdentifier() << "]";
+            _sourceIdentifiers = str.str();
+        #endif
+
         _underlying = std::move(newProgramIndex);
 
         _guid = g_nextShaderProgramGUID++;
@@ -368,6 +415,126 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     ShaderProgram::~ShaderProgram()
     {
+    }
+
+    std::ostream& operator<<(std::ostream& stream, const ShaderProgram& shaderProgram)
+    {
+        #if defined(_DEBUG)
+            stream << "Program: " << shaderProgram._sourceIdentifiers << std::endl;
+        #endif
+
+        std::pair<const char*, GLenum> attributes[] = {
+            {"GL_ACTIVE_ATTRIBUTES",                     GL_ACTIVE_ATTRIBUTES},
+            {"GL_ACTIVE_ATTRIBUTE_MAX_LENGTH",           GL_ACTIVE_ATTRIBUTE_MAX_LENGTH},
+            {"GL_ACTIVE_UNIFORM_BLOCKS",                 GL_ACTIVE_UNIFORM_BLOCKS},
+            {"GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH",  GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH},
+            {"GL_ACTIVE_UNIFORMS",                       GL_ACTIVE_UNIFORMS},
+            {"GL_ACTIVE_UNIFORM_MAX_LENGTH",             GL_ACTIVE_UNIFORM_MAX_LENGTH},
+            {"GL_ATTACHED_SHADERS",                      GL_ATTACHED_SHADERS},
+            {"GL_DELETE_STATUS",                         GL_DELETE_STATUS},
+            {"GL_INFO_LOG_LENGTH",                       GL_INFO_LOG_LENGTH},
+            {"GL_LINK_STATUS",                           GL_LINK_STATUS},
+            {"GL_PROGRAM_BINARY_RETRIEVABLE_HINT",       GL_PROGRAM_BINARY_RETRIEVABLE_HINT},
+            {"GL_TRANSFORM_FEEDBACK_BUFFER_MODE",        GL_TRANSFORM_FEEDBACK_BUFFER_MODE},
+            {"GL_TRANSFORM_FEEDBACK_VARYINGS",           GL_TRANSFORM_FEEDBACK_VARYINGS},
+            {"GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH", GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH},
+            {"GL_VALIDATE_STATUS",                       GL_VALIDATE_STATUS}
+        };
+
+        auto starterError = glGetError();
+        if (starterError) {
+            stream << "<<pending error before starting: " << GLenumAsString(starterError) << ">>" << std::endl;
+        }
+
+        for (auto a:attributes) {
+            GLint value = 0;
+            glGetProgramiv(shaderProgram.GetUnderlying()->AsRawGLHandle(), a.second, &value);
+            auto err = glGetError();
+            if (err) {
+                stream << "Got GL error (" << err << ") while querying program attribute (" << a.first << ")" << std::endl;
+            } else {
+                stream << "[" << a.first << "] " << value << std::endl;
+            }
+        }
+
+        stream << "Program info log: " << GetProgramInfoLog(shaderProgram.GetUnderlying()->AsRawGLHandle()) << std::endl;
+
+        GLint attachedShaderCount = 0;
+        glGetProgramiv(shaderProgram.GetUnderlying()->AsRawGLHandle(), GL_ATTACHED_SHADERS, &attachedShaderCount);
+        if (attachedShaderCount) {
+            GLuint attachedShaders[attachedShaderCount];
+            glGetAttachedShaders(shaderProgram.GetUnderlying()->AsRawGLHandle(), attachedShaderCount, &attachedShaderCount, attachedShaders);
+            stream << "Attached shaders: ";
+            for (unsigned c=0; c<attachedShaderCount; ++c) {
+                if (c != 0) stream << ", ";
+                stream << attachedShaders[c];
+            }
+            stream << std::endl;
+        }
+
+        {
+            GLint activeAttributeCount = 0, activeAttributeMaxLength = 0;
+            glGetProgramiv(shaderProgram.GetUnderlying()->AsRawGLHandle(), GL_ACTIVE_ATTRIBUTES, &activeAttributeCount);
+            glGetProgramiv(shaderProgram.GetUnderlying()->AsRawGLHandle(), GL_ACTIVE_ATTRIBUTE_MAX_LENGTH, &activeAttributeMaxLength);
+
+            char buffer[activeAttributeMaxLength+1];
+            stream << "Active attributes: " << std::endl;
+            for (unsigned c=0; c<activeAttributeCount; ++c) {
+                memset(buffer, 0, activeAttributeMaxLength+1);
+                GLsizei length = 0;
+                GLint size; GLenum type;
+                glGetActiveAttrib(
+                    shaderProgram.GetUnderlying()->AsRawGLHandle(),
+                    c, activeAttributeMaxLength,
+                    &length, &size, &type,
+                    buffer);
+                stream << "[" << c << "] " << GLenumAsString(type) << " " << buffer;
+                if (size > 1)
+                    stream << "(size: " << size << ")";
+                stream << std::endl;
+            }
+        }
+
+        {
+            GLint activeUniformCount = 0, activeUniformMaxCount = 0;
+            glGetProgramiv(shaderProgram.GetUnderlying()->AsRawGLHandle(), GL_ACTIVE_UNIFORMS, &activeUniformCount);
+            glGetProgramiv(shaderProgram.GetUnderlying()->AsRawGLHandle(), GL_ACTIVE_UNIFORM_MAX_LENGTH, &activeUniformMaxCount);
+
+            char buffer[activeUniformMaxCount+1];
+            stream << "Active uniforms: " << std::endl;
+            for (unsigned c=0; c<activeUniformCount; ++c) {
+                memset(buffer, 0, activeUniformMaxCount + 1);
+                GLsizei length = 0;
+                GLint size; GLenum type;
+                glGetActiveUniform(
+                    shaderProgram.GetUnderlying()->AsRawGLHandle(),
+                    c, activeUniformMaxCount,
+                    &length, &size, &type,
+                    buffer);
+                stream << "[" << c << "] " << GLenumAsString(type) << " " << buffer;
+                if (size > 1)
+                    stream << "(size: " << size << ")";
+
+                stream << " Locations: ";
+                if (size > 1) {
+                    char* bracket = strchr(buffer, '[');
+                    if (bracket) *bracket = '\0';
+                    for (unsigned e=0; e<size; ++e) {
+                        std::stringstream str;
+                        str << buffer << "[" << e << "]";
+                        auto location = glGetUniformLocation(shaderProgram.GetUnderlying()->AsRawGLHandle(), str.str().c_str());
+                        if (e!=0) stream << ", ";
+                        stream << location;
+                    }
+                } else {
+                    auto location = glGetUniformLocation(shaderProgram.GetUnderlying()->AsRawGLHandle(), buffer);
+                    stream << location;
+                }
+                stream << std::endl;
+            }
+        }
+
+        return stream;
     }
 
     void DestroyGLESCachedShaders()

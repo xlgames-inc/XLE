@@ -3,6 +3,7 @@
 #include "Shader.h"
 #include "Format.h"
 #include "../../UniformsStream.h"        // (for ConstantBufferElementDesc)
+#include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/IteratorUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 
@@ -18,20 +19,20 @@ namespace RenderCore { namespace Metal_OpenGLES
         SetUniformCommandGroup result;
         auto s = LowerBound(_structs, uniformStructName);
         if (s == _structs.end()) {
-#if DEBUG
-            // Try internals instead in a debug build, and throw an exception if found
-            for (const auto &ele : inputElements) {
-                const auto &found = FindUniform(ele._semanticHash);
-                if (found._bindingName == 0) {
-                    continue;
+            #if _DEBUG
+                // Try internals instead in a debug build, and throw an exception if found
+                for (const auto &ele : inputElements) {
+                    const auto &found = FindUniform(ele._semanticHash);
+                    if (found._bindingName == 0) {
+                        continue;
+                    }
+                    auto basicType = GLUniformTypeAsTypeDesc(found._type);
+                    auto inputBasicType = AsImpliedType(ele._nativeFormat);
+                    if (basicType == inputBasicType) {
+                        Throw(Exceptions::BasicLabel("Found a uniform outside of a struct. All uniforms must be located within structs. Problem uniform: %s", found._name.c_str()));
+                    }
                 }
-                auto basicType = GLUniformTypeAsTypeDesc(found._type);
-                auto inputBasicType = AsImpliedType(ele._nativeFormat);
-                if (basicType == inputBasicType) {
-                    Throw(Exceptions::BasicLabel("Found a uniform outside of a struct. All uniforms must be located within structs. Problem uniform: %s", found._name.c_str()));
-                }
-            }
-#endif
+            #endif
             return result;
         }
 
@@ -47,21 +48,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (basicType == inputBasicType) {
                     result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, b->_offset });
                 } else {
-                    assert(0);
-                    /*#if DEBUG
-                        if (limitFrequency(ObjCHashCombine((size_t)i._bindingName, (size_t)"UniformTypeMsg"), 1)) {
-                            NSLog(@"[limited] warning -- binding shader struct to predefined layout failed because of type mismatch");
-                        }
-                    #endif*/
+                    #if defined(STORE_UNIFORM_NAMES)
+                        Log(Warning) << "In MakeBinding, binding shader struct to predefined layout failed because of type mismatch on uniform (" << i._name << ") in struct (" << s->second._name << ")" << std::endl;
+                    #endif
                 }
-
-                #if defined(_DEBUG)
-                const_cast<Uniform&>(i)._isBound = true;
+            } else {
+                #if defined(STORE_UNIFORM_NAMES)
+                    Log(Warning) << "In MakeBinding, uniform in shader (" << i._name << ") in struct (" << s->second._name << ") was not matched to binding" << std::endl;
                 #endif
             }
         }
 
-        #if defined(_DEBUG)
+        #if defined(STORE_UNIFORM_NAMES)
             result._name = s->second._name;
         #endif
 
@@ -107,7 +105,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         // Iterate through the shader interface and pull out the information that's interesting
         // to us.
-        // glUseProgram();
 
         auto glProgram = program.GetUnderlying()->AsRawGLHandle();
 
@@ -152,9 +149,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                         HashVariableName(MakeStringSection(firstDot+1, fullName.end())),
                         location, type, size
 
-                        #if defined(_DEBUG)
+                        #if defined(STORE_UNIFORM_NAMES)
                             , fullName.AsString()
-                            , false
                         #endif
                     });
             } else {
@@ -162,9 +158,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto i = LowerBound(_structs, HashType(0));
                 if (i==_structs.end() || i->first != 0)
                     i = _structs.insert(i, std::make_pair(0, Struct{{}
-                    #if defined(_DEBUG)
-                        , "global"
-                    #endif
+                        #if defined(STORE_UNIFORM_NAMES)
+                            , "global"
+                        #endif
                         }));
 
                 i->second._uniforms.emplace_back(
@@ -174,7 +170,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                         #if defined(_DEBUG)
                             , fullName.AsString()
-                            , false
                         #endif
                     });
             }
@@ -253,36 +248,15 @@ namespace RenderCore { namespace Metal_OpenGLES
         CheckGLError("Bind SetUniformCommandGroup");
     }
 
-    #if defined(_DEBUG)
-    auto ShaderIntrospection::UnboundUniforms() const -> std::vector<Uniform>
+    std::ostream& operator<<(std::ostream&str, const SetUniformCommandGroup& cmdGroup)
     {
-        std::vector<Uniform> un;
-        for (auto& hs : _structs) {
-            for (auto& u : hs.second._uniforms) {
-                if (!u._isBound) {
-                    un.push_back(u);
-                }
-            }
+        for (const auto&cmd:cmdGroup._commands) {
+            str << "\tSet " << GLenumAsString(cmd._type);
+            if (cmd._count > 1)
+                str << "[" << cmd._count << "]";
+            str << " location: " << cmd._location;
+            str << " from data offset: 0x" << std::hex << cmd._dataOffset << std::dec << std::endl;
         }
-        return un;
+        return str;
     }
-
-    void ShaderIntrospection::MarkBound(HashType uniformName)
-    {
-        // This only applies to global uniforms
-        auto globals = LowerBound(_structs, 0ull);
-        if (globals == _structs.end() || globals->first != 0) {
-            return;
-        }
-
-        auto i = std::find_if(
-            globals->second._uniforms.begin(), globals->second._uniforms.end(),
-            [uniformName](const Uniform& u) { return (uniformName >= u._bindingName) && (uniformName < u._bindingName+u._elementCount); });
-        if (i == globals->second._uniforms.end()) {
-            return;
-        }
-
-        i->_isBound = true;
-    }
-    #endif
 }}

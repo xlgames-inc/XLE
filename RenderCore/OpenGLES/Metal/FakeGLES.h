@@ -124,6 +124,13 @@ extern void glGenVertexArrays (int32_t n, uint32_t *arrays);
 
 #define GL_VERTEX_ARRAY_BINDING                         0x85B5
 
+#define GL_ACTIVE_UNIFORM_BLOCKS                        0x8A36
+#define GL_ACTIVE_UNIFORM_BLOCK_MAX_NAME_LENGTH         0x8A35
+#define GL_PROGRAM_BINARY_RETRIEVABLE_HINT              0x8257
+#define GL_TRANSFORM_FEEDBACK_BUFFER_MODE               0x8C7F
+#define GL_TRANSFORM_FEEDBACK_VARYINGS                  0x8C83
+#define GL_TRANSFORM_FEEDBACK_VARYING_MAX_LENGTH        0x8C76
+
 #endif
 
 

@@ -10,6 +10,7 @@
 #include "../../../Utility/Mixins.h"
 #include "../../ShaderService.h"
 #include "ObjectFactory.h"
+#include <ostream>
 
 namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 
@@ -25,10 +26,16 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ShaderProgram(ObjectFactory& factory, const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
         ~ShaderProgram();
+
+        friend std::ostream& operator<<(std::ostream&, const ShaderProgram&);
     private:
         intrusive_ptr<OpenGL::ShaderProgram>    _underlying;
         ::Assets::DepValPtr                     _depVal;
         uint32_t                                _guid;
+
+        #if defined(_DEBUG)
+            std::string _sourceIdentifiers;
+        #endif
     };
 
     std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);

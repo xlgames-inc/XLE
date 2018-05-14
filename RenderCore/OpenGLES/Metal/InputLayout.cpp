@@ -23,12 +23,15 @@
 #include "../../../Utility/PtrUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 #include "IncludeGLES.h"
+#include <set>
 
 // Some platforms won't optimize unused varyigs out, which means some attributes might not be actually
 // used by the program. For now, we'll just disable the checks and warnings.
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS || PLATFORMOS_TARGET == PLATFORMOS_OSX
     #define DISABLE_ATTRIBUTE_BINDING_CHECK 1
 #endif
+
+// #define EXTRA_INPUT_LAYOUT_LOGGING
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
@@ -182,15 +185,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                     foundBinding = true;
                 }
 
-                if (!foundBinding) {
-                    #ifndef DISABLE_ATTRIBUTE_BINDING_CHECK
-                        Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
-                    #endif
-                    continue;
+                if (foundBinding) {
+                    assert(!(_attributeState & 1 << unsigned(attrLoc)));
+                    _attributeState |= 1 << unsigned(attrLoc);
                 }
-
-                assert(!(_attributeState & 1<<unsigned(attrLoc)));
-                _attributeState |= 1<<unsigned(attrLoc);
             }
 
             for (unsigned c=0; c<layouts.size(); ++c) {
@@ -198,19 +196,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                 _bindingsByVertexBuffer.push_back(unsigned(workingBindings[c].size()));
             }
             assert(_bindings.size() <= _maxVertexAttributes);
-        } else {
-            #ifndef DISABLE_ATTRIBUTE_BINDING_CHECK
-                // note -- if layouts is empty, we must spit errors for all attributes, because they are
-                // all unbound
-
-                for (int attrIndex=0; attrIndex<activeAttributeCount; ++attrIndex) {
-                    GLint size; GLenum type;
-                    GLsizei nameLen;
-                    glGetActiveAttrib(programHandle, attrIndex, activeAttributeMaxLength, &nameLen, &size, &type, buffer);
-                    if (!nameLen) continue;
-                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding. Ignoring" << std::endl;
-                }
-            #endif
         }
 
         _allAttributesBound = CalculateAllAttributesBound(program);
@@ -547,6 +532,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         struct UniformSet { int _location; unsigned _index, _value; GLenum _type; int _elementCount; };
         std::vector<UniformSet> uniformSets;
 
+        #if defined(STORE_UNIFORM_NAMES)
+            std::set<uint64_t> boundGlobalUniforms;
+            std::set<uint64_t> boundUniformStructs;
+        #endif
+
         const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2, &interface3 };
         auto streamCount = (unsigned)dimof(inputInterface);
         for (unsigned s=0; s<streamCount; ++s) {
@@ -558,10 +548,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                 // ensure it's not shadowed by a future binding
                 if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
 
+                #if defined(STORE_UNIFORM_NAMES)
+                    assert(boundUniformStructs.find(binding._hashName) == boundUniformStructs.end());
+                    boundUniformStructs.insert(binding._hashName);
+                #endif
+
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup) 
-                        #if defined(_DEBUG)
+                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup)
+                        #if defined(STORE_UNIFORM_NAMES)
                             , cmdGroup._name
                         #endif
                         });
@@ -579,7 +574,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto uniform = introspection.FindUniform(binding);
                 if (uniform._elementCount != 0) {
                     #if defined(_DEBUG)
-                        introspection.MarkBound(binding);
+                        boundGlobalUniforms.insert(uniform._bindingName);
                     #endif
                     // assign a texture unit for this binding
                     auto textureUnit = pipelineLayout.GetFixedTextureUnit(binding);
@@ -590,7 +585,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     auto dim = DimensionalityForUniformType(uniform._type);
                     auto elementIndex = unsigned(binding - uniform._bindingName);
                     assert(dim != GL_NONE);
-                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim 
+                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim
                         #if defined(_DEBUG)
                             , AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount)
                         #endif
@@ -605,8 +600,21 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
             }
         }
+
         #if defined(_DEBUG)
-            _unboundUniforms = introspection.UnboundUniforms();
+            auto globalsStruct = introspection.FindStruct(0);
+            for (const auto&u:globalsStruct._uniforms) {
+                if (boundGlobalUniforms.find(u._bindingName) == boundGlobalUniforms.end()) {
+                    Log(Verbose) << "Didn't get binding for global uniform (" << u._name << ") in BoundUniforms constructor" << std::endl;
+                    _unboundUniforms.push_back(u);
+                }
+            }
+            for (auto s:introspection.GetStructs()) {
+                if (s.first != 0 && boundUniformStructs.find(s.first) == boundUniformStructs.end()) {
+                    Log(Verbose) << "Didn't get binding for uniform struct (" << s.second._name << ") in BoundUniforms constructor" << std::endl;
+                    _unboundUniforms.insert(_unboundUniforms.end(), s.second._uniforms.begin(), s.second._uniforms.end());
+                }
+            }
         #endif
 
         // sort the uniform sets to collect up sequential sets on the same uniforms
@@ -640,11 +648,22 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
             _textureAssignmentCommands._commands.push_back(
                 SetUniformCommandGroup::SetCommand{i->_location, i->_type, elementCount, dataOffsetStart});
-
             i = i2;
         }
 
         CheckGLError("Construct BoundUniforms");
+
+        #if defined(_DEBUG) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
+            {
+                Log(Verbose) << "Building bound uniforms for program: " << shader << std::endl;
+                for (auto c=_cbs.begin(); c!=_cbs.end(); ++c) {
+                    Log(Verbose) << "CB[" << std::distance(_cbs.begin(), c) << "]: " << c->_name << " (" << c->_stream << ", " << c->_slot << "):" << std::endl;
+                    Log(Verbose) << c->_commandGroup << std::endl;
+                }
+                Log(Verbose) << "Texture assignment:" << std::endl;
+                Log(Verbose) << _textureAssignmentCommands << std::endl;
+            }
+        #endif
     }
 
     BoundUniforms::~BoundUniforms() {}

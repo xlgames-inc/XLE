@@ -5,12 +5,17 @@
 #include "../../Types.h"
 #include "../../../Utility/ParameterBox.h"
 #include "../../../Utility/IteratorUtils.h"
+#include <ostream>
 
 namespace RenderCore { class ConstantBufferElementDesc; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
     class ShaderProgram;
+
+    #if defined(_DEBUG)
+        #define STORE_UNIFORM_NAMES
+    #endif
 
     /// <summary>A simple abstraction for multiple uniform "set" operations.</summary>
     /// This can hold data for multiple uniforms, plus the parameters for the OpenGL "glUniform..."
@@ -23,7 +28,11 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         struct SetCommand { int _location; GLenum _type; unsigned _count; size_t _dataOffset; };
         std::vector<SetCommand> _commands;
-        DEBUG_ONLY(std::string _name;)
+        #if defined(STORE_UNIFORM_NAMES)
+            std::string _name;
+        #endif
+
+        friend std::ostream& operator<<(std::ostream&, const SetUniformCommandGroup&);
     };
 
     class ShaderIntrospection
@@ -41,24 +50,25 @@ namespace RenderCore { namespace Metal_OpenGLES
             GLenum      _type;
             int         _elementCount;
 
-            DEBUG_ONLY(std::string _name;)
-            DEBUG_ONLY(bool _isBound;)
+            #if defined(STORE_UNIFORM_NAMES)
+                std::string _name;
+            #endif
         };
-
-#if _DEBUG
-        std::vector<Uniform> UnboundUniforms() const;
-        void MarkBound(HashType uniformName);
-#endif
 
         class Struct
         {
         public:
             std::vector<Uniform> _uniforms;
-            DEBUG_ONLY(std::string _name;)
+
+            #if defined(STORE_UNIFORM_NAMES)
+                std::string _name;
+            #endif
         };
 
         Uniform     FindUniform(HashType uniformName) const;
         Struct      FindStruct(HashType structName) const;
+
+        IteratorRange<const std::pair<HashType, Struct>*> GetStructs() const { return MakeIteratorRange(_structs); };
 
         ShaderIntrospection(const ShaderProgram& shader);
         ~ShaderIntrospection();
