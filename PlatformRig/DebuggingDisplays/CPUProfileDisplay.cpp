@@ -296,7 +296,7 @@ namespace PlatformRig { namespace Overlays
 			                                         layout.GetMaximumSize()._topLeft[1])),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
 			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
-			    StringMeld<64>() << std::setprecision(2) << g_fpsDisplay);
+			    StringMeld<64>() << std::setprecision(3) << g_fpsDisplay);
 	    }
 
 	    {
@@ -306,7 +306,7 @@ namespace PlatformRig { namespace Overlays
 			                                         layout.GetMaximumSize()._topLeft[1] + 64)),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
 			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
-			    StringMeld<64>() << std::setprecision(2) << g_loadDisplay * 100.f << "%");
+			    StringMeld<64>() << std::setprecision(3) << g_loadDisplay * 100.f << "%");
 	    }
     }
 

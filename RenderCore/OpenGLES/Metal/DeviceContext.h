@@ -144,4 +144,17 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    inline void GraphicsPipeline::Bind(Topology topology)
+    {
+        switch (topology)
+        {
+        case Topology::PointList: _nativeTopology = GL_POINTS; break;
+        case Topology::LineList: _nativeTopology = GL_LINES; break;
+        case Topology::LineStrip: _nativeTopology = GL_LINE_STRIP; break;
+        case Topology::TriangleList: _nativeTopology = GL_TRIANGLES; break;
+        case Topology::TriangleStrip: _nativeTopology = GL_TRIANGLE_STRIP; break;
+        default: _nativeTopology = GL_ZERO; break;
+        }
+    }
+
 }}

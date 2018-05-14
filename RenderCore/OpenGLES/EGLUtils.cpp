@@ -218,7 +218,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         EGLint renderableType = 0;
         bool res = eglGetConfigAttrib(display, config, EGL_RENDERABLE_TYPE, &renderableType);
-        assert(res);
+        assert(res); (void)res;
         return RenderableTypeAsGLESVersion(renderableType);
     }
 
@@ -226,7 +226,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         EGLint clientVersion = 0;
         bool res = eglQueryContext(display, context, EGL_CONTEXT_CLIENT_VERSION, &clientVersion);
-        assert(res);
+        assert(res); (void)res;
         return clientVersion * 100;
     }
 

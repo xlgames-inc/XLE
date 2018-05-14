@@ -16,7 +16,11 @@ namespace RenderCore { class IDevice; class IResource; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
-    void CheckGLError(const char context[]);
+    #if defined(_DEBUG)
+        void CheckGLError(const char context[]);
+    #else
+        inline void CheckGLError(const char context[]) {}
+    #endif
     
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -61,11 +61,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         glBindBuffer(GL_ELEMENT_ARRAY_BUFFER, 0);
     }
 
-    void GraphicsPipeline::Bind(Topology topology)
-    {
-        _nativeTopology = AsGLenum(topology);
-    }
-
     void GraphicsPipeline::Bind(const ShaderProgram& shaderProgram)
     {
         glUseProgram(shaderProgram.GetUnderlying()->AsRawGLHandle());
@@ -174,7 +169,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         glDrawElements(
-            GLenum(_nativeTopology), GLsizei(indexCount),
+            GLenum(_nativeTopology), GLsizei(indexCount), // std::min(6, GLsizei(indexCount)),
             GLenum(_indicesFormat),
             (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes));
         CheckGLError("DrawIndexed()");

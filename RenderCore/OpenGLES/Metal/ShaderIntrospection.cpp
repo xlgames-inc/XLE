@@ -106,9 +106,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (auto i=input.begin(); i!=input.end(); i++) {
             if (*i == '.') return {{input.begin(), i}, {i+1, input.end()}};
             // An underscore also works like a fake struct separator.
-            // However, ignore the underscore if it's the first or second character
+            // However, ignore the underscore if it's the first, second or third character
             // so that prefixes like "u_" aren't considered structs.
-            if (i > (input.begin()+1) && *i == '_') return {{input.begin(), i}, {i+1, input.end()}};
+            if (i > (input.begin()+2) && *i == '_') return {{input.begin(), i}, {i+1, input.end()}};
         }
         return {input, {}};
     }

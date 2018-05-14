@@ -77,10 +77,12 @@ namespace RenderCore { namespace ImplOpenGLES
     static EGLConfig PickBestFromFilteredList(EGLDisplay display, IteratorRange<const EGLConfig*> filteredList, const Format requestFmt, TextureSamples samples)
     {
         // Log the configurations that the driver filtered out
-        Log(Warning) << "Filtered configs:" << std::endl;
-        for (const auto&cfg:filteredList) {
-            StreamConfigShort(Log(Warning), display, cfg) << std::endl;
-        }
+        #if defined(_DEBUG)
+            Log(Warning) << "Filtered configs:" << std::endl;
+            for (const auto&cfg:filteredList) {
+                StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+            }
+        #endif
 
         // Look for something that matches exactly the request we asked for.
         // If we don't find, then just drop back to the first option
@@ -91,8 +93,10 @@ namespace RenderCore { namespace ImplOpenGLES
                 if (AsTypelessFormat(fmt) == AsTypelessFormat(requestFmt)
                     && sampleBuffers == (samples._sampleCount > 1)) {
 
-                    Log(Warning) << "Got exact match:";
-                    StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+                    #if defined(_DEBUG)
+                        Log(Warning) << "Got exact match:";
+                        StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+                    #endif
                     return cfg;
                 }
             }
@@ -100,8 +104,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
         // Didn't find a close match, just return the first option that the driver
         // provided
-        Log(Warning) << "Falling back to first option:";
-        StreamConfigShort(Log(Warning), display, filteredList[0]) << std::endl;
+        #if defined(_DEBUG)
+            Log(Warning) << "Falling back to first option:";
+            StreamConfigShort(Log(Warning), display, filteredList[0]) << std::endl;
+        #endif
         return filteredList[0];
     }
 

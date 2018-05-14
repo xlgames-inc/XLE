@@ -197,8 +197,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         const auto& s = _subpasses[subpassIndex];
         // DavidJ -- hack because can't figure out how to get this working correctly using EGL
+        bool fbZeroHack = false;
         if (s._rtvCount == 1 && s._rtvs[0].GetResource() && s._rtvs[0].GetResource()->IsBackBuffer()) {
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
+            fbZeroHack = true;
         } else {
             glBindFramebuffer(GL_FRAMEBUFFER, s._frameBuffer->AsRawGLHandle());
         }
@@ -217,7 +219,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
         // For ES2, we have to drop back to the older API
         bool useNewClearAPI = context.GetFeatureSet() & FeatureSet::GLES300;
-        if (useNewClearAPI) {
+        if (!fbZeroHack && useNewClearAPI) {
             for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
                 auto attachmentIdx = s._rtvs[rtv];
                 auto load = s._rtvLoad[rtv];

@@ -592,6 +592,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                         #endif
                         });
 
+                    #if defined(_DEBUG)
+                        Log(Verbose) << "Selecting texunit (" << textureUnit << ") for uniform " << AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount) << " in stream " << s << ", slot " << slot << std::endl;
+                    #endif
+
                     // Record the command to set the uniform. Note that this
                     // is made a little more complicated due to array uniforms.
                     assert((binding - uniform._bindingName) < uniform._elementCount);
@@ -627,11 +631,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                 return lhs._index < rhs._index;
             });
 
-        if (!uniformSets.empty()) {
-            for (auto i=uniformSets.begin(); (i+1)!=uniformSets.end(); ++i) {
-                assert(i->_location != (i+1)->_location || i->_index != (i+1)->_index);
+        #if defined(_DEBUG) // ensure that we are not writing to the same uniform more than once
+            if (!uniformSets.empty()) {
+                for (auto i=uniformSets.begin(); (i+1)!=uniformSets.end(); ++i) {
+                    assert(i->_location != (i+1)->_location || i->_index != (i+1)->_index);
+                }
             }
-        }
+        #endif
 
         // Now generate the set commands that will assign the uniforms as required
         for (auto i = uniformSets.begin(); i!=uniformSets.end();) {
