@@ -7,6 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		8F20C86D20A9614000EBBE7E /* EGLUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F20C86B20A9613F00EBBE7E /* EGLUtils.h */; };
 		8F212B4A1FD75FBF00599B22 /* IDeviceOpenGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */; };
 		8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F212B481FD75FBF00599B22 /* Device_EGL.h */; };
 		8F212B571FD7851200599B22 /* Device_EAGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */; };
@@ -70,6 +71,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		8F20C86B20A9613F00EBBE7E /* EGLUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EGLUtils.h; path = ../OpenGLES/EGLUtils.h; sourceTree = "<group>"; };
+		8F20C86C20A9614000EBBE7E /* EGLUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = EGLUtils.cpp; path = ../OpenGLES/EGLUtils.cpp; sourceTree = "<group>"; };
 		8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDeviceOpenGLES.h; path = ../OpenGLES/IDeviceOpenGLES.h; sourceTree = "<group>"; };
 		8F212B481FD75FBF00599B22 /* Device_EGL.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Device_EGL.h; path = ../OpenGLES/Device_EGL.h; sourceTree = "<group>"; };
 		8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Device_EAGL.mm; path = ../OpenGLES/Device_EAGL.mm; sourceTree = "<group>"; };
@@ -182,6 +185,8 @@
 				8F212B4E1FD7640E00599B22 /* Device_EAGL.mm */,
 				BE6450922078244E00F97BEB /* Device_EGL.cpp */,
 				8F212B481FD75FBF00599B22 /* Device_EGL.h */,
+				8F20C86C20A9614000EBBE7E /* EGLUtils.cpp */,
+				8F20C86B20A9613F00EBBE7E /* EGLUtils.h */,
 				8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */,
 				8F212B461FD75FA600599B22 /* Metal */,
 				8F2D1B401FD628270028A531 /* Products */,
@@ -224,6 +229,7 @@
 				8F2D1B901FD629380028A531 /* TextureView.h in Headers */,
 				8F2D1B781FD629380028A531 /* Buffer.h in Headers */,
 				8F2D1B8F1FD629380028A531 /* ObjectFactory.h in Headers */,
+				8F20C86D20A9614000EBBE7E /* EGLUtils.h in Headers */,
 				8F2D1B8E1FD629380028A531 /* IncludeGLES.h in Headers */,
 				8F2D1B741FD629380028A531 /* Types.h in Headers */,
 				8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */,

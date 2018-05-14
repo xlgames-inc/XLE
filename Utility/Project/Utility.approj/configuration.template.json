@@ -8,7 +8,7 @@
 {
   "configuration_format_version": 2,
 
-  "default_target": {"project": "RenderCore_OpenGLES", "project_config": "Debug", "target": "RenderCoreOGLESIOS"},
+  "default_target": {"project": "Utility", "project_config": "Debug", "target": "UtilityIOS"},
 
 
   // Dictionary of global configuration parameters.
@@ -184,8 +184,7 @@
     // where it should be compiled, e.g.,
     // {"source": "./PngImageLoader.m", "flags": ["-fstack-protector"], "defines": {"PNG": 1}, "env": {"TARGET_TEXTURE_FMT": "png"}}
     "sources": [
-        "../OpenGLES/Device_EGL.cpp",
-        "../OpenGLES/EGLUtils.cpp"
+        "../Streams/Linux/FileSystemMonitor_Linux.cpp"
     ],
     
     // A list of glob inclusion filters for additional files.
@@ -265,7 +264,6 @@
     // A list of source files (e.g. .m, .mm, .c, .cc, and .cpp) files to remove from the build.
     // e.g. "./External/Reachabilty/Reachability.m"
     "sources": [
-        "../OpenGLES/Device_EAGL.mm"
     ],
     
     // A list of glob removal filters to filter out source files.
