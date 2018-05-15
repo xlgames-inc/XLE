@@ -56,7 +56,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         auto result = std::make_unique<ThreadContextOpenGLES>(_sharedContext, shared_from_this());
         result->MakeDeferredContext();
-        return result;
+        return std::move(result);
     }
 
     std::shared_ptr<IThreadContext> Device::GetImmediateContext()
