@@ -138,13 +138,15 @@ namespace RenderCore { namespace ImplOpenGLES
         Stream& StreamConfigShort(Stream&& str, EGLDisplay display, EGLConfig cfg)
     {
         EGLint renderable, width, height, surfaceType;
-        EGLint samples, sampleBuffers;
+        EGLint samples, sampleBuffers, configId;
         if (    eglGetConfigAttrib(display, cfg, EGL_RENDERABLE_TYPE, &renderable)
             &&  eglGetConfigAttrib(display, cfg, EGL_MAX_PBUFFER_WIDTH, &width)
             &&  eglGetConfigAttrib(display, cfg, EGL_MAX_PBUFFER_HEIGHT, &height)
             &&  eglGetConfigAttrib(display, cfg, EGL_SAMPLES, &samples)
             &&  eglGetConfigAttrib(display, cfg, EGL_SAMPLE_BUFFERS, &sampleBuffers)
-            &&  eglGetConfigAttrib(display, cfg, EGL_SURFACE_TYPE, &surfaceType)) {
+            &&  eglGetConfigAttrib(display, cfg, EGL_SURFACE_TYPE, &surfaceType)
+            &&  eglGetConfigAttrib(display, cfg, EGL_CONFIG_ID, &configId)) {
+            str << "[" << configId << "] ";
             str << ((renderable & EGL_OPENGL_ES3_BIT) ? "ES3 " : ((renderable & EGL_OPENGL_ES2_BIT) ? "ES2 " : ((renderable & EGL_OPENGL_ES_BIT) ? "ES1 " : "Unknown ")));
             str << AsString(Conv::GetTargetFormat(display, cfg)) << ", " << AsString(Conv::GetDepthStencilFormat(display, cfg));
             str << " " << width << "x" << height;
@@ -179,7 +181,6 @@ namespace RenderCore { namespace ImplOpenGLES
 
         str << "Got (" << configs.size() << ") EGL configs" << std::endl;
         for (auto c=configs.begin(); c!=configs.end(); ++c) {
-            str << "[" << std::distance(configs.begin(), c) << "] ";
             StreamConfigShort(str, display, *c) << std::endl;
         }
 

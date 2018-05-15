@@ -74,9 +74,113 @@ namespace RenderCore { namespace ImplOpenGLES
         return {};
     }
 
-    static std::experimental::optional<EGLConfig> TryGetEGLSurfaceConfig(
-        EGLDisplay display, EGLint renderableType, const PresentationChainDesc& desc)
+    static EGLConfig PickBestFromFilteredList(EGLDisplay display, IteratorRange<const EGLConfig*> filteredList, const Format requestFmt, TextureSamples samples)
     {
+        // Log the configurations that the driver filtered out
+        Log(Warning) << "Filtered configs:" << std::endl;
+        for (const auto&cfg:filteredList) {
+            StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+        }
+
+        // Look for something that matches exactly the request we asked for.
+        // If we don't find, then just drop back to the first option
+        for (const auto&cfg:filteredList) {
+            EGLint sampleBuffers = 0;
+            if (eglGetConfigAttrib(display, cfg, EGL_SAMPLE_BUFFERS, &sampleBuffers)) {
+                auto fmt = Conv::GetTargetFormat(display, cfg);
+                if (AsTypelessFormat(fmt) == AsTypelessFormat(requestFmt)
+                    && sampleBuffers == (samples._sampleCount > 1)) {
+
+                    Log(Warning) << "Got exact match:";
+                    StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+                    return cfg;
+                }
+            }
+        }
+
+        // Didn't find a close match, just return the first option that the driver
+        // provided
+        Log(Warning) << "Falling back to first option:";
+        StreamConfigShort(Log(Warning), display, filteredList[0]) << std::endl;
+        return filteredList[0];
+    }
+
+    struct TargetRequest { EGLint r, g, b, a; };
+    struct DepthStencilRequest { EGLint d, s; };
+    static std::vector<EGLConfig> GetFilteredConfigs(
+        EGLDisplay display,
+        EGLint renderableType, EGLint surfaceType,
+        const TargetRequest& target, const DepthStencilRequest& depthStencil,
+        EGLint sampleCount)
+    {
+        std::vector<EGLint> configAttribs;
+        configAttribs.push_back(EGL_RED_SIZE); configAttribs.push_back(target.r);
+        configAttribs.push_back(EGL_GREEN_SIZE); configAttribs.push_back(target.g);
+        configAttribs.push_back(EGL_BLUE_SIZE); configAttribs.push_back(target.b);
+        if (target.a != EGL_DONT_CARE) {
+            configAttribs.push_back(EGL_ALPHA_SIZE);
+            configAttribs.push_back(target.a);
+        }
+        if (depthStencil.d != EGL_DONT_CARE) {
+            configAttribs.push_back(EGL_DEPTH_SIZE);
+            configAttribs.push_back(depthStencil.d);
+        }
+        if (depthStencil.s != EGL_DONT_CARE) {
+            configAttribs.push_back(EGL_STENCIL_SIZE);
+            configAttribs.push_back(depthStencil.s);
+        }
+        configAttribs.push_back(EGL_SAMPLE_BUFFERS); configAttribs.push_back((sampleCount > 1) ? 1 : 0);
+        configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back((sampleCount > 1) ? sampleCount : 0);
+        configAttribs.push_back(EGL_RENDERABLE_TYPE); configAttribs.push_back(renderableType);
+        configAttribs.push_back(EGL_CONFIG_CAVEAT); configAttribs.push_back(EGL_NONE);
+        configAttribs.push_back(EGL_SURFACE_TYPE); configAttribs.push_back(surfaceType);
+        configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
+
+        EGLint numConfigs = 0;
+        auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), NULL, 0, &numConfigs);
+        if (chooseConfigResult && numConfigs > 1) {
+            std::vector<EGLConfig> configs(numConfigs);
+            auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), configs.data(), (EGLint)configs.size(), &numConfigs);
+            if (chooseConfigResult)
+                return configs;
+        }
+
+        return {};
+    }
+
+    static std::experimental::optional<std::pair<EGLConfig, EGLConfig>> TryGetEGLSurfaceConfig(
+        EGLDisplay display, const PresentationChainDesc& desc)
+    {
+        // Try to select the right configuration to use, based on some basic configuration
+        // guidelines passed in, and the preferred features of the device.
+        //
+        // The presentation chain interface doesn't allow the client to specify strict limitations
+        // on the options selected. We only get to specify a desired format, and we have to try
+        // to match it to what configurations the driver supports, in some sensible way.
+        //
+        // The way that eglChooseConfig works is a little non-intuitive. Some of the attributes (like
+        // the color precision) are lower bounds, and the driver will prioritize higher precision
+        // options. Other attributes are upper bounds.
+        //
+        // In other words, if we call eglChooseConfig and only consider the first option it returns,
+        // we can end up with results that tend to be at either the maximum or minimum ranges that
+        // the driver supports.
+        //
+        // So, we'll do this in two passes:
+        //   1) we'll call eglChooseConfig with some rough starter values, and get back a set of
+        //      configurations
+        //   2) we'll search through the list of configurations and try to pick out the one that
+        //      most closely matches the expected request
+        //
+        // The any of the list of configurations from 1) are expected to be reasonable, and the
+        // first will probably be a good middle-of-the-road type selection. This helps us ensure
+        // that we always get something reasonable, on every device (if we try to be too picky,
+        // we risk matching nothing on some devices).
+        //
+        // The second pass is necessary for specifically picking out lower quality options (for
+        // example when we want to return a 565 buffer, because the driver will almost always
+        // prioritize that lower than a 888/8888 buffer).
+
         auto requestedPrecision = GetComponentPrecision(desc._format);
         auto components = GetComponents(desc._format);
         if (components != FormatComponents::RGB && components != FormatComponents::RGBAlpha) {
@@ -85,31 +189,34 @@ namespace RenderCore { namespace ImplOpenGLES
         auto requestHasAlpha = components == FormatComponents::RGBAlpha;
 
         // Select a priority order for target color format, based on desc._format
-        struct TargetRequest { EGLint r, g, b, a; };
+        // Note that in the fallback order, we don't need to specify all options. eglChooseConfig
+        // is going to give us all configurations that match our request -- so generally we can just
+        // check 2 formats: one that tries to isolate the specific format we want, and one that
+        // is very permissive
         std::vector<TargetRequest> targetFallbackOrder;
         {
-            TargetRequest A { 5, 5, 5, 1 };
-            TargetRequest B { 5, 6, 5, EGL_DONT_CARE };
-            TargetRequest C { 8, 8, 8, requestHasAlpha ? 8 : EGL_DONT_CARE };
-            TargetRequest D { 10, 10, 10, requestHasAlpha ? 2 : EGL_DONT_CARE };
-            TargetRequest E { 11, 11, 10, EGL_DONT_CARE };
-            TargetRequest F { 4, 4, 4, 4 };
+            TargetRequest A {  4,  4,  4, requestHasAlpha ? 4 : EGL_DONT_CARE };
+            TargetRequest B {  5,  5,  5, requestHasAlpha ? 1 : EGL_DONT_CARE };
+            TargetRequest C {  5,  6,  5, EGL_DONT_CARE };
+            TargetRequest D {  8,  8,  8, requestHasAlpha ? 8 : EGL_DONT_CARE };
+            TargetRequest E { 10, 10, 10, requestHasAlpha ? 2 : EGL_DONT_CARE };
+            TargetRequest F { 11, 11, 10, EGL_DONT_CARE };
+
             if (requestedPrecision >= 10) { // HDR
-                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ D, C, F, A, E, B } : std::vector<TargetRequest>{ E, D, C, B, A, F };
+                targetFallbackOrder = { E, A };
             } else if (requestedPrecision >= 8) { // 8-bit
-                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ C, A, D, F, B, E } : std::vector<TargetRequest>{ C, B, A, E, D, F };
+                targetFallbackOrder = { D, A };
             } else if (requestedPrecision >= 5) { // low precision
-                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ A, F, C, D, B, E } : std::vector<TargetRequest>{ B, A, F, C, D, E };
+                targetFallbackOrder = { B, A };
             } else {
-                targetFallbackOrder = requestHasAlpha ? std::vector<TargetRequest>{ F, A, C, D, B, E } : std::vector<TargetRequest>{ F, B, A, C, D, E };
+                targetFallbackOrder = { A };
             }
+            (void)C;(void)F;
         }
 
-        struct DepthStencilRequest { EGLint d, s; };
         std::vector<DepthStencilRequest> depthStencilFallbackOrder = {
             { 24, EGL_DONT_CARE },
-            { 16, EGL_DONT_CARE },
-            { EGL_DONT_CARE, EGL_DONT_CARE }
+            { 16, EGL_DONT_CARE }
         };
 
         // select a priority order for MSAA sample requests
@@ -123,52 +230,40 @@ namespace RenderCore { namespace ImplOpenGLES
             sampleCounts = { 0 };
         }
 
-        for (auto s:sampleCounts) {
-            for (const auto&d:depthStencilFallbackOrder) {
-                for (const auto&t:targetFallbackOrder) {
-                    std::vector<EGLint> configAttribs;
-                    configAttribs.push_back(EGL_RED_SIZE); configAttribs.push_back(t.r);
-                    configAttribs.push_back(EGL_GREEN_SIZE); configAttribs.push_back(t.g);
-                    configAttribs.push_back(EGL_BLUE_SIZE); configAttribs.push_back(t.b);
-                    if (t.a != EGL_DONT_CARE) {
-                        configAttribs.push_back(EGL_ALPHA_SIZE);
-                        configAttribs.push_back(t.a);
-                    }
-                    if (d.d != EGL_DONT_CARE) {
-                        configAttribs.push_back(EGL_DEPTH_SIZE);
-                        configAttribs.push_back(d.d);
-                    }
-                    if (d.s != EGL_DONT_CARE) {
-                        configAttribs.push_back(EGL_STENCIL_SIZE);
-                        configAttribs.push_back(d.s);
-                    }
-                    configAttribs.push_back(EGL_SAMPLE_BUFFERS); configAttribs.push_back(s > 1 ? 1 : 0);
-                    configAttribs.push_back(EGL_SAMPLES); configAttribs.push_back(s > 1 : s : 0);
-                    configAttribs.push_back(EGL_RENDERABLE_TYPE); configAttribs.push_back(renderableType);
-                    configAttribs.push_back(EGL_CONFIG_CAVEAT); configAttribs.push_back(EGL_NONE);
-                    configAttribs.push_back(EGL_BUFFER_SIZE); configAttribs.push_back(16);
-                    // configAttribs.push_back(EGL_SURFACE_TYPE); configAttribs.push_back(EGL_WINDOW_BIT|EGL_PBUFFER_BIT);
-                    configAttribs.push_back(EGL_NONE); configAttribs.push_back(EGL_NONE);
+        // Always prefer ES3 if we can get it
+        std::vector<GLint> renderableTypes = { EGL_OPENGL_ES3_BIT, EGL_OPENGL_ES2_BIT };
 
-                    EGLint numConfigs = 0;
-                    auto chooseConfigResult = eglChooseConfig(display, configAttribs.data(), NULL, 0, &numConfigs);
-                    if (chooseConfigResult && numConfigs > 1) {
-                        std::vector<EGLConfig> configs(numConfigs);
-                        chooseConfigResult = eglChooseConfig(display, configAttribs.data(), configs.data(), (EGLint)configs.size(), &numConfigs);
-                        if (chooseConfigResult) {
-                            Log(Warning) << "Selected configs:" << std::endl;
-                            for (unsigned c = 0; c < configs.size(); ++c) {
-                                EGLint id = -1;
-                                eglGetConfigAttrib(display, configs[c], EGL_CONFIG_ID, &id);
-                                Log(Warning) << "[" << id << "] ";
-                                StreamConfigShort(Log(Warning), display, configs[c]) << std::endl;
-                            }
-                            return configs[0];
+        for (auto renderableType:renderableTypes) {
+            for (auto s:sampleCounts) {
+                for (const auto&d:depthStencilFallbackOrder) {
+                    for (const auto&t:targetFallbackOrder) {
+
+                        auto filteredConfigs = GetFilteredConfigs(
+                            display, renderableType, EGL_WINDOW_BIT,
+                            t, d, s);
+                        if (filteredConfigs.empty())
+                            continue;
+
+                        // Select our preferred option from the filtered list
+                        auto windowSurfaceCfg = PickBestFromFilteredList(display, MakeIteratorRange(filteredConfigs), desc._format, desc._samples);
+
+                        // Try to match it with a "pbuffer" configuration that is an similar as possible
+                        auto deferredCfg = windowSurfaceCfg;
+                        GLint surfaceTypes = 0;
+                        if (eglGetConfigAttrib(display, deferredCfg, EGL_SURFACE_TYPE, &surfaceTypes)
+                            && !(surfaceTypes & EGL_PBUFFER_BIT)) {
+
+                            auto pbufferConfigs = GetFilteredConfigs(
+                                display, renderableType, EGL_PBUFFER_BIT,
+                                t, d, 0);
+
+                            if (pbufferConfigs.empty())
+                                continue;
+
+                            deferredCfg = PickBestFromFilteredList(display, MakeIteratorRange(pbufferConfigs), desc._format, TextureSamples::Create(0,1));
                         }
-                    }
 
-                    if (!chooseConfigResult) {
-                        Log(Error) << "eglChooseConfig returned error code with error: (" << ErrorToName(eglGetError()) << ")" << std::endl;
+                        return std::make_pair(windowSurfaceCfg, deferredCfg);
                     }
                 }
             }
@@ -211,19 +306,19 @@ namespace RenderCore { namespace ImplOpenGLES
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(const void* platformWindowHandle, const PresentationChainDesc& desc)
     {
         if (!_rootContext) {
-            auto config = TryGetEGLSurfaceConfig(_display, EGL_OPENGL_ES3_BIT, desc);
-            if (!config)
-                config = TryGetEGLSurfaceConfig(_display, EGL_OPENGL_ES2_BIT, desc);
+            auto config = TryGetEGLSurfaceConfig(_display, desc);
             if (!config)
                 Throw(::Exceptions::BasicLabel("Cannot select root context configuration"));
 
             #if defined(_DEBUG)
-                Log(Verbose) << "Root context selected config:" << std::endl;
-                StreamConfig(Log(Verbose), _display, config.value());
+                Log(Verbose) << "Root context selected configs:" << std::endl;
+                StreamConfigShort(Log(Verbose), _display, config.value().first) << std::endl;
+                StreamConfigShort(Log(Verbose), _display, config.value().second) << std::endl;
             #endif
 
-            _rootContextConfig = config.value();
-            _glesVersion = GetGLESVersionFromConfig(_display, config.value());
+            _rootContextConfig = config.value().first;
+            _deferredContextConfig = config.value().second;
+            _glesVersion = GetGLESVersionFromConfig(_display, _rootContextConfig);
             _rootContext = std::make_shared<ThreadContext>(_display, _rootContextConfig, EGL_NO_CONTEXT, 0, shared_from_this());
 
             #if defined(_DEBUG)
@@ -270,7 +365,7 @@ namespace RenderCore { namespace ImplOpenGLES
     std::unique_ptr<IThreadContext> Device::CreateDeferredContext()
     {
         assert(_objectFactory);
-        return std::make_unique<ThreadContext>(_display, _rootContextConfig, _rootContext->GetUnderlying(), _rootContext->GetFeatureSet(), shared_from_this());
+        return std::make_unique<ThreadContext>(_display, _deferredContextConfig, _rootContext->GetUnderlying(), _rootContext->GetFeatureSet(), shared_from_this());
     }
 
     FormatCapability Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
@@ -529,26 +624,31 @@ namespace RenderCore { namespace ImplOpenGLES
     : _device(device), _currentPresentationChainGUID(0)
     , _display(display)
     {
-        auto glesVersion = GetGLESVersionFromConfig(_display, cfgForNewContext);
-
         // Build the root context
         EGLint contextAttribs[] = {
-            EGL_CONTEXT_CLIENT_VERSION, glesVersion / 100,
+            EGL_CONTEXT_CLIENT_VERSION, GetGLESVersionFromConfig(_display, cfgForNewContext) / 100,
             EGL_NONE, EGL_NONE
         };
         _context = eglCreateContext(_display, cfgForNewContext, rootContext, contextAttribs);
         if (_context == EGL_NO_CONTEXT)
             Throw(::Exceptions::BasicLabel("Failure while creating EGL context (%s)", ErrorToName(eglGetError())));
 
+        _dummySurface = EGL_NO_SURFACE;
+
         // create a "dummy PBuffer" so we can use this context for non-rendering operations (such as
         // loading & initialization)
-        int pbufferAttribsList[] = {
-            EGL_WIDTH, 1, EGL_HEIGHT, 1,
-            EGL_NONE, EGL_NONE
-        };
-        _dummySurface = eglCreatePbufferSurface(_display, cfgForNewContext, pbufferAttribsList);
-        if (_dummySurface == EGL_NO_SURFACE)
-            Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface (%s)", ErrorToName(eglGetError())));
+        GLint surfaceTypes = 0;
+        if (eglGetConfigAttrib(display, cfgForNewContext, EGL_SURFACE_TYPE, &surfaceTypes)
+            && (surfaceTypes & EGL_PBUFFER_BIT)) {
+
+            int pbufferAttribsList[] = {
+                EGL_WIDTH, 1, EGL_HEIGHT, 1,
+                EGL_NONE, EGL_NONE
+            };
+            _dummySurface = eglCreatePbufferSurface(_display, cfgForNewContext, pbufferAttribsList);
+            if (_dummySurface == EGL_NO_SURFACE)
+                Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface (%s)", ErrorToName(eglGetError())));
+        }
 
         #if defined(_DEBUG)
             Log(Verbose) << "Created EGL context: " << std::endl;

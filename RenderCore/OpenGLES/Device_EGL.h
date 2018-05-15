@@ -120,6 +120,7 @@ namespace RenderCore { namespace ImplOpenGLES
         std::shared_ptr<Metal_OpenGLES::ObjectFactory> _objectFactory;
 
         EGLConfig _rootContextConfig = nullptr;
+        EGLConfig _deferredContextConfig = nullptr;
         EGLDisplay _display = EGL_NO_DISPLAY;
         unsigned _glesVersion = 0;
 
