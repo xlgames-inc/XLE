@@ -444,12 +444,23 @@ namespace RenderCore { namespace ImplOpenGLES
         _desc = std::make_shared<PresentationChainDesc>(desc);
         _display = display;
 
-        // Create the main output surface
-        // This must be tied to the window in Win32 -- so we can't begin construction of this until we build the presentation chain.
-        const EGLint surfaceAttribList[] = { EGL_RENDER_BUFFER, EGL_BACK_BUFFER, EGL_NONE, EGL_NONE };
-        _surface = eglCreateWindowSurface(display, sharedContextCfg, EGLNativeWindowType(platformValue), surfaceAttribList);
-        if (_surface == EGL_NO_SURFACE)
-            Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: (%s)", ErrorToName(eglGetError())));
+        if (!platformValue) {
+            // Create a dummy pbuffer
+            int pbufferAttribsList[] = {
+                EGL_WIDTH, 1, EGL_HEIGHT, 1,
+                EGL_NONE, EGL_NONE
+            };
+            _surface = eglCreatePbufferSurface(display, sharedContextCfg, pbufferAttribsList);
+            if (_surface == EGL_NO_SURFACE)
+                Throw(::Exceptions::BasicLabel("Failure in eglCreatePbufferSurface (%s)", ErrorToName(eglGetError())));
+        } else {
+            // Create the main output surface
+            // This must be tied to the window in Win32 -- so we can't begin construction of this until we build the presentation chain.
+            const EGLint surfaceAttribList[] = { EGL_RENDER_BUFFER, EGL_BACK_BUFFER, EGL_NONE, EGL_NONE };
+            _surface = eglCreateWindowSurface(display, sharedContextCfg, EGLNativeWindowType(platformValue), surfaceAttribList);
+            if (_surface == EGL_NO_SURFACE)
+                Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: (%s)", ErrorToName(eglGetError())));
+        }
     }
 
     PresentationChain::~PresentationChain()
