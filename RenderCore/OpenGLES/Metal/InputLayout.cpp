@@ -27,7 +27,7 @@
 
 // Some platforms won't optimize unused varyigs out, which means some attributes might not be actually
 // used by the program. For now, we'll just disable the checks and warnings.
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS || PLATFORMOS_TARGET == PLATFORMOS_OSX
+#if PLATFORMOS_TARGET == PLATFORMOS_OSX
     #define DISABLE_ATTRIBUTE_BINDING_CHECK 1
 #endif
 
