@@ -37,7 +37,7 @@ namespace Utility
 
         #if ENFORCE_ALIGNED_READS
             // We must ensure that we're only performing aligned reads
-            uint64_t fixedBuffer[sizeInBytes/sizeof(uint64_t)] __attribute__((aligned(16)));
+            uint64_t fixedBuffer[(sizeInBytes + sizeof(uint64_t) - 1)/sizeof(uint64_t)] __attribute__((aligned(8)));
             if (size_t(begin) & 0x7) {
                 std::memcpy(fixedBuffer, begin, sizeInBytes);
                 begin = fixedBuffer;
@@ -73,7 +73,7 @@ namespace Utility
         #if ENFORCE_ALIGNED_READS
             // We must ensure that we're only performing aligned reads
             auto sizeInBytes = size_t(end)-size_t(begin);
-            uint32_t fixedBuffer[sizeInBytes/sizeof(uint32_t)] __attribute__((aligned(4)));
+            uint32_t fixedBuffer[(sizeInBytes + sizeof(uint32_t) - 1)/sizeof(uint32_t)] __attribute__((aligned(4)));
             if (size_t(begin) & 0x3) {
                 std::memcpy(fixedBuffer, begin, sizeInBytes);
                 begin = fixedBuffer;
