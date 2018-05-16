@@ -57,7 +57,8 @@ namespace Utility
         return xl_ctz8(input);
     }
 
-    inline uint32 CeilToMultiplePow2(uint32 input, uint32 multiple)
+    template <typename Type>
+        inline Type CeilToMultiplePow2(Type input, unsigned multiple)
     {
             // returns "input", or the next largest multiple of the number "multiple"
             // Here, we assume "multiple" is a power of 2
@@ -65,13 +66,15 @@ namespace Utility
         return (input + multiple - 1) & ~(multiple - 1);
     }
 
-    inline uint32 FloorToMultiplePow2(uint32 input, uint32 multiple)
+    template <typename Type>
+        inline Type FloorToMultiplePow2(Type input, unsigned multiple)
     {
         assert(IsPowerOfTwo(multiple));
         return input & ~(multiple - 1);
     }
 
-    inline uint32 CeilToMultiple(uint32 input, uint32 multiple)
+    template <typename Type>
+        inline Type CeilToMultiple(Type input, unsigned multiple)
     {
         assert(multiple > 0);
         return input + multiple - 1 - (input - 1) % multiple;
