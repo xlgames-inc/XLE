@@ -1228,7 +1228,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     ///////////////////////////////////////////////////////////////////////////////////
     InterfaceState::InterfaceState()
     {
-        _mousePosition = Coord2(-std::numeric_limits<float>::max(), -std::numeric_limits<float>::max());
+        _mousePosition = Coord2(std::numeric_limits<int>::min(), std::numeric_limits<int>::min());
         _mouseButtonsHeld = 0;
     }
 

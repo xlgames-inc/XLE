@@ -73,7 +73,7 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         CGLContextObj deferredContext = 0;
         auto error = CGLCreateContext(_mainPixelFormat, _sharedContext, &deferredContext);
-        assert(!error);
+        assert(!error); (void)error;
         return std::make_unique<ThreadContextOpenGLES>(deferredContext, shared_from_this());
     }
 
