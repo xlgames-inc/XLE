@@ -1265,9 +1265,12 @@ namespace Utility
             //  We could build a more effective implementation taking into account
             //  the fact that both parameter boxes are sorted.
         for (auto i=source._offsets.cbegin(); i!=source._offsets.cend(); ++i) {
+            const auto hash = source._hashNames[i->first];
             const auto* name = &source._names[i->first];
+            if (*name != 0) { assert(hash == MakeParameterNameHash(name)); }
             SetParameter(
-                name, 
+                hash,
+                name,
                 ValueTableOffset(source._values, i->second),
                 source._types[std::distance(source._offsets.cbegin(), i)]);
         }
