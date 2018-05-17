@@ -19,15 +19,26 @@ namespace RenderCore { namespace ImplOpenGLES
 {
     static Metal_OpenGLES::FeatureSet::BitField GetFeatureSet()
     {
-        return Metal_OpenGLES::FeatureSet::GLES200;
+        Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200;
+
+        const char* extensionsString = (const char*)glGetString(GL_EXTENSIONS);
+        if (extensionsString) {
+            if (strstr(extensionsString, "AMD_compressed_ATC_texture") || strstr(extensionsString, "ATI_texture_compression_atitc")) {
+                featureSet |= Metal_OpenGLES::FeatureSet::ATITC;
+            }
+
+            if (strstr(extensionsString, "GL_EXT_debug_label")) {
+                featureSet |= Metal_OpenGLES::FeatureSet::LabelObject;
+            }
+        }
+
+        return featureSet;
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Device::Device()
     {
-        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(GetFeatureSet());
-
         /*CGLPixelFormatAttribute*/
         unsigned pixelAttrs[] = {
             // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
@@ -46,6 +57,8 @@ namespace RenderCore { namespace ImplOpenGLES
         assert(_sharedContext);
 
         CGLSetCurrentContext(_sharedContext);
+
+        _objectFactory = std::make_shared<Metal_OpenGLES::ObjectFactory>(GetFeatureSet());
     }
 
     Device::~Device()

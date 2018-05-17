@@ -30,7 +30,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             PVRTC       = (1<<2),
             ETC1TC      = (1<<3),
             ETC2TC      = (1<<4),
-            ATITC       = (1<<5)
+            ATITC       = (1<<5),
+            LabelObject = (1<<6)
         };
         using BitField = unsigned;
     };

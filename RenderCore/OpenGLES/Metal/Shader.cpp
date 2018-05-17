@@ -240,6 +240,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         glShaderSource  (newShader->AsRawGLHandle(), dimof(shaderSourcePointers), shaderSourcePointers, shaderSourceLengths);
         glCompileShader (newShader->AsRawGLHandle());
 
+        if (ObjectFactory::WriteObjectLabels() && (objectFactory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && shaderPath._filename[0])
+            glLabelObjectEXT(GL_SHADER_OBJECT_EXT, newShader->AsRawGLHandle(), 0, shaderPath._filename);
+
         #if !defined(DEBUG)
             // By default, OpenGL keeps a copy of the source code we've given it, even after compilation. It only gets rid of
             //  it once it's been given something to replace it with. Here we are giving it an empty string because there is no
@@ -390,9 +393,17 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         GLint linkStatus = 0;
         glGetProgramiv   (newProgramIndex->AsRawGLHandle(), GL_LINK_STATUS, &linkStatus);
-        if (!linkStatus) {
 
+        std::stringstream str;
+        str << "[VS:" << vertexShader.GetIdentifier() << "][FS:" << fragmentShader.GetIdentifier() << "]";
+        auto sourceIdentifiers = str.str();
+
+        if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject))
+            glLabelObjectEXT(GL_PROGRAM_OBJECT_EXT, newProgramIndex->AsRawGLHandle(), (GLsizei)sourceIdentifiers.length(), (const GLchar*)sourceIdentifiers.data());
+
+        if (!linkStatus) {
             ::Assets::Blob errorsLog;
+
             {
                 auto buffer = GetProgramInfoLog(newProgramIndex->AsRawGLHandle());
 
@@ -415,9 +426,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         #if defined(_DEBUG)
-            std::stringstream str;
-            str << "[VS:" << vertexShader.GetIdentifier() << "][FS:" << fragmentShader.GetIdentifier() << "]";
-            _sourceIdentifiers = str.str();
+            _sourceIdentifiers = sourceIdentifiers;
         #endif
 
         _underlying = std::move(newProgramIndex);

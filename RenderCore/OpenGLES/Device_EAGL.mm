@@ -29,6 +29,14 @@ namespace RenderCore { namespace ImplOpenGLES
         }
         // All Apple / EAGL devices can support PVR textures
         featureSet |= Metal_OpenGLES::FeatureSet::PVRTC;
+
+        const char* extensionsString = (const char*)glGetString(GL_EXTENSIONS);
+        if (extensionsString) {
+            if (strstr(extensionsString, "GL_EXT_debug_label")) {
+                featureSet |= Metal_OpenGLES::FeatureSet::LabelObject;
+            }
+        }
+
         return featureSet;
     }
 

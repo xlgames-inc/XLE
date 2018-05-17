@@ -91,6 +91,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ObjectFactory& operator=(const ObjectFactory&) = delete;
         ObjectFactory(const ObjectFactory&) = delete;
+
+        static bool WriteObjectLabels();
     private:
         std::vector<std::pair<uint64_t, signed>> _refCountTable;
         Threading::Mutex _refCountTableLock;
@@ -160,4 +162,14 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         return (RawGLHandle)(size_t)this;
     }
+
+    inline bool ObjectFactory::WriteObjectLabels()
+    {
+        #if defined(_DEBUG)
+            return true;
+        #else
+            return false;
+        #endif
+    }
+
 }}

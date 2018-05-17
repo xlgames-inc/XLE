@@ -36,6 +36,10 @@ namespace RenderCore { namespace ImplOpenGLES
             if (strstr(extensionsString, "AMD_compressed_ATC_texture") || strstr(extensionsString, "ATI_texture_compression_atitc")) {
                 featureSet |= Metal_OpenGLES::FeatureSet::ATITC;
             }
+
+            if (strstr(extensionsString, "GL_EXT_debug_label")) {
+                featureSet |= Metal_OpenGLES::FeatureSet::LabelObject;
+            }
         }
         Log(Verbose) << "In AsGLESFeatureSet, extensionsString: " << extensionsString << std::endl;
 
