@@ -43,6 +43,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _bindings.reserve(elementsCount);
         _attributeState = 0;
         _allAttributesBound = false;
+        _vaoBindingHash = 0;
 
         unsigned vbMax = 0;
         for (const auto&l:layout)
@@ -122,6 +123,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         _attributeState = 0;
         _allAttributesBound = false;
+        _vaoBindingHash = 0;
 
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 

@@ -38,6 +38,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             IteratorRange<const SlotBinding*> layouts,
             const ShaderProgram& program);
 
+        BoundInputLayout(BoundInputLayout&&) = default;
+        BoundInputLayout& operator=(BoundInputLayout&&) = default;
+
     private:
         class Binding
         {
