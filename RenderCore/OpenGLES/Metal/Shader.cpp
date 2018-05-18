@@ -243,16 +243,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (ObjectFactory::WriteObjectLabels() && (objectFactory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && shaderPath._filename[0])
             glLabelObjectEXT(GL_SHADER_OBJECT_EXT, newShader->AsRawGLHandle(), 0, shaderPath._filename);
 
-        #if !defined(DEBUG)
-            // By default, OpenGL keeps a copy of the source code we've given it, even after compilation. It only gets rid of
-            //  it once it's been given something to replace it with. Here we are giving it an empty string because there is no
-            //  reason to let OpenGL keep a copy of the shader source code around in a release build (it can be handy with
-            //  frame capture tools, so we keep them around in debug)
-            // Note that we do have to pass 1 as the count, otherwise the function does nothing (keeps the old source)
-            const GLchar* shader = "";
-            glShaderSource(newShader->AsRawGLHandle(), 1, &shader, NULL);
-        #endif
-
         GLint compileStatus = 0;
         glGetShaderiv   (newShader->AsRawGLHandle(), GL_COMPILE_STATUS, &compileStatus);
         if (!compileStatus) {
