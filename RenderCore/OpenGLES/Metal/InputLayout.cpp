@@ -25,12 +25,6 @@
 #include "IncludeGLES.h"
 #include <set>
 
-// Some platforms won't optimize unused varyigs out, which means some attributes might not be actually
-// used by the program. For now, we'll just disable the checks and warnings.
-#if PLATFORMOS_TARGET == PLATFORMOS_OSX
-    #define DISABLE_ATTRIBUTE_BINDING_CHECK 1
-#endif
-
 // #define EXTRA_INPUT_LAYOUT_LOGGING
 
 namespace RenderCore { namespace Metal_OpenGLES
@@ -94,11 +88,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 }
 
                 if (attribute < 0) {
-                    #ifndef DISABLE_ATTRIBUTE_BINDING_CHECK
-                        //  Binding failure! Write a warning, but ignore it. The binding is
-                        //  still valid even if one or more attributes fail
-                        Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
-                    #endif
+                    //  Binding failure! Write a warning, but ignore it. The binding is
+                    //  still valid even if one or more attributes fail
+                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << buffer << ") cannot be found in the program. Ignoring" << std::endl;
                 } else {
                     const auto componentType = GetComponentType(elements[c]._nativeFormat);
                     _bindings.push_back({
@@ -206,7 +198,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     bool BoundInputLayout::CalculateAllAttributesBound(const ShaderProgram& program)
     {
-    #ifndef DISABLE_ATTRIBUTE_BINDING_CHECK
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 
         int activeAttributeCount = 0, activeAttributeMaxLength = 0;
@@ -237,7 +228,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                 return false;
             }
         }
-    #endif
 
         return true;
     }
