@@ -26,10 +26,7 @@ namespace RenderCore { namespace Techniques
             unsigned _offset;
             unsigned _arrayElementCount;
             unsigned _arrayElementStride;
-
-            #if defined(_DEBUG)
-                std::string _name;
-            #endif
+            std::string _name;
         };
         std::vector<Element> _elements;
         ParameterBox _defaults;

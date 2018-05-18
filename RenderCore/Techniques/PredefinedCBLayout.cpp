@@ -81,9 +81,7 @@ namespace RenderCore { namespace Techniques
             if (a && match.size() >= 4) {
                 Element e;
                 std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
-                #if defined(_DEBUG)
-                    e._name = Conversion::Convert<std::string>(name);
-                #endif
+                e._name = Conversion::Convert<std::string>(name);
                 e._hash = ParameterBox::MakeParameterNameHash(name);
                 e._hash64 = Hash64(AsPointer(name.begin()), AsPointer(name.end()));
                 e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
