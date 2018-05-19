@@ -15,6 +15,7 @@
 	#include <GLES2/gl2.h>
 	#include <GLES2/gl2ext.h>
 	#include <GLES3/gl3.h>
+    #define glLabelObjectEXT(...)
 #elif PLATFORMOS_TARGET == PLATFORMOS_ANDROID
     #include <GLES/gl.h>
     #include <OpenGLES/ES3/gl.h>
