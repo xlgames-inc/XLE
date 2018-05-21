@@ -44,7 +44,7 @@ namespace Utility
 
         ////////////   A L I G N E D   A L L O C A T E   ////////////
 
-    #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC || defined(MINGW)
+    #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC || defined(__MINGW32__)
 
         #define XlMemAlign          _aligned_malloc
         #define XlMemAlignFree      _aligned_free

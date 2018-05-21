@@ -20,7 +20,7 @@ namespace Utility
 
 		void CreateDirectory_Int(const char* dn)    
 		{ 
-#ifdef MINGW
+#ifdef __MINGW32__
             auto result = mkdir(dn);
 #else
 			auto result = mkdir(dn, 0775);

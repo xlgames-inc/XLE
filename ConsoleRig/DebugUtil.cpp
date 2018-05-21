@@ -12,7 +12,7 @@
 
 #include <iostream>
 
-#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(MINGW)
+#if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(__MINGW32__)
     #include "../Core/WinAPI/IncludeWindows.h"
     #include "../Foreign/StackWalker/StackWalker.h"
 #endif
@@ -149,7 +149,7 @@ namespace ConsoleRig
         #endif
     }
 
-    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(MINGW)
+    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(__MINGW32__)
         class StackWalkerToLog : public StackWalker
         {
         protected:
@@ -192,7 +192,7 @@ namespace ConsoleRig
                 Log(Error) << e.what() << std::endl;
 
                     // report this exception to the logger (including callstack information)
-                #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(MINGW)
+                #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS && !defined(__MINGW32__)
                     static StackWalkerToLog walker;
                     walker.ShowCallstack(7);
                 #endif

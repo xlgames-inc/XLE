@@ -188,7 +188,7 @@
 namespace Utility
 {
             /////////////////////////////////////////////////////////////////////////////
-#ifdef MINGW
+#ifdef __MINGW32__
     using std::ptrdiff_t;
 #endif
 
@@ -241,7 +241,7 @@ namespace Utility
 				}
 		#endif
 
-    #elif ((STL_ACTIVE == STL_GCC) || (STL_ACTIVE == STL_LIBCPP)) && !defined(MINGW)
+    #elif ((STL_ACTIVE == STL_GCC) || (STL_ACTIVE == STL_LIBCPP)) && !defined(__MINGW32__)
 
         template <class Iterator>
             decltype(&(*std::declval<std::__wrap_iter<Iterator>>())) AsPointer(std::__wrap_iter<Iterator> i) { return *reinterpret_cast<Iterator*>(&i); }
