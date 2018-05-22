@@ -159,30 +159,34 @@ namespace RenderCore { namespace Metal_OpenGLES
         _wrapT = AsGLenum(addressV);
         _wrapR = AsGLenum(addressW);
 
-        auto& objectFactory = GetObjectFactory();
-        _prebuiltSamplerMipmaps = objectFactory.CreateSampler();
-        if (_prebuiltSamplerMipmaps) {
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _minFilter);
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
+        // avoid using sampler on Windows; Angle doesn't seem to handle them correctly at this moment:
+        // https://bugs.chromium.org/p/angleproject/issues/detail?id=2246
+        #if PLATFORMOS_TARGET != PLATFORMOS_WINDOWS
+            auto& objectFactory = GetObjectFactory();
+            _prebuiltSamplerMipmaps = objectFactory.CreateSampler();
+            if (_prebuiltSamplerMipmaps) {
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _minFilter);
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
 
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
-            glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
-        }
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
+                glSamplerParameteri(_prebuiltSamplerMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+            }
 
-        _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
-        if (_prebuiltSamplerNoMipmaps) {
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter); /* intentionally using maxFilter in non-mipmap case */
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
+            _prebuiltSamplerNoMipmaps = objectFactory.CreateSampler();
+            if (_prebuiltSamplerNoMipmaps) {
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MIN_FILTER, _maxFilter); /* intentionally using maxFilter in non-mipmap case */
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_MAG_FILTER, _maxFilter);
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_S, _wrapS);
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_T, _wrapT);
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_WRAP_R, _wrapR);
 
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
-            glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
-        }
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_MODE, _compareMode);
+                glSamplerParameteri(_prebuiltSamplerNoMipmaps->AsRawGLHandle(), GL_TEXTURE_COMPARE_FUNC, _compareFunc);
+            }
+        #endif
 
         CheckGLError("Construct Sampler State");
     }
