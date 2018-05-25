@@ -236,9 +236,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
     {
-        #if !PGDROID
-            auto featureSet = devContext.GetFeatureSet();
-        #endif
+        auto featureSet = devContext.GetFeatureSet();
 
         uint32_t instanceFlags = 0u;
         uint32_t instanceDataRate[32];
@@ -266,7 +264,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto* capture = devContext.GetCapturedStates();
 
         if (capture) {
-            #if !PGDROID
             if (featureSet & FeatureSet::GLES300) {
                 auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
                 if (differences) {
@@ -278,7 +275,6 @@ namespace RenderCore { namespace Metal_OpenGLES
                     capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
                 }
             }
-            #endif
 
             // set enable/disable flags --
             // Note that this method cannot support more than 32 vertex attributes
@@ -298,13 +294,11 @@ namespace RenderCore { namespace Metal_OpenGLES
                 capture->_activeVertexAttrib = _attributeState;
             }
         } else {
-            #if !PGDROID
             if (featureSet & FeatureSet::GLES300) {
                 for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                     if (_attributeState & (1<<c))
                         glVertexAttribDivisor(c, instanceDataRate[c]);
             }
-            #endif
             for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                 if (_attributeState & (1<<c)) {
                     glEnableVertexAttribArray(c);
