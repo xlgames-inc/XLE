@@ -263,11 +263,25 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (unsigned rtv=0; rtv<s._rtvCount; ++rtv)
             if (s._rtvLoad[rtv] == LoadStore::DontCare)
                 attachmentsToInvalidate[invalidationCount++] = GL_COLOR_ATTACHMENT0 + rtv;
-        if (s._dsvLoad == LoadStore::DontCare) {
+
+        bool invalidateDepth = false, invalidateStencil = false;
+        if (s._dsvHasDepth) {
+            invalidateDepth |=
+                   s._dsvLoad == LoadStore::DontCare
+                || s._dsvLoad == LoadStore::DontCare_RetainStencil
+                || s._dsvLoad == LoadStore::DontCare_ClearStencil;
+        } else if (s._dsvHasStencil) {
+            invalidateStencil |=
+                       s._dsvLoad == LoadStore::DontCare
+                    || s._dsvLoad == LoadStore::Retain
+                    || s._dsvLoad == LoadStore::Clear;
+        }
+
+        if (invalidateDepth && invalidateStencil) {
             attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_STENCIL_ATTACHMENT;
-        } else if (s._dsvLoad == LoadStore::DontCare_RetainStencil || s._dsvLoad == LoadStore::DontCare_ClearStencil) {
+        } else if (invalidateDepth) {
             attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_ATTACHMENT;
-        } else if (s._dsvLoad == LoadStore::Retain || s._dsvLoad == LoadStore::Clear) {
+        } else if (invalidateStencil) {
             attachmentsToInvalidate[invalidationCount++] = GL_STENCIL_ATTACHMENT;
         }
         if (invalidationCount)
