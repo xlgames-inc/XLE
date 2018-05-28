@@ -322,7 +322,6 @@ namespace XLEMath
         #endif
 
         RebuildFreeRects();
-        _numOfFreeRectangles = _freeRectangles.size();
 
         return result;
     }
@@ -398,7 +397,6 @@ namespace XLEMath
             }
 
             RebuildFreeRects();
-            _numOfFreeRectangles = _freeRectangles.size();
         }
     }
 
