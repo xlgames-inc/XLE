@@ -163,6 +163,46 @@ namespace XLEMath
         return false;
     }
 
+    bool    Ray2DVsAABB(const std::pair<Float2, Float2>& localSpaceRay, const Float2& mins, const Float2& maxs)
+    {
+        // Based on a simple implementation from https://stackoverflow.com/questions/5514366/how-to-know-if-a-line-intersects-a-rectangle
+        // Find min and max X for the segment
+        auto minX = std::min(localSpaceRay.first[0], localSpaceRay.second[0]);
+        auto maxX = std::max(localSpaceRay.first[0], localSpaceRay.second[0]);
+
+        // Find the intersection of the segment's and rectangle's x-projections
+        if (maxX > maxs[0]) maxX = maxs[0];
+        if (minX < mins[0]) minX = mins[0];
+
+        if (minX > maxX) // If their projections do not intersect return false
+            return false;
+
+        // Find corresponding min and max Y for min and max X we found before
+        auto minY = localSpaceRay.first[1];
+        auto maxY = localSpaceRay.second[1];
+
+        auto dx = localSpaceRay.second[0] - localSpaceRay.first[0];
+
+        if (std::abs(dx) > 0.0000001f) {
+            auto a = (localSpaceRay.second[1] - localSpaceRay.first[1])/dx;
+            auto b = localSpaceRay.first[1] - a*localSpaceRay.first[0];
+            minY = a*minX + b;
+            maxY = a*maxX + b;
+        }
+
+        if (minY > maxY)
+            std::swap(minY, maxY);
+
+        // Find the intersection of the segment's and rectangle's y-projections
+        if (maxY > maxs[1]) maxY = maxs[1];
+        if (minY < mins[1]) minY = mins[1];
+
+        if (minY > maxY) // If Y-projections do not intersect return false
+            return false;
+
+        return true;
+    }
+
     std::pair<Float3, Float3> TransformBoundingBox(const Float3x4& transformation, std::pair<Float3, Float3> boundingBox)
     {
         Float3 corners[] = 
