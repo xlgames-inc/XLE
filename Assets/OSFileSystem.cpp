@@ -106,6 +106,9 @@ namespace Assets
 
 	auto FileSystem_OS::TryTranslate(Marker& result, StringSection<utf8> filename) -> TranslateResult
 	{
+		if (filename.IsEmpty())
+			return TranslateResult::Invalid;
+
 		// We're just going to translate this filename into a "marker" format that can be used
 		// with file open. We don't have to do any other validation here -- and we don't want to use
 		// any OS API functions here. We will also prepend the root directory at this point.
@@ -134,6 +137,9 @@ namespace Assets
 
 	auto FileSystem_OS::TryTranslate(Marker& result, StringSection<utf16> filename) -> TranslateResult
 	{
+		if (filename.IsEmpty())
+			return TranslateResult::Invalid;
+			
 		result.resize(2 + (_rootUTF16.size() + filename.Length() + 1) * sizeof(utf16));
 		auto* out = AsPointer(result.begin());
 		*(uint16*)out = 2;
