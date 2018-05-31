@@ -85,6 +85,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         void    ReportLeaks();
 
         FeatureSet::BitField GetFeatureSet() const { return _featureSet; }
+        
+        /* Disables VAO generation. Meant to be used on devices that have driver bugs around VAOs */
+        void DisableVAOs() { _vaosEnabled = false; }
 
         ObjectFactory(FeatureSet::BitField featureSet);
         ~ObjectFactory();
@@ -97,6 +100,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         std::vector<std::pair<uint64_t, signed>> _refCountTable;
         Threading::Mutex _refCountTableLock;
         FeatureSet::BitField _featureSet;
+        bool _vaosEnabled;
     };
 
     class DeviceContext;

@@ -93,7 +93,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     intrusive_ptr<GlObject<GlObject_Type::VAO> >             ObjectFactory::CreateVAO()
     {
-        if (_featureSet & FeatureSet::GLES300) {
+        if (!_vaosEnabled) {
+            // VAOs has been disabled, do not generate one!
+            return nullptr;
+        } else if (_featureSet & FeatureSet::GLES300) {
             RawGLHandle result = RawGLHandle_Invalid;
             glGenVertexArrays(1, &result);
             auto temp = (GlObject<GlObject_Type::VAO>*)(size_t)result;
@@ -377,7 +380,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 
     ObjectFactory::ObjectFactory(FeatureSet::BitField featureSet)
-    : _featureSet(featureSet)
+    : _featureSet(featureSet), _vaosEnabled(true)
     {
         assert(s_objectFactory_instance == nullptr);
         s_objectFactory_instance = this;
