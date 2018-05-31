@@ -23,7 +23,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
 
         OpenGL::FrameBuffer* GetSubpassUnderlyingFramebuffer(unsigned subpassIndex);
-        unsigned GetSubpassCount() const { return _subpassCount; }
+        unsigned GetSubpassCount() const { return (unsigned)_subpasses.size(); }
 
 		FrameBuffer(
 			ObjectFactory& factory,
@@ -33,8 +33,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 		~FrameBuffer();
 	private:
         static const unsigned s_maxMRTs = 4u;
-        static const unsigned s_maxSubpasses = 4u;
-        
+
         class Subpass
         {
         public:
@@ -50,8 +49,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             intrusive_ptr<OpenGL::FrameBuffer> _frameBuffer;
         };
-        Subpass     _subpasses[s_maxSubpasses];
-        unsigned    _subpassCount;
+        std::vector<Subpass> _subpasses;
 	};
 
     void BeginRenderPass(

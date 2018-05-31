@@ -77,7 +77,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
         
-        assert(subpasses.size() <= s_maxSubpasses);
+        _subpasses.resize(subpasses.size());
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 			auto& sp = _subpasses[c];
@@ -187,12 +187,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             // auto validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
             // assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
         }
-        _subpassCount = (unsigned)subpasses.size();
     }
 
     void FrameBuffer::BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const
     {
-        if (subpassIndex >= _subpassCount)
+        if (subpassIndex >= _subpasses.size())
             Throw(::Exceptions::BasicLabel("Attempting to set invalid subpass"));
 
         const auto& s = _subpasses[subpassIndex];
@@ -290,7 +289,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
     {
-        assert(subpassIndex < _subpassCount);
+        assert(subpassIndex < _subpasses.size());
         return _subpasses[subpassIndex]._frameBuffer.get();
     }
 
