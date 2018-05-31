@@ -320,7 +320,8 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         // Queue up the next render targets
         auto subpassIndex = s_nextSubpass;
-        frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
+        if (subpassIndex < frameBuffer.GetSubpassCount())
+            frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
         ++s_nextSubpass;
     }
 

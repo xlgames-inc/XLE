@@ -28,7 +28,7 @@ namespace RenderCore
 
 namespace RenderCore { namespace Techniques
 {
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class AttachmentPool
     {
@@ -52,14 +52,14 @@ namespace RenderCore { namespace Techniques
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FrameBufferDescFragment
     {
     public:
         AttachmentName DefineAttachment(
             uint64_t semantic,
-            const AttachmentDesc& request);
+            const AttachmentDesc& request = {});
         AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, request); }
         void AddSubpass(SubpassDesc&& subpass);
 
@@ -77,32 +77,6 @@ namespace RenderCore { namespace Techniques
     private:
         unsigned _nextAttachment;
     };
-
-    class PassFragment
-    {
-    public:
-        auto GetSRV(const AttachmentPool& namedAttachments, unsigned passIndex, unsigned slot) const
-            -> Metal::ShaderResourceView*;
-
-        using PassAndSlot = std::pair<unsigned, unsigned>;
-        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
-        unsigned _subpassCount;
-    };
-
-    struct PreregisteredAttachment
-    {
-    public:
-        AttachmentName _name;
-        uint64_t _semantic;
-        AttachmentDesc _desc;
-        enum class State { Uninitialized, Initialized };
-        State _state = State::Uninitialized;
-    };
-
-    std::pair<FrameBufferDescFragment, std::vector<PassFragment>>
-        MergeFragments(
-            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
-            IteratorRange<const FrameBufferDescFragment*> fragments);
 
     FrameBufferDesc BuildFrameBufferDesc(
         AttachmentPool& namedResources,
@@ -190,6 +164,61 @@ namespace RenderCore { namespace Techniques
     };
 
     std::shared_ptr<INamedAttachments> MakeNamedAttachmentsWrapper(AttachmentPool& namedRes);
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    struct PreregisteredAttachment
+    {
+    public:
+        AttachmentName _name;
+        uint64_t _semantic;
+        AttachmentDesc _desc;
+        enum class State { Uninitialized, Initialized };
+        State _state = State::Uninitialized;
+    };
+
+    class FrameBufferFragmentMapping
+    {
+    public:
+        using PassAndSlot = std::pair<unsigned, unsigned>;
+        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+        unsigned _subpassCount;
+    };
+
+    std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>>
+        MergeFragments(
+            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
+            IteratorRange<const FrameBufferDescFragment*> fragments);
+
+    /// <summary>Like RenderPassInstance, but works with a single fragment</summary>
+    /// RenderPasses are often generated from many "fragments" -- which are merged together into a
+    /// single render pass using MergeFragments.
+    ///
+    /// Often we want to then iterate through the entire renderpass, one fragment at a time
+    /// This class is a useful utility that allows us to work with a single fragment at a time, even
+    /// after many fragments have been combined into a single uber-renderpass.
+    class RenderPassFragment
+    {
+    public:
+        auto GetSRV(unsigned slot) const -> Metal::ShaderResourceView*;
+        AttachmentPool& GetAttachmentPool() const { return *_attachmentPool; }
+
+        void NextSubpass();
+
+        RenderPassFragment(
+            RenderPassInstance& rpi,
+            const FrameBufferFragmentMapping& mapping,
+            AttachmentPool& attachmentPool);
+        ~RenderPassFragment();
+
+        RenderPassFragment(const RenderPassFragment&) = delete;
+        RenderPassFragment& operator=(const RenderPassFragment&) = delete;
+    private:
+        RenderPassInstance* _rpi;
+        const FrameBufferFragmentMapping* _mapping;
+        AttachmentPool* _attachmentPool;
+        unsigned _currentPassIndex;
+    };
 
 }}
 

@@ -40,11 +40,11 @@ namespace RenderCore
     class AttachmentDesc
     {
     public:
-        Format _format;
+        Format _format = Format(0);
         float _width = 1.0f, _height = 1.0f;
         unsigned _arrayLayerCount = 0u;
 
-        TextureViewDesc::Aspect _defaultAspect = TextureViewDesc::Aspect::ColorLinear;
+        TextureViewDesc::Aspect _defaultAspect = TextureViewDesc::Aspect::UndefinedAspect;
 
         enum class DimensionsMode
         {
@@ -66,6 +66,13 @@ namespace RenderCore
             using BitField = unsigned;
         };
         Flags::BitField _flags = 0u;
+
+        static AttachmentDesc FromFlags(Flags::BitField flags)
+        {
+            AttachmentDesc result;
+            result._flags = flags;
+            return result;
+        }
     };
 
     /// <summary>Defines which attachments are used during a subpass (and ordering)</summary>

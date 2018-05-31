@@ -41,17 +41,40 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto PassFragment::GetSRV(const AttachmentPool& namedAttachments, unsigned passIndex, unsigned slot) const -> Metal::ShaderResourceView*
+    auto RenderPassFragment::GetSRV(unsigned slot) const -> Metal::ShaderResourceView*
     {
+        auto passIndex = _currentPassIndex;
         auto i = std::find_if(
-            _inputAttachmentMapping.begin(), _inputAttachmentMapping.end(),
-            [passIndex, slot](const std::pair<PassAndSlot, AttachmentName>& p) {
+            _mapping->_inputAttachmentMapping.begin(), _mapping->_inputAttachmentMapping.end(),
+            [passIndex, slot](const std::pair<FrameBufferFragmentMapping::PassAndSlot, AttachmentName>& p) {
                 return p.first == std::make_pair(passIndex, slot);
             });
-        if (i == _inputAttachmentMapping.end())
+        if (i == _mapping->_inputAttachmentMapping.end())
             return {};
 
-        return namedAttachments.GetSRV(i->second);
+        assert(_attachmentPool);
+        return _attachmentPool->GetSRV(i->second);
+    }
+
+    void RenderPassFragment::NextSubpass()
+    {
+        _rpi->NextSubpass();
+        ++_currentPassIndex;
+    }
+
+    RenderPassFragment::RenderPassFragment(
+        RenderPassInstance& rpi,
+        const FrameBufferFragmentMapping& mapping,
+        AttachmentPool& attachmentPool)
+    : _rpi(&rpi), _mapping(&mapping), _attachmentPool(&attachmentPool)
+    , _currentPassIndex(0)
+    {
+    }
+
+    RenderPassFragment::~RenderPassFragment()
+    {
+        if (_mapping->_subpassCount)
+            _rpi->NextSubpass();
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -472,7 +495,7 @@ namespace RenderCore { namespace Techniques
             ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && testAttachment._width == request._width && testAttachment._height == request._height
             && testAttachment._arrayLayerCount == request._arrayLayerCount
-            && testAttachment._defaultAspect == request._defaultAspect
+            && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
             && testAttachment._dimsMode == request._dimsMode
             && (testAttachment._flags & request._flags) == request._flags
             ;
@@ -571,7 +594,7 @@ namespace RenderCore { namespace Techniques
         return 0;
     }
 
-    std::pair<FrameBufferDescFragment, std::vector<PassFragment>> MergeFragments(
+    std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>> MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
         IteratorRange<const FrameBufferDescFragment*> fragments)
     {
@@ -580,7 +603,7 @@ namespace RenderCore { namespace Techniques
         // together (along with the temporaries) to create a single cohesive render pass.
         // Where we can reuse the same temporary multiple times, we should do so
         FrameBufferDescFragment result;
-        std::vector<PassFragment> fragmentRemapping;
+        std::vector<FrameBufferFragmentMapping> fragmentRemapping;
 
         if (!fragments.size()) return { std::move(result), std::move(fragmentRemapping) };
 
@@ -676,10 +699,23 @@ namespace RenderCore { namespace Techniques
 
                         reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
 
+                        // We can steal the settings from an existing attachment with the same semantic
+                        // name, if necessary
+                        auto desc = interfaceAttachment._desc;
+                        auto sameSemantic = std::find_if(
+                            workingAttachments.begin(), workingAttachments.end(),
+                            [&interfaceAttachment](const PreregisteredAttachment& input) {
+                                return (input._semantic == interfaceAttachment._semantic);
+                            });
+                        if (sameSemantic != workingAttachments.end()) {
+                            if (desc._format == Format::Unknown) desc._format = sameSemantic->_desc._format;
+                            if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->_desc._defaultAspect;
+                        }
+
                         PreregisteredAttachment newState {
                             reboundName,
                             interfaceAttachment._semantic,
-                            interfaceAttachment._desc,
+                            desc,
                             (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized
                         };
                         newWorkingAttachments.push_back(newState);
@@ -705,7 +741,7 @@ namespace RenderCore { namespace Techniques
 
                 // setup the subpasses & PassFragment
             std::sort(attachmentRemapping.begin(), attachmentRemapping.end(), CompareFirst<AttachmentName, AttachmentName>());
-            PassFragment passFragment;
+            FrameBufferFragmentMapping passFragment;
             for (unsigned p=0; p<(unsigned)f->_subpasses.size(); ++p) {
                 SubpassDesc newSubpass = f->_subpasses[p];
                 for (auto&a:newSubpass._output)
