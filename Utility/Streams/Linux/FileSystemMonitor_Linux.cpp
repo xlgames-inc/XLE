@@ -19,6 +19,10 @@
 
 // #include <iostream>
 
+// #define ENABLE_FILESYSTEM_MONITORING
+
+#if defined(ENABLE_FILESYSTEM_MONITORING)
+
 namespace Utility
 {
     class MonitoredDirectory
@@ -225,4 +229,33 @@ namespace Utility
 
     OnChangeCallback::~OnChangeCallback() {}
 }
+
+#else
+
+namespace Utility
+{
+    void AttachFileSystemMonitor(StringSection<utf16> directoryName,
+                                 StringSection<utf16> filename,
+                                 std::shared_ptr<OnChangeCallback> callback) {
+
+    }
+
+    void AttachFileSystemMonitor(StringSection<utf8> directoryName,
+                                 StringSection<utf8> filename,
+                                 std::shared_ptr<OnChangeCallback> callback) {
+
+    }
+
+    void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename) {
+
+    }
+
+    void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename) {
+
+    }
+
+    OnChangeCallback::~OnChangeCallback() {}
+}
+
+#endif
 
