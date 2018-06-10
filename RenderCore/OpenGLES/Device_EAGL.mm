@@ -105,7 +105,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     Metal_OpenGLES::FeatureSet::BitField DeviceOpenGLES::GetFeatureSet()
     {
-        return AsGLESFeatureSet(_sharedContext.get().API);
+        return _objectFactory->GetFeatureSet();
     }
 
     unsigned DeviceOpenGLES::GetNativeFormatCode()
