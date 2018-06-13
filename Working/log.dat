@@ -2,17 +2,17 @@
     Template=[{file}:{line}]:
 
 ~Error
-    Template=[{file}:{line}] ERROR:
+    Template=[{file}:{line}] ***ERROR***:
     OutputToConsole=true
 
 ~Warning
-    Template=[{file}:{line}] WARNING:
+    Template=[{file}:{line}] ***WARNING***:
     OutputToConsole=true
 
 ~Debug
-    Template=[{file}:{line}] DEBUG:
-    OutputToConsole=true
+    Template=[{file}:{line}] ***DEBUG***:
+    OutputToConsole=false
 
 ~Verbose
-    Template=[{file}:{line}] VERBOSE:
-    OutputToConsole=true
+    Template=[{file}:{line}] ***VERBOSE***:
+    OutputToConsole=false
