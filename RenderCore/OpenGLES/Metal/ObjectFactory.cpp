@@ -9,6 +9,7 @@
 #include "../IDeviceOpenGLES.h"
 #include "IncludeGLES.h"
 #include <assert.h>
+#include <iomanip>
 #include <map>
 
 #include "../../../ConsoleRig/Log.h"
@@ -410,7 +411,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         {
             auto e = glGetError();
             if (e) {
-                Log(Error) << "Encountered OpenGL error (" << e << ") in context (" << context << ")" << std::endl;
+                Log(Error) << "Encountered OpenGL error (" << "0x" << std::hex << std::setfill('0') << std::setw(4) << e << ") in context (" << context << ")" << std::endl;
                 // OutputDebugString(XlDynFormatString("Encountered OpenGL error (%i) in context (%s)", e, context).c_str());
             }
         }
