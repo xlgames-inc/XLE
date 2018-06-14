@@ -16,6 +16,7 @@
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/Conversion.h"
+#include "../../../Utility/Threading/Mutex.h"
 #include "../../../Core/SelectConfiguration.h"
 #include "IncludeGLES.h"
 
@@ -49,9 +50,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         OGLESShaderCompiler();
         ~OGLESShaderCompiler();
 
+        static Threading::Mutex s_compiledShadersLock;
         static std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> s_compiledShaders;
     };
 
+    Threading::Mutex OGLESShaderCompiler::s_compiledShadersLock;
     std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> OGLESShaderCompiler::s_compiledShaders;
 
     void OGLESShaderCompiler::AdaptShaderModel(
@@ -299,7 +302,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         uint64_t hashCode = DefaultSeed64;
         for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
             hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
-        s_compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
+        {
+            ScopedLock(s_compiledShadersLock);
+            s_compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
+        }
 
         struct OutputBlob
         {
@@ -350,8 +356,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         auto fsByteCode = fragmentShader.GetByteCode();
 
         assert(vsByteCode.size() == sizeof(uint64_t) && fsByteCode.size() == sizeof(uint64_t));
-        const auto& vs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)vsByteCode.first];
-        const auto& fs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)fsByteCode.first];
+        intrusive_ptr<OpenGL::Shader> vs, fs;
+        {
+            ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
+            vs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)vsByteCode.first];
+            fs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)fsByteCode.first];
+        }
 
         _depVal = std::make_shared<Assets::DependencyValidation>();
         Assets::RegisterAssetDependency(_depVal, vertexShader.GetDependencyValidation());
@@ -550,6 +560,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DestroyGLESCachedShaders()
     {
+        ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
         decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
     }
 

@@ -44,8 +44,11 @@ namespace Assets
 			auto lookup = s_mainMountingTree->Lookup(filename);
 			for (;;) {
 				auto r = lookup.TryGetNext(candidateObject);
-				if (r == LookupResult::Invalidated)
-					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+				if (r == LookupResult::Invalidated) {
+                    // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
+                    lookup = s_mainMountingTree->Lookup(filename);
+                    continue;
+                }
 
 				if (r == LookupResult::NoCandidates)
 					break;
@@ -70,9 +73,12 @@ namespace Assets
 			MountingTree::CandidateObject candidateObject;
 			auto lookup = s_mainMountingTree->Lookup(filename);
 			for (;;) {
-				auto r = lookup.TryGetNext(candidateObject);
-				if (r == LookupResult::Invalidated)
-					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+                auto r = lookup.TryGetNext(candidateObject);
+                if (r == LookupResult::Invalidated) {
+                    // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
+                    lookup = s_mainMountingTree->Lookup(filename);
+                    continue;
+                }
 
 				if (r == LookupResult::NoCandidates)
 					break;
@@ -96,8 +102,11 @@ namespace Assets
 			auto lookup = s_mainMountingTree->Lookup(filename);
 			for (;;) {
 				auto r = lookup.TryGetNext(candidateObject);
-				if (r == LookupResult::Invalidated)
-					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+				if (r == LookupResult::Invalidated) {
+                    // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
+                    lookup = s_mainMountingTree->Lookup(filename);
+                    continue;
+                }
 
 				if (r == LookupResult::NoCandidates)
 					break;
@@ -120,8 +129,11 @@ namespace Assets
 			auto lookup = s_mainMountingTree->Lookup(filename);
 			for (;;) {
 				auto r = lookup.TryGetNext(candidateObject);
-				if (r == LookupResult::Invalidated)
-					Throw(std::logic_error("Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."));
+				if (r == LookupResult::Invalidated) {
+                    // "Mounting point lookup was invalidated when the mounting tree changed. Do not change the mount or unmount filesystems while other threads may be accessing the same mounting tree."
+                    lookup = s_mainMountingTree->Lookup(filename);
+                    continue;
+                }
 
 				if (r == LookupResult::NoCandidates) 
 					break;
