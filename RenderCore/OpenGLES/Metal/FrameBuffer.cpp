@@ -139,14 +139,18 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto& res = *sp._rtvs[rtv].GetResource();
                 if (res.IsBackBuffer()) {
-                    drawBuffers[rtv] = GL_BACK;
+                    #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+                        drawBuffers[rtv] = GL_BACK_LEFT;
+                    #else
+                        drawBuffers[rtv] = GL_BACK;
+                    #endif
                 } else {
                     BindToFramebuffer(GL_COLOR_ATTACHMENT0 + colorAttachmentIterator, res, sp._rtvs[rtv]._window);
                     drawBuffers[rtv] = GL_COLOR_ATTACHMENT0 + colorAttachmentIterator;
                     ++colorAttachmentIterator;
                 }
             }
-            if (sp._dsv.IsGood()) {
+            if (!bindingToBackbuffer && sp._dsv.IsGood()) {
                 auto& res = *sp._dsv.GetResource();
                 const auto& viewWindow = sp._dsv._window;
 
