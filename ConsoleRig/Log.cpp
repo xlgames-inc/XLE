@@ -310,7 +310,7 @@ namespace ConsoleRig
     {
         #if defined(CONSOLERIG_ENABLE_LOG)
             if (!_cfgSet || !_cfgSet->GetDependencyValidation() || _cfgSet->GetDependencyValidation()->GetValidationIndex() > 0) {
-                _cfgSet = LoadConfigSet("log.dat");
+                _cfgSet = LoadConfigSet(_logCfgFile);
                 LogCentral::GetInstance().SetConfiguration(_cfgSet);
             }
         #endif
@@ -334,10 +334,11 @@ namespace ConsoleRig
 
     LogCentralConfiguration* LogCentralConfiguration::s_instance = nullptr;
 
-    LogCentralConfiguration::LogCentralConfiguration()
+    LogCentralConfiguration::LogCentralConfiguration(const std::string& logCfgFile)
     {
         #if defined(CONSOLERIG_ENABLE_LOG)
-            _cfgSet = LoadConfigSet("log.dat");
+            _logCfgFile = logCfgFile;
+            _cfgSet = LoadConfigSet(_logCfgFile);
         #endif
     }
 

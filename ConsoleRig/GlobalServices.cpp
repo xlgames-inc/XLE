@@ -48,7 +48,6 @@ namespace ConsoleRig
     static auto Fn_GetConsole = ConstHash64<'getc', 'onso', 'le'>::Value;
     static auto Fn_ConsoleMainModule = ConstHash64<'cons', 'olem', 'ain'>::Value;
     static auto Fn_GetAppName = ConstHash64<'appn', 'ame'>::Value;
-    static auto Fn_LogCfg = ConstHash64<'logc', 'fg'>::Value;
     static auto Fn_GuidGen = ConstHash64<'guid', 'gen'>::Value;
     static auto Fn_RedirectCout = ConstHash64<'redi', 'rect', 'cout'>::Value;
 	static auto Fn_GetAssetRoot = ConstHash64<'asse', 'troo', 't'>::Value;
@@ -60,10 +59,8 @@ namespace ConsoleRig
     static void MainRig_Startup(const StartupConfig& cfg, VariantFunctions& serv)
     {
         std::string appNameString = cfg._applicationName;
-        std::string logCfgString = cfg._logConfigFile;
         bool redirectCount = cfg._redirectCout;
         serv.Add<std::string()>(Fn_GetAppName, [appNameString](){ return appNameString; });
-        serv.Add<std::string()>(Fn_LogCfg, [logCfgString](){ return logCfgString; });
         serv.Add<bool()>(Fn_RedirectCout, [redirectCount](){ return redirectCount; });
 
         srand(std::random_device().operator()());
@@ -92,7 +89,7 @@ namespace ConsoleRig
     StartupConfig::StartupConfig()
     {
         _applicationName = "XLEApp";
-        _logConfigFile = "log.cfg";
+        _logConfigFile = "log.dat";
         _setWorkingDir = true;
         _redirectCout = true;
         // Hack -- these thread pools are only useful/efficient on windows
@@ -179,7 +176,7 @@ namespace ConsoleRig
         _crossModule->Publish(*this);
         AttachCurrentModule();
 
-        _logCfg = std::make_shared<LogCentralConfiguration>();
+        _logCfg = std::make_shared<LogCentralConfiguration>(cfg._logConfigFile);
         _crossModule->Publish(*_logCfg);
         _logCfg->AttachCurrentModule();
 

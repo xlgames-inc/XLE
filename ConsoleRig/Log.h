@@ -105,10 +105,11 @@ namespace ConsoleRig
         void AttachCurrentModule();
         void DetachCurrentModule();
 
-        LogCentralConfiguration();
+        LogCentralConfiguration(const std::string& logCfgFile);
         ~LogCentralConfiguration();
     private:
         std::shared_ptr<LogConfigurationSet> _cfgSet;
+        std::string _logCfgFile;
 
         static LogCentralConfiguration* s_instance;
         void Apply();
