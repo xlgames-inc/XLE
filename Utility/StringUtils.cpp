@@ -17,6 +17,7 @@
 #include <math.h>
 #include <stdlib.h>
 #include <limits>
+#include <climits>
 
 #if OS_OSX
     #include <xlocale.h>
@@ -981,7 +982,7 @@ bool XlSafeAtoi(const char* str, int* n)
     #else
         char* end = const_cast<char*>(XlStringEnd(str));
         long result = strtol(str, &end, 10);   // GCC atoi doesn't handle ERANGE as expected... But! Sometimes strtol returns a 64 bit number, not a 32 bit number... trouble...?
-        if (result == std::numeric_limits<decltype(result)>::max() || result == std::numeric_limits<decltype(result)>::min()) {
+        if (result == LONG_MAX || result == LONG_MIN) {
             if (errno == ERANGE) {
                 return false;
             }

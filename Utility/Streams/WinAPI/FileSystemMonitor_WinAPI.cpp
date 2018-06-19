@@ -86,7 +86,7 @@ namespace Utility
     MonitoredDirectory::~MonitoredDirectory()
     {
         if (_directoryHandle != INVALID_HANDLE_VALUE) {
-            // CancelIoEx(_directoryHandle, &_overlapped);
+            CancelIoEx(_directoryHandle, &_overlapped);
             CloseHandle(_directoryHandle);
         }
         CloseHandle(_overlapped.hEvent);

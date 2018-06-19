@@ -1205,24 +1205,28 @@ namespace RenderOverlays { namespace DebuggingDisplay
         p._horizontalDivider = false;
         _panels.push_back(p);
 
-//        {
-//            using namespace luabridge;
-//            auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-//            void (DebugScreensSystem::*switchToScreen)(const char[]) = &DebugScreensSystem::SwitchToScreen;
-//            getGlobalNamespace(luaState)
-//                .beginClass<DebugScreensSystem>("DebugScreensSystem")
-//                    .addFunction("SwitchToScreen", switchToScreen)
-//                .endClass();
-//            
-//            setGlobal(luaState, this, "MainDebug");
-//        }
+#if defined(HAS_XLE_CONSOLE_RIG)
+       {
+           using namespace luabridge;
+           auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
+           void (DebugScreensSystem::*switchToScreen)(const char[]) = &DebugScreensSystem::SwitchToScreen;
+           getGlobalNamespace(luaState)
+               .beginClass<DebugScreensSystem>("DebugScreensSystem")
+                   .addFunction("SwitchToScreen", switchToScreen)
+               .endClass();
+
+           setGlobal(luaState, this, "MainDebug");
+       }
+#endif
     }
 
     DebugScreensSystem::~DebugScreensSystem()
     {
-//        auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
-//        lua_pushnil(luaState);
-//        lua_setglobal(luaState, "MainDebug");
+#if defined(HAS_XLE_CONSOLE_RIG)
+       auto* luaState = ConsoleRig::Console::GetInstance().GetLuaState();
+       lua_pushnil(luaState);
+       lua_setglobal(luaState, "MainDebug");
+#endif
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
