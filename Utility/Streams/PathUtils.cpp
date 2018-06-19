@@ -553,19 +553,19 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
         _fullFilename = rawString;
 
         const CharType seps[] = { (CharType)'\\', (CharType)'/' };
-        const auto* sepsEnd = ArrayEnd(seps);
+        const CharType sepsAndDot[] = { (CharType)'\\', (CharType)'/', (CharType)'.' };
 
         const auto* pathStart = rawString._start;
 
 		auto firstColon = std::find(rawString._start, rawString._end, ':');
-		if (firstColon > std::find_first_of(rawString._start, rawString._end, seps, sepsEnd)) {
+		if (firstColon < std::find_first_of(rawString._start, rawString._end, sepsAndDot, ArrayEnd(sepsAndDot))) {
     		_drive = Section(rawString._start, firstColon+1);
             pathStart = firstColon+1;
         } else {
-            _drive = Section(rawString._start, rawString._end);
+            _drive = Section(rawString._start, rawString._start);
         }
 
-		auto lastSlash = FindLastOf(rawString._start, rawString._end, seps, sepsEnd);
+		auto lastSlash = FindLastOf(rawString._start, rawString._end, seps, ArrayEnd(seps));
 		if (lastSlash == rawString._end) {
             _path = Section(pathStart, pathStart);
         } else {
@@ -718,12 +718,12 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
         _beginsWithSeparator = false;
 
         const CharType seps[] = { (CharType)'\\', (CharType)'/' };
-        const auto* sepsEnd = ArrayEnd(seps);
+        const CharType sepsAndDot[] = { (CharType)'\\', (CharType)'/', (CharType)'.' };
 		const auto* i = rawString._start;
         const auto* iend = rawString._end;
 
             // (not supporting "d:file.txt" type filenames currently! (ambiguity with parameters)
-        auto firstSep = std::find_first_of(i, iend, seps, sepsEnd);
+        auto firstSep = std::find_first_of(i, iend, sepsAndDot, ArrayEnd(sepsAndDot));
         auto firstColon = std::find(i, iend, ':');
         if (firstColon != iend && firstSep != iend && firstColon < firstSep) {
             _drive = Section(i, firstColon+1);
@@ -732,7 +732,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
             _drive = Section(i, i);
         }
 
-        auto* leadingSeps = FindFirstNotOf(i, iend, seps, sepsEnd);
+        auto* leadingSeps = FindFirstNotOf(i, iend, seps, ArrayEnd(seps));
         if (leadingSeps != i) {
             _beginsWithSeparator = true;
             i = leadingSeps;
@@ -741,12 +741,12 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 		if (i != iend) {
             for (;;) {
                 auto* start = i;
-                i = std::find_first_of(i, iend, seps, sepsEnd);
+                i = std::find_first_of(i, iend, seps, ArrayEnd(seps));
             
                 _sections.push_back(Section(start, i));
                 if (i == iend) break;
 
-                i = FindFirstNotOf(i, iend, seps, sepsEnd);
+                i = FindFirstNotOf(i, iend, seps, ArrayEnd(seps));
                 if (i == iend) { _endsWithSeparator = true; break; }
 		    }
         }
