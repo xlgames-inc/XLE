@@ -19,6 +19,38 @@
 	#include <stdlib.h>     // (for exit)
 #endif
 
+/*!
+    \page ExceptionsPage Exceptions in XLE
+
+    XLE provides some macros to make it convenient to switch on and off language level exceptions.
+    Exceptions are enabled if the corresponding flag is set on the compiler. In other words, to
+    disable use of exceptions in XLE, switch off the corresponding flag on the compiler command
+    line.
+
+    When exceptions are disabled in the compiler, Throw() results in a call to exit(), and catch
+    code is compiled out.
+
+    When writing exception code to work with XLE, consider using the following template. This will
+    allow the code to compile & work in both the exceptions-enabled and exceptions-disabled cases.
+
+    \code{.cpp}
+
+    TRY {
+        if (SomeCondition)
+            Throw(std::runtime_error("Example error"));
+
+        return std::make_unique<SomeObject>();
+    } CATCH (const SomeSpecificException& e) {
+        HandleException(e);
+    } CATCH (const std::exception& e) {
+        Log(Error) << "Got unknown generic exception: " << e.what() << std::endl;
+    } CATCH (...) {
+        RETHROW
+    } CATCH_END
+
+    \endcode
+*/
+
 #if FEATURE_EXCEPTIONS
 
     #define TRY { try 
