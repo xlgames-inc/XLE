@@ -138,7 +138,7 @@ namespace Utility
         uint32 _workingId;
         uint32 _idAtEventsStart[s_bufferCount];
 
-        uint64_t _frameMarkers[512];
+        uint64_t _frameMarkers[64];
         unsigned _frameMarkerNext, _frameMarkerCount;
 
         #if !defined(NDEBUG)
