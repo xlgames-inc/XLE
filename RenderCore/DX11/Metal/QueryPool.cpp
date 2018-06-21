@@ -98,7 +98,7 @@ namespace RenderCore { namespace Metal_DX11
 	{
 		auto& b = _buffers[_activeBuffer];
 		if (b._pendingReadback) {
-			LogWarning << "Query pool eating it's tail. Insufficient buffers.";
+			Log(Warning) << "Query pool eating it's tail. Insufficient buffers.";
 			return FrameId_Invalid;
 		}
 		if (b._pendingReset) {

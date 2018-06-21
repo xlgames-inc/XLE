@@ -222,7 +222,7 @@ namespace RenderCore { namespace Assets
 
             #if defined(_DEBUG)
                 if (result[c] == ~unsigned(0x0)) {
-                    LogWarning << "Animation driver output cannot be bound to transformation machine input";
+                    Log(Warning) << "Animation driver output cannot be bound to transformation machine input" << std::endl;
                 }
             #endif
         }

@@ -148,7 +148,7 @@ namespace RenderCore { namespace Techniques
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
-            for (auto e=0; e<c->_arrayElementCount; e++) {
+            for (auto e=0u; e<c->_arrayElementCount; e++) {
                 bool gotValue = parameters.GetParameter(
                     c->_hash + e, PtrAdd(dst, c->_offset + e * c->_arrayElementStride),
                     c->_type);

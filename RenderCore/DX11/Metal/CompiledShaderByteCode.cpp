@@ -1359,7 +1359,7 @@ namespace RenderCore { namespace Metal_DX11
         auto compiler = GetShaderCompileModule();
         if (!compiler || compiler == INVALID_HANDLE_VALUE) {
 			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
-            LogAlwaysError << "Could not load d3dcompiler_47.dll. This is required to compile shaders. Please make sure this dll is in the same directory as your executable, or reachable path" << std::endl;
+            Log(Error) << "Could not load d3dcompiler_47.dll. This is required to compile shaders. Please make sure this dll is in the same directory as your executable, or reachable path" << std::endl;
             return E_NOINTERFACE;
         }
 

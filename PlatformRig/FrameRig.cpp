@@ -301,10 +301,10 @@ namespace PlatformRig
         if (accAlloc) {
             auto acc = accAlloc->GetAndClear();
             if (acc._allocationCount)
-                LogInfo << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ")." << std::endl;
+                Log(Verbose) << "(" << acc._freeCount << ") frees and (" << acc._allocationCount << ") allocs during startup. Ave alloc: (" << acc._allocationsSize / acc._allocationCount << ")." << std::endl;
             auto metrics = accAlloc->GetCurrentHeapMetrics();
             if (metrics._blockCount)
-                LogInfo << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
+                Log(Verbose) << "(" << metrics._blockCount << ") active normal block allocations in (" << metrics._usage / (1024.f*1024.f) << "M bytes). Ave: (" << metrics._usage / metrics._blockCount << ")." << std::endl;
         }
 
         if (isMainFrameRig) {

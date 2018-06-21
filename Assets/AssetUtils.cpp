@@ -493,7 +493,7 @@ namespace Assets
         {
             static char buffer[4096];
             if (_actualizationLog) {
-                strcpy(buffer, "Error during asset construction: ");
+                XlCopyString(buffer, "Error during asset construction: ");
                 auto* d = buffer;
                 while (*d) ++d;
                 auto* end = &buffer[dimof(buffer)-2];
@@ -503,7 +503,7 @@ namespace Assets
                 }
                 *d = '\0';
             } else {
-                strcpy(buffer, "Error during asset construction (unspecified)");
+                XlCopyString(buffer, "Error during asset construction (unspecified)");
             }
             return buffer;
         }

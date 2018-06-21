@@ -389,7 +389,7 @@ namespace BufferUploads
 							} else if (fmt == TexFmt::WIC) {
 								hresult = LoadFromWICMemory(srcFile.GetData(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
 							} else {
-								LogWarning << "Texture format not apparent from filename (" << filename << ")";
+								Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
 							}
 						}
 					} else {
@@ -400,7 +400,7 @@ namespace BufferUploads
 						} else if (fmt == TexFmt::WIC) {
 							hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
 						} else {
-							LogWarning << "Texture format not apparent from filename (" << filename << ")";
+							Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
 						}
 					}
 
@@ -428,7 +428,7 @@ namespace BufferUploads
                             this->_image = std::move(newImage);
                             desc._textureDesc._mipCount = uint8(this->_image.GetMetadata().mipLevels);
                         } else {
-                            LogWarning << "Failed while building mip-maps for texture: " << filename;
+                            Log(Warning) << "Failed while building mip-maps for texture: " << filename << std::endl;
                         }
                     }
 
@@ -485,7 +485,7 @@ namespace BufferUploads
         } else if (fmt == TexFmt::WIC) {
             hresult = GetMetadataFromWICFile((const wchar_t*)wfilename, WIC_FLAGS_NONE, metadata);
         } else {
-            LogWarning << "Texture format not apparent from filename (" << filename.AsString().c_str() << ")";
+            Log(Warning) << "Texture format not apparent from filename (" << filename.AsString().c_str() << ")" << std::endl;
         }
 
         if (SUCCEEDED(hresult)) {

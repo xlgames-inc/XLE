@@ -1355,7 +1355,7 @@ namespace BufferUploads
                         if (batchedResource && !batchedResource->IsEmpty()) {
                             break;
                         }
-                        LogWarning << "Resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again";
+                        Log(Warning) << "Resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again" << std::endl;
                         Threading::Sleep(16);
                     }
 

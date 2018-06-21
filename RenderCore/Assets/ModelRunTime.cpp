@@ -385,7 +385,7 @@ namespace RenderCore { namespace Assets
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-                        LogWarning << "Warning -- shader resource (" << resourceName << ") couldn't be found";
+                        Log(Warning) << "Warning -- shader resource (" << resourceName << ") couldn't be found" << std::endl;
                     } CATCH_END
                 }
             }
@@ -1621,23 +1621,23 @@ namespace RenderCore { namespace Assets
 
     void ModelRenderer::LogReport() const
     {
-        LogInfo << "---<< Model Renderer (LOD: " << _pimpl->_levelOfDetail << ") >>---";
-        LogInfo << "  [" << _pimpl->_meshes.size() << "] meshes";
-        LogInfo << "  [" << _pimpl->_skinnedMeshes.size() << "] skinned meshes";
-        LogInfo << "  [" << _pimpl->_constantBuffers.size() << "] constant buffers";
-        LogInfo << "  [" << _pimpl->_drawCalls.size() << "] draw calls";
-        LogInfo << "  [" << _pimpl->_skinnedDrawCalls.size() << "] skinned draw calls";
-        LogInfo << "  [" << _pimpl->_boundTextures.size() << "] bound textures";
-        LogInfo << "  [" << _pimpl->_texturesPerMaterial << "] textures per material";
-        DEBUG_ONLY(LogInfo << "  [" << _pimpl->_vbSize / 1024.f << "k] VB size");
-        DEBUG_ONLY(LogInfo << "  [" << _pimpl->_ibSize / 1024.f << "k] IB size");
-        LogInfo << "  Draw calls |  Indxs | GeoC |  Shr | GeoP | MatP |  Tex |   CB |   RS ";
+        Log(Verbose) << "---<< Model Renderer (LOD: " << _pimpl->_levelOfDetail << ") >>---" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_meshes.size() << "] meshes" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_skinnedMeshes.size() << "] skinned meshes" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_constantBuffers.size() << "] constant buffers" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_drawCalls.size() << "] draw calls" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_skinnedDrawCalls.size() << "] skinned draw calls" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_boundTextures.size() << "] bound textures" << std::endl;
+        Log(Verbose) << "  [" << _pimpl->_texturesPerMaterial << "] textures per material" << std::endl;
+        DEBUG_ONLY(Log(Verbose) << "  [" << _pimpl->_vbSize / 1024.f << "k] VB size" << std::endl);
+        DEBUG_ONLY(Log(Verbose) << "  [" << _pimpl->_ibSize / 1024.f << "k] IB size" << std::endl);
+        Log(Verbose) << "  Draw calls |  Indxs | GeoC |  Shr | GeoP | MatP |  Tex |   CB |   RS " << std::endl;
 
         for (unsigned c=0; c<_pimpl->_drawCalls.size(); ++c) {
             const auto&m = _pimpl->_drawCalls[c].first;
             const auto&d = _pimpl->_drawCalls[c].second;
             const auto&r = _pimpl->_drawCallRes[c];
-            LogInfo
+            Log(Verbose)
                 << "  [" << Width<3>(c) << "] (M)  |"
                 << Width<7>(d._indexCount) << " |"
                 << Width<5>(m) << " |"
@@ -1646,14 +1646,15 @@ namespace RenderCore { namespace Assets
                 << Width<5>(r._materialParamBox.Value()) << " |"
                 << Width<5>(r._textureSet) << " |"
                 << Width<5>(r._constantBuffer) << " |"
-                << Width<5>(r._renderStateSet.Value());
+                << Width<5>(r._renderStateSet.Value())
+				<< std::endl;
         }
 
         for (unsigned c=0; c<_pimpl->_skinnedDrawCalls.size(); ++c) {
             const auto&m = _pimpl->_skinnedDrawCalls[c].first;
             const auto&d = _pimpl->_skinnedDrawCalls[c].second;
             const auto&r = _pimpl->_drawCallRes[c + _pimpl->_drawCalls.size()];
-            LogInfo
+            Log(Verbose)
                 << "  [" << Width<3>(c) << "] (S)  |"
                 << Width<7>(d._indexCount) << " |"
                 << Width<5>(m) << " |"
@@ -1662,14 +1663,15 @@ namespace RenderCore { namespace Assets
                 << Width<5>(r._materialParamBox.Value()) << " |"
                 << Width<5>(r._textureSet) << " |"
                 << Width<5>(r._constantBuffer) << " |"
-                << Width<5>(r._renderStateSet.Value());
+                << Width<5>(r._renderStateSet.Value())
+				<< std::endl;
         }
 
-        LogInfo << "  Meshes     | GeoC |  SrcVB |  SrcIB | VtxS | TchI | GeoP | IdxF";
+        Log(Verbose) << "  Meshes     | GeoC |  SrcVB |  SrcIB | VtxS | TchI | GeoP | IdxF" << std::endl;
 
         for (unsigned c=0; c<_pimpl->_meshes.size(); ++c) {
             const auto&m = _pimpl->_meshes[c];
-            LogInfo
+            Log(Verbose)
                 << "  [" << Width<3>(c) << "] (M)  |"
                 << Width<5>(m._id) << " |"
                 #if defined(_DEBUG)
@@ -1681,11 +1683,12 @@ namespace RenderCore { namespace Assets
                 << Width<5>(m._vertexStrides[0]) << " |"
                 << Width<5>(m._techniqueInterface.Value()) << " |"
                 << Width<5>(m._geoParamBox.Value()) << " |"
-                << Width<5>(unsigned(m._indexFormat));
+                << Width<5>(unsigned(m._indexFormat))
+				<< std::endl;
         }
         for (unsigned c=0; c<_pimpl->_skinnedMeshes.size(); ++c) {
             const auto&m = _pimpl->_skinnedMeshes[c];
-            LogInfo
+            Log(Verbose)
                 << "  [" << Width<3>(c) << "] (S)  |"
                 << Width<5>(m._id) << " |"
                 #if defined(_DEBUG)
@@ -1697,26 +1700,27 @@ namespace RenderCore { namespace Assets
                 << Width<5>(m._vertexStrides[0]) << " |"
                 << Width<5>(m._techniqueInterface.Value()) << " |"
                 << Width<5>(m._geoParamBox.Value()) << " |"
-                << Width<5>(unsigned(m._indexFormat));
+                << Width<5>(unsigned(m._indexFormat))
+				<< std::endl;
         }
 
         #if defined(_DEBUG)
             if (_pimpl->_texturesPerMaterial) {
-                LogInfo << "  Bound Textures";
+                Log(Verbose) << "  Bound Textures" << std::endl;
                 for (unsigned c=0; c<_pimpl->_boundTextureNames.size() / _pimpl->_texturesPerMaterial; ++c) {
                     StringMeld<512> temp;
                     for (unsigned q=0; q<_pimpl->_texturesPerMaterial; ++q) {
                         if (q) { temp << ", "; }
                         temp << _pimpl->_boundTextureNames[c*_pimpl->_texturesPerMaterial+q];
                     }
-                    LogInfo << "  [" << Width<3>(c) << "] " << temp;
+                    Log(Verbose) << "  [" << Width<3>(c) << "] " << temp << std::endl;
                 }
             }
 
-            LogInfo << "  Parameter Boxes";
+            Log(Verbose) << "  Parameter Boxes" << std::endl;
             for (unsigned c=0; c<_pimpl->_paramBoxDesc.size(); ++c) {
                 auto& i = _pimpl->_paramBoxDesc[c];
-                LogInfo << "  [" << Width<3>(i.first.Value()) << "] " << i.second;
+                Log(Verbose) << "  [" << Width<3>(i.first.Value()) << "] " << i.second << std::endl;
             }
         #endif
     }

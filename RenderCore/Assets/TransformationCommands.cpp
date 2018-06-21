@@ -876,7 +876,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float4x4s.size()) {
                         *workingTransform = Combine(float4x4s[parameterIndex], *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for TransformFloat4x4_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for TransformFloat4x4_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -887,7 +887,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float3s.size()) {
                         Combine_InPlace(float3s[parameterIndex], *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for Translate_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for Translate_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -898,7 +898,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float1s.size()) {
                         Combine_InPlace(RotationX(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for RotateX_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for RotateX_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -909,7 +909,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float1s.size()) {
                         Combine_InPlace(RotationY(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for RotateY_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for RotateY_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -920,7 +920,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float1s.size()) {
                         Combine_InPlace(RotationZ(Deg2Rad(float1s[parameterIndex])), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for RotateZ_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for RotateZ_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -931,7 +931,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float4s.size()) {
 						Combine_InPlace(ArbitraryRotation(Truncate(float4s[parameterIndex]), Deg2Rad(float4s[parameterIndex][3])), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for Rotate_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for Rotate_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -943,7 +943,7 @@ namespace RenderCore { namespace Assets
 						const Float4& p = float4s[parameterIndex];
                         Combine_InPlace(Quaternion(p[0], p[1], p[2], p[3]), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for RotateQuaternion_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for RotateQuaternion_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -954,7 +954,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float1s.size()) {
                         Combine_InPlace(UniformScale(float1s[parameterIndex]), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for UniformScale_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for UniformScale_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -965,7 +965,7 @@ namespace RenderCore { namespace Assets
                     if (parameterIndex < float3s.size()) {
                         Combine_InPlace(ArbitraryScale(float3s[parameterIndex]), *workingTransform);
                     } else {
-                        LogWarning << "Warning -- bad parameter index for ArbitraryScale_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for ArbitraryScale_Parameter command (" << parameterIndex << ")" << std::endl;
                     }
                 }
                 break;
@@ -981,7 +981,7 @@ namespace RenderCore { namespace Assets
                         if (constant_expression<UseDebugIterator>::result())
                             debugIterator((workingTransform != workingStack) ? *(workingTransform-1) : Identity<Float4x4>(), *workingTransform);
                     } else
-                        LogWarning << "Warning -- bad output matrix index (" << outputIndex << ")";
+                        Log(Warning) << "Warning -- bad output matrix index (" << outputIndex << ")" << std::endl;
                 }
                 break;
 
@@ -995,7 +995,7 @@ namespace RenderCore { namespace Assets
                         if (constant_expression<UseDebugIterator>::result())
                             debugIterator(*workingTransform, result[outputIndex]);
                     } else
-                        LogWarning << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Static (" << outputIndex << ")";
+                        Log(Warning) << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Static (" << outputIndex << ")" << std::endl;
                 }
                 break;
 
@@ -1009,9 +1009,9 @@ namespace RenderCore { namespace Assets
                             if (constant_expression<UseDebugIterator>::result())
                                 debugIterator(*workingTransform, result[outputIndex]);
                         } else
-                            LogWarning << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Parameter (" << outputIndex << ")";
+                            Log(Warning) << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Parameter (" << outputIndex << ")" << std::endl;
                     } else
-                        LogWarning << "Warning -- bad parameter index for TransformFloat4x4AndWrite_Parameter command (" << parameterIndex << ")";
+                        Log(Warning) << "Warning -- bad parameter index for TransformFloat4x4AndWrite_Parameter command (" << parameterIndex << ")" << std::endl;
                 }
                 break;
 

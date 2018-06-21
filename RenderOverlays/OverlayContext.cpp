@@ -534,7 +534,7 @@ namespace RenderOverlays
                             desc._pixelShaderName.substr(
                                 std::distance(desc._pixelShaderName.cbegin(), instanceNameStart), i-instanceNameStart).c_str());
                     } else {
-                        LogWarning << "Malformed shader name in OverlayContext: " << desc._pixelShaderName;
+                        Log(Warning) << "Malformed shader name in OverlayContext: " << desc._pixelShaderName << std::endl;
                     }
                 }
             } else {

@@ -539,7 +539,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// because this function is frequently called from a smart pointer destructor -- which could be triggered
 		// during stack unwinding, or some other case that is not safe for exceptions
 		if (!success) {
-			LogAlwaysError << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation";
+			Log(Error) << "Circular buffer wrapped around in destruction queue. Not enough buffers to support desynchronisation" << std::endl;
 			std::terminate();
 		}
 

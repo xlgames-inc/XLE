@@ -381,7 +381,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			auto success = skeleton.GetInterface().TryRegisterJointName(
 				outputMarker, MakeStringSection(nodeDesc._bindingName));
 			if (!success)
-				LogWarning << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName;
+				Log(Warning) << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName << std::endl;
 		}
 	}
 

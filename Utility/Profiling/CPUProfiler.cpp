@@ -310,7 +310,7 @@ namespace Utility
 
     uint64_t HierarchicalCPUProfiler::GetAverageFrameInterval()
     {
-        if (_frameMarkerCount < 2) return 0.f;
+        if (_frameMarkerCount < 2) return 0;
         const auto limit = (unsigned)dimof(_frameMarkers);
         unsigned iterator = (_frameMarkerNext + limit - _frameMarkerCount) % limit;
         auto prev = _frameMarkers[iterator];

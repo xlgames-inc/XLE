@@ -686,7 +686,7 @@ namespace Sample
             //
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
-        LogInfo << "Building primary managers" << std::endl;
+        Log(Verbose) << "Building primary managers" << std::endl;
         auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
@@ -740,7 +740,7 @@ namespace Sample
                 //  If we have any custom displays to add, we can add them here. Often it's 
                 //  useful to create a debugging display to go along with any new feature. 
                 //  It just provides a convenient architecture for visualizing important information.
-            LogInfo << "Setup tools and debugging";
+            Log(Verbose) << "Setup tools and debugging";
             FrameRig frameRig;
             // InitDebugDisplays(*frameRig.GetDebugSystem());
             InitProfilerDisplays(*frameRig.GetDebugSystem());
@@ -753,7 +753,7 @@ namespace Sample
                 //      * We create a main input handler, and tie that to the window to receive inputs
                 //      * We can add secondary input handles to the main input handler as required
                 //      * The order in which we add handlers determines their priority in intercepting messages
-            LogInfo << "Setup input";
+            Log(Verbose) << "Setup input";
             auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
             mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
             mainInputHandler->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
@@ -767,7 +767,7 @@ namespace Sample
                 //      * the FrameRig schedules continuous rendering. It will take care
                 //          of timing and some thread management taskes
                 //      * the DeviceContext provides the methods we need for rendering.
-            LogInfo << "Setup frame rig and rendering context";
+            Log(Verbose) << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
 #if 0
