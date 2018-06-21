@@ -53,7 +53,8 @@ namespace RenderCore { namespace Metal_DX11
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
             const ShaderService::ResId& shaderPath,
-			StringSection<::Assets::ResChar> definesTable) const;
+			StringSection<::Assets::ResChar> definesTable,
+			IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -568,6 +569,7 @@ namespace RenderCore { namespace Metal_DX11
 			::Assets::Blob& payload,
 			::Assets::Blob& errors,
             std::vector<::Assets::DependentFileState>& dependencies,
+			StringSection<> identifier,
             const char shaderModel[]);
 
         using Section = StringSection<char>;
@@ -669,6 +671,7 @@ namespace RenderCore { namespace Metal_DX11
 		::Assets::Blob& payload,
 		::Assets::Blob& errors,
         std::vector<::Assets::DependentFileState>& dependencies,
+		StringSection<> identifier,
         const char shaderModel[])
     {
         ID3D11Linker* linkerRaw = nullptr;
@@ -763,7 +766,7 @@ namespace RenderCore { namespace Metal_DX11
 
         CreatePayloadFromBlobs(
             payload, errors, resultBlob.get(), errorsBlob1.get(), 
-            ShaderService::ShaderHeader { shaderModel });
+            ShaderService::ShaderHeader { identifier, shaderModel, false });
 
         dependencies.insert(dependencies.end(), _depFiles.begin(), _depFiles.end());
         return true;
@@ -1184,7 +1187,8 @@ namespace RenderCore { namespace Metal_DX11
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
-		StringSection<::Assets::ResChar> definesTable) const
+		StringSection<::Assets::ResChar> definesTable,
+		IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
     {
             // This is called (typically in a background thread)
             // after the shader data has been loaded from disk.
@@ -1198,6 +1202,9 @@ namespace RenderCore { namespace Metal_DX11
 
         ResChar shaderModel[64];
         AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
+
+		StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+		identifier << shaderPath._filename << "-" << shaderPath._entryPoint;
 
             // If this is a compound text document, look for a chunk that contains a 
             // function linking graph with the right name. We can embedded different
@@ -1258,7 +1265,7 @@ namespace RenderCore { namespace Metal_DX11
                 }
             
                 FunctionLinkingGraph flg(finalSection, shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
-                return flg.TryLink(payload, errors, dependencies, shaderModel);
+                return flg.TryLink(payload, errors, dependencies, identifier.AsStringSection(), shaderModel);
 
             } catch (const std::exception& e) {
 
@@ -1293,6 +1300,7 @@ namespace RenderCore { namespace Metal_DX11
             CreatePayloadFromBlobs(
                 payload, errors, codeResult, errorResult, 
                 ShaderService::ShaderHeader {
+					identifier.AsStringSection(),
                     shaderPath._shaderModel, shaderPath._dynamicLinkageEnabled
                 });
 

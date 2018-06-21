@@ -218,7 +218,7 @@ namespace RenderCore { namespace ImplDX11
         return intrusive_ptr<IDXGI::Factory>();
     }
 
-    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
+    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc)
     {
         intrusive_ptr<IDXGI::Factory> factory = GetDXGIFactory();
         if (!factory) {
@@ -226,7 +226,7 @@ namespace RenderCore { namespace ImplDX11
         }
 
         DXGI_MODE_DESC modeDesc = {
-            width, height, {0,0}, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 
+            desc._width, desc._height, {0,0}, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 
             DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED, DXGI_MODE_SCALING_UNSPECIFIED };
         DXGI_SAMPLE_DESC sampleDesc  = { 1, 0 };     // (no multi-sampling)
         const auto backBufferCount   = 2u;
@@ -337,6 +337,11 @@ namespace RenderCore { namespace ImplDX11
 				throw;
 			}
 		}
+	}
+
+	FormatCapability    Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+	{
+		return FormatCapability::Supported;
 	}
 
     static const char* s_underlyingApi = "DX11";

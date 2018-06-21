@@ -417,6 +417,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	static uint64_t s_nextResourceGUID = 1;
+
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
@@ -425,6 +427,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     Resource::Resource(VkImage image, const Desc& desc)
     : _desc(desc)
+	, _guid(s_nextResourceGUID++)
     {
         // do not destroy the image, even on the last release --
         //      this is used with the presentation chain images, which are only
@@ -432,7 +435,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _underlyingImage = VulkanSharedPtr<VkImage>(image, [](const VkImage) {});
     }
 
-	Resource::Resource() {}
+	Resource::Resource() : _guid(s_nextResourceGUID++) {}
 	Resource::~Resource() {}
 
 	void* Resource::QueryInterface(size_t guid)

@@ -82,6 +82,17 @@ namespace RenderCore { namespace Metal_DX11
 		return ExtractDesc(_underlying);
 	}
 
+	uint64_t        Resource::GetGUID() const
+	{
+		return _guid;
+	}
+
+	static uint64_t s_nextResourceGUID = 1;
+
+	Resource::Resource() : _guid(s_nextResourceGUID++) {}
+	Resource::Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying), _guid(s_nextResourceGUID++) {}
+	Resource::Resource(UnderlyingResourcePtr&& underlying) : _underlying(std::move(underlying)), _guid(s_nextResourceGUID++) {}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static unsigned AsNativeCPUAccessFlag(CPUAccess::BitField bitField)

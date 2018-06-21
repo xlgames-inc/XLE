@@ -236,7 +236,7 @@ namespace RenderCore
         bool _mainColorIsReadable;
 
         PresentationChainDesc() : _width(0u), _height(0u), _format(Format(0)), _samples(TextureSamples::Create()) {}
-        PresentationChainDesc(unsigned width, unsigned height, Format format, TextureSamples samples = TextureSamples::Create(), bool colorReadable = false)
+        PresentationChainDesc(unsigned width, unsigned height, Format format = Format(0), TextureSamples samples = TextureSamples::Create(), bool colorReadable = false)
         : _width(width), _height(height), _format(format), _samples(samples), _mainColorIsReadable(colorReadable) {}
     };
 

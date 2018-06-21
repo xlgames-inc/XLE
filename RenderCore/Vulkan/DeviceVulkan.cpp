@@ -714,7 +714,7 @@ namespace RenderCore { namespace ImplVulkan
     }
 
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
-		const void* platformValue, unsigned width, unsigned height)
+		const void* platformValue, const PresentationChainDesc& desc)
     {
 		auto surface = CreateSurface(_instance.get(), platformValue);
 		DoSecondStageInit(surface.get());
@@ -727,7 +727,7 @@ namespace RenderCore { namespace ImplVulkan
             Throw(::Exceptions::BasicLabel("Presentation surface is not compatible with selected physical device. This may occur if the wrong physical device is selected, and it cannot render to the output window."));
         
         auto finalChain = std::make_unique<PresentationChain>(
-            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{width, height}, _physDev._renderingQueueFamily, platformValue);
+            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{desc._width, desc._height}, _physDev._renderingQueueFamily, platformValue);
 
         // (synchronously) set the initial layouts for the presentation chain images
         // It's a bit odd, but the Vulkan samples do this
@@ -768,6 +768,11 @@ namespace RenderCore { namespace ImplVulkan
 		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	{
 		return Metal_Vulkan::CreateResource(_objectFactory, desc, initData);
+	}
+
+	FormatCapability    Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+	{
+		return FormatCapability::Supported;
 	}
 
     static const char* s_underlyingApi = "Vulkan";
@@ -831,7 +836,7 @@ namespace RenderCore { namespace ImplVulkan
         _swapChain = CreateUnderlyingSwapChain(_device.get(), _surface.get(), props);
         _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));    
 
-        *_desc = { VectorPattern<unsigned, 2>(_bufferDesc._width, _bufferDesc._height), _bufferDesc._format, _bufferDesc._samples };
+        *_desc = { _bufferDesc._width, _bufferDesc._height, _bufferDesc._format, _bufferDesc._samples };
 
         BuildImages();
     }
@@ -970,7 +975,7 @@ namespace RenderCore { namespace ImplVulkan
 
         _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));
 		_desc = std::make_shared<PresentationChainDesc>(
-            VectorPattern<unsigned, 2>(_bufferDesc._width, _bufferDesc._height),
+            _bufferDesc._width, _bufferDesc._height,
             _bufferDesc._format, _bufferDesc._samples);
 
         // We need to get pointers to each image and build the synchronization semaphores

@@ -44,10 +44,14 @@ namespace RenderCore { namespace Metal_DX11
 
 		virtual void*			QueryInterface(size_t guid);
 		virtual ResourceDesc	GetDesc() const;
+		virtual uint64_t        GetGUID() const;
 
-		Resource() {}
-		explicit Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying) {}
-		explicit Resource(UnderlyingResourcePtr&& underlying) : _underlying(std::move(underlying)) {}
+		Resource();
+		explicit Resource(const UnderlyingResourcePtr& underlying);
+		explicit Resource(UnderlyingResourcePtr&& underlying);
+
+	private:
+		uint64_t _guid;
 	};
 
     class DeviceContext;

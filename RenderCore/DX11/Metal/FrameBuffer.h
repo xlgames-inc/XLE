@@ -25,6 +25,7 @@ namespace RenderCore { namespace Metal_DX11
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
 
 		FrameBuffer(
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const INamedAttachments& namedResources);
 		FrameBuffer();
@@ -60,7 +61,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
-			const ObjectFactory& factory,
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const FrameBufferProperties& props,
             const INamedAttachments& namedResources,
@@ -82,6 +83,7 @@ namespace RenderCore { namespace Metal_DX11
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+	void EndSubpass(DeviceContext& context);
     void EndRenderPass(DeviceContext& context);
 
 }}

@@ -80,7 +80,7 @@ namespace RenderCore { namespace ImplDX11
     class Device : public Base_Device, public std::enable_shared_from_this<Device>
     {
     public:
-        std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, unsigned width, unsigned height) /*override*/;
+        std::unique_ptr<IPresentationChain>     CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc) /*override*/;
 
         DeviceDesc     GetDesc();
 
@@ -90,6 +90,8 @@ namespace RenderCore { namespace ImplDX11
 		ResourcePtr CreateResource(
 			const ResourceDesc& desc,
 			const std::function<SubResourceInitData(SubResourceId)>&);
+
+		FormatCapability		QueryFormatCapability(Format format, BindFlag::BitField bindingType);
 
         ID3D::Device*           GetUnderlyingDevice() { return _underlying.get(); }
 

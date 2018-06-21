@@ -24,6 +24,7 @@ namespace RenderCore { namespace Metal_DX11
 	}
 
     FrameBuffer::FrameBuffer(
+		ObjectFactory&,
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
     {
@@ -135,6 +136,10 @@ namespace RenderCore { namespace Metal_DX11
 		++s_nextSubpass;
     }
 
+	void EndSubpass(DeviceContext& context)
+	{
+	}
+
     void EndRenderPass(DeviceContext& context)
     {
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important
@@ -151,13 +156,13 @@ namespace RenderCore { namespace Metal_DX11
     };
 
     std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-		const ObjectFactory& factory,
+		ObjectFactory& factory,
 		const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
         const INamedAttachments& namedResources,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(desc, namedResources);
+        return std::make_shared<FrameBuffer>(factory, desc, namedResources);
     }
 
     FrameBufferPool::FrameBufferPool()

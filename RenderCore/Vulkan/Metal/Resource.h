@@ -62,6 +62,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkImage GetImage() const            { return _underlyingImage.get(); }
 		VkBuffer GetBuffer() const          { return _underlyingBuffer.get(); }
 		Desc GetDesc() const				{ return _desc; }
+		uint64_t GetGUID() const			{ return _guid; }
 
 		virtual void*       QueryInterface(size_t guid);
 
@@ -73,6 +74,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		VulkanSharedPtr<VkImage> _underlyingImage;
 
 		Desc _desc;
+		uint64_t _guid;
 	};
 
     using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;

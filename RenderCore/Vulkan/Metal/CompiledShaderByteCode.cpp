@@ -14,6 +14,7 @@
 #include "../../../Assets/AssetServices.h"
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Utility/StringUtils.h"
+#include "../../../Utility/StringFormat.h"
 
 #include <sstream>
 
@@ -64,7 +65,8 @@ namespace RenderCore { namespace Metal_Vulkan
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
             const ShaderService::ResId& shaderPath,
-            StringSection<::Assets::ResChar> definesTable) const;
+            StringSection<::Assets::ResChar> definesTable,
+			IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -278,6 +280,7 @@ namespace RenderCore { namespace Metal_Vulkan
         /*out*/ ::Assets::Blob& errors,
         EShLanguage shaderType,
         const char glslSource[],
+		StringSection<> identifier,
 		const ResChar shaderModel[]) 
     {
         // This function is derived from the Vulkan SDK samples
@@ -323,7 +326,7 @@ namespace RenderCore { namespace Metal_Vulkan
         payload = std::make_shared<std::vector<uint8>>(spirvBlockSize + sizeof(ShaderService::ShaderHeader));
 
         *(ShaderService::ShaderHeader*)AsPointer(payload->begin())
-            = ShaderService::ShaderHeader { shaderModel, false };
+            = ShaderService::ShaderHeader { identifier, shaderModel, false };
 
         // std::stringstream disassem;
         // spv::Disassemble(disassem, spirv);
@@ -456,7 +459,8 @@ namespace RenderCore { namespace Metal_Vulkan
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
         const ShaderService::ResId& shaderPath,
-        StringSection<::Assets::ResChar> definesTable) const
+        StringSection<::Assets::ResChar> definesTable,
+		IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
     {
 #if defined(HAS_SPIRV_HEADERS)
         // So, this is a complex process for converting from HLSL source code into SPIR-V.
@@ -501,12 +505,15 @@ namespace RenderCore { namespace Metal_Vulkan
             &EvaluateBinding, rootSig.get(),
             &glslShader);
         if (!translateResult) return false;
+
+		StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+		identifier << shaderPath._filename << "-" << shaderPath._entryPoint;
         
         // Third, GLSL source -> glslang::TShader -> SPIR-V bytecode
         auto spvRes = GLSLtoSPV(
             payload, errors, 
             GLSLShaderTypeToEShLanguage(glslShader.shaderType),
-            glslShader.sourceCode, shaderPath._shaderModel);
+            glslShader.sourceCode, identifier.AsStringSection(), shaderPath._shaderModel);
 
         return spvRes;
 #else
