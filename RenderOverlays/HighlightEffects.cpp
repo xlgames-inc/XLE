@@ -55,8 +55,8 @@ namespace RenderOverlays
         bool onlyHighlighted)
     {
 		auto cbData = MakeIteratorRange(&settings, PtrAdd(&settings, sizeof(settings)));
-        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(Metal::MakeConstantBuffer(Metal::GetObjectFactory(), cbData)));
-        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(stencilSrv));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(Metal::MakeConstantBuffer(Metal::GetObjectFactory(), cbData)));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(stencilSrv));
         metalContext.Bind(Techniques::CommonResources()._dssDisable);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext.Bind(Topology::TriangleStrip);
@@ -94,7 +94,7 @@ namespace RenderOverlays
             metalContext.Draw(4);
         }
 
-        metalContext.GetNumericUniforms_Graphics().Reset();
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Reset();
     }
 
     void ExecuteHighlightByStencil(
@@ -240,7 +240,7 @@ namespace RenderOverlays
 
         _pimpl->_rpi.NextSubpass();
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(srv));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
 
         struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
 		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
@@ -267,7 +267,7 @@ namespace RenderOverlays
 
         _pimpl->_rpi.NextSubpass();
         auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-        metalContext.GetNumericUniforms_Graphics().Bind(MakeResourceList(srv));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
 
         struct Constants { Float4 _shadowColor; } constants = { shadowColor };
 		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };

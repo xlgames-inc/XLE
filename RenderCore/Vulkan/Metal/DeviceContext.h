@@ -213,8 +213,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
-		NumericUniformsInterface& GetNumericUniforms_Graphics();
-		NumericUniformsInterface& GetNumericUniforms_Compute();
+		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 		std::shared_ptr<DeviceContext> Fork();

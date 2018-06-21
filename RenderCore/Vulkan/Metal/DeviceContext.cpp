@@ -640,14 +640,20 @@ namespace RenderCore { namespace Metal_Vulkan
         ++_renderPassSubpass;
     }
 
-	NumericUniformsInterface& DeviceContext::GetNumericUniforms_Graphics()
+	NumericUniformsInterface& DeviceContext::GetNumericUniforms(ShaderStage stage)
 	{
-		return _graphicsDescriptors._numericBindings;
-	}
-
-	NumericUniformsInterface& DeviceContext::GetNumericUniforms_Compute()
-	{
-		return _computeDescriptors._numericBindings;
+		switch (stage) {
+		case ShaderStage::Pixel:
+			return _graphicsDescriptors._numericBindings;
+		case ShaderStage::Compute:
+			return _computeDescriptors._numericBindings;
+		default:
+			// since the numeric uniforms are associated with a descriptor set, we don't
+			// distinguish between different shader stages (unlike some APIs where constants
+			// are set for each stage independantly)
+			// Hence we can't return anything sensible here.
+			Throw(::Exceptions::BasicLabel("Numeric uniforms only supported for pixel shader in Vulkan"));
+		}
 	}
 
 	DeviceContext::DeviceContext(
