@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../Core/Prefix.h"
+#include "../../Core/SelectConfiguration.h"
 #include "ThreadLibrary.h"
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -51,7 +52,7 @@
 
         // Note -- std::shared_timed_mutex is not available on IOS versions before 10.0, even if the compiler
         //          has C++14 support. We need to look for different solutions for this target
-    #define HAS_READ_WRITE_MUTEX 0 //  (PLATFORMOS_TARGET != PLATFORMOS_IOS) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_10_0)
+    #define HAS_READ_WRITE_MUTEX (PLATFORMOS_TARGET != PLATFORMOS_IOS) || (__IPHONE_OS_VERSION_MIN_REQUIRED >= __IPHONE_10_0)
 	
 	#if HAS_READ_WRITE_MUTEX
 		#include <shared_mutex>

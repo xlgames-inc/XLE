@@ -626,9 +626,13 @@ namespace Sample
 
 			auto clearValues = {MakeClearValue(1.f,0.f,0.f,1.f), MakeClearValue(1.f, 0), MakeClearValue(1.f, 0)};
             {
+				static Techniques::FrameBufferPool fbPool;
+
                 Techniques::RenderPassInstance rpi(
-                    *metalContext, fbLayout,
-                    0u, namedResources, 
+                    genericThreadContext, 
+					fbPool.BuildFrameBuffer(Metal::GetObjectFactory(), fbLayout, namedResources),
+					fbLayout,
+                    namedResources, 
 					MakeIteratorRange(clearValues));
 
 				// First, render gbuffer subpass
@@ -694,7 +698,7 @@ namespace Sample
         std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
             renderDevice->CreatePresentationChain(
                 window.GetUnderlyingHandle(), 
-                clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
+				RenderCore::PresentationChainDesc { unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1]) });
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
 		assetServices->AttachCurrentModule();
