@@ -50,6 +50,12 @@
 
 unsigned FrameRenderCount = 0;
 
+
+#include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../RenderCore/Assets/ModelImmutableData.h"
+#include "../../Assets/BlockSerializer.h"
+
 namespace Sample
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -69,10 +75,61 @@ namespace Sample
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator);
     void RenderPostScene(RenderCore::IThreadContext& context);
 
+	void TestMaterialSerialization()
+	{
+		using namespace RenderCore;
+		using namespace RenderCore::Assets;
+		std::unique_ptr<uint8[]> blob;
+
+		struct TestStruct
+		{
+			SerializableVector<char> _testVector; 
+			Techniques::Material _mat;			
+			MaterialImmutableData _data;
+		};
+		
+		{
+			SerializableVector<std::pair<MaterialGuid, Techniques::Material>> resolved;
+			SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> resolvedNames;
+
+			resolved.push_back({ 0, Techniques::Material{} });
+			resolved.push_back({ 1, Techniques::Material{} });
+			resolved.push_back({ 2, Techniques::Material{} });
+
+			char name[] = "SomeName";
+			resolvedNames.push_back({ 0, SerializableVector<char>{name, &name[dimof(name) - 1]} });
+
+			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, Techniques::Material>());
+			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, SerializableVector<char>>());
+
+			Serialization::NascentBlockSerializer blockSerializer;
+			::Serialize(blockSerializer, SerializableVector<char>{name, &name[dimof(name) - 1]}); 
+			Techniques::Material testMat;
+			testMat._bindings.SetParameter(u("binding"), 1);
+			testMat._matParams.SetParameter(u("matParams"), 2);
+			testMat._constants.SetParameter(u("constants"), 3);
+			XlCopyString(testMat._techniqueConfig, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
+			::Serialize(blockSerializer, testMat);
+			::Serialize(blockSerializer, resolved);
+			::Serialize(blockSerializer, resolvedNames);
+			blob = blockSerializer.AsMemoryBlock();
+		}
+
+		Serialization::Block_Initialize(blob.get());
+		const auto& matScaffold = *(const TestStruct*)Serialization::Block_GetFirstObject(blob.get());
+
+		for (const auto& res : matScaffold._data._materials) {
+			std::cout << res.first << " = " << res.second._stateSet.GetHash() << std::endl;
+		}
+
+	}
+
     void ExecuteSample()
     {
         using namespace PlatformRig;
         using namespace Sample;
+
+		TestMaterialSerialization();
 
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 

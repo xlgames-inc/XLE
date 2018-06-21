@@ -68,34 +68,22 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|Win32'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|x64'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\Vulkan\Annotator.cpp" />

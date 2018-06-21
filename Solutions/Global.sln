@@ -1,7 +1,6 @@
-
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 14
-VisualStudioVersion = 14.0.25420.1
+# Visual Studio 15
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "PlatformRig", "..\PlatformRig\Project\PlatformRig.vcxproj", "{E3BE4078-FC62-469C-B9F7-2447C6F88A50}"
 	ProjectSection(ProjectDependencies) = postProject
@@ -897,5 +896,9 @@ Global
 		{4DBFE2CF-45E4-4594-8E6A-5EBC2EEF85AE} = {16CFD681-2D5D-47CF-BEC6-62B6E9D82303}
 		{D75BC9D5-0C10-4D89-9C86-CECD226EF7F3} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{B7525B97-9195-416A-8019-ED7F239CF3E8} = {DF1932BF-7E8D-4EDA-90DA-91AA55C394EE}
+		{BD081CBB-A7CD-47F3-A6A2-C72B72611326} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
+	EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		SolutionGuid = {E4188857-D548-409C-BFE2-EA2791107CCD}
 	EndGlobalSection
 EndGlobal
