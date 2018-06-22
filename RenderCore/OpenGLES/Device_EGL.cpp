@@ -82,9 +82,9 @@ namespace RenderCore { namespace ImplOpenGLES
     {
         // Log the configurations that the driver filtered out
         #if defined(_DEBUG)
-            Log(Warning) << "Filtered configs:" << std::endl;
+            Log(Verbose) << "Filtered configs:" << std::endl;
             for (const auto&cfg:filteredList) {
-                StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+                StreamConfigShort(Log(Verbose), display, cfg) << std::endl;
             }
         #endif
 
@@ -98,8 +98,8 @@ namespace RenderCore { namespace ImplOpenGLES
                     && sampleBuffers == (samples._sampleCount > 1)) {
 
                     #if defined(_DEBUG)
-                        Log(Warning) << "Got exact match:";
-                        StreamConfigShort(Log(Warning), display, cfg) << std::endl;
+                        Log(Verbose) << "Got exact match:";
+                        StreamConfigShort(Log(Verbose), display, cfg) << std::endl;
                     #endif
                     return cfg;
                 }
@@ -109,8 +109,8 @@ namespace RenderCore { namespace ImplOpenGLES
         // Didn't find a close match, just return the first option that the driver
         // provided
         #if defined(_DEBUG)
-            Log(Warning) << "Falling back to first option:";
-            StreamConfigShort(Log(Warning), display, filteredList[0]) << std::endl;
+            Log(Verbose) << "Falling back to first option:";
+            StreamConfigShort(Log(Verbose), display, filteredList[0]) << std::endl;
         #endif
         return filteredList[0];
     }
