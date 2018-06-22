@@ -102,7 +102,6 @@
     <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp" />
     <ClCompile Include="..\FrameRig.cpp" />
     <ClCompile Include="..\InitDebugDisplays.cpp" />
-    <ClCompile Include="..\InputTranslator.cpp" />
     <ClCompile Include="..\MainInputHandler.cpp" />
     <ClCompile Include="..\MeshNode.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -125,6 +124,7 @@
     </ClCompile>
     <ClCompile Include="..\UnitCamera.cpp" />
     <ClCompile Include="..\WinAPI\AllocationProfiler.cpp" />
+    <ClCompile Include="..\WinAPI\InputTranslator.cpp" />
     <ClCompile Include="..\WinAPI\OverlappedWindow.cpp" />
   </ItemGroup>
   <ItemGroup>

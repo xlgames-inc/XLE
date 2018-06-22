@@ -28,7 +28,6 @@
     <ClCompile Include="..\WinAPI\OverlappedWindow.cpp">
       <Filter>WinAPI</Filter>
     </ClCompile>
-    <ClCompile Include="..\InputTranslator.cpp" />
     <ClCompile Include="..\CameraManager.cpp" />
     <ClCompile Include="..\FrameRig.cpp" />
     <ClCompile Include="..\WinAPI\AllocationProfiler.cpp">
@@ -46,6 +45,9 @@
       <Filter>DebuggingDisplays</Filter>
     </ClCompile>
     <ClCompile Include="..\Screenshot.cpp" />
+    <ClCompile Include="..\WinAPI\InputTranslator.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
