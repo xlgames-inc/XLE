@@ -174,6 +174,7 @@ namespace RenderOverlays
 
     BinaryHighlight::BinaryHighlight(
         IThreadContext& threadContext, 
+		Techniques::FrameBufferPool& fbPool,
         Techniques::AttachmentPool& namedRes)
     {
         using namespace RenderCore;
@@ -197,8 +198,10 @@ namespace RenderOverlays
 			SubpassDesc {{v_mainColor}, SubpassDesc::Unused, {v_commonOffscreen}}
 		};
 		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
+		auto fb = fbPool.BuildFrameBuffer(Metal::GetObjectFactory(), fbLayout, namedRes);
         _pimpl->_rpi = Techniques::RenderPassInstance(
-            threadContext, fbLayout, 0u, namedRes,
+            threadContext, fb, fbLayout, 
+			namedRes,
 			{MakeIteratorRange(clearValues)});
     }
 

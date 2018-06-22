@@ -10,7 +10,7 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Vector.h"
 
-namespace RenderCore { namespace Techniques { class AttachmentPool; } }
+namespace RenderCore { namespace Techniques { class AttachmentPool; class FrameBufferPool; } }
 
 namespace RenderOverlays
 {
@@ -51,7 +51,7 @@ namespace RenderOverlays
         void FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor);
         void FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor);
         
-        BinaryHighlight(RenderCore::IThreadContext& threadContext, RenderCore::Techniques::AttachmentPool& namedRes);
+        BinaryHighlight(RenderCore::IThreadContext& threadContext, RenderCore::Techniques::FrameBufferPool& fbPool, RenderCore::Techniques::AttachmentPool& namedRes);
         ~BinaryHighlight();
     protected:
         class Pimpl;
