@@ -117,73 +117,6 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->ClearUnorderedAccessViewFloat(unorderedAccess.GetUnderlying(), values._values);
     }
 
-    template<>
-        void  DeviceContext::UnbindVS<ShaderResourceView>(unsigned startSlot, unsigned count)
-    {
-            // note --  D3D11_COMMONSHADER_INPUT_RESOURCE_SLOT_COUNT is 128 for D3D11
-            //          It's a little too big to declared on the stack. So let's limit
-            //          the maximum size
-        ID3D::ShaderResourceView* srv[16];
-        assert(count <= dimof(srv));
-        count = std::min(count, (unsigned)dimof(srv));
-        std::fill(srv, &srv[count], nullptr);
-        _underlying->VSSetShaderResources(startSlot, count, srv);
-    }
-
-    template<>
-        void  DeviceContext::UnbindGS<ShaderResourceView>(unsigned startSlot, unsigned count)
-    {
-        ID3D::ShaderResourceView* srv[16];
-        assert(count <= dimof(srv));
-        count = std::min(count, (unsigned)dimof(srv));
-        std::fill(srv, &srv[count], nullptr);
-        _underlying->GSSetShaderResources(startSlot, count, srv);
-    }
-
-    template<>
-        void  DeviceContext::UnbindPS<ShaderResourceView>(unsigned startSlot, unsigned count)
-    {
-        ID3D::ShaderResourceView* srv[16];
-        assert(count <= dimof(srv));
-        count = std::min(count, (unsigned)dimof(srv));
-        std::fill(srv, &srv[count], nullptr);
-        _underlying->PSSetShaderResources(startSlot, count, srv);
-    }
-
-    template<>
-        void  DeviceContext::UnbindCS<ShaderResourceView>(unsigned startSlot, unsigned count)
-    {
-        ID3D::ShaderResourceView* srv[16];
-        assert(count <= dimof(srv));
-        count = std::min(count, (unsigned)dimof(srv));
-        std::fill(srv, &srv[count], nullptr);
-        _underlying->CSSetShaderResources(startSlot, count, srv);
-    }
-
-	template<>
-		void  DeviceContext::UnbindDS<ShaderResourceView>(unsigned startSlot, unsigned count)
-		{
-			ID3D::ShaderResourceView* srv[16];
-			assert(count <= dimof(srv));
-			count = std::min(count, (unsigned)dimof(srv));
-			std::fill(srv, &srv[count], nullptr);
-			_underlying->DSSetShaderResources(startSlot, count, srv);
-		}
-
-    template<>
-        void  DeviceContext::UnbindCS<UnorderedAccessView>(unsigned startSlot, unsigned count)
-    {
-        ID3D::UnorderedAccessView* uoavs[16];
-        unsigned initialCounts[16] = {
-            unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1),
-            unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1), unsigned(-1)
-        };
-        assert(count <= dimof(uoavs));
-        count = std::min(count, (unsigned)dimof(uoavs));
-        std::fill(uoavs, &uoavs[count], nullptr);
-        _underlying->CSSetUnorderedAccessViews(startSlot, count, uoavs, initialCounts);
-    }
-
     template<> void DeviceContext::Unbind<ComputeShader>()	{ _underlying->CSSetShader(nullptr, nullptr, 0); }
 
     template<> void DeviceContext::Unbind<BoundInputLayout>()
@@ -225,6 +158,12 @@ namespace RenderCore { namespace Metal_DX11
         XlZeroMemory(_currentSRVs);
     }
 
+	NumericUniformsInterface& DeviceContext::GetNumericUniforms(ShaderStage stage)
+	{
+		assert(unsigned(stage) < _numericUniforms.size());
+		return _numericUniforms[unsigned(stage)];
+	}
+
     DeviceContext::DeviceContext(ID3D::DeviceContext* context)
 	: DeviceContext(intrusive_ptr<ID3D::DeviceContext>(context)) {}
 
@@ -240,6 +179,10 @@ namespace RenderCore { namespace Metal_DX11
 		_underlying->GetDevice(&devRaw);
         intrusive_ptr<ID3D::Device> dev = moveptr(devRaw);
 		if (dev) _factory = &GetObjectFactory(*dev);
+
+		_numericUniforms.resize(6);
+		for (unsigned c=0; c<_numericUniforms.size(); ++c)
+			_numericUniforms[c] = NumericUniformsInterface{*this, (ShaderStage)c};
     }
 
     DeviceContext::~DeviceContext()
@@ -325,8 +268,6 @@ namespace RenderCore { namespace Metal_DX11
 
 }}
 
-#include "TextureView.h"
-
 namespace RenderCore { namespace Metal_DX11
 {
     template void DeviceContext::Bind<1>(const ResourceList<RenderTargetView, 1>&, const DepthStencilView*);
@@ -348,24 +289,6 @@ namespace RenderCore { namespace Metal_DX11
         template void DeviceContext::FN<9>(const ResourceList<BINDABLE, 9>&);             \
         /**/
 
-    #define EXPANDSTAGES(BINDABLE)          \
-        EXPAND(BINDABLE, BindVS)            \
-        EXPAND(BINDABLE, BindPS)            \
-        EXPAND(BINDABLE, BindGS)            \
-        EXPAND(BINDABLE, BindHS)            \
-        EXPAND(BINDABLE, BindDS)            \
-        EXPAND(BINDABLE, BindCS)            \
-        EXPAND(BINDABLE, BindVS_G)          \
-        EXPAND(BINDABLE, BindPS_G)          \
-        EXPAND(BINDABLE, BindGS_G)          \
-        EXPAND(BINDABLE, BindHS_G)          \
-        EXPAND(BINDABLE, BindDS_G)          \
-        EXPAND(BINDABLE, BindCS_G)          \
-        /**/
-
-    EXPANDSTAGES(SamplerState)
-    EXPANDSTAGES(ShaderResourceView)
-    EXPANDSTAGES(Buffer)
     EXPAND(UnorderedAccessView, BindCS)
 
     template void DeviceContext::BindSO<1>(const ResourceList<Buffer, 1>&, unsigned);

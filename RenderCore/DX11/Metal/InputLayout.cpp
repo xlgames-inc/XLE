@@ -341,10 +341,7 @@ namespace RenderCore { namespace Metal_DX11
         unsigned streamIdx,
         const UniformsStream& stream) const
     {
-        typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffers)(UINT, UINT, ID3D::Buffer *const *);
-        typedef void (__stdcall ID3D::DeviceContext::*SetShaderResources)(UINT, UINT, ID3D11ShaderResourceView *const *);
-
-        SetConstantBuffers scb[(unsigned)ShaderStage::Max] = 
+        Internal::SetConstantBuffersFn scb[(unsigned)ShaderStage::Max] = 
         {
             &ID3D::DeviceContext::VSSetConstantBuffers,
             &ID3D::DeviceContext::PSSetConstantBuffers,
@@ -354,7 +351,7 @@ namespace RenderCore { namespace Metal_DX11
             &ID3D::DeviceContext::CSSetConstantBuffers,
         };
 
-        SetShaderResources scr[(unsigned)ShaderStage::Max] = 
+        Internal::SetShaderResourcesFn scr[(unsigned)ShaderStage::Max] = 
         {
             &ID3D::DeviceContext::VSSetShaderResources,
             &ID3D::DeviceContext::PSSetShaderResources,
@@ -416,7 +413,7 @@ namespace RenderCore { namespace Metal_DX11
                         if (!(setMask & (1<<c)))
                             currentCBS[c] = nullptr;
 
-                    SetConstantBuffers fn = scb[s];
+                    Internal::SetConstantBuffersFn fn = scb[s];
                     (context.GetUnderlying()->*fn)(lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1, &currentCBS[lowestShaderSlot]);
                 }
             }
@@ -446,7 +443,7 @@ namespace RenderCore { namespace Metal_DX11
                         if (!(setMask & (1<<c)))
                             currentSRVs[c] = nullptr;
 
-                    SetShaderResources fn = scr[s];
+                    Internal::SetShaderResourcesFn fn = scr[s];
                     (context.GetUnderlying()->*fn)(
                         lowestShaderSlot, highestShaderSlot-lowestShaderSlot+1,
                         &currentSRVs[lowestShaderSlot]);
@@ -457,30 +454,31 @@ namespace RenderCore { namespace Metal_DX11
 
     void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIndex) const
     {
+		ID3D::ShaderResourceView* srv = nullptr;
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Vertex]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindVS<ShaderResourceView>(b._shaderSlot, 1);
+				context.GetUnderlying()->VSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Vertex][b._shaderSlot] = nullptr;
             }
         }
 
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Pixel]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindPS<ShaderResourceView>(b._shaderSlot, 1);
+				context.GetUnderlying()->PSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Pixel][b._shaderSlot] = nullptr;
             }
         }
 
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Geometry]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindGS<ShaderResourceView>(b._shaderSlot, 1);
+                context.GetUnderlying()->GSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Geometry][b._shaderSlot] = nullptr;
             }
         }
 
         for (const auto& b:_stageBindings[(unsigned)ShaderStage::Compute]._shaderResourceBindings) {
             if ((b._inputInterfaceSlot >> 16)==streamIndex) {
-                context.UnbindCS<ShaderResourceView>(b._shaderSlot, 1);
+                context.GetUnderlying()->CSSetShaderResources(b._shaderSlot, 1, &srv);
                 context._currentSRVs[(unsigned)ShaderStage::Compute][b._shaderSlot] = nullptr;
             }
         }
@@ -611,6 +609,66 @@ namespace RenderCore { namespace Metal_DX11
 		_linkage = copyFrom._linkage;
 		_classInstanceArray = copyFrom._classInstanceArray;
 		return *this;
+	}
+
+	void NumericUniformsInterface::Reset() {}
+
+	NumericUniformsInterface::NumericUniformsInterface(DeviceContext& context, ShaderStage shaderStage)
+	: _context(&context)
+	, _stage(shaderStage)
+	{
+		switch (shaderStage)
+		{
+		case ShaderStage::Vertex:
+			_setShaderResources = &ID3D::DeviceContext::VSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::VSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::VSSetConstantBuffers;
+			break;
+		case ShaderStage::Pixel:
+			_setShaderResources = &ID3D::DeviceContext::PSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::PSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::PSSetConstantBuffers;
+			break;
+		case ShaderStage::Geometry:
+			_setShaderResources = &ID3D::DeviceContext::GSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::GSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::GSSetConstantBuffers;
+			break;
+		case ShaderStage::Hull:
+			_setShaderResources = &ID3D::DeviceContext::HSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::HSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::HSSetConstantBuffers;
+			break;
+		case ShaderStage::Domain:
+			_setShaderResources = &ID3D::DeviceContext::DSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::DSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::DSSetConstantBuffers;
+			break;
+		case ShaderStage::Compute:
+			_setShaderResources = &ID3D::DeviceContext::CSSetShaderResources;
+			_setSamplers = &ID3D::DeviceContext::CSSetSamplers;
+			_setConstantBuffers = &ID3D::DeviceContext::CSSetConstantBuffers;
+			break;
+		default:
+			assert(0);
+			_setShaderResources = nullptr;
+			_setSamplers = nullptr;
+			_setConstantBuffers = nullptr;
+			break;
+		}
+	}
+
+	NumericUniformsInterface::NumericUniformsInterface()
+	{
+		_context = nullptr;
+		_stage = ShaderStage::Null;
+		_setShaderResources = nullptr;
+		_setSamplers = nullptr;
+		_setConstantBuffers = nullptr;
+	}
+
+    NumericUniformsInterface::~NumericUniformsInterface()
+	{
 	}
 
 #if 0

@@ -12,15 +12,25 @@
 #include "../../Types.h"
 #include "../../RenderUtils.h"
 #include "../../UniformsStream.h"
+#include "../../ResourceList.h"
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/MiniHeap.h"
 #include <memory>
 #include <vector>
 
+#include "IncludeDX11.h"		// required for Internal::SetConstantBuffersFn, etc
+
 namespace RenderCore { class VertexBufferView; class CompiledShaderByteCode; }
 
 namespace RenderCore { namespace Metal_DX11
 {
+	namespace Internal
+	{
+		typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffersFn)(unsigned int, unsigned int, ID3D::Buffer *const *);
+        typedef void (__stdcall ID3D::DeviceContext::*SetShaderResourcesFn)(unsigned int, unsigned int, ID3D::ShaderResourceView *const *);
+		typedef void (__stdcall ID3D::DeviceContext::*SetSamplersFn)(unsigned int, unsigned int, ID3D::SamplerState *const *);
+	}
+
     class ShaderProgram;
 	class DeviceContext;
 	class PipelineLayoutConfig
@@ -146,6 +156,67 @@ namespace RenderCore { namespace Metal_DX11
 
         StageBinding    _stageBindings[ShaderStage::Max];
     };
+
+        ////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class SamplerState;
+	class ShaderResourceView;
+	class DeviceContext;
+	
+	/// <summary>Bind uniforms at numeric binding points</summary>
+	class NumericUniformsInterface
+	{
+	public:
+		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
+		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
+		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
+
+		void Reset();
+
+		NumericUniformsInterface(DeviceContext& context, ShaderStage shaderStage);
+		NumericUniformsInterface();
+        ~NumericUniformsInterface();
+    protected:
+        DeviceContext* _context;
+		Internal::SetShaderResourcesFn _setShaderResources;
+		Internal::SetSamplersFn _setSamplers;
+		Internal::SetConstantBuffersFn _setConstantBuffers;
+		ShaderStage _stage;
+    };
+
+	template<int Count, typename Type, typename UnderlyingType>
+		void CopyArrayOfUnderlying(UnderlyingType* (&output)[Count], const ResourceList<Type, Count>& input)
+		{
+			for (unsigned c=0; c<Count; ++c) {
+				output[c] = input._buffers[c]->GetUnderlying();
+			}
+		}
+
+	template<int Count> void NumericUniformsInterface::Bind(const ResourceList<ShaderResourceView, Count>& srvs)
+	{
+		ID3D::ShaderResourceView* underlyings[Count];
+		CopyArrayOfUnderlying(underlyings, srvs);
+		for (unsigned c=0; c<Count; ++c)
+            _context->_currentSRVs[(unsigned)_stage][srvs._startingPoint+c] = underlyings[c];
+		(_context->GetUnderlying()->*_setShaderResources)(srvs._startingPoint, Count, underlyings);
+	}
+
+	template<int Count> void NumericUniformsInterface::Bind(const ResourceList<SamplerState, Count>& samplers)
+	{
+		ID3D::SamplerState* underlyings[Count];
+		CopyArrayOfUnderlying(underlyings, samplers);
+		(_context->GetUnderlying()->*_setSamplers)(samplers._startingPoint, Count, underlyings);
+	}
+
+	template<int Count> void NumericUniformsInterface::Bind(const ResourceList<ConstantBuffer, Count>& cbs)
+	{
+		ID3D::Buffer* underlyings[Count];
+		CopyArrayOfUnderlying(underlyings, cbs);
+		for (unsigned c=0; c<Count; ++c)
+            _context->_currentCBs[(unsigned)_stage][cbs._startingPoint+c] = underlyings[c];
+		(_context->GetUnderlying()->*_setConstantBuffers)(cbs._startingPoint, Count, underlyings);
+	}
+
 
 }}
 

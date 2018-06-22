@@ -197,7 +197,7 @@ namespace Overlays
         context->Bind(Topology::TriangleStrip);
         context->Draw(dimof(vertices));
 
-        context->UnbindPS<ShaderResourceView>(0, 1);
+		boundLayout.UnbindShaderResources(*context, 0);
     }
 
     class ButtonFormatting
