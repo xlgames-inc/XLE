@@ -86,7 +86,9 @@ namespace Utility
     MonitoredDirectory::~MonitoredDirectory()
     {
         if (_directoryHandle != INVALID_HANDLE_VALUE) {
-            CancelIoEx(_directoryHandle, &_overlapped);
+            #if _WIN32_WINNT >= _WIN32_WINNT_VISTA
+                CancelIoEx(_directoryHandle, &_overlapped);
+            #endif
             CloseHandle(_directoryHandle);
         }
         CloseHandle(_overlapped.hEvent);
