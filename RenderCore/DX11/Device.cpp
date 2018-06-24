@@ -8,6 +8,7 @@
 #include "../IAnnotator.h"
 #include "../Format.h"
 #include "../RenderUtils.h"		// (for Exceptions::GenericFailure)
+#include "../Init.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/State.h"
 #include "Metal/ObjectFactory.h"
@@ -23,6 +24,7 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <assert.h>
@@ -40,6 +42,8 @@ namespace RenderCore {
 namespace RenderCore { namespace ImplDX11
 {
     static void DumpAllDXGIObjects();
+
+	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice& device);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -580,6 +584,13 @@ namespace RenderCore { namespace ImplDX11
     {}
 
     ThreadContextDX11::~ThreadContextDX11() {}
+
+
+	void RegisterCreation()
+	{
+		static_constructor<&RegisterCreation>::c;
+		RegisterDeviceCreationFunction(UnderlyingAPI::DX11, &CreateDevice);
+	}
 
 }}
 

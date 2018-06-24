@@ -9,6 +9,7 @@
 #include "IteratorUtils.h"
 #include "PtrUtils.h"
 #include "../Core/Exceptions.h"
+#include "../Core/SelectConfiguration.h"
 #include <functional>
 #include <utility>
 #include <vector>
@@ -424,6 +425,21 @@ namespace Utility
         {
             return AutoCleanup(MakeFunction(fn));
         }
+
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+		//      S T A T I C   C O N S T R U C T O R   F U N C T I O N
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<void(*ctor)()>
+		struct static_constructor
+	{
+		struct constructor { constructor() { ctor(); } };
+		static constructor c;
+	};
+
+	template<void(*ctor)()>
+		typename static_constructor<ctor>::constructor static_constructor<ctor>::c;
 
 }
 

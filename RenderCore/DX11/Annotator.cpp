@@ -4,22 +4,22 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "IAnnotator.h"
-#include "../Utility/Threading/Mutex.h"
-#include "../Core/Types.h"
+#include "../IAnnotator.h"
+#include "../../Utility/Threading/Mutex.h"
+#include "../../Core/Types.h"
 #include <vector>
 #include <deque>
 #include <assert.h>
-
-// #define SELECT_VULKAN
 
 #include "Metal/QueryPool.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/ObjectFactory.h"
 
-namespace RenderCore
+namespace RenderCore { namespace ImplDX11
 {
-	class AnnotatorImpl : public Base_Annotator
+	namespace Metal = RenderCore::Metal_DX11;
+
+	class AnnotatorImpl : public IAnnotator
 	{
 	public:
 		void    Event(IThreadContext& context, const char name[], EventTypes::BitField types);
@@ -270,5 +270,5 @@ namespace RenderCore
 		return std::make_unique<AnnotatorImpl>(Metal::GetObjectFactory(device));
 	}
 
-}
+}}
 

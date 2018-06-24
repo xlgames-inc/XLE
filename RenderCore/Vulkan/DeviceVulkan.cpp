@@ -7,6 +7,7 @@
 #include "Device.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
+#include "../Init.h"
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Format.h"
@@ -33,6 +34,8 @@ namespace RenderCore {
 namespace RenderCore { namespace ImplVulkan
 {
     using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
+
+	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice& device);
 
 	static std::string GetApplicationName()
 	{
@@ -1272,6 +1275,12 @@ namespace RenderCore { namespace ImplVulkan
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}
 
+
+	void RegisterCreation()
+	{
+		static_constructor<&RegisterCreation>::c;
+		RegisterDeviceCreationFunction(UnderlyingAPI::Vulkan, &CreateDevice);
+	}
 }}
 
 namespace RenderCore
