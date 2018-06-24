@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Assets/AssetsCore.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"

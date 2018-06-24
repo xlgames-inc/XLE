@@ -71,12 +71,13 @@ namespace RenderCore { namespace Techniques
         return _techniqueContext->_stateSetEnvironment;
     }
 
-    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources)
+    ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
         _stateSetResolver = _techniqueContext->_defaultStateSetResolver;
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
+		_frameBufferPool = frameBufferPool;
 
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
             _globalCBs[c] = std::make_unique<Metal::ConstantBuffer>();

@@ -247,7 +247,6 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -545,7 +544,6 @@ namespace Sample
     static void RunRenderPassTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        RenderCore::Techniques::AttachmentPool& namedResources,
         const RenderCore::TextureSamples& samples)
     {
         TRY
@@ -599,6 +597,7 @@ namespace Sample
 					AttachmentDesc::DimensionsMode::OutputRelative,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
 
+			auto& namedResources = parserContext.GetNamedResources();
 			namedResources.DefineAttachment(MainDepthStencil, d_mainDepthStencil);
 			namedResources.DefineAttachment(GBufferDiffuse, d_diffuse);
 			namedResources.DefineAttachment(GBufferNormals, d_normals);
@@ -626,11 +625,9 @@ namespace Sample
 
 			auto clearValues = {MakeClearValue(1.f,0.f,0.f,1.f), MakeClearValue(1.f, 0), MakeClearValue(1.f, 0)};
             {
-				static Techniques::FrameBufferPool fbPool;
-
                 Techniques::RenderPassInstance rpi(
                     genericThreadContext, 
-					fbPool.BuildFrameBuffer(Metal::GetObjectFactory(), fbLayout, namedResources),
+					parserContext.GetFrameBufferPool().BuildFrameBuffer(Metal::GetObjectFactory(), fbLayout, namedResources),
 					fbLayout,
                     namedResources, 
 					MakeIteratorRange(clearValues));
@@ -722,7 +719,6 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitModelCompilers();
-        g_gpuProfiler = RenderCore::CreateAnnotator(*renderDevice);
         RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         
@@ -825,6 +821,7 @@ namespace Sample
             RenderCore::FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));*/
 
             RenderCore::Techniques::AttachmentPool namedResources;
+			RenderCore::Techniques::FrameBufferPool frameBufferPool;
             // namedResources.Bind(presentationChain->GetDesc()->_samples);
             namedResources.DefineAttachment(RenderCore::Techniques::Attachments::MainDepthStencil, d_mainDepthStencil);
 
@@ -848,14 +845,13 @@ namespace Sample
                 //     {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
                 // RunShaderTest(*context);
-                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources, &frameBufferPool);
                 SetupLightingParser(*context, parserContext);
 				RenderCore::Metal::DeviceContext::Get(*context)->Bind(RenderCore::Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
                 // RunModelTest(*context, parserContext);
                 // context->EndRenderPass();
 				RunRenderPassTest(
                     *context, parserContext, 
-                    namedResources,
                     RenderCore::TextureSamples::Create()); // 2));
                 context->Present(*presentationChain);
 
@@ -866,8 +862,6 @@ namespace Sample
 
 			texObj._resource.reset();
         }
-
-        g_gpuProfiler.reset();
 
         renderAssetServices.reset();
 		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*assetServices);

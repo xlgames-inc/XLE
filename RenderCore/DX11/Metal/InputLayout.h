@@ -29,6 +29,7 @@ namespace RenderCore { namespace Metal_DX11
 		typedef void (__stdcall ID3D::DeviceContext::*SetConstantBuffersFn)(unsigned int, unsigned int, ID3D::Buffer *const *);
         typedef void (__stdcall ID3D::DeviceContext::*SetShaderResourcesFn)(unsigned int, unsigned int, ID3D::ShaderResourceView *const *);
 		typedef void (__stdcall ID3D::DeviceContext::*SetSamplersFn)(unsigned int, unsigned int, ID3D::SamplerState *const *);
+		typedef void (__stdcall ID3D::DeviceContext::*SetUnorderedAccessViewsFn)(unsigned int, unsigned int, ID3D::UnorderedAccessView *const *, const unsigned int *);
 	}
 
     class ShaderProgram;
@@ -170,6 +171,7 @@ namespace RenderCore { namespace Metal_DX11
 		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
+		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
 		void Reset();
 
@@ -181,6 +183,7 @@ namespace RenderCore { namespace Metal_DX11
 		Internal::SetShaderResourcesFn _setShaderResources;
 		Internal::SetSamplersFn _setSamplers;
 		Internal::SetConstantBuffersFn _setConstantBuffers;
+		Internal::SetUnorderedAccessViewsFn _setUnorderedAccessViews;
 		ShaderStage _stage;
     };
 
@@ -215,6 +218,16 @@ namespace RenderCore { namespace Metal_DX11
 		for (unsigned c=0; c<Count; ++c)
             _context->_currentCBs[(unsigned)_stage][cbs._startingPoint+c] = underlyings[c];
 		(_context->GetUnderlying()->*_setConstantBuffers)(cbs._startingPoint, Count, underlyings);
+	}
+
+	template<int Count> void NumericUniformsInterface::Bind(const ResourceList<UnorderedAccessView, Count>& uavs)
+	{
+		ID3D::UnorderedAccessView* underlyings[Count];
+		unsigned initialCounts[Count];
+		for (unsigned c=0; c<Count; ++c) initialCounts[c] = 0;
+		CopyArrayOfUnderlying(underlyings, uavs);
+		assert(_setUnorderedAccessViews);
+		(_context->GetUnderlying()->*_setUnorderedAccessViews)(uavs._startingPoint, Count, underlyings, initialCounts);
 	}
 
 

@@ -67,7 +67,7 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
             Placements_RenderFiltered(
                 threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
@@ -85,7 +85,7 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
             Placements_RenderFiltered(
                 threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
@@ -358,7 +358,7 @@ namespace ToolsRig
         metalContext.Bind(Topology::TriangleStrip);
         metalContext.Draw(dimof(vertices));
 
-        metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+		boundLayout.UnbindShaderResources(metalContext, 1);
     }
 }
 

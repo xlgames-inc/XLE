@@ -74,7 +74,7 @@ namespace SceneEngine
     };
 
     RenderCore::Metal::ShaderResourceView BuildDuplicatedDepthBuffer(
-        RenderCore::Metal::DeviceContext* context, RenderCore::Resource& sourceDepthBuffer);
+        RenderCore::Metal::DeviceContext* context, RenderCore::IResource& sourceDepthBuffer);
 
 }
 

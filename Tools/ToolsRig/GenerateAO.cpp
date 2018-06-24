@@ -220,8 +220,8 @@ namespace ToolsRig
             // texture of floats
             //
 
-        metalContext.BindCS(MakeResourceList(_pimpl->_cubeSRV));
-        metalContext.BindCS(MakeResourceList(_pimpl->_miniUAV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_pimpl->_cubeSRV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_pimpl->_miniUAV));
 
         // metalContext.Bind(*_pimpl->_stepDownShader);
         metalContext.Bind(
@@ -229,8 +229,9 @@ namespace ToolsRig
                 "xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*"));
         metalContext.Dispatch(1u);
 
-        metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
-        metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+		metalContext.GetNumericUniforms(ShaderStage::Compute).Reset();
+        // metalContext.UnbindCS<Metal::ShaderResourceView>(0, 1);
+        // metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 1);
 
         auto& bufferUploads = RenderCore::Assets::Services::GetBufferUploads();
         auto readback = bufferUploads.Resource_ReadBack(*_pimpl->_miniLocator);
@@ -506,7 +507,7 @@ namespace ToolsRig
 
                 auto posElement = mesh.FindElement("POSITION");
                 if (posElement == ~0u) {
-                    LogWarning << "No vertex positions found in mesh! Cannot calculate AO for this mesh.";
+                    Log(Warning) << "No vertex positions found in mesh! Cannot calculate AO for this mesh." << std::endl;
                     continue;
                 }
 
@@ -526,7 +527,7 @@ namespace ToolsRig
 
                 auto nEle = mesh.FindElement("NORMAL");
                 if (nEle == ~0u) {
-                    LogWarning << "No vertex normals found in mesh! Cannot calculate AO for this mesh.";
+                    Log(Warning) << "No vertex normals found in mesh! Cannot calculate AO for this mesh." << std::endl;
                     continue;
                 }
 
@@ -571,7 +572,7 @@ namespace ToolsRig
                 std::vector<uint8> aoValues;
                 aoValues.reserve(samplePoints.size());
             
-                LogInfo << "Starting AO gen of " << samplePoints.size() << " pts";
+                Log(Verbose) << "Starting AO gen of " << samplePoints.size() << " pts" << std::endl;
                 for (size_t p=0; p!=samplePoints.size(); ++p) {
                     float skyDomeOcc;
 
@@ -602,9 +603,9 @@ namespace ToolsRig
                     aoValues.push_back(finalValue);
 
                     if ((p % 100)==0)
-                        LogInfo << "Generated " << p << "/" << samplePoints.size() << " AO sample points";
+                        Log(Verbose) << "Generated " << p << "/" << samplePoints.size() << " AO sample points" << std::endl;
                 }
-                LogInfo << "Finished AO gen";
+                Log(Verbose) << "Finished AO gen" << std::endl;
 
                     // Note that when we using the vertex map here, it should 
                     // guaranteed us a final VB that matches the vertices from the input
@@ -803,7 +804,7 @@ namespace ToolsRig
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
             return Result::KeepPolling;
         } CATCH(const std::exception& e) {
-            LogAlwaysError << "Got exception while compiling AO supplement. Exception details: " << e.what() << std::endl;
+            Log(Error) << "Got exception while compiling AO supplement. Exception details: " << e.what() << std::endl;
             _queuedOp->SetState(::Assets::AssetState::Invalid);
         } CATCH(...) {
             _queuedOp->SetState(::Assets::AssetState::Invalid);

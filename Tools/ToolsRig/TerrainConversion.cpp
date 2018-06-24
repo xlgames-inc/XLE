@@ -70,7 +70,7 @@ namespace ToolsRig
                         c->_coverageUber[layerIndex].first, c->_coverageUber[layerIndex].second, 
                         cfg.CellTreeDepth(), layer._overlap);
                 } CATCH(...) {
-                    LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
+                    Log(Error) << "Error while writing cell coverage file to: " << cellFile << std::endl;
                 } CATCH_END
             }
 
@@ -317,7 +317,7 @@ namespace ToolsRig
         // suppress warnings
         char buffer[1024];
         _vsnprintf_s(buffer, dimof(buffer), _TRUNCATE, fmt, args);
-        LogWarning << "Tiff reader warning: " << buffer;
+        Log(Warning) << "Tiff reader warning: " << buffer << std::endl;
 
         if (s_tiffWarningVector) {
             s_tiffWarningVector->push_back(buffer);
@@ -329,7 +329,7 @@ namespace ToolsRig
         // suppress warnings
         char buffer[1024];
         _vsnprintf_s(buffer, dimof(buffer), _TRUNCATE, fmt, args);
-        LogWarning << "Tiff reader error: " << buffer;
+        Log(Warning) << "Tiff reader error: " << buffer << std::endl;
 
         if (s_tiffWarningVector) {
             s_tiffWarningVector->push_back(buffer);

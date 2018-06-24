@@ -617,6 +617,7 @@ namespace RenderCore { namespace Metal_DX11
 	: _context(&context)
 	, _stage(shaderStage)
 	{
+		_setUnorderedAccessViews = nullptr;
 		switch (shaderStage)
 		{
 		case ShaderStage::Vertex:
@@ -648,6 +649,7 @@ namespace RenderCore { namespace Metal_DX11
 			_setShaderResources = &ID3D::DeviceContext::CSSetShaderResources;
 			_setSamplers = &ID3D::DeviceContext::CSSetSamplers;
 			_setConstantBuffers = &ID3D::DeviceContext::CSSetConstantBuffers;
+			_setUnorderedAccessViews = &ID3D::DeviceContext::CSSetUnorderedAccessViews;
 			break;
 		default:
 			assert(0);
@@ -665,6 +667,7 @@ namespace RenderCore { namespace Metal_DX11
 		_setShaderResources = nullptr;
 		_setSamplers = nullptr;
 		_setConstantBuffers = nullptr;
+		_setUnorderedAccessViews = nullptr;
 	}
 
     NumericUniformsInterface::~NumericUniformsInterface()

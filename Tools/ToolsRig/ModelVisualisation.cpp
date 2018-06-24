@@ -117,7 +117,7 @@ namespace ToolsRig
             Metal::ConstantBuffer drawCallIndexBuffer(
 				Metal::GetObjectFactory(), 
 				CreateDesc(BindFlag::ConstantBuffer, 0, GPUAccess::Read, LinearBufferDesc::Create(sizeof(unsigned)*4), "drawCallIndex"));
-            metalContext->BindGS(MakeResourceList(drawCallIndexBuffer));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(drawCallIndexBuffer));
 
             if (Tweakable("RenderSkinned", false)) {
                 if (delaySteps[0] == RenderCore::Assets::DelayStep::OpaqueRender) {
@@ -365,9 +365,11 @@ namespace ToolsRig
 			AttachmentViewDesc v_mainColor {0u};
 			AttachmentViewDesc v_mainDepth {2u};
 			SubpassDesc mainPass { {v_mainColor}, v_mainDepth };
-            Techniques::RenderPassInstance rpi(
-				context, FrameBufferDesc{mainPass},
-                0u, parserContext.GetNamedResources());
+			FrameBufferDesc fbDesc{mainPass};
+            Techniques::RenderPassInstance rpi{
+				context, 
+				parserContext.GetFrameBufferPool().BuildFrameBuffer(Metal::GetObjectFactory(), fbDesc, parserContext.GetNamedResources()),
+				fbDesc, parserContext.GetNamedResources()};
 
             if (_pimpl->_settings->_drawWireframe) {
 
@@ -440,9 +442,11 @@ namespace ToolsRig
                 {
 					AttachmentViewDesc v_mainColor {0u};
 					SubpassDesc mainPass { {v_mainColor} };
-                    Techniques::RenderPassInstance rpi(
-						context, FrameBufferDesc{mainPass},
-                        0u, parserContext.GetNamedResources());
+					FrameBufferDesc fbDesc{mainPass};
+                    Techniques::RenderPassInstance rpi{
+						context, 
+						parserContext.GetFrameBufferPool().BuildFrameBuffer(Metal::GetObjectFactory(), fbDesc, parserContext.GetNamedResources()),
+						fbDesc, parserContext.GetNamedResources()};
                     ExecuteHighlightByStencil(
                         context, parserContext.GetNamedResources(), 
                         settings, _pimpl->_settings->_colourByMaterial==2);
@@ -586,7 +590,9 @@ namespace ToolsRig
             auto cam = AsCameraDesc(*_camera);
             IntersectionTestContext testContext(
                 _threadContext, cam, 
-                std::make_shared<RenderCore::PresentationChainDesc>(PlatformRig::InputTranslator::s_hackWindowSize),
+                std::make_shared<RenderCore::PresentationChainDesc>(
+					PlatformRig::InputTranslator::s_hackWindowSize[0],
+					PlatformRig::InputTranslator::s_hackWindowSize[1]),
                 _techniqueContext);
             auto worldSpaceRay = testContext.CalculateWorldSpaceRay(
                 evnt._mousePosition);
