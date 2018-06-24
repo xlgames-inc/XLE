@@ -9,6 +9,7 @@
 namespace RenderOverlays
 {
 	TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options) : _font(font), _options(options) {}
+	TextStyle::TextStyle(unsigned pointSize, const DrawTextOptions& options) : _options(options) {}
 	TextStyle::~TextStyle() {}
 
 	float TextStyle::Draw(RenderCore::IThreadContext& threadContext,

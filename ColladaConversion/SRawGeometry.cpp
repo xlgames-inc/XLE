@@ -552,7 +552,7 @@ namespace ColladaConversion
     {
             // some exports can have empty meshes -- ideally, we just want to ignore them
         if (!mesh.GetPrimitivesCount()) {
-            LogWarning << "Geometry object with no primitives: " << mesh.GetName();
+            Log(Warning) << "Geometry object with no primitives: " << mesh.GetName() << std::endl;
             return NascentRawGeometry();
         }
 
@@ -677,7 +677,7 @@ namespace ColladaConversion
                 }
 
                 if (!boundSource) {
-                    LogWarning << "Couldn't find source for geometry input. Source name: " << input._source << " in geometry " << mesh.GetName();
+                    Log(Warning) << "Couldn't find source for geometry input. Source name: " << input._source << " in geometry " << mesh.GetName() << std::endl;
                 }
 
                     // we must adjust the primitive stride, even if we couldn't properly resolve
@@ -690,7 +690,7 @@ namespace ColladaConversion
         }
 
         if (!atLeastOneInput) {
-            LogWarning << "Geometry object with no valid vertex inputs: " << mesh.GetName();
+            Log(Warning) << "Geometry object with no valid vertex inputs: " << mesh.GetName() << std::endl;
             return NascentRawGeometry();
         }
 
@@ -882,7 +882,7 @@ namespace ColladaConversion
 
         if (    commonAccessor->GetParamCount() != 1
             || !Is(commonAccessor->GetParam(0)._type, u("float4x4"))) {
-            LogWarning << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation();
+            Log(Warning) << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation() << std::endl;
             return DynamicArray<Float4x4>();
         }
 
@@ -966,7 +966,7 @@ namespace ColladaConversion
     {
         auto* accessor = source.FindAccessorForTechnique();
         if (!accessor) {
-            LogWarning << "Expecting common access in <source> at " << source.GetLocation();
+            Log(Warning) << "Expecting common access in <source> at " << source.GetLocation() << std::endl;
             return DynamicArray<Type>();
         }
 
@@ -981,7 +981,7 @@ namespace ColladaConversion
             param = &accessor->GetParam(0);
         }
         if (!param) {
-            LogWarning << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation();
+            Log(Warning) << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation() << std::endl;
             return DynamicArray<Type>();
         }
 
@@ -989,7 +989,7 @@ namespace ColladaConversion
         auto stride = accessor->GetStride();
         auto count = accessor->GetCount();
         if ((offset + (count-1) * stride + 1) > source.GetCount()) {
-            LogWarning << "Source array is too short for accessor in <source> at " << source.GetLocation();
+            Log(Warning) << "Source array is too short for accessor in <source> at " << source.GetLocation() << std::endl;
             return DynamicArray<Type>();
         }
 

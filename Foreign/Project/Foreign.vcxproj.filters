@@ -147,9 +147,6 @@
     <ClCompile Include="..\LibTiff\tif_stream.cxx">
       <Filter>LibTIFF</Filter>
     </ClCompile>
-    <ClCompile Include="..\LibTiff\mkg3states.c">
-      <Filter>LibTIFF</Filter>
-    </ClCompile>
     <ClCompile Include="..\LibTiff\tif_aux.c">
       <Filter>LibTIFF</Filter>
     </ClCompile>

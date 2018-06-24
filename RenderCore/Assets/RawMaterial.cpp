@@ -456,10 +456,9 @@ namespace RenderCore { namespace Assets
             deps.push_back(depState);
     }
 
-    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
-    
-
 #if defined(HAS_XLE_FULLASSETS)
+	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+
     auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
         -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
     {

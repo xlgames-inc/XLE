@@ -90,7 +90,6 @@
     <ClCompile Include="..\fmt\printf.cc" />
     <ClCompile Include="..\Hash\MurmurHash2.cpp" />
     <ClCompile Include="..\Hash\MurmurHash3.cpp" />
-    <ClCompile Include="..\LibTiff\mkg3states.c" />
     <ClCompile Include="..\LibTiff\tif_aux.c" />
     <ClCompile Include="..\LibTiff\tif_close.c" />
     <ClCompile Include="..\LibTiff\tif_codec.c" />

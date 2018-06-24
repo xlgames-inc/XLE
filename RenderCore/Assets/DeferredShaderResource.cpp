@@ -467,7 +467,7 @@ namespace RenderCore { namespace Assets
         if (!data) {
             static bool firstTime = true;
             if (firstTime) {
-                LogAlwaysError << "Failed to open TextureFormatCache.dat! DXT normal map queries will be inefficient.";
+                Log(Error) << "Failed to open TextureFormatCache.dat! DXT normal map queries will be inefficient." << std::endl;
                 firstTime = false;
             }
             return IsDXTNormalMapFormat(LoadFormat(textureName));

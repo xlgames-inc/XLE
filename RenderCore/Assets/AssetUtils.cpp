@@ -38,7 +38,7 @@ namespace RenderCore { namespace Assets
         return std::move(result);
     }
 
-	static RenderCore::IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data)
+	RenderCore::IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data)
 	{
 		auto& device = RenderCore::Assets::Services::GetDevice();
 		return device.CreateResource(
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Assets
 			});
 	}
 
-	static RenderCore::IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data)
+	RenderCore::IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data)
 	{
 		auto& device = RenderCore::Assets::Services::GetDevice();
 		return device.CreateResource(

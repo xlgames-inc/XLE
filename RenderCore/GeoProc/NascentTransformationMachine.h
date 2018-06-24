@@ -129,7 +129,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto& tables = GetTables<Type>();
         auto i = std::find(tables.begin(), tables.end(), hashName);
         if (i!=tables.end()) {
-            LogWarning << "Duplicate animation parameter name in node " << paramName.AsString() << ". Only the first will work. The rest will be static.";
+            Log(Warning) << "Duplicate animation parameter name in node " << paramName.AsString() << ". Only the first will work. The rest will be static." << std::endl;
             return false;
         }
 

@@ -300,10 +300,10 @@ namespace ColladaConversion
 
                 _cmdStream.Add(NascentModelCommandStream::GeometryInstance { geo._geoId, outputMatrixMarker, std::move(geo._materials), c._levelOfDetail });
             } CATCH(const std::exception& e) {
-                LogWarning << "Got exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
-                LogWarning << e.what();
+                Log(Warning) << "Got exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << "). Exception details:" << std::endl;
+                Log(Warning) << e.what() << std::endl;
             } CATCH(...) {
-                LogWarning << "Got unknown exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << ").";
+                Log(Warning) << "Got unknown exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << ")." << std::endl;
             } CATCH_END
         }
 
@@ -328,10 +328,10 @@ namespace ColladaConversion
 				_cmdStream.Add(NascentModelCommandStream::SkinControllerInstance { geo._geoId, outputMatrixMarker, std::move(geo._materials), c._levelOfDetail });
                 skinSuccessful = true;
             } CATCH(const std::exception& e) {
-                LogWarning << "Got exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
-                LogWarning << e.what();
+                Log(Warning) << "Got exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:" << std::endl;
+                Log(Warning) << e.what() << std::endl;
             } CATCH(...) {
-                LogWarning << "Got unknown exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ").";
+                Log(Warning) << "Got unknown exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ")." << std::endl;
             } CATCH_END
 
             if (!skinSuccessful) {
@@ -340,7 +340,7 @@ namespace ColladaConversion
                     // can be required for some controller objects that use rigid animation
                     //  -- they can have a skin controller with no joints (meaning at the 
                     //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
-                LogWarning << "Could not instantiate controller as a skinned object. Falling back to rigid object.";
+                Log(Warning) << "Could not instantiate controller as a skinned object. Falling back to rigid object." << std::endl;
                 TRY {
                     auto geo =
                         InstantiateGeometry(
@@ -349,10 +349,10 @@ namespace ColladaConversion
                             _geoObjects, input._cfg);
 					_cmdStream.Add(NascentModelCommandStream::GeometryInstance { geo._geoId, outputMatrixMarker, std::move(geo._materials), c._levelOfDetail });
                 } CATCH(const std::exception& e) {
-                    LogWarning << "Got exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:";
-                    LogWarning << e.what();
+                    Log(Warning) << "Got exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:" << std::endl;
+                    Log(Warning) << e.what() << std::endl;
                 } CATCH(...) {
-                    LogWarning << "Got unknown exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ").";
+                    Log(Warning) << "Got unknown exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ")." << std::endl;
                 } CATCH_END
             }
         }
@@ -660,7 +660,7 @@ dll_export void AttachLibrary(ConsoleRig::GlobalServices& services)
 {
     // s_attachRef = services.GetCrossModule().Attach<ConsoleRig::GlobalServices>();
 	services.AttachCurrentModule();
-    LogInfo << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}";
+    Log(Verbose) << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}" << std::endl;
 }
 
 dll_export void DetachLibrary()

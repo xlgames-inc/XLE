@@ -69,9 +69,9 @@ namespace ColladaConversion
                 }
             }
     
-            LogWarning << "Could not resolve surface reference (" << AsString(imageRef) << ")";
+            Log(Warning) << "Could not resolve surface reference (" << AsString(imageRef) << ")" << std::endl;
         } else {
-            LogWarning << "Could not resolve sampler reference (" << AsString(samplerRef) << ")";
+            Log(Warning) << "Could not resolve sampler reference (" << AsString(samplerRef) << ")" << std::endl;
         }
     }
 
@@ -98,7 +98,7 @@ namespace ColladaConversion
                             binding.c_str(), samplerRef, pubEles);
                     }
                 } else if (techValue.Element(u("color")) || techValue.Element(u("float")) || techValue.Element(u("param"))) {
-                    LogWarning << "Color, float and param type technique values not supported in <extra> part in effect (" << effectName << ")";
+                    Log(Warning) << "Color, float and param type technique values not supported in <extra> part in effect (" << effectName << ")" << std::endl;
                 }
             }
         }
@@ -154,7 +154,7 @@ namespace ColladaConversion
 
             default:
             case TechniqueValue::Type::Param:
-                LogWarning << "Param type technique values are not supported. In effect (" << AsString(effect.GetName()) << ")";
+                Log(Warning) << "Param type technique values are not supported. In effect (" << AsString(effect.GetName()) << ")" << std::endl;
                 break;
             }
         }

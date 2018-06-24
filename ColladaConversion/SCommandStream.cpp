@@ -59,7 +59,7 @@ namespace ColladaConversion
             auto* parseEnd = FastParseElement(lod, nextSection.begin(), nextSection.end());
             if (parseEnd < nextSection.end() && *parseEnd == '_')
                 return LODDesc { lod, true, MakeStringSection(parseEnd+1, node.GetName().end()) };
-            LogWarning << "Node name (" << Conversion::Convert<std::string>(node.GetName().AsString()) << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0.";
+            Log(Warning) << "Node name (" << Conversion::Convert<std::string>(node.GetName().AsString()) << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0." << std::endl;
         }
         return LODDesc { 0, false, StringSection<utf8>() };
     }
