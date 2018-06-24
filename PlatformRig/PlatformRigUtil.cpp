@@ -20,7 +20,6 @@
 namespace PlatformRig
 {
 
-#if 0
     void GlobalTechniqueContext::SetInteger(const char name[], uint32 value)
     {
         _globalEnvironmentState.SetParameter((const utf8*)name, value);
@@ -44,7 +43,6 @@ namespace PlatformRig
         lua_pushnil(luaState);
         lua_setglobal(luaState, "TechContext");
     }
-#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
