@@ -137,19 +137,24 @@ namespace SceneEngine
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2d.vsh:fullscreen:vs_*",
                 "xleres/forward/transparency/depthweighted.sh:resolve:ps_*");
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-            uniforms.BindShaderResources(1, {"Accumulator", "Modulator", "Refraction"});
-            uniforms.Apply(
-                *_context,
-                _parserContext->GetGlobalUniformsStream(),
-                Metal::UniformsStream(
-                    {},
-                    {
-                        &_box->_accumulationBuffer.SRV(),
-                        &_box->_modulationBuffer.SRV(),
-                        &_box->_refractionBuffer.SRV()
-                    }));
+
+			UniformsStreamInterface usi;
+			usi.BindShaderResource(0, Hash64("Accumulator"));
+            usi.BindShaderResource(1, Hash64("Modulator"));
+            usi.BindShaderResource(2, Hash64("Refraction"));
+
+            Metal::BoundUniforms uniforms{
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi};
+            uniforms.Apply(*_context, 0, _parserContext->GetGlobalUniformsStream());
+			const Metal::ShaderResourceView* srvs[] {
+                &_box->_accumulationBuffer.SRV(),
+                &_box->_modulationBuffer.SRV(),
+                &_box->_refractionBuffer.SRV() };
+			uniforms.Apply(*_context, 1, 
+                UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
             _context->Bind(Techniques::CommonResources()._blendOneSrcAlpha);
             _context->Bind(shader);

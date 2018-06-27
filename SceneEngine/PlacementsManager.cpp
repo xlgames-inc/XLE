@@ -152,8 +152,8 @@ namespace SceneEngine
     void Placements::LogDetails(const char title[]) const
     {
         // write some details about this placements file to the log
-        LogInfo << "---<< Placements file: " << title << " >>---";
-        LogInfo << "    (" << _objects.size() << ") object references -- " << sizeof(ObjectReference) * _objects.size() / 1024.f << "k in objects, " << _filenamesBuffer.size() / 1024.f << "k in string table";
+        Log(Verbose) << "---<< Placements file: " << title << " >>---" << std::endl;
+        Log(Verbose) << "    (" << _objects.size() << ") object references -- " << sizeof(ObjectReference) * _objects.size() / 1024.f << "k in objects, " << _filenamesBuffer.size() / 1024.f << "k in string table" << std::endl;
 
         unsigned configCount = 0;
         auto i = _objects.cbegin();
@@ -165,7 +165,7 @@ namespace SceneEngine
                 && i->_supplementsOffset == starti->_supplementsOffset) { ++i; }
             ++configCount;
         }
-        LogInfo << "    (" << configCount << ") configurations";
+        Log(Verbose) << "    (" << configCount << ") configurations" << std::endl;
 
         i = _objects.cbegin();
         while (i != _objects.cend()) {
@@ -178,7 +178,7 @@ namespace SceneEngine
             auto modelName = (const ResChar*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_modelFilenameOffset + sizeof(uint64));
             auto materialName = (const ResChar*)PtrAdd(AsPointer(_filenamesBuffer.begin()), starti->_materialFilenameOffset + sizeof(uint64));
             auto supplementCount = !_supplementsBuffer.empty() ? _supplementsBuffer[starti->_supplementsOffset] : 0;
-            LogInfo << "    [" << (i-starti) << "] objects (" << modelName << "), (" << materialName << "), (" << supplementCount << ")";
+            Log(Verbose) << "    [" << (i-starti) << "] objects (" << modelName << "), (" << materialName << "), (" << supplementCount << ")" << std::endl;
         }
     }
 
@@ -1451,7 +1451,7 @@ namespace SceneEngine
                 auto* i = cache.Get(cell._filenameHash, cell._filename);
 				return i ? i->_placements.get() : nullptr;
 			} CATCH (const std::exception& e) {
-                LogWarning << "Got invalid resource while loading placements file (" << cell._filename << "). Error: (" << e.what() << ").";
+                Log(Warning) << "Got invalid resource while loading placements file (" << cell._filename << "). Error: (" << e.what() << ")." << std::endl;
 			} CATCH_END
 		}
 		return nullptr;
@@ -1474,7 +1474,7 @@ namespace SceneEngine
 					auto& sourcePlacements = Assets::GetAsset<Placements>(cell->_filename);
 					placements = std::make_shared<DynamicPlacements>(sourcePlacements);
 				} CATCH (const std::exception& e) {
-					LogWarning << "Got invalid resource while loading placements file (" << cell->_filename << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ").";
+					Log(Warning) << "Got invalid resource while loading placements file (" << cell->_filename << "). If this file exists, but is corrupted, the next save will overwrite it. Error: (" << e.what() << ")." << std::endl;
 				} CATCH_END
 			}
 
@@ -2152,7 +2152,7 @@ namespace SceneEngine
             if (GetLocalBoundingBox_Stall(boundingBox, newState._model.c_str())) {
                 cellSpaceBoundary = TransformBoundingBox(localToCell, boundingBox);
             } else {
-                LogWarning << "Cannot get bounding box for model (" << newState._model << ") while updating placement object.";
+                Log(Warning) << "Cannot get bounding box for model (" << newState._model << ") while updating placement object." << std::endl;
                 cellSpaceBoundary = std::make_pair(Float3(FLT_MAX, FLT_MAX, FLT_MAX), Float3(-FLT_MAX, -FLT_MAX, -FLT_MAX));
             }
         }

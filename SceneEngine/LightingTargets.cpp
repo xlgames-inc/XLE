@@ -7,6 +7,7 @@
 #include "LightingTargets.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
+#include "MetalStubs.h"
 
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -334,21 +335,25 @@ namespace SceneEngine
             // attempt to resolve this shader...
             if (dest._shader && !dest._hasBeenResolved) {
                 using namespace RenderCore;
-                dest._uniforms = Metal::BoundUniforms(*dest._shader);
 
-                Techniques::TechniqueContext::BindGlobalUniforms(dest._uniforms);
-                dest._uniforms.BindConstantBuffer(Hash64("ArbitraryShadowProjection"),  CB::ShadowProj_Arbit, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("LightBuffer"),                CB::LightBuffer, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ShadowParameters"),           CB::ShadowParam, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ScreenToShadowProjection"),   CB::ScreenToShadow, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("OrthogonalShadowProjection"), CB::ShadowProj_Ortho, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ShadowResolveParameters"),    CB::ShadowResolveParam, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("ScreenToRTShadowProjection"), CB::ScreenToRTShadow, 1);
-                dest._uniforms.BindConstantBuffer(Hash64("DebuggingGlobals"),           CB::Debugging, 1);
-                dest._uniforms.BindShaderResource(Hash64("ShadowTextures"),             SR::DMShadow, 1);
-                dest._uniforms.BindShaderResource(Hash64("RTSListsHead"),               SR::RTShadow_ListHead, 1);
-                dest._uniforms.BindShaderResource(Hash64("RTSLinkedLists"),             SR::RTShadow_LinkedLists, 1);
-                dest._uniforms.BindShaderResource(Hash64("RTSTriangles"),               SR::RTShadow_Triangles, 1);
+				UniformsStreamInterface usi;
+				usi.BindConstantBuffer(CB::ShadowProj_Arbit, {Hash64("ArbitraryShadowProjection")});
+                usi.BindConstantBuffer(CB::LightBuffer, {Hash64("LightBuffer")});
+                usi.BindConstantBuffer(CB::ShadowParam, {Hash64("ShadowParameters")});
+                usi.BindConstantBuffer(CB::ScreenToShadow, {Hash64("ScreenToShadowProjection")});
+                usi.BindConstantBuffer(CB::ShadowProj_Ortho, {Hash64("OrthogonalShadowProjection")});
+                usi.BindConstantBuffer(CB::ShadowResolveParam, {Hash64("ShadowResolveParameters")});
+                usi.BindConstantBuffer(CB::ScreenToRTShadow, {Hash64("ScreenToRTShadowProjection")});
+                usi.BindConstantBuffer(CB::Debugging, {Hash64("DebuggingGlobals")});
+                usi.BindShaderResource(SR::DMShadow, {Hash64("ShadowTextures")});
+                usi.BindShaderResource(SR::RTShadow_ListHead, Hash64("RTSListsHead"));
+                usi.BindShaderResource(SR::RTShadow_LinkedLists, Hash64("RTSLinkedLists"));
+                usi.BindShaderResource(SR::RTShadow_Triangles, Hash64("RTSTriangles"));
+
+				dest._uniforms = Metal::BoundUniforms(
+					*dest._shader, Metal::PipelineLayoutConfig{}, 
+					Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+					usi);
 
                 if (_dynamicLinking==2) {
                     dest._boundClassInterfaces = Metal::BoundClassInterfaces(*dest._shader);
@@ -480,9 +485,12 @@ namespace SceneEngine
             "xleres/deferred/resolveambient.psh:ResolveAmbient:ps_*",
             definesTable.get());
 
-        auto ambientLightUniforms = std::make_unique<Metal::BoundUniforms>(std::ref(*ambientLight));
-        Techniques::TechniqueContext::BindGlobalUniforms(*ambientLightUniforms);
-        ambientLightUniforms->BindConstantBuffer(Hash64("AmbientLightBuffer"), 0, 1);
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("AmbientLightBuffer")});
+		auto ambientLightUniforms = std::make_unique<Metal::BoundUniforms>(
+			std::ref(*ambientLight), Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, ambientLight->GetDependencyValidation());
@@ -558,12 +566,12 @@ namespace SceneEngine
         }
 
         auto& namedRes = parserContext.GetNamedResources();
-        context.BindPS(MakeResourceList(5, *namedRes.GetSRV(IMainTargets::GBufferDiffuse), *namedRes.GetSRV(IMainTargets::GBufferNormals), *namedRes.GetSRV(IMainTargets::GBufferParameters), *namedRes.GetSRV(IMainTargets::MultisampledDepth)));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, *namedRes.GetSRV(IMainTargets::GBufferDiffuse), *namedRes.GetSRV(IMainTargets::GBufferNormals), *namedRes.GetSRV(IMainTargets::GBufferParameters), *namedRes.GetSRV(IMainTargets::MultisampledDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);
 
-        context.UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 4);
+		MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(context, 5, 4);
     }
 
 }

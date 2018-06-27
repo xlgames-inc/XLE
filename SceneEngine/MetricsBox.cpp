@@ -73,20 +73,24 @@ namespace SceneEngine
         context.Bind(shader, boundInterfaces);
 
         const auto* metricsDigits = "xleres/DefaultResources/metricsdigits.dds:T";
-        context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
 
-        Metal::BoundUniforms uniforms(shader);
-        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-        uniforms.BindConstantBuffers(1, {"$Globals"});
-        uniforms.BindShaderResources(1, {"MetricsObject"});
+		UniformsStreamInterface usi;
+        usi.BindConstantBuffer(0, {Hash64("$Globals")});
+        usi.BindShaderResource(0, Hash64("MetricsObject"));
+		Metal::BoundUniforms uniforms(
+			shader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         Metal::ViewportDesc viewport(context);
         unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
-        uniforms.Apply(
-            context, parsingContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(
+        uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
+		uniforms.Apply(context, 1, 
+            UniformsStream{
                 { MakeSharedPkt(globalCB) }, 
-                { &parsingContext.GetMetricsBox()->_metricsBufferSRV }));
+				{ &parsingContext.GetMetricsBox()->_metricsBufferSRV }});
 
         context.Unbind<Metal::VertexBuffer>();
         context.Unbind<Metal::BoundInputLayout>();

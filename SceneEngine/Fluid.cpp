@@ -601,7 +601,7 @@ namespace SceneEngine
             *_densityDiffusion,
             AsScalarField1D(_density[0]), 
             (PoissonSolver::Method)settings._diffusionMethod);
-        LogInfo << "Density diffusion took: (" << iterations << ") iterations.";
+        Log(Verbose) << "Density diffusion took: (" << iterations << ") iterations." << std::endl;
     }
 
     void FluidSolver3D::Pimpl::VelocityDiffusion(float deltaTime, const Settings& settings)
@@ -617,7 +617,7 @@ namespace SceneEngine
         auto iterationsv = _poissonSolver.Solve(
             AsScalarField1D(_velV[2]), *_velocityDiffusion, AsScalarField1D(_velV[2]), 
             (PoissonSolver::Method)settings._diffusionMethod);
-        LogInfo << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+        Log(Verbose) << "Velocity diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations." << std::endl;
     }
 
     UInt3 FluidSolver3D::GetDimensions() const { return _pimpl->_dimsWithoutBorder; }

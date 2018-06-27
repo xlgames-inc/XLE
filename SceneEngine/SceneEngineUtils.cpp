@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 
 #include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -503,7 +504,7 @@ namespace SceneEngine
 				if (_states & States::RasterizerState)
 					_context->Bind(_rasterizerState);
 				if (_states & States::InputLayout)
-					_context->Bind(_inputLayout);
+					_inputLayout.Apply(*_context, {});
 
 				if (_states & States::VertexBuffer) {
 					ID3D::Buffer* rawptrs[s_vbCount];
@@ -650,10 +651,10 @@ namespace SceneEngine
         res._uniforms.Apply(
             context, Metal::UniformsStream(), 
             Metal::UniformsStream({MakeSharedPkt(coords)}, {}));
-        context.BindPS(MakeResourceList(src));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
-        context.UnbindPS<Metal::ShaderResourceView>(0, 1);
+		MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
     }
 
 }

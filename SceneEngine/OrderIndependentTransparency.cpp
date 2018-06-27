@@ -13,6 +13,7 @@
 #include "MetricsBox.h"
 #include "LightDesc.h"
 #include "Sky.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
@@ -63,11 +64,12 @@ namespace SceneEngine
         _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->ShareUnderlying());
         _nodeListBufferUAV = Metal::UnorderedAccessView(
             _nodeListBuffer->ShareUnderlying(),
-			TextureViewDesc(
-				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+			TextureViewDesc{
+				Format::Unknown,
 				TextureViewDesc::All,
 				TextureViewDesc::All,
-				TextureViewDesc::Flags::AttachedCounter));
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::AttachedCounter});
 
         _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->ShareUnderlying());
         _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->ShareUnderlying());
@@ -113,7 +115,7 @@ namespace SceneEngine
             1, prevTargets.GetRenderTargets(), prevTargets.GetDepthStencilView(),
             1, dimof(uavs), uavs, initialCounts);
 
-        metalContext.BindPS(MakeResourceList(17, depthBufferDupe));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(17, depthBufferDupe));
 #endif
     }
 
@@ -175,7 +177,7 @@ namespace SceneEngine
                 1, savedTargets.GetRenderTargets(), nullptr,
                 1, 1, &metricsUAV, nullptr);
 
-            metalContext.BindPS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 transparencyTargets._fragmentIdsTextureSRV, 
                 transparencyTargets._nodeListBufferSRV, 
                 originalDepthStencilSRV));
@@ -194,7 +196,7 @@ namespace SceneEngine
                 metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
                     1, savedTargets.GetRenderTargets(), nullptr,
                     1, 1, &metricsUAV, nullptr);
-                metalContext.BindPS(MakeResourceList(3, transparencyTargets._infiniteLoopSRV));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, transparencyTargets._infiniteLoopSRV));
             }
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
@@ -207,7 +209,7 @@ namespace SceneEngine
 
             metalContext.Draw(4);
 
-            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 4);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 4);
         CATCH_ASSETS_END(parserContext)
 #endif
     }

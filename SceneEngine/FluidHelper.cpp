@@ -48,7 +48,7 @@ namespace SceneEngine
             method);
 
         if (name)
-            LogInfo << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations.";
+            Log(Verbose) << name << " diffusion took: (" << iterationsu << ", " << iterationsv << ") iterations." << std::endl;
     }
 
     void DiffusionHelper::Execute(
@@ -70,7 +70,7 @@ namespace SceneEngine
             method);
 
         if (name)
-            LogInfo << name << " diffusion took: (" << iterationsu << ") iterations.";
+            Log(Verbose) << name << " diffusion took: (" << iterationsu << ") iterations." << std::endl;
     }
 
     DiffusionHelper::DiffusionHelper() { _preparedValue = 0.f; _preparedMethod = (PoissonSolver::Method)~0u; _preparedWrapEdges = 0u; }
@@ -165,7 +165,7 @@ namespace SceneEngine
                 (*velField._v)[i] -= .5f*velFieldScale[1] * (qBuffer._u[i2] - qBuffer._u[i3]);
             }
 
-        LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
+        Log(Verbose) << "EnforceIncompressibility took: " << iterations << " iterations." << std::endl;
     }
 
     void EnforceIncompressibility(
@@ -206,7 +206,7 @@ namespace SceneEngine
                     (*velField._w)[i] -= .5f*velFieldScale[2] * (q[i+dims[0]*dims[1]]   - q[i-dims[0]*dims[1]]);
                 }
 
-        LogInfo << "EnforceIncompressibility took: " << iterations << " iterations.";
+        Log(Verbose) << "EnforceIncompressibility took: " << iterations << " iterations." << std::endl;
     }
 
     

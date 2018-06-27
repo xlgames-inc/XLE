@@ -242,7 +242,7 @@ namespace SceneEngine
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
         } CATCH(const std::exception&) {
             // we can sometimes get missing files. Just return a default height
-            LogWarning << "Error when querying terrain height at " << queryPosition[0] << ", " << queryPosition[1];
+            Log(Warning) << "Error when querying terrain height at " << queryPosition[0] << ", " << queryPosition[1] << std::endl;
         } CATCH_END
 
         return 0.f;
@@ -305,7 +305,7 @@ namespace SceneEngine
         } CATCH(const ::Assets::Exceptions::PendingAsset&) {
         } CATCH(const std::exception&) {
             // we can sometimes get missing files. Just return a default height
-            LogWarning << "Error when querying terrain height at " << queryPosition[0] << ", " << queryPosition[1];
+            Log(Warning) << "Error when querying terrain height at " << queryPosition[0] << ", " << queryPosition[1] << std::endl;
         } CATCH_END
 
         return false;

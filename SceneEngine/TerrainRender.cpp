@@ -1092,7 +1092,7 @@ namespace SceneEngine
                             // rendering context, then we can't render this cell. We use the same shaders for
                             // all cells, so all cells must agree on those settings that affect shader selection.
                         if (i->_cell->_sourceCell->EncodedGradientFlags() != terrainContext._encodedGradientFlags) {
-                            LogWarning << "Encoded gradient flags setting in cell doesn't match renderer. Rebuild cells so that the renderer settings match the cell data.";
+                            Log(Warning) << "Encoded gradient flags setting in cell doesn't match renderer. Rebuild cells so that the renderer settings match the cell data." << std::endl;
                             continue;
                         }
                     #endif

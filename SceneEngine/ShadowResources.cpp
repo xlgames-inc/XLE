@@ -6,6 +6,7 @@
 
 #include "ShadowResources.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../BufferUploads/ResourceLocator.h"
 
 namespace SceneEngine
@@ -25,23 +26,23 @@ namespace SceneEngine
         auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr);
         Metal::DepthStencilView depthStencilView(
 			shadowTexture->ShareUnderlying(), 
-			TextureViewDesc(
-                TextureViewDesc::Aspect::Depth, TextureDesc::Dimensionality::Undefined,
+			TextureViewDesc{
+				TextureViewDesc::Aspect::Depth, 
 				TextureViewDesc::All,
-				TextureViewDesc::SubResourceRange{0, desc._targetCount}));
+				TextureViewDesc::SubResourceRange{0, desc._targetCount}});
         Metal::ShaderResourceView shaderResource(
 			shadowTexture->ShareUnderlying(), 
-			TextureViewDesc(
-				TextureViewDesc::Aspect::ColorLinear, TextureDesc::Dimensionality::Undefined, 
+			TextureViewDesc{
+				TextureViewDesc::Aspect::ColorLinear,
 				TextureViewDesc::All,
-				TextureViewDesc::SubResourceRange{0, desc._targetCount}));
+				TextureViewDesc::SubResourceRange{0, desc._targetCount}});
 
         std::vector<Metal::DepthStencilView> dsvBySlice;
         for (unsigned c=0; c<desc._targetCount; ++c) {
-			auto window = TextureViewDesc(
-				TextureViewDesc::Aspect::Depth, TextureDesc::Dimensionality::Undefined,
+			auto window = TextureViewDesc{
+				TextureViewDesc::Aspect::Depth,
 				TextureViewDesc::All,
-				TextureViewDesc::SubResourceRange{ c, 1 });
+				TextureViewDesc::SubResourceRange{ c, 1 }};
             dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->ShareUnderlying(), window));
         }
 
@@ -98,9 +99,10 @@ namespace SceneEngine
         shadowParameters._filterKernel[29] = Float4(0.7366455f, -0.6388465f,0,0);
         shadowParameters._filterKernel[30] = Float4(-0.6067169f, 0.6372176f,0,0);
         shadowParameters._filterKernel[31] = Float4(0.2743046f, -0.9303559f,0,0);
-        Metal::ConstantBuffer sampleKernel32(&shadowParameters, sizeof(shadowParameters));
 
-        _sampleKernel32 = std::move(sampleKernel32);
+        _sampleKernel32 = Metal::MakeConstantBuffer(
+			Metal::GetObjectFactory(), 
+			MakeIteratorRange(&shadowParameters, PtrAdd(&shadowParameters, sizeof(shadowParameters))));
     }
 
     ShadowResourcesBox::~ShadowResourcesBox() {}

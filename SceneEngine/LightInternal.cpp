@@ -9,6 +9,7 @@
 #include "SceneEngineUtils.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
@@ -117,17 +118,17 @@ namespace SceneEngine
 
         BuildShadowConstantBuffers(_arbitraryCBSource, _orthoCBSource, desc);
 
-        using RenderCore::Metal::ConstantBuffer;
+        using namespace RenderCore;
             // arbitrary constants
         if (!_arbitraryCB.GetUnderlying()) {
-            _arbitraryCB = ConstantBuffer(&_arbitraryCBSource, sizeof(_arbitraryCBSource));
+			_arbitraryCB = Metal::MakeConstantBuffer(Metal::GetObjectFactory(), {&_arbitraryCBSource, PtrAdd(&_arbitraryCBSource, sizeof(_arbitraryCBSource))});
         } else {
             _arbitraryCB.Update(*devContext, &_arbitraryCBSource, sizeof(_arbitraryCBSource));
         }
 
             // ortho constants
         if (!_orthoCB.GetUnderlying()) {
-            _orthoCB = ConstantBuffer(&_orthoCBSource, sizeof(_orthoCBSource));
+			_orthoCB = Metal::MakeConstantBuffer(Metal::GetObjectFactory(), {&_orthoCBSource, PtrAdd(&_orthoCBSource, sizeof(_orthoCBSource))});
         } else {
             _orthoCB.Update(*devContext, &_orthoCBSource, sizeof(_orthoCBSource));
         }

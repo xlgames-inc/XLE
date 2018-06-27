@@ -336,7 +336,7 @@ namespace SceneEngine
         }
         CATCH(...)
         {
-            LogWarning << "Got error while loading cached terrain data from file: " << cachedDataFile << ". Regenerating data.";
+            Log(Warning) << "Got error while loading cached terrain data from file: " << cachedDataFile << ". Regenerating data." << std::endl;
         }
         CATCH_END
 
