@@ -15,9 +15,6 @@
 namespace SceneEngine { class PlacementsEditor; }
 namespace PlatformRig { class EnvironmentSettings; }
 
-using namespace System;
-using namespace System::Collections::Generic;
-
 namespace GUILayer
 {
     ref class PlacementsEditorWrapper;
@@ -46,10 +43,10 @@ namespace GUILayer
     {
     public:
         clix::auto_ptr<EnvSettingsVector> _settings;
-        property IEnumerable<String^>^ Names { IEnumerable<String^>^ get(); }
+        property System::Collections::Generic::IEnumerable<System::String^>^ Names { System::Collections::Generic::IEnumerable<System::String^>^ get(); }
 
         void AddDefault();
-        const PlatformRig::EnvironmentSettings& GetSettings(String^ name);
+        const PlatformRig::EnvironmentSettings& GetSettings(System::String^ name);
 
         EnvironmentSettingsSet(EditorSceneManager^ scene);
         ~EnvironmentSettingsSet();

@@ -13,7 +13,7 @@ namespace GUILayer
 	public ref class TestControl : public EngineControl
 	{
 	public:
-		TestControl(Control^ control);
+		TestControl(System::Windows::Forms::Control^ control);
 		~TestControl();
 
     protected:

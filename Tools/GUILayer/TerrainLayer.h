@@ -11,8 +11,6 @@
 #include "MathLayer.h"
 #include "../../SceneEngine/TerrainConfig.h"
 
-using namespace System;
-
 namespace GUILayer
 {
     using NativeConfig = SceneEngine::TerrainConfig;
@@ -26,7 +24,7 @@ namespace GUILayer
         ref class CoverageLayerDesc
         {
         public:
-            property String^ Name { String^ get(); }
+            property System::String^ Name { System::String^ get(); }
             property SceneEngine::TerrainCoverageId Id { SceneEngine::TerrainCoverageId get(); }
             property VectorUInt2 NodeDims { VectorUInt2 get(); void set(VectorUInt2); }
             property unsigned Overlap { unsigned get(); void set(unsigned); }
@@ -37,7 +35,7 @@ namespace GUILayer
             const NativeConfig::CoverageLayer& GetNative() { return *_native; }
 
             CoverageLayerDesc(
-                String^ uberSurfaceDirectory, SceneEngine::TerrainCoverageId id);
+                System::String^ uberSurfaceDirectory, SceneEngine::TerrainCoverageId id);
             CoverageLayerDesc(const NativeConfig::CoverageLayer& native);
             ~CoverageLayerDesc();
         protected:
@@ -57,11 +55,11 @@ namespace GUILayer
         CoverageLayerDesc^ GetCoverageLayer(unsigned index);
         void Add(CoverageLayerDesc^ layer);
 
-        void InitCellCountFromUberSurface(String^ uberSurfaceDir);
+        void InitCellCountFromUberSurface(System::String^ uberSurfaceDir);
 
         const NativeConfig& GetNative() { return *_native; }
         TerrainConfig(
-            String^ cellsDirectory,
+            System::String^ cellsDirectory,
             unsigned nodeDimsInElements, unsigned cellTreeDepth, unsigned nodeOverlap,
             float elementSpacing, float sunPathAngle, bool encodedGradientFlags);
         TerrainConfig(const NativeConfig& native);

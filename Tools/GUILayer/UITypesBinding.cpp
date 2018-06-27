@@ -27,6 +27,8 @@
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
 
+using namespace System;
+
 namespace Assets
 {
 	// hack -- duplicate this from AssetHeap.h (because we can't include that due to <mutex> problem with C++/CLR
@@ -52,10 +54,10 @@ namespace GUILayer
     public:
         void    OnChange();
 
-        InvalidatePropertyGrid(PropertyGrid^ linked);
+        InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked);
         ~InvalidatePropertyGrid();
     protected:
-        msclr::auto_gcroot<PropertyGrid^> _linked;
+        msclr::auto_gcroot<System::Windows::Forms::PropertyGrid^> _linked;
     };
 
     void    InvalidatePropertyGrid::OnChange()
@@ -65,10 +67,10 @@ namespace GUILayer
         }
     }
 
-    InvalidatePropertyGrid::InvalidatePropertyGrid(PropertyGrid^ linked) : _linked(linked) {}
+    InvalidatePropertyGrid::InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked) : _linked(linked) {}
     InvalidatePropertyGrid::~InvalidatePropertyGrid() {}
 
-    void ModelVisSettings::AttachCallback(PropertyGrid^ callback)
+    void ModelVisSettings::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
     {
         _object->_changeEvent._callbacks.push_back(
             std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
@@ -217,7 +219,7 @@ namespace GUILayer
         }
     }
 
-    void VisMouseOver::AttachCallback(PropertyGrid^ callback)
+    void VisMouseOver::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
     {
         _object->_changeEvent._callbacks.push_back(
             std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
@@ -604,7 +606,7 @@ namespace GUILayer
         NotifyPropertyChanged("DoubleSided");
     }
 
-    CheckState RenderStateSet::Wireframe::get()
+    System::Windows::Forms::CheckState RenderStateSet::Wireframe::get()
     {
         auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
         if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::Wireframe) {

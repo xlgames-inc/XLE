@@ -214,7 +214,7 @@ namespace GUILayer
         } CATCH_END
     }
 
-    ErosionIterativeSystem::ErosionIterativeSystem(String^ sourceHeights)
+    ErosionIterativeSystem::ErosionIterativeSystem(System::String^ sourceHeights)
     {
         using namespace SceneEngine;
         _pimpl.reset(new ErosionIterativeSystemPimpl);

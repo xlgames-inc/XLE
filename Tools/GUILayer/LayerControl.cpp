@@ -39,6 +39,8 @@
 #include <stack>
 #include <iomanip>
 
+using namespace System;
+
 unsigned FrameRenderCount = 0;
 
 namespace GUILayer 
@@ -65,9 +67,14 @@ namespace GUILayer
         }
 
         {
+			RenderCore::SubpassDesc subpasses[] = {
+				RenderCore::SubpassDesc{{RenderCore::AttachmentViewDesc{0}}}
+            };
+			RenderCore::FrameBufferDesc fbDesc{MakeIteratorRange(subpasses)};
+			auto fb = pimpl._frameBufferPool->BuildFrameBuffer(fbDesc, *pimpl._namedResources);
             RenderCore::Techniques::RenderPassInstance rpi(
-                context, {{RenderCore::SubpassDesc{{0}}}},
-                0u, *pimpl._namedResources);
+                context, fb, fbDesc,
+                *pimpl._namedResources);
 
             ///////////////////////////////////////////////////////////////////////
             bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
@@ -329,7 +336,7 @@ namespace GUILayer
         return _techContextWrapper;
     }
 
-    LayerControl::LayerControl(Control^ control)
+    LayerControl::LayerControl(System::Windows::Forms::Control^ control)
         : EngineControl(control)
     {
         _pimpl.reset(new LayerControlPimpl());

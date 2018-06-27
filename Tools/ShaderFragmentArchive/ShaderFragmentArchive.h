@@ -9,7 +9,6 @@
 #include "../GUILayer/CLIXAutoPtr.h"
 #include <memory>
 
-using namespace System;
 using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
 using namespace System::ComponentModel::Composition;
@@ -24,14 +23,14 @@ namespace ShaderFragmentArchive
     public ref class Function
     {
     public:
-        property String^    Name;
+        property System::String^    Name;
 
         ref class Parameter
         {
         public:
-            property String^    Type;
-            property String^    Semantic;
-            property String^    Name;
+            property System::String^    Type;
+            property System::String^    Semantic;
+            property System::String^    Name;
         };
 
         property List<Parameter^>^      InputParameters;
@@ -39,7 +38,7 @@ namespace ShaderFragmentArchive
 
         Function(ShaderSourceParser::FunctionSignature& function);
         ~Function();
-        String^ BuildParametersString();
+        System::String^ BuildParametersString();
     };
 
         ///////////////////////////////////////////////////////////////
@@ -48,23 +47,23 @@ namespace ShaderFragmentArchive
     public:
         enum class SourceType { Material, System, Output, Constant };
         
-        [CategoryAttribute("Name")]     property String^        Name;
-        [CategoryAttribute("Name")]     property String^        Description;
+        [CategoryAttribute("Name")]     property System::String^        Name;
+        [CategoryAttribute("Name")]     property System::String^        Description;
 
         [CategoryAttribute("System")]   property SourceType     Source;
-        [CategoryAttribute("System")]   property String^        Default;
+        [CategoryAttribute("System")]   property System::String^        Default;
         [CategoryAttribute("System"),
-         ReadOnlyAttribute(true)]       property String^        ArchiveName;
+         ReadOnlyAttribute(true)]       property System::String^        ArchiveName;
 
-        [CategoryAttribute("Type")]     property String^        Type;
-        [CategoryAttribute("Type")]     property String^        TypeExtra;
-        [CategoryAttribute("Type")]     property String^        Semantic;
-        [CategoryAttribute("Type")]     property String^        Min;
-        [CategoryAttribute("Type")]     property String^        Max;
+        [CategoryAttribute("Type")]     property System::String^        Type;
+        [CategoryAttribute("Type")]     property System::String^        TypeExtra;
+        [CategoryAttribute("Type")]     property System::String^        Semantic;
+        [CategoryAttribute("Type")]     property System::String^        Min;
+        [CategoryAttribute("Type")]     property System::String^        Max;
         
-        [ReadOnlyAttribute(true)]       property String^        ExceptionString;
+        [ReadOnlyAttribute(true)]       property System::String^        ExceptionString;
         
-        Parameter(String^ archiveName);
+        Parameter(System::String^ archiveName);
         void DeepCopyFrom(Parameter^ otherParameter);
     };
 
@@ -72,12 +71,12 @@ namespace ShaderFragmentArchive
     public ref class ParameterStruct
     {
     public:
-        property String^                Name;
+        property System::String^		Name;
         property List<Parameter^>^      Parameters;
 
         ParameterStruct(ShaderSourceParser::ParameterStructSignature& parameterStruct);
         ~ParameterStruct();
-        String^ BuildBodyString();
+        System::String^ BuildBodyString();
     };
 
         ///////////////////////////////////////////////////////////////
@@ -86,13 +85,13 @@ namespace ShaderFragmentArchive
     public:
         property List<Function^>^           Functions;
         property List<ParameterStruct^>^    ParameterStructs;
-        property String^                    Name;
-        property String^                    ExceptionString;
+        property System::String^			Name;
+        property System::String^			ExceptionString;
 
-        ShaderFragment(String^ sourceFile);
+        ShaderFragment(System::String^ sourceFile);
         ~ShaderFragment();
 
-        event       EventHandler^ ChangeEvent;
+        event       System::EventHandler^ ChangeEvent;
         void        OnChange(Object^);
         unsigned    GetChangeMarker() { return _changeMarker; }
     private:
@@ -106,14 +105,14 @@ namespace ShaderFragmentArchive
     public ref class Archive
     {
     public: 
-        ShaderFragment^      GetFragment(String^ name, GUILayer::DirectorySearchRules^ searchRules);
-        Function^            GetFunction(String^ name, GUILayer::DirectorySearchRules^ searchRules);
-        ParameterStruct^     GetParameterStruct(String^ name, GUILayer::DirectorySearchRules^ searchRules);
-        Parameter^           GetParameter(String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        ShaderFragment^      GetFragment(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        Function^            GetFunction(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        ParameterStruct^     GetParameterStruct(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        Parameter^           GetParameter(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
 
         Archive();
     private:
-        Dictionary<String^, ShaderFragment^>^    _dictionary;
+        Dictionary<System::String^, ShaderFragment^>^    _dictionary;
     };
     
 }

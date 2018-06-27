@@ -27,7 +27,6 @@
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -368,7 +367,7 @@ namespace ToolsRig
 			FrameBufferDesc fbDesc{mainPass};
             Techniques::RenderPassInstance rpi{
 				context, 
-				parserContext.GetFrameBufferPool().BuildFrameBuffer(Metal::GetObjectFactory(), fbDesc, parserContext.GetNamedResources()),
+				parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources()),
 				fbDesc, parserContext.GetNamedResources()};
 
             if (_pimpl->_settings->_drawWireframe) {
@@ -445,7 +444,7 @@ namespace ToolsRig
 					FrameBufferDesc fbDesc{mainPass};
                     Techniques::RenderPassInstance rpi{
 						context, 
-						parserContext.GetFrameBufferPool().BuildFrameBuffer(Metal::GetObjectFactory(), fbDesc, parserContext.GetNamedResources()),
+						parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources()),
 						fbDesc, parserContext.GetNamedResources()};
                     ExecuteHighlightByStencil(
                         context, parserContext.GetNamedResources(), 

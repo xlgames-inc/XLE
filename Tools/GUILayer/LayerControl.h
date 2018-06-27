@@ -9,7 +9,7 @@
 #include "EngineControl.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class  TechniqueContext; class AttachmentPool; }}
+namespace RenderCore { namespace Techniques { class  TechniqueContext; class AttachmentPool; class FrameBufferPool; }}
 namespace SceneEngine { class LightingParserStandardPlugin; }
 
 namespace GUILayer 
@@ -36,7 +36,7 @@ namespace GUILayer
 
         TechniqueContextWrapper^ GetTechniqueContext();
 
-        LayerControl(Control^ control);
+        LayerControl(System::Windows::Forms::Control^ control);
         ~LayerControl();
         !LayerControl();
     protected:
@@ -52,6 +52,7 @@ namespace GUILayer
         std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
         std::shared_ptr<RenderCore::Techniques::AttachmentPool> _namedResources;
+		std::shared_ptr<RenderCore::Techniques::FrameBufferPool> _frameBufferPool;
         bool _activePaint;
     };
 

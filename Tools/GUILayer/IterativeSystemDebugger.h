@@ -10,7 +10,6 @@
 #include "CLIXAutoPtr.h"
 #include "ManipulatorUtils.h"       // for IGetAndSetProperties
 
-using namespace System;
 using namespace System::ComponentModel;
 
 namespace GUILayer
@@ -40,7 +39,7 @@ namespace GUILayer
 
         void Tick();
 
-        ErosionIterativeSystem(String^ sourceHeights);
+        ErosionIterativeSystem(System::String^ sourceHeights);
         !ErosionIterativeSystem();
         ~ErosionIterativeSystem();
 
@@ -72,7 +71,7 @@ namespace GUILayer
         CFDPreviewSettings();
     };
 
-    public interface class IterativeSystem : public IDisposable
+    public interface class IterativeSystem : public System::IDisposable
     {
     public:
         property Object^ PreviewSettings { Object^ get(); }

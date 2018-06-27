@@ -19,6 +19,7 @@
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Conversion.h"
 #include "MarshalString.h"
@@ -27,6 +28,7 @@
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include <sstream>
 
+using namespace System;
 using namespace System::Collections::Generic;
 
 namespace GUILayer

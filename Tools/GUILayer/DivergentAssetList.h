@@ -6,7 +6,6 @@
 
 #pragma once
 
-using namespace System;
 using namespace System::Collections::Generic;
 
 namespace Assets { class AssetSetManager; class UndoQueue; class IDefaultAssetHeap; }
@@ -21,13 +20,13 @@ namespace GUILayer
         ref class Entry
         {
         public:
-            String^ _filename;
-            array<Byte>^ _oldFileData;
-            array<Byte>^ _newFileData;
+            System::String^ _filename;
+            array<System::Byte>^ _oldFileData;
+            array<System::Byte>^ _newFileData;
 			Action _action;
 
             Entry() { _action = Action::Ignore; }
-            Entry(String^ filename, array<Byte>^ oldFileData, array<Byte>^ newFileData)
+            Entry(System::String^ filename, array<System::Byte>^ oldFileData, array<System::Byte>^ newFileData)
                 : _filename(filename), _oldFileData(oldFileData), _newFileData(newFileData), _action(Action::Save) {}
         };
 
@@ -37,7 +36,7 @@ namespace GUILayer
 		ref class CommitResult
 		{
 		public:
-			property String^ ErrorMessages;
+			property System::String^ ErrorMessages;
 		};
 
 		CommitResult^ Commit();

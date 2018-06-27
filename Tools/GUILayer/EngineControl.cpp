@@ -20,6 +20,8 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/PtrUtils.h"
 
+using namespace System::Windows::Forms;
+
 namespace GUILayer 
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////

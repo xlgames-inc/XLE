@@ -49,14 +49,20 @@ namespace GUILayer
         const RenderCore::ResourcePtr& presentationResource)
     {
         RenderCore::Techniques::AttachmentPool namedRes;
+		RenderCore::Techniques::FrameBufferPool frameBufferPool;
         auto contextStateDesc = context.GetStateDesc();
         namedRes.Bind(RenderCore::FrameBufferProperties{
             contextStateDesc._viewportDimensions[0], 
             contextStateDesc._viewportDimensions[1], RenderCore::TextureSamples::Create()});
         namedRes.Bind(0u, presentationResource);
+		RenderCore::SubpassDesc subpasses[] = {
+			RenderCore::SubpassDesc{{RenderCore::AttachmentViewDesc{0}}}
+        };
+		RenderCore::FrameBufferDesc fbDesc{MakeIteratorRange(subpasses)};
         RenderCore::Techniques::RenderPassInstance rpi(
-            context, {{RenderCore::SubpassDesc{{0}}}},
-            0u, namedRes);
+            context, 
+			frameBufferPool.BuildFrameBuffer(fbDesc, namedRes),
+			fbDesc, namedRes);
 
         const char text[] = "Hello World!... It's me, XLE!";
         
@@ -98,7 +104,7 @@ namespace GUILayer
         return true;
     }
 
-    TestControl::TestControl(Control^ control) : EngineControl(control) {}
+    TestControl::TestControl(System::Windows::Forms::Control^ control) : EngineControl(control) {}
     TestControl::~TestControl() {}
 
 }

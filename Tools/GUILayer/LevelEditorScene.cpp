@@ -41,6 +41,8 @@
 #include "../../Utility/Conversion.h"
 #include <memory>
 
+using namespace System;
+
 namespace GUILayer
 {
     using namespace std::placeholders;

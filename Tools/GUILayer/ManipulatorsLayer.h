@@ -112,10 +112,10 @@ namespace GUILayer
     public ref class IPlacementManipulatorSettingsLayer abstract
     {
     public:
-        virtual String^ GetSelectedModel() = 0;
-        virtual String^ GetSelectedMaterial() = 0;
+        virtual System::String^ GetSelectedModel() = 0;
+        virtual System::String^ GetSelectedMaterial() = 0;
         virtual void EnableSelectedModelDisplay(bool newState) = 0;
-        virtual void SelectModel(String^ newModelName, String^ newMaterialName) = 0;
+        virtual void SelectModel(System::String^ newModelName, System::String^ newMaterialName) = 0;
         virtual void SwitchToMode(unsigned newMode) = 0;
 
         ToolsRig::IPlacementManipulatorSettings* GetNative();

@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-using namespace System;
 using namespace System::Windows::Forms;
 
 namespace GUILayer
@@ -32,21 +31,21 @@ namespace GUILayer
 
             virtual void set(Object^ value)
             {
-                auto str = dynamic_cast<String^>(value);
+                auto str = dynamic_cast<System::String^>(value);
                 if (str!=nullptr)
                 {
                     try
                     {
                         // This will throw an exception of the string is  
                         // null, empty, or not in the format of a date. 
-                        Value = DateTime::Parse(str);
+                        Value = System::DateTime::Parse(str);
                     }
                     catch (...)
                     {
                         // In the case of an exception, just use the  
                         // default value so we're not left with a null 
                         // value. 
-                        Value = DateTime::Now;
+                        Value = System::DateTime::Now;
                     }
                 }
             }
@@ -159,7 +158,7 @@ namespace GUILayer
         }
 
     protected:
-        void OnValueChanged(EventArgs^ eventargs) override 
+        void OnValueChanged(System::EventArgs^ eventargs) override 
         {
             // Notify the DataGridView that the contents of the cell 
             // have changed.
@@ -188,29 +187,29 @@ namespace GUILayer
                 // Use the default row value when Value property is null. 
             if (Value == nullptr)
             {
-                ctl->Value = (DateTime)DefaultNewRowValue;
+                ctl->Value = (System::DateTime)DefaultNewRowValue;
             }
             else
             {
-                ctl->Value = (DateTime)Value;
+                ctl->Value = (System::DateTime)Value;
             }
         }
 
-        property Type^ EditType
+        property System::Type^ EditType
         {
-            virtual Type^ get() override
+            virtual System::Type^ get() override
             {
                 // Return the type of the editing control that CalendarCell uses. 
                 return CalendarEditingControl::typeid;
             }
         }
 
-        property Type^ ValueType
+        property System::Type^ ValueType
         {
-            virtual Type^ get() override
+            virtual System::Type^ get() override
             {
                 // Return the type of the value that CalendarCell contains. 
-                return DateTime::typeid;
+                return System::DateTime::typeid;
             }
         }
 
@@ -219,7 +218,7 @@ namespace GUILayer
             virtual Object^ get() override
             {
                 // Use the current date and time as the default value. 
-                return DateTime::Now;
+                return System::DateTime::Now;
             }
         }
     };
@@ -243,7 +242,7 @@ namespace GUILayer
                 if (value != nullptr && 
                     !value->GetType()->IsAssignableFrom(CalendarCell::typeid))
                 {
-                    throw gcnew InvalidCastException("Must be a CalendarCell");
+                    throw gcnew System::InvalidCastException("Must be a CalendarCell");
                 }
                 __super::CellTemplate = value;
             }

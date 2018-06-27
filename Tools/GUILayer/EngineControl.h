@@ -13,7 +13,6 @@
 
 namespace PlatformRig { class InputTranslator; }
 
-using namespace System::Windows::Forms;
 using namespace System::Drawing;
 
 namespace GUILayer 
@@ -24,25 +23,25 @@ namespace GUILayer
 	{
 	public:
         bool Render();
-        void OnPaint(Control^ ctrl, PaintEventArgs^);
-        bool IsInputKey(Keys keyData);
+        void OnPaint(System::Windows::Forms::Control^ ctrl, System::Windows::Forms::PaintEventArgs^);
+        bool IsInputKey(System::Windows::Forms::Keys keyData);
 
         IWindowRig& GetWindowRig();
 
-        EngineControl(Control^ control);
+        EngineControl(System::Windows::Forms::Control^ control);
 		~EngineControl();
         !EngineControl();
         virtual void OnEngineShutdown();
 
     protected:
-        void Evnt_KeyDown(Object^, KeyEventArgs^ e);
-        void Evnt_KeyUp(Object^, KeyEventArgs^ e);
-        void Evnt_KeyPress(Object^, KeyPressEventArgs^ e);
-        void Evnt_MouseMove(Object^, MouseEventArgs^ e);
-        void Evnt_MouseDown(Object^, MouseEventArgs^ e);
-        void Evnt_MouseUp(Object^, MouseEventArgs^ e);
-        void Evnt_MouseWheel(Object^, MouseEventArgs^ e);
-        void Evnt_DoubleClick(Object^, MouseEventArgs^ e);
+        void Evnt_KeyDown(Object^, System::Windows::Forms::KeyEventArgs^ e);
+        void Evnt_KeyUp(Object^, System::Windows::Forms::KeyEventArgs^ e);
+        void Evnt_KeyPress(Object^, System::Windows::Forms::KeyPressEventArgs^ e);
+        void Evnt_MouseMove(Object^, System::Windows::Forms::MouseEventArgs^ e);
+        void Evnt_MouseDown(Object^, System::Windows::Forms::MouseEventArgs^ e);
+        void Evnt_MouseUp(Object^, System::Windows::Forms::MouseEventArgs^ e);
+        void Evnt_MouseWheel(Object^, System::Windows::Forms::MouseEventArgs^ e);
+        void Evnt_DoubleClick(Object^, System::Windows::Forms::MouseEventArgs^ e);
         void Evnt_FocusChange(Object^, System::EventArgs ^e);
         void Evnt_Resize(Object^, System::EventArgs^ e);
 

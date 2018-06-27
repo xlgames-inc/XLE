@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-using namespace System;
-using namespace System::Drawing;
 using namespace System::Collections::Generic;
 
 namespace RenderOverlays { namespace DebuggingDisplay
@@ -29,13 +27,13 @@ namespace GUILayer
     public:
         ToolsRig::IManipulator* GetNativeManipulator();
 
-        property IManipulatorSet^ ManipulatorSet    { IManipulatorSet^ get(); void set(IManipulatorSet^); }
-        property String^ ActiveManipulator          { String^ get(); void set(String^); }
+        property IManipulatorSet^ ManipulatorSet		{ IManipulatorSet^ get(); void set(IManipulatorSet^); }
+        property System::String^ ActiveManipulator      { System::String^ get(); void set(System::String^); }
 
         void RaisePropertyChange();
 
-        event EventHandler^ OnActiveManipulatorChange;
-        event EventHandler^ OnManipulatorSetChange;
+        event System::EventHandler^ OnActiveManipulatorChange;
+        event System::EventHandler^ OnManipulatorSetChange;
 
         void SetPaintCoverageMaterial(int index);
         int GetPaintCoverageMaterial();
@@ -44,12 +42,12 @@ namespace GUILayer
         ~ActiveManipulatorContext();
     private:
         IManipulatorSet^ _manipulatorSet;
-        String^ _activeManipulator;
+        System::String^ _activeManipulator;
     };
 
     public interface class IViewContext
     {
-        property Drawing::Size ViewportSize { Drawing::Size get(); }
+        property System::Drawing::Size ViewportSize { System::Drawing::Size get(); }
         property CameraDescWrapper^ Camera { CameraDescWrapper^ get(); }
         property EditorSceneManager^ SceneManager { EditorSceneManager^ get(); }
         property TechniqueContextWrapper^ TechniqueContext { TechniqueContextWrapper^ get(); }
@@ -62,14 +60,14 @@ namespace GUILayer
     public ref class NativeManipulatorLayer
     {
     public:
-        bool MouseMove(IViewContext^ vc, Point scrPt);
+        bool MouseMove(IViewContext^ vc, System::Drawing::Point scrPt);
         void Render(SimpleRenderingContext^ context);
 
-        bool OnHover(IViewContext^ vc, Point scrPt);
-        bool OnBeginDrag(IViewContext^ vc, Point scrPt);
-        bool OnDragging(IViewContext^ vc, Point scrPt);
-        bool OnEndDrag(IViewContext^ vc, Point scrPt);
-        void OnMouseWheel(IViewContext^ vc, Point scrPt, int delta);
+        bool OnHover(IViewContext^ vc, System::Drawing::Point scrPt);
+        bool OnBeginDrag(IViewContext^ vc, System::Drawing::Point scrPt);
+        bool OnDragging(IViewContext^ vc, System::Drawing::Point scrPt);
+        bool OnEndDrag(IViewContext^ vc, System::Drawing::Point scrPt);
+        void OnMouseWheel(IViewContext^ vc, System::Drawing::Point scrPt, int delta);
 
         NativeManipulatorLayer(ActiveManipulatorContext^ manipContext);
         ~NativeManipulatorLayer();

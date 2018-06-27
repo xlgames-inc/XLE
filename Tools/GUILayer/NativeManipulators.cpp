@@ -20,6 +20,9 @@
 #include "../../PlatformRig/BasicSceneParser.h"
 #include <msclr/auto_handle.h>
 
+using namespace System;
+using namespace System::Drawing;
+
 extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace GUILayer

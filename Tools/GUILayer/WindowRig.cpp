@@ -9,6 +9,7 @@
 #include "../../PlatformRig/OverlappedWindow.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/ResourceDesc.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Core/WinAPI/IncludeWindows.h"
 
@@ -69,7 +70,8 @@ namespace GUILayer
 
         _presentationChain = device.CreatePresentationChain(
             platformWindowHandle,
-            clientRect.right - clientRect.left, clientRect.bottom - clientRect.top);
+			RenderCore::PresentationChainDesc {
+				unsigned(clientRect.right - clientRect.left), unsigned(clientRect.bottom - clientRect.top)});
         _frameRig = std::make_shared<PlatformRig::FrameRig>(false); // (not "main" frame rig by default)
 
         {

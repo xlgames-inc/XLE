@@ -50,11 +50,11 @@ namespace GUILayer
     class SavedRenderResourcesPimpl
     {
     public:
-        std::vector<std::pair<uint64, RenderCore::Metal::VertexBuffer>> _vertexBuffers;
+        std::vector<std::pair<uint64, RenderCore::IResourcePtr>> _vertexBuffers;
         std::vector<std::pair<uint64, unsigned>> _vbFormat;
-        std::vector<std::pair<uint64, RenderCore::Metal::IndexBuffer>> _indexBuffers;
+        std::vector<std::pair<uint64, RenderCore::IResourcePtr>> _indexBuffers;
         uint64 _nextBufferID;
-        RenderCore::Metal::ObjectFactory* _objectFactory;
+        RenderCore::IDevice* _device;
 
         VertexFormatRecord _vfRecord[8];
         SavedRenderResourcesPimpl(RenderCore::IDevice& device);
@@ -62,7 +62,7 @@ namespace GUILayer
 
     SavedRenderResourcesPimpl::SavedRenderResourcesPimpl(RenderCore::IDevice& device)
     : _nextBufferID(1)
-    , _objectFactory(&RenderCore::Metal::GetObjectFactory(device)) 
+    , _device(&device)
     {
             //  These are the vertex formats defined by the Sony editor
         using namespace RenderCore;
@@ -70,10 +70,10 @@ namespace GUILayer
         _vfRecord[1]._inputLayout = GlobalInputLayouts::PC;
         _vfRecord[2]._inputLayout = GlobalInputLayouts::PN;
         _vfRecord[3]._inputLayout = GlobalInputLayouts::PT;
-        _vfRecord[4]._inputLayout = std::make_pair((const InputElementDesc*)nullptr, 0);
+		_vfRecord[4]._inputLayout = {};
         _vfRecord[5]._inputLayout = GlobalInputLayouts::PNT;
         _vfRecord[6]._inputLayout = GlobalInputLayouts::PNTT;
-        _vfRecord[7]._inputLayout = std::make_pair((const InputElementDesc*)nullptr, 0);
+		_vfRecord[7]._inputLayout = {};
 
         _vfRecord[1]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_COLOUR", "1")});
         _vfRecord[2]._geoParams = ParameterBox({std::make_pair((const utf8*)"GEO_HAS_NORMAL", "1")});
@@ -101,8 +101,8 @@ namespace GUILayer
         uint64  CreateIndexBuffer(void* data, size_t size);
         bool    DeleteBuffer(uint64 id);
 
-        const RenderCore::Metal::VertexBuffer* GetVertexBuffer(uint64 id);
-        const RenderCore::Metal::IndexBuffer* GetIndexBuffer(uint64 id);
+        RenderCore::IResource* GetVertexBuffer(uint64 id);
+        RenderCore::IResource* GetIndexBuffer(uint64 id);
         const VertexFormatRecord* GetVertexBufferFormat(uint64 id);
 
         RetainedRenderResources(EngineDevice^ engineDevice);
@@ -116,7 +116,9 @@ namespace GUILayer
         RenderCore::Metal::DeviceContext& devContext, 
         RenderCore::Techniques::ParsingContext& parsingContext,
         const float color[], const float xform[],
-        const VertexFormatRecord& vf)
+        const VertexFormatRecord& vf,
+		RenderCore::IResource* vb,
+		RenderCore::IResource* ib = nullptr)
     {
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
@@ -133,15 +135,21 @@ namespace GUILayer
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
 
+			if (ib) {
+				auto* res = (RenderCore::Metal::Resource*)ib->QueryInterface(typeid(RenderCore::Metal::Resource).hash_code());
+				assert(res);
+				if (res)
+					devContext.Bind(*res, RenderCore::Format::R32_UINT);
+			}
+
             ParameterBox matConstants;
             matConstants.SetParameter((const utf8*)"MaterialDiffuse", Float3(color[0], color[1], color[2]));
 
-            variation._shader.Apply(
-                devContext, parsingContext,
-                {
-                    Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
-                    variation._cbLayout->BuildCBDataAsPkt(matConstants)
-                });
+			ConstantBufferView cbvs[] = {
+                Techniques::MakeLocalTransformPacket(Transpose(*(Float4x4*)xform), Float3(0.f, 0.f, 0.f)),
+                variation._cbLayout->BuildCBDataAsPkt(matConstants) };
+			variation._shader._boundUniforms->Apply(devContext, 1, { MakeIteratorRange(cbvs) });
+            variation._shader.Apply(devContext, parsingContext, { vb });
             return true;
         CATCH_ASSETS_END(parsingContext)
         return false;
@@ -165,9 +173,8 @@ namespace GUILayer
         auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
         if (!vfFormat) return;
 
-        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat, vbuffer)) {
             _devContext->Bind((RenderCore::Topology)primitiveType);
-            _devContext->Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
             _devContext->Draw(vertexCount, startVertex);
         }
     }
@@ -187,11 +194,9 @@ namespace GUILayer
         auto* vfFormat = _retainedRes->GetVertexBufferFormat(vb);
         if (!vfFormat) return;
             
-        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat)) {
+        if (SetupState(*_devContext.get(), *_parsingContext, color, xform, *vfFormat, vbuffer, ibuffer)) {
             auto& devContext = *_devContext.get();
             _devContext->Bind((RenderCore::Topology)primitiveType);
-            devContext.Bind(RenderCore::MakeResourceList(*vbuffer), vfFormat->_vertexStride, 0);
-            devContext.Bind(*ibuffer, RenderCore::Format::R32_UINT);   // Sony editor always uses 32 bit indices
             devContext.DrawIndexed(indexCount, startIndex, startVertex);
         }
     }
@@ -206,11 +211,39 @@ namespace GUILayer
         _devContext->Bind(RenderCore::Techniques::CommonResources()._defaultRasterizer);
     }
 
-////////////////////////////////////////////////////////////////////////////////////////////////?//
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static RenderCore::IResourcePtr CreateStaticVertexBuffer(RenderCore::IDevice& device, IteratorRange<const void*> data)
+	{
+		using namespace RenderCore;
+		return device.CreateResource(
+			CreateDesc(
+				BindFlag::VertexBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create(unsigned(data.size())),
+				"simplecontext_vb"),
+			[data](SubResourceId subres) {
+				assert(subres._arrayLayer == 0 && subres._mip == 0);
+				return SubResourceInitData{  };
+			});
+	}
+
+	static RenderCore::IResourcePtr CreateStaticIndexBuffer(RenderCore::IDevice& device, IteratorRange<const void*> data)
+	{
+		using namespace RenderCore;
+		return device.CreateResource(
+			CreateDesc(
+				BindFlag::IndexBuffer, 0, GPUAccess::Read,
+				LinearBufferDesc::Create(unsigned(data.size())),
+				"simplecontext_ib"),
+			[data](SubResourceId subres) {
+				assert(subres._arrayLayer == 0 && subres._mip == 0);
+				return SubResourceInitData{  };
+			});
+	}
 
     uint64  RetainedRenderResources::CreateVertexBuffer(void* data, size_t size, unsigned format)
     {
-        RenderCore::Metal::VertexBuffer newBuffer(*_pimpl->_objectFactory, data, size);
+		auto newBuffer = CreateStaticVertexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
         _pimpl->_vertexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         _pimpl->_vbFormat.push_back(std::make_pair(_pimpl->_nextBufferID, format));
         return _pimpl->_nextBufferID++;
@@ -218,15 +251,15 @@ namespace GUILayer
 
     uint64  RetainedRenderResources::CreateIndexBuffer(void* data, size_t size)
     {
-        RenderCore::Metal::IndexBuffer newBuffer(*_pimpl->_objectFactory, data, size);
+		auto newBuffer = CreateStaticIndexBuffer(*_pimpl->_device, MakeIteratorRange(data, PtrAdd(data, size)));
         _pimpl->_indexBuffers.push_back(std::make_pair(_pimpl->_nextBufferID, std::move(newBuffer)));
         return _pimpl->_nextBufferID++;
     }
 
-    const RenderCore::Metal::VertexBuffer* RetainedRenderResources::GetVertexBuffer(uint64 id)
+    RenderCore::IResource* RetainedRenderResources::GetVertexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_vertexBuffers.cbegin(); i != _pimpl->_vertexBuffers.cend(); ++i)
-            if (i->first == id) return &i->second;
+            if (i->first == id) return i->second.get();
         return nullptr;
     }
 
@@ -239,10 +272,10 @@ namespace GUILayer
         return nullptr;
     }
 
-    const RenderCore::Metal::IndexBuffer* RetainedRenderResources::GetIndexBuffer(uint64 id)
+    RenderCore::IResource* RetainedRenderResources::GetIndexBuffer(uint64 id)
     {
         for (auto i = _pimpl->_indexBuffers.cbegin(); i != _pimpl->_indexBuffers.cend(); ++i)
-            if (i->first == id) return &i->second;
+            if (i->first == id) return i->second.get();
         return nullptr;
     }
 
@@ -310,7 +343,7 @@ namespace GUILayer
             auto& threadContext = context->GetThreadContext();
             if (highlight == nullptr) {
                 CATCH_ASSETS_BEGIN
-                    ToolsRig::BinaryHighlight highlightRenderer(threadContext, context->GetParsingContext().GetNamedResources());
+                    ToolsRig::BinaryHighlight highlightRenderer(threadContext, context->GetParsingContext().GetFrameBufferPool(), context->GetParsingContext().GetNamedResources());
                     ToolsRig::Placements_RenderFiltered(
                         threadContext, context->GetParsingContext(), 
                         RenderCore::Techniques::TechniqueIndex::Forward,
