@@ -196,13 +196,20 @@ namespace RenderCore { namespace Techniques
 
         auto namedAttachments = MakeNamedAttachmentsWrapper(attachmentPool);
         _pimpl->_entries[earliestEntry]._fb = std::make_shared<Metal::FrameBuffer>(
-            Metal::GetObjectFactory(),
+            factory,
             desc, *namedAttachments);
         _pimpl->_entries[earliestEntry]._tickId = _pimpl->_currentTickId;
         _pimpl->_entries[earliestEntry]._hash = hashValue;
         _pimpl->IncreaseTickId();
         return _pimpl->_entries[earliestEntry]._fb;
     }
+
+	std::shared_ptr<Metal::FrameBuffer> FrameBufferPool::BuildFrameBuffer(
+        const FrameBufferDesc& desc,
+        AttachmentPool& attachmentPool)
+	{
+		return BuildFrameBuffer(Metal::GetObjectFactory(), desc, attachmentPool);
+	}
 
     void FrameBufferPool::Reset()
     {

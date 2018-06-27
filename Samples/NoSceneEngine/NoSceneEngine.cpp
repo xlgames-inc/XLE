@@ -627,7 +627,7 @@ namespace Sample
             {
                 Techniques::RenderPassInstance rpi(
                     genericThreadContext, 
-					parserContext.GetFrameBufferPool().BuildFrameBuffer(Metal::GetObjectFactory(), fbLayout, namedResources),
+					parserContext.GetFrameBufferPool().BuildFrameBuffer(fbLayout, namedResources),
 					fbLayout,
                     namedResources, 
 					MakeIteratorRange(clearValues));

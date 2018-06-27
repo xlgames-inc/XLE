@@ -198,7 +198,7 @@ namespace RenderOverlays
 			SubpassDesc {{v_mainColor}, SubpassDesc::Unused, {v_commonOffscreen}}
 		};
 		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
-		auto fb = fbPool.BuildFrameBuffer(Metal::GetObjectFactory(), fbLayout, namedRes);
+		auto fb = fbPool.BuildFrameBuffer(fbLayout, namedRes);
         _pimpl->_rpi = Techniques::RenderPassInstance(
             threadContext, fb, fbLayout, 
 			namedRes,

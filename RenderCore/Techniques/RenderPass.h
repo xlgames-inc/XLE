@@ -115,6 +115,10 @@ namespace RenderCore { namespace Techniques
             const FrameBufferDesc& desc,
             AttachmentPool& attachmentPool);
 
+		std::shared_ptr<Metal::FrameBuffer> BuildFrameBuffer(
+            const FrameBufferDesc& desc,
+            AttachmentPool& attachmentPool);
+
         void Reset();
 
         FrameBufferPool();
