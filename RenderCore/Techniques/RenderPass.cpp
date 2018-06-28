@@ -307,8 +307,8 @@ namespace RenderCore { namespace Techniques
             attachmentWidth = unsigned(a._width);
             attachmentHeight = unsigned(a._height);
         } else {
-            attachmentWidth = unsigned(std::floor(_props._outputWidth * a._width + 0.5f));
-            attachmentHeight = unsigned(std::floor(_props._outputHeight * a._height + 0.5f));
+            attachmentWidth = unsigned(std::floor(_props._outputWidth * a._width));
+            attachmentHeight = unsigned(std::floor(_props._outputHeight * a._height));
         }
 
         if (!attachmentWidth || !attachmentHeight) return false;
