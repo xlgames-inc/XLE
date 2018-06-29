@@ -232,10 +232,14 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             if (clearDepth && clearStencil) {
+                glDepthMask(GL_TRUE);
+                glStencilMask(GL_TRUE);
                 glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
             } else if (clearDepth) {
+                glDepthMask(GL_TRUE);
                 glClearBufferfv(GL_DEPTH, 0, &clearValues[s._dsvClearValue]._depthStencil._depth);
             } else if (clearStencil)  {
+                glStencilMask(GL_TRUE);
                 glClearBufferiv(GL_STENCIL, 0, (const GLint*)&clearValues[s._dsvClearValue]._depthStencil._stencil);
             }
         } else {
@@ -244,15 +248,18 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             unsigned clearBits = 0;
             if (clearColor) {
+                glColorMask(GL_TRUE, GL_TRUE, GL_TRUE, GL_TRUE);
                 const float* clear = clearValues[s._rtvClearValue[0]]._float;
                 glClearColor(clear[0], clear[1], clear[2], clear[3]);
                 clearBits |= GL_COLOR_BUFFER_BIT;
             }
             if (clearDepth) {
+                glDepthMask(GL_TRUE);
                 glClearDepthf(clearValues[s._dsvClearValue]._depthStencil._depth);
                 clearBits |= GL_DEPTH_BUFFER_BIT;
             }
             if (clearStencil) {
+                glStencilMask(GL_TRUE);
                 glClearStencil(clearValues[s._dsvClearValue]._depthStencil._stencil);
                 clearBits |= GL_STENCIL_BUFFER_BIT;
             }
