@@ -128,11 +128,11 @@ namespace RenderCore { namespace Metal_DX11
     class LayoutTransition
     {
     public:
-        UnderlyingResourcePtr _res;
+        Resource* _res;
 		ImageLayout _oldLayout, _newLayout;
 
         LayoutTransition(
-            UnderlyingResourcePtr res = nullptr, 
+            Resource* res = nullptr, 
             ImageLayout oldLayout = ImageLayout::Undefined,
             ImageLayout newLayout = ImageLayout::Undefined) 
             : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../Math/Vector.h"
@@ -53,7 +54,7 @@ namespace SceneEngine
         bool doAdapt = true);
 
     void ToneMap_Execute(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,

@@ -216,6 +216,12 @@ namespace Utility
 			return IteratorRange<const ArrayElement*>(initializers.begin(), initializers.end());
 		}
 
+	template<typename Type>
+		IteratorRange<const void*> AsOpaqueIteratorRange(const Type& object)
+		{
+			return MakeIteratorRange(&object, PtrAdd(&object, sizeof(Type)));
+		}
+
 #pragma warning(push)
 #pragma warning(disable:4789)       // buffer '' of size 12 bytes will be overrun; 4 bytes will be written starting at offset 12
 

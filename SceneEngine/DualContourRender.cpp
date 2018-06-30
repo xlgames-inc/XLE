@@ -10,6 +10,7 @@
 #include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "RefractionsBuffer.h"  // for BuildDuplicatedDepthBuffer
+#include "MetalStubs.h"
 
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -18,6 +19,7 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../RenderCore/Assets/ShaderVariationSet.h"
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -39,8 +41,8 @@ namespace SceneEngine
     class DualContourRenderer::Pimpl
     {
     public:
-        Metal::VertexBuffer _vertexBuffer;
-        Metal::IndexBuffer _indexBuffer;
+        IResourcePtr _vertexBuffer;
+        IResourcePtr _indexBuffer;
         Format _indexFormat;
         unsigned _indexCount;
 
@@ -123,6 +125,10 @@ namespace SceneEngine
             auto variation = pimpl->_basicMaterial.FindVariation(parserContext, techniqueIndex, s_techniqueConfig);
             if (variation._shader._shaderProgram != nullptr) {
                 variation._shader.Apply(*context, parserContext, 
+					{VertexBufferView{pimpl->_vertexBuffer}});
+
+				variation._shader.ApplyUniforms(*context, 0, parserContext.GetGlobalUniformsStream());
+				variation._shader.ApplyUniforms(*context, 1,
                     {
                         MakeLocalTransformPacket(
                             Identity<Float4x4>(),
@@ -130,8 +136,9 @@ namespace SceneEngine
                         pimpl->_materialConstants
                     });
 
-                context->Bind(MakeResourceList(pimpl->_vertexBuffer), sizeof(DualContourMesh::Vertex), 0);
-                context->Bind(pimpl->_indexBuffer, pimpl->_indexFormat);
+                context->Bind(
+					*(Metal::Resource*)pimpl->_indexBuffer->QueryInterface(typeid(Metal::Resource).hash_code()), 
+					pimpl->_indexFormat);
 
                 context->Bind(Topology::TriangleList);
                 context->DrawIndexed(pimpl->_indexCount);
@@ -154,7 +161,7 @@ namespace SceneEngine
             //  light.
 
         CATCH_ASSETS_BEGIN
-            context->BindPS(MakeResourceList(
+            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 targets._fragmentIdsTextureSRV, 
                 targets._nodeListBufferSRV, duplicatedDepthBuffer));
 
@@ -165,10 +172,10 @@ namespace SceneEngine
                 "xleres/basic2D.vsh:fullscreen:vs_*", 
                 "xleres/forward/transparency/cloudresolve.psh:main:ps_*");
             context->Bind(resolveShader);
-            context->BindPS(MakeResourceList(0, parserContext.GetGlobalTransformCB()));
+            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, parserContext.GetGlobalTransformCB()));
             SetupVertexGeneratorShader(*context);
             context->Draw(4);
-            context->UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 3);
+            MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(*context, 0, 3);
         CATCH_ASSETS_END(parserContext)
     }
 
@@ -216,8 +223,8 @@ namespace SceneEngine
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             context->GetUnderlying()->OMSetRenderTargets(1, prevTargets.GetRenderTargets(), nullptr);
             if (prevTargets.GetDepthStencilView()) {
-                duplicatedDepthBuffer = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
-                    prevTargets.GetDepthStencilView()).get(), 
+                duplicatedDepthBuffer = Metal::ShaderResourceView(
+					Metal::AsResourcePtr(Metal::ExtractResource<ID3D::Resource>(prevTargets.GetDepthStencilView())), 
                     {{TextureViewDesc::Aspect::Depth}});
             }
 #endif
@@ -282,9 +289,8 @@ namespace SceneEngine
         WriteIndexData(ibData.get(), indexSize, mesh);
 
         auto pimpl = std::make_unique<Pimpl>();
-        pimpl->_indexBuffer = Metal::IndexBuffer(ibData.get(), ibDataCount*indexSize);
-        pimpl->_vertexBuffer = Metal::VertexBuffer(
-            AsPointer(mesh._vertices.cbegin()), mesh._vertices.size() * sizeof(DualContourMesh::Vertex));
+        pimpl->_indexBuffer = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(ibData.get(), PtrAdd(ibData.get(), ibDataCount*indexSize)));
+        pimpl->_vertexBuffer = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
         pimpl->_indexFormat = (indexSize==4)?Format::R32_UINT:Format::R16_UINT;
         pimpl->_indexCount = (unsigned)ibDataCount;
 
@@ -328,8 +334,8 @@ namespace SceneEngine
 
             auto shader = material.FindVariation(parserContext, techniqueIndex, "illum");
             if (shader._shader._shaderProgram) {
-                shader._shader.Apply(
-                    *context, parserContext, 
+				shader._shader.ApplyUniforms(*context, 0, parserContext.GetGlobalUniformsStream());
+				shader._shader.ApplyUniforms(*context, 1,
                     {
                         MakeLocalTransformPacket(
                             Identity<Float4x4>(),
@@ -337,18 +343,21 @@ namespace SceneEngine
                         shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
                     });
 
-                Metal::VertexBuffer vb(
-                    AsPointer(mesh._vertices.cbegin()), mesh._vertices.size() * sizeof(DualContourMesh::Vertex));
+                auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
 
                 unsigned indexSize = (mesh._vertices.size() <= 0xffff) ? 2 : 4;
                 auto ibDataCount = mesh._quads.size() * 6;
-                auto ibData = std::make_unique<unsigned char[]>(ibDataCount*indexSize);
-                WriteIndexData(ibData.get(), indexSize, mesh);
+                auto ibData = std::vector<unsigned char>(ibDataCount*indexSize);
+                WriteIndexData(ibData.data(), indexSize, mesh);
 
-                Metal::IndexBuffer ib(ibData.get(), ibDataCount*indexSize);
-
-                context->Bind(MakeResourceList(vb), sizeof(DualContourMesh::Vertex), 0);
-                context->Bind(ib, (indexSize==4)?Format::R32_UINT:Format::R16_UINT);
+                auto ib = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(ibData));
+				
+				shader._shader.Apply(
+                    *context, parserContext, 
+					{VertexBufferView{vb}});
+                context->Bind(
+					*(Metal::Resource*)ib->QueryInterface(typeid(Metal::Resource).hash_code()), 
+					(indexSize==4)?Format::R32_UINT:Format::R16_UINT);
 
                 context->Bind(Topology::TriangleList);
                 context->Bind(Techniques::CommonResources()._dssReadWrite);

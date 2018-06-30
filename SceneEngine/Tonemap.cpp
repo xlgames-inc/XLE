@@ -10,6 +10,7 @@
 #include "SceneParser.h"
 #include "LightDesc.h"
 #include "GestaltResource.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
@@ -311,15 +312,21 @@ namespace SceneEngine
         if (desc._useMSAASamplers) shaderDefines << ";MSAA_SAMPLERS=1";
 
         _sampleInitialLuminanceByteCode    = &::Assets::GetAssetDep<CompiledShaderByteCode>("xleres/postprocess/hdrluminance.csh:SampleInitialLuminance:cs_*", shaderDefines.get());
-        _sampleInitialLuminance     = Metal::ComputeShader(*_sampleInitialLuminanceByteCode);
+        _sampleInitialLuminance     = Metal::ComputeShader(Metal::GetObjectFactory(), *_sampleInitialLuminanceByteCode);
         _luminanceStepDown          = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:LuminanceStepDown:cs_*");
         _updateOverallLuminance     = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*");
         _brightPassStepDown         = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:BrightPassStepDown:cs_*");
 
         _updateOverallLuminanceNoAdapt = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/postprocess/hdrluminance.csh:UpdateOverallLuminance:cs_*", "IMMEDIATE_ADAPT=1");
 
-        _boundUniforms = Metal::BoundUniforms(*_sampleInitialLuminanceByteCode);
-        _boundUniforms.BindConstantBuffers(1, {"ToneMapSettings", "LuminanceConstants"});
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("ToneMapSettings")});
+		usi.BindConstantBuffer(1, {Hash64("LuminanceConstants")});
+		_boundUniforms = Metal::BoundUniforms(
+			_sampleInitialLuminance,
+			Metal::PipelineLayoutConfig{},
+			UniformsStreamInterface{},
+			usi);
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(_validationCallback, _sampleInitialLuminanceByteCode->GetDependencyValidation());
@@ -411,28 +418,28 @@ namespace SceneEngine
 
             barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+0, UAVLayout}, {bloomBuffersId+0, UAVLayout}}));
             context.Bind(resources._sampleInitialLuminance);
-            context.BindCS(MakeResourceList(sourceTexture));
-            context.BindCS(MakeResourceList(resources._luminanceBuffers[0].UAV(), resources._bloomBuffers[0]._bloomBuffer.UAV(), resources._propertiesBuffer.UAV()));
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(sourceTexture));
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._luminanceBuffers[0].UAV(), resources._bloomBuffers[0]._bloomBuffer.UAV(), resources._propertiesBuffer.UAV()));
             context.Dispatch(resources._firstStepWidth/16, resources._firstStepHeight/16);
-            context.UnbindCS<Metal::UnorderedAccessView>(0, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 2);
 
             context.Bind(*resources._luminanceStepDown);
             for (unsigned c=1; c<(unsigned)resources._luminanceBuffers.size(); ++c) {
                 barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+c-1, SRVLayout}, {lumianceBuffersId+0, UAVLayout}}));
-                context.BindCS(MakeResourceList(resources._luminanceBuffers[c-1].SRV()));
-                context.BindCS(MakeResourceList(resources._luminanceBuffers[c].UAV()));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._luminanceBuffers[c-1].SRV()));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._luminanceBuffers[c].UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
-                context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+                MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
             }
 
             context.Bind(*resources._brightPassStepDown);
             for (unsigned c=1; c<(unsigned)resources._bloomBuffers.size(); ++c) {
                 barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+c-1, SRVLayout}, {bloomBuffersId+c, UAVLayout}}));
 
-                context.BindCS(MakeResourceList(resources._bloomBuffers[c-1]._bloomBuffer.SRV()));
-                context.BindCS(MakeResourceList(1, resources._bloomBuffers[c]._bloomBuffer.UAV()));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._bloomBuffers[c-1]._bloomBuffer.SRV()));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(1, resources._bloomBuffers[c]._bloomBuffer.UAV()));
                 context.Dispatch(std::max(1u, (resources._firstStepWidth>>c)/16), std::max(1u, (resources._firstStepHeight>>c)/16));
-                context.UnbindCS<Metal::UnorderedAccessView>(1, 1);
+                MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 1, 1);
             }
 
                 //
@@ -443,11 +450,11 @@ namespace SceneEngine
                 //
 
             barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+(unsigned)resources._luminanceBuffers.size()-1, SRVLayout}}));
-            context.BindCS(MakeResourceList(resources._luminanceBuffers[resources._luminanceBuffers.size()-1].SRV()));
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._luminanceBuffers[resources._luminanceBuffers.size()-1].SRV()));
             if (doAdapt)    context.Bind(*resources._updateOverallLuminance);
             else            context.Bind(*resources._updateOverallLuminanceNoAdapt);
             context.Dispatch(1);
-            context.UnbindCS<Metal::UnorderedAccessView>(0, 3);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 3);
 
                 //
                 //      We need to do a series of Gaussian blurs over the bloom buffers
@@ -461,9 +468,6 @@ namespace SceneEngine
                 XlSetMemory(filteringWeights.get(), 0, sizeof(filteringWeights));
                 BuildGaussianFilteringWeights((float*)filteringWeights.get(), settings._bloomBlurStdDev, 11);
 
-                auto& horizBlurCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
-                    "xleres/Effects/SeparableFilter.csh:HorizontalBlur11NoScale:cs_*",
-                    "USE_CLAMPING_WINDOW=1");
                 auto& horizBlur = ::Assets::GetAssetDep<Metal::ComputeShader>(
                     "xleres/Effects/SeparableFilter.csh:HorizontalBlur11NoScale:cs_*",
                     "USE_CLAMPING_WINDOW=1");
@@ -478,16 +482,19 @@ namespace SceneEngine
                 // Nothing here fundamentally requires the graphics pipeline; though it should parallelize
                 // in a way that is typical for pixel shaders...?
 
-                Metal::BoundUniforms boundUniforms(horizBlurCode);
-                boundUniforms.BindConstantBuffers(1, { "Constants", "ClampingWindow" });
+				UniformsStreamInterface usi;
+				usi.BindConstantBuffer(0, {Hash64("Constants")});
+				usi.BindConstantBuffer(1, {Hash64("ClampingWindow")});
+                Metal::BoundUniforms boundUniforms(
+					horizBlur,
+					Metal::PipelineLayoutConfig{},
+					UniformsStreamInterface{},
+					usi);
 
                 Metal::ConstantBuffer clampingWindowCB(nullptr, sizeof(Float4));
                 const Metal::ConstantBuffer* cbs[] = { nullptr, &clampingWindowCB };
                 RenderCore::SharedPkt pkts[] = { std::move(filteringWeights), RenderCore::SharedPkt() };
-                boundUniforms.Apply(
-                    context, 
-                    Metal::UniformsStream(),
-                    Metal::UniformsStream(pkts, cbs, dimof(pkts), nullptr, 0));
+                boundUniforms.Apply(context, 1, Metal::UniformsStream(pkts, cbs, dimof(pkts), nullptr, 0));
 
                 unsigned bloomBufferIndex = (unsigned)resources._bloomBuffers.size()-1;
                 for (auto i=resources._bloomBuffers.crbegin(); ;) {
@@ -498,18 +505,18 @@ namespace SceneEngine
                     clampingWindowCB.Update(context, &clampingWindow, sizeof(clampingWindow));
 
                     barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+bloomBufferIndex, SRVLayout}, {bloomTempBufferId, UAVLayout}}));
-                    context.BindCS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.UAV()));
-                    context.BindCS(MakeResourceList(i->_bloomBuffer.SRV()));
+                    context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.UAV()));
+                    context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(i->_bloomBuffer.SRV()));
                     context.Bind(horizBlur);
                     context.Dispatch(i->_width/16, i->_height/16);
-                    context.UnbindCS<Metal::ShaderResourceView>(0, 1);
+                    MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 0, 1);
 
                     barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomTempBufferId, SRVLayout}}));
-                    context.BindCS(MakeResourceList(i->_bloomBuffer.UAV()));
-                    context.BindCS(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.SRV()));
+                    context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(i->_bloomBuffer.UAV()));
+                    context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._bloomTempBuffer._bloomBuffer.SRV()));
                     context.Bind(vertBlur);
                     context.Dispatch(i->_width/16, i->_height/16);
-                    context.UnbindPS<Metal::ShaderResourceView>(0, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
 
                     auto oldi = i;
                     ++i; --bloomBufferIndex;
@@ -518,14 +525,14 @@ namespace SceneEngine
 
                     // blend into the next step
                     barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{bloomBuffersId+bloomBufferIndex, UAVLayout}, {bloomBuffersId+bloomBufferIndex+1, SRVLayout}}));
-                    context.BindCS(MakeResourceList(i->_bloomBuffer.UAV()));
-                    context.BindCS(MakeResourceList(oldi->_bloomBuffer.SRV()));
+                    context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(i->_bloomBuffer.UAV()));
+                    context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(oldi->_bloomBuffer.SRV()));
                     context.Bind(copyShader);
                     context.Dispatch(i->_width/8, i->_height/8);
 
                 }
 
-                context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+                MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
             }
 
             // We will read from bloom buffer 0 later down the pipeline...
@@ -668,16 +675,23 @@ namespace SceneEngine
             "xleres/postprocess/tonemap.psh:main:ps_*", 
             shaderDefines.get());
 
-        _uniforms = Metal::BoundUniforms(*_shaderProgram);
-        _uniforms.BindConstantBuffers(1, {"ToneMapSettings", "ColorGradingSettings"});
-        _uniforms.BindShaderResources(1, {"InputTexture", "LuminanceBuffer", "BloomMap"});
-        RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(_uniforms);
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("ToneMapSettings")});
+		usi.BindConstantBuffer(1, {Hash64("ColorGradingSettings")});
+		usi.BindShaderResource(0, Hash64("InputTexture"));
+		usi.BindShaderResource(0, Hash64("LuminanceBuffer"));
+		usi.BindShaderResource(0, Hash64("BloomMap"));
+        _uniforms = Metal::BoundUniforms(
+			*_shaderProgram,
+			Metal::PipelineLayoutConfig{},
+			RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         _validationCallback = _shaderProgram->GetDependencyValidation();
     }
 
     void ToneMap_Execute(
-        Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
@@ -687,7 +701,9 @@ namespace SceneEngine
         // ProtectState protectState(context, ProtectState::States::BlendState);
         // bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
 
-        bool hardwareSRGBEnabled = destination.GetAttachments()[0]._window._format._aspect == TextureViewDesc::ColorSRGB;
+		auto& devContext = *Metal::DeviceContext::Get(context);
+
+        bool hardwareSRGBEnabled = destination.GetSubpasses()[0]._output[0]._window._format._aspect == TextureViewDesc::ColorSRGB;
 
         CATCH_ASSETS_BEGIN
             bool bindCopyShader = true;
@@ -715,8 +731,9 @@ namespace SceneEngine
                             &inputResource,
                             &luminanceResult._propertiesBuffer, &luminanceResult._bloomBuffer
                         };
-                        box._uniforms.Apply(context, parserContext.GetGlobalUniformsStream(), Metal::UniformsStream(cbs, srvs));
-                        context.Bind(*box._shaderProgram);
+                        box._uniforms.Apply(devContext, 0, parserContext.GetGlobalUniformsStream());
+						box._uniforms.Apply(devContext, 1, Metal::UniformsStream(cbs, srvs));
+                        devContext.Bind(*box._shaderProgram);
                         bindCopyShader = false;
                         
                     }
@@ -733,19 +750,20 @@ namespace SceneEngine
             if (bindCopyShader) {
                     // If tone mapping is disabled (or if tonemapping failed for any reason)
                     //      -- then we have to bind a copy shader
-                context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
+                devContext.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/basic.psh:fake_tonemap:ps_*"));
-                context.BindPS(MakeResourceList(inputResource));
+                devContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(inputResource));
             }
             
+			auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(destination, parserContext.GetNamedResources());
             Techniques::RenderPassInstance rpi(
-                context, destination,
-                0u, parserContext.GetNamedResources(),
+                context, fb, destination,
+                parserContext.GetNamedResources(),
                 Techniques::RenderPassBeginDesc());
 
-            SetupVertexGeneratorShader(context);
-            context.Bind(Techniques::CommonResources()._blendOpaque);
-            context.Draw(4);
+            SetupVertexGeneratorShader(devContext);
+            devContext.Bind(Techniques::CommonResources()._blendOpaque);
+            devContext.Draw(4);
         CATCH_ASSETS_END(parserContext)
     }
 
@@ -753,12 +771,12 @@ namespace SceneEngine
     {
         SetupVertexGeneratorShader(context);
         context.Bind(Metal::BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
-        context.BindPS(MakeResourceList(resources._propertiesBuffer.SRV()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(resources._propertiesBuffer.SRV()));
         for (unsigned c=0; c<std::min(size_t(3),resources._luminanceBuffers.size()); ++c) {
-            context.BindPS(MakeResourceList(1+c, resources._luminanceBuffers[c].SRV()));
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1+c, resources._luminanceBuffers[c].SRV()));
         }
         for (unsigned c=0; c<std::min(size_t(3),resources._bloomBuffers.size()); ++c) {
-            context.BindPS(MakeResourceList(4+c, resources._bloomBuffers[c]._bloomBuffer.SRV()));
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4+c, resources._bloomBuffers[c]._bloomBuffer.SRV()));
         }
         context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/postprocess/debugging.psh:HDRDebugging:ps_*"));
@@ -770,9 +788,9 @@ namespace SceneEngine
             "xleres/utility/metricsrender.psh:main:ps_*", ""));
         Metal::ViewportDesc mainViewportDesc(context);
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
-        context.BindGS(MakeResourceList(Metal::ConstantBuffer(dimensions, sizeof(dimensions))));
-        context.BindVS(MakeResourceList(resources._propertiesBuffer.SRV()));
-        context.BindPS(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(Metal::ConstantBuffer(dimensions, sizeof(dimensions))));
+        context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(resources._propertiesBuffer.SRV()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
         context.Bind(Topology::PointList);
         context.Draw(1);
     }
@@ -845,22 +863,38 @@ namespace SceneEngine
             "xleres/basic2D.vsh:fullscreen:vs_*", 
             "xleres/Effects/distantblur.psh:VerticalBlur_DistanceWeighted:ps_*");
 
-        auto horizontalFilterBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*horizontalFilter));
-        horizontalFilterBinding->BindConstantBuffers(1, {"Constants", "BlurConstants"});
-        horizontalFilterBinding->BindShaderResources(1, {"DepthsInput", "InputTexture"});
+        UniformsStreamInterface filterUsi;
+		filterUsi.BindConstantBuffer(0, {Hash64("Constants")});
+		filterUsi.BindConstantBuffer(1, {Hash64("BlurConstants")});
+		filterUsi.BindShaderResource(0, Hash64("DepthsInput"));
+		filterUsi.BindShaderResource(1, Hash64("InputTexture"));
 
-        auto verticalFilterBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*verticalFilter));
-        verticalFilterBinding->BindConstantBuffers(1, {"Constants", "BlurConstants"});
-        verticalFilterBinding->BindShaderResources(1, {"DepthsInput", "InputTexture"});
+		auto horizontalFilterBinding = std::make_unique<Metal::BoundUniforms>(
+			std::ref(*horizontalFilter),
+			Metal::PipelineLayoutConfig{},
+			UniformsStreamInterface{},
+			filterUsi);
+		auto verticalFilterBinding = std::make_unique<Metal::BoundUniforms>(
+			std::ref(*verticalFilter),
+			Metal::PipelineLayoutConfig{},
+			UniformsStreamInterface{},
+			filterUsi);
 
         auto* integrateDistantBlur = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", 
             "xleres/Effects/distantblur.psh:integrate:ps_*");
-        auto integrateDistantBlurBinding = std::make_unique<Metal::BoundUniforms>(std::ref(*integrateDistantBlur));
-        Techniques::TechniqueContext::BindGlobalUniforms(*integrateDistantBlurBinding.get());
-        integrateDistantBlurBinding->BindConstantBuffers(1, {"Constants", "BlurConstants"});
-        integrateDistantBlurBinding->BindShaderResource(Hash64("DepthsInput"), 0, 1);
-        integrateDistantBlurBinding->BindShaderResource(Hash64("BlurredBufferInput"), 1, 1);
+        
+		UniformsStreamInterface integrateDistantBlurUsi;
+		integrateDistantBlurUsi.BindConstantBuffer(0, {Hash64("Constants")});
+		integrateDistantBlurUsi.BindConstantBuffer(0, {Hash64("BlurConstants")});
+		integrateDistantBlurUsi.BindShaderResource(0, Hash64("DepthsInput"));
+		integrateDistantBlurUsi.BindShaderResource(0, Hash64("BlurredBufferInput"));
+
+		auto integrateDistantBlurBinding = std::make_unique<Metal::BoundUniforms>(
+			std::ref(*integrateDistantBlur),
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			integrateDistantBlurUsi);
 
         Metal::BlendState integrateBlend;
         Metal::BlendState noBlending = BlendOp::NoBlending;
@@ -920,9 +954,9 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             auto depths = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetDepthStencilView());
-            Metal::ShaderResourceView depthsSRV(depths.get(), {{TextureViewDesc::Aspect::Depth}});
+            Metal::ShaderResourceView depthsSRV(Metal::AsResourcePtr(std::move(depths)), {{TextureViewDesc::Aspect::Depth}});
             auto res = Metal::ExtractResource<ID3D::Resource>(savedTargets.GetRenderTargets()[0]);
-            Metal::ShaderResourceView inputSRV(res.get());
+            Metal::ShaderResourceView inputSRV(Metal::AsResourcePtr(std::move(res)));
 #else
 			Metal::ShaderResourceView depthsSRV, inputSRV;
 #endif
@@ -936,10 +970,8 @@ namespace SceneEngine
                 //          blur once horizontally, and once vertically
             ///////////////////////////////////////////////////////////////////////////////////////
             {
-                resources._horizontalFilterBinding->Apply(
-                    context, 
-                    parserContext.GetGlobalUniformsStream(), 
-                    Metal::UniformsStream(constantBufferPackets, blurSrvs));
+                resources._horizontalFilterBinding->Apply(context, 0, parserContext.GetGlobalUniformsStream());
+				resources._horizontalFilterBinding->Apply(context, 1, Metal::UniformsStream(constantBufferPackets, blurSrvs));
                 context.Bind(*resources._horizontalFilter);
                 context.Draw(4);
             }
@@ -947,10 +979,8 @@ namespace SceneEngine
             {
                 context.Bind(MakeResourceList(resources._blurBufferRTV[0]), nullptr);
                 const Metal::ShaderResourceView* blurSrvs2[] = { &depthsSRV, &resources._blurBufferSRV[1] };
-                resources._verticalFilterBinding->Apply(
-                    context, 
-                    parserContext.GetGlobalUniformsStream(), 
-                    Metal::UniformsStream(constantBufferPackets, blurSrvs2));
+                resources._verticalFilterBinding->Apply(context, 0, parserContext.GetGlobalUniformsStream());
+                resources._verticalFilterBinding->Apply(context, 1, Metal::UniformsStream(constantBufferPackets, blurSrvs2));
                 context.Bind(*resources._verticalFilter);
                 context.Draw(4);
             }
@@ -972,10 +1002,8 @@ namespace SceneEngine
 
             context.Bind(*resources._integrateDistantBlur);
             const Metal::ShaderResourceView* srvs[] = { &depthsSRV, &resources._blurBufferSRV[0] };
-            resources._integrateDistantBlurBinding->Apply(
-                context, 
-                parserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(constantBufferPackets, srvs));
+            resources._integrateDistantBlurBinding->Apply(context, 0, parserContext.GetGlobalUniformsStream());
+			resources._integrateDistantBlurBinding->Apply(context, 1, Metal::UniformsStream(constantBufferPackets, srvs));
             context.Bind(resources._integrateBlend);
             context.Draw(4);
             context.UnbindPS<Metal::ShaderResourceView>(3, 3);

@@ -85,6 +85,7 @@ namespace RenderCore { namespace Metal_DX11
 		void			UnbindGS();
 		void			UnbindHS();
 		void			UnbindDS();
+		void			UnbindInputLayout();
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
