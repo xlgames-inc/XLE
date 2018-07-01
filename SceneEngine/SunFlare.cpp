@@ -82,10 +82,14 @@ namespace SceneEngine
             "xleres/effects/occludingsunflare.sh:ps_sunflare:ps_*",
             (StringMeld<64>() << "ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)).get());
 
-        _commitUniforms = Metal::BoundUniforms(*_commitShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_commitUniforms);
-        _commitUniforms.BindConstantBuffers(1, {"Settings"});
-        _commitUniforms.BindShaderResources(1, {desc._rowsOptimisation ? "InputRowsTexture" : "InputTexture"});
+		UniformsStreamInterface commitUsi;
+        commitUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        commitUsi.BindShaderResource(0, desc._rowsOptimisation ? Hash64("InputRowsTexture") : Hash64("InputTexture"));
+		_commitUniforms = Metal::BoundUniforms(
+			*_commitShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			commitUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -97,10 +101,14 @@ namespace SceneEngine
                 << ";ROWS_OPTIMISATION=" << int(desc._rowsOptimisation)
                 << ";OUTPUT_ROWS=" << int(desc._res[1])).get());
 
-        _blurUniforms = Metal::BoundUniforms(*_blurShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_blurUniforms);
-        _blurUniforms.BindConstantBuffers(1, {"Settings"});
-        _blurUniforms.BindShaderResources(1, {"InputTexture"});
+		UniformsStreamInterface blurUsi;
+        blurUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        blurUsi.BindShaderResource(0, Hash64("InputTexture"));
+		_blurUniforms = Metal::BoundUniforms(
+			*_blurShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			blurUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -108,10 +116,14 @@ namespace SceneEngine
             "xleres/effects/occludingsunflare.sh:vs_sunflare_full:vs_*",
             "xleres/effects/occludingsunflare.sh:ps_toradial:ps_*");
 
-        _toRadialUniforms = Metal::BoundUniforms(*_toRadialShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_toRadialUniforms);
-        _toRadialUniforms.BindConstantBuffers(1, {"Settings"});
-        _toRadialUniforms.BindShaderResources(1, {"InputTexture"});
+		UniformsStreamInterface toRadialUsi;
+        toRadialUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        toRadialUsi.BindShaderResource(0, Hash64("InputTexture"));
+		_toRadialUniforms = Metal::BoundUniforms(
+			*_toRadialShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			toRadialUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -119,10 +131,14 @@ namespace SceneEngine
             "xleres/effects/occludingsunflare.sh:vs_sunflare:vs_*",
             "xleres/effects/occludingsunflare.sh:ps_sunflare_directblur:ps_*");
 
-        _directBlurUniforms = Metal::BoundUniforms(*_directBlurShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(_directBlurUniforms);
-        _directBlurUniforms.BindConstantBuffers(1, {"Settings"});
-        _directBlurUniforms.BindShaderResources(1, {"InputTexture"});
+		UniformsStreamInterface directBlurUsi;
+        directBlurUsi.BindConstantBuffer(0, {Hash64("Settings")});
+        directBlurUsi.BindShaderResource(0, Hash64("InputTexture"));
+		_directBlurUniforms = Metal::BoundUniforms(
+			*_directBlurShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			directBlurUsi);
 
         ////////////////////////////////////////////////////////////////////////
 
@@ -227,8 +243,7 @@ namespace SceneEngine
 
             context->Bind(Topology::TriangleStrip);
             context->Bind(Techniques::CommonResources()._dssDisable);
-            context->Unbind<Metal::VertexBuffer>();
-            context->Unbind<Metal::BoundInputLayout>();
+            context->UnbindInputLayout();
 
             const bool doDirectBlur = Tweakable("SunFlareDirectBlur", false);
             const bool singlePass = Tweakable("SunFlareSinglePass", false);
@@ -245,9 +260,8 @@ namespace SceneEngine
                     context->Bind(MakeResourceList(res._tempRTV[1]), nullptr);
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
-                    res._toRadialUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
+                    res._toRadialUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+					res._toRadialUniforms.Apply(*context, 1, 
                         Metal::UniformsStream(constants, srvs));
                 
                     context->Bind(*res._toRadialShader);
@@ -262,9 +276,8 @@ namespace SceneEngine
                     context->Bind(MakeResourceList(res._tempRTV[0]), nullptr);
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { singlePass ? &depthsSRV : &res._tempSRV[1] };
-                    res._blurUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
+                    res._blurUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+					res._blurUniforms.Apply(*context, 1, 
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._blurShader);
@@ -283,9 +296,8 @@ namespace SceneEngine
                 {
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &res._tempSRV[0] };
-                    res._commitUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
+                    res._commitUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+					res._commitUniforms.Apply(*context, 1, 
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._commitShader);
@@ -305,9 +317,8 @@ namespace SceneEngine
                 {
                     Metal::ConstantBufferPacket constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
-                    res._directBlurUniforms.Apply(
-                        *context, 
-                        parserContext.GetGlobalUniformsStream(),
+                    res._directBlurUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+					res._directBlurUniforms.Apply(*context, 1, 
                         Metal::UniformsStream(constants, srvs));
 
                     context->Bind(*res._directBlurShader);

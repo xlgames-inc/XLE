@@ -234,7 +234,7 @@ namespace SceneEngine
                 //  we're going to be writing to buffers that will be used for instancing.
             // ID3D::Buffer* nullBuffer = nullptr; unsigned zero = 0;
             // context->GetUnderlying()->IASetVertexBuffers(3, 1, &nullBuffer, &zero, &zero);
-            metalContext->Unbind<Metal::VertexBuffer>();
+            metalContext->UnbindInputLayout();
             metalContext->UnbindVS<Metal::ShaderResourceView>(15, 1);
 
             float maxDrawDistance = 0.f;

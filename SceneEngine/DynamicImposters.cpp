@@ -503,19 +503,18 @@ namespace SceneEngine
 
             // bind the atlas textures to the find slots (eg, over DiffuseTexture, NormalsTexture, etc)
         for (unsigned c=0; c<_pimpl->_atlas._layers.size(); ++c)
-            context.BindPS(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
 
         // shader.Apply(context, parserContext, {std::move(spriteTable)});
         const Metal::ConstantBuffer* cbs[] = {&_pimpl->_spriteTableCB};
-        shader._shader._boundUniforms->Apply(
-            context, 
-            parserContext.GetGlobalUniformsStream(),
+        shader._shader._boundUniforms->Apply(context, 0, parserContext.GetGlobalUniformsStream());
+		shader._shader._boundUniforms->Apply(context, 1, 
             Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
-        context.Bind(*shader._shader._boundLayout);
         context.Bind(*shader._shader._shaderProgram);
         
-        Metal::VertexBuffer tempvb(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
-        context.Bind(MakeResourceList(tempvb), sizeof(Vertex), 0);
+        auto tempvb = MakeMetalVB(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));
+		VertexBufferView vbv[] = { &tempvb };
+		shader._shader._boundLayout->Apply(context, MakeIteratorRange(vbv));
         context.Bind(Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
         context.Bind(Techniques::CommonResources()._dssReadWrite);
@@ -1006,11 +1005,11 @@ namespace SceneEngine
         _pimpl->_frameCounter = 0;
 
         _pimpl->_material = RenderCore::Assets::ShaderVariationSet(
-            InputLayout(s_inputLayout, dimof(s_inputLayout)),
+            MakeIteratorRange(s_inputLayout),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();
 
-        _pimpl->_spriteTableCB = Metal::ConstantBuffer(nullptr, sizeof(UInt4)*2048);
+        _pimpl->_spriteTableCB = MakeMetalCB(nullptr, sizeof(UInt4)*2048);
     }
 
     DynamicImposters::~DynamicImposters() {}
