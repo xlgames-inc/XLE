@@ -156,9 +156,9 @@ namespace SceneEngine
         };
 
         auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
-        metalContext->BindGS(
+        metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(
             MakeResourceList(
-                8, Metal::ConstantBuffer(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
+                8, MakeMetalCB(&rayDefinitionCBuffer, sizeof(rayDefinitionCBuffer))));
     }
 
     void ModelIntersectionStateContext::SetFrustum(const Float4x4& frustum)
@@ -169,9 +169,9 @@ namespace SceneEngine
         } frustumDefinitionCBuffer = { frustum };
 
         auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
-        metalContext->BindGS(
+        metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(
             MakeResourceList(
-                9, Metal::ConstantBuffer(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
+                9, MakeMetalCB(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
     }
 
     LightingParserContext& ModelIntersectionStateContext::GetParserContext()
@@ -253,7 +253,7 @@ namespace SceneEngine
         metalContext->BindSO(MakeResourceList(soBuffer));
 
         auto& commonRes = Techniques::CommonResources();
-        metalContext->BindGS(MakeResourceList(commonRes._defaultSampler));
+        metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(commonRes._defaultSampler));
     }
 
     ModelIntersectionStateContext::~ModelIntersectionStateContext()

@@ -7,6 +7,7 @@
 #include "TerrainMaterialTextures.h"
 #include "TerrainMaterial.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -53,7 +54,7 @@ namespace SceneEngine
         auto inputTexture = RenderCore::Assets::DeferredShaderResource::LoadImmediately(sourceFile);
         auto inputRes = Metal::ExtractResource(inputTexture);
 
-        auto destinationDesc = Metal::ExtractDesc(&destinationArray);
+        auto destinationDesc = destinationArray.GetDesc();
         const auto dstMipCount = destinationDesc._textureDesc._mipCount;
         auto dstWidthPower = (int)IntegerLog2(destinationDesc._textureDesc._width);
 
@@ -65,7 +66,7 @@ namespace SceneEngine
             Throw(::Exceptions::BasicLabel("Expecting square texture for terrain texturing (%s)", sourceFile));
         }
 
-        auto sourceDesc = Metal::ExtractDesc(inputRes);
+        auto sourceDesc = inputRes->GetDesc();
         auto srcWidthPower = (int)IntegerLog2(sourceDesc._textureDesc._width);
         auto mipDifference = srcWidthPower - dstWidthPower;
 
@@ -74,8 +75,8 @@ namespace SceneEngine
             auto sourceMip = m + mipDifference;
             if (sourceMip < 0) {
 
-                LogWarning << 
-                    "LoadTextureIntoArray -- performing resample on texture (" << sourceFile << "). All textures in the array must be the same size!\n";
+                Log(Warning) << 
+                    "LoadTextureIntoArray -- performing resample on texture (" << sourceFile << "). All textures in the array must be the same size!\n" << std::endl;
 
                     //  We have to up-sample to get the same number of mips
                     //  Using the highest LOD from the source texture, resample into
@@ -108,10 +109,10 @@ namespace SceneEngine
 		            //	and ugly... it might be a consequence of compressing twice?
                 auto& resamplingShader = GetAssetImmediate<RenderCore::Metal::ComputeShader>("xleres/basic.csh:ResamplePoint:cs_*");
                 context.Bind(resamplingShader);
-                context.BindCS(MakeResourceList(uav));
-                context.BindCS(MakeResourceList(inputTexture));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(uav));
+                context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(inputTexture));
                 context.Dispatch(expectedWidth/8, expectedHeight/8);
-                context.UnbindCS<Metal::UnorderedAccessView>(0, 1);
+                MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 if (resamplingFormat!=destFormat) {
@@ -170,7 +171,7 @@ namespace SceneEngine
     {
             // copy dummy white data into all of the mip levels of the given array index in the
             // destination resource
-        auto destinationDesc = Metal::ExtractDesc(&destinationArray);
+        auto destinationDesc = destinationArray.GetDesc();
         const auto mipCount = destinationDesc._textureDesc._mipCount;
 
         auto minDims = blockCompressed ? 4u : 1u;

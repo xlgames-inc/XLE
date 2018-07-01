@@ -128,13 +128,13 @@ namespace SceneEngine
 					{VertexBufferView{pimpl->_vertexBuffer}});
 
 				variation._shader.ApplyUniforms(*context, 0, parserContext.GetGlobalUniformsStream());
-				variation._shader.ApplyUniforms(*context, 1,
-                    {
-                        MakeLocalTransformPacket(
-                            Identity<Float4x4>(),
-                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        pimpl->_materialConstants
-                    });
+				ConstantBufferView cbvs[] {
+                    MakeLocalTransformPacket(
+                        Identity<Float4x4>(),
+                        ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                    pimpl->_materialConstants
+                };
+				variation._shader.ApplyUniforms(*context, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
                 context->Bind(
 					*(Metal::Resource*)pimpl->_indexBuffer->QueryInterface(typeid(Metal::Resource).hash_code()), 
@@ -335,13 +335,13 @@ namespace SceneEngine
             auto shader = material.FindVariation(parserContext, techniqueIndex, "illum");
             if (shader._shader._shaderProgram) {
 				shader._shader.ApplyUniforms(*context, 0, parserContext.GetGlobalUniformsStream());
-				shader._shader.ApplyUniforms(*context, 1,
-                    {
-                        MakeLocalTransformPacket(
-                            Identity<Float4x4>(),
-                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
-                    });
+				ConstantBufferView cbvs[] = {
+                    MakeLocalTransformPacket(
+                        Identity<Float4x4>(),
+                        ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                    shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
+                };
+				shader._shader.ApplyUniforms(*context, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
                 auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
 

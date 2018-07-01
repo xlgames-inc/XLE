@@ -87,13 +87,15 @@ namespace SceneEngine
         Metal::ViewportDesc viewport(context);
         unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
         uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
-		uniforms.Apply(context, 1, 
+		ConstantBufferView cbvs[] = { MakeSharedPkt(globalCB) };
+		Metal::ShaderResourceView* srvs[] = { &parsingContext.GetMetricsBox()->_metricsBufferSRV };
+		uniforms.Apply(
+			context, 1, 
             UniformsStream{
-                { MakeSharedPkt(globalCB) }, 
-				{ &parsingContext.GetMetricsBox()->_metricsBufferSRV }});
+                MakeIteratorRange(cbvs), 
+				UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-        context.Unbind<Metal::VertexBuffer>();
-        context.Unbind<Metal::BoundInputLayout>();
+        context.UnbindInputLayout();
         context.Bind(Topology::PointList);
         context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         context.Bind(Techniques::CommonResources()._dssDisable);

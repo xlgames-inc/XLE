@@ -8,6 +8,7 @@
 
 #include "../IDevice_Forward.h"
 #include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
+#include "../../Utility/IteratorUtils.h"
 #include <vector>
 
 namespace Utility { class ParameterBox; }

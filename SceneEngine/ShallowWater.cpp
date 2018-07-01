@@ -11,6 +11,7 @@
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "SurfaceHeightsProvider.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -116,11 +117,12 @@ namespace SceneEngine
 
         unsigned heightsTextureCount = pipeModel?1:3;
 
-		auto windowForUAVs = TextureViewDesc(
-			Format::R32_FLOAT, TextureDesc::Dimensionality::Undefined,
+		auto windowForUAVs = TextureViewDesc{
+			Format::R32_FLOAT,
 			TextureViewDesc::SubResourceRange{0,1},
 			TextureViewDesc::All,
-			TextureViewDesc::Flags::ForceArray);
+			TextureDesc::Dimensionality::Undefined,
+			TextureViewDesc::Flags::ForceArray};
 
         for (unsigned c=0; c<heightsTextureCount; ++c) {
             waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc);
@@ -164,11 +166,12 @@ namespace SceneEngine
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-			auto window = TextureViewDesc(
-				uintNormalFormat, TextureDesc::Dimensionality::Undefined,
+			auto window = TextureViewDesc{
+				uintNormalFormat,
 				TextureViewDesc::SubResourceRange{c,1},
 				TextureViewDesc::All,
-				TextureViewDesc::Flags::ForceArray);
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::ForceArray};
             normalsTextureUVA.push_back(UAV(normalsTexture->ShareUnderlying(), window));
             normalsSingleMipSRV.push_back(SRV(normalsTexture->ShareUnderlying(), window));
         }
@@ -503,27 +506,27 @@ namespace SceneEngine
 
         auto materialConstants = Internal::BuildOceanMaterialConstants(
             *context._oceanSettings, context._gridPhysicalDimension);
-        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto globalOceanMaterialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
         BuildShaderDefines(shaderDefines, _gridDimension, context._surfaceHeightsProvider, context._borderMode, _lookupTableSRV.IsGood());
 
         if (prevFrameBuffer!=thisFrameBuffer) {
-            metalContext.BindCS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 context._surfaceHeightsProvider->GetSRV(),
                 _simulationGrid->_waterHeightsSRV[prevFrameBuffer], 
                 _simulationGrid->_waterHeightsSRV[prevPrevFrameBuffer],
                 _lookupTableSRV));
         } else {
-            metalContext.BindCS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 context._surfaceHeightsProvider->GetSRV(), SRV(), SRV(), _lookupTableSRV));
         }
 
         if (context._globalOceanWorkingHeights) {
-            metalContext.BindCS(MakeResourceList(4, *context._globalOceanWorkingHeights));
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(4, *context._globalOceanWorkingHeights));
         }
 
-        metalContext.BindCS(MakeResourceList(0, globalOceanMaterialConstantBuffer));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(0, globalOceanMaterialConstantBuffer));
 
         SimulatingConstants simConstants = {
             settings._rainQuantityPerFrame, 
@@ -533,12 +536,12 @@ namespace SceneEngine
             settings._compressionConstants
         };
 
-        Metal::ConstantBuffer surfaceHeightsConstantsBuffer(nullptr, sizeof(SurfaceHeightsAddressingConstants));
-        Metal::ConstantBuffer basicConstantsBuffer(nullptr, sizeof(CellConstants));
-        metalContext.BindCS(
+        auto surfaceHeightsConstantsBuffer = MakeMetalCB(nullptr, sizeof(SurfaceHeightsAddressingConstants));
+        auto basicConstantsBuffer = MakeMetalCB(nullptr, sizeof(CellConstants));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(
             MakeResourceList(
                 1, surfaceHeightsConstantsBuffer, basicConstantsBuffer, 
-                Metal::ConstantBuffer(&simConstants, sizeof(simConstants))));
+                MakeMetalCB(&simConstants, sizeof(simConstants))));
 
         if (!_usePipeModel) {
 
@@ -622,7 +625,7 @@ namespace SceneEngine
                     // limit of 8 UAV slots means that we can't bind 8 velocity UAVs 
                     // and a heights UAV at the same time
                 if (pass == 0) {
-                    metalContext.BindCS(MakeResourceList(
+                    metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                         _simulationGrid->_waterVelocitiesUAV[0],
                         _simulationGrid->_waterVelocitiesUAV[1],
                         _simulationGrid->_waterVelocitiesUAV[2],
@@ -631,10 +634,10 @@ namespace SceneEngine
                         _simulationGrid->_waterVelocitiesUAV[5],
                         _simulationGrid->_waterVelocitiesUAV[6],
                         _simulationGrid->_waterVelocitiesUAV[7]));
-                    metalContext.BindCS(MakeResourceList(
+                    metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                         5, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
                 } else {
-                    metalContext.BindCS(MakeResourceList(
+                    metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                         5,
                         _simulationGrid->_waterVelocitiesSRV[0],
                         _simulationGrid->_waterVelocitiesSRV[1],
@@ -644,7 +647,7 @@ namespace SceneEngine
                         _simulationGrid->_waterVelocitiesSRV[5],
                         _simulationGrid->_waterVelocitiesSRV[6],
                         _simulationGrid->_waterVelocitiesSRV[7]));
-                    metalContext.BindCS(MakeResourceList(
+                    metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                         _simulationGrid->_waterHeightsUAV[thisFrameBuffer]));
                 }
 
@@ -693,8 +696,8 @@ namespace SceneEngine
         }
 
         if (context._globalOceanWorkingHeights)
-            metalContext.BindCS(MakeResourceList(4, *context._globalOceanWorkingHeights));
-        metalContext.BindCS(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(4, *context._globalOceanWorkingHeights));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -705,17 +708,17 @@ namespace SceneEngine
             usePipeModel?"xleres/Ocean/InitSimGrid.csh:InitPipeModel:cs_*":"xleres/Ocean/InitSimGrid.csh:main:cs_*", shaderDefines);
 
         auto materialConstants = Internal::BuildOceanMaterialConstants(*context._oceanSettings, context._gridPhysicalDimension);
-        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
-        metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
+        auto globalOceanMaterialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(globalOceanMaterialConstantBuffer));
         metalContext.Bind(initcshader);
         if (context._surfaceHeightsProvider)
-            metalContext.BindCS(MakeResourceList(context._surfaceHeightsProvider->GetSRV()));
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(context._surfaceHeightsProvider->GetSRV()));
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        Metal::ConstantBuffer initCellConstantsBuffer(nullptr, sizeof(CellConstants));
-        Metal::ConstantBuffer surfaceHeightsAddressingBuffer(nullptr, sizeof(SurfaceHeightsAddressingConstants));
-        metalContext.BindCS(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
+        auto initCellConstantsBuffer = MakeMetalCB(nullptr, sizeof(CellConstants));
+        auto surfaceHeightsAddressingBuffer = MakeMetalCB(nullptr, sizeof(SurfaceHeightsAddressingConstants));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(1, surfaceHeightsAddressingBuffer, initCellConstantsBuffer));
 
         std::vector<ShallowWaterSim::ActiveElement> gridsForSecondInitPhase;
         gridsForSecondInitPhase.reserve(newElementsEnd - newElementsBegin);
@@ -796,7 +799,7 @@ namespace SceneEngine
         metalContext.UnbindPS<SRV>( 5, 1);
         metalContext.UnbindPS<SRV>(11, 1);
         metalContext.UnbindPS<SRV>(15, 1);
-        metalContext.BindCS(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
 
         if (oceanReset) {
             _activeSimulationElements.clear();
@@ -952,7 +955,7 @@ namespace SceneEngine
             clearGridsConstants._indexCount = unsigned(gridsDestroyedThisFrame.size());
 
             metalContext.Bind(::Assets::GetAssetDep<Metal::ComputeShader>("xleres/Ocean/InitSimGrid.csh:ClearGrids:cs_*"));
-            metalContext.BindCS(MakeResourceList(0, Metal::ConstantBuffer(&clearGridsConstants, sizeof(clearGridsConstants))));
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(0, MakeMetalCB(&clearGridsConstants, sizeof(clearGridsConstants))));
             metalContext.Dispatch(unsigned(gridsDestroyedThisFrame.size()));
 
         }
@@ -990,14 +993,14 @@ namespace SceneEngine
                 }
             }
 
-            metalContext.BindCS(MakeResourceList(globalOceanMaterialConstantBuffer));
-            metalContext.BindCS(MakeResourceList(2, Metal::ConstantBuffer(buildDevsConstants, sizeof(buildDevsConstants))));
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(globalOceanMaterialConstantBuffer));
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(2, MakeMetalCB(buildDevsConstants, sizeof(buildDevsConstants))));
 
-            metalContext.BindCS(MakeResourceList(   
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(   
                 _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
                 _lookupTableSRV,
                 _simulationGrid->_foamQuantitySRV2[(bufferCounter+1)&1]));
-            metalContext.BindCS(MakeResourceList(   
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(   
                 _simulationGrid->_normalsTextureUAV[0], 
                 _simulationGrid->_foamQuantityUAV[bufferCounter&1]));
 
@@ -1010,10 +1013,10 @@ namespace SceneEngine
             for (unsigned step = 0; step<_simulationGrid->_normalsTextureUAV.size()-1; ++step) {
                 unsigned mipDims = _gridDimension >> (step+1);
                 unsigned constants[4] = { mipDims, mipDims, 0, 0 };
-                metalContext.BindCS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
 
-                metalContext.BindCS(MakeResourceList(4, _simulationGrid->_normalsSingleMipSRV[step]));
-                metalContext.BindCS(MakeResourceList(_simulationGrid->_normalsTextureUAV[step+1]));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(4, _simulationGrid->_normalsSingleMipSRV[step]));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_simulationGrid->_normalsTextureUAV[step+1]));
             
                 metalContext.Dispatch((mipDims + (8-1))/8, (mipDims + (8-1))/8, _simulatingGridsCount);
                 metalContext.UnbindCS<UAV>(0, 1);
@@ -1045,7 +1048,7 @@ namespace SceneEngine
         unsigned bufferCounter, BorderMode::Enum borderMode)
     {
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto globalOceanMaterialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
         BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode, _lookupTableSRV.IsGood());
@@ -1056,27 +1059,30 @@ namespace SceneEngine
             "xleres/solidwireframe.gsh:main:gs_*",
             "xleres/solidwireframe.psh:main:ps_*",
             shaderDefines);
-        Metal::BoundUniforms boundUniforms(patchRender);
-        Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
-        boundUniforms.BindConstantBuffers(1, {"OceanMaterialSettings", "ShallowWaterCellConstants"});
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("OceanMaterialSettings")});
+		usi.BindConstantBuffer(1, {Hash64("ShallowWaterCellConstants")});
+        Metal::BoundUniforms boundUniforms(
+			patchRender,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         metalContext.Bind(patchRender);
 
         SetupVertexGeneratorShader(metalContext);
-        metalContext.BindVS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
+        metalContext.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
         metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
         auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
-        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
+        metalContext.Bind(*(Metal::Resource*)simplePatchBox._simplePatchIndexBuffer->QueryInterface(typeid(Metal::Resource).hash_code()), Format::R32_UINT);
 
-        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
+        auto simulatingCB = MakeMetalCB(nullptr, sizeof(CellConstants));
 
-        const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
-        boundUniforms.Apply(
-            metalContext, 
-            parserContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+        ConstantBufferView prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
+        boundUniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+		boundUniforms.Apply(metalContext, 1, UniformsStream{MakeIteratorRange(prebuiltBuffers)});
 
         for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
@@ -1085,7 +1091,7 @@ namespace SceneEngine
             }
         }
 
-        metalContext.UnbindVS<SRV>(3, 1);
+        MetalStubs::UnbindVS<SRV>(metalContext, 3, 1);
     }
 
     void ShallowWaterSim::RenderVelocities(
@@ -1095,7 +1101,7 @@ namespace SceneEngine
         bool showErosion)
     {
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, gridPhysicalDimension);
-        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto globalOceanMaterialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
 
         char shaderDefines[256]; 
         BuildShaderDefines(shaderDefines, _gridDimension, nullptr, borderMode, _lookupTableSRV.IsGood());
@@ -1108,17 +1114,22 @@ namespace SceneEngine
             "xleres/Ocean/OceanVelocitiesDebugging.sh:ps_main:ps_*",
             shaderDefines);
 
-        Metal::BoundUniforms boundUniforms(patchRender);
-        Techniques::TechniqueContext::BindGlobalUniforms(boundUniforms);
-        boundUniforms.BindConstantBuffers(1, { "OceanMaterialSettings", "ShallowWaterCellConstants" });
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("OceanMaterialSettings")});
+		usi.BindConstantBuffer(1, {Hash64("ShallowWaterCellConstants")});
+        Metal::BoundUniforms boundUniforms(
+			patchRender,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         metalContext.Bind(patchRender);
 
         SetupVertexGeneratorShader(metalContext);
-        metalContext.BindVS(MakeResourceList(1, 
+        metalContext.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(1, 
             _simulationGrid->_waterHeightsSRV[thisFrameBuffer]));
 
-        metalContext.BindPS(MakeResourceList(4, 
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, 
             _lookupTableSRV,
             _simulationGrid->_waterVelocitiesSRV[0],
             _simulationGrid->_waterVelocitiesSRV[1],
@@ -1133,14 +1144,12 @@ namespace SceneEngine
 
         auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(
             SimplePatchBox::Desc(_gridDimension, _gridDimension, true));
-        metalContext.Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
+        metalContext.Bind(*(Metal::Resource*)simplePatchBox._simplePatchIndexBuffer->QueryInterface(typeid(Metal::Resource).hash_code()), Format::R32_UINT);
 
-        Metal::ConstantBuffer simulatingCB(nullptr, sizeof(CellConstants));
-        const Metal::ConstantBuffer* prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
-        boundUniforms.Apply(
-            metalContext, 
-            parserContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(nullptr, prebuiltBuffers, dimof(prebuiltBuffers)));
+        auto simulatingCB = MakeMetalCB(nullptr, sizeof(CellConstants));
+        ConstantBufferView prebuiltBuffers[] = { &globalOceanMaterialConstantBuffer, &simulatingCB };
+        boundUniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+		boundUniforms.Apply(metalContext, 1, UniformsStream{MakeIteratorRange(prebuiltBuffers)});
 
         for (auto i=_activeSimulationElements.cbegin(); i!=_activeSimulationElements.cend(); ++i) {
             if (i->_arrayIndex < 128) {
@@ -1155,27 +1164,27 @@ namespace SceneEngine
     void ShallowWaterSim::BindForOceanRender(MetalContext& metalContext, unsigned bufferCounter)
     {
         unsigned thisFrameBuffer = (bufferCounter+0)%_simulationGrid->_rotatingBufferCount;
-        metalContext.BindVS(MakeResourceList(3, 
+        metalContext.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(3, 
             _simulationGrid->_waterHeightsSRV[thisFrameBuffer],
             _lookupTableSRV));
-        metalContext.BindPS(MakeResourceList(5, _simulationGrid->_normalsTextureShaderResource));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, _simulationGrid->_normalsTextureShaderResource));
         if (_simulationGrid->_foamQuantitySRV[bufferCounter&1].IsGood())
-            metalContext.BindPS(MakeResourceList(14, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
-        metalContext.BindPS(MakeResourceList(15, _lookupTableSRV));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(14, _simulationGrid->_foamQuantitySRV[bufferCounter&1]));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(15, _lookupTableSRV));
     }
 
     void ShallowWaterSim::UnbindForOceanRender(MetalContext& metalContext)
     {
-        metalContext.UnbindVS<Metal::ShaderResourceView>(3, 2);
-        metalContext.UnbindPS<Metal::ShaderResourceView>(5, 1);
-        metalContext.UnbindPS<Metal::ShaderResourceView>(14, 2);
+        MetalStubs::UnbindVS<Metal::ShaderResourceView>(metalContext, 3, 2);
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 5, 1);
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 14, 2);
     }
 
     void ShallowWaterSim::BindForErosionSimulation(MetalContext& metalContext, unsigned bufferCounter)
     {
         unsigned thisFrameBuffer = (bufferCounter+0)%_simulationGrid->_rotatingBufferCount;
-        metalContext.BindCS(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer], _lookupTableSRV));
-        metalContext.BindCS(MakeResourceList(5, _simulationGrid->_waterVelocitiesSRV[0], _simulationGrid->_waterVelocitiesSRV[1], _simulationGrid->_waterVelocitiesSRV[2], _simulationGrid->_waterVelocitiesSRV[3]));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, _simulationGrid->_waterHeightsSRV[thisFrameBuffer], _lookupTableSRV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(5, _simulationGrid->_waterVelocitiesSRV[0], _simulationGrid->_waterVelocitiesSRV[1], _simulationGrid->_waterVelocitiesSRV[2], _simulationGrid->_waterVelocitiesSRV[3]));
     }
 
     unsigned ShallowWaterSim::FindActiveGrid(Int2 gridCoords)

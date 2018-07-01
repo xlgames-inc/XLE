@@ -67,7 +67,7 @@ namespace SceneEngine
         ResLocator _dummyTarget;
 
         ResLocator              _triangleBufferRes;
-        Metal::VertexBuffer     _triangleBufferVB;
+        Metal::Buffer			_triangleBufferVB;
         SRV                     _triangleBufferSRV;
 
         Metal::ViewportDesc _gridBufferViewport;
@@ -120,11 +120,12 @@ namespace SceneEngine
         _gridBufferSRV = SRV(_gridBuffer->ShareUnderlying());
         _listsBufferUAV = UAV(
 			_listsBuffer->ShareUnderlying(),
-			TextureViewDesc(
-				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+			TextureViewDesc{
+				Format::Unknown,
 				TextureViewDesc::All,
 				TextureViewDesc::All,
-				TextureViewDesc::Flags::AttachedCounter));
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::AttachedCounter});
         _listsBufferSRV = SRV(_listsBuffer->ShareUnderlying());
 
         _dummyTarget = uploads.Transaction_Immediate(
@@ -264,8 +265,9 @@ namespace SceneEngine
                 "OUTPUT_PRIM_ID=1;INPUT_RAYTEST_TRIS=1");
             metalContext.Bind(shader);
 
-            Metal::BoundInputLayout inputLayout(InputLayout(il, dimof(il)), shader);
-            metalContext.Bind(inputLayout);
+            Metal::BoundInputLayout inputLayout(MakeIteratorRange(il), shader);
+			VertexBufferView vbvs[] = { VertexBufferView{box._triangleBufferVB, offsets[0]} };
+            inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
 
                 // no shader constants/resources required
 
@@ -275,7 +277,6 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Techniques::CommonResources()._cullDisable);
             metalContext.Bind(Topology::PointList);
-            metalContext.Bind(MakeResourceList(box._triangleBufferVB), strides[0], offsets[0]);
 
             metalContext.Bind(
                 MakeResourceList(box._dummyRTV), nullptr,
@@ -304,7 +305,7 @@ namespace SceneEngine
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 #endif
 
-        context.BindPS(MakeResourceList(5, mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters), mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters), mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
         const bool useMsaaSamplers = mainTargets.GetSampling()._sampleCount > 1;
 
         StringMeld<256> defines;
@@ -315,10 +316,18 @@ namespace SceneEngine
             "xleres/basic2D.vsh:fullscreen:vs_*", 
             "xleres/shadowgen/rtshadmetrics.sh:ps_main:ps_*",
             defines.get());
-        Metal::BoundUniforms uniforms(debuggingShader);
-        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-        uniforms.BindShaderResources(1, {"RTSListsHead", "RTSLinkedLists", "RTSTriangles", "DepthTexture"});
-        uniforms.BindConstantBuffers(1, {"OrthogonalShadowProjection", "ScreenToShadowProjection"});
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("OrthogonalShadowProjection")});
+		usi.BindConstantBuffer(1, {Hash64("ScreenToShadowProjection")});
+		usi.BindShaderResource(0, Hash64("RTSListsHead"));
+		usi.BindShaderResource(1, Hash64("RTSLinkedLists"));
+		usi.BindShaderResource(2, Hash64("RTSTriangles"));
+		usi.BindShaderResource(3, Hash64("DepthTexture"));
+        Metal::BoundUniforms uniforms(
+			debuggingShader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
 
         context.Bind(debuggingShader);
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
@@ -328,16 +337,18 @@ namespace SceneEngine
             const Metal::ShaderResourceView* srvs[] = 
                 { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &mainTargets.GetSRV(IMainTargets::MultisampledDepth) };
 
-            SharedPkt constants[2];
-            const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};
-            prebuiltConstants[0] = &p.second._orthoCB;
-            constants[1] = BuildScreenToShadowConstants(
-                p.second, parserContext.GetProjectionDesc()._cameraToWorld,
-                parserContext.GetProjectionDesc()._cameraToProjection);
+			ConstantBufferView cbvs[] = {
+				&p.second._orthoCB,
+				BuildScreenToShadowConstants(
+					p.second, parserContext.GetProjectionDesc()._cameraToWorld,
+					parserContext.GetProjectionDesc()._cameraToProjection)};
 
-            uniforms.Apply(
-                context, parserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(constants, prebuiltConstants, dimof(constants), srvs, dimof(srvs)));
+            uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+            uniforms.Apply(context, 1, 
+				UniformsStream{
+					MakeIteratorRange(cbvs),
+					UniformsStream::MakeResources(MakeIteratorRange(srvs))
+					});
         }
 
         context.Draw(4);

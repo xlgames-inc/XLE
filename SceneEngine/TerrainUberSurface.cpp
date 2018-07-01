@@ -13,6 +13,7 @@
 #include "Noise.h"
 #include "Erosion.h"
 #include "SurfaceHeightsProvider.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -449,15 +450,21 @@ namespace SceneEngine
 		StringMeld<256, ::Assets::ResChar> fullShaderName;
 		fullShaderName << desc._shaderName << ":cs_*";
 
-		auto& cbBytecode = ::Assets::GetAssetDep<CompiledShaderByteCode>(fullShaderName.get());
 		_cs = &::Assets::GetAssetDep<Metal::ComputeShader>(fullShaderName.get());
 
-		_uniforms = Metal::BoundUniforms(cbBytecode);
-		_uniforms.BindConstantBuffer(Hash64("Parameters"), 0, 1);
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("Parameters")});
 		for (unsigned c = 0; c<desc._extraPackets.size(); ++c)
-			_uniforms.BindConstantBuffer(std::get<0>(desc._extraPackets[c]), 1 + c, 1);
+			usi.BindConstantBuffer(1 + c, {std::get<0>(desc._extraPackets[c])});
+		usi.BindShaderResource(0, Hash64("InputSurface"));
 
-		_needsInputHash = _uniforms.BindShaderResource(Hash64("InputSurface"), 0, 1);
+		_uniforms = Metal::BoundUniforms(
+			*_cs,
+			Metal::PipelineLayoutConfig{},
+			UniformsStreamInterface{},
+			usi);
+
+		_needsInputHash = (_uniforms._boundResourceSlots[1] != 0);
 
 		_depVal = _cs->GetDependencyValidation();
 	}
@@ -477,10 +484,10 @@ namespace SceneEngine
             auto context = Metal::DeviceContext::Get(threadContext);
 
             Metal::UnorderedAccessView uav(_pimpl->_gpucache[0]->ShareUnderlying());
-            context->BindCS(RenderCore::MakeResourceList(uav));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(uav));
 
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-            context->BindCS(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             
             struct Parameters
             {
@@ -504,7 +511,7 @@ namespace SceneEngine
             }
 
             const Metal::ShaderResourceView* resources[] = { &cacheCopySRV };
-            std::vector<Metal::ConstantBufferPacket> pkts;
+            std::vector<ConstantBufferView> pkts;
             pkts.push_back(RenderCore::MakeSharedPkt(parameters));
             for (unsigned c=0; c<extraPacketCount; ++c) {
                 auto start = std::get<1>(extraPackets[c]);
@@ -513,15 +520,16 @@ namespace SceneEngine
             }
 
             box._uniforms.Apply(
-				*context, 
-				Metal::UniformsStream(), 
-				Metal::UniformsStream(AsPointer(pkts.begin()), nullptr, pkts.size(), resources, dimof(resources)));   // no access to global uniforms here
+				*context, 1,
+				UniformsStream{
+					MakeIteratorRange(pkts), 
+					UniformsStream::MakeResources(MakeIteratorRange(resources))});
             context->Bind(*box._cs);
             const unsigned threadGroupDim = 16;
             context->Dispatch(
                 (adjMaxs[0] - adjMins[0] + 1 + threadGroupDim - 1) / threadGroupDim,
                 (adjMaxs[1] - adjMins[1] + 1 + threadGroupDim - 1) / threadGroupDim);
-            context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 1);
 
             QueueShortCircuitUpdate(adjMins, adjMaxs);
         }
@@ -571,8 +579,8 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
-            Metal::ShaderResourceView  gpuCacheSRV(_pimpl->_gpucache[0]->ShareUnderlying());
-            metalContext->BindPS(MakeResourceList(5, gpuCacheSRV));
+            Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->ShareUnderlying());
+            metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, gpuCacheSRV));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2D.vsh:fullscreen:vs_*", 
                 "xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
@@ -583,7 +591,7 @@ namespace SceneEngine
             metalContext->Draw(4);
         CATCH_ASSETS_END(parserContext)
 
-        metalContext->UnbindPS<RenderCore::Metal::ShaderResourceView>(5, 1);
+        MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(*metalContext, 5, 1);
     }
 
     void GenericUberSurfaceInterface::SetShortCircuitBridge(const std::shared_ptr<ShortCircuitBridge>& bridge)

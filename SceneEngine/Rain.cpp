@@ -8,6 +8,7 @@
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
@@ -89,21 +90,24 @@ namespace SceneEngine
                 "xleres/effects/rainparticles.sh:gs_main:gs_*",
                 "xleres/effects/rainparticles.sh:ps_main:ps_*",
                 "");
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
             static uint64 HashRainSpawn = Hash64("RainSpawn");
             static uint64 HashRandomValuesTexture = Hash64("RandomValuesTexture");
-            uniforms.BindConstantBuffer(HashRainSpawn, 0, 1);
-            uniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {HashRainSpawn});
+            usi.BindShaderResource(0, HashRandomValuesTexture);
+			Metal::BoundUniforms uniforms(
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
 
             auto& balancedNoise 
                 = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
 
             const Metal::ConstantBuffer* cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource() };
-            uniforms.Apply(
-                *context, parserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
+            uniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+            uniforms.Apply(*context, 1, Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
             context->Bind(shader);
             context->Bind(Metal::BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
             context->Bind(CullMode::None);   // some particles will get a flipped winding order (because the projection is relatively simple... So disable back face culling)
@@ -201,24 +205,25 @@ namespace SceneEngine
             // auto depthBufferResource = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetDepthStencilView());
             // Metal::ShaderResourceView depthsSRV(depthBufferResource.get(), Format::R24_UNORM_X8_TYPELESS);
 
-            auto& simulationShaderByteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(
-                "xleres/effects/simrain.sh:SimulateDrops:cs_*", 
-                "");
             auto& simulationShader = ::Assets::GetAssetDep<Metal::ComputeShader>(
                 "xleres/effects/simrain.sh:SimulateDrops:cs_*", 
                 "");
-            Metal::BoundUniforms simUniforms(simulationShaderByteCode);
-            Techniques::TechniqueContext::BindGlobalUniforms(simUniforms);
             static uint64 HashSimulationParameters  = Hash64("SimulationParameters");
             static uint64 HashRandomValuesTexture   = Hash64("RandomValuesTexture");
             static uint64 HashParticlesInput        = Hash64("ParticlesInput");
             static uint64 HashDepthBuffer           = Hash64("DepthBuffer");
             static uint64 HashNormalsBuffer         = Hash64("NormalsBuffer");
-            simUniforms.BindConstantBuffer(HashSimulationParameters, 0, 1);
-            simUniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
-            simUniforms.BindShaderResource(HashParticlesInput, 1, 1);
-            simUniforms.BindShaderResource(HashDepthBuffer, 2, 1);
-            simUniforms.BindShaderResource(HashNormalsBuffer, 3, 1);
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {HashSimulationParameters});
+            usi.BindShaderResource(0, HashRandomValuesTexture);
+            usi.BindShaderResource(1, HashParticlesInput);
+            usi.BindShaderResource(2, HashDepthBuffer);
+            usi.BindShaderResource(3, HashNormalsBuffer);
+			Metal::BoundUniforms simUniforms(
+				simulationShader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
 
             auto& projDesc = parserContext.GetProjectionDesc();
             Float3 projScale; float projZOffset;
@@ -264,17 +269,17 @@ namespace SceneEngine
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             
             context->Bind(simulationShader);
-            context->BindCS(MakeResourceList(resources._simParticlesUAV));
-            context->BindCS(MakeResourceList(Techniques::CommonResources()._defaultSampler));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(resources._simParticlesUAV));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(Techniques::CommonResources()._defaultSampler));
 
             context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
-            simUniforms.Apply(
-                *context, parserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
+            simUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+            simUniforms.Apply(*context, 1, Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
             context->Dispatch(particleCountWidth/32, particleCountWidth/32);
 
-            context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
-            context->UnbindCS<Metal::ShaderResourceView>(4, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 1);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 4, 2);
+			context->GetNumericUniforms(ShaderStage::Compute).Reset();
             oldTargets.ResetToOldTargets(*context);
 
                 // After updating the particles, we can render them
@@ -287,16 +292,20 @@ namespace SceneEngine
                 "xleres/effects/rainparticles.sh:gs_main:gs_*",
                 "xleres/effects/rainparticles.sh:ps_main:ps_*",
                 "");
-            Metal::BoundUniforms drawUniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(drawUniforms);
-            drawUniforms.BindConstantBuffer(HashSimulationParameters, 0, 1);
-            drawUniforms.BindShaderResource(HashRandomValuesTexture, 0, 1);
-            drawUniforms.BindShaderResource(HashParticlesInput, 1, 1);
-            drawUniforms.BindShaderResource(HashDepthBuffer, 2, 1);
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {HashSimulationParameters});
+            usi.BindShaderResource(0, HashRandomValuesTexture);
+            usi.BindShaderResource(1, HashParticlesInput);
+            usi.BindShaderResource(2, HashDepthBuffer);
 
-            drawUniforms.Apply(
-                *context, parserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
+			Metal::BoundUniforms drawUniforms(
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+
+            drawUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+            drawUniforms.Apply(*context, 1, Metal::UniformsStream(nullptr, cbs, dimof(cbs), srvs, dimof(srvs)));
             context->Bind(shader);
 
             SetupVertexGeneratorShader(*context);
@@ -306,7 +315,7 @@ namespace SceneEngine
             context->Bind(Metal::DepthStencilState(true, false));
 
             context->Draw(particleCountWidth*particleCountWidth);
-            context->UnbindVS<Metal::ShaderResourceView>(3, 1);
+            MetalStubs::UnbindVS<Metal::ShaderResourceView>(*context, 3, 1);
         CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Topology::TriangleList);

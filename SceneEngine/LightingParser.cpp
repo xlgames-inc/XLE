@@ -63,7 +63,7 @@ namespace SceneEngine
     OceanLightingSettings GlobalOceanLightingSettings; 
 
     void LightingParser_ResolveGBuffer( 
-        Metal::DeviceContext& context,
+        IThreadContext& context,
         LightingParserContext& parserContext,
         IMainTargets& mainTargets);
 
@@ -909,7 +909,7 @@ namespace SceneEngine
                 //
 
             CATCH_ASSETS_BEGIN {
-                LightingParser_ResolveGBuffer(metalContext, parserContext, mainTargets);
+                LightingParser_ResolveGBuffer(context, parserContext, mainTargets);
             } CATCH_ASSETS_END(parserContext)
 
                 // Post lighting resolve operations... (must rebind the depth buffer)
@@ -999,11 +999,11 @@ namespace SceneEngine
                     // We want to reuse the presentation target texture, except with the format modified for SRGB/Linear
                     {   IMainTargets::PresentationTarget, IMainTargets::PresentationTarget_ToneMapWrite,
                         {{ hardwareSRGBDisabled ? TextureViewDesc::ColorLinear : TextureViewDesc::ColorSRGB }},
-                        AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
+                        LoadStore::DontCare, LoadStore::Retain }
                 });
             
             ToneMap_Execute(
-                metalContext, parserContext, luminanceResult, toneMapSettings, 
+                context, parserContext, luminanceResult, toneMapSettings, 
                 applyToneMapping,
                 mainTargets.GetSRV(postLightingResolve));
         }

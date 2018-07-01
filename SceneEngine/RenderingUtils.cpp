@@ -6,6 +6,7 @@
 
 #include "RenderingUtils.h"
 #include "LightingParserContext.h"
+#include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -52,7 +53,7 @@ namespace SceneEngine
                 InputElementDesc( "COLOR", 0, Format::R8G8B8A8_UNORM )
             };
 
-            VertexBuffer vertexBuffer(vertices, sizeof(vertices));
+            auto vertexBuffer = MakeMetalVB(vertices, sizeof(vertices));
 
             using namespace RenderCore::Metal;
             using namespace RenderCore::Techniques;

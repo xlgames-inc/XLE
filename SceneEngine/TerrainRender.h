@@ -312,9 +312,9 @@ namespace SceneEngine
     class TerrainRenderingContext
     {
     public:
-        RenderCore::Metal::ConstantBuffer  _tileConstantsBuffer;
-        RenderCore::Metal::ConstantBuffer  _localTransformConstantsBuffer;
-        RenderCore::Metal::ViewportDesc    _currentViewport;
+        RenderCore::Metal::Buffer			_tileConstantsBuffer;
+        RenderCore::Metal::Buffer			_localTransformConstantsBuffer;
+        RenderCore::Metal::ViewportDesc		_currentViewport;
         unsigned        _indexDrawCount;
 
         enum class PriorityMode { None, All, JustHeights };

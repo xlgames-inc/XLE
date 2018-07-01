@@ -11,6 +11,7 @@
 #include "SceneEngineUtils.h"
 #include "SurfaceHeightsProvider.h"
 #include "LightingParserContext.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -275,8 +276,8 @@ namespace SceneEngine
             XlTan(params._thermalSlopeAngle * gPI / 180.f),
             params._thermalErosionRate
         };
-        metalContext.BindCS(RenderCore::MakeResourceList(5, Metal::ConstantBuffer(&constants, sizeof(constants))));
-        metalContext.BindCS(RenderCore::MakeResourceList(
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(5, MakeMetalCB(&constants, sizeof(constants))));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(
             Techniques::CommonResources()._defaultSampler,
             Techniques::CommonResources()._linearClampSampler));
 
@@ -295,7 +296,7 @@ namespace SceneEngine
 
             // shift sediment
         Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_softMaterials->GetUnderlying());
-        metalContext.BindCS(RenderCore::MakeResourceList(1, _pimpl->_softMaterialsCopySRV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(1, _pimpl->_softMaterialsCopySRV));
 
         auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
         metalContext.Bind(shiftShader);
@@ -308,7 +309,7 @@ namespace SceneEngine
         metalContext.Bind(thermalShader);
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
         
-        metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 8);
+        MetalStubs::UnbindCS<Metal::UnorderedAccessView>(metalContext, 0, 8);
 
         ++_pimpl->_bufferId;
     }
@@ -348,7 +349,7 @@ namespace SceneEngine
     {
         CATCH_ASSETS_BEGIN
             const float terrainScale = _pimpl->_worldSpaceSpacing;
-            metalContext.BindPS(RenderCore::MakeResourceList(2, 
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(2, 
                 _pimpl->_hardMaterialsSRV, _pimpl->_softMaterialsSRV));
 
             if (mode == RenderDebugMode::WaterVelocity3D) {
@@ -381,16 +382,18 @@ namespace SceneEngine
                 };
 
                 Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
-                Metal::BoundUniforms uniforms(shader);
-                Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
+                Metal::BoundUniforms uniforms(
+					shader,
+					Metal::PipelineLayoutConfig{},
+					Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
                 
-                metalContext.Bind(inputLayout);
-                uniforms.Apply(metalContext, 
-                    parserContext.GetGlobalUniformsStream(), Metal::UniformsStream());
+                uniforms.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
                 metalContext.Bind(shader);
 
-                metalContext.Bind(MakeResourceList(
-                    Metal::VertexBuffer(vertices, sizeof(vertices))), sizeof(Vertex), 0);
+				auto vb = MakeMetalVB(vertices, sizeof(vertices));
+				VertexBufferView vbvs[] = {&vb};
+				inputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+
                 metalContext.Bind(Techniques::CommonResources()._cullDisable);
                 metalContext.Bind(Topology::TriangleStrip);
                 metalContext.Draw(4);

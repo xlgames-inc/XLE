@@ -8,6 +8,7 @@
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
@@ -108,30 +109,33 @@ namespace SceneEngine
         const float shallowGridPhysicalDimension = Tweakable("OceanShallowPhysicalDimension", 256.f);
         // const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
-        Metal::ConstantBuffer materialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto materialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
 
         struct GridConstants
         {
             unsigned width; unsigned height;
             float spectrumFade; unsigned dummy;
         } gridConstants = { dimensions, dimensions, oceanSettings._spectrumFade, 0 };
-        Metal::ConstantBuffer gridConstantsBuffer(&gridConstants, sizeof(gridConstants));
+        auto gridConstantsBuffer = MakeMetalCB(&gridConstants, sizeof(gridConstants));
 
-        Metal::BoundUniforms setupUniforms(::Assets::GetAssetDep<CompiledShaderByteCode>("xleres/Ocean/FFT.csh:Setup:cs_*", "DO_INVERSE=0"));
-        Techniques::TechniqueContext::BindGlobalUniforms(setupUniforms);
-        setupUniforms.BindConstantBuffer(Hash64("OceanGridConstants"), 0, 1);
-        setupUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("OceanGridConstants")});
+		usi.BindConstantBuffer(1, {Hash64("OceanMaterialSettings")});
+        Metal::BoundUniforms setupUniforms(
+			setup,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
         
-        const Metal::ConstantBuffer* cbs[] = { &gridConstantsBuffer, &materialConstantBuffer };
-        setupUniforms.Apply(*context, 
-            parserContext.GetGlobalUniformsStream(),
-            Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
+        ConstantBufferView cbs[] = { &gridConstantsBuffer, &materialConstantBuffer };
+        setupUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+		setupUniforms.Apply(*context, 1, UniformsStream{MakeIteratorRange(cbs)});
 
         context->BindCS(MakeResourceList(
             _workingTextureRealUVA, _workingTextureImaginaryUVA,
             _workingTextureXRealUVA, _workingTextureXImaginaryUVA,
             _workingTextureYRealUVA, _workingTextureYImaginaryUVA));
-        context->BindCS(MakeResourceList(
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
             calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
             strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
         context->Bind(setup);
@@ -142,61 +146,56 @@ namespace SceneEngine
             context->Dispatch((dimensions + (32-1))/32, (dimensions + (32-1))/32);
         }
 
-        context->UnbindCS<Metal::UnorderedAccessView>(0, 6);
+        MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 6);
 
             //  Perform FFT transform first on the heights texture, then on the X & Y displacement textures
-        context->BindCS(MakeResourceList(_workingTextureRealUVA, _workingTextureImaginaryUVA));
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_workingTextureRealUVA, _workingTextureImaginaryUVA));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->BindCS(MakeResourceList(_workingTextureXRealUVA, _workingTextureXImaginaryUVA));
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_workingTextureXRealUVA, _workingTextureXImaginaryUVA));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->BindCS(MakeResourceList(_workingTextureYRealUVA, _workingTextureYImaginaryUVA));
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_workingTextureYRealUVA, _workingTextureYImaginaryUVA));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
-        context->UnbindCS<Metal::UnorderedAccessView>(0, 6);
+        MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 6);
 
             //  Generate normals using the displacement textures
         if (!_normalsTextureUAV.empty()) {
             Metal::BoundUniforms buildNormalsUniforms(
-                ::Assets::GetAssetDep<CompiledShaderByteCode>(
-                    _useDerivativesMapForNormals 
-                    ? "xleres/Ocean/OceanNormals.csh:BuildDerivatives:cs_*" 
-                    : "xleres/Ocean/OceanNormals.csh:BuildNormals:cs_*",
-                    shaderDefines.get()));
-            Techniques::TechniqueContext::BindGlobalUniforms(buildNormalsUniforms);
-            buildNormalsUniforms.BindConstantBuffer(Hash64("OceanGridConstants"), 0, 1);
-            buildNormalsUniforms.BindConstantBuffer(Hash64("OceanMaterialSettings"), 1, 1);
-            buildNormalsUniforms.Apply(*context, 
-                parserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
+				buildNormals,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+            buildNormalsUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
+            buildNormalsUniforms.Apply(*context, 1, UniformsStream{MakeIteratorRange(cbs)});
 
-            context->BindCS(MakeResourceList(
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 _workingTextureRealSRV, 
                 _workingTextureXRealSRV, 
                 _workingTextureYRealSRV,
                 _foamQuantitySRV2[(bufferCounter+1)&1]));
-            context->BindCS(MakeResourceList(_normalsTextureUAV[0], _foamQuantityUAV[bufferCounter&1]));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_normalsTextureUAV[0], _foamQuantityUAV[bufferCounter&1]));
             context->Bind(buildNormals); context->Dispatch((dimensions + (32-1))/32, (dimensions + (32-1))/32);
-            context->UnbindCS<Metal::UnorderedAccessView>(0, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 2);
 
             context->Bind(buildNormalsMipmaps);
             for (unsigned step = 0; step<_normalsTextureUAV.size()-1; ++step) {
                 unsigned mipDims = dimensions >> (step+1);
                 unsigned constants[4] = { mipDims, mipDims, 0, 0 };
-                context->BindCS(MakeResourceList(Metal::ConstantBuffer(constants, sizeof(constants))));
+                context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
 
-                context->BindCS(MakeResourceList(4, _normalsSingleMipSRV[step]));
-                context->BindCS(MakeResourceList(_normalsTextureUAV[step+1]));
+                context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(4, _normalsSingleMipSRV[step]));
+                context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_normalsTextureUAV[step+1]));
             
                 context->Dispatch((mipDims + (32-1))/32, (mipDims + (32-1))/32);
-                context->UnbindCS<Metal::UnorderedAccessView>(0, 1);
+                MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 1);
             }
 
-            context->UnbindCS<Metal::ShaderResourceView>(0, 4);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 0, 4);
         }
     }
 
@@ -225,7 +224,7 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         context.Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:main:ps_*"));
-        context.BindPS(MakeResourceList(
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
             _workingTextureRealSRV, _workingTextureImaginarySRV,
             calmSpectrum._inputRealShaderResource, calmSpectrum._inputImaginaryShaderResource,
             strongSpectrum._inputRealShaderResource, strongSpectrum._inputImaginaryShaderResource));
@@ -536,9 +535,7 @@ namespace SceneEngine
         normalsTextureUVA.reserve(normalsMipCount);
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
-			auto window = TextureViewDesc(
-				uintNormalFormat, TextureDesc::Dimensionality::Undefined,
-				TextureViewDesc::SubResourceRange{ c,1 });
+			auto window = TextureViewDesc{uintNormalFormat, TextureViewDesc::SubResourceRange{ c,1 }};
             normalsTextureUVA.push_back(Metal::UnorderedAccessView(normalsTexture->ShareUnderlying(), window));
             normalsSingleMipSRV.push_back(Metal::ShaderResourceView(normalsTexture->ShareUnderlying(), window));
         }

@@ -16,6 +16,7 @@
 #include "Sky.h"
 #include "VolumetricFog.h"
 #include "RayTracedShadows.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -157,12 +158,13 @@ namespace SceneEngine
             context.Bind(resolveRes._writeNonSky, 0x0);
         }
 
-        TextureViewDesc justDepthWindow(
-            {TextureViewDesc::Aspect::Depth},
-            TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
-            TextureViewDesc::Flags::JustDepth);
+        TextureViewDesc justDepthWindow{
+            TextureViewDesc::Aspect::Depth,
+            TextureViewDesc::All, TextureViewDesc::All,
+			TextureDesc::Dimensionality::Undefined, 
+			TextureViewDesc::Flags::JustDepth};
 
-        context.BindPS(MakeResourceList(
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
             mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
             mainTargets.GetSRV(IMainTargets::GBufferNormals),
             mainTargets.GetSRV(IMainTargets::GBufferParameters),
@@ -195,13 +197,13 @@ namespace SceneEngine
 
         auto* shadowSRV = parsingContext.GetNamedResources().GetSRV(dominantLight._shadowTextureName);
         assert(shadowSRV);
-        metalContext.BindPS(MakeResourceList(3, *shadowSRV));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, *shadowSRV));
 
         auto samplingCount = 1; // ...?
         auto& resolveRes = ConsoleRig::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
         metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
-        metalContext.BindPS(MakeResourceList(11, 
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(11, 
             dominantLight._resolveParametersCB,
 			ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32));
 
@@ -222,7 +224,7 @@ namespace SceneEngine
         Metal::DeviceContext& metalContext,
         Techniques::ParsingContext& parsingContext)
     {
-        metalContext.UnbindPS<Metal::ShaderResourceView>(3,1);   // unbind shadow textures
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3,1);   // unbind shadow textures
         auto& rtState = parsingContext.GetTechniqueContext()._runtimeState;
         rtState.SetParameter(u("SHADOW_CASCADE_MODE"), 0);
         rtState.SetParameter(u("SHADOW_ENABLE_NEAR_CASCADE"), 0);
@@ -276,8 +278,9 @@ namespace SceneEngine
     }
 
     void LightingParser_ResolveGBuffer(
-        Metal::DeviceContext& metalContext, LightingParserContext& parserContext, IMainTargets& mainTargets)
+        IThreadContext& threadContext, LightingParserContext& parserContext, IMainTargets& mainTargets)
     {
+		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
         Metal::GPUAnnotation anno2(metalContext, "ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
@@ -371,38 +374,42 @@ namespace SceneEngine
             // separately the "aspects" so the DSV has stencil, and the SRV has depth.
             // Perhaps we need an input attachment for the depth buffer in the second pass?
             
-			AttachmentDesc attachments[] =
-                {{  IMainTargets::LightResolve, 
-                    AttachmentDesc::DimensionsMode::OutputRelative, 1.f, 1.f, 0u,
-                    (!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-                    TextureViewDesc::Aspect::ColorLinear,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget }};
+			AttachmentDesc lightResolveAttachmentDesc =
+                {	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+					1.f, 1.f, 0u,
+                    TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
+                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
 			
-			parserContext.GetNamedResources().DefineAttachments(MakeIteratorRange(attachments));
+			parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
 
-            FrameBufferDesc resolveLighting(
-                {
-					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth},
-					SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil}
-                },
+			SubpassDesc subpasses[] {
+				SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth},
+				SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil}
+            };
+
+            FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));
+			/*
                 {
                     {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewDesc(),
-                        AttachmentViewDesc::LoadStore::Retain_ClearStencil, AttachmentViewDesc::LoadStore::Retain_RetainStencil },
+                        LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil },
                         
                     {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth_JustStencil,
-                        TextureViewDesc(
+                        TextureViewDesc{
                             {TextureViewDesc::Aspect::Stencil},
-                            TextureDesc::Dimensionality::Undefined, TextureViewDesc::All, TextureViewDesc::All,
-                            TextureViewDesc::Flags::JustStencil),
-                        AttachmentViewDesc::LoadStore::DontCare_RetainStencil, AttachmentViewDesc::LoadStore::DontCare },
+                            TextureViewDesc::All, TextureViewDesc::All,
+							TextureDesc::Dimensionality::Undefined, 
+							TextureViewDesc::Flags::JustStencil},
+                        LoadStore::DontCare_RetainStencil, LoadStore::DontCare },
 
                     {   IMainTargets::LightResolve, IMainTargets::LightResolve, TextureViewDesc(),
-                        AttachmentViewDesc::LoadStore::DontCare, AttachmentViewDesc::LoadStore::Retain }
+                        LoadStore::DontCare, LoadStore::Retain }
                 });
+			*/
 
+			auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(resolveLighting, parserContext.GetNamedResources());
             Techniques::RenderPassInstance rpi(
-                metalContext, resolveLighting,
-                0u, parserContext.GetNamedResources(),
+                threadContext, fb, resolveLighting,
+                parserContext.GetNamedResources(),
                 Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
 
                 // -------- -------- -------- -------- -------- --------
@@ -427,7 +434,7 @@ namespace SceneEngine
             SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
             auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
             metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
-            metalContext.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
                 // -------- -------- -------- -------- -------- --------
                 //          A M B I E N T
@@ -467,9 +474,9 @@ namespace SceneEngine
                     };
 
                     auto ambientLightPacket = MakeSharedPkt(ambientcbuffer);
-                    ambientResolveShaders._ambientLightUniforms->Apply(
-                        metalContext, parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream(&ambientLightPacket, nullptr, 1));
+                    ambientResolveShaders._ambientLightUniforms->Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+					ConstantBufferView cbvs[] = {ambientLightPacket};
+					ambientResolveShaders._ambientLightUniforms->Apply(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
                     #if 0 // GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                             //  When screen space reflections are enabled, we need to take a copy of the lighting
@@ -509,7 +516,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_END(parserContext)
 
-        metalContext.UnbindPS<Metal::ShaderResourceView>(0, 9);
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 9);
 
             // reset some of the states to more common defaults...
         metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
@@ -543,7 +550,7 @@ namespace SceneEngine
                     SetupVertexGeneratorShader(context);
                     context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
                     context.Bind(Techniques::CommonResources()._dssDisable);
-                    context.BindPS(MakeResourceList(
+                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                         mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
                         mainTargets.GetSRV(IMainTargets::GBufferNormals),
                         mainTargets.GetSRV(IMainTargets::GBufferParameters),
@@ -552,12 +559,12 @@ namespace SceneEngine
 
                     LightingParser_BindLightResolveResources(context, parserContext);
 
-                    context.BindPS(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
-                    context.BindPS(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
+                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
                     ResolveLights(context, parserContext, lightingResolveContext, true);
 
-                    context.UnbindPS<Metal::ShaderResourceView>(0, 9);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 9);
                     context.Bind(Techniques::CommonResources()._defaultRasterizer);
                     context.Bind(Techniques::CommonResources()._dssReadWrite);
                 });
@@ -579,14 +586,12 @@ namespace SceneEngine
 
         using CB = LightingResolveShaders::CB;
         using SR = LightingResolveShaders::SR;
-        Metal::ConstantBufferPacket constantBufferPackets[CB::Max];
-        const Metal::ConstantBuffer* prebuiltConstantBuffers[] = { nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr, nullptr };
-        static_assert(dimof(prebuiltConstantBuffers)==CB::Max, "Prebuilt constant buffer array incorrect size");
+        ConstantBufferView cbvs[CB::Max];
 
         const Metal::ShaderResourceView* srvs[] = { nullptr, nullptr, nullptr, nullptr };
         static_assert(dimof(srvs)==SR::Max, "Shader resource array incorrect size");
         
-        prebuiltConstantBuffers[CB::ShadowParam] = &ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
+        cbvs[CB::ShadowParam] = &ConsoleRig::FindCachedBox2<ShadowResourcesBox>()._sampleKernel32;
 
         Metal::ConstantBuffer debuggingCB;
         if (debugging) {
@@ -596,8 +601,8 @@ namespace SceneEngine
                 UInt2 viewportSize; 
                 Int2 MousePosition;
             } debuggingGlobals = { UInt2(unsigned(vdesc.Width), unsigned(vdesc.Height)), GetCursorPos() };
-            debuggingCB = Metal::ConstantBuffer(&debuggingGlobals, sizeof(debuggingGlobals));
-            prebuiltConstantBuffers[CB::Debugging] = &debuggingCB;
+            debuggingCB = MakeMetalCB(&debuggingGlobals, sizeof(debuggingGlobals));
+            cbvs[CB::Debugging] = &debuggingCB;
         }
 
             ////////////////////////////////////////////////////////////////////////
@@ -614,7 +619,7 @@ namespace SceneEngine
             //-------- do lights --------
         for (unsigned l=0; l<lightCount; ++l) {
             auto& i = parserContext.GetSceneParser()->GetLightDesc(l);
-            constantBufferPackets[1] = BuildLightConstants(i);
+            cbvs[1] = BuildLightConstants(i);
 
             CATCH_ASSETS_BEGIN
                 LightingResolveShaders::LightShaderType shaderType;
@@ -632,9 +637,9 @@ namespace SceneEngine
                     const auto& preparedShadows = parserContext._preparedDMShadows[shadowFrustumIndex].second;
                     srvs[SR::DMShadow] = parserContext.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
                     assert(srvs[SR::DMShadow]);
-                    prebuiltConstantBuffers[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
-                    prebuiltConstantBuffers[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
-                    prebuiltConstantBuffers[CB::ShadowResolveParam] = &preparedShadows._resolveParametersCB;
+                    cbvs[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
+                    cbvs[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
+                    cbvs[CB::ShadowResolveParam] = &preparedShadows._resolveParametersCB;
 
                         //
                         //      We need an accurate way to get from screen coords into 
@@ -650,7 +655,7 @@ namespace SceneEngine
                         //
                     
                     auto& mainCamProjDesc = parserContext.GetProjectionDesc();
-                    constantBufferPackets[CB::ScreenToShadow] = BuildScreenToShadowConstants(
+                    cbvs[CB::ScreenToShadow] = BuildScreenToShadowConstants(
                         preparedShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
                     if (preparedShadows._mode == ShadowProjectionDesc::Projections::Mode::Ortho && allowOrthoShadowResolve) {
@@ -668,7 +673,7 @@ namespace SceneEngine
                     if (rtShadowIndex < parserContext._preparedRTShadows.size()) {
                         const auto& preparedRTShadows = parserContext._preparedRTShadows[rtShadowIndex].second;
                         auto& mainCamProjDesc = parserContext.GetProjectionDesc();
-                        constantBufferPackets[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
+                        cbvs[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
                             preparedRTShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
                         srvs[SR::RTShadow_ListHead] = &preparedRTShadows._listHeadSRV;
@@ -686,9 +691,8 @@ namespace SceneEngine
                 assert(shader);
                 if (!shader->_shader) continue;
 
-                shader->_uniforms.Apply(
-                    context, parserContext.GetGlobalUniformsStream(), 
-                    Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, srvs));
+                shader->_uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+				shader->_uniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
                 if (shader->_dynamicLinking)
                     context.Bind(*shader->_shader, shader->_boundClassInterfaces);
                 else

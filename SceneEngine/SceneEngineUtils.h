@@ -304,6 +304,10 @@ namespace SceneEngine
         CopyFilter filter = CopyFilter::Bilinear,
         ProtectState::States::BitField protectStates = ~0u);
 
+	RenderCore::Metal::Buffer MakeMetalCB(const void* data, size_t size);
+	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size);
+	RenderCore::Metal::Buffer MakeMetalIB(const void* data, size_t size);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline SavedTargets::ResetMarker::ResetMarker()

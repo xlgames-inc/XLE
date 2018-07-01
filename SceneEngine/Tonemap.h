@@ -40,14 +40,14 @@ namespace SceneEngine
     };
 
     LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext,
         const ToneMapSettings& settings,
         const RenderCore::Metal::ShaderResourceView& inputResource,
         bool doAdapt = true);
 
     LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         const ToneMapSettings& settings,
         const RenderCore::Metal::ShaderResourceView& inputResource,

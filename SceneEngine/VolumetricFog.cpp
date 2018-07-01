@@ -10,6 +10,7 @@
 #include "Noise.h"
 #include "LightInternal.h"
 #include "ShaderLightDesc.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -173,23 +174,35 @@ namespace SceneEngine
         float filteringWeightsBuffer[12];
         XlZeroMemory(filteringWeightsBuffer);
         BuildGaussianFilteringWeights(filteringWeightsBuffer, desc._filterStdDev, filterSize);
-        Metal::ConstantBuffer filterWeightsConstants(filteringWeightsBuffer, sizeof(filteringWeightsBuffer));
+        auto filterWeightsConstants = MakeMetalCB(filteringWeightsBuffer, sizeof(filteringWeightsBuffer));
 
         ///////////////////////////////////////////////////////////////////////////////////////////
-        Metal::BoundUniforms buildExponentialShadowMapBinding(*buildExponentialShadowMap);
-        Techniques::TechniqueContext::BindGlobalUniforms(buildExponentialShadowMapBinding);
-        buildExponentialShadowMapBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
-        buildExponentialShadowMapBinding.BindConstantBuffer(Hash64("$Globals"), 1, 1);
+		UniformsStreamInterface buildExponentialShadowMapBindingUsi;
+		buildExponentialShadowMapBindingUsi.BindConstantBuffer(0, {Hash64("VolumetricFogConstants")});
+		buildExponentialShadowMapBindingUsi.BindConstantBuffer(1, {Hash64("$Globals")});
+		Metal::BoundUniforms buildExponentialShadowMapBinding(
+			*buildExponentialShadowMap,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			buildExponentialShadowMapBindingUsi);
+
 
         Metal::BoundUniforms horizontalFilterBinding, verticalFilterBinding;
         if (horizontalFilter && verticalFilter) {
-            horizontalFilterBinding = Metal::BoundUniforms(std::ref(*horizontalFilter));
-            horizontalFilterBinding.BindConstantBuffer(Hash64("$Globals"), 0, 1);
-            horizontalFilterBinding.BindConstantBuffer(Hash64("Filtering"), 1, 1);
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {Hash64("$Globals")});
+			usi.BindConstantBuffer(1, {Hash64("Filtering")});
+            horizontalFilterBinding = Metal::BoundUniforms(
+				std::ref(*horizontalFilter),
+				Metal::PipelineLayoutConfig{},
+				UniformsStreamInterface{},
+				usi);
 
-            verticalFilterBinding = Metal::BoundUniforms(std::ref(*verticalFilter));
-            verticalFilterBinding.BindConstantBuffer(Hash64("$Globals"), 0, 1);
-            verticalFilterBinding.BindConstantBuffer(Hash64("Filtering"), 1, 1);   
+			verticalFilterBinding = Metal::BoundUniforms(
+				std::ref(*verticalFilter),
+				Metal::PipelineLayoutConfig{},
+				UniformsStreamInterface{},
+				usi);
         }
 
         ///////////////////////////////////////////////////////////////////////////////////////////
@@ -198,17 +211,21 @@ namespace SceneEngine
         auto* propagateLight = &::Assets::GetAssetDep<Metal::ComputeShader>(
             "xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines);
 
+		UniformsStreamInterface injectLightBindingUsi;
+		injectLightBindingUsi.BindConstantBuffer(0, {Hash64("VolumetricFogConstants")});
         Metal::BoundUniforms injectLightBinding(
-            std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>(
-                "xleres/volumetriceffect/injectlight.csh:InjectLighting:cs_*", defines)));
-        Techniques::TechniqueContext::BindGlobalUniforms(injectLightBinding);
-        injectLightBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+			injectLight,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			injectLightBindingUsi);
 
+		UniformsStreamInterface propagateLightBindingUsi;
+		propagateLightBindingUsi.BindConstantBuffer(0, {Hash64("VolumetricFogConstants")});
         Metal::BoundUniforms propagateLightBinding(
-            std::ref(::Assets::GetAssetDep<CompiledShaderByteCode>(
-                "xleres/volumetriceffect/injectlight.csh:PropagateLighting:cs_*", defines)));
-        Techniques::TechniqueContext::BindGlobalUniforms(propagateLightBinding);
-        propagateLightBinding.BindConstantBuffer(Hash64("VolumetricFogConstants"), 0, 1);
+			propagateLight,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			propagateLightBindingUsi);
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         const char* vertexShader = 
@@ -223,19 +240,26 @@ namespace SceneEngine
         if (desc._useMsaaSamplers)
             XlCatString(definesTable, dimof(definesTable), ";MSAA_SAMPLERS=1");
 
+		UniformsStreamInterface resolveLightBindingUsi;
+		resolveLightBindingUsi.BindConstantBuffer(0, {Hash64("VolumetricFogConstants")});
+        resolveLightBindingUsi.BindShaderResource(0, Hash64("InscatterTexture"));
+		resolveLightBindingUsi.BindShaderResource(1, Hash64("TransmissionTexture"));
+
         auto* resolveLight = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "xleres/VolumetricEffect/resolvefog.psh:ResolveFog:ps_*", definesTable);
-        Metal::BoundUniforms resolveLightBinding(*resolveLight);
-        Techniques::TechniqueContext::BindGlobalUniforms(resolveLightBinding);
-        resolveLightBinding.BindConstantBuffers(1, {"VolumetricFogConstants"});
-        resolveLightBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture"});
+        Metal::BoundUniforms resolveLightBinding(
+			*resolveLight,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			resolveLightBindingUsi);
 
         auto* resolveLightNoGrid = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             vertexShader, "xleres/VolumetricEffect/resolvefog.psh:ResolveFogNoGrid:ps_*", definesTable);
-        Metal::BoundUniforms resolveLightNoGridBinding(*resolveLightNoGrid);
-        Techniques::TechniqueContext::BindGlobalUniforms(resolveLightNoGridBinding);
-        resolveLightNoGridBinding.BindConstantBuffers(1, {"VolumetricFogConstants"});
-        resolveLightNoGridBinding.BindShaderResources(1, {"InscatterTexture", "TransmissionTexture"});
+        Metal::BoundUniforms resolveLightNoGridBinding(
+			*resolveLightNoGrid,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			resolveLightBindingUsi);
 
         ///////////////////////////////////////////////////////////////////////////////////////////
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
@@ -352,9 +376,9 @@ namespace SceneEngine
         auto shadowMapShaderResource = Metal::ShaderResourceView(shadowMapTexture->ShareUnderlying());
         std::vector<Metal::RenderTargetView> shadowMapRenderTargets;
         for (unsigned c=0; c<unsigned(desc._frustumCount); ++c) {
-			auto window = TextureViewDesc(
-				shadowMapFormat, TextureDesc::Dimensionality::Undefined,
-				TextureViewDesc::SubResourceRange{c,1});
+			auto window = TextureViewDesc{
+				shadowMapFormat,
+				TextureViewDesc::SubResourceRange{c,1}};
             shadowMapRenderTargets.emplace_back(Metal::RenderTargetView(shadowMapTexture->ShareUnderlying(), window));
         }
 
@@ -362,9 +386,9 @@ namespace SceneEngine
         auto shadowMapShaderResourceTemp = Metal::ShaderResourceView(shadowMapTextureTemp->ShareUnderlying());
         std::vector<Metal::RenderTargetView> shadowMapRenderTargetsTemp;
         for (unsigned c=0; c<unsigned(desc._frustumCount); ++c) {
-			auto window = TextureViewDesc(
-				shadowMapFormat, TextureDesc::Dimensionality::Undefined,
-				TextureViewDesc::SubResourceRange{ c,1 });
+			auto window = TextureViewDesc{
+				shadowMapFormat,
+				TextureViewDesc::SubResourceRange{ c,1 }};
             shadowMapRenderTargetsTemp.emplace_back(Metal::RenderTargetView(shadowMapTextureTemp->ShareUnderlying(), window));
         }
 
@@ -494,7 +518,7 @@ namespace SceneEngine
         _tableSRV = Metal::ShaderResourceView(_table->ShareUnderlying());
 
         float constants[4] = { maxValue, maxDistance, 0.f, 0.f };
-        _tableConstants = Metal::ConstantBuffer(constants, sizeof(constants));
+        _tableConstants = MakeMetalCB(constants, sizeof(constants));
     }
 
     VolumetricFogDensityTable::~VolumetricFogDensityTable() {}
@@ -569,7 +593,7 @@ namespace SceneEngine
                 rendererCfg._skipShadowFrustums, rendererCfg._gridDimensions[2],
                 GetShadowFilterMode(), GetShadowFilterStdDev());
 
-            RenderCore::Metal::ConstantBufferPacket constantBufferPackets2[2];
+            ConstantBufferView constantBufferPackets2[2];
             constantBufferPackets2[0] = MakeVolFogConstants(cfg, rendererCfg);
 
             const unsigned blurredShadowSize = rendererCfg._blurredShadowSize;
@@ -587,7 +611,7 @@ namespace SceneEngine
 
             auto* shadowSRV = lightingParserContext.GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
             assert(shadowSRV);
-            context->BindPS(MakeResourceList(2, *shadowSRV));
+            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(2, *shadowSRV));
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -597,9 +621,8 @@ namespace SceneEngine
                     globalsBuffer = { c + rendererCfg._skipShadowFrustums, downsampleScaleFactor, { 0u,0u } };
                 constantBufferPackets2[1] = MakeSharedPkt(globalsBuffer);
 
-                fogShaders._buildExponentialShadowMapBinding.Apply(
-                    *context, lightingParserContext.GetGlobalUniformsStream(),
-                    Metal::UniformsStream(constantBufferPackets2, nullptr, dimof(constantBufferPackets2)));
+                fogShaders._buildExponentialShadowMapBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
+				fogShaders._buildExponentialShadowMapBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
 
                 context->Bind(MakeResourceList(*i), nullptr);
                 context->Draw(4);
@@ -610,23 +633,21 @@ namespace SceneEngine
                 auto i2 = fogRes._shadowMapTempRTVs.begin();
                 for (auto i=fogRes._shadowMapRTVs.begin(); i!=fogRes._shadowMapRTVs.end(); ++i, ++c, ++i2) {
                     struct WorkingSlice { unsigned _workingSlice; unsigned dummy[3]; } globalsBuffer = { c, {0u,0u,0u} };
-                    Metal::ConstantBufferPacket constantBufferPackets[2];
+                    ConstantBufferView constantBufferPackets[2];
                     constantBufferPackets[0] = MakeSharedPkt(globalsBuffer);
-                    const Metal::ConstantBuffer* prebuiltConstantBuffers[2] = { nullptr, nullptr };
-                    prebuiltConstantBuffers[1] = &fogShaders._filterWeightsConstants;
-                    fogShaders._horizontalFilterBinding.Apply(
-                        *context, lightingParserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream(constantBufferPackets, prebuiltConstantBuffers, 2));
+                    constantBufferPackets[1] = &fogShaders._filterWeightsConstants;
+                    fogShaders._horizontalFilterBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
+					fogShaders._horizontalFilterBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets)});
 
-                    context->UnbindPS<Metal::ShaderResourceView>(0, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
                     context->Bind(MakeResourceList(*i2), nullptr);
-                    context->BindPS(MakeResourceList(fogRes._shadowMapSRV));
+                    context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(fogRes._shadowMapSRV));
                     context->Bind(*fogShaders._horizontalFilter);
                     context->Draw(4);
 
-                    context->UnbindPS<Metal::ShaderResourceView>(0, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
                     context->Bind(MakeResourceList(*i), nullptr);
-                    context->BindPS(MakeResourceList(fogRes._shadowMapTempSRV));
+                    context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(fogRes._shadowMapTempSRV));
                     context->Bind(*fogShaders._verticalFilter);
                     context->Draw(4);
                 }
@@ -634,46 +655,44 @@ namespace SceneEngine
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
-            context->UnbindPS<Metal::ShaderResourceView>(0, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
             savedTargets.ResetToOldTargets(*context);
             context->Bind(Techniques::CommonResources()._blendStraightAlpha);
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-            context->BindCS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-            context->BindCS(MakeResourceList(9, 
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(9, 
                 ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(
                     "xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-            context->BindCS(MakeResourceList(
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 Techniques::CommonResources()._defaultSampler, 
                 Techniques::CommonResources()._linearClampSampler));
 
                 //  Inject the starting light into the volume texture (using compute shader)
-            context->BindCS(MakeResourceList(
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 fogRes._inscatterShadowingValuesUAV, fogRes._densityValuesUAV,
                 fogRes._transmissionValuesUAV, fogRes._inscatterFinalsValuesUAV));
-            context->BindCS(MakeResourceList(2, fogRes._shadowMapSRV));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(2, fogRes._shadowMapSRV));
 
-            fogShaders._injectLightBinding.Apply(
-                *context, lightingParserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets2, nullptr, dimof(constantBufferPackets2)));
+            fogShaders._injectLightBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
+			fogShaders._injectLightBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
             context->Bind(*fogShaders._injectLight);
             context->Dispatch(gridDims[0]/10, gridDims[1]/10, gridDims[2]/8);
 
-            context->UnbindCS<Metal::UnorderedAccessView>(0, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 2);
 
                 // do light propagation
-            context->BindCS(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._densityValuesSRV, fogRes._inscatterPointLightsValuesSRV));
-            fogShaders._propagateLightBinding.Apply(
-                *context, lightingParserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets2, nullptr, dimof(constantBufferPackets2)));
+            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._densityValuesSRV, fogRes._inscatterPointLightsValuesSRV));
+            fogShaders._propagateLightBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
+			fogShaders._propagateLightBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
             context->Bind(*fogShaders._propagateLight);
             context->Dispatch(gridDims[0]/10, gridDims[1]/10, 1);
 
-            context->UnbindCS<Metal::UnorderedAccessView>(0, 4);
-            context->UnbindCS<Metal::ShaderResourceView>(2, 4);
-            context->UnbindCS<Metal::ShaderResourceView>(13, 3);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 4);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 2, 4);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 13, 3);
             context->Unbind<Metal::ComputeShader>();
 
             ///////////////////////////////////////////////////////////////////////////////////////
@@ -713,7 +732,7 @@ namespace SceneEngine
             rendererCfg._gridDimensions[2],
             GetShadowFilterMode(), GetShadowFilterStdDev());
 
-        Metal::ConstantBufferPacket constantBufferPackets[2];
+        ConstantBufferView constantBufferPackets[2];
         constantBufferPackets[0] = MakeVolFogConstants(cfg, rendererCfg);
 
         // auto& fogTable = Techniques::FindCachedBox2<VolumetricFogDensityTable>(
@@ -725,24 +744,24 @@ namespace SceneEngine
             fogRes ? &fogRes->_transmissionValuesSRV : nullptr
             //, &fogTable._tableSRV
         };
-        const Metal::ConstantBuffer* prebuiltConstants[2] = {nullptr, nullptr};
         // prebuiltConstants[1] = &fogTable._tableConstants;
 
         if (doShadows) {
 
-            fogShaders._resolveLightBinding.Apply(
-                *context, lightingParserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(
-                    constantBufferPackets, prebuiltConstants, dimof(constantBufferPackets),
-                    srvs, dimof(srvs)));
+            fogShaders._resolveLightBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
+			fogShaders._resolveLightBinding.Apply(*context, 1, 
+                UniformsStream{
+                    MakeIteratorRange(constantBufferPackets),
+					UniformsStream::MakeResources(MakeIteratorRange(srvs))});
             context->Bind(*fogShaders._resolveLight);
 
         } else {
 
-            fogShaders._resolveLightNoGridBinding.Apply(
-                *context, lightingParserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(constantBufferPackets, prebuiltConstants, dimof(constantBufferPackets),
-                    srvs, dimof(srvs)));
+            fogShaders._resolveLightNoGridBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
+			fogShaders._resolveLightNoGridBinding.Apply(*context, 1, 
+                UniformsStream{
+					MakeIteratorRange(constantBufferPackets),
+					UniformsStream::MakeResources(MakeIteratorRange(srvs))});
             context->Bind(*fogShaders._resolveLightNoGrid);
 
         }
@@ -1026,11 +1045,11 @@ namespace SceneEngine
             "xleres/volumetriceffect/debugging.psh:VolumeShadows:ps_*",
             "");
         context.Bind(debuggingShader);
-        context.BindPS(MakeResourceList(0, res._shadowMapSRV, res._inscatterFinalsValuesSRV, res._transmissionValuesSRV, res._inscatterShadowingValuesSRV, res._densityValuesSRV));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, res._shadowMapSRV, res._inscatterFinalsValuesSRV, res._transmissionValuesSRV, res._inscatterShadowingValuesSRV, res._densityValuesSRV));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);
-        context.UnbindPS<RenderCore::Metal::ShaderResourceView>(0, 1);
+        MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(context, 0, 1);
     }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////

@@ -84,7 +84,7 @@ namespace SceneEngine
 
         context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(box._workingTextureRealUVA, box._workingTextureImaginaryUVA));
         unsigned constants[4] = {1, 0, 0, 0};
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(ConstantBuffer(constants, sizeof(constants))));
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
 
@@ -92,7 +92,7 @@ namespace SceneEngine
         context->Dispatch((dimensions + (32-1))/32);
 
         constants[0] = 0;
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(ConstantBuffer(constants, sizeof(constants))));
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(MakeMetalCB(constants, sizeof(constants))));
         context->Bind(fft1); context->Dispatch((dimensions + (32-1))/32);
         context->Bind(fft2); context->Dispatch((dimensions + (32-1))/32);
         MetalStubs::UnbindCS<UnorderedAccessView>(*context, 0, 2);
@@ -504,7 +504,7 @@ namespace SceneEngine
                 Identity<Float4x4>(), 
                 ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
             context->GetNumericUniforms(ShaderStage::Vertex).Bind(
-				MakeResourceList(parserContext.GetGlobalTransformCB(), ConstantBuffer(&localTransform, sizeof(localTransform))));
+				MakeResourceList(parserContext.GetGlobalTransformCB(), MakeMetalCB(&localTransform, sizeof(localTransform))));
             context->Bind(shader);
 			VertexBufferView vbv[] = { temporaryBuffer.get() };
 			BoundInputLayout(GlobalInputLayouts::PC, shader).Apply(*context, MakeIteratorRange(vbv));
@@ -629,7 +629,7 @@ namespace SceneEngine
             patchWidth = patchHeight = dimensions;
         }
         auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(SimplePatchBox::Desc(patchWidth, patchHeight, true));
-        context->Bind(simplePatchBox._simplePatchIndexBuffer, Format::R32_UINT);
+        context->Bind(*(Metal::Resource*)simplePatchBox._simplePatchIndexBuffer->QueryInterface(typeid(Metal::Resource).hash_code()), Format::R32_UINT);
 
         //////////////////////////////////////////////////////////////////////////////
 
@@ -764,8 +764,8 @@ namespace SceneEngine
         context->Bind(Topology::TriangleList);
         context->DrawIndexed(simplePatchBox._simplePatchIndexCount);
 
-        context->UnbindVS<ShaderResourceView>(0, 3);
-        context->UnbindPS<ShaderResourceView>(0, 10);
+        MetalStubs::UnbindVS<ShaderResourceView>(*context, 0, 3);
+        MetalStubs::UnbindPS<ShaderResourceView>(*context, 0, 10);
 
             //  some debugging information
         if (Tweakable("OceanDebugging", false)) {

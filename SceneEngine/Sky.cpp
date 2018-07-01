@@ -11,6 +11,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -89,20 +90,19 @@ namespace SceneEngine
         };
 
         Metal::BoundInputLayout inputLayout(GlobalInputLayouts::PT, shader);
-        context.Bind(inputLayout);
-
-        Metal::VertexBuffer temporaryVB(&vertices, sizeof(vertices));
-        context.Bind(MakeResourceList(temporaryVB), sizeof(Vertex), 0);
+        auto temporaryVB = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vertices));
+		VertexBufferView vbvs[] = {VertexBufferView{temporaryVB}};
+		inputLayout.Apply(context, MakeIteratorRange(vbvs));
 
             //  render 2 faces at a time, switching the texture as we go
             //  this would be more efficient if we could combine the shader
             //  resources into 1 texture array... but we don't have support
             //  for that currently.
-        context.BindPS(MakeResourceList(parts._faces12->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._faces12->GetShaderResource()));
         context.Draw(6*2);
-        context.BindPS(MakeResourceList(parts._faces34->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._faces34->GetShaderResource()));
         context.Draw(6*2, 6*2);
-        context.BindPS(MakeResourceList(parts._face5->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._face5->GetShaderResource()));
         context.Draw(  6, 6*2*2);
     }
 
@@ -168,15 +168,22 @@ namespace SceneEngine
                 "GEO_HAS_TEXCOORD=1;OUTPUT_WORLD_POSITION=1;SKY_PROJECTION=2");
         }
 
-        RenderCore::Metal::BoundUniforms uniforms(*_shader);
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("SkySettings")});
+
+        RenderCore::Metal::BoundUniforms uniforms(
+			*_shader,
+			Metal::PipelineLayoutConfig{},
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			usi);
         RenderCore::Metal::BoundUniforms postFogUniforms;
         if (_postFogShader) {
-            postFogUniforms = RenderCore::Metal::BoundUniforms(*_postFogShader);
+            postFogUniforms = RenderCore::Metal::BoundUniforms(
+				*_postFogShader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
         }
-        Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-        uniforms.BindConstantBuffer(Hash64("SkySettings"), 0, 1);
-        Techniques::TechniqueContext::BindGlobalUniforms(postFogUniforms);
-        postFogUniforms.BindConstantBuffer(Hash64("SkySettings"), 0, 1);
 
         auto validationCallback = std::make_shared<::Assets::DependencyValidation>();
         ::Assets::RegisterAssetDependency(validationCallback, _shader->GetDependencyValidation());
@@ -199,11 +206,10 @@ namespace SceneEngine
             auto& res = ConsoleRig::FindCachedBoxDep2<SkyShaderRes>(textureParts._projectionType, blendFog, CurrentSkyGeometryType);
 
             struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalDesc._skyBrightness };
-            RenderCore::SharedPkt pkts[] = { MakeSharedPkt(settings) };
+            ConstantBufferView cbvs[] = { MakeSharedPkt(settings) };
 
-            res._uniforms.Apply(
-                context, parserContext.GetGlobalUniformsStream(), 
-                Metal::UniformsStream(pkts, nullptr, dimof(pkts)));
+            res._uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+			res._uniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
             context.Bind(*res._shader);
             context.Bind(Techniques::CommonResources()._blendOpaque);
 
@@ -211,8 +217,7 @@ namespace SceneEngine
 
             if (CurrentSkyGeometryType == Plane) {
                 context.Bind(RenderCore::Topology::TriangleStrip);
-                context.Unbind<RenderCore::Metal::VertexBuffer>();
-                context.Unbind<RenderCore::Metal::BoundInputLayout>();
+                context.UnbindInputLayout();
 
                 context.Draw(4);
             } else {
@@ -247,21 +252,18 @@ namespace SceneEngine
                 Float3(1.f, 1.f, 1.f), 0.f,
                 Float3(1.f, 1.f, 1.f), 0.f,
             };
-            Metal::ConstantBuffer settingsConstants(&settings, sizeof(settings));
-            const Metal::ConstantBuffer* constants[] = { &settingsConstants };
+            auto settingsConstants = MakeSharedPkt(settings);
+            ConstantBufferView cbvs[] = { settingsConstants };
 
-            res._postfogUniforms.Apply(
-                context, 
-                parserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(nullptr, constants, 1));
+            res._postfogUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+			res._postfogUniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
             context.Bind(Techniques::CommonResources()._blendStraightAlpha);
             context.Bind(*res._postFogShader);
 
             if (CurrentSkyGeometryType == Plane) {
                 context.Bind(Topology::TriangleStrip);
-                context.Unbind<RenderCore::Metal::VertexBuffer>();
-                context.Unbind<RenderCore::Metal::BoundInputLayout>();
+                context.UnbindInputLayout();
 
                 context.Draw(4);
             } else {
@@ -335,27 +337,10 @@ namespace SceneEngine
         if (!IsGood()) return ~0u;
 
         if (_projectionType==1) {
-            context.BindPS(MakeResourceList(
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
         } else
-            context.BindPS(MakeResourceList(
-                bindSlot,
-                _face5->GetShaderResource()));
-
-        return _projectionType;
-    }
-
-    unsigned    SkyTextureParts::BindPS_G(  
-        RenderCore::Metal::DeviceContext& context, 
-        int bindSlot) const
-    {
-        if (!IsGood()) return ~0u;
-
-        if (_projectionType==1) {
-            context.BindPS_G(MakeResourceList(
-                bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
-        } else
-            context.BindPS_G(MakeResourceList(
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot,
                 _face5->GetShaderResource()));
 

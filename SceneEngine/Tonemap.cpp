@@ -350,13 +350,15 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////
 
     static bool TryCalculateInputs(
-        Metal::DeviceContext& context,
+        RenderCore::IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
         ToneMappingResources& resources,
         const ToneMapSettings& settings,
         const Metal::ShaderResourceView& sourceTexture,
         bool doAdapt)
     {
+		auto& context = *Metal::DeviceContext::Get(threadContext);
+
             //
             //      First step in tonemapping is always to calculate the overall
             //      scene brightness. We do this in a series of step-down operations,
@@ -385,8 +387,8 @@ namespace SceneEngine
                 Float2(float(sourceDims[0]) / float(resources._firstStepWidth), float(sourceDims[1]) / float(resources._firstStepHeight))
             };
 
-            Metal::ConstantBufferPacket cbs2[] = { AsConstants(settings), MakeSharedPkt(luminanceConstants) };
-            resources._boundUniforms.Apply(context, Metal::UniformsStream(), Metal::UniformsStream(cbs2));
+            ConstantBufferView cbs2[] = { AsConstants(settings), MakeSharedPkt(luminanceConstants) };
+			resources._boundUniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbs2)});
 
             assert(!resources._luminanceBuffers.empty());
 
@@ -491,10 +493,9 @@ namespace SceneEngine
 					UniformsStreamInterface{},
 					usi);
 
-                Metal::ConstantBuffer clampingWindowCB(nullptr, sizeof(Float4));
-                const Metal::ConstantBuffer* cbs[] = { nullptr, &clampingWindowCB };
-                RenderCore::SharedPkt pkts[] = { std::move(filteringWeights), RenderCore::SharedPkt() };
-                boundUniforms.Apply(context, 1, Metal::UniformsStream(pkts, cbs, dimof(pkts), nullptr, 0));
+                auto clampingWindowCB = MakeMetalCB(nullptr, sizeof(Float4));
+                ConstantBufferView cbvs[] = { filteringWeights, &clampingWindowCB };
+				boundUniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
                 unsigned bloomBufferIndex = (unsigned)resources._bloomBuffers.size()-1;
                 for (auto i=resources._bloomBuffers.crbegin(); ;) {
@@ -573,7 +574,7 @@ namespace SceneEngine
     }
 
     LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         LightingParserContext& parserContext,
         const ToneMapSettings& settings,
         const RenderCore::Metal::ShaderResourceView& inputResource,
@@ -597,7 +598,7 @@ namespace SceneEngine
     }
 
     LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         const ToneMapSettings& settings,
         const RenderCore::Metal::ShaderResourceView& inputResource,
@@ -723,7 +724,7 @@ namespace SceneEngine
                             hardwareSRGBEnabled, doColorGrading, !!(colorGradingSettings._doLevelsAdustment), 
                             !!(colorGradingSettings._doSelectiveColor), !!(colorGradingSettings._doFilterColor));
 
-                        SharedPkt cbs[] = { 
+                        ConstantBufferView cbvs[] = { 
                             AsConstants(settings), 
                             MakeSharedPkt(colorGradingSettings) 
                         };
@@ -732,7 +733,7 @@ namespace SceneEngine
                             &luminanceResult._propertiesBuffer, &luminanceResult._bloomBuffer
                         };
                         box._uniforms.Apply(devContext, 0, parserContext.GetGlobalUniformsStream());
-						box._uniforms.Apply(devContext, 1, Metal::UniformsStream(cbs, srvs));
+						box._uniforms.Apply(devContext, 1, UniformsStream{MakeIteratorRange(cbvs), UniformsStream::MakeResources(MakeIteratorRange(srvs))});
                         devContext.Bind(*box._shaderProgram);
                         bindCopyShader = false;
                         
@@ -788,7 +789,7 @@ namespace SceneEngine
             "xleres/utility/metricsrender.psh:main:ps_*", ""));
         Metal::ViewportDesc mainViewportDesc(context);
         unsigned dimensions[4] = { (unsigned)mainViewportDesc.Width, (unsigned)mainViewportDesc.Height, 0, 0 };
-        context.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(Metal::ConstantBuffer(dimensions, sizeof(dimensions))));
+        context.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
         context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(resources._propertiesBuffer.SRV()));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
         context.Bind(Topology::PointList);
@@ -965,13 +966,13 @@ namespace SceneEngine
             float blurConstants[4] = { settings._startDistance, settings._endDistance, 0.f, 0.f };
             float filteringWeights[8];
             BuildGaussianFilteringWeights(filteringWeights, settings._blurStdDev, dimof(filteringWeights));
-            Metal::ConstantBufferPacket constantBufferPackets[] = { MakeSharedPkt(filteringWeights), MakeSharedPkt(blurConstants) };
+            ConstantBufferView constantBufferPackets[] = { MakeSharedPkt(filteringWeights), MakeSharedPkt(blurConstants) };
 
                 //          blur once horizontally, and once vertically
             ///////////////////////////////////////////////////////////////////////////////////////
             {
                 resources._horizontalFilterBinding->Apply(context, 0, parserContext.GetGlobalUniformsStream());
-				resources._horizontalFilterBinding->Apply(context, 1, Metal::UniformsStream(constantBufferPackets, blurSrvs));
+				resources._horizontalFilterBinding->Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets), UniformsStream::MakeResources(MakeIteratorRange(blurSrvs))});
                 context.Bind(*resources._horizontalFilter);
                 context.Draw(4);
             }
@@ -980,7 +981,7 @@ namespace SceneEngine
                 context.Bind(MakeResourceList(resources._blurBufferRTV[0]), nullptr);
                 const Metal::ShaderResourceView* blurSrvs2[] = { &depthsSRV, &resources._blurBufferSRV[1] };
                 resources._verticalFilterBinding->Apply(context, 0, parserContext.GetGlobalUniformsStream());
-                resources._verticalFilterBinding->Apply(context, 1, Metal::UniformsStream(constantBufferPackets, blurSrvs2));
+				resources._verticalFilterBinding->Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets), UniformsStream::MakeResources(MakeIteratorRange(blurSrvs2))});
                 context.Bind(*resources._verticalFilter);
                 context.Draw(4);
             }
@@ -1003,10 +1004,11 @@ namespace SceneEngine
             context.Bind(*resources._integrateDistantBlur);
             const Metal::ShaderResourceView* srvs[] = { &depthsSRV, &resources._blurBufferSRV[0] };
             resources._integrateDistantBlurBinding->Apply(context, 0, parserContext.GetGlobalUniformsStream());
-			resources._integrateDistantBlurBinding->Apply(context, 1, Metal::UniformsStream(constantBufferPackets, srvs));
+			resources._integrateDistantBlurBinding->Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets), UniformsStream::MakeResources(MakeIteratorRange(srvs))});
             context.Bind(resources._integrateBlend);
             context.Draw(4);
-            context.UnbindPS<Metal::ShaderResourceView>(3, 3);
+			resources._integrateDistantBlurBinding->UnbindShaderResources(context, 1);
+            // context.UnbindPS<Metal::ShaderResourceView>(3, 3);
 
         CATCH_ASSETS_END(parserContext)
     }

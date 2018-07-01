@@ -721,7 +721,7 @@ namespace SceneEngine
             renderer->CompletePendingUploads();
         }
 
-        context->BindPS(MakeResourceList(8, 
+        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(8, 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Diffuse], 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Normal], 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Roughness]));
@@ -755,11 +755,11 @@ namespace SceneEngine
             _pimpl->_matCfg._roughnessMax,
             0.f, 0.f, 0.f
         };
-        Metal::ConstantBuffer lightingConstantsBuffer(terrainLightingConstants, sizeof(terrainLightingConstants));
-        context->BindPS(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer, _pimpl->_textures->_procTexContsBuffer));
+        auto lightingConstantsBuffer = MakeMetalCB(terrainLightingConstants, sizeof(terrainLightingConstants));
+        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer, _pimpl->_textures->_procTexContsBuffer));
         if (mode == TerrainRenderingContext::Mode_VegetationPrepare) {
                 // this cb required in the geometry shader for vegetation prepare mode!
-            context->BindGS(MakeResourceList(6, lightingConstantsBuffer));  
+            context->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(6, lightingConstantsBuffer));  
         }
 
         state->EnterState(context, parserContext, *_pimpl->_textures, renderer->GetHeightsElementSize(), mode);

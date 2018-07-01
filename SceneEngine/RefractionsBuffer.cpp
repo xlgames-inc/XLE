@@ -7,6 +7,7 @@
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
@@ -77,14 +78,14 @@ namespace SceneEngine
             metalContext.Bind(newViewport);
 
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
-            metalContext.UnbindPS<Metal::ShaderResourceView>(12, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 12, 1);
 
             auto res = Metal::ExtractResource<ID3D::Resource>(oldTargets.GetRenderTargets()[0]);
-            Metal::ShaderResourceView sourceSRV(res.get());
+            Metal::ShaderResourceView sourceSRV(Metal::AsResourcePtr(res.get()));
             Metal::TextureDesc2D textureDesc(res.get());
                         
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
-            metalContext.BindPS(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(sourceSRV)); // mainTargets._postResolveSRV));
             SetupVertexGeneratorShader(metalContext);
             
             bool needStepDown = 
@@ -98,13 +99,13 @@ namespace SceneEngine
                 metalContext.Draw(4);
 
                 metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
-                metalContext.BindPS(MakeResourceList(_refractionsFrontSRV));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(_refractionsFrontSRV));
             }
 
             float filteringWeights[8];
             XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
             BuildGaussianFilteringWeights(filteringWeights, standardDeviationForBlur, 7);
-            metalContext.BindPS(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(filteringWeights, sizeof(filteringWeights))));
 
             metalContext.Bind(MakeResourceList(_refractionsBackTarget), nullptr);
             metalContext.Bind(
@@ -113,17 +114,18 @@ namespace SceneEngine
                     "xleres/Effects/SeparableFilter.psh:HorizontalBlur:ps_*"));
             metalContext.Draw(4);
 
-            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 1);
+			metalContext.GetNumericUniforms(ShaderStage::Pixel).Reset();
 
             metalContext.Bind(MakeResourceList(_refractionsFrontTarget), nullptr);
-            metalContext.BindPS(MakeResourceList(_refractionsBackSRV));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(_refractionsBackSRV));
             metalContext.Bind(
                 ::Assets::GetAssetDep<Metal::ShaderProgram>(
                     "xleres/basic2D.vsh:fullscreen:vs_*", 
                     "xleres/Effects/SeparableFilter.psh:VerticalBlur:ps_*"));
             metalContext.Draw(4);
                         
-            metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 1);
             oldTargets.ResetToOldTargets(metalContext);
         
         CATCH_ASSETS_END(parserContext)
@@ -186,7 +188,7 @@ namespace SceneEngine
             // todo --  should we create a non-msaa depth buffer even when the input is MSAA?
             //          it might be simplier for the shader pipeline. And we don't normally need
             //          MSAA in our duplicated depth buffers;
-		auto desc = Metal::ExtractDesc(&sourceDepthBuffer);
+		auto desc = sourceDepthBuffer.GetDesc();
 
         const bool resolveMSAA = true;
         if (desc._textureDesc._samples._sampleCount > 1 && resolveMSAA) {

@@ -129,8 +129,7 @@ namespace SceneEngine
     void SetupVertexGeneratorShader(Metal::DeviceContext& context)
     {
         context.Bind(Topology::TriangleStrip);
-        context.Unbind<Metal::VertexBuffer>();
-        context.Unbind<Metal::BoundInputLayout>();
+        context.UnbindInputLayout();
     }
 
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount)
@@ -552,10 +551,10 @@ namespace SceneEngine
             ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2d.vsh:fullscreen:vs_*",
                 "xleres/basic.psh:copy_depth:ps_*"));
-        context.BindPS(MakeResourceList(src));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
-        context.UnbindPS<Metal::ShaderResourceView>(0, 1);
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
     }
 
     class ShaderBasedCopyRes
@@ -599,8 +598,13 @@ namespace SceneEngine
                     "xleres/basic.psh:copy_bilinear:ps_*");
                 break;
             }
-            _uniforms = Metal::BoundUniforms(*_shader);
-            _uniforms.BindConstantBuffers(1, {"ScreenSpaceOutput"});
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {Hash64("ScreenSpaceOutput")});
+            _uniforms = Metal::BoundUniforms(
+				*_shader,
+				Metal::PipelineLayoutConfig{},
+				UniformsStreamInterface{},
+				usi);
 
             _validationCallback = _shader->GetDependencyValidation();
         }
@@ -648,14 +652,34 @@ namespace SceneEngine
         context.Bind(MakeResourceList(dest), nullptr);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(*res._shader);
-        res._uniforms.Apply(
-            context, Metal::UniformsStream(), 
-            Metal::UniformsStream({MakeSharedPkt(coords)}, {}));
+		ConstantBufferView cbvs[] = {MakeSharedPkt(coords)};
+		res._uniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
 		MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
     }
+
+	RenderCore::Metal::Buffer MakeMetalCB(const void* data, size_t size)
+	{
+		return RenderCore::Metal::MakeConstantBuffer(
+			RenderCore::Metal::GetObjectFactory(),
+			MakeIteratorRange(data, PtrAdd(data, size)));
+	}
+
+	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size)
+	{
+		return RenderCore::Metal::MakeVertexBuffer(
+			RenderCore::Metal::GetObjectFactory(),
+			MakeIteratorRange(data, PtrAdd(data, size)));
+	}
+
+	RenderCore::Metal::Buffer MakeMetalIB(const void* data, size_t size)
+	{
+		return RenderCore::Metal::MakeIndexBuffer(
+			RenderCore::Metal::GetObjectFactory(),
+			MakeIteratorRange(data, PtrAdd(data, size)));
+	}
 
 }
 

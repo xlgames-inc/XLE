@@ -72,7 +72,7 @@ namespace SceneEngine
         IndirectDrawBuffer();
         ~IndirectDrawBuffer();
     private:
-        Metal::VertexBuffer     _indirectArgsBuffer;
+        Metal::Buffer     _indirectArgsBuffer;
     };
 
     class VegetationSpawnResources
@@ -87,7 +87,7 @@ namespace SceneEngine
             : _bufferCount(bufferCount), _alignToTerrainUp(alignToTerrainUp) {}
         };
 
-        Metal::VertexBuffer         _streamOutputBuffers[2];
+        Metal::Buffer				_streamOutputBuffers[2];
         Metal::ShaderResourceView   _streamOutputSRV[2];
         intrusive_ptr<ID3D::Query>  _streamOutputCountsQuery;
 
@@ -150,10 +150,11 @@ namespace SceneEngine
         std::vector<Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
         for (unsigned c=0; c<desc._bufferCount; ++c) {
             auto res = uploads.Transaction_Immediate(bufferDesc);
-			auto window = TextureViewDesc(
-				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+			auto window = TextureViewDesc{
+				Format::Unknown,
 				TextureViewDesc::SubResourceRange{0,1}, TextureViewDesc::All,
-				TextureViewDesc::Flags::AppendBuffer);
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::AppendBuffer};
             instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->ShareUnderlying(), window));
             instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->ShareUnderlying()));
         }
@@ -226,8 +227,8 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
-            metalContext->BindGS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-            metalContext->BindGS(MakeResourceList(Metal::SamplerState()));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(Metal::SamplerState()));
 
                 //  we have to clear vertex input "3", because this is the instancing input slot -- and 
                 //  we're going to be writing to buffers that will be used for instancing.
@@ -266,7 +267,7 @@ namespace SceneEngine
                 instanceSpawnConstants._suppressionNoiseParams[mi][2] = cfg._materials[mi]._suppressionLacunarity;
             }
 
-            metalContext->BindGS(MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(5, MakeMetalCB(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             const bool needQuery = false;
@@ -348,7 +349,7 @@ namespace SceneEngine
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
             }
 
-            metalContext->BindCS(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
+            metalContext->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
             metalContext->GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
 #endif
 
@@ -389,9 +390,9 @@ namespace SceneEngine
             if (alignToTerrainUp)
                 shaderParams << ";TERRAIN_NORMAL=1";
 
-            metalContext->BindCS(MakeResourceList(
+            metalContext->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 parserContext.GetGlobalTransformCB(),
-                Metal::ConstantBuffer(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
+                MakeMetalCB(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
 
             metalContext->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
                 "xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
@@ -520,7 +521,7 @@ namespace SceneEngine
         // auto* buffer = res._instanceBuffers[instanceId].get();
         // const unsigned slotForVertexInput = 3;
         // context->GetUnderlying()->IASetVertexBuffers(slotForVertexInput, 1, &buffer, &stride, &offset);
-        context.BindVS(MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
+        context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
 
             // finally -- draw
         res._indirectDrawBuffer.Draw(context);
