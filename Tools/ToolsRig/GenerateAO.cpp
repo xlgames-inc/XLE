@@ -313,8 +313,8 @@ namespace ToolsRig
                     settings._renderResolution, settings._renderResolution, 
                     typelessFormat, 1, cubeFaces),
                 "AoGen"));
-        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->ShareUnderlying(), {dsvFormat});
-        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->ShareUnderlying(), {srvFormat});
+        _pimpl->_cubeDSV = Metal::DepthStencilView(_pimpl->_cubeLocator->GetUnderlying(), {dsvFormat});
+        _pimpl->_cubeSRV = Metal::ShaderResourceView(_pimpl->_cubeLocator->GetUnderlying(), {srvFormat});
 
         _pimpl->_miniLocator = bufferUploads.Transaction_Immediate(
             CreateDesc( 
@@ -322,7 +322,7 @@ namespace ToolsRig
                 0, GPUAccess::Write,
                 TextureDesc::Plain2D(4, 4, Format::R32_FLOAT, 1, cubeFaces),
                 "AoGenMini"));
-        _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->ShareUnderlying());
+        _pimpl->_miniUAV = Metal::UnorderedAccessView(_pimpl->_miniLocator->GetUnderlying());
 
         // _pimpl->_stepDownShader = &::Assets::GetAssetDep<Metal::ComputeShader>(
         //     "xleres/toolshelper/aogenprocess.sh:CubeMapStepDown:cs_*");

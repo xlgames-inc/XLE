@@ -67,7 +67,7 @@ namespace SceneEngine
         ResLocator _dummyTarget;
 
         ResLocator              _triangleBufferRes;
-        Metal::Buffer			_triangleBufferVB;
+        IResourcePtr			_triangleBufferVB;
         SRV                     _triangleBufferSRV;
 
         Metal::ViewportDesc _gridBufferViewport;
@@ -112,21 +112,21 @@ namespace SceneEngine
                 "RTShadowsTriangles"));
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-        _triangleBufferVB = Metal::VertexBuffer(_triangleBufferRes->ShareUnderlying());
-        _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->ShareUnderlying(), triangleSize*desc._triangleCount);
+        _triangleBufferVB = _triangleBufferRes->GetUnderlying();
+        _triangleBufferSRV = SRV::RawBuffer(_triangleBufferRes->GetUnderlying(), triangleSize*desc._triangleCount);
 #endif
 
-        _gridBufferUAV = UAV(_gridBuffer->ShareUnderlying());
-        _gridBufferSRV = SRV(_gridBuffer->ShareUnderlying());
+        _gridBufferUAV = UAV(_gridBuffer->GetUnderlying());
+        _gridBufferSRV = SRV(_gridBuffer->GetUnderlying());
         _listsBufferUAV = UAV(
-			_listsBuffer->ShareUnderlying(),
+			_listsBuffer->GetUnderlying(),
 			TextureViewDesc{
 				Format::Unknown,
 				TextureViewDesc::All,
 				TextureViewDesc::All,
 				TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::AttachedCounter});
-        _listsBufferSRV = SRV(_listsBuffer->ShareUnderlying());
+        _listsBufferSRV = SRV(_listsBuffer->GetUnderlying());
 
         _dummyTarget = uploads.Transaction_Immediate(
             CreateDesc(
@@ -134,7 +134,7 @@ namespace SceneEngine
                 0, GPUAccess::Read | GPUAccess::Write,
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R8_UINT),
                 "RTShadowsDummy"));
-        _dummyRTV = RTV(_dummyTarget->ShareUnderlying());
+        _dummyRTV = RTV(_dummyTarget->GetUnderlying());
 
         _gridBufferViewport = Metal::ViewportDesc { 0.f, 0.f, float(desc._width), float(desc._height), 0.f, 1.f };
     }

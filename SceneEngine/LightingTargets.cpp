@@ -61,8 +61,8 @@ namespace SceneEngine
             if (desc._gbufferFormats[c]._resourceFormat != Format::Unknown) {
                 bufferUploadsDesc._textureDesc._format = desc._gbufferFormats[c]._resourceFormat;
                 gbufferTextures[c] = CreateResourceImmediate(bufferUploadsDesc);
-                gbufferRTV[c] = Metal::RenderTargetView(gbufferTextures[c]->ShareUnderlying(), desc._gbufferFormats[c]._writeFormat);
-                gbufferSRV[c] = Metal::ShaderResourceView(gbufferTextures[c]->ShareUnderlying(), desc._gbufferFormats[c]._shaderReadFormat);
+                gbufferRTV[c] = Metal::RenderTargetView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._writeFormat);
+                gbufferSRV[c] = Metal::ShaderResourceView(gbufferTextures[c]->GetUnderlying(), desc._gbufferFormats[c]._shaderReadFormat);
             }
         }
 
@@ -76,10 +76,10 @@ namespace SceneEngine
             "MainDepth");
         auto msaaDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
         auto secondaryDepthBufferTexture = CreateResourceImmediate(depthBufferDesc);
-        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
-        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
-        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
-        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
 
             /////////
 
@@ -128,11 +128,11 @@ namespace SceneEngine
 
             /////////
 
-        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
-        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView msaaDepthBuffer(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
+        Metal::DepthStencilView secondaryDepthBuffer(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._writeFormat);
 
-        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
-        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->ShareUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView msaaDepthBufferSRV(msaaDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(secondaryDepthBufferTexture->GetUnderlying(), desc._depthFormat._shaderReadFormat);
 
             /////////
 
@@ -177,9 +177,9 @@ namespace SceneEngine
         auto lightingResolveCopy = CreateResourceImmediate(bufferUploadsDesc);
         bufferUploadsDesc._textureDesc._samples = TextureSamples::Create();
 
-        Metal::RenderTargetView lightingResolveTarget(lightingResolveTexture->ShareUnderlying(), desc._lightingResolveFormat._writeFormat);
-        Metal::ShaderResourceView lightingResolveSRV(lightingResolveTexture->ShareUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
-        Metal::ShaderResourceView lightingResolveCopySRV(lightingResolveCopy->ShareUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
+        Metal::RenderTargetView lightingResolveTarget(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._writeFormat);
+        Metal::ShaderResourceView lightingResolveSRV(lightingResolveTexture->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
+        Metal::ShaderResourceView lightingResolveCopySRV(lightingResolveCopy->GetUnderlying(), desc._lightingResolveFormat._shaderReadFormat);
 
         _lightingResolveTexture = std::move(lightingResolveTexture);
         _lightingResolveRTV = std::move(lightingResolveTarget);

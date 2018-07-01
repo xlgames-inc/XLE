@@ -61,9 +61,9 @@ namespace SceneEngine
             "OI-NodeBuffer");
         _nodeListBuffer = uploads.Transaction_Immediate(nodeListBufferDesc);
 
-        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->ShareUnderlying());
+        _fragmentIdsTextureUAV = Metal::UnorderedAccessView(_fragmentIdsTexture->GetUnderlying());
         _nodeListBufferUAV = Metal::UnorderedAccessView(
-            _nodeListBuffer->ShareUnderlying(),
+            _nodeListBuffer->GetUnderlying(),
 			TextureViewDesc{
 				Format::Unknown,
 				TextureViewDesc::All,
@@ -71,8 +71,8 @@ namespace SceneEngine
 				TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::AttachedCounter});
 
-        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->ShareUnderlying());
-        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->ShareUnderlying());
+        _fragmentIdsTextureSRV = Metal::ShaderResourceView(_fragmentIdsTexture->GetUnderlying());
+        _nodeListBufferSRV = Metal::ShaderResourceView(_nodeListBuffer->GetUnderlying());
         _pendingInitialClear = true;
 
         if (desc._checkInfiniteLoops) {
@@ -83,8 +83,8 @@ namespace SceneEngine
                     TextureDesc::Plain2D(desc._width, desc._height, Format::R32_UINT),
                     "Trans"));
 
-            _infiniteLoopRTV = RTV(_infiniteLoopTexture->ShareUnderlying());
-            _infiniteLoopSRV = SRV(_infiniteLoopTexture->ShareUnderlying());
+            _infiniteLoopRTV = RTV(_infiniteLoopTexture->GetUnderlying());
+            _infiniteLoopSRV = SRV(_infiniteLoopTexture->GetUnderlying());
         }
     }
 

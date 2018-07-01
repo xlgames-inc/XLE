@@ -483,7 +483,7 @@ namespace SceneEngine
                 // might be able to do this in a deferred context?
             auto context = Metal::DeviceContext::Get(threadContext);
 
-            Metal::UnorderedAccessView uav(_pimpl->_gpucache[0]->ShareUnderlying());
+            Metal::UnorderedAccessView uav(_pimpl->_gpucache[0]->GetUnderlying());
             context->GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(uav));
 
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
@@ -506,8 +506,8 @@ namespace SceneEngine
             
             Metal::ShaderResourceView cacheCopySRV;
             if (box._needsInputHash) {
-                Metal::Copy(*context, _pimpl->_gpucache[1]->GetUnderlying(), _pimpl->_gpucache[0]->GetUnderlying());
-                cacheCopySRV = Metal::ShaderResourceView(_pimpl->_gpucache[1]->ShareUnderlying());
+                Metal::Copy(*context, Metal::AsResource(_pimpl->_gpucache[1]->GetUnderlying()), Metal::AsResource(_pimpl->_gpucache[0]->GetUnderlying()));
+                cacheCopySRV = Metal::ShaderResourceView(_pimpl->_gpucache[1]->GetUnderlying());
             }
 
             const Metal::ShaderResourceView* resources[] = { &cacheCopySRV };
@@ -579,7 +579,7 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
-            Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->ShareUnderlying());
+            Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
             metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, gpuCacheSRV));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -607,7 +607,7 @@ namespace SceneEngine
 			return ShortCircuitUpdate();
 
         ShortCircuitUpdate result;
-        result._srv = std::make_unique<Metal::ShaderResourceView>(_pimpl->_gpucache[0]->ShareUnderlying());
+        result._srv = std::make_unique<Metal::ShaderResourceView>(_pimpl->_gpucache[0]->GetUnderlying());
         result._cellMinsInResource = Int2(uberMins) - Int2(_pimpl->_gpuCacheMins);
         result._cellMaxsInResource = Int2(uberMaxs) - Int2(_pimpl->_gpuCacheMins);
         return std::move(result);
@@ -873,7 +873,7 @@ namespace SceneEngine
         UInt2 erosionSimSize = finalCacheMax - finalCacheMin + UInt2(1,1);
         auto erosionSim = std::make_unique<ErosionSimulation>(erosionSimSize, terrainScale);
 
-        Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->ShareUnderlying());
+        Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
         erosionSim->InitHeights(
             *metalContext, gpuCacheSRV,
             gpuCacheOffset, gpuCacheOffset + erosionSimSize);
@@ -897,7 +897,7 @@ namespace SceneEngine
         auto gpuCacheOffset = _pimpl->_erosionSimGPUCacheOffset;
         auto size = _pimpl->_erosionSim->GetDimensions();
 
-        Metal::UnorderedAccessView gpuCacheUAV(_pimpl->_gpucache[0]->ShareUnderlying());
+        Metal::UnorderedAccessView gpuCacheUAV(_pimpl->_gpucache[0]->GetUnderlying());
         _pimpl->_erosionSim->GetHeights(
             *metalContext, gpuCacheUAV,
             gpuCacheOffset, gpuCacheOffset + size);

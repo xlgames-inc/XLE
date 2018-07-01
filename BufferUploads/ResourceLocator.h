@@ -51,8 +51,7 @@ namespace BufferUploads
         bool IsEmpty() const { return !_resource; }
         unsigned Offset() const { return _offset; }
         unsigned Size() const { return _size; }
-        UnderlyingResource* GetUnderlying() const { return _resource.get(); }
-		const UnderlyingResourcePtr& ShareUnderlying() const { return _resource; }
+		const UnderlyingResourcePtr& GetUnderlying() const { return _resource; }
         std::shared_ptr<IResourcePool> Pool() { return _pool; }
         uint64 PoolMarker() { return _poolMarker; }
 

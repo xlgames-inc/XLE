@@ -33,8 +33,8 @@ namespace SceneEngine
         metricsBufferDesc._linearBufferDesc._sizeInBytes = metricsBufferDesc._linearBufferDesc._structureByteSize;
         auto metricsBuffer = uploads.Transaction_Immediate(metricsBufferDesc);
 
-        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->ShareUnderlying());
-        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->ShareUnderlying());
+        _metricsBufferUAV = Metal::UnorderedAccessView(metricsBuffer->GetUnderlying());
+        _metricsBufferSRV = Metal::ShaderResourceView(metricsBuffer->GetUnderlying());
     }
 
     MetricsBox::~MetricsBox() {}

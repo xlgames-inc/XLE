@@ -52,7 +52,7 @@ namespace SceneEngine
             //      immediate context)
 
         auto inputTexture = RenderCore::Assets::DeferredShaderResource::LoadImmediately(sourceFile);
-        auto inputRes = Metal::ExtractResource(inputTexture);
+        auto inputRes = inputTexture.GetResource();
 
         auto destinationDesc = destinationArray.GetDesc();
         const auto dstMipCount = destinationDesc._textureDesc._mipCount;
@@ -102,7 +102,7 @@ namespace SceneEngine
                 desc._textureDesc = BufferUploads::TextureDesc::Plain2D(expectedWidth, expectedHeight, resamplingFormat);
                 XlCopyString(desc._name, "ResamplingTexture");
                 auto resamplingBuffer = bufferUploads.Transaction_Immediate(desc);
-                Metal::UnorderedAccessView uav(resamplingBuffer->ShareUnderlying());
+                Metal::UnorderedAccessView uav(resamplingBuffer->GetUnderlying());
 
                     //	actually getting better results with point resampling.
 		            //	After the compression, the bilinear sampled texture looks quite dithered
@@ -151,15 +151,15 @@ namespace SceneEngine
 
                 Metal::CopyPartial(
                     context, 
-					Metal::CopyPartial_Dest(&destinationArray, {m, arrayIndex}),
-					Metal::CopyPartial_Src(resamplingBuffer->GetUnderlying(), {}));
+					Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
+					Metal::CopyPartial_Src(Metal::AsResource(*resamplingBuffer->GetUnderlying()), {}));
 
             } else {
 
                 Metal::CopyPartial(
                     context,
-					Metal::CopyPartial_Dest(&destinationArray, {m, arrayIndex}),
-					Metal::CopyPartial_Src(inputRes, {sourceMip, 0}));
+					Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
+					Metal::CopyPartial_Src(Metal::AsResource(*inputRes), {sourceMip, 0}));
 
             }
         }
@@ -180,8 +180,8 @@ namespace SceneEngine
             const auto mipHeight = std::max(destinationDesc._textureDesc._height >> m, minDims);
             Metal::CopyPartial(
                 context,
-				Metal::CopyPartial_Dest(&destinationArray, {m, arrayIndex}),
-				Metal::CopyPartial_Src(&sourceResource, {}, {}, {mipWidth, mipHeight, 1}));
+				Metal::CopyPartial_Dest(Metal::AsResource(destinationArray), {m, arrayIndex}),
+				Metal::CopyPartial_Src(Metal::AsResource(sourceResource), {}, {}, {mipWidth, mipHeight, 1}));
         }
     }
 
@@ -532,11 +532,11 @@ namespace SceneEngine
                 texturingConstants.resize(sizeof(Float4) * 32 * 5, 0);
         #endif
 
-        _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->ShareUnderlying());
-        _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->ShareUnderlying());
-        _srv[Roughness] = Metal::ShaderResourceView(roughnessTextureArray->ShareUnderlying());
-        _texturingConstants = Metal::ConstantBuffer(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
-        _procTexContsBuffer = Metal::ConstantBuffer(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
+        _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->GetUnderlying());
+        _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->GetUnderlying());
+        _srv[Roughness] = Metal::ShaderResourceView(roughnessTextureArray->GetUnderlying());
+        _texturingConstants = MakeMetalCB(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
+        _procTexContsBuffer = MakeMetalCB(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);

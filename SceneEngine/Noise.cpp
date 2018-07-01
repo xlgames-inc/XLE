@@ -58,8 +58,8 @@ namespace SceneEngine
             D3DX11SaveTextureToFile(context->GetUnderlying(), permTexture.get(), D3DX11_IFF_DDS, "perlin_perm.dds");
         }*/
 
-        _gradShaderResource = ShaderResourceView(gradTexture->ShareUnderlying(), {Format::R32G32B32A32_FLOAT});
-        _permShaderResource = ShaderResourceView(permTexture->ShareUnderlying(), {Format::R8_UNORM});
+        _gradShaderResource = ShaderResourceView(gradTexture->GetUnderlying(), {Format::R32G32B32A32_FLOAT});
+        _permShaderResource = ShaderResourceView(permTexture->GetUnderlying(), {Format::R8_UNORM});
     }
 
     PerlinNoiseResources::~PerlinNoiseResources()

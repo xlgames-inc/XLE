@@ -162,7 +162,7 @@ namespace SceneEngine
             auto&r = _resources[c._resourceIndex];
             if (r.second != c._newLayout) {
                 assert(transCount < dimof(transitions));
-                transitions[transCount++] = Metal::LayoutTransition { r.first._res, r.second, c._newLayout };
+                transitions[transCount++] = Metal::LayoutTransition { &Metal::AsResource(*r.first._res), r.second, c._newLayout };
                 r.second = c._newLayout;
             }
         }
@@ -197,7 +197,7 @@ namespace SceneEngine
         for (const auto&r:_resources) 
             if (r.first._finalLayout != Metal::ImageLayout::Undefined && r.second != r.first._finalLayout) {
                 assert(transCount < dimof(transitions));
-                transitions[transCount++] = { r.first._res, r.second, r.first._finalLayout };
+                transitions[transCount++] = { &Metal::AsResource(*r.first._res), r.second, r.first._finalLayout };
             }
         if (transCount != 0)
             Metal::SetImageLayouts(*_attachedContext, MakeIteratorRange(transitions, &transitions[transCount]));
@@ -411,12 +411,12 @@ namespace SceneEngine
             const auto SRVLayout = Metal::ImageLayout::ShaderReadOnlyOptimal;
 
             // currently making no assumptions about starting or ending layouts
-			SceneEngine::ResourceBarriers::Resource resList[] = {{ resources._bloomTempBuffer._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }};
+			SceneEngine::ResourceBarriers::Resource resList[] = {{ resources._bloomTempBuffer._bloomBuffer.Resource().get(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }};
             ResourceBarriers barriers(context, MakeIteratorRange(resList));
             for (unsigned c=0; c<(unsigned)resources._luminanceBuffers.size(); ++c)
-                barriers.AddResources(MakeIteratorRange<ResourceBarriers::Resource>({{resources._luminanceBuffers[c].Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }}));
+                barriers.AddResources(MakeIteratorRange<ResourceBarriers::Resource>({{resources._luminanceBuffers[c].Resource().get(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }}));
             for (unsigned c=0; c<(unsigned)resources._bloomBuffers.size(); ++c)
-                barriers.AddResources(MakeIteratorRange<ResourceBarriers::Resource>({{resources._bloomBuffers[c]._bloomBuffer.Resource(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }}));
+                barriers.AddResources(MakeIteratorRange<ResourceBarriers::Resource>({{resources._bloomBuffers[c]._bloomBuffer.Resource().get(), Metal::ImageLayout::Undefined, Metal::ImageLayout::Undefined }}));
 
             barriers.SetBarrier(MakeIteratorRange<ResourceBarriers::LayoutChange>({{lumianceBuffersId+0, UAVLayout}, {bloomBuffersId+0, UAVLayout}}));
             context.Bind(resources._sampleInitialLuminance);
@@ -852,10 +852,10 @@ namespace SceneEngine
         auto bloomBuffer0 = uploads.Transaction_Immediate(bufferDesc);
         auto bloomBuffer1 = uploads.Transaction_Immediate(bufferDesc);
 
-        Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0->ShareUnderlying());
-        Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0->ShareUnderlying());
-        Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1->ShareUnderlying());
-        Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1->ShareUnderlying());
+        Metal::RenderTargetView     bloomBufferRTV0(bloomBuffer0->GetUnderlying());
+        Metal::ShaderResourceView   bloomBufferSRV0(bloomBuffer0->GetUnderlying());
+        Metal::RenderTargetView     bloomBufferRTV1(bloomBuffer1->GetUnderlying());
+        Metal::ShaderResourceView   bloomBufferSRV1(bloomBuffer1->GetUnderlying());
 
         auto* horizontalFilter = &::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", 

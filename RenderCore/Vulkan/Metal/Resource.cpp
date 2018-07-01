@@ -459,7 +459,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	RenderCore::ResourcePtr ExtractResource(const TextureView& res)
 	{
-		return res.ShareResource();
+		return res.GetResource();
 	}
 
     namespace Internal

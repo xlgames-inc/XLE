@@ -1093,7 +1093,7 @@ namespace RenderCore { namespace ImplVulkan
 			_metalContext->BeginCommandList(std::move(cmdList));
 		}
         _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
-        return nextImage->ShareResource();
+        return nextImage->GetResource();
 	}
 
 	void            ThreadContext::Present(IPresentationChain& chain)

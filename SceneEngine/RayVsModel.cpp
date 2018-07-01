@@ -249,7 +249,7 @@ namespace SceneEngine
             _pimpl->_res->_clearedBuffer->GetUnderlying());
 
         Metal::VertexBuffer soBuffer(
-            _pimpl->_res->_streamOutputBuffer->ShareUnderlying());
+            _pimpl->_res->_streamOutputBuffer->GetUnderlying());
         metalContext->BindSO(MakeResourceList(soBuffer));
 
         auto& commonRes = Techniques::CommonResources();

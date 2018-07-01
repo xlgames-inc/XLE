@@ -389,8 +389,8 @@ namespace SceneEngine
                         unsigned(desc._width*desc._height*sizeof(float))}).get()
             );
 
-        Metal::ShaderResourceView inputRealShaderResource(inputReal->ShareUnderlying());
-        Metal::ShaderResourceView inputImaginaryShaderResource(inputImaginary->ShareUnderlying());
+        Metal::ShaderResourceView inputRealShaderResource(inputReal->GetUnderlying());
+        Metal::ShaderResourceView inputImaginaryShaderResource(inputImaginary->GetUnderlying());
 
         _inputReal = std::move(inputReal);
         _inputImaginary = std::move(inputImaginary);
@@ -493,32 +493,32 @@ namespace SceneEngine
 
             ////
         auto workingTextureReal = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureRealUVA(workingTextureReal->ShareUnderlying(), {Format::R32_UINT});
-        Metal::RenderTargetView workingTextureRealTarget(workingTextureReal->ShareUnderlying(), {Format::R32_UINT});
-        Metal::ShaderResourceView workingTextureRealShaderResource(workingTextureReal->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::UnorderedAccessView workingTextureRealUVA(workingTextureReal->GetUnderlying(), {Format::R32_UINT});
+        Metal::RenderTargetView workingTextureRealTarget(workingTextureReal->GetUnderlying(), {Format::R32_UINT});
+        Metal::ShaderResourceView workingTextureRealShaderResource(workingTextureReal->GetUnderlying(), {Format::R32_FLOAT});
 
         auto workingTextureImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary->ShareUnderlying(), {Format::R32_UINT});
-        Metal::RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary->ShareUnderlying(), {Format::R32_UINT});
-        Metal::ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::UnorderedAccessView workingTextureImaginaryUVA(workingTextureImaginary->GetUnderlying(), {Format::R32_UINT});
+        Metal::RenderTargetView workingTextureImaginaryTarget(workingTextureImaginary->GetUnderlying(), {Format::R32_UINT});
+        Metal::ShaderResourceView workingTextureImaginaryShaderResource(workingTextureImaginary->GetUnderlying(), {Format::R32_FLOAT});
 
             ////
         auto workingTextureXReal = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureXRealUVA(workingTextureXReal->ShareUnderlying(), {Format::R32_UINT});
-        Metal::ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::UnorderedAccessView workingTextureXRealUVA(workingTextureXReal->GetUnderlying(), {Format::R32_UINT});
+        Metal::ShaderResourceView workingTextureXRealShaderResource(workingTextureXReal->GetUnderlying(), {Format::R32_FLOAT});
 
         auto workingTextureXImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary->ShareUnderlying(), {Format::R32_UINT});
-        Metal::ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::UnorderedAccessView workingTextureXImaginaryUVA(workingTextureXImaginary->GetUnderlying(), {Format::R32_UINT});
+        Metal::ShaderResourceView workingTextureXImaginaryShaderResource(workingTextureXImaginary->GetUnderlying(), {Format::R32_FLOAT});
 
             ////
         auto workingTextureYReal = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureYRealUVA(workingTextureYReal->ShareUnderlying(), {Format::R32_UINT});
-        Metal::ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::UnorderedAccessView workingTextureYRealUVA(workingTextureYReal->GetUnderlying(), {Format::R32_UINT});
+        Metal::ShaderResourceView workingTextureYRealShaderResource(workingTextureYReal->GetUnderlying(), {Format::R32_FLOAT});
 
         auto workingTextureYImaginary = uploads.Transaction_Immediate(bufferUploadsDesc);
-        Metal::UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary->ShareUnderlying(), {Format::R32_UINT});
-        Metal::ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary->ShareUnderlying(), {Format::R32_FLOAT});
+        Metal::UnorderedAccessView workingTextureYImaginaryUVA(workingTextureYImaginary->GetUnderlying(), {Format::R32_UINT});
+        Metal::ShaderResourceView workingTextureYImaginaryShaderResource(workingTextureYImaginary->GetUnderlying(), {Format::R32_FLOAT});
 
             ////
         const unsigned normalsMipCount = IntegerLog2(std::max(desc._width, desc._height));
@@ -536,10 +536,10 @@ namespace SceneEngine
         normalsSingleMipSRV.reserve(normalsMipCount);
         for (unsigned c=0; c<normalsMipCount; ++c) {
 			auto window = TextureViewDesc{uintNormalFormat, TextureViewDesc::SubResourceRange{ c,1 }};
-            normalsTextureUVA.push_back(Metal::UnorderedAccessView(normalsTexture->ShareUnderlying(), window));
-            normalsSingleMipSRV.push_back(Metal::ShaderResourceView(normalsTexture->ShareUnderlying(), window));
+            normalsTextureUVA.push_back(Metal::UnorderedAccessView(normalsTexture->GetUnderlying(), window));
+            normalsSingleMipSRV.push_back(Metal::ShaderResourceView(normalsTexture->GetUnderlying(), window));
         }
-        Metal::ShaderResourceView normalsTextureShaderResource(normalsTexture->ShareUnderlying(), {unormNormalFormat});
+        Metal::ShaderResourceView normalsTextureShaderResource(normalsTexture->GetUnderlying(), {unormNormalFormat});
 
             ////
         auto foamTextureDesc = BuildRenderTargetDesc(
@@ -548,12 +548,12 @@ namespace SceneEngine
             "Foam");
         auto foamQuantity0 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
         auto foamQuantity1 = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-        Metal::UnorderedAccessView foamQuantityUVA0(foamQuantity0->ShareUnderlying(), {Format::R8_UINT});
-        Metal::ShaderResourceView foamQuantitySRV0(foamQuantity0->ShareUnderlying(), {Format::R8_UNORM});
-        Metal::ShaderResourceView foamQuantitySRV20(foamQuantity0->ShareUnderlying(), {Format::R8_UINT});
-        Metal::UnorderedAccessView foamQuantityUVA1(foamQuantity1->ShareUnderlying(), {Format::R8_UINT});
-        Metal::ShaderResourceView foamQuantitySRV1(foamQuantity1->ShareUnderlying(), {Format::R8_UNORM});
-        Metal::ShaderResourceView foamQuantitySRV21(foamQuantity1->ShareUnderlying(), {Format::R8_UINT});
+        Metal::UnorderedAccessView foamQuantityUVA0(foamQuantity0->GetUnderlying(), {Format::R8_UINT});
+        Metal::ShaderResourceView foamQuantitySRV0(foamQuantity0->GetUnderlying(), {Format::R8_UNORM});
+        Metal::ShaderResourceView foamQuantitySRV20(foamQuantity0->GetUnderlying(), {Format::R8_UINT});
+        Metal::UnorderedAccessView foamQuantityUVA1(foamQuantity1->GetUnderlying(), {Format::R8_UINT});
+        Metal::ShaderResourceView foamQuantitySRV1(foamQuantity1->GetUnderlying(), {Format::R8_UNORM});
+        Metal::ShaderResourceView foamQuantitySRV21(foamQuantity1->GetUnderlying(), {Format::R8_UINT});
 
             ////
         _workingTextureReal = std::move(workingTextureReal);

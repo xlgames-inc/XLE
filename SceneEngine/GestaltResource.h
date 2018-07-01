@@ -12,6 +12,7 @@
 #include "../Core/Exceptions.h"
 #include <type_traits>
 #include <tuple>
+#include <memory>
 
 namespace RenderCore { class TextureDesc; class LinearBufferDesc; class IResource; }
 namespace BufferUploads { class DataPacket; class ResourceLocator; }
@@ -73,7 +74,7 @@ namespace SceneEngine
 
         const bool IsGood() const { return _locator.get() != nullptr; }
         const BufferUploads::ResourceLocator& Locator() const { return *_locator; }
-        RenderCore::IResource* Resource() const { return _locator->GetUnderlying(); }
+        const std::shared_ptr<RenderCore::IResource>& Resource() const { return _locator->GetUnderlying(); }
 
         GestaltResource();
         GestaltResource(

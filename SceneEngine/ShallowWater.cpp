@@ -126,8 +126,8 @@ namespace SceneEngine
 
         for (unsigned c=0; c<heightsTextureCount; ++c) {
             waterHeightsTextures[c] = uploads.Transaction_Immediate(targetDesc);
-            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->ShareUnderlying(), {windowForUAVs});
-            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->ShareUnderlying(), {Format::R32_FLOAT});
+            waterHeightsUAV[c] = UAV(waterHeightsTextures[c]->GetUnderlying(), {windowForUAVs});
+            waterHeightsSRV[c] = SRV(waterHeightsTextures[c]->GetUnderlying(), {Format::R32_FLOAT});
         }
 
             //  The pipe model always needs velocities. Otherwise, we only calculate them
@@ -138,8 +138,8 @@ namespace SceneEngine
             targetDesc._textureDesc._format = Format::R32_TYPELESS;
             for (unsigned c=0; c<VelTextures; ++c) {
                 waterVelocitiesTexture[c] = uploads.Transaction_Immediate(targetDesc);
-                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->ShareUnderlying(), {windowForUAVs});
-                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->ShareUnderlying(), {Format::R32_FLOAT});
+                waterVelocitiesUAV[c] = UAV(waterVelocitiesTexture[c]->GetUnderlying(), {windowForUAVs});
+                waterVelocitiesSRV[c] = SRV(waterVelocitiesTexture[c]->GetUnderlying(), {Format::R32_FLOAT});
             }
         }
 
@@ -147,7 +147,7 @@ namespace SceneEngine
             targetDesc._textureDesc._format = Format::R32_TYPELESS;
             for (unsigned c=0; c<2; ++c) {
                 slopesBuffer[c] = uploads.Transaction_Immediate(targetDesc);
-                slopesBufferUAV[c] = UAV(slopesBuffer[c]->ShareUnderlying(), {windowForUAVs});
+                slopesBufferUAV[c] = UAV(slopesBuffer[c]->GetUnderlying(), {windowForUAVs});
             }
         }
 
@@ -172,10 +172,10 @@ namespace SceneEngine
 				TextureViewDesc::All,
 				TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::ForceArray};
-            normalsTextureUVA.push_back(UAV(normalsTexture->ShareUnderlying(), window));
-            normalsSingleMipSRV.push_back(SRV(normalsTexture->ShareUnderlying(), window));
+            normalsTextureUVA.push_back(UAV(normalsTexture->GetUnderlying(), window));
+            normalsSingleMipSRV.push_back(SRV(normalsTexture->GetUnderlying(), window));
         }
-        SRV normalsTextureShaderResource(normalsTexture->ShareUnderlying(), {unormNormalFormat});
+        SRV normalsTextureShaderResource(normalsTexture->GetUnderlying(), {unormNormalFormat});
 
                 ////
         if (calculateFoam) {
@@ -185,9 +185,9 @@ namespace SceneEngine
                 "ShallowFoam");
             for (unsigned c=0; c<2; ++c) {
                 _foamQuantity[c] = uploads.Transaction_Immediate(foamTextureDesc, nullptr);
-                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->ShareUnderlying(), {Format::R8_UINT});
-                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->ShareUnderlying(), {Format::R8_UNORM});
-                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->ShareUnderlying(), {Format::R8_UINT});
+                _foamQuantityUAV[c] = UAV(_foamQuantity[c]->GetUnderlying(), {Format::R8_UINT});
+                _foamQuantitySRV[c] = SRV(_foamQuantity[c]->GetUnderlying(), {Format::R8_UNORM});
+                _foamQuantitySRV2[c] = SRV(_foamQuantity[c]->GetUnderlying(), {Format::R8_UINT});
             }
         }
     
@@ -266,8 +266,8 @@ namespace SceneEngine
             auto initData = BufferUploads::CreateEmptyPacket(targetDesc);
             XlSetMemory(initData->GetData(), 0xff, initData->GetDataSize());
             _lookupTable = uploads.Transaction_Immediate(targetDesc, initData.get());
-            _lookupTableUAV = UAV(_lookupTable->ShareUnderlying(), {Format::R8_UINT});
-            _lookupTableSRV = SRV(_lookupTable->ShareUnderlying(), {Format::R8_UINT});
+            _lookupTableUAV = UAV(_lookupTable->GetUnderlying(), {Format::R8_UINT});
+            _lookupTableSRV = SRV(_lookupTable->GetUnderlying(), {Format::R8_UINT});
         }
 
         _poolOfUnallocatedArrayIndices.reserve(desc._maxSimulationGrid);

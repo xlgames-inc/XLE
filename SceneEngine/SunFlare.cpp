@@ -138,18 +138,18 @@ namespace SceneEngine
                         TextureDesc::Plain1D(desc._res[0], Format::R8_UNORM),
                         "SunFlareTemp");
                 auto offscreen = GetBufferUploads().Transaction_Immediate(descRows);
-                _tempSRV[0] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
-                _tempRTV[0] = Metal::RenderTargetView(offscreen->ShareUnderlying());
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
             } else {
                 auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
-                _tempSRV[0] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
-                _tempRTV[0] = Metal::RenderTargetView(offscreen->ShareUnderlying());
+                _tempSRV[0] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[0] = Metal::RenderTargetView(offscreen->GetUnderlying());
             }
 
             if (!desc._singlePass) {
                 auto offscreen = GetBufferUploads().Transaction_Immediate(desc2D);
-                _tempSRV[1] = Metal::ShaderResourceView(offscreen->ShareUnderlying());
-                _tempRTV[1] = Metal::RenderTargetView(offscreen->ShareUnderlying());
+                _tempSRV[1] = Metal::ShaderResourceView(offscreen->GetUnderlying());
+                _tempRTV[1] = Metal::RenderTargetView(offscreen->GetUnderlying());
             }
         }
 

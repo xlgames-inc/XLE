@@ -81,13 +81,13 @@ namespace SceneEngine
                 BufferUploads::TextureDesc::Plain2D(desc._width, desc._height, Format::R16_TYPELESS, 1),
                 "TileLighting"));
 
-        Metal::ShaderResourceView srv0(resLocator0->ShareUnderlying(), {Format::R32_FLOAT});
-        Metal::ShaderResourceView srv1(resLocator1->ShareUnderlying(), {Format::R32_FLOAT});
-        Metal::ShaderResourceView srv2(resLocator2->ShareUnderlying(), {Format::R16_UINT});
+        Metal::ShaderResourceView srv0(resLocator0->GetUnderlying(), {Format::R32_FLOAT});
+        Metal::ShaderResourceView srv1(resLocator1->GetUnderlying(), {Format::R32_FLOAT});
+        Metal::ShaderResourceView srv2(resLocator2->GetUnderlying(), {Format::R16_UINT});
 
-        Metal::UnorderedAccessView uav0(resLocator0->ShareUnderlying(), {Format::R32_UINT});
-        Metal::UnorderedAccessView uav1(resLocator1->ShareUnderlying(), {Format::R32_UINT});
-        Metal::UnorderedAccessView uav2(resLocator2->ShareUnderlying(), {Format::R16_UINT});
+        Metal::UnorderedAccessView uav0(resLocator0->GetUnderlying(), {Format::R32_UINT});
+        Metal::UnorderedAccessView uav1(resLocator1->GetUnderlying(), {Format::R32_UINT});
+        Metal::UnorderedAccessView uav2(resLocator2->GetUnderlying(), {Format::R16_UINT});
 
         // UINT clearValues[4] = { 0x3fffffff, 0x3fffffff, 0x3fffffff, 0x3fffffff };
         // auto device  = MainBridge::GetInstance()->GetDevice();
@@ -115,9 +115,9 @@ namespace SceneEngine
         bufferDesc._linearBufferDesc._sizeInBytes = 1024 * bufferDesc._linearBufferDesc._structureByteSize;
         auto resLocator4 = uploads.Transaction_Immediate(bufferDesc, nullptr);
 
-        Metal::UnorderedAccessView lightOutputTexture(resLocator3->ShareUnderlying());
-        Metal::UnorderedAccessView temporaryProjectedLights(resLocator4->ShareUnderlying());
-        Metal::ShaderResourceView lightOutputTextureSRV(resLocator3->ShareUnderlying());
+        Metal::UnorderedAccessView lightOutputTexture(resLocator3->GetUnderlying());
+        Metal::UnorderedAccessView temporaryProjectedLights(resLocator4->GetUnderlying());
+        Metal::ShaderResourceView lightOutputTextureSRV(resLocator3->GetUnderlying());
 
         _lightOutputTexture = std::move(lightOutputTexture);
         _temporaryProjectedLights = std::move(temporaryProjectedLights);
@@ -208,7 +208,7 @@ namespace SceneEngine
                     lightBufferResource = uploads.Transaction_Immediate(desc, nullptr);
 
                     if (lightBufferResource) {
-                        lightBuffer = Metal::ShaderResourceView(lightBufferResource->ShareUnderlying());
+                        lightBuffer = Metal::ShaderResourceView(lightBufferResource->GetUnderlying());
                     }
                 }
 

@@ -584,7 +584,7 @@ namespace SceneEngine
             }
 
         auto texture = GetBufferUploads().Transaction_Immediate(tDesc, pkt.get());
-        _srv = std::make_unique<Metal::ShaderResourceView>(texture->ShareUnderlying());
+        _srv = std::make_unique<Metal::ShaderResourceView>(texture->GetUnderlying());
     }
 
         //   ================================================================================   //
@@ -798,7 +798,7 @@ namespace SceneEngine
                 RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f)));
             refractionBox.Build(*context, parserContext, 1.6f);
 
-			auto duplicatedDepthBuffer = Duplicate(*context, ExtractResource(depthBufferSRV));
+			auto duplicatedDepthBuffer = Duplicate(*context, Metal::AsResource(*depthBufferSRV.GetResource()));
             ShaderResourceView secondaryDepthBufferSRV(
                 duplicatedDepthBuffer, 
                 {{TextureViewDesc::Aspect::Depth}});

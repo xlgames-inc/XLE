@@ -236,7 +236,7 @@
             if (allLods && destinationDesc._type == BufferDesc::Type::Texture && !stagingLODOffset && !stagingXYOffset[0] && !stagingXYOffset[1]) {
                 Metal::Copy(
                     *metalContext, 
-					Metal::AsID3DResource(finalResource), Metal::AsID3DResource(staging),
+					Metal::AsResource(finalResource), Metal::AsResource(staging),
                     Metal::ImageLayout::TransferDstOptimal, Metal::ImageLayout::TransferSrcOptimal);
             } else {
                 for (unsigned a=0; a<std::max(1u, (unsigned)destinationDesc._textureDesc._arrayCount); ++a) {
@@ -244,11 +244,11 @@
                         Metal::CopyPartial(
                             *metalContext,
                             Metal::CopyPartial_Dest(
-                                Metal::AsID3DResource(finalResource), 
+                                Metal::AsResource(finalResource), 
                                 {c, a}, 
                                 {stagingXYOffset[0], stagingXYOffset[1], 0}),
                             Metal::CopyPartial_Src(
-								Metal::AsID3DResource(staging),
+								Metal::AsResource(staging),
                                 {c-stagingLODOffset, a},
                                 {(unsigned)srcBox._left, (unsigned)srcBox._top, 0u},
                                 {(unsigned)srcBox._right, (unsigned)srcBox._bottom, 1u}),
@@ -386,8 +386,8 @@
                     using namespace RenderCore;
                     Metal::CopyPartial(
                         *metalContext,
-                        Metal::CopyPartial_Dest(Metal::AsID3DResource(*destination), {0, i->_destination}),
-                        Metal::CopyPartial_Src(Metal::AsID3DResource(*source), {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
+                        Metal::CopyPartial_Dest(Metal::AsResource(*destination), {0, i->_destination}),
+                        Metal::CopyPartial_Src(Metal::AsResource(*source), {0, i->_sourceStart}, {i->_sourceEnd, 1, 1}));
                 }
             } else {
                 MappedBuffer sourceBuffer       = Map(*metalContext, source, MapType::ReadOnly);
@@ -405,7 +405,7 @@
         void UnderlyingDeviceContext::ResourceCopy(UnderlyingResource& destination, UnderlyingResource& source)
         {
 			auto metalContext = Metal::DeviceContext::Get(*_renderCoreContext);
-            RenderCore::Metal::Copy(*metalContext, ResPtr(destination), ResPtr(source));
+            RenderCore::Metal::Copy(*metalContext, Metal::AsResource(destination), Metal::AsResource(source));
         }
 
         intrusive_ptr<RenderCore::Metal::CommandList> UnderlyingDeviceContext::ResolveCommandList()
@@ -511,7 +511,7 @@
     : _dataOffset(0)
     {
         assert(!locator.IsEmpty());
-        auto resource = locator.ShareUnderlying();
+        auto resource = locator.GetUnderlying();
         UnderlyingResourcePtr stagingResource;
 
         auto desc = PlatformInterface::ExtractDesc(*resource);
@@ -607,7 +607,7 @@
 
 		BufferDesc ExtractDesc(UnderlyingResource& resource)
 		{
-			return Metal::ExtractDesc(resource);
+			return resource.GetDesc();
 		}
 
         void AttachObject(ID3D::Resource* resource, const GUID& guid, IUnknown* attachableObject)

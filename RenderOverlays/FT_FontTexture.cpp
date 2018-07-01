@@ -430,7 +430,7 @@ RenderCore::Resource* FontTexture2D::GetUnderlying() const
             }
         }
     }
-    return _locator?_locator->GetUnderlying():nullptr;
+    return _locator ? _locator->GetUnderlying().get() : nullptr;
 }
 
 RenderCore::ResourcePtr FontTexture2D::ShareUnderlying() const
@@ -444,7 +444,7 @@ RenderCore::ResourcePtr FontTexture2D::ShareUnderlying() const
 			}
 		}
 	}
-	return _locator ? _locator->ShareUnderlying() : nullptr;
+	return _locator ? _locator->GetUnderlying() : nullptr;
 }
 
 bool FT_FontTextureMgr::Init(int texWidth, int texHeight)

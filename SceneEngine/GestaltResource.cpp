@@ -25,7 +25,7 @@ namespace SceneEngine
         template<typename Tuple, int Index, typename Top, typename... V>
             static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc)
             {
-                std::get<Index>(tuple) = Top(loc.ShareUnderlying());
+                std::get<Index>(tuple) = Top(loc.GetUnderlying());
                 InitViews<Tuple, Index+1, V...>(tuple, loc);
             }
 
@@ -67,7 +67,7 @@ namespace SceneEngine
         template<typename Tuple, int Index, typename Top, typename... V>
             static void InitViews(Tuple& tuple, BufferUploads::ResourceLocator& loc, Format fmt)
             {
-                std::get<Index>(tuple) = Top(loc.ShareUnderlying(), {SpecializeFormat<Top>(fmt)});
+                std::get<Index>(tuple) = Top(loc.GetUnderlying(), {SpecializeFormat<Top>(fmt)});
                 InitViews<Tuple, Index+1, V...>(tuple, loc, fmt);
             }
 

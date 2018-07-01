@@ -47,10 +47,10 @@ namespace SceneEngine
         auto _refractionsTexture0 = uploads.Transaction_Immediate(targetDesc);
         auto _refractionsTexture1 = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::RenderTargetView refractionsFrontTarget(_refractionsTexture0->ShareUnderlying());
-        Metal::RenderTargetView refractionsBackTarget(_refractionsTexture1->ShareUnderlying());
-        Metal::ShaderResourceView refractionsFrontSRV(_refractionsTexture0->ShareUnderlying());
-        Metal::ShaderResourceView refractionsBackSRV(_refractionsTexture1->ShareUnderlying());
+        Metal::RenderTargetView refractionsFrontTarget(_refractionsTexture0->GetUnderlying());
+        Metal::RenderTargetView refractionsBackTarget(_refractionsTexture1->GetUnderlying());
+        Metal::ShaderResourceView refractionsFrontSRV(_refractionsTexture0->GetUnderlying());
+        Metal::ShaderResourceView refractionsBackSRV(_refractionsTexture1->GetUnderlying());
 
         _refractionsTexture[0] = std::move(_refractionsTexture0);
         _refractionsTexture[1] = std::move(_refractionsTexture1);
@@ -172,7 +172,7 @@ namespace SceneEngine
 
         auto texture = uploads.Transaction_Immediate(targetDesc);
 
-        Metal::ShaderResourceView srv(texture->ShareUnderlying(), {AsResolvableFormat(desc._format)});
+        Metal::ShaderResourceView srv(texture->GetUnderlying(), {AsResolvableFormat(desc._format)});
 
         _srv = std::move(srv);
         _resource = std::move(texture);
@@ -201,7 +201,8 @@ namespace SceneEngine
             auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
 			#if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
 				context->GetUnderlying()->ResolveSubresource(
-					Metal::UnderlyingResourcePtr(box._resource->GetUnderlying()).get(), 0, Metal::UnderlyingResourcePtr(&sourceDepthBuffer).get(), 0,
+					Metal::AsResource(*box._resource->GetUnderlying()).GetUnderlying().get(), 0, 
+					Metal::AsResource(sourceDepthBuffer).GetUnderlying().get(), 0,
 					Metal::AsDXGIFormat(AsResolvableFormat(d._format)));
 			#endif
             return box._srv;
@@ -214,7 +215,7 @@ namespace SceneEngine
 
                 //  Copy into the new buffer
             auto& box = ConsoleRig::FindCachedBox<DuplicateDepthBuffer>(d);
-            Metal::Copy(*context, box._resource->GetUnderlying(), &sourceDepthBuffer);
+            Metal::Copy(*context, Metal::AsResource(*box._resource->GetUnderlying()), Metal::AsResource(sourceDepthBuffer));
             return box._srv;
 
         }

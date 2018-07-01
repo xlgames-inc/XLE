@@ -11,6 +11,8 @@
 #include "ObjectFactory.h"
 #include "TextureView.h"
 
+#pragma warning(disable:4505) // 'RenderCore::Metal_DX11::GetSubResourceIndex': unreferenced local function has been removed
+
 namespace RenderCore { namespace Metal_DX11
 {
 	void Copy(
@@ -42,6 +44,15 @@ namespace RenderCore { namespace Metal_DX11
         return D3D11CalcSubresource(id._mip, id._arrayLayer, GetMipLayers(resource));
     }
 
+	static unsigned GetSubResourceIndex(Resource& resource, SubResourceId id)
+    {
+		if (id._arrayLayer == 0)
+            return id._mip;
+		assert(resource.GetDesc()._type == ResourceDesc::Type::Texture);
+		auto mipLayers = resource.GetDesc()._textureDesc._mipCount;
+		return D3D11CalcSubresource(id._mip, id._arrayLayer, mipLayers);
+	}
+
     void CopyPartial(
         DeviceContext& context, 
         const CopyPartial_Dest& dst, const CopyPartial_Src& src,
@@ -58,9 +69,9 @@ namespace RenderCore { namespace Metal_DX11
         }
 
         context.GetUnderlying()->CopySubresourceRegion(
-            dst._resource, GetSubResourceIndex(dst._resource, dst._subResource),
+            dst._resource->GetUnderlying().get(), GetSubResourceIndex(*dst._resource, dst._subResource),
             dst._leftTopFront[0], dst._leftTopFront[1], dst._leftTopFront[2],
-            src._resource, GetSubResourceIndex(src._resource, src._subResource),
+            src._resource->GetUnderlying().get(), GetSubResourceIndex(*src._resource, src._subResource),
             useSrcBox ? &srcBox : nullptr);
     }
 
@@ -68,6 +79,12 @@ namespace RenderCore { namespace Metal_DX11
     {
         return DuplicateResource(context.GetUnderlying(), inputResource.get());
     }
+
+	ResourcePtr Duplicate(DeviceContext& context, Resource& inputResource)
+	{
+		auto res = DuplicateResource(context.GetUnderlying(), inputResource.GetUnderlying().get());
+		return AsResourcePtr(std::move(res));
+	}
 
 	void*       Resource::QueryInterface(size_t guid)
 	{
@@ -387,54 +404,24 @@ namespace RenderCore { namespace Metal_DX11
         return desc;
     }
 
-	ResourceDesc ExtractDesc(const IResource& res)
-	{
-		auto* d3dres = (Resource*)const_cast<IResource&>(res).QueryInterface(typeid(Resource).hash_code());
-		if (d3dres)
-			return ExtractDesc(d3dres->_underlying);
-		ResourceDesc desc = {};
-		desc._type = ResourceDesc::Type::Unknown;
-		return desc;
-	}
-
     ResourceDesc ExtractDesc(const ShaderResourceView& res)
     {
-        return ExtractDesc(res.GetResource().get());
+        return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
 	ResourceDesc ExtractDesc(const RenderTargetView& res)
     {
-        return ExtractDesc(res.GetResource().get());
+		return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
     ResourceDesc ExtractDesc(const DepthStencilView& res)
     {
-        return ExtractDesc(res.GetResource().get());
+		return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
     ResourceDesc ExtractDesc(const UnorderedAccessView& res)
     {
-        return ExtractDesc(res.GetResource().get());
-    }
-
-    ResourcePtr ExtractResource(const ShaderResourceView& view)
-    {
-        return AsResourcePtr(view.GetResource());
-    }
-
-	ResourcePtr ExtractResource(const RenderTargetView& view)
-    {
-        return AsResourcePtr(view.GetResource());
-    }
-
-	ResourcePtr ExtractResource(const DepthStencilView& view)
-    {
-        return AsResourcePtr(view.GetResource());
-    }
-
-    ResourcePtr ExtractResource(const UnorderedAccessView& view)
-    {
-        return AsResourcePtr(view.GetResource());
+		return ExtractDesc(ExtractResource<ID3D::Resource>(res.GetUnderlying()).get());
     }
 
 	ID3D::Resource* AsID3DResource(UnderlyingResourcePtr res)
@@ -457,5 +444,12 @@ namespace RenderCore { namespace Metal_DX11
 	ResourcePtr AsResourcePtr(intrusive_ptr<ID3D::Resource>&& ptr)
 	{
 		return std::make_shared<Resource>(std::move(ptr));
+	}
+
+	Resource& AsResource(IResource& res)
+	{
+		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		assert(r);
+		return *r;
 	}
 }}

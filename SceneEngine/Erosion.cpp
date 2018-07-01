@@ -130,11 +130,11 @@ namespace SceneEngine
         auto softMaterials = bufferUploads.Transaction_Immediate(desc);
         auto softMaterialsCopy = bufferUploads.Transaction_Immediate(desc);
 
-        UAV hardMaterialsUAV(hardMaterials->ShareUnderlying());
-        UAV softMaterialsUAV(softMaterials->ShareUnderlying());
-        SRV hardMaterialsSRV(hardMaterials->ShareUnderlying());
-        SRV softMaterialsSRV(softMaterials->ShareUnderlying());
-        SRV softMaterialsCopySRV(softMaterialsCopy->ShareUnderlying());
+        UAV hardMaterialsUAV(hardMaterials->GetUnderlying());
+        UAV softMaterialsUAV(softMaterials->GetUnderlying());
+        SRV hardMaterialsSRV(hardMaterials->GetUnderlying());
+        SRV softMaterialsSRV(softMaterials->GetUnderlying());
+        SRV softMaterialsCopySRV(softMaterialsCopy->GetUnderlying());
 
         /////////////////////////////////////////////////////////////////////////////////////
 
@@ -181,11 +181,11 @@ namespace SceneEngine
         metalContext.ClearFloat(_pimpl->_hardMaterialsUAV, { 0.f, 0.f, 0.f, 0.f });
 
             // copy
-        auto inputRes = Metal::ExtractResource(input);
+        auto inputRes = input.GetResource();
         Metal::CopyPartial(
             metalContext,
-            Metal::CopyPartial_Dest(_pimpl->_hardMaterials->GetUnderlying()),
-			Metal::CopyPartial_Src(inputRes, {}, 
+            Metal::CopyPartial_Dest(Metal::AsResource(*_pimpl->_hardMaterials->GetUnderlying())),
+			Metal::CopyPartial_Src(Metal::AsResource(*inputRes), {}, 
 				{topLeft[0], topLeft[1], 0u}, 
 				{bottomRight[0], bottomRight[1], 1u}));
     }
@@ -195,11 +195,11 @@ namespace SceneEngine
         RenderCore::Metal::UnorderedAccessView& dest,
         UInt2 topLeft, UInt2 bottomRight)
     {
-        auto destRes = Metal::ExtractResource(dest);
+        auto destRes = dest.GetResource();
         Metal::CopyPartial(
             metalContext,
-            Metal::CopyPartial_Dest(destRes.get()),
-			Metal::CopyPartial_Src(_pimpl->_hardMaterials->GetUnderlying(), {}, 
+            Metal::CopyPartial_Dest(Metal::AsResource(*destRes)),
+			Metal::CopyPartial_Src(Metal::AsResource(*_pimpl->_hardMaterials->GetUnderlying()), {}, 
 				{},
 				{bottomRight[0] - topLeft[0], bottomRight[1] - topLeft[1], 1u}));
     }
@@ -295,7 +295,7 @@ namespace SceneEngine
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
             // shift sediment
-        Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_softMaterials->GetUnderlying());
+        Metal::Copy(metalContext, Metal::AsResource(*_pimpl->_softMaterialsCopy->GetUnderlying()), Metal::AsResource(*_pimpl->_softMaterials->GetUnderlying()));
         metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(1, _pimpl->_softMaterialsCopySRV));
 
         auto& shiftShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ShiftSediment:cs_*", defines);
@@ -303,7 +303,7 @@ namespace SceneEngine
         metalContext.Dispatch(simSize[0]/16, simSize[1]/16, 1);
 
             // "thermal" erosion
-        Metal::Copy(metalContext, _pimpl->_softMaterialsCopy->GetUnderlying(), _pimpl->_hardMaterials->GetUnderlying());
+        Metal::Copy(metalContext, Metal::AsResource(*_pimpl->_softMaterialsCopy->GetUnderlying()), Metal::AsResource(*_pimpl->_hardMaterials->GetUnderlying()));
 
         auto& thermalShader = ::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ocean/tickerosion.csh:ThermalErosion:cs_*", defines);
         metalContext.Bind(thermalShader);

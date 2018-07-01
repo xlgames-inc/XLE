@@ -1219,7 +1219,7 @@ namespace BufferUploads
                 // ... check temporary transactions ...
             for (unsigned c=0; c<temporaryCount; ++c) {
                 Transaction& transaction = _transactions[c];
-                if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
+                if (transaction._finalResource->GetUnderlying().get() == e->_originalResource.get()) {
                     auto size = RenderCore::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
@@ -1239,7 +1239,7 @@ namespace BufferUploads
                 #else
                     Transaction& transaction = _transactions[_transactions.size()-c-1];
                 #endif
-                if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
+                if (transaction._finalResource->GetUnderlying().get() == e->_originalResource.get()) {
                     auto size = RenderCore::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
@@ -1387,7 +1387,7 @@ namespace BufferUploads
                             CopyIntoBatchedBuffer(
                                 PtrAdd(midwayBuffer.GetData(),-ptrdiff_t(batchedResource->Offset())), 
                                 AsPointer(batchingStart), AsPointer(batchingI), 
-                                batchedResource->GetUnderlying(), batchedResource->Offset(), 
+                                batchedResource->GetUnderlying().get(), batchedResource->Offset(), 
                                 AsPointer(offsets.begin()), metricsUnderConstruction);
 
                             assert(_resourceSource.GetBatchedResources().GetPrototype()._type == BufferDesc::Type::LinearBuffer);
@@ -1408,7 +1408,7 @@ namespace BufferUploads
                         CopyIntoBatchedBuffer(
                             PtrAdd(midwayBuffer->GetData(),-ptrdiff_t(batchedResource->Offset())), 
                             AsPointer(batchingStart), AsPointer(batchingI), 
-                            batchedResource->GetUnderlying(), batchedResource->Offset(), 
+                            batchedResource->GetUnderlying().get(), batchedResource->Offset(), 
                             AsPointer(offsets.begin()), metricsUnderConstruction);
                         context.GetCommitStepUnderConstruction().Add(
                             CommitStep::DeferredCopy(batchedResource, currentBatchSize, std::move(midwayBuffer)));
@@ -1424,7 +1424,7 @@ namespace BufferUploads
                     for (auto i=batchingStart; i!=batchingI; ++i, ++o) {
                         Transaction* transaction = GetTransaction(i->_id);
                         transaction->_finalResource = make_intrusive<ResourceLocator>(
-                            batchedResource->ShareUnderlying(), *o, RenderCore::ByteCount(i->_creationDesc),
+                            batchedResource->GetUnderlying(), *o, RenderCore::ByteCount(i->_creationDesc),
                             batchedResource->Pool(), batchedResource->PoolMarker());
                         ReleaseTransaction(transaction, context);
                     }

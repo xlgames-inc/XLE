@@ -24,10 +24,9 @@ namespace RenderCore { namespace Metal_DX11
         explicit RenderTargetView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 		explicit RenderTargetView(DeviceContext& context);
         
-        intrusive_ptr<ID3D::Resource>	GetResource() const;
-        std::shared_ptr<IResource>		ShareResource() const;
+        std::shared_ptr<IResource>				GetResource() const;
 
-        typedef ID3D::RenderTargetView*         UnderlyingType;
+        using UnderlyingType = ID3D::RenderTargetView*;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
 
@@ -50,10 +49,9 @@ namespace RenderCore { namespace Metal_DX11
         explicit DepthStencilView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
 		explicit DepthStencilView(DeviceContext& context);
 
-        intrusive_ptr<ID3D::Resource>	GetResource() const;
-        std::shared_ptr<IResource>		ShareResource() const;
+        std::shared_ptr<IResource>				GetResource() const;
 
-        typedef ID3D::DepthStencilView*         UnderlyingType;
+        using UnderlyingType = ID3D::DepthStencilView*;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
 
@@ -74,10 +72,9 @@ namespace RenderCore { namespace Metal_DX11
     public:
         explicit UnorderedAccessView(const std::shared_ptr<IResource>& resource, const TextureViewDesc& window = TextureViewDesc());
         
-        intrusive_ptr<ID3D::Resource>   GetResource() const;
-        std::shared_ptr<IResource>		ShareResource() const;
+        std::shared_ptr<IResource>		GetResource() const;
 
-        typedef ID3D::UnorderedAccessView*      UnderlyingType;
+        using UnderlyingType = ID3D::UnorderedAccessView*;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
 
@@ -100,10 +97,9 @@ namespace RenderCore { namespace Metal_DX11
 
         static ShaderResourceView RawBuffer(const std::shared_ptr<IResource>& resource, unsigned sizeBytes, unsigned offsetBytes = 0);
 
-		intrusive_ptr<ID3D::Resource>	GetResource() const;
-        std::shared_ptr<IResource>		ShareResource() const;
+        std::shared_ptr<IResource>				GetResource() const;
         
-        typedef ID3D::ShaderResourceView*       UnderlyingType;
+        using UnderlyingType = ID3D::ShaderResourceView*;
         UnderlyingType                          GetUnderlying() const { return _underlying.get(); }
         bool                                    IsGood() const { return _underlying.get() != nullptr; }
 

@@ -121,14 +121,9 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    auto RenderTargetView::GetResource() const -> intrusive_ptr<ID3D::Resource>
+	ResourcePtr RenderTargetView::GetResource() const
     {
-        return ExtractResource<ID3D::Resource>(_underlying.get());
-    }
-
-    ResourcePtr RenderTargetView::ShareResource() const
-    {
-        return AsResourcePtr(GetResource());
+        return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
 
     RenderTargetView::RenderTargetView(DeviceContext& context)
@@ -200,14 +195,9 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    auto DepthStencilView::GetResource() const -> intrusive_ptr<ID3D::Resource>
+    ResourcePtr DepthStencilView::GetResource() const
     {
-        return ExtractResource<ID3D::Resource>(_underlying.get());
-    }
-
-    ResourcePtr DepthStencilView::ShareResource() const
-    {
-        return AsResourcePtr(GetResource());
+        return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
 
     DepthStencilView::DepthStencilView(DeviceContext& context)
@@ -294,14 +284,9 @@ namespace RenderCore { namespace Metal_DX11
         }
     }
 
-    auto UnorderedAccessView::GetResource() const -> intrusive_ptr<ID3D::Resource>
+    ResourcePtr UnorderedAccessView::GetResource() const
     {
-        return ExtractResource<ID3D::Resource>(_underlying.get());
-    }
-
-    ResourcePtr UnorderedAccessView::ShareResource() const
-    {
-        return AsResourcePtr(GetResource());
+        return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
 
 	ShaderResourceView::ShaderResourceView(
@@ -411,14 +396,9 @@ namespace RenderCore { namespace Metal_DX11
             GetObjectFactory(*resource).CreateShaderResourceView(r, &srvDesc));
     }
 
-    auto ShaderResourceView::GetResource() const -> intrusive_ptr<ID3D::Resource>
+	ResourcePtr ShaderResourceView::GetResource() const
     {
-        return ExtractResource<ID3D::Resource>(_underlying.get());
-    }
-
-    ResourcePtr ShaderResourceView::ShareResource() const
-    {
-        return AsResourcePtr(GetResource());
+        return AsResourcePtr(ExtractResource<ID3D::Resource>(_underlying.get()));
     }
 
 //////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -25,13 +25,13 @@ namespace SceneEngine
 
         auto shadowTexture = uploads.Transaction_Immediate(uploadsDesc, nullptr);
         Metal::DepthStencilView depthStencilView(
-			shadowTexture->ShareUnderlying(), 
+			shadowTexture->GetUnderlying(), 
 			TextureViewDesc{
 				TextureViewDesc::Aspect::Depth, 
 				TextureViewDesc::All,
 				TextureViewDesc::SubResourceRange{0, desc._targetCount}});
         Metal::ShaderResourceView shaderResource(
-			shadowTexture->ShareUnderlying(), 
+			shadowTexture->GetUnderlying(), 
 			TextureViewDesc{
 				TextureViewDesc::Aspect::ColorLinear,
 				TextureViewDesc::All,
@@ -43,7 +43,7 @@ namespace SceneEngine
 				TextureViewDesc::Aspect::Depth,
 				TextureViewDesc::All,
 				TextureViewDesc::SubResourceRange{ c, 1 }};
-            dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->ShareUnderlying(), window));
+            dsvBySlice.push_back(Metal::DepthStencilView(shadowTexture->GetUnderlying(), window));
         }
 
         _shaderResource = std::move(shaderResource);

@@ -192,10 +192,10 @@ namespace SceneEngine
             if (_bufferUploads->IsCompleted(_creationTransaction)) {
                 auto uploadsResource = _bufferUploads->GetResource(_creationTransaction);
                 if (uploadsResource && !uploadsResource->IsEmpty()) {
-                    Metal::ShaderResourceView shaderResource(uploadsResource->ShareUnderlying());
+                    Metal::ShaderResourceView shaderResource(uploadsResource->GetUnderlying());
                     Metal::UnorderedAccessView uav;
                     if (_allowModification)
-                        uav = Metal::UnorderedAccessView(uploadsResource->ShareUnderlying());
+                        uav = Metal::UnorderedAccessView(uploadsResource->GetUnderlying());
                     _bufferUploads->Transaction_End(_creationTransaction);
                     _creationTransaction = ~BufferUploads::TransactionID(0x0);
 
@@ -266,8 +266,8 @@ namespace SceneEngine
         const bool immediateCreate = false;
         if (immediateCreate) {
             resource            = bufferUploads.Transaction_Immediate(desc);
-            shaderResource      = Metal::ShaderResourceView(resource->ShareUnderlying());
-            uav                 = Metal::UnorderedAccessView(resource->ShareUnderlying());
+            shaderResource      = Metal::ShaderResourceView(resource->GetUnderlying());
+            uav                 = Metal::UnorderedAccessView(resource->GetUnderlying());
         } else {
             _creationTransaction = bufferUploads.Transaction_Begin(desc, (BufferUploads::DataPacket*)nullptr, BufferUploads::TransactionOptions::ForceCreate);
         }

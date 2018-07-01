@@ -134,8 +134,8 @@ namespace SceneEngine
         XlSetMemory(clearedBufferData->GetData(), 0, clearedBufferData->GetDataSize());
         auto clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get());
 
-        Metal::ShaderResourceView so0srv(so0r->ShareUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32G32B32A32_FLOAT);
-        Metal::ShaderResourceView so1srv(so1r->ShareUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32_UINT);
+        Metal::ShaderResourceView so0srv(so0r->GetUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView so1srv(so1r->GetUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32_UINT);
 
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
@@ -155,8 +155,8 @@ namespace SceneEngine
 				TextureViewDesc::SubResourceRange{0,1}, TextureViewDesc::All,
 				TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::AppendBuffer};
-            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->ShareUnderlying(), window));
-            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->ShareUnderlying()));
+            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->GetUnderlying(), window));
+            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->GetUnderlying()));
         }
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
@@ -300,7 +300,7 @@ namespace SceneEngine
 
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
                 //  The only obvious way is to use CopyResource, and copy from a prepared "cleared" buffer
-            Metal::Copy(*metalContext, res._streamOutputResources[1]->GetUnderlying(), res._clearedTypesResource->GetUnderlying());
+            Metal::Copy(*metalContext, Metal::AsResource(res._streamOutputResources[1]->GetUnderlying()), Metal::AsResource(res._clearedTypesResource->GetUnderlying()));
 
             const bool alignToTerrainUp = res._alignToTerrainUp;
             if (alignToTerrainUp) {

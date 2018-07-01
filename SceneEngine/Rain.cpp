@@ -171,8 +171,8 @@ namespace SceneEngine
         XlSetMemory(initialData->GetData(), 0, initialData->GetDataSize());
         auto simParticlesBuffer = uploads.Transaction_Immediate(structuredBufferDesc, initialData.get());
 
-        Metal::UnorderedAccessView simParticlesUAV(simParticlesBuffer->ShareUnderlying());
-        Metal::ShaderResourceView simParticlesSRV(simParticlesBuffer->ShareUnderlying());
+        Metal::UnorderedAccessView simParticlesUAV(simParticlesBuffer->GetUnderlying());
+        Metal::ShaderResourceView simParticlesSRV(simParticlesBuffer->GetUnderlying());
 
         _simParticlesBuffer = std::move(simParticlesBuffer);
         _simParticlesUAV = std::move(simParticlesUAV);

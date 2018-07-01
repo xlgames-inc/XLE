@@ -244,7 +244,7 @@ namespace GUILayer
                 resLoc = interf.CopyToGPU(UInt2(0,0), dims);
             }
 
-            RenderCore::Metal::ShaderResourceView srv(resLoc->ShareUnderlying());
+            RenderCore::Metal::ShaderResourceView srv(resLoc->GetUnderlying());
             _pimpl->_sim->InitHeights(
                 *GetImmediateContext(), srv,
                 UInt2(0,0), dims);
