@@ -163,6 +163,8 @@ namespace RenderCore { namespace Metal_DX11
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _validationCallback; }
 
+		const CompiledShaderByteCode&       GetCompiledCode() const { return _compiledCode; }
+
 		// Legacy asset based API --
 		static void ConstructToFuture(
 			::Assets::AssetFuture<ComputeShader>&,
@@ -172,6 +174,7 @@ namespace RenderCore { namespace Metal_DX11
 	private:
 		intrusive_ptr<ID3D::ComputeShader>      _underlying;
 		::Assets::DepValPtr						_validationCallback;
+		CompiledShaderByteCode					_compiledCode;
 	};
 
 		////////////////////////////////////////////////////////////////////////////////////////////////

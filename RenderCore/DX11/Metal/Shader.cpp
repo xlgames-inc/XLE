@@ -155,6 +155,7 @@ namespace RenderCore { namespace Metal_DX11
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     ComputeShader::ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& compiledShader)
+	: _compiledCode(compiledShader)
     {
         if (compiledShader.GetStage() != ShaderStage::Null) {
             assert(compiledShader.GetStage() == ShaderStage::Compute);

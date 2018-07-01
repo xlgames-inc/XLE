@@ -212,6 +212,41 @@ namespace RenderCore { namespace Metal_DX11
 		}
     }
 
+	BoundUniforms::BoundUniforms(
+        const ComputeShader& shader,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+	{
+		for (unsigned c=0; c<4; ++c)
+			_boundUniformBufferSlots[c] = _boundResourceSlots[c] = 0;
+
+		intrusive_ptr<ID3D::ShaderReflection> reflections[(unsigned)ShaderStage::Max];
+		reflections[(unsigned)ShaderStage::Compute] = CreateReflection(shader.GetCompiledCode());
+
+		const UniformsStreamInterface* streams[] = { &interface0, &interface1, &interface2, &interface3 };
+		for (unsigned streamIdx=0; streamIdx<dimof(streams); ++streamIdx) {
+			const auto& stream = *streams[streamIdx];
+			for (unsigned slot=0; slot<(unsigned)stream._cbBindings.size(); ++slot) {
+				auto bound = BindConstantBuffer(
+					MakeIteratorRange(reflections),
+					stream._cbBindings[slot]._hashName, slot, streamIdx,
+					MakeIteratorRange(stream._cbBindings[slot]._elements));
+				if (bound)
+					_boundUniformBufferSlots[streamIdx] |= 1ull << uint64_t(slot);
+			}
+			for (unsigned slot=0; slot<(unsigned)stream._srvBindings.size(); ++slot) {
+				auto bound = BindShaderResource(
+					MakeIteratorRange(reflections),
+					stream._srvBindings[slot], slot, streamIdx);
+				if (bound)
+					_boundResourceSlots[streamIdx] |= 1ull << uint64_t(slot);
+			}
+		}
+	}
+
     BoundUniforms::BoundUniforms() 
 	{
 		for (unsigned c=0; c<4; ++c)

@@ -33,6 +33,7 @@ namespace RenderCore { namespace Metal_DX11
 	}
 
     class ShaderProgram;
+	class ComputeShader;
 	class DeviceContext;
 	class PipelineLayoutConfig
 	{
@@ -80,6 +81,13 @@ namespace RenderCore { namespace Metal_DX11
 
         BoundUniforms(
             const ShaderProgram& shader,
+            const PipelineLayoutConfig& pipelineLayout,
+            const UniformsStreamInterface& interface0 = {},
+            const UniformsStreamInterface& interface1 = {},
+            const UniformsStreamInterface& interface2 = {},
+            const UniformsStreamInterface& interface3 = {});
+		BoundUniforms(
+            const ComputeShader& shader,
             const PipelineLayoutConfig& pipelineLayout,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
