@@ -266,7 +266,8 @@ namespace SceneEngine
 				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 				usi);
             uniforms.Apply(*_context, 0, _parserContext->GetGlobalUniformsStream());
-            uniforms.Apply(*_context, 1, UniformsStream({}, {&_box->_blendingTexture.SRV()}));
+			const Metal::ShaderResourceView* srvs[] = {&_box->_blendingTexture.SRV()};
+			uniforms.Apply(*_context, 1, UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
             _context->Bind(Techniques::CommonResources()._dssDisable);
             _context->Bind(Tweakable("Stochastic_BlendBuffer", true)
@@ -293,7 +294,8 @@ namespace SceneEngine
 						Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 						usi);
                     uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
-                    uniforms.Apply(context, 1, UniformsStream({}, {&box->_stochasticDepths.SRV(), &box->_metricsTexture.SRV()}));
+					const Metal::ShaderResourceView* srvs[] = {&box->_stochasticDepths.SRV(), &box->_metricsTexture.SRV()};
+					uniforms.Apply(context, 1, UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
                     context.Bind(shader);
                     context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
@@ -318,7 +320,8 @@ namespace SceneEngine
 				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 				usi);
             uniforms.Apply(*_context, 0, _parserContext->GetGlobalUniformsStream());
-            uniforms.Apply(*_context, 1, UniformsStream({}, {&_box->_stochasticDepths.SRV()}));
+			const Metal::ShaderResourceView* srvs[] = {&_box->_stochasticDepths.SRV()};
+			uniforms.Apply(*_context, 1, UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
             _context->Bind(shader);
             _context->Draw(4);

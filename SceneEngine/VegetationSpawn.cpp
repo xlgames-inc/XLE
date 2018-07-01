@@ -17,6 +17,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IAnnotator.h"
@@ -72,7 +73,7 @@ namespace SceneEngine
         IndirectDrawBuffer();
         ~IndirectDrawBuffer();
     private:
-        Metal::Buffer     _indirectArgsBuffer;
+        IResourcePtr     _indirectArgsBuffer;
     };
 
     class VegetationSpawnResources
@@ -87,7 +88,7 @@ namespace SceneEngine
             : _bufferCount(bufferCount), _alignToTerrainUp(alignToTerrainUp) {}
         };
 
-        Metal::Buffer				_streamOutputBuffers[2];
+        IResourcePtr				_streamOutputBuffers[2];
         Metal::ShaderResourceView   _streamOutputSRV[2];
         intrusive_ptr<ID3D::Query>  _streamOutputCountsQuery;
 
@@ -166,8 +167,8 @@ namespace SceneEngine
 		_streamOutputCountsQuery = Metal::GetObjectFactory().CreateQuery(&queryDesc);
 #endif
 
-        _streamOutputBuffers[0] = Metal::VertexBuffer(so0r->GetUnderlying());
-        _streamOutputBuffers[1] = Metal::VertexBuffer(so1r->GetUnderlying());
+        _streamOutputBuffers[0] = so0r->GetUnderlying();
+        _streamOutputBuffers[1] = so1r->GetUnderlying();
         _streamOutputResources[0] = std::move(so0r);
         _streamOutputResources[1] = std::move(so1r);
         _streamOutputSRV[0] = std::move(so0srv);
@@ -300,7 +301,7 @@ namespace SceneEngine
 
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
                 //  The only obvious way is to use CopyResource, and copy from a prepared "cleared" buffer
-            Metal::Copy(*metalContext, Metal::AsResource(res._streamOutputResources[1]->GetUnderlying()), Metal::AsResource(res._clearedTypesResource->GetUnderlying()));
+            Metal::Copy(*metalContext, Metal::AsResource(*res._streamOutputResources[1]->GetUnderlying()), Metal::AsResource(*res._clearedTypesResource->GetUnderlying()));
 
             const bool alignToTerrainUp = res._alignToTerrainUp;
             if (alignToTerrainUp) {
@@ -733,7 +734,10 @@ namespace SceneEngine
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
     void IndirectDrawBuffer::Draw(Metal::DeviceContext& metalContext)
     {
-        metalContext.GetUnderlying()->DrawIndexedInstancedIndirect(_indirectArgsBuffer.GetUnderlying(), 0);
+		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();
+        metalContext.GetUnderlying()->DrawIndexedInstancedIndirect(
+			Metal::QueryInterfaceCast<ID3D::Buffer>(res).get(), 
+			0);
     }
 
     bool IndirectDrawBuffer::WriteParams(
@@ -741,8 +745,10 @@ namespace SceneEngine
         unsigned indexCountPerinstance, unsigned startIndexLocation, 
         unsigned baseVertexLocation, unsigned instanceCount)
     {
+		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();
+
         D3D11_MAPPED_SUBRESOURCE mappedSub;
-        auto hresult = metalContext.GetUnderlying()->Map(_indirectArgsBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
+        auto hresult = metalContext.GetUnderlying()->Map(res, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
         if (!SUCCEEDED(hresult))
             return false;
 
@@ -752,15 +758,16 @@ namespace SceneEngine
         args.BaseVertexLocation = baseVertexLocation;
         args.StartInstanceLocation = 0;
         args.InstanceCount = instanceCount;
-        metalContext.GetUnderlying()->Unmap(_indirectArgsBuffer.GetUnderlying(), 0);
+        metalContext.GetUnderlying()->Unmap(res, 0);
         return true;
     }
 
     void IndirectDrawBuffer::CopyInstanceCount(Metal::DeviceContext& metalContext, Metal::UnorderedAccessView& src)
     {
             // copy the "structure count" from the UAV into the indirect args buffer
+		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();
         metalContext.GetUnderlying()->CopyStructureCount(
-            _indirectArgsBuffer.GetUnderlying(), 
+            Metal::QueryInterfaceCast<ID3D::Buffer>(res).get(), 
             (unsigned)(size_t)&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount, 
             src.GetUnderlying());
     }
@@ -775,7 +782,7 @@ namespace SceneEngine
 
         auto& uploads = GetBufferUploads();
         auto indirectArgsRes = uploads.Transaction_Immediate(indirectArgsBufferDesc);
-        _indirectArgsBuffer = Metal::VertexBuffer(indirectArgsRes->GetUnderlying());
+        _indirectArgsBuffer = indirectArgsRes->GetUnderlying();
     }
 
     IndirectDrawBuffer::~IndirectDrawBuffer()

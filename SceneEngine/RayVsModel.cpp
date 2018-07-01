@@ -94,8 +94,8 @@ namespace SceneEngine
             // to will appear zeroed out.
         Metal::Copy(
             *metalContext,
-            _pimpl->_res->_cpuAccessBuffer->GetUnderlying(), 
-            _pimpl->_res->_streamOutputBuffer->GetUnderlying());
+            Metal::AsResource(*_pimpl->_res->_cpuAccessBuffer->GetUnderlying()), 
+            Metal::AsResource(*_pimpl->_res->_streamOutputBuffer->GetUnderlying()));
 
         using namespace BufferUploads;
         auto& uploads = SceneEngine::GetBufferUploads();
@@ -245,11 +245,10 @@ namespace SceneEngine
             // the only way to clear these things is copy from another buffer...
         Metal::Copy(
             *metalContext,
-            _pimpl->_res->_streamOutputBuffer->GetUnderlying(),
-            _pimpl->_res->_clearedBuffer->GetUnderlying());
+            Metal::AsResource(*_pimpl->_res->_streamOutputBuffer->GetUnderlying()),
+            Metal::AsResource(*_pimpl->_res->_clearedBuffer->GetUnderlying()));
 
-        Metal::VertexBuffer soBuffer(
-            _pimpl->_res->_streamOutputBuffer->GetUnderlying());
+        auto soBuffer = _pimpl->_res->_streamOutputBuffer->GetUnderlying();
         metalContext->BindSO(MakeResourceList(soBuffer));
 
         auto& commonRes = Techniques::CommonResources();

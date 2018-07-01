@@ -172,8 +172,8 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._blendOpaque);
         context.Bind(Techniques::CommonResources()._defaultRasterizer);
         context.Bind(Topology::TriangleList);
-        context.BindVS(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
-        context.BindPS(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        context.GetNumericUniforms(ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
         context.Unbind<Metal::GeometryShader>();
     }
 
@@ -241,8 +241,8 @@ namespace SceneEngine
 				// See AMD post on this topic:
 				//      http://gpuopen.com/optimized-reversible-tonemapper-for-resolve/
 			context.GetUnderlying()->ResolveSubresource(
-				Metal::UnderlyingResourcePtr(&destinationTexture).get(), D3D11CalcSubresource(0,0,0),
-				Metal::UnderlyingResourcePtr(&sourceTexture).get(), D3D11CalcSubresource(0,0,0),
+				Metal::AsResource(destinationTexture).GetUnderlying().get(), D3D11CalcSubresource(0,0,0),
+				Metal::AsResource(sourceTexture).GetUnderlying().get(), D3D11CalcSubresource(0,0,0),
 				Metal::AsDXGIFormat(resolveFormat));
 		#endif
     }
@@ -337,14 +337,14 @@ namespace SceneEngine
                         "xleres/utility/metricsrender.psh:main:ps_*",
                         "");
                 metalContext->Bind(metricsShader);
-                metalContext->BindPS(MakeResourceList(
+                metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                     3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
                 metalContext->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 metalContext->Bind(DepthStencilState(false));
-                metalContext->BindVS(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));
+                metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));
                 unsigned dimensions[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), 0, 0 };
-                metalContext->BindVS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
-                metalContext->BindGS(MakeResourceList(ConstantBuffer(dimensions, sizeof(dimensions))));
+                metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
+                metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
                 SetupVertexGeneratorShader(*metalContext);
                 metalContext->Bind(Topology::PointList);
                 metalContext->Draw(9);
@@ -981,7 +981,7 @@ namespace SceneEngine
             if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
                     //  (must resolve luminance early, because we use it during the MSAA resolve)
                 luminanceResult = ToneMap_SampleLuminance(
-                    metalContext, parserContext, toneMapSettings, 
+                    context, parserContext, toneMapSettings, 
                     mainTargets.GetSRV(postLightingResolve));
             }
 
@@ -1039,7 +1039,7 @@ namespace SceneEngine
         preparedResult._resolveParameters._maxBlurSearch = frustum._maxBlurSearch;
         preparedResult._resolveParameters._shadowTextureSize = (float)std::min(frustum._width, frustum._height);
         XlZeroMemory(preparedResult._resolveParameters._dummy);
-        preparedResult._resolveParametersCB = Metal::ConstantBuffer(
+        preparedResult._resolveParametersCB = MakeMetalCB(
             &preparedResult._resolveParameters, sizeof(preparedResult._resolveParameters));
 
             //  we need to set the "shadow cascade mode" settings to the right

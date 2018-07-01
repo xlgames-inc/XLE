@@ -838,7 +838,7 @@ namespace SceneEngine
 
         const unsigned resultsBufferSize = 4 * 1024;
 
-        Metal::VertexBuffer gpuOutput;
+        IResourcePtr gpuOutput;
         intrusive_ptr<BufferUploads::ResourceLocator> outputRes;
         {
             auto desc = CreateDesc(
@@ -852,8 +852,8 @@ namespace SceneEngine
             auto& uploads = GetBufferUploads();
             outputRes = uploads.Transaction_Immediate(desc, pkt.get());
 
-            gpuOutput = Metal::VertexBuffer(outputRes->GetUnderlying());
-            if (gpuOutput.IsGood())
+            gpuOutput = outputRes->GetUnderlying();
+            if (gpuOutput)
                 context->BindSO(MakeResourceList(gpuOutput));
         }
 
@@ -862,7 +862,7 @@ namespace SceneEngine
             Float3 _rayStart; float _dummy0;
             Float3 _rayEnd; float _dummy1;
         } rayTestBuffer = { ray.first, 0.f, ray.second, 0.f };
-        context->BindGS(MakeResourceList(2, Metal::ConstantBuffer(&rayTestBuffer, sizeof(rayTestBuffer))));
+        context->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(2, MakeMetalCB(&rayTestBuffer, sizeof(rayTestBuffer))));
 
         state.EnterState(context, parserContext, 
             TerrainMaterialTextures(), _pimpl->_renderer->GetHeightsElementSize(), TerrainRenderingContext::Mode_RayTest);
@@ -872,7 +872,7 @@ namespace SceneEngine
         context->UnbindSO();
 
         unsigned resultCount = 0;
-        if (outputRes && gpuOutput.IsGood()) {
+        if (outputRes && gpuOutput) {
             auto readback = GetBufferUploads().Resource_ReadBack(*outputRes);
             if (readback->GetDataSize()) {
                     //  results are in the buffer we mapped... But how do we know how may

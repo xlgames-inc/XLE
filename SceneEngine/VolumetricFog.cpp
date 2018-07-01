@@ -214,7 +214,7 @@ namespace SceneEngine
 		UniformsStreamInterface injectLightBindingUsi;
 		injectLightBindingUsi.BindConstantBuffer(0, {Hash64("VolumetricFogConstants")});
         Metal::BoundUniforms injectLightBinding(
-			injectLight,
+			*injectLight,
 			Metal::PipelineLayoutConfig{},
 			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 			injectLightBindingUsi);
@@ -222,7 +222,7 @@ namespace SceneEngine
 		UniformsStreamInterface propagateLightBindingUsi;
 		propagateLightBindingUsi.BindConstantBuffer(0, {Hash64("VolumetricFogConstants")});
         Metal::BoundUniforms propagateLightBinding(
-			propagateLight,
+			*propagateLight,
 			Metal::PipelineLayoutConfig{},
 			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 			propagateLightBindingUsi);

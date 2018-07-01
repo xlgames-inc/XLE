@@ -325,7 +325,7 @@ namespace SceneEngine
         context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
         context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
         context->BindCS(MakeResourceList(res._mask.UAV()));
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(parserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, Metal::ConstantBuffer(), parserContext.GetGlobalStateCB()));
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(parserContext.GetGlobalTransformCB(), MakeMetalCB(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, Metal::ConstantBuffer(), parserContext.GetGlobalStateCB()));
         context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(commonResources._linearWrapSampler, commonResources._linearClampSampler));
         context->Bind(*res._buildMask);
         context->Dispatch((cfg._width + (64-1))/64, (cfg._height + (64-1))/64);
@@ -350,7 +350,7 @@ namespace SceneEngine
             XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
             static float standardDeviation = 1.2f; // 0.809171316279f; // 1.6f;
             BuildGaussianFilteringWeights(filteringWeights, standardDeviation, 7);
-            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(Metal::ConstantBuffer(filteringWeights, sizeof(filteringWeights))));
+            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(filteringWeights, sizeof(filteringWeights))));
 
             context->Bind(MakeResourceList(res._downsampledNormals.RTV()), nullptr);
             context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, res._reflections.SRV()));
@@ -405,12 +405,12 @@ namespace SceneEngine
                             
         auto cursorPos = GetCursorPos();
         unsigned globalConstants[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), unsigned(cursorPos[0]), unsigned(cursorPos[1]) };
-        Metal::ConstantBuffer globalConstantsBuffer(globalConstants, sizeof(globalConstants));
+        auto globalConstantsBuffer = MakeMetalCB(globalConstants, sizeof(globalConstants));
 
         auto& projDesc = parserContext.GetProjectionDesc();
         struct ViewProjectionParameters { Float4x4    _worldToView; }
             viewProjParam = { InvertOrthonormalTransform(projDesc._cameraToWorld) };
-        Metal::ConstantBuffer viewProjectionParametersBuffer(&viewProjParam, sizeof(viewProjParam));
+        auto viewProjectionParametersBuffer = MakeMetalCB(&viewProjParam, sizeof(viewProjParam));
 
 		UniformsStreamInterface usi;
 		usi.BindConstantBuffer(0, {Hash64("BasicGlobals")});

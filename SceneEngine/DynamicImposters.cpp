@@ -506,10 +506,9 @@ namespace SceneEngine
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(c, _pimpl->_atlas._layers[c]._atlas.SRV()));
 
         // shader.Apply(context, parserContext, {std::move(spriteTable)});
-        const Metal::ConstantBuffer* cbs[] = {&_pimpl->_spriteTableCB};
+        ConstantBufferView cbs[] = {&_pimpl->_spriteTableCB};
         shader._shader._boundUniforms->Apply(context, 0, parserContext.GetGlobalUniformsStream());
-		shader._shader._boundUniforms->Apply(context, 1, 
-            Metal::UniformsStream(nullptr, cbs, dimof(cbs)));
+		shader._shader._boundUniforms->Apply(context, 1, UniformsStream{MakeIteratorRange(cbs)});
         context.Bind(*shader._shader._shaderProgram);
         
         auto tempvb = MakeMetalVB(AsPointer(vertices.begin()), vertices.size()*sizeof(Vertex));

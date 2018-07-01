@@ -383,8 +383,8 @@ namespace SceneEngine
 			parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
 
 			SubpassDesc subpasses[] {
-				SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth},
-				SubpassDesc{{IMainTargets::LightResolve}, IMainTargets::MultisampledDepth_JustStencil}
+				SubpassDesc{{AttachmentViewDesc{IMainTargets::LightResolve}}, IMainTargets::MultisampledDepth},
+				SubpassDesc{{AttachmentViewDesc{IMainTargets::LightResolve}}, IMainTargets::MultisampledDepth_JustStencil}
             };
 
             FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));

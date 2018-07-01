@@ -258,11 +258,13 @@ namespace SceneEngine
 
                 if (!singlePass) {
                     context->Bind(MakeResourceList(res._tempRTV[1]), nullptr);
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
                     res._toRadialUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
 					res._toRadialUniforms.Apply(*context, 1, 
-                        Metal::UniformsStream(constants, srvs));
+						UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
                 
                     context->Bind(*res._toRadialShader);
                     context->Draw(4);
@@ -274,11 +276,13 @@ namespace SceneEngine
 
                 {
                     context->Bind(MakeResourceList(res._tempRTV[0]), nullptr);
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { singlePass ? &depthsSRV : &res._tempSRV[1] };
                     res._blurUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
 					res._blurUniforms.Apply(*context, 1, 
-                        Metal::UniformsStream(constants, srvs));
+						UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
                     context->Bind(*res._blurShader);
                     context->Draw(4);
@@ -294,11 +298,13 @@ namespace SceneEngine
                 context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &res._tempSRV[0] };
                     res._commitUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
 					res._commitUniforms.Apply(*context, 1, 
-                        Metal::UniformsStream(constants, srvs));
+						UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
                     context->Bind(*res._commitShader);
                     context->Bind(Topology::TriangleList);
@@ -315,11 +321,13 @@ namespace SceneEngine
                 context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
-                    Metal::ConstantBufferPacket constants[] = { settingsPkt };
+                    ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
                     res._directBlurUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
 					res._directBlurUniforms.Apply(*context, 1, 
-                        Metal::UniformsStream(constants, srvs));
+                        UniformsStream{
+							MakeIteratorRange(constants), 
+							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
                     context->Bind(*res._directBlurShader);
                     context->Bind(Topology::TriangleList);
