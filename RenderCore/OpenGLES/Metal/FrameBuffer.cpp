@@ -14,6 +14,7 @@
 #include "../../ResourceUtils.h"
 #include "../../FrameBufferDesc.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../ConsoleRig/Log.h"
 
 #include "IncludeGLES.h"
 
@@ -270,9 +271,14 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         GLenum attachmentsToInvalidate[s_maxMRTs+1];
         unsigned invalidationCount = 0;
-        for (unsigned rtv=0; rtv<s._rtvCount; ++rtv)
-            if (s._rtvLoad[rtv] == LoadStore::DontCare)
-                attachmentsToInvalidate[invalidationCount++] = GL_COLOR_ATTACHMENT0 + rtv;
+        if (fbZeroHack) {
+            if (s._rtvCount > 0 && s._rtvLoad[0] == LoadStore::DontCare)
+                attachmentsToInvalidate[invalidationCount++] = GL_COLOR;
+        } else {
+            for (unsigned rtv=0; rtv<s._rtvCount; ++rtv)
+                if (s._rtvLoad[rtv] == LoadStore::DontCare)
+                    attachmentsToInvalidate[invalidationCount++] = GL_COLOR_ATTACHMENT0 + rtv;
+        }
 
         bool invalidateDepth = false, invalidateStencil = false;
         if (s._dsvHasDepth) {
@@ -287,15 +293,27 @@ namespace RenderCore { namespace Metal_OpenGLES
                     || s._dsvLoad == LoadStore::Clear;
         }
 
-        if (invalidateDepth && invalidateStencil) {
-            attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_STENCIL_ATTACHMENT;
-        } else if (invalidateDepth) {
-            attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_ATTACHMENT;
-        } else if (invalidateStencil) {
-            attachmentsToInvalidate[invalidationCount++] = GL_STENCIL_ATTACHMENT;
+        if (fbZeroHack) {
+            if (invalidateDepth) {
+                attachmentsToInvalidate[invalidationCount++] = GL_DEPTH;
+            }
+            if (invalidateStencil) {
+                attachmentsToInvalidate[invalidationCount++] = GL_STENCIL;
+            }
+        } else {
+            if (invalidateDepth && invalidateStencil) {
+                attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_STENCIL_ATTACHMENT;
+            } else if (invalidateDepth) {
+                attachmentsToInvalidate[invalidationCount++] = GL_DEPTH_ATTACHMENT;
+            } else if (invalidateStencil) {
+                attachmentsToInvalidate[invalidationCount++] = GL_STENCIL_ATTACHMENT;
+            }
         }
-        if (invalidationCount)
+
+        if (invalidationCount) {
             glInvalidateFramebuffer(GL_FRAMEBUFFER, invalidationCount, attachmentsToInvalidate);
+            CheckGLError("After FrameBuffer::BindSubpass() Invalidate framebuffer");
+        }
     }
 
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
