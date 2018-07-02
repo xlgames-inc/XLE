@@ -365,8 +365,7 @@ namespace SceneEngine
 
     void    TerrainRenderingContext::ExitState(DeviceContext* context, LightingParserContext& )
     {
-        context->Unbind<HullShader>();
-        context->Unbind<DomainShader>();
+        MetalStubs::UnbindTessellationShaders(*context);
         MetalStubs::UnbindGS<ShaderResourceView>(*context, 0, 5);
         MetalStubs::UnbindPS<ShaderResourceView>(*context, 0, 5);
         context->Bind(Topology::TriangleList);

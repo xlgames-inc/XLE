@@ -41,6 +41,8 @@ namespace SceneEngine { namespace MetalStubs
 	template<typename Type, int Count>
 		void BindSO(RenderCore::Metal::DeviceContext&, const RenderCore::ResourceList<Type, Count>&);
 	void UnbindSO(RenderCore::Metal::DeviceContext&);
+	void UnbindTessellationShaders(RenderCore::Metal::DeviceContext&);
+	void UnbindGeometryShader(RenderCore::Metal::DeviceContext&);
 
 	template<typename Type> void UnbindVS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);
 	template<typename Type> void UnbindPS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);
@@ -48,4 +50,6 @@ namespace SceneEngine { namespace MetalStubs
 	template<typename Type> void UnbindCS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);
 	template<typename Type> void UnbindHS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);
 	template<typename Type> void UnbindDS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);
+
+	RenderCore::Metal::NumericUniformsInterface& GetGlobalNumericUniforms(RenderCore::Metal::DeviceContext&, RenderCore::ShaderStage);
 }}

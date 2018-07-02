@@ -8,6 +8,7 @@
 
 #include "../Assets/AssetsCore.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/FrameBuffer.h"
@@ -27,13 +28,10 @@ namespace SceneEngine
         static const Name PresentationTarget = 0u;
         static const Name MultisampledDepth = 2u;
         static const Name LightResolve = 3u;
-        static const Name MultisampledDepth_JustDepth = 4u;
-        static const Name MultisampledDepth_JustStencil = 5u;
         static const Name GBufferDiffuse = 6u;
         static const Name GBufferNormals = 7u;
         static const Name GBufferParameters = 8u;
         static const Name PostMSAALightResolve = 9u;
-        static const Name PresentationTarget_ToneMapWrite = 10u;
 
         static const Name ShadowDepthMap = 20u;
 
@@ -44,8 +42,7 @@ namespace SceneEngine
         virtual const RenderingQualitySettings& GetQualitySettings() const = 0;
         virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
 
-        virtual const SRV&      GetSRV(Name) const = 0;
-        virtual const SRV&      GetSRV(Name, Name, const RenderCore::TextureViewDesc&) const = 0;
+        virtual const SRV&      GetSRV(Name, const RenderCore::TextureViewDesc& window = {}) const = 0;
     };
 
     class LightingResolveShaders

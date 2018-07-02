@@ -8,6 +8,7 @@
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
@@ -341,6 +342,23 @@ namespace SceneEngine
                 bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
         } else
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
+                bindSlot,
+                _face5->GetShaderResource()));
+
+        return _projectionType;
+    }
+
+	unsigned    SkyTextureParts::BindPS_G(  
+        RenderCore::Metal::DeviceContext& context, 
+        int bindSlot) const
+    {
+        if (!IsGood()) return ~0u;
+
+        if (_projectionType==1) {
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(
+                bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
+        } else
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot,
                 _face5->GetShaderResource()));
 

@@ -169,7 +169,7 @@ namespace SceneEngine
             mainTargets.GetSRV(IMainTargets::GBufferNormals),
             mainTargets.GetSRV(IMainTargets::GBufferParameters),
             Metal::ShaderResourceView(), 
-            mainTargets.GetSRV(IMainTargets::MultisampledDepth_JustDepth, IMainTargets::MultisampledDepth, justDepthWindow)));
+            mainTargets.GetSRV(IMainTargets::MultisampledDepth, justDepthWindow)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -201,7 +201,7 @@ namespace SceneEngine
 
         auto samplingCount = 1; // ...?
         auto& resolveRes = ConsoleRig::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
-        metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+        MetalStubs::GetGlobalNumericUniforms(metalContext, ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
 
         metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(11, 
             dominantLight._resolveParametersCB,
@@ -255,19 +255,19 @@ namespace SceneEngine
             result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS_G(context, 11);
 
             if (globalDesc._diffuseIBL[0]) {
-                context.BindPS_G(MakeResourceList(19, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._diffuseIBL).GetShaderResource()));
+                MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(19, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._diffuseIBL).GetShaderResource()));
                 result._hasDiffuseIBL = true;
             }
 
             if (globalDesc._specularIBL[0]) {
-                context.BindPS_G(MakeResourceList(20, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
+                MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(20, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
                 result._hasSpecularIBL = true;
                 DEBUG_ONLY(CheckSpecularIBLMipMapCount(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(globalDesc._specularIBL).GetShaderResource()));
             }
 
-            context.BindPS_G(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-            context.BindPS_G(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
-            context.BindPS_G(MakeResourceList(21, 
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(10, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(16, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/GGXTable.dds:LT").GetShaderResource()));
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(21, 
 				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/glosslut.dds:LT").GetShaderResource(),
 				::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/glosstranslut.dds:LT").GetShaderResource()));
 
@@ -383,28 +383,12 @@ namespace SceneEngine
 			parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
 
 			SubpassDesc subpasses[] {
-				SubpassDesc{{AttachmentViewDesc{IMainTargets::LightResolve}}, IMainTargets::MultisampledDepth},
-				SubpassDesc{{AttachmentViewDesc{IMainTargets::LightResolve}}, IMainTargets::MultisampledDepth_JustStencil}
+				SubpassDesc{
+					{AttachmentViewDesc{IMainTargets::LightResolve, LoadStore::DontCare, LoadStore::Retain}}, 
+					{IMainTargets::MultisampledDepth, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}}
             };
 
             FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));
-			/*
-                {
-                    {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth, TextureViewDesc(),
-                        LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil },
-                        
-                    {   IMainTargets::MultisampledDepth, IMainTargets::MultisampledDepth_JustStencil,
-                        TextureViewDesc{
-                            {TextureViewDesc::Aspect::Stencil},
-                            TextureViewDesc::All, TextureViewDesc::All,
-							TextureDesc::Dimensionality::Undefined, 
-							TextureViewDesc::Flags::JustStencil},
-                        LoadStore::DontCare_RetainStencil, LoadStore::DontCare },
-
-                    {   IMainTargets::LightResolve, IMainTargets::LightResolve, TextureViewDesc(),
-                        LoadStore::DontCare, LoadStore::Retain }
-                });
-			*/
 
 			auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(resolveLighting, parserContext.GetNamedResources());
 			ClearValue clearValues[] = {MakeClearValue(1.f, 0x0)};
@@ -429,12 +413,15 @@ namespace SceneEngine
                 }
             }
 
-            rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
+			// This is broken in latest refactoring, because we can specify a custom TextureViewWindow for a RTV
+			// in the new SubPass model
+			assert(0);
+            // rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
 
             // set light resolve state (note that we have to bind the depth buffer as a shader input here)
             SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
             auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
-            metalContext.BindPS_G(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
+            MetalStubs::GetGlobalNumericUniforms(metalContext, ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
                 // -------- -------- -------- -------- -------- --------
