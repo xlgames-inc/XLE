@@ -152,6 +152,7 @@
     <ClCompile Include="..\LightingParserResolve.cpp" />
     <ClCompile Include="..\LightingParserStandardPlugin.cpp" />
     <ClCompile Include="..\LightInternal.cpp" />
+    <ClCompile Include="..\MetalStubs.cpp" />
     <ClCompile Include="..\MetricsBox.cpp" />
     <ClCompile Include="..\Noise.cpp" />
     <ClCompile Include="..\Ocean.cpp" />
@@ -207,6 +208,7 @@
     <ClInclude Include="..\LightingParserContext.h" />
     <ClInclude Include="..\LightingParserStandardPlugin.h" />
     <ClInclude Include="..\LightInternal.h" />
+    <ClInclude Include="..\MetalStubs.h" />
     <ClInclude Include="..\MetricsBox.h" />
     <ClInclude Include="..\Noise.h" />
     <ClInclude Include="..\Ocean.h" />

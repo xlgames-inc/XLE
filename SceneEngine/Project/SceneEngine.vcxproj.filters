@@ -155,6 +155,9 @@
     <ClCompile Include="..\DepthWeightedTransparency.cpp">
       <Filter>Lighting And Processing</Filter>
     </ClCompile>
+    <ClCompile Include="..\MetalStubs.cpp">
+      <Filter>Utilities</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -328,6 +331,9 @@
     <ClInclude Include="..\ShaderLightDesc.h" />
     <ClInclude Include="..\DepthWeightedTransparency.h">
       <Filter>Lighting And Processing</Filter>
+    </ClInclude>
+    <ClInclude Include="..\MetalStubs.h">
+      <Filter>Utilities</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>
