@@ -506,7 +506,7 @@ namespace SceneEngine
             
             Metal::ShaderResourceView cacheCopySRV;
             if (box._needsInputHash) {
-                Metal::Copy(*context, Metal::AsResource(_pimpl->_gpucache[1]->GetUnderlying()), Metal::AsResource(_pimpl->_gpucache[0]->GetUnderlying()));
+                Metal::Copy(*context, Metal::AsResource(*_pimpl->_gpucache[1]->GetUnderlying()), Metal::AsResource(*_pimpl->_gpucache[0]->GetUnderlying()));
                 cacheCopySRV = Metal::ShaderResourceView(_pimpl->_gpucache[1]->GetUnderlying());
             }
 

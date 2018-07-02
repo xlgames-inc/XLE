@@ -78,8 +78,6 @@ namespace RenderCore { namespace Metal_DX11
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
 
 		T1(Type) void   Unbind();
-		void            UnbindSO();
-		void			UnbindVBs();
 		void			UnbindVS();
 		void			UnbindPS();
 		void			UnbindGS();

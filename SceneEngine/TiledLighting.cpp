@@ -267,7 +267,7 @@ namespace SceneEngine
                     worldToView, 
                     fov, { 0, 0 }
                 };
-                Metal::ConstantBuffer cbuffer(&lightCulling, sizeof(lightCulling));
+                auto cbuffer = MakeMetalCB(&lightCulling, sizeof(lightCulling));
                 context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(lightingParserContext.GetGlobalTransformCB(), Metal::ConstantBuffer(), cbuffer));
 
                 context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr); // reading from depth buffer (so must clear it from output)

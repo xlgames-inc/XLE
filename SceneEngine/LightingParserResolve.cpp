@@ -407,10 +407,11 @@ namespace SceneEngine
 			*/
 
 			auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(resolveLighting, parserContext.GetNamedResources());
+			ClearValue clearValues[] = {MakeClearValue(1.f, 0x0)};
             Techniques::RenderPassInstance rpi(
                 threadContext, fb, resolveLighting,
                 parserContext.GetNamedResources(),
-                Techniques::RenderPassBeginDesc{{MakeClearValue(1.f, 0x0)}});
+				Techniques::RenderPassBeginDesc{MakeIteratorRange(clearValues)});
 
                 // -------- -------- -------- -------- -------- --------
                 //          E M I S S I V E

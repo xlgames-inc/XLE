@@ -10,6 +10,7 @@
 #include "TerrainUberSurface.h"
 #include "TerrainScaffold.h"
 #include "GestaltResource.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -251,7 +252,7 @@ namespace SceneEngine
                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
             }
 
-            metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 4);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(metalContext, 0, 4);
         } CATCH (...) {
             // note, it's a real problem when we get a invalid resource get... 
             //  We should ideally stall until all the required resources are loaded

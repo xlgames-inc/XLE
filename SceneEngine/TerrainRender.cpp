@@ -13,6 +13,7 @@
 #include "SimplePatchBox.h"
 #include "Noise.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
@@ -232,8 +233,8 @@ namespace SceneEngine
         if (desc._mode == TerrainRenderingContext::Mode_RayTest) {
             ps = "";
             unsigned strides = sizeof(float)*4;
-            GeometryShader::SetDefaultStreamOutputInitializers(
-                GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
+            MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+                MetalStubs::GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
             gs = "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             definesBuffer << ";TERRAIN_NORMAL=" << unsigned(desc._vegetationAlignToTerrainUp);
@@ -252,12 +253,12 @@ namespace SceneEngine
                 "xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
                 definesBuffer.get());
         } CATCH (...) {
-            GeometryShader::SetDefaultStreamOutputInitializers(GeometryShader::StreamOutputInitializers());
+            MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(MetalStubs::GeometryShader::StreamOutputInitializers());
             throw;
         } CATCH_END
 
         if (desc._mode == TerrainRenderingContext::Mode_RayTest) {
-            GeometryShader::SetDefaultStreamOutputInitializers(GeometryShader::StreamOutputInitializers());
+            MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(MetalStubs::GeometryShader::StreamOutputInitializers());
         }
 
         BoundUniforms boundUniforms(
@@ -366,8 +367,8 @@ namespace SceneEngine
     {
         context->Unbind<HullShader>();
         context->Unbind<DomainShader>();
-        context->UnbindGS<ShaderResourceView>(0, 5);
-        context->UnbindPS<ShaderResourceView>(0, 5);
+        MetalStubs::UnbindGS<ShaderResourceView>(*context, 0, 5);
+        MetalStubs::UnbindPS<ShaderResourceView>(*context, 0, 5);
         context->Bind(Topology::TriangleList);
     }
 
@@ -1102,8 +1103,8 @@ namespace SceneEngine
             }
         CATCH_ASSETS_END(parserContext)
 
-		context->UnbindVS<Metal::ShaderResourceView>(0, 1);
-		context->UnbindDS<Metal::ShaderResourceView>(0, 1);
+		MetalStubs::UnbindVS<Metal::ShaderResourceView>(*context, 0, 1);
+		MetalStubs::UnbindDS<Metal::ShaderResourceView>(*context, 0, 1);
     }
 
     void TerrainCellRenderer::RenderNode(    

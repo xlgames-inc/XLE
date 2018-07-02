@@ -15,6 +15,7 @@
 #include "TerrainFormat.h"
 #include "PreparedScene.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -854,7 +855,7 @@ namespace SceneEngine
 
             gpuOutput = outputRes->GetUnderlying();
             if (gpuOutput)
-                context->BindSO(MakeResourceList(gpuOutput));
+                MetalStubs::BindSO(*context, MakeResourceList(gpuOutput));
         }
 
         struct RayTestBuffer
@@ -869,7 +870,7 @@ namespace SceneEngine
         _pimpl->_renderer->Render(context, parserContext, state);
         state.ExitState(context, parserContext);
 
-        context->UnbindSO();
+        MetalStubs::UnbindSO(*context);
 
         unsigned resultCount = 0;
         if (outputRes && gpuOutput) {

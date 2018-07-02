@@ -9,6 +9,7 @@
 #include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "LightDesc.h"
 #include "LightInternal.h"
 #include "LightingTargets.h"        // for MainTargetsBox in RTShadows_DrawMetrics
@@ -162,7 +163,7 @@ namespace SceneEngine
         GPUAnnotation anno(context, "Prepare-RTShadows");
 
         auto& box = ConsoleRig::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
-        auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+        auto oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
         
         static const InputElementDesc soVertex[] = 
         {
@@ -180,17 +181,17 @@ namespace SceneEngine
             InputElementDesc("D", 0, Format::R32G32B32_FLOAT)
         };
 
-        metalContext.UnbindPS<Metal::ShaderResourceView>(5, 3);
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 5, 3);
 
         const unsigned bufferCount = 1;
         unsigned strides[] = { 52 };
         unsigned offsets[] = { 0 };
-        Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-            Metal::GeometryShader::StreamOutputInitializers(soVertex, dimof(soVertex), strides, 1));
+        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+            MetalStubs::GeometryShader::StreamOutputInitializers(soVertex, dimof(soVertex), strides, 1));
 
         static_assert(bufferCount == dimof(strides), "Stream output buffer count mismatch");
         static_assert(bufferCount == dimof(offsets), "Stream output buffer count mismatch");
-        metalContext.BindSO(MakeResourceList(box._triangleBufferVB));
+        MetalStubs::BindSO(metalContext, MakeResourceList(box._triangleBufferVB));
 
             // set up the render state for writing into the grid buffer
         SavedTargets savedTargets(metalContext);
@@ -243,8 +244,8 @@ namespace SceneEngine
                 preparedScene, TechniqueIndex_RTShadowGen);
         CATCH_ASSETS_END(parserContext)
 
-        metalContext.UnbindSO();
-        Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
+        MetalStubs::UnbindSO(metalContext);
+        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
 
             // We have the list of triangles. Let's render then into the final
             // grid buffer viewport. This should create a list of triangles for

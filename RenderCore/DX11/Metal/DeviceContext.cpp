@@ -122,14 +122,11 @@ namespace RenderCore { namespace Metal_DX11
     template<> void DeviceContext::Unbind<BoundInputLayout>()
     {
         _underlying->IASetInputLayout(nullptr);
-    }
 
-    void DeviceContext::UnbindVBs()
-	{
 		ID3D::Buffer* vb = nullptr;
         UINT strides = 0, offsets = 0;
         _underlying->IASetVertexBuffers(0, 1, &vb, &strides, &offsets);
-	}
+    }
 
     template<> void DeviceContext::Unbind<RenderTargetView>()
     {
@@ -141,11 +138,6 @@ namespace RenderCore { namespace Metal_DX11
     void DeviceContext::UnbindGS() { _underlying->GSSetShader(nullptr, nullptr, 0); }
 	void DeviceContext::UnbindHS() { _underlying->HSSetShader(nullptr, nullptr, 0); }
 	void DeviceContext::UnbindDS() { _underlying->DSSetShader(nullptr, nullptr, 0); }
-
-    void DeviceContext::UnbindSO()
-    {
-        _underlying->SOSetTargets(0, nullptr, nullptr);
-    }
 
     void DeviceContext::Dispatch(unsigned countX, unsigned countY, unsigned countZ)
     {

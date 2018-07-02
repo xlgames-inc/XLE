@@ -10,6 +10,7 @@
 #include "LightingParser.h"
 #include "SceneParser.h"
 #include "Noise.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -221,7 +222,7 @@ namespace SceneEngine
 
         using namespace RenderCore;
 		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+        auto oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
         ID3D::Query* begunQuery = nullptr; (void)begunQuery;
 
         auto oldCamera = parserContext.GetProjectionDesc();
@@ -236,7 +237,7 @@ namespace SceneEngine
             // ID3D::Buffer* nullBuffer = nullptr; unsigned zero = 0;
             // context->GetUnderlying()->IASetVertexBuffers(3, 1, &nullBuffer, &zero, &zero);
             metalContext->UnbindInputLayout();
-            metalContext->UnbindVS<Metal::ShaderResourceView>(15, 1);
+            MetalStubs::UnbindVS<Metal::ShaderResourceView>(*metalContext, 15, 1);
 
             float maxDrawDistance = 0.f;
             for (const auto& m:cfg._materials)
@@ -306,12 +307,12 @@ namespace SceneEngine
             const bool alignToTerrainUp = res._alignToTerrainUp;
             if (alignToTerrainUp) {
                 unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize_TerrainAlign };
-                Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-                    Metal::GeometryShader::StreamOutputInitializers(elesTerrainNormal, dimof(elesTerrainNormal), strides, 2));
+                MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+                    MetalStubs::GeometryShader::StreamOutputInitializers(elesTerrainNormal, dimof(elesTerrainNormal), strides, 2));
             } else {
                 unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize_NoAlign };
-                Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-                    Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
+                MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+                    MetalStubs::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
             }
             g_TerrainVegetationSpawn_AlignToTerrainUp = alignToTerrainUp;
 
@@ -331,9 +332,9 @@ namespace SceneEngine
                 //  when the bound camera changes...
             LightingParser_SetGlobalTransform(*metalContext, parserContext, newProjDesc);
 
-            metalContext->BindSO(MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
+            MetalStubs::BindSO(*metalContext, MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
             parserContext.GetSceneParser()->ExecuteScene(context, parserContext, parseSettings, preparedScene, 5);
-            metalContext->UnbindSO();
+            MetalStubs::UnbindSO(*metalContext);
 
                 //  After the scene execute, we need to use a compute shader to separate the 
                 //  stream output data into it's bins.
@@ -402,8 +403,8 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 // unbind all of the UAVs again
-            metalContext->UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
-            metalContext->UnbindCS<Metal::ShaderResourceView>(0, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*metalContext, 0, outputBinCount);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*metalContext, 0, 2);
 #endif
 
             res._isPrepared = true;
@@ -418,8 +419,8 @@ namespace SceneEngine
             // (reset the camera transform if it's changed)
         LightingParser_SetGlobalTransform(*metalContext, parserContext, oldCamera);
 
-        metalContext->UnbindSO();
-        Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
+        MetalStubs::UnbindSO(*metalContext);
+        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
         // oldTargets.ResetToOldTargets(context);
     }
 

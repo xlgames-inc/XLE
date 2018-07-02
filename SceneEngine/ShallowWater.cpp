@@ -656,18 +656,18 @@ namespace SceneEngine
                     settings, _gridDimension);
 
                 if (pass == 0) {
-                    metalContext.UnbindCS<UAV>(0, 8);
-                    metalContext.UnbindCS<SRV>(5, 1);
+                    MetalStubs::UnbindCS<UAV>(metalContext, 0, 8);
+                    MetalStubs::UnbindCS<SRV>(metalContext, 5, 1);
                 } else {
-                    metalContext.UnbindCS<SRV>(5, 8);
-                    metalContext.UnbindCS<UAV>(0, 1);
+                    MetalStubs::UnbindCS<SRV>(metalContext, 5, 8);
+                    MetalStubs::UnbindCS<UAV>(metalContext, 0, 1);
                 }
             }
 
         }
 
-        metalContext.UnbindCS<UAV>(0, 5);
-        metalContext.UnbindVS<SRV>(0, 5);
+        MetalStubs::UnbindCS<UAV>(metalContext, 0, 5);
+        MetalStubs::UnbindVS<SRV>(metalContext, 0, 5);
     }
 
         ////////////////////////////////
@@ -770,7 +770,7 @@ namespace SceneEngine
             }
         }
 
-        metalContext.UnbindCS<UAV>(0,8);
+        MetalStubs::UnbindCS<UAV>(metalContext, 0,8);
 
         _poolOfUnallocatedArrayIndices = std::move(poolOfUnallocatedArrayIndices);
         _activeSimulationElements = std::move(newElements);
@@ -791,14 +791,14 @@ namespace SceneEngine
         const float baseHeight = context._oceanSettings->_baseHeight;
 
         auto materialConstants = Internal::BuildOceanMaterialConstants(*context._oceanSettings, context._gridPhysicalDimension);
-        Metal::ConstantBuffer globalOceanMaterialConstantBuffer(&materialConstants, sizeof(materialConstants));
+        auto globalOceanMaterialConstantBuffer = MakeMetalCB(&materialConstants, sizeof(materialConstants));
         auto& metalContext = *context._metalContext;
 
             // unbind resources that were bound in ShallowWater_BindForOceanRender
-        metalContext.UnbindVS<SRV>( 3, 2);
-        metalContext.UnbindPS<SRV>( 5, 1);
-        metalContext.UnbindPS<SRV>(11, 1);
-        metalContext.UnbindPS<SRV>(15, 1);
+        MetalStubs::UnbindVS<SRV>(metalContext, 3, 2);
+        MetalStubs::UnbindPS<SRV>(metalContext, 5, 1);
+        MetalStubs::UnbindPS<SRV>(metalContext,11, 1);
+        MetalStubs::UnbindPS<SRV>(metalContext,15, 1);
         metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(1, Techniques::CommonResources()._linearClampSampler));
 
         if (oceanReset) {
@@ -960,7 +960,7 @@ namespace SceneEngine
 
         }
 
-        metalContext.UnbindCS<UAV>(0, 8);
+        MetalStubs::UnbindCS<UAV>(metalContext, 0, 8);
 
             //  For each actively simulated grid, run the compute shader to calculate the heights 
             //  for the new frame. We simulate horizontally and vertically separate. Between frames we
@@ -1006,7 +1006,7 @@ namespace SceneEngine
 
             metalContext.Bind(buildNormals); 
             metalContext.Dispatch(1, 1, _simulatingGridsCount);
-            metalContext.UnbindCS<UAV>(0, 2);
+            MetalStubs::UnbindCS<UAV>(metalContext, 0, 2);
 
                 // do we really need mipmaps for shallow water grids?
             metalContext.Bind(buildNormalsMipmaps);
@@ -1019,7 +1019,7 @@ namespace SceneEngine
                 metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(_simulationGrid->_normalsTextureUAV[step+1]));
             
                 metalContext.Dispatch((mipDims + (8-1))/8, (mipDims + (8-1))/8, _simulatingGridsCount);
-                metalContext.UnbindCS<UAV>(0, 1);
+                MetalStubs::UnbindCS<UAV>(metalContext, 0, 1);
             }
         }
 
@@ -1158,7 +1158,7 @@ namespace SceneEngine
             }
         }
 
-        metalContext.UnbindVS<SRV>(3, 1);
+        MetalStubs::UnbindVS<SRV>(metalContext, 3, 1);
     }
 
     void ShallowWaterSim::BindForOceanRender(MetalContext& metalContext, unsigned bufferCounter)

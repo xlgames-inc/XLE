@@ -8,6 +8,7 @@
 #include "SceneEngineUtils.h"
 #include "LightingParser.h"
 #include "LightingParserContext.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Format.h"
@@ -29,7 +30,7 @@ namespace SceneEngine
     public:
         std::shared_ptr<IThreadContext> _threadContext;
         ModelIntersectionResources* _res;
-        Metal::GeometryShader::StreamOutputInitializers _oldSO;
+        MetalStubs::GeometryShader::StreamOutputInitializers _oldSO;
 
         LightingParserContext _parserContext;
 
@@ -223,7 +224,7 @@ namespace SceneEngine
             *metalContext.get(), _pimpl->_parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions, &specialProjMatrix));
 
-        _pimpl->_oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+        _pimpl->_oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
 
         static const InputElementDesc eles[] = {
             InputElementDesc("INTERSECTIONDEPTH",   0, Format::R32_FLOAT),
@@ -235,8 +236,8 @@ namespace SceneEngine
         };
 
         static const unsigned strides[] = { sizeof(ResultEntry) };
-        Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-            Metal::GeometryShader::StreamOutputInitializers(
+        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+            MetalStubs::GeometryShader::StreamOutputInitializers(
                 eles, dimof(eles), strides, dimof(strides)));
 
         _pimpl->_res = &ConsoleRig::FindCachedBox<ModelIntersectionResources>(
@@ -249,7 +250,7 @@ namespace SceneEngine
             Metal::AsResource(*_pimpl->_res->_clearedBuffer->GetUnderlying()));
 
         auto soBuffer = _pimpl->_res->_streamOutputBuffer->GetUnderlying();
-        metalContext->BindSO(MakeResourceList(soBuffer));
+        MetalStubs::BindSO(*metalContext, MakeResourceList(soBuffer));
 
         auto& commonRes = Techniques::CommonResources();
         metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(commonRes._defaultSampler));
@@ -258,8 +259,8 @@ namespace SceneEngine
     ModelIntersectionStateContext::~ModelIntersectionStateContext()
     {
         auto metalContext = Metal::DeviceContext::Get(*_pimpl->_threadContext);
-        metalContext->UnbindSO();
-        Metal::GeometryShader::SetDefaultStreamOutputInitializers(_pimpl->_oldSO);
+        MetalStubs::UnbindSO(*metalContext);
+        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(_pimpl->_oldSO);
     }
 }
 

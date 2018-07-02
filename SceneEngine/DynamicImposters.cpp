@@ -774,7 +774,7 @@ namespace SceneEngine
         
         context.Bind(
             ResourceList<Metal::RenderTargetView, dimof(rtvs)>(
-                std::initializer_list<const Metal::RenderTargetView>(rtvs, &rtvs[(unsigned)layerCount])), 
+                std::initializer_list<Metal::RenderTargetView>(rtvs, &rtvs[(unsigned)layerCount])), 
             &_atlas._tempDSV.DSV());
         context.Bind(viewport);
         context.Bind(Techniques::CommonResources()._blendOpaque);

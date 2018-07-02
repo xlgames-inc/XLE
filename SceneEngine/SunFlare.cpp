@@ -9,6 +9,7 @@
 #include "SceneEngineUtils.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
+#include "MetalStubs.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -268,7 +269,7 @@ namespace SceneEngine
                 
                     context->Bind(*res._toRadialShader);
                     context->Draw(4);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
                 }
 
                 if (rowsOptimisation)
@@ -286,7 +287,7 @@ namespace SceneEngine
 
                     context->Bind(*res._blurShader);
                     context->Draw(4);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
                 }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -309,7 +310,7 @@ namespace SceneEngine
                     context->Bind(*res._commitShader);
                     context->Bind(Topology::TriangleList);
                     context->Draw(64*3);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
                 }
 
             } else {
@@ -332,7 +333,7 @@ namespace SceneEngine
                     context->Bind(*res._directBlurShader);
                     context->Bind(Topology::TriangleList);
                     context->Draw(64*3);
-                    context->UnbindPS<Metal::ShaderResourceView>(3, 1);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
                 }
                 
             }

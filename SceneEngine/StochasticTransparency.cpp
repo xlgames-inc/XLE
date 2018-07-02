@@ -9,6 +9,7 @@
 #include "LightingParserContext.h"
 #include "GestaltResource.h"
 #include "MetricsBox.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -251,7 +252,7 @@ namespace SceneEngine
     {
         if (!_box) return;
 
-        _context->UnbindPS<Metal::ShaderResourceView>(7, 3); // unbind box._stochasticDepths, opacities texture, prim ids texture
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(*_context, 7, 3); // unbind box._stochasticDepths, opacities texture, prim ids texture
 
         {
             SetupVertexGeneratorShader(*_context);

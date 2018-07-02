@@ -486,7 +486,7 @@ namespace SceneEngine
 
             context->Draw(particleCountWidth*particleCountWidth);
 
-            context->UnbindVS<Metal::ShaderResourceView>(3, 1);
+            MetalStubs::UnbindVS<Metal::ShaderResourceView>(*context, 3, 1);
         CATCH_ASSETS_END(parserContext)
 
         context->Bind(RenderCore::Topology::TriangleList);

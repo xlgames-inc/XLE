@@ -60,7 +60,7 @@ namespace RenderOverlays
         metalContext.Bind(Techniques::CommonResources()._dssDisable);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
         metalContext.Bind(Topology::TriangleStrip);
-        metalContext.Unbind<Metal::BoundInputLayout>();
+        metalContext.UnbindInputLayout();
 
         auto desc = stencilSrv.GetResource()->GetDesc();
         if (desc._type != ResourceDesc::Type::Texture) return;
