@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TerrainOverlaySystem.h"
+#include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderOverlays/OverlayContext.h"
 #include "../../Tools/ToolsRig/TerrainManipulatorsInterface.h"
 #include "../../Tools/ToolsRig/TerrainManipulators.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -57,7 +59,9 @@ namespace Sample
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-            _screens->Render(device, nullptr, parserContext.GetProjectionDesc());
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto viewportDims = device.GetStateDesc()._viewportDimensions;
+            _screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
         void SetActivationState(bool) {}

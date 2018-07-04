@@ -26,6 +26,8 @@
 #include <random>
 #include <algorithm>
 
+#include "../RenderCore/DX11/Metal/DeviceContextImpl.h"
+
 namespace SceneEngine
 {
     using namespace RenderCore;

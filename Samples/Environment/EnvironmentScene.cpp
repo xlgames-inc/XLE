@@ -23,10 +23,13 @@
 
 #include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Assets/ModelCache.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/DepVal.h"
+#include "../../Assets/AssetTraits.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -166,7 +169,7 @@ namespace Sample
         SceneEngine::PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
-        CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
+        CPUProfileEvent pEvnt2("ExecuteScene", g_cpuProfiler);
         
 		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         using Toggles = SceneParseSettings::Toggles;

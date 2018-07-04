@@ -222,7 +222,7 @@ namespace VulkanTest
 		auto dxContext = RenderCore::Metal_DX11::DeviceContext::Get(threadContext);
 		if (dxContext) {
 			Metal_DX11::Copy(
-				*dxContext, Metal_DX11::AsID3DResource(*gpuResource), Metal_DX11::AsID3DResource(*stagingResource),
+				*dxContext, Metal_DX11::AsResource(*gpuResource), Metal_DX11::AsResource(*stagingResource),
 				Metal_DX11::ImageLayout::TransferDstOptimal, Metal_DX11::ImageLayout::TransferSrcOptimal);
 		} else {
 #if 0

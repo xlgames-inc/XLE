@@ -103,7 +103,7 @@ namespace Sample
         using namespace SceneEngine;
 
 		RenderCore::GPUAnnotation anno(context, "Characters");
-        CPUProfileEvent pEvnt("CharactersSceneRender", g_cpuProfiler);
+        CPUProfileEvent pEvnt2("CharactersSceneRender", g_cpuProfiler);
 
             //  Turn on auto cotangents for character rendering
             //  This prevents us from having to transform the tangent frame through the skinning
@@ -277,7 +277,7 @@ namespace Sample
                         Combine_InPlace(Float3(i2->_animState._motionCompensation * newState._time), final);
 
                         __declspec(align(16)) auto localToCulling = Combine(i2->_localToWorld, worldToProjection);
-                        if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+                        if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                             newState._instances.push_back(final);
                         }
                     }
@@ -304,7 +304,7 @@ namespace Sample
             Combine_InPlace(Float3(i->_animState._motionCompensation * i->_animState._time), final);
 
             __declspec(align(16)) auto localToCulling = Combine(i->_localToWorld, worldToProjection);
-            if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+            if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 newState._instances.push_back(final);
                 _pimpl->_stateCache.push_back(std::move(newState));
             }
@@ -321,7 +321,7 @@ namespace Sample
             Combine_InPlace(Float3(_pimpl->_playerCharacter->_animState._motionCompensation * _pimpl->_playerCharacter->_animState._time), final);
     
             __declspec(align(16)) auto localToCulling = Combine(_pimpl->_playerCharacter->_localToWorld, worldToProjection);
-            if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second)) {
+            if (!CullAABB_Aligned(localToCulling, roughBoundingBox.first, roughBoundingBox.second, RenderCore::Techniques::GetDefaultClipSpaceType())) {
                 newState._instances.push_back(final);
                 _pimpl->_stateCache.push_back(std::move(newState));
             }

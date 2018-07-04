@@ -17,6 +17,8 @@
 #include "../../Tools/EntityInterface/EnvironmentSettings.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/AssetTraits.h"
+#include "../../Assets/DepVal.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 
 namespace Sample

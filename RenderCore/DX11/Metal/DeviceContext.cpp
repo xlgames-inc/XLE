@@ -119,7 +119,7 @@ namespace RenderCore { namespace Metal_DX11
 
     template<> void DeviceContext::Unbind<ComputeShader>()	{ _underlying->CSSetShader(nullptr, nullptr, 0); }
 
-    template<> void DeviceContext::Unbind<BoundInputLayout>()
+    void DeviceContext::UnbindInputLayout()
     {
         _underlying->IASetInputLayout(nullptr);
 
@@ -282,7 +282,4 @@ namespace RenderCore { namespace Metal_DX11
         /**/
 
     EXPAND(UnorderedAccessView, BindCS)
-
-    template void DeviceContext::BindSO<1>(const ResourceList<Buffer, 1>&, unsigned);
-    template void DeviceContext::BindSO<2>(const ResourceList<Buffer, 2>&, unsigned);
 }}

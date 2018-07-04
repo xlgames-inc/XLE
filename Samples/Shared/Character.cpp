@@ -7,7 +7,8 @@
 #include "Character.h"
 #include "SampleGlobals.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/Material.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/AnimationScaffoldInternal.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateAssets.h"
@@ -27,32 +28,35 @@ namespace Sample
 
     const RenderCore::Assets::AnimationImmutableData& CharacterModel::GetAnimationData() const  
     {
-        if (!_animationSet) throw ::Assets::Exceptions::PendingAsset(AnimationSetInitialiser(), "");
-        return _animationSet->ImmutableData(); 
+		auto actual = _animationSet->TryActualize();
+		if (!actual) Throw(::Exceptions::BasicLabel("Pending or invalid data in CharacterModel (%s)", AnimationSetInitialiser()));
+        return actual->ImmutableData(); 
     }
 
     const RenderCore::Assets::AnimationSet& CharacterModel::GetAnimationSet() const
     {
-        if (!_animationSet) throw ::Assets::Exceptions::PendingAsset(AnimationSetInitialiser(), "");
-        return _animationSet->ImmutableData()._animationSet; 
+		auto actual = _animationSet->TryActualize();
+		if (!actual) Throw(::Exceptions::BasicLabel("Pending or invalid data in CharacterModel (%s)", AnimationSetInitialiser()));
+        return actual->ImmutableData()._animationSet; 
     }
 
     const RenderCore::Assets::ModelRenderer& CharacterModel::GetRenderer() const
     {
-        if (!_renderer) throw ::Assets::Exceptions::PendingAsset(SkinInitialiser(), "");
+		if (!_renderer) Throw(::Exceptions::BasicLabel("Pending or invalid data in CharacterModel (%s)", SkinInitialiser()));
         return *_renderer; 
     }
 
     const RenderCore::Assets::SkinPrepareMachine& CharacterModel::GetPrepareMachine() const
     {
-        if (!_prepareMachine) throw ::Assets::Exceptions::PendingAsset(SkinInitialiser(), "");
+		if (!_prepareMachine) Throw(::Exceptions::BasicLabel("Pending or invalid data in CharacterModel (%s)", SkinInitialiser()));
         return *_prepareMachine; 
     }
 
     const RenderCore::Assets::ModelScaffold& CharacterModel::GetModelScaffold() const
     {
-        if (!_model) throw ::Assets::Exceptions::PendingAsset(SkinInitialiser(), "");
-        return *_model; 
+		auto actual = _model->TryActualize();
+		if (!actual) Throw(::Exceptions::BasicLabel("Pending or invalid data in CharacterModel (%s)", SkinInitialiser()));
+        return *actual;
     }
 
 ///////////////////////////////////////////////////////////////////////////////
@@ -66,24 +70,24 @@ namespace Sample
         #endif
 
         using namespace RenderCore::Assets;
-        _model = &Assets::GetAssetComp<ModelScaffold>(files._skin.c_str());
-        _skeleton = &Assets::GetAssetComp<SkeletonScaffold>(files._skeleton.c_str());
-        _animationSet = &Assets::GetAssetComp<AnimationSetScaffold>(files._animationSet.c_str());
-        auto& matScaffold = Assets::GetAssetComp<MaterialScaffold>(files._skin.c_str(), files._skin.c_str());
+        _model = ::Assets::MakeAsset<ModelScaffold>(files._skin.c_str());
+        _skeleton = Assets::MakeAsset<SkeletonScaffold>(files._skeleton.c_str());
+        _animationSet = Assets::MakeAsset<AnimationSetScaffold>(files._animationSet.c_str());
+        auto matScaffold = Assets::MakeAsset<MaterialScaffold>(files._skin.c_str(), files._skin.c_str());
 
         auto searchRules = Assets::DefaultDirectorySearchRules(files._skin.c_str());
         const unsigned levelOfDetail = 0;
 
             // stall here until our resources are full loaded
         _model->StallWhilePending();
-        matScaffold.StallWhilePending();
+        matScaffold->StallWhilePending();
         _renderer = std::make_unique<ModelRenderer>(
-            *_model, matScaffold, ModelRenderer::Supplements(), 
+            *_model->Actualize(), *matScaffold->Actualize(), ModelRenderer::Supplements(), 
             sharedStates, &searchRules, levelOfDetail);
 
         _skeleton->StallWhilePending();
         _animationSet->StallWhilePending();
-        _prepareMachine = std::make_unique<SkinPrepareMachine>(*_model, *_animationSet, *_skeleton);
+        _prepareMachine = std::make_unique<SkinPrepareMachine>(*_model->Actualize(), *_animationSet->Actualize(), *_skeleton->Actualize());
     }
 
     CharacterModel::~CharacterModel()

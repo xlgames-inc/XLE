@@ -17,10 +17,10 @@ namespace RenderCore { namespace Metal_DX11
 {
 	void Copy(
 		DeviceContext& context, 
-		UnderlyingResourcePtr dst, UnderlyingResourcePtr src,
+		Resource& dst, Resource& src,
 		ImageLayout, ImageLayout)
 	{
-		context.GetUnderlying()->CopyResource(dst.get(), src.get());
+		context.GetUnderlying()->CopyResource(dst.GetUnderlying().get(), src.GetUnderlying().get());
 	}
 
     static unsigned GetMipLayers(ID3D::Resource* resource)

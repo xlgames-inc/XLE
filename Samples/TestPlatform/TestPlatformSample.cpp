@@ -48,7 +48,6 @@ namespace Sample
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -140,7 +139,6 @@ namespace Sample
 
             // Some secondary initalisation:
         primMan._renderAssetServices->InitModelCompilers();
-        g_gpuProfiler = RenderCore::CreateAnnotator(*primMan._rDevice);
         RenderOverlays::InitFontSystem(
             primMan._rDevice.get(), 
             &RenderCore::Assets::Services::GetBufferUploads());
@@ -205,7 +203,6 @@ namespace Sample
         RenderCore::Metal::DeviceContext::PrepareForDestruction(primMan._rDevice.get(), primMan._presChain.get());
 
         mainScene.reset();
-        g_gpuProfiler.reset();
 
         primMan._assetServices->GetAssetSets().Clear();
         RenderCore::Techniques::ResourceBoxes_Shutdown();
@@ -292,12 +289,12 @@ namespace Sample
 
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys)
     {
-        if (g_gpuProfiler) {
-            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
-            debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
-        }
+        // if (g_gpuProfiler) {
+        //     auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
+        //     debugSys.Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
+        // }
         debugSys.Register(
-            std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+            std::make_shared<PlatformRig::Overlays::HierarchicalProfilerDisplay>(&g_cpuProfiler), 
             "[Profiler] CPU Profiler");
     }
 

@@ -951,5 +951,46 @@ namespace RenderCore { namespace Assets
     }
 }}
 
+#else
+
+namespace RenderCore { namespace Assets
+{
+	MeshToModel::MeshToModel(const PreparedAnimation& preparedAnim, const SkeletonBinding* binding)
+	{
+	}
+
+	class SkinPrepareMachine::Pimpl
+    {
+    public:
+    };
+
+	void SkinPrepareMachine::PrepareAnimation(  
+        IThreadContext& context, 
+        PreparedAnimation& state,
+        const AnimationState& animState) const
+	{}
+
+	const SkeletonBinding& SkinPrepareMachine::GetSkeletonBinding() const 
+	{
+		return *(const SkeletonBinding*)nullptr;
+	}
+
+	unsigned SkinPrepareMachine::GetSkeletonOutputCount() const 
+	{
+		return 0;
+	}
+
+    void SkinPrepareMachine::RenderSkeleton(
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+        const AnimationState& animState, const Float4x4& localToWorld)
+	{
+	}
+        
+	SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&) {}
+	SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const SkeletonMachine& skeletonScaffold) {}
+    SkinPrepareMachine::~SkinPrepareMachine() {}
+}}
+
 #endif
 
