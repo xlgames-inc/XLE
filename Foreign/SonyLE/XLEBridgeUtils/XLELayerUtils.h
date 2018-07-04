@@ -47,7 +47,7 @@ namespace XLEBridgeUtils
             System::Drawing::Size viewportSize);
 
         static void AttachLibrary(GUILayer::EngineDevice^ device);
-        static void DetachLibrary();
+        static void DetachLibrary(GUILayer::EngineDevice^ device);
 
         static property GUILayer::EditorSceneManager^ GlobalSceneManager;
     };

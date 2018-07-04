@@ -662,9 +662,21 @@ namespace SceneEngine
 
 	RenderCore::Metal::Buffer MakeMetalCB(const void* data, size_t size)
 	{
-		return RenderCore::Metal::MakeConstantBuffer(
-			RenderCore::Metal::GetObjectFactory(),
-			MakeIteratorRange(data, PtrAdd(data, size)));
+		if (data) {
+			return RenderCore::Metal::MakeConstantBuffer(
+				RenderCore::Metal::GetObjectFactory(),
+				MakeIteratorRange(data, PtrAdd(data, size)));
+		} else {
+			return RenderCore::Metal::Buffer(
+				RenderCore::Metal::GetObjectFactory(),
+				CreateDesc(
+					BindFlag::ConstantBuffer,
+					CPUAccess::WriteDynamic,
+					GPUAccess::Read,
+					LinearBufferDesc::Create(unsigned(size)),
+					"buf"),
+				IteratorRange<const void*>{});
+		}
 	}
 
 	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size)

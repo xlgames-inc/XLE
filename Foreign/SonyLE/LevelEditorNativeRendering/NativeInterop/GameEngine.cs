@@ -164,7 +164,7 @@ namespace RenderingInterop
 
             s_loggingRedirect.Dispose();
             s_loggingRedirect = null;
-            XLEBridgeUtils.Utils.DetachLibrary();
+            XLEBridgeUtils.Utils.DetachLibrary(s_engineDevice);
             Util3D.Shutdown();
             XLEBridgeUtils.Utils.GlobalSceneManager = null;
             s_entityInterface = null;

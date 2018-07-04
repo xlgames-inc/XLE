@@ -308,7 +308,7 @@ namespace GUILayer
             OverlaySystemAdapter(::GUILayer::IOverlaySystem^ managedOverlay) : _managedOverlay(managedOverlay) {}
             ~OverlaySystemAdapter() {}
         protected:
-            gcroot<::GUILayer::IOverlaySystem^> _managedOverlay;
+            msclr::gcroot<::GUILayer::IOverlaySystem^> _managedOverlay;
         };
     }
 

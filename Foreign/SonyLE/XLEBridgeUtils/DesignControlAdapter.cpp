@@ -9,7 +9,6 @@
 #include "XLELayerUtils.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
-#include "../../Tools/GUILayer/CLIXAutoPtr.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/IDevice.h"

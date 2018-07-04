@@ -5,9 +5,8 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PropertyDescriptorUtils.h"
-#include "../../Assets/Assets.h"
-#include "../../RenderCore/Assets/Material.h"
 #include "../../Tools/GUILayer/MarshalString.h"
+#include "../../Utility/ParameterBox.h"
 
 namespace XLEBridgeUtils
 {

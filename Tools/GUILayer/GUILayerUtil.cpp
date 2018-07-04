@@ -144,7 +144,7 @@ namespace GUILayer
         StepAdapter(GUILayer::IStep^ adapted);
         ~StepAdapter();
     protected:
-        gcroot<GUILayer::IStep^> _adapted;
+        msclr::gcroot<GUILayer::IStep^> _adapted;
     };
 
     void StepAdapter::SetProgress(unsigned progress)
@@ -178,7 +178,7 @@ namespace GUILayer
         ProgressAdapter(GUILayer::IProgress^ adapted);
         ~ProgressAdapter();
     protected:
-        gcroot<GUILayer::IProgress^> _adapted;
+        msclr::gcroot<GUILayer::IProgress^> _adapted;
     };
 
     std::shared_ptr<ConsoleRig::IStep> ProgressAdapter::BeginStep(const char name[], unsigned progressMax, bool cancellable)

@@ -10,10 +10,14 @@
 
 namespace GUILayer
 {
-    void DelayedDeleteQueue::Add(void* ptr, DeletionCallback^ callback)
+	using DeletablePtr = System::Tuple<System::IntPtr, DeletionCallback^>;
+    using DeletablePtrList = System::Collections::Generic::List<DeletablePtr^>;
+    static msclr::gcroot<DeletablePtrList^> static_queue = gcnew DeletablePtrList;
+
+    void DelayedDeleteQueue::Add(System::IntPtr ptr, DeletionCallback^ callback)
     {
-        msclr::lock l(_queue);
-        _queue->Add(gcnew DeletablePtr(System::IntPtr(ptr), callback));
+        msclr::lock l(static_queue);
+        static_queue->Add(gcnew DeletablePtr(ptr, callback));
     }
 
     void DelayedDeleteQueue::FlushQueue()
@@ -21,9 +25,9 @@ namespace GUILayer
         // swap with a new list, so the list doesn't get modified by another thread as we're deleting items
         auto flip = gcnew DeletablePtrList;
         {
-            msclr::lock l(_queue);
-            auto t = _queue;
-            _queue = flip;
+            msclr::lock l(static_queue);
+            auto t = static_queue;
+            static_queue = flip;
             flip = t;
         }
 
@@ -31,14 +35,8 @@ namespace GUILayer
         if (count > 0) {
             Log(Verbose) << "Destroying native objects that were released indeterministically from cli code: " << count << std::endl;
             for each(auto i in flip)
-                (i->Item2)(i->Item1.ToPointer());
+                (i->Item2)(i->Item1);
             flip->Clear();
         }
     }
-
-    static DelayedDeleteQueue::DelayedDeleteQueue()
-    {
-        _queue = gcnew DeletablePtrList;
-    }
 }
-

@@ -269,7 +269,7 @@ namespace RenderCore { namespace Metal_DX11
 				if (hasInitData) {
                     auto top = init({0,0});
 					subResources[0] = D3D11_SUBRESOURCE_DATA{top._data.begin(), UINT(top._data.size()), UINT(top._data.size())};
-					hasInitData = top._data.size();
+					hasInitData = !top._data.empty();
 				}
 
 				D3D11_BUFFER_DESC d3dDesc;

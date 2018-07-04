@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 
 namespace ToolsRig { class IManipulator; }

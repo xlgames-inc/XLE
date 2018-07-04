@@ -372,7 +372,7 @@ namespace GUILayer
 
     template<typename SimObject>
         static CFDOverlay::RenderFn MakeRenderFn(
-            gcroot<CFDPreviewSettings^> settings)
+            msclr::gcroot<CFDPreviewSettings^> settings)
     {
         return [settings](
                 RenderCore::Metal::DeviceContext& device,

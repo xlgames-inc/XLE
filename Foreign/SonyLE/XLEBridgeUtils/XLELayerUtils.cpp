@@ -1,4 +1,3 @@
-
 // Copyright 2015 XLGAMES Inc.
 //
 // Distributed under the MIT License (See
@@ -126,7 +125,8 @@ namespace XLEBridgeUtils
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    namespace Internal 
+#if 0
+	namespace Internal 
     { 
         static Sce::Atf::OutputMessageType AsOutputMessageType(ConsoleRig::LogLevel level)
         {
@@ -203,29 +203,26 @@ namespace XLEBridgeUtils
             gcroot<System::Threading::SynchronizationContext^> _context;
         };
     }
+#endif
 
     LoggingRedirect::LoggingRedirect()
     {
-        _helper = std::make_shared<Internal::LoggingRedirectHelper>();
-        _helper->Enable();
+        // _helper = std::make_shared<Internal::LoggingRedirectHelper>();
+        // _helper->Enable();
     }
 
     LoggingRedirect::~LoggingRedirect() {}
     LoggingRedirect::!LoggingRedirect() {}
 
 
-    static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
-
     void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
     {
-        if (!s_attachRef) {
-            s_attachRef = device->GetNative().GetGlobalServices()->Attach();
-        }
+        device->GetNative().GetGlobalServices()->AttachCurrentModule();
     }
 
-    void Utils::DetachLibrary()
+    void Utils::DetachLibrary(GUILayer::EngineDevice^ device)
     {
-        s_attachRef.Detach();
+		device->GetNative().GetGlobalServices()->DetachCurrentModule();
     }
 
 }

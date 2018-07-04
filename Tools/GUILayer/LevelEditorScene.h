@@ -8,7 +8,6 @@
 
 #include "EntityLayer.h"
 #include "MathLayer.h"      // (for Vector3)
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../EntityInterface/EntityInterface.h"
 #include "ManipulatorsLayer.h"      // for TerrainManipulators::Context

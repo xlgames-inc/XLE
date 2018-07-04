@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../../Core/Types.h"
 #include <vector>

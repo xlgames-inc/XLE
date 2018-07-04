@@ -9,7 +9,6 @@
 #include "UITypesBinding.h"
 #include "IOverlaySystem.h"
 #include "EngineForward.h"
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "../ToolsRig/MaterialVisualisation.h"
 #include <memory>

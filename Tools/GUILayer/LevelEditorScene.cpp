@@ -363,7 +363,7 @@ namespace GUILayer
     {
         return ExportViaStream(
             "placements config",
-            std::bind(WritePlacementsCfg, _1, gcroot<IEnumerable<PlacementCellRef>^>(cells)));
+            std::bind(WritePlacementsCfg, _1, msclr::gcroot<IEnumerable<PlacementCellRef>^>(cells)));
     }
 
     ref class PlacementsPendingExport : public EditorSceneManager::PendingExport
