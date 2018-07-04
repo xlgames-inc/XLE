@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#if defined(XLE_HAS_SCENE_ENGINE)		// getting link-time errors when linking into executables that don't use the scene engine
-
 #include "BasicSceneParser.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
@@ -298,6 +296,3 @@ namespace PlatformRig
         }
     }*/
 }
-
-#endif
-

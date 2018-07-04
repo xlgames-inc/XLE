@@ -15,7 +15,7 @@
 #include "Metal/DeviceContext.h"
 #include "Metal/ObjectFactory.h"
 
-namespace RenderCore { namespace ImplDX11
+namespace RenderCore { namespace ImplVulkan
 {
 	namespace Metal = RenderCore::Metal_Vulkan;
 

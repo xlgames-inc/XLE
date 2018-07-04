@@ -53,44 +53,74 @@
     <Import Project="..\..\..\Foreign\CommonForClients.props" />
     <Import Project="GUILayer.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|Win32'">
-    <ClCompile>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
-    </ClCompile>
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-DX11|x64'">
     <ClCompile>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <AssemblyDebug>true</AssemblyDebug>
+      <AdditionalDependencies>dxguid.lib;cfgmgr32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
-    <ClCompile>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
-      <RuntimeTypeInfo>true</RuntimeTypeInfo>
-    </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
     <ClCompile>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
     <Link>
-      <AssemblyDebug>true</AssemblyDebug>
+      <AdditionalDependencies>dxguid.lib;cfgmgr32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-DX11|x64'">
     <ClCompile />
     <Link>
       <AssemblyDebug>true</AssemblyDebug>
+      <AdditionalDependencies>dxguid.lib;cfgmgr32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
     <Link>
       <AssemblyDebug>true</AssemblyDebug>
+      <AdditionalDependencies>dxguid.lib;cfgmgr32.lib;shlwapi.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>

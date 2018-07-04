@@ -146,10 +146,6 @@
     <None Include="Resources\me_square_small.png" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Foreign\RibbonLib_v2.6\Ribbon\Ribbon.csproj">
-      <Project>{0d4f3c14-b605-4471-b581-79784a89675c}</Project>
-      <Name>Ribbon</Name>
-    </ProjectReference>
     <ProjectReference Include="..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
       <Project>{e73bb233-d88b-44a7-a98f-d71ee158381d}</Project>
       <Name>Aga.Controls</Name>
