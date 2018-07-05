@@ -7,11 +7,10 @@
 #pragma once
 
 #include "Fluid.h"  // only for FluidDebuggingMode
-#include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../Math/Vector.h"
 
+namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; }}
 
 namespace SceneEngine
@@ -71,7 +70,7 @@ namespace SceneEngine
         UInt2 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
+            RenderCore::IThreadContext& context,
             LightingParserContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 

@@ -274,12 +274,7 @@ namespace Sample
             // presentation buffer (which is always target "0")
         bool hasPendingResources = false;
         {
-			RenderCore::SubpassDesc subPasses[] = {{std::vector<RenderCore::AttachmentViewDesc>{0}}};
-			RenderCore::FrameBufferDesc fbDesc = MakeIteratorRange(subPasses);
-			auto fb = lightingParserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, namedRes);
-            RenderCore::Techniques::RenderPassInstance rpi(
-                context, fb, fbDesc,
-                namedRes);
+			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, lightingParserContext);
 
                 //  If we need to, we can render outside of the lighting parser.
                 //  We just need to to use the device context to perform any rendering

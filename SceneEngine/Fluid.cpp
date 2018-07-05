@@ -78,7 +78,7 @@ namespace SceneEngine
     }
 
     void ReferenceFluidSolver2D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& metalContext,
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
@@ -315,28 +315,28 @@ namespace SceneEngine
     }
 
     void FluidSolver2D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_density[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                context, parserContext, RenderFluidMode::Vector,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data() });
             break;
 
         case FluidDebuggingMode::Temperature:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_temperature[1].data() });
             break;
@@ -563,21 +563,21 @@ namespace SceneEngine
     }
 
     void FluidSolver3D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging3D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_density[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging3D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                context, parserContext, RenderFluidMode::Vector,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data(), _pimpl->_velW[1].data() });
             break;

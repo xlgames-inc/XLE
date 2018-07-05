@@ -24,6 +24,7 @@
 namespace RenderOverlays { class Font; }
 namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class UnderlyingAPI; class IResource; }
 namespace BufferUploads { class ResourceLocator; }
+namespace RenderCore { namespace Techniques { class RenderPassInstance; }}
 
 namespace Utility
 {
@@ -307,6 +308,10 @@ namespace SceneEngine
 	RenderCore::Metal::Buffer MakeMetalCB(const void* data, size_t size);
 	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size);
 	RenderCore::Metal::Buffer MakeMetalIB(const void* data, size_t size);
+
+	RenderCore::Techniques::RenderPassInstance RenderPassToPresentationTarget(
+		RenderCore::IThreadContext& context,
+        LightingParserContext& parserContext);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

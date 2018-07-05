@@ -6,9 +6,10 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
 #include "../Math/Vector.h"
 #include <memory>
+
+namespace RenderCore { class IThreadContext; }
 
 namespace SceneEngine
 {
@@ -38,7 +39,7 @@ namespace SceneEngine
         UInt2 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
+            RenderCore::IThreadContext& context,
             LightingParserContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
@@ -87,7 +88,7 @@ namespace SceneEngine
         UInt2 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
+            RenderCore::IThreadContext& context,
             LightingParserContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
@@ -130,7 +131,7 @@ namespace SceneEngine
         UInt3 GetDimensions() const;
 
         void RenderDebugging(
-            RenderCore::Metal::DeviceContext& metalContext,
+            RenderCore::IThreadContext& metalContext,
             LightingParserContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 

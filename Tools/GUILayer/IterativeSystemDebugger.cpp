@@ -292,7 +292,7 @@ namespace GUILayer
         virtual void SetActivationState(bool newState) override {}
 
         using RenderFn = std::function<void(
-            RenderCore::Metal::DeviceContext&,
+            RenderCore::IThreadContext&,
             SceneEngine::LightingParserContext&,
             void*)>;
         using RenderWidgetsFn = std::function<void(
@@ -339,7 +339,7 @@ namespace GUILayer
 
         // _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
         (*_renderFn)(
-            *metalContext, parserContext,
+            device, parserContext,
             _sim.get());
     }
 
@@ -375,7 +375,7 @@ namespace GUILayer
             msclr::gcroot<CFDPreviewSettings^> settings)
     {
         return [settings](
-                RenderCore::Metal::DeviceContext& device,
+                RenderCore::IThreadContext& device,
                 SceneEngine::LightingParserContext& parserContext,
                 void* sim)
             {

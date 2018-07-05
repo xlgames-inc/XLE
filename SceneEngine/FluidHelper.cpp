@@ -332,11 +332,12 @@ namespace SceneEngine
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 
 namespace SceneEngine
 {
     void RenderFluidDebugging2D(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt2 dimensions, float minValue, float maxValue,
@@ -345,6 +346,10 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             auto& uploads = GetBufferUploads();
+
+			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+
+			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parserContext);
 
             auto dx = dimensions[0], dy = dimensions[1];
 
@@ -405,7 +410,7 @@ namespace SceneEngine
     }
 
     void RenderFluidDebugging3D(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt3 dimensions, float minValue, float maxValue,
@@ -414,6 +419,10 @@ namespace SceneEngine
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             auto& uploads = GetBufferUploads();
+
+			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+
+			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parserContext);
 
             auto dx = dimensions[0], dy = dimensions[1], dz = dimensions[2];
             auto pktSize = dx*dy*dz*sizeof(float);

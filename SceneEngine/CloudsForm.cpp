@@ -1036,7 +1036,7 @@ namespace SceneEngine
     }
 
     void CloudsForm2D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
+        RenderCore::IThreadContext& context,
         LightingParserContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
@@ -1046,35 +1046,35 @@ namespace SceneEngine
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, qcMin, qcMax,
                 { _pimpl->_condensedMixingRatio[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                context, parserContext, RenderFluidMode::Vector,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data() });
             break;
 
         case FluidDebuggingMode::Temperature:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, tMin, tMax,
                 { _pimpl->_potentialTemperature[1].data() });
             break;
 
         case FluidDebuggingMode::Vapor:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, qvMin, qvMax,
                 { _pimpl->_vaporMixingRatio[1].data() });
             break;
 
         case FluidDebuggingMode::Divergence:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_incompressibility.GetDivergence() });
             break;

@@ -10,6 +10,7 @@
 #include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -691,6 +692,18 @@ namespace SceneEngine
 		return RenderCore::Metal::MakeIndexBuffer(
 			RenderCore::Metal::GetObjectFactory(),
 			MakeIteratorRange(data, PtrAdd(data, size)));
+	}
+
+	RenderCore::Techniques::RenderPassInstance RenderPassToPresentationTarget(
+		RenderCore::IThreadContext& context,
+        LightingParserContext& parserContext)
+	{
+		RenderCore::SubpassDesc subPasses[] = {{std::vector<RenderCore::AttachmentViewDesc>{RenderCore::AttachmentViewDesc{0}}}};
+		RenderCore::FrameBufferDesc fbDesc = MakeIteratorRange(subPasses);
+		auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources());
+        return RenderCore::Techniques::RenderPassInstance(
+            context, fb, fbDesc,
+            parserContext.GetNamedResources());
 	}
 
 }
