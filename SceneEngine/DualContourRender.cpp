@@ -36,7 +36,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static const ::Assets::ResChar s_techniqueConfig[] = "xleres/techniques/cloudvolume.tech";
+    static const ::Assets::ResChar s_techniqueConfig[] = "xleres/techniques/cloudvolume";
 
     class DualContourRenderer::Pimpl
     {

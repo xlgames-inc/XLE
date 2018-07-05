@@ -321,6 +321,9 @@ namespace RenderCore { namespace Techniques
             TextureDesc::Plain2D(attachmentWidth, attachmentHeight, a._format, 1, uint16(a._arrayLayerCount)),
             "attachment");
 
+		// Prefer a "typeless" format when we create the actual resource
+		desc._textureDesc._format = AsTypelessFormat(desc._textureDesc._format);
+
         if (a._flags & AttachmentDesc::Flags::Multisampled)
             desc._textureDesc._samples = _props._samples;
 
@@ -377,7 +380,8 @@ namespace RenderCore { namespace Techniques
 	{
 		if (resName >= s_maxBoundTargets) return nullptr;
 		if (!_pimpl->_attachments[resName]) return nullptr;
-		return _pimpl->_srvPool.GetView(_pimpl->_attachments[resName], window);
+		auto completeView = CompleteTextureViewDesc(_pimpl->_attachmentDescs[resName], window);
+		return _pimpl->_srvPool.GetView(_pimpl->_attachments[resName], completeView);
 	}
 
     void AttachmentPool::DefineAttachment(AttachmentName name, const AttachmentDesc& request)

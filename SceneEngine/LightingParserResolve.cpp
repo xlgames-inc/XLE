@@ -385,7 +385,12 @@ namespace SceneEngine
 			SubpassDesc subpasses[] {
 				SubpassDesc{
 					{AttachmentViewDesc{IMainTargets::LightResolve, LoadStore::DontCare, LoadStore::Retain}}, 
-					{IMainTargets::MultisampledDepth, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}}
+					{IMainTargets::MultisampledDepth, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}},
+
+				// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
+				SubpassDesc{
+					{AttachmentViewDesc{IMainTargets::LightResolve, LoadStore::DontCare, LoadStore::Retain}}, 
+					{IMainTargets::MultisampledDepth, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, TextureViewDesc::Aspect::Stencil}},
             };
 
             FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));
@@ -413,10 +418,7 @@ namespace SceneEngine
                 }
             }
 
-			// This is broken in latest refactoring, because we can specify a custom TextureViewWindow for a RTV
-			// in the new SubPass model
-			assert(0);
-            // rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
+            rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
 
             // set light resolve state (note that we have to bind the depth buffer as a shader input here)
             SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);

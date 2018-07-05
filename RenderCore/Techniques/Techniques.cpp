@@ -355,10 +355,11 @@ namespace RenderCore { namespace Techniques
         return std::basic_string<Formatter::value_type>(input._start, input._end);
     }
 
-    void TechniqueSetFile::LoadInheritedParameterBoxes(
+    static void LoadInheritedParameterBoxes(
         Technique& dst, Formatter& source, 
+		IteratorRange<const std::pair<uint64_t, Technique>*> localSettings,
         const ::Assets::DirectorySearchRules& searchRules,
-		std::vector<::Assets::DepValPtr> inherited)
+		std::vector<::Assets::DepValPtr>& inherited)
     {
             //  We will serialize in a list of 
             //  shareable settings that we can inherit from
@@ -397,8 +398,8 @@ namespace RenderCore { namespace Techniques
 			} else {
 				// this setting is in the same file
 				auto settingHash = Hash64(name._start, name._end);
-				auto s = LowerBound(_settings, settingHash);
-				if (s != _settings.end() && s->first == settingHash) {
+				auto s = std::lower_bound(localSettings.begin(), localSettings.end(), settingHash, CompareFirst<uint64_t, Technique>());
+				if (s != localSettings.end() && s->first == settingHash) {
 					dst.MergeIn(s->second);
 				} else
 					Throw(FormatException("Inheritted object not found", source.GetLocation()));
@@ -437,58 +438,11 @@ namespace RenderCore { namespace Techniques
         }
     }
     
-	TechniqueSetFile::TechniqueSetFile(
-		Utility::InputStreamFormatter<utf8>& formatter, 
+    static Technique ParseTechnique(
+		Formatter& formatter, 
+		IteratorRange<const std::pair<uint64_t, Technique>*> localSettings,
 		const ::Assets::DirectorySearchRules& searchRules, 
-		const ::Assets::DepValPtr& depVal)
-	: _depVal(depVal)
-    {
-		std::vector<::Assets::DepValPtr> inherited;
-            
-            //  each top-level entry is a "Setting", which can contain parameter
-            //  boxes (and possibly inherit statements and shaders)
-
-        for (;;) {
-            bool cleanQuit = false;
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection settingName;
-                    if (!formatter.TryBeginElement(settingName)) break;
-
-					if (XlEqString(settingName, u("Inherit")) || XlEqString(settingName, u("Technique"))) {
-						formatter.SkipElement();
-					} else {
-						auto hash = Hash64(settingName._start, settingName._end);
-						auto i = LowerBound(_settings, hash);
-						_settings.insert(i, std::make_pair(hash, ParseTechnique(formatter, searchRules, inherited)));
-					}
-
-                    if (!formatter.TryEndElement()) break;
-                }
-                continue;
-
-            case Formatter::Blob::None:
-                cleanQuit = true;
-                break;
-
-            default:
-                break;
-            }
-
-            if (!cleanQuit)
-                Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
-            break;
-        }
-
-        for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
-            ::Assets::RegisterAssetDependency(_depVal, *i);
-        }
-    }
-
-	TechniqueSetFile::~TechniqueSetFile() {}
-
-    Technique TechniqueSetFile::ParseTechnique(Formatter& formatter, const ::Assets::DirectorySearchRules& searchRules, std::vector<::Assets::DepValPtr> inherited)
+		std::vector<::Assets::DepValPtr>& inherited)
     {
         using ParsingString = std::basic_string<Formatter::value_type>;
 
@@ -502,7 +456,7 @@ namespace RenderCore { namespace Techniques
                     if (!formatter.TryBeginElement(eleName)) break;
 
                     if (Is("Inherit", eleName)) {
-                        LoadInheritedParameterBoxes(result, formatter, searchRules, inherited);
+                        LoadInheritedParameterBoxes(result, formatter, localSettings, searchRules, inherited);
                     } else if (Is("Parameters", eleName)) {
                         LoadParameterBoxes(formatter, result._baseParameters._parameters);
                     } else break;
@@ -533,6 +487,58 @@ namespace RenderCore { namespace Techniques
             }
         }
     }
+
+	TechniqueSetFile::TechniqueSetFile(
+		Utility::InputStreamFormatter<utf8>& formatter, 
+		const ::Assets::DirectorySearchRules& searchRules, 
+		const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
+    {
+		std::vector<::Assets::DepValPtr> inherited;
+            
+            //  each top-level entry is a "Setting", which can contain parameter
+            //  boxes (and possibly inherit statements and shaders)
+
+        for (;;) {
+            bool cleanQuit = false;
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::BeginElement:
+                {
+                    Formatter::InteriorSection settingName;
+                    if (!formatter.TryBeginElement(settingName)) break;
+
+					if (XlEqString(settingName, u("Inherit")) || XlEqString(settingName, u("Technique"))) {
+						formatter.SkipElement();
+					} else {
+						auto hash = Hash64(settingName._start, settingName._end);
+						auto i = LowerBound(_settings, hash);
+						_settings.insert(i, std::make_pair(hash, ParseTechnique(formatter, MakeIteratorRange(_settings), searchRules, inherited)));
+					}
+
+                    if (!formatter.TryEndElement()) break;
+                }
+                continue;
+
+            case Formatter::Blob::None:
+                cleanQuit = true;
+                break;
+
+            default:
+                break;
+            }
+
+            if (!cleanQuit)
+                Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+            break;
+        }
+
+        for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
+            ::Assets::RegisterAssetDependency(_depVal, *i);
+        }
+    }
+
+	TechniqueSetFile::~TechniqueSetFile() {}
+
 
     void Technique::MergeIn(const Technique& source)
     {
@@ -729,8 +735,7 @@ namespace RenderCore { namespace Techniques
 						// We should find a list of the actual techniques to use, as attributes
 						// The attribute name defines the how to apply the technique, and the attribute value is
 						// the name of the technique itself
-						for (;;)
-						{
+						for (;;) {
 							auto next = formatter.PeekNext();
                             if (next == Formatter::Blob::EndElement) break;
                             if (next != Formatter::Blob::AttributeName)
@@ -770,6 +775,11 @@ namespace RenderCore { namespace Techniques
 								}
 							}
 						}
+					} else if (XlEqString(eleName, u("*"))) {
+						// This is an override that applies to all techniques in this file
+						auto overrideTechnique = ParseTechnique(formatter, {}, searchRules, inheritedAssets);
+						for (unsigned c=0; c<dimof(_techniques); ++c) 
+							_techniques->_technique.MergeIn(overrideTechnique);
 					} else {
 						// other elements are packed in here, as well (such as the actual technique definitions)
 						formatter.SkipElement();

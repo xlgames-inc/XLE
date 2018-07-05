@@ -137,6 +137,8 @@ namespace RenderCore
 		virtual ~INamedAttachments();
 	};
 
+	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc);
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline ClearValue MakeClearValue(const VectorPattern<float, 4>& v)

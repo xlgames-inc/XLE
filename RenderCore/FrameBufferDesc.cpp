@@ -37,5 +37,13 @@ namespace RenderCore
 
 	INamedAttachments::~INamedAttachments() {}
 
+	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc)
+	{
+		TextureViewDesc result = viewDesc;
+		if (result._format._aspect == TextureViewDesc::Aspect::UndefinedAspect)
+			result._format._aspect = attachmentDesc._defaultAspect;
+		return result;
+	}
+
 }
 

@@ -388,7 +388,7 @@ namespace ToolsRig
     {
         auto& visBox = ConsoleRig::FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
 
-		const auto* baseTechnique = "xleres/techniques/illum.tech";
+		const auto* baseTechnique = "xleres/techniques/illum";
 		if (Tweakable("DrawMarkers", true)) {
 
 			auto fallbackShader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique); 

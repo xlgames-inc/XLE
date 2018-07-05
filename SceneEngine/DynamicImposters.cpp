@@ -406,7 +406,7 @@ namespace SceneEngine
             return;
 
         auto shader = _pimpl->_material.FindVariation(
-            parserContext, techniqueIndex, "xleres/vegetation/impostermaterial.tech");
+            parserContext, techniqueIndex, "xleres/vegetation/impostermaterial");
         if (!shader._shader._shaderProgram) return;
 
             // For each object here, we should look to see if we have a prepared

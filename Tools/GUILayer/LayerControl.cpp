@@ -54,7 +54,7 @@ namespace GUILayer
     {
         using namespace SceneEngine;
 
-        LightingParserContext lightingParserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get());
+        LightingParserContext lightingParserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get(), pimpl._frameBufferPool.get());
         lightingParserContext._plugins.push_back(pimpl._stdPlugin);
 
         auto stateDesc = context.GetStateDesc();
@@ -343,6 +343,7 @@ namespace GUILayer
         _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
         _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::AttachmentPool>();
+		_pimpl->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();
         _techContextWrapper = gcnew TechniqueContextWrapper(_pimpl->_globalTechniqueContext);
         _pimpl->_activePaint = false;
     }

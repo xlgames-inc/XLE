@@ -157,13 +157,6 @@ namespace RenderCore { namespace Techniques
 		~TechniqueSetFile();
 	private:
 		::Assets::DepValPtr _depVal;
-
-		Technique ParseTechnique(Utility::InputStreamFormatter<utf8>& formatter, const ::Assets::DirectorySearchRules& searchRules, std::vector<::Assets::DepValPtr> inherited);
-		void LoadInheritedParameterBoxes(
-			Technique& dst,
-			Utility::InputStreamFormatter<utf8>& formatter,
-			const ::Assets::DirectorySearchRules& searchRules,
-			std::vector<::Assets::DepValPtr> inherited);
 	};
 
     class ShaderType

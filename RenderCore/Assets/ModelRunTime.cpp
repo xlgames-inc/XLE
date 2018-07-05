@@ -899,7 +899,7 @@ namespace RenderCore { namespace Assets
 		};
         static_assert(dimof(vbs) == MaxVertexStreams, "Vertex buffer array size doesn't match vertex streams");
         assert(mesh->_vertexStreamCount <= MaxVertexStreams);
-		boundInputLayout.Apply(*context._context, MakeIteratorRange(vbs));
+		boundInputLayout.Apply(*context._context, MakeIteratorRange(vbs, &vbs[mesh->_vertexStreamCount]));
     }
 
     auto ModelRenderer::Pimpl::BuildMesh(
@@ -1448,27 +1448,33 @@ namespace RenderCore { namespace Assets
 
 			assert(boundVariation._inputLayout);
 			if (boundVariation._inputLayout != currInputLayout) {
-				// _pimpl->ApplyBoundInputLayout(context, *boundVariation._inputLayout, currGeoCall);
 
-				// todo -- unimplemented. bind with BoundInputLayout path
-				assert(0);
-				/*
-				const Metal::VertexBuffer* vbs[] = { &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer, &renderer._pimpl->_vertexBuffer };
-                static_assert(dimof(vbs) == (Pimpl::MaxVertexStreams+1), "Vertex buffer array size doesn't match vertex streams");
+				VertexBufferView vbv[] = {
+					renderer._pimpl->_vertexBuffer, renderer._pimpl->_vertexBuffer, renderer._pimpl->_vertexBuffer, renderer._pimpl->_vertexBuffer
+				};
 
-                if ((unsigned)d->_topology > 0xffu) {
-                    unsigned strides[] = { sknmesh._extraVbStride[0], sknmesh._vertexStrides[0], sknmesh._vertexStrides[1], sknmesh._vertexStrides[2] };
-                    unsigned offsets[] = { sknmesh._extraVbOffset[0], sknmesh._vbOffsets[0], sknmesh._vbOffsets[1], sknmesh._vbOffsets[2] };
-                    assert(sknmesh._vertexStreamCount <= Pimpl::MaxVertexStreams);
-                    context._context->Bind(0, 1+sknmesh._vertexStreamCount, vbs, strides, offsets);
+				auto& mesh = *(const Pimpl::Mesh*)d->_subMesh;
+
+				unsigned streamCount = 0;
+				if ((unsigned)d->_topology > 0xffu) {
+					auto& sknmesh = *(const PimplWithSkinning::SkinnedMesh*)d->_subMesh;
+                    streamCount = 1+sknmesh._vertexStreamCount;
+                    vbv[0]._offset = sknmesh._extraVbOffset[0];
+					vbv[1]._offset = sknmesh._vbOffsets[0];
+					vbv[2]._offset = sknmesh._vbOffsets[1];
+					vbv[3]._offset = sknmesh._vbOffsets[2];
                 } else {
-                    assert(mesh->_vertexStreamCount <= Pimpl::MaxVertexStreams);
-                    context._context->Bind(
-                        0, mesh->_vertexStreamCount, vbs,
-                        mesh->_vertexStrides, mesh->_vbOffsets);
+					streamCount = mesh._vertexStreamCount;
+					for (unsigned c=0; c<streamCount; ++c)
+						vbv[c]._offset = mesh._vbOffsets[c];
                 }
-                context._context->Bind(renderer._pimpl->_indexBuffer, mesh->_indexFormat, mesh->_ibOffset);
-				*/
+
+				assert(streamCount <= dimof(vbv));
+				boundVariation._inputLayout->Apply(
+					*context._context, 
+					MakeIteratorRange(vbv, &vbv[streamCount]));
+
+				context._context->Bind(Metal::AsResource(*renderer._pimpl->_indexBuffer), mesh._indexFormat, mesh._ibOffset);
 
 				currInputLayout = boundVariation._inputLayout;
 			}

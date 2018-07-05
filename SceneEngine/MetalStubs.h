@@ -34,7 +34,7 @@ namespace SceneEngine { namespace MetalStubs
 		};
 
 		static void SetDefaultStreamOutputInitializers(const StreamOutputInitializers&);
-		static const StreamOutputInitializers& GetDefaultStreamOutputInitializers();
+		static StreamOutputInitializers GetDefaultStreamOutputInitializers();
 	};
 
 

@@ -12,9 +12,9 @@ namespace SceneEngine { namespace MetalStubs
 	{
 	}
 
-	const GeometryShader::StreamOutputInitializers& GeometryShader::GetDefaultStreamOutputInitializers()
+	GeometryShader::StreamOutputInitializers GeometryShader::GetDefaultStreamOutputInitializers()
 	{
-		return *(const GeometryShader::StreamOutputInitializers*)nullptr;
+		return GeometryShader::StreamOutputInitializers{};
 	}
 
 	void UnbindSO(RenderCore::Metal::DeviceContext& devContext)

@@ -677,7 +677,7 @@ namespace SceneEngine
         //          this may have a consequence on the efficiency when writing to them.
         _attachments[IMainTargets::MultisampledDepth] =
             // Main multisampled depth stencil
-            {   RenderCore::Format::R24G8_TYPELESS, 1.f, 1.f, 0u,		// ,
+            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,		// ,
                 TextureViewDesc::Aspect::DepthStencil,
 				AttachmentDesc::DimensionsMode::OutputRelative, 
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil };
@@ -1248,8 +1248,9 @@ namespace SceneEngine
 
     LightingParserContext::LightingParserContext(
         const Techniques::TechniqueContext& techniqueContext, 
-        Techniques::AttachmentPool* namedResources)
-    : ParsingContext(techniqueContext, namedResources)
+        Techniques::AttachmentPool* namedResources,
+		RenderCore::Techniques::FrameBufferPool* frameBufferPool)
+    : ParsingContext(techniqueContext, namedResources, frameBufferPool)
     , _sceneParser(nullptr)
     {
         _metricsBox = nullptr;

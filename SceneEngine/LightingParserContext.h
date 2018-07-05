@@ -55,7 +55,8 @@ namespace SceneEngine
 
         LightingParserContext(
             const RenderCore::Techniques::TechniqueContext& techniqueContext, 
-            RenderCore::Techniques::AttachmentPool* namedResources = nullptr);
+            RenderCore::Techniques::AttachmentPool* namedResources = nullptr,
+			RenderCore::Techniques::FrameBufferPool* frameBufferPool = nullptr);
         ~LightingParserContext();
 
     private:

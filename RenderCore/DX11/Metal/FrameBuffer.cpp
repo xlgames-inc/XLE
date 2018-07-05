@@ -45,9 +45,11 @@ namespace RenderCore { namespace Metal_DX11
             for (unsigned r=0; r<sp._rtvCount; ++r) {
 				const auto& attachmentView = spDesc._output[r];
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
-				if (!resource)
+				auto* attachmentDesc = namedResources.GetDesc(attachmentView._resourceName);
+				if (!resource || !attachmentDesc)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-                sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
+				auto completeView = CompleteTextureViewDesc(*attachmentDesc, attachmentView._window);
+                sp._rtvs[r] = *rtvPool.GetView(resource, completeView);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
 				if (HasClear(sp._rtvLoad[r])) {
 					sp._rtvClearValue[r] = clearValueIterator++;
@@ -58,9 +60,11 @@ namespace RenderCore { namespace Metal_DX11
 
 			if (spDesc._depthStencil._resourceName != ~0u) {
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
-				if (!resource)
+				auto* attachmentDesc = namedResources.GetDesc(spDesc._depthStencil._resourceName);
+				if (!resource || !attachmentDesc)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
+				auto completeView = CompleteTextureViewDesc(*attachmentDesc, spDesc._depthStencil._window);
+				sp._dsv = *dsvPool.GetView(resource, completeView);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				if (HasClear(sp._dsvLoad)) {
 					sp._dsvClearValue = clearValueIterator++;
