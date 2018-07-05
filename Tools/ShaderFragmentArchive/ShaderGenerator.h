@@ -23,7 +23,7 @@ namespace ShaderPatcherLayer
     [DataContract] public ref class Node
     {
     public:
-        static enum class Type 
+        enum class Type 
         {
             Procedure,
 			SlotInput,
@@ -143,19 +143,12 @@ namespace ShaderPatcherLayer
             List<PreviewSettings^>^ get() { if (!_previewSettings) { _previewSettings = gcnew List<PreviewSettings^>(); } return _previewSettings; }
         }
 
-		property GUILayer::DirectorySearchRules^ SearchRules 
-		{ 
-			GUILayer::DirectorySearchRules^ get() { return _searchRules; }
-			void set(GUILayer::DirectorySearchRules^ newSearchRules) { _searchRules = newSearchRules; }
-		}
-
         NodeGraph();
 
-        ShaderPatcher::NodeGraph    ConvertToNative(String^ name);
-        ShaderPatcher::NodeGraph    ConvertToNativePreview(UInt32 previewNodeId);
+        ShaderPatcher::NodeGraph    ConvertToNative();
 		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input);
 
-        static String^      GenerateShader(NodeGraph^ graph, String^ name);
+        static String^      GenerateShader(NodeGraph^ graph);
         static Tuple<String^, String^>^ 
             GeneratePreviewShader(
 			    NodeGraph^ graph, UInt32 previewNodeId, 
@@ -186,7 +179,6 @@ namespace ShaderPatcherLayer
         List<OutputParameterConnection^>^   _outputParameterConnections;
         List<VisualNode^>^                  _visualNodes;
         List<PreviewSettings^>^             _previewSettings;
-		GUILayer::DirectorySearchRules^		_searchRules;
     };
 
 }

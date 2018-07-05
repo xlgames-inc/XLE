@@ -12,6 +12,7 @@
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
 
 using namespace System::Runtime::Serialization;
@@ -23,12 +24,11 @@ namespace ShaderPatcherLayer
         _nodes          = gcnew List<Node^>();
         _connections    = gcnew List<NodeConnection^>();
         _visualNodes    = gcnew List<VisualNode^>();
-		_searchRules	= gcnew GUILayer::DirectorySearchRules();
     }
 	
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ShaderPatcher::Node::Type::Enum     ConvertToNative(Node::Type e)
+    static ShaderPatcher::Node::Type     ConvertToNative(Node::Type e)
     {
         switch (e) {
         default:
@@ -85,9 +85,9 @@ namespace ShaderPatcherLayer
             ShaderPatcher::Type(marshalString<E_UTF8>(connection->Type)));
     }
     
-    ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative(String^ name)
+    ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative()
     {
-        ShaderPatcher::NodeGraph res(marshalString<E_UTF8>(name));
+        ShaderPatcher::NodeGraph res;
         for each(Node^ n in Nodes)
             res.Add(ShaderPatcherLayer::ConvertToNative(n));
         for each(NodeConnection^ c in NodeConnections)
@@ -98,20 +98,12 @@ namespace ShaderPatcherLayer
             res.Add(ShaderPatcherLayer::ConvertToNative(c));
         for each(OutputParameterConnection^ c in OutputParameterConnections)
             res.Add(ShaderPatcherLayer::ConvertToNative(c));
-		res.SetSearchRules(_searchRules->GetNative());
         return res;
-    }
-
-    ShaderPatcher::NodeGraph        NodeGraph::ConvertToNativePreview(UInt32 previewNodeId)
-    {
-        auto graph = ConvertToNative("Preview");
-        graph.Trim(previewNodeId);
-        return graph;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static Node::Type     ConvertFromNative(ShaderPatcher::Node::Type::Enum e)
+	static Node::Type     ConvertFromNative(ShaderPatcher::Node::Type e)
     {
         switch (e) {
         default:
@@ -210,18 +202,16 @@ namespace ShaderPatcherLayer
 			result->VisualNodes->Add(vsnode);
 		}
 
-		result->_searchRules = gcnew GUILayer::DirectorySearchRules(input.GetSearchRules());
-
 		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    String^         NodeGraph::GenerateShader(NodeGraph^ graph, String^name)
+    String^         NodeGraph::GenerateShader(NodeGraph^ graph)
     {
         try
         {
-            auto nativeGraph = graph->ConvertToNative(name);
+            auto nativeGraph = graph->ConvertToNative();
             ShaderPatcher::NodeGraphSignature interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
@@ -238,15 +228,13 @@ namespace ShaderPatcherLayer
         std::stringstream str;
             // Input parameters that can be stored in a cbuffer become
             // part of our cblayout
-        auto globalParams = interf.GetGlobalParameters();
+        auto globalParams = interf.GetCapturedParameters();
         for (unsigned c=0; c<globalParams.size(); ++c) {
-            if (interf.IsCBufferGlobal(c)) {
-                const auto& p = globalParams[c];
-                str << p._type << " " << p._name;
-                if (!p._default.empty())
-                    str << " = " << p._default;
-                str << ";" << std::endl;
-            }
+            const auto& p = globalParams[c];
+            str << p._type << " " << p._name;
+            if (!p._default.empty())
+                str << " = " << p._default;
+            str << ";" << std::endl;
         }
         return str.str();
     }
@@ -257,7 +245,8 @@ namespace ShaderPatcherLayer
     {
         try
         {
-            auto nativeGraph = graph->ConvertToNativePreview(previewNodeId);
+            auto nativeGraph = graph->ConvertToNative();
+			nativeGraph.Trim(previewNodeId);
 			ShaderPatcher::NodeGraphSignature interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
@@ -284,7 +273,7 @@ namespace ShaderPatcherLayer
                         ShaderPatcher::GenerateShaderHeader(nativeGraph)
 					+	ShaderPatcher::GenerateMaterialCBuffer(interf)
                     +   shaderBody 
-                    +   ShaderPatcher::GenerateStructureForPreview(MakeStringSection(nativeGraph.GetName()), interf, nativeGraph.GetSearchRules(), options)),
+                    +   ShaderPatcher::GenerateStructureForPreview("preview", interf, nativeGraph.GetSearchRules(), options)),
                 marshalString<E_UTF8>(GenerateCBLayoutInt(interf)));
         } catch (const std::exception& e) {
             return gcnew Tuple<String^,String^>(
@@ -301,7 +290,7 @@ namespace ShaderPatcherLayer
     {
         try
         {
-            auto nativeGraph = graph->ConvertToNative("temp");
+            auto nativeGraph = graph->ConvertToNative();
 			ShaderPatcher::NodeGraphSignature interf;
 			std::string shaderBody;
 			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
@@ -315,14 +304,14 @@ namespace ShaderPatcherLayer
 
 	NodeGraph::Interface^	NodeGraph::GetInterface(NodeGraph^ graph)
 	{
-		auto nativeGraph = graph->ConvertToNative("graph");
+		auto nativeGraph = graph->ConvertToNative();
         ShaderPatcher::NodeGraphSignature interf;
 		std::string shaderBody;
 		std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
 
 		auto variables = gcnew List<Interface::Item>();
-		for (const auto& i:interf.GetFunctionParameters()) {
-			if (i._direction != ShaderPatcher::NodeGraphSignature::Parameter::Direction::In)
+		for (const auto& i:interf.GetParameters()) {
+			if (i._direction != ShaderPatcher::ParameterDirection::In)
 				continue;
 
 			Interface::Item item;
@@ -333,7 +322,7 @@ namespace ShaderPatcherLayer
 		}
 
 		auto resources = gcnew List<Interface::Item>();
-		for (const auto& i2:interf.GetGlobalParameters()) {
+		for (const auto& i2:interf.GetCapturedParameters()) {
 			Interface::Item item;
 			item.Type = clix::marshalString<clix::E_UTF8>(i2._type);
 			item.Name = clix::marshalString<clix::E_UTF8>(i2._name);
@@ -475,8 +464,8 @@ namespace ShaderPatcherLayer
 			auto graphSyntaxChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsGraphSyntaxChunk);
 			if (graphSyntaxChunk != chunks.end()) {
 				auto nativeGraph = ::ShaderPatcher::ParseGraphSyntax(graphSyntaxChunk->_content);
-				nativeGraph.SetSearchRules(::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
-				nodeGraph = NodeGraph::ConvertFromNative(nativeGraph);
+				// nativeGraph.SetSearchRules(::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
+				nodeGraph = NodeGraph::ConvertFromNative(nativeGraph._subGraphs[0]._graph);
 			} else {
 				throw gcnew System::Exception("Could not find node graph chunk within compound text file");
 			}
@@ -575,11 +564,11 @@ namespace ShaderPatcherLayer
 				// Unfortunately have to do all of this again to
 				// get at the MainFunctionParameters object
 				try {
-					auto nativeGraph = nodeGraph->ConvertToNative(graphName);
+					auto nativeGraph = nodeGraph->ConvertToNative();
 					ShaderPatcher::NodeGraphSignature interf;
 					std::string shaderBody;
 					std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
-					auto str = ShaderPatcher::GenerateStructureForTechniqueConfig(interf, nativeGraph.GetName().c_str());
+					auto str = ShaderPatcher::GenerateStructureForTechniqueConfig(interf, "graph");
 					sw->Write(clix::marshalString<clix::E_UTF8>(str));
 				} catch (const std::exception& e) {
 					sw->Write("Exception while generating technique entry points: " + clix::marshalString<clix::E_UTF8>(e.what()));

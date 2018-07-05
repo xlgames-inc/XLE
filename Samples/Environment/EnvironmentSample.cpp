@@ -335,7 +335,7 @@ namespace Sample
         mainScene.reset();
 
         // primMan._assetServices->GetAssetSets().Clear();
-        // RenderCore::Techniques::ResourceBoxes_Shutdown();
+        ConsoleRig::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
         
         primMan._renderAssetServices.reset();

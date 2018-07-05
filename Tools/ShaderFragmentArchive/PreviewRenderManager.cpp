@@ -12,6 +12,7 @@
 #include "../GUILayer/MarshalString.h"
 #include "../GUILayer/NativeEngineDevice.h"
 #include "../GUILayer/CLIXAutoPtr.h"
+#include "../GUILayer/DelayedDeleteQueue.h"
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 
@@ -25,7 +26,6 @@
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
-#include "../../RenderCore/Techniques/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
@@ -497,7 +497,6 @@ namespace ShaderPatcherLayer
 	class AttachPimpl
     {
     public:
-        ConsoleRig::AttachRef<ConsoleRig::GlobalServices> _attachRef;
         ConsoleRig::AttachRef<::Assets::Services> _attachRef1;
         ConsoleRig::AttachRef<RenderCore::Assets::Services> _attachRef2;
         ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
@@ -507,7 +506,7 @@ namespace ShaderPatcherLayer
 	{
 		_pimpl = new AttachPimpl();
 
-        _pimpl->_attachRef = engineDevice->GetNative().GetGlobalServices()->Attach();
+        engineDevice->GetNative().GetGlobalServices()->AttachCurrentModule();
         auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();
         _pimpl->_attachRef1 = crossModule.Attach<::Assets::Services>();
         _pimpl->_attachRef2 = crossModule.Attach<RenderCore::Assets::Services>();
@@ -521,13 +520,13 @@ namespace ShaderPatcherLayer
             System::GC::WaitForPendingFinalizers();
             GUILayer::DelayedDeleteQueue::FlushQueue();
         
-            RenderCore::Techniques::ResourceBoxes_Shutdown();
+            ConsoleRig::ResourceBoxes_Shutdown();
             // Assets::Dependencies_Shutdown();     (can't do this properly here!)
 
 			_pimpl->_attachRef3.Detach();
 			_pimpl->_attachRef2.Detach();
 			_pimpl->_attachRef1.Detach();
-			_pimpl->_attachRef.Detach();
+			ConsoleRig::GlobalServices::GetInstance().DetachCurrentModule();
 			delete _pimpl; _pimpl = nullptr;
 
             TerminateFileSystemMonitoring();

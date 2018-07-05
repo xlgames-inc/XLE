@@ -47,7 +47,7 @@ namespace ShaderFragmentArchive
 
     Function::~Function() { delete InputParameters; delete Outputs; }
 
-    String^     Function::BuildParametersString()
+    System::String^     Function::BuildParametersString()
     {
         System::Text::StringBuilder stringBuilder;
         stringBuilder.Append("(");
@@ -87,7 +87,7 @@ namespace ShaderFragmentArchive
 
     ParameterStruct::~ParameterStruct() { delete Parameters; }
 
-    String^ ParameterStruct::BuildBodyString()
+    System::String^ ParameterStruct::BuildBodyString()
     {
         System::Text::StringBuilder stringBuilder;
         stringBuilder.Append("{");
@@ -112,8 +112,8 @@ namespace ShaderFragmentArchive
         ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread);
         virtual ~ShaderFragmentChangeCallback();
     private:
-        gcroot<WeakReference^> _shaderFragment;
-        gcroot<System::Threading::SynchronizationContext^> _mainThread;
+        msclr::gcroot<System::WeakReference^> _shaderFragment;
+        msclr::gcroot<System::Threading::SynchronizationContext^> _mainThread;
     };
 
     void    ShaderFragmentChangeCallback::OnChange() 
@@ -124,7 +124,7 @@ namespace ShaderFragmentArchive
     }
 
     ShaderFragmentChangeCallback::ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread)
-        : _shaderFragment(gcnew WeakReference(shaderFragment))
+        : _shaderFragment(gcnew System::WeakReference(shaderFragment))
         , _mainThread(mainThread)
     {}
 
@@ -140,10 +140,10 @@ namespace ShaderFragmentArchive
     void ShaderFragment::OnChange(Object^obj)
     {
         ++_changeMarker;
-        ChangeEvent(obj, EventArgs::Empty);
+        ChangeEvent(obj, System::EventArgs::Empty);
     }
 
-    ShaderFragment::ShaderFragment(String^ sourceFile)
+    ShaderFragment::ShaderFragment(System::String^ sourceFile)
     {
         _fileChangeCallback = nullptr;
         _changeMarker = 0;
@@ -215,7 +215,7 @@ namespace ShaderFragmentArchive
         _fileChangeCallback.reset();
     }
 
-    Parameter::Parameter(String^ archiveName)
+    Parameter::Parameter(System::String^ archiveName)
     {
         using namespace clix;
         ArchiveName = archiveName;
@@ -266,20 +266,20 @@ namespace ShaderFragmentArchive
 
     void Parameter::DeepCopyFrom(Parameter^ otherParameter)
     {
-        ArchiveName = gcnew String(otherParameter->ArchiveName);
-        Name = gcnew String(otherParameter->Name);
-        Description = gcnew String(otherParameter->Description);
-        Min = gcnew String(otherParameter->Min);
-        Max = gcnew String(otherParameter->Max);
-        Type = gcnew String(otherParameter->Type);
-        TypeExtra = gcnew String(otherParameter->TypeExtra);
+        ArchiveName = gcnew System::String(otherParameter->ArchiveName);
+        Name = gcnew System::String(otherParameter->Name);
+        Description = gcnew System::String(otherParameter->Description);
+        Min = gcnew System::String(otherParameter->Min);
+        Max = gcnew System::String(otherParameter->Max);
+        Type = gcnew System::String(otherParameter->Type);
+        TypeExtra = gcnew System::String(otherParameter->TypeExtra);
         Source = otherParameter->Source;
-        ExceptionString = gcnew String(otherParameter->ExceptionString);
-        Semantic = gcnew String(otherParameter->Semantic);
-        Default = gcnew String(otherParameter->Default);
+        ExceptionString = gcnew System::String(otherParameter->ExceptionString);
+        Semantic = gcnew System::String(otherParameter->Semantic);
+        Default = gcnew System::String(otherParameter->Default);
     }
 
-    ShaderFragment^   Archive::GetFragment(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    ShaderFragment^   Archive::GetFragment(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
 		if (searchRules)
 			name = searchRules->ResolveFile(name);
@@ -308,13 +308,13 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
         
-    Function^   Archive::GetFunction(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    Function^   Archive::GetFunction(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
         {
             auto colonIndex = name->IndexOf(":");
-            String ^fileName = nullptr, ^functionName = nullptr;
+            System::String ^fileName = nullptr, ^functionName = nullptr;
             if (colonIndex != -1) {
                 fileName        = name->Substring(0, colonIndex);
                 functionName    = name->Substring(colonIndex+1);
@@ -337,13 +337,13 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    ParameterStruct^  Archive::GetParameterStruct(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    ParameterStruct^  Archive::GetParameterStruct(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
         {
             auto colonIndex = name->IndexOf(":");
-            String ^fileName = nullptr, ^parameterStructName = nullptr;
+            System::String ^fileName = nullptr, ^parameterStructName = nullptr;
             if (colonIndex != -1) {
                 fileName                = name->Substring(0, colonIndex);
                 parameterStructName     = name->Substring(colonIndex+1);
@@ -367,14 +367,14 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    Parameter^ Archive::GetParameter(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    Parameter^ Archive::GetParameter(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
         {
                 // <archiveName>:<struct/fn name>:<parameter name>
             auto colonIndex = name->IndexOf(":");
-            String ^fileName = nullptr, ^parameterStructName = nullptr, ^parameterName = nullptr;
+            System::String ^fileName = nullptr, ^parameterStructName = nullptr, ^parameterName = nullptr;
             if (colonIndex != -1) {
                 fileName = name->Substring(0, colonIndex);
                     
@@ -438,7 +438,7 @@ namespace ShaderFragmentArchive
 
     Archive::Archive()
     {
-        _dictionary = gcnew Dictionary<String^, ShaderFragment^>(StringComparer::CurrentCultureIgnoreCase);
+        _dictionary = gcnew Dictionary<System::String^, ShaderFragment^>(System::StringComparer::CurrentCultureIgnoreCase);
     }
 
 }
