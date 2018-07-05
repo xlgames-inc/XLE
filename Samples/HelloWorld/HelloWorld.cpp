@@ -84,7 +84,7 @@ namespace Sample
             //
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
-        LogInfo << "Building primary managers";
+        Log(Verbose) << "Building primary managers" << std::endl;
         auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
@@ -92,7 +92,7 @@ namespace Sample
         std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
             renderDevice->CreatePresentationChain(
                 window.GetUnderlyingHandle(), 
-                clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
+				RenderCore::PresentationChainDesc{unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1])});
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
 		assetServices->AttachCurrentModule();
@@ -129,7 +129,7 @@ namespace Sample
             //
             //  The scene parser is naturally more extensible. In this example, we'll use a verys 
             //  simple scene parser.
-        LogInfo << "Creating main scene";
+        Log(Verbose) << "Creating main scene" << std::endl;
         auto mainScene = std::make_shared<BasicSceneParser>();
         
         {
@@ -141,7 +141,7 @@ namespace Sample
                 //  If we have any custom displays to add, we can add them here. Often it's 
                 //  useful to create a debugging display to go along with any new feature. 
                 //  It just provides a convenient architecture for visualizing important information.
-            LogInfo << "Setup tools and debugging";
+            Log(Verbose) << "Setup tools and debugging" << std::endl;
             FrameRig frameRig;
 			auto context = renderDevice->GetImmediateContext();
 
@@ -160,7 +160,7 @@ namespace Sample
                 //      * We create a main input handler, and tie that to the window to receive inputs
                 //      * We can add secondary input handles to the main input handler as required
                 //      * The order in which we add handlers determines their priority in intercepting messages
-            LogInfo << "Setup input";
+            Log(Verbose) << "Setup input" << std::endl;
             auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
             mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
             mainInputHandler->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
@@ -175,16 +175,17 @@ namespace Sample
 
                 //  We can log the active assets at any time using this method.
                 //  At this point during startup, we should only have a few assets loaded.
-            assetServices->GetAssetSets().LogReport();
+            //assetServices->GetAssetSets().LogReport();
 
                 //  We need 2 final objects for rendering:
                 //      * the FrameRig schedules continuous rendering. It will take care
                 //          of timing and some thread management taskes
                 //      * the DeviceContext provides the methods we need for rendering.
-            LogInfo << "Setup frame rig and rendering context";
+            Log(Verbose) << "Setup frame rig and rendering context" << std::endl;
             
 
             RenderCore::Techniques::AttachmentPool namedResources;
+			RenderCore::Techniques::FrameBufferPool frameBufferPool;
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -193,7 +194,7 @@ namespace Sample
                 }
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext, &namedResources);
+                SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext, &namedResources, &frameBufferPool);
                 //lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
@@ -217,13 +218,14 @@ namespace Sample
             //  (note that currently some shutdown steps might get skipped if we get 
             //  an unhandled exception)
             //  Before we go too far, though, let's log a list of active assets.
-        LogInfo << "Starting shutdown";
-        assetServices->GetAssetSets().LogReport();
+        Log(Verbose) << "Starting shutdown" << std::endl;
+        // assetServices->GetAssetSets().LogReport();
         RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
 
         mainScene.reset();
 
         assetServices->GetAssetSets().Clear();
+		ConsoleRig::ResourceBoxes_Shutdown();
         RenderOverlays::CleanupFontSystem();
 
 		renderAssetServices.reset();
@@ -272,9 +274,12 @@ namespace Sample
             // presentation buffer (which is always target "0")
         bool hasPendingResources = false;
         {
+			RenderCore::SubpassDesc subPasses[] = {{std::vector<RenderCore::AttachmentViewDesc>{0}}};
+			RenderCore::FrameBufferDesc fbDesc = MakeIteratorRange(subPasses);
+			auto fb = lightingParserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, namedRes);
             RenderCore::Techniques::RenderPassInstance rpi(
-                context, RenderCore::FrameBufferDesc{{RenderCore::SubpassDesc{{0}}}},
-                0u, namedRes);
+                context, fb, fbDesc,
+                namedRes);
 
                 //  If we need to, we can render outside of the lighting parser.
                 //  We just need to to use the device context to perform any rendering

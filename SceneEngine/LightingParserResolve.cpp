@@ -374,23 +374,27 @@ namespace SceneEngine
             // separately the "aspects" so the DSV has stencil, and the SRV has depth.
             // Perhaps we need an input attachment for the depth buffer in the second pass?
             
-			AttachmentDesc lightResolveAttachmentDesc =
-                {	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-					1.f, 1.f, 0u,
-                    TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
-                    AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
+			const unsigned lightResolveTarget = IMainTargets::PresentationTarget; // IMainTargets::LightResolve
+
+			if (constant_expression<lightResolveTarget == IMainTargets::LightResolve>::result()) {
+				AttachmentDesc lightResolveAttachmentDesc =
+					{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+						1.f, 1.f, 0u,
+						TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
+						AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
 			
-			parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
+				parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
+			}
 
 			SubpassDesc subpasses[] {
 				SubpassDesc{
-					{AttachmentViewDesc{IMainTargets::LightResolve, LoadStore::DontCare, LoadStore::Retain}}, 
+					{AttachmentViewDesc{lightResolveTarget, LoadStore::DontCare, LoadStore::Retain}}, 
 					{IMainTargets::MultisampledDepth, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}},
 
 				// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
 				SubpassDesc{
-					{AttachmentViewDesc{IMainTargets::LightResolve, LoadStore::DontCare, LoadStore::Retain}}, 
-					{IMainTargets::MultisampledDepth, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, TextureViewDesc::Aspect::Stencil}},
+					{AttachmentViewDesc{lightResolveTarget, LoadStore::Retain, LoadStore::Retain}}, 
+					{IMainTargets::MultisampledDepth, LoadStore::Retain_RetainStencil, LoadStore::DontCare, TextureViewDesc::Aspect::Stencil}},
             };
 
             FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));

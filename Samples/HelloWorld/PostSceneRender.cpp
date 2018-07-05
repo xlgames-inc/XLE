@@ -9,6 +9,7 @@
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/ResourceList.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../SceneEngine/MetalStubs.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/StringUtils.h"
 
@@ -109,7 +110,8 @@ namespace Sample
                 metalContext->Bind(commonRes._blendStraightAlpha);
                 metalContext->Bind(commonRes._dssReadWrite);
                 metalContext->Bind(commonRes._defaultRasterizer);
-                metalContext->BindPS_G(RenderCore::MakeResourceList(commonRes._defaultSampler));
+                SceneEngine::MetalStubs::GetGlobalNumericUniforms(*metalContext, RenderCore::ShaderStage::Pixel).Bind(
+					RenderCore::MakeResourceList(commonRes._defaultSampler));
             }
 
             ucs4 buffer[1024];
