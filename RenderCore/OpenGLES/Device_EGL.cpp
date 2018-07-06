@@ -441,6 +441,7 @@ namespace RenderCore { namespace ImplOpenGLES
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     static unsigned s_nextPresentationChainGUID = 1;
+    static const bool s_useFakeBackBuffer = true;
 
     PresentationChain::PresentationChain(EGLDisplay display, EGLConfig sharedContextCfg, const void* platformValue, const PresentationChainDesc& desc)
     {
@@ -490,11 +491,17 @@ namespace RenderCore { namespace ImplOpenGLES
     const std::shared_ptr<Metal_OpenGLES::Resource>& PresentationChain::GetTargetRenderbuffer()
     {
         if (!_targetRenderbuffer) {
+            ResourceDesc backBufferDesc;
             auto textureDesc = TextureDesc::Plain2D(_desc->_width, _desc->_height, _desc->_format, 1, 0, _desc->_samples);
-            auto backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
 
-            const bool useFakeBackBuffer = false;
-            if (useFakeBackBuffer) {
+            if (_desc->_mainColorIsReadable) {
+                assert(s_useFakeBackBuffer); // has to use fake buffer mode if readable main color buffer is requested
+                backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
+            } else {
+                backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
+            }
+
+            if (s_useFakeBackBuffer) {
                 _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::GetObjectFactory(), backBufferDesc);
             } else {
                 _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(backBufferDesc));

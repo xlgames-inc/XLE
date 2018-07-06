@@ -128,6 +128,10 @@ namespace RenderCore { namespace ImplOpenGLES
 
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, EAGLContext* eaglContext, const void* platformValue, const PresentationChainDesc& desc)
     {
+        if (desc._mainColorIsReadable) {
+            Throw(std::runtime_error("Readable main color buffer is not supported on iOS; need to use fake backbuffer path"));
+        }
+
         if (![((NSObject*)platformValue) isKindOfClass:UIView.class]) {
             Throw(std::runtime_error("Platform value in PresentationChain::PresentationChain is not a UIView"));
         }
