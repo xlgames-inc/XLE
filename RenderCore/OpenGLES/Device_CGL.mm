@@ -7,6 +7,7 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
+#include "../../ConsoleRig/Log.h"
 #include <type_traits>
 #include <iostream>
 #include <assert.h>
@@ -146,7 +147,12 @@ namespace RenderCore { namespace ImplOpenGLES
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& desc)
     {
         auto textureDesc = TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 0, desc._samples);
-        _backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
+        if (desc._bindFlags & BindFlag::ShaderResource) {
+            _backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
+        } else {
+            _backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
+        }
+
         _desc = std::make_shared<PresentationChainDesc>(desc);
         _sharedContext = sharedContext;
         _platformValue = platformValue;
@@ -196,30 +202,43 @@ namespace RenderCore { namespace ImplOpenGLES
             _nsContext.get().view = (NSView*)_platformValue;
         }
 
-        const bool useFakeBackbuffer = true;
-        if (useFakeBackbuffer) {
+        const bool useFakeBackbuffer = false;
+        if (useFakeBackbuffer || (_backBufferDesc._bindFlags & BindFlag::ShaderResource)) {
             _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
 
-            // create MSAA resolve buffer if needed
-            if (_backBufferDesc._textureDesc._samples._sampleCount > 1) {
-                auto resolveBufferDesc = _backBufferDesc;
-                resolveBufferDesc._textureDesc._samples._sampleCount = 0;
-                _fakeBackBufferResolveBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, resolveBufferDesc);
+            if (_backBufferDesc._bindFlags & BindFlag::ShaderResource) {
+                if (_backBufferDesc._textureDesc._samples._sampleCount > 1) {
+                    Log(Error) << "Requested back buffer MSAA as well as readable main color buffer, MSAA samples is ignored" << std::endl;
+                }
 
-                _fakeBackBufferResolveFrameBuffer = objFactory.CreateFrameBuffer();
-                glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferResolveFrameBuffer->AsRawGLHandle());
-                glBindRenderbuffer(GL_RENDERBUFFER, _fakeBackBufferResolveBuffer->GetRenderBuffer()->AsRawGLHandle());
-                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _fakeBackBufferResolveBuffer->GetRenderBuffer()->AsRawGLHandle());
+                _fakeBackBufferFrameBuffer = objFactory.CreateFrameBuffer();
+                glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferFrameBuffer->AsRawGLHandle());
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _fakeBackBuffer->GetTexture()->AsRawGLHandle(), 0);
+                GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+                glDrawBuffers(1, drawBuffers);
+            } else {
+                // create MSAA resolve buffer if needed
+                if (_backBufferDesc._textureDesc._samples._sampleCount > 1) {
+                    auto resolveBufferDesc = _backBufferDesc;
+                    resolveBufferDesc._textureDesc._samples._sampleCount = 0;
+                    _fakeBackBufferResolveBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, resolveBufferDesc);
+
+                    _fakeBackBufferResolveFrameBuffer = objFactory.CreateFrameBuffer();
+                    glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferResolveFrameBuffer->AsRawGLHandle());
+                    glBindRenderbuffer(GL_RENDERBUFFER, _fakeBackBufferResolveBuffer->GetRenderBuffer()->AsRawGLHandle());
+                    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _fakeBackBufferResolveBuffer->GetRenderBuffer()->AsRawGLHandle());
+                    GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
+                    glDrawBuffers(1, drawBuffers);
+                }
+
+                _fakeBackBufferFrameBuffer = objFactory.CreateFrameBuffer();
+                glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferFrameBuffer->AsRawGLHandle());
+                glBindRenderbuffer(GL_RENDERBUFFER, _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
                 GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
                 glDrawBuffers(1, drawBuffers);
             }
 
-            _fakeBackBufferFrameBuffer = objFactory.CreateFrameBuffer();
-            glBindFramebuffer(GL_FRAMEBUFFER, _fakeBackBufferFrameBuffer->AsRawGLHandle());
-            glBindRenderbuffer(GL_RENDERBUFFER, _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _fakeBackBuffer->GetRenderBuffer()->AsRawGLHandle());
-            GLenum drawBuffers[1] = { GL_COLOR_ATTACHMENT0 };
-            glDrawBuffers(1, drawBuffers);
             glBindFramebuffer(GL_FRAMEBUFFER, 0);
         } else {
             _backBufferResource = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(_backBufferDesc));
