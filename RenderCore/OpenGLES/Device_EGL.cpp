@@ -490,10 +490,18 @@ namespace RenderCore { namespace ImplOpenGLES
     const std::shared_ptr<Metal_OpenGLES::Resource>& PresentationChain::GetTargetRenderbuffer()
     {
         if (!_targetRenderbuffer) {
+            ResourceDesc backBufferDesc;
             auto textureDesc = TextureDesc::Plain2D(_desc->_width, _desc->_height, _desc->_format, 1, 0, _desc->_samples);
-            auto backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
 
-            const bool useFakeBackBuffer = false;
+            bool useFakeBackBuffer = false;
+
+            if (_desc->_bindFlags & BindFlag::ShaderResource) {
+                backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
+                useFakeBackBuffer = true; // use fake buffer mode if ShaderResource bindable main color buffer is requested
+            } else {
+                backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
+            }
+
             if (useFakeBackBuffer) {
                 _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::GetObjectFactory(), backBufferDesc);
             } else {
@@ -539,7 +547,12 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!_activeTargetRenderbuffer->IsBackBuffer()) {
             _temporaryFramebuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, _temporaryFramebuffer->AsRawGLHandle());
-            glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeTargetRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+
+            if (_activeTargetRenderbuffer->GetDesc()._bindFlags & BindFlag::ShaderResource) {
+                glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _activeTargetRenderbuffer->GetTexture()->AsRawGLHandle(), 0);
+            } else {
+                glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeTargetRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
+            }
         }
 
         return _activeTargetRenderbuffer;
