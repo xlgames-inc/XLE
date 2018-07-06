@@ -17,7 +17,7 @@
 #include "../../Utility/ArithmeticUtils.h"
 #include <cmath>
 
-#include <cmath>
+#include <set>
 
 namespace RenderCore { namespace Techniques
 {
@@ -159,19 +159,15 @@ namespace RenderCore { namespace Techniques
         // 2. Ensure those attachments are instantiated in attachmentPool
         // 3. Build a hash from the GUIDs of the referenced attachments
         // 4. Find a framebuffer in the pool with the right hash, or create a new one
-        std::vector<AttachmentName> uniqueAttachments;
+        std::set<AttachmentName> uniqueAttachments;
         for (const auto&s:desc.GetSubpasses()) {
-            for (const auto&a:s._output) uniqueAttachments.push_back(a._resourceName);
-            for (const auto&a:s._input) uniqueAttachments.push_back(a._resourceName);
-            for (const auto&a:s._preserve) uniqueAttachments.push_back(a._resourceName);
-            for (const auto&a:s._resolve) uniqueAttachments.push_back(a._resourceName);
+            for (const auto&a:s._output) uniqueAttachments.insert(a._resourceName);
+            for (const auto&a:s._input) uniqueAttachments.insert(a._resourceName);
+            for (const auto&a:s._preserve) uniqueAttachments.insert(a._resourceName);
+            for (const auto&a:s._resolve) uniqueAttachments.insert(a._resourceName);
             if (s._depthStencil._resourceName != ~0u)
-                uniqueAttachments.push_back(s._depthStencil._resourceName);
+                uniqueAttachments.insert(s._depthStencil._resourceName);
         }
-        // (make unique set)
-        uniqueAttachments.erase(
-            std::unique(uniqueAttachments.begin(), uniqueAttachments.end()),
-            uniqueAttachments.end());
 
         uint64_t hashValue = DefaultSeed64;
         for (const auto a:uniqueAttachments)
