@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "NodeGraphProvider.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
@@ -14,5 +15,9 @@ namespace ShaderPatcher
 	std::vector<std::string> InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
+		const ShaderPatcher::InstantiationParameters& instantiationParameters);
+
+	std::vector<std::string> InstantiateShader(
+		const INodeGraphProvider::NodeGraph& initialGraph,
 		const ShaderPatcher::InstantiationParameters& instantiationParameters);
 }

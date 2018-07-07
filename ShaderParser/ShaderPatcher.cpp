@@ -6,7 +6,7 @@
 
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
-#include "SignatureProvider.h"
+#include "NodeGraphProvider.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"

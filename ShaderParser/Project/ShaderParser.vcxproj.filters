@@ -33,8 +33,8 @@
     <ClCompile Include="..\Grammar\ShaderTreeWalk.c">
       <Filter>Generated</Filter>
     </ClCompile>
-    <ClCompile Include="..\SignatureProvider.cpp" />
     <ClCompile Include="..\ShaderInstantiation.cpp" />
+    <ClCompile Include="..\NodeGraphProvider.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -62,8 +62,8 @@
     <ClInclude Include="..\Grammar\ShaderTreeWalk.h">
       <Filter>Generated</Filter>
     </ClInclude>
-    <ClInclude Include="..\SignatureProvider.h" />
     <ClInclude Include="..\ShaderInstantiation.h" />
+    <ClInclude Include="..\NodeGraphProvider.h" />
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">

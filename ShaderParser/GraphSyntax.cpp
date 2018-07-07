@@ -7,7 +7,7 @@
 #include "GraphSyntax.h"
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
-#include "SignatureProvider.h"
+#include "NodeGraphProvider.h"
 #include "AntlrHelper.h"
 #include "Grammar/GraphSyntaxLexer.h"
 #include "Grammar/GraphSyntaxParser.h"
@@ -164,7 +164,7 @@ namespace ShaderPatcher
 		if (main == graphSyntax->_subGraphs.end())
 			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", filename.AsString().c_str()));
 
-		auto sigProvider = ShaderPatcher::MakeGraphSyntaxSignatureProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+		auto sigProvider = ShaderPatcher::MakeGraphSyntaxProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
 
 		return INodeGraphProvider::NodeGraph {
 			main->first,
@@ -211,7 +211,7 @@ namespace ShaderPatcher
 	GraphNodeGraphProvider::~GraphNodeGraphProvider()
 	{}
 
-	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxSignatureProvider(
+	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules)
 	{

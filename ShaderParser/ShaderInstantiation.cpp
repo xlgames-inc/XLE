@@ -25,6 +25,15 @@ namespace ShaderPatcher
 		StringSection<> entryFn,
 		const ShaderPatcher::InstantiationParameters& instantiationParameters)
 	{
+		return InstantiateShader(
+			ShaderPatcher::LoadGraph(entryFile, entryFn),
+			instantiationParameters);
+	}
+
+	std::vector<std::string> InstantiateShader(
+		const INodeGraphProvider::NodeGraph& initialGraph,
+		const ShaderPatcher::InstantiationParameters& instantiationParameters)
+	{
 		std::set<std::string> includes;
 
 		struct PendingInstantiation
@@ -35,7 +44,7 @@ namespace ShaderPatcher
 
         std::vector<std::string> fragments;
 		std::stack<PendingInstantiation> instantiations;
-		instantiations.emplace(PendingInstantiation{ShaderPatcher::LoadGraph(entryFile, entryFn), instantiationParameters});
+		instantiations.emplace(PendingInstantiation{initialGraph, instantiationParameters});
 
 		bool rootInstantiation = true;
         while (!instantiations.empty()) {
