@@ -11,11 +11,18 @@
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
+#include "../../ShaderParser/NodeGraphProvider.h"
+#include "../../ShaderParser/ShaderInstantiation.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
 
 using namespace System::Runtime::Serialization;
+
+namespace ShaderPatcher
+{
+	INodeGraphProvider::NodeGraph LoadGraph(StringSection<> filename, StringSection<> entryPoint);
+}
 
 namespace ShaderPatcherLayer 
 {
@@ -207,6 +214,7 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if 0
     String^         NodeGraph::GenerateShader(NodeGraph^ graph)
     {
         try
@@ -302,9 +310,9 @@ namespace ShaderPatcherLayer
         }
     }
 
-	NodeGraph::Interface^	NodeGraph::GetInterface(NodeGraph^ graph)
+	NodeGraph::Interface^	NodeGraph::GetInterface()
 	{
-		auto nativeGraph = graph->ConvertToNative();
+		auto nativeGraph = ConvertToNative();
         ShaderPatcher::NodeGraphSignature interf;
 		std::string shaderBody;
 		std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
@@ -334,6 +342,160 @@ namespace ShaderPatcherLayer
 		result->Variables = variables;
 		result->Resources = resources;
 		return result;
+	}
+#endif
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class ShaderGeneratorProvider : public ShaderPatcher::BasicNodeGraphProvider, std::enable_shared_from_this<ShaderGeneratorProvider>
+    {
+    public:
+        std::optional<Signature> FindSignature(StringSection<> name);
+		std::optional<NodeGraph> FindGraph(StringSection<> name);
+
+        ShaderGeneratorProvider(
+			NodeGraphFile^ parsedGraphFile,
+			const ::Assets::DirectorySearchRules& searchRules);
+        ~ShaderGeneratorProvider();
+    protected:
+		gcroot<NodeGraphFile^> _parsedGraphFile;
+    };
+
+	template<typename Type>
+		static Type^ Find(Dictionary<String^, Type^>^ dictionary, StringSection<> search)
+	{
+		String^ searchKey = clix::marshalString<clix::E_UTF8>(search);
+		if (dictionary->ContainsKey(searchKey))
+			return (*dictionary)[searchKey];
+		return nullptr;
+	}
+		
+
+	auto ShaderGeneratorProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
+	{
+		// Interpret the given string to find a function signature that matches it
+		// First, check to see if it's scoped as an imported function
+		auto *scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto searchName = MakeStringSection(name.begin(), scopingOperator-1);
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			auto importedName = Find(_parsedGraphFile->Imports, searchName);
+			if (importedName)
+				return BasicNodeGraphProvider::FindSignature(clix::marshalString<clix::E_UTF8>(importedName) + ":" + functionName.AsString());
+			return BasicNodeGraphProvider::FindSignature(searchName.AsString() + ":" + functionName.AsString());
+		}
+
+		// Look for the function within the parsed graph syntax file
+		auto i = Find(_parsedGraphFile->SubGraphs, name);
+		if (i)
+			return Signature{ name.AsString(), i->_signature->ConvertToNative() };
+
+		// Just fallback to default behaviour
+		return BasicNodeGraphProvider::FindSignature(name);
+	}
+
+	auto ShaderGeneratorProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
+	{
+		// Interpret the given string to find a function signature that matches it
+		// First, check to see if it's scoped as an imported function
+		auto *scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto searchName = MakeStringSection(name.begin(), scopingOperator-1);
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			auto importedName = Find(_parsedGraphFile->Imports, searchName);
+			if (importedName)
+				return ShaderPatcher::LoadGraph(clix::marshalString<clix::E_UTF8>(importedName), functionName);
+			return ShaderPatcher::LoadGraph(searchName, functionName);
+		}
+
+		// Look for the function within the parsed graph syntax file
+		auto i = Find(_parsedGraphFile->SubGraphs, name);
+		if (i)
+			return NodeGraph{ name.AsString(), i->_subGraph->ConvertToNative(), i->_signature->ConvertToNative(), shared_from_this() };
+
+		return {};
+	}
+
+	ShaderGeneratorProvider::ShaderGeneratorProvider(
+		NodeGraphFile^ parsedGraphFile,
+		const ::Assets::DirectorySearchRules& searchRules)
+	: BasicNodeGraphProvider(searchRules)
+	, _parsedGraphFile(parsedGraphFile)
+	{}
+
+	ShaderGeneratorProvider::~ShaderGeneratorProvider()
+	{}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Tuple<String^, String^>^ 
+		NodeGraphFile::GeneratePreviewShader(
+			String^ subGraphName,
+			UInt32 previewNodeId, 
+			NodeGraphProvider^ sigProvider,
+			PreviewSettings^ settings,
+			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
+	{
+		try
+        {
+			SubGraph^ subGraph = SubGraphs[subGraphName];
+
+            auto nativeGraph = subGraph->_subGraph->ConvertToNative();
+			nativeGraph.Trim(previewNodeId);
+			
+			ShaderPatcher::InstantiationParameters instantiationParams {};
+			ShaderPatcher::NodeGraphSignature mainInstantiationSignature {};
+
+			auto provider = std::shared_ptr<ShaderGeneratorProvider>(new ShaderGeneratorProvider(this, ::Assets::DirectorySearchRules{}));
+
+			auto fragments = ShaderPatcher::InstantiateShader(
+				ShaderPatcher::INodeGraphProvider::NodeGraph{ std::string("preview_graph"), nativeGraph, mainInstantiationSignature, provider }, 
+				instantiationParams);
+
+			ShaderPatcher::PreviewOptions options {
+				(settings->Geometry == PreviewGeometry::Chart) ? ShaderPatcher::PreviewOptions::Type::Chart : ShaderPatcher::PreviewOptions::Type::Object,
+				String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : marshalString<E_UTF8>(settings->OutputToVisualize),
+				ShaderPatcher::PreviewOptions::VariableRestrictions() };
+
+			if (variableRestrictions)
+				for each(auto v in variableRestrictions)
+					options._variableRestrictions.push_back(
+						std::make_pair(
+							clix::marshalString<clix::E_UTF8>(v.Key),
+							clix::marshalString<clix::E_UTF8>(v.Value)));
+
+			auto structureForPreview = GenerateStructureForPreview(
+				"preview", mainInstantiationSignature, options);
+
+			fragments.push_back(structureForPreview);
+
+			std::stringstream str;
+			for (const auto&f:fragments) str << f;
+
+            return gcnew Tuple<String^,String^>(
+                marshalString<E_UTF8>(str.str()),
+                marshalString<E_UTF8>(ShaderPatcher::GenerateMaterialCBuffer(mainInstantiationSignature)));
+        } catch (const std::exception& e) {
+            return gcnew Tuple<String^,String^>(
+                "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),
+                String::Empty);
+        } catch (...) {
+            return gcnew Tuple<String^,String^>(
+                "Unknown exception while generating shader",
+                String::Empty);
+        }
 	}
 
     NodeGraph^ NodeGraph::LoadFromXML(System::IO::Stream^ stream)
@@ -371,6 +533,8 @@ namespace ShaderPatcherLayer
             delete settings;
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static bool IsNodeGraphChunk(const ::Assets::TextChunk<char>& chunk)        { return XlEqString(chunk._type, "NodeGraph"); }
     static bool IsNodeGraphContextChunk(const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "NodeGraphContext"); }
@@ -430,7 +594,7 @@ namespace ShaderPatcherLayer
         }
     }
 
-    void NodeGraph::Load(String^ filename, [Out] NodeGraph^% nodeGraph, [Out] NodeGraphContext^% context)
+    void NodeGraphFile::Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphContext^% context)
     {
         // Load from a graph model compound text file (that may contain other text chunks)
         // We're going to use a combination of native and managed stuff -- so it's easier
@@ -447,13 +611,16 @@ namespace ShaderPatcherLayer
 		// load the graphChunk first
         auto graphChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphChunk);
         if (graphChunk != chunks.end()) {
+			nodeGraph = gcnew NodeGraphFile;
             array<Byte>^ managedArray = nullptr;
             System::IO::MemoryStream^ memStream = nullptr;
             try
             {
                 managedArray = AsManagedArray(AsPointer(graphChunk));
                 memStream = gcnew System::IO::MemoryStream(managedArray);
-                nodeGraph = LoadFromXML(memStream);
+                NodeGraphFile::SubGraph^ subGraph = gcnew NodeGraphFile::SubGraph;
+				subGraph->_subGraph = NodeGraph::LoadFromXML(memStream);
+				nodeGraph->SubGraphs->Add("main", subGraph);
             }
             finally
             {
@@ -465,7 +632,7 @@ namespace ShaderPatcherLayer
 			if (graphSyntaxChunk != chunks.end()) {
 				auto nativeGraph = ::ShaderPatcher::ParseGraphSyntax(graphSyntaxChunk->_content);
 				// nativeGraph.SetSearchRules(::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
-				nodeGraph = NodeGraph::ConvertFromNative(nativeGraph._subGraphs[0]._graph);
+				nodeGraph = NodeGraphFile::ConvertFromNative(nativeGraph);
 			} else {
 				throw gcnew System::Exception("Could not find node graph chunk within compound text file");
 			}
@@ -492,6 +659,7 @@ namespace ShaderPatcherLayer
         }
     }
 
+#if 0
 	static void WriteTechniqueConfigSection(
 		System::IO::StreamWriter^ sw,
 		String^ section, String^ entryPoint, 
@@ -517,8 +685,9 @@ namespace ShaderPatcherLayer
 
         sw->Write("    PixelShader=<.>:" + entryPoint); sw->WriteLine();
 	}
+#endif
 
-    void NodeGraph::Save(String^ filename, NodeGraph^ nodeGraph, NodeGraphContext^ context)
+    void NodeGraphFile::Save(String^ filename, NodeGraphContext^ context)
     {
         // We want to write this node graph to the given stream.
         // But we're going to write a compound text document, which will include
@@ -534,19 +703,19 @@ namespace ShaderPatcherLayer
         {
             // note --  shader compiler doesn't support the UTF8 BOM properly.
             //          We we have to use an ascii mode
-            auto sw = gcnew System::IO::StreamWriter(stream, System::Text::Encoding::ASCII);
+            sw = gcnew System::IO::StreamWriter(stream, System::Text::Encoding::ASCII);
         
             sw->Write("// CompoundDocument:1"); sw->WriteLine();
 
             auto graphName = Path::GetFileNameWithoutExtension(filename);
 
-            auto shader = NodeGraph::GenerateShader(nodeGraph, graphName);
-            sw->Write(shader); 
+            // auto shader = NodeGraph::GenerateShader(nodeGraph, graphName);
+            // sw->Write(shader); 
 
             // embed the node graph in there, as well
             sw->Write("/* <<Chunk:NodeGraph:" + graphName + ">>--("); sw->WriteLine();
             sw->Flush();
-            nodeGraph->SaveToXML(stream); sw->WriteLine();
+            // nodeGraph->SaveToXML(stream); sw->WriteLine();
             sw->Write(")-- */"); sw->WriteLine();
 
             // embed the node graph context
@@ -556,6 +725,7 @@ namespace ShaderPatcherLayer
             sw->Write(")-- */"); sw->WriteLine();
             sw->Flush();
 
+#if 0
             // also embedded a technique config, if requested
             if (context->HasTechniqueConfig) {
 
@@ -600,6 +770,7 @@ namespace ShaderPatcherLayer
                 sw->WriteLine();
                 sw->Flush();
             }
+#endif
 
                 // If we wrote to the memory stream successfully, we can write to disk -- 
                 // maybe we could alternatively write to a temporary file in the same directory,

@@ -14,10 +14,11 @@ using namespace System::Drawing;
 using namespace System::Runtime::Serialization;
 using System::Runtime::InteropServices::OutAttribute;
 
-namespace ShaderPatcher { class NodeGraph; }
+namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; }
 
 namespace ShaderPatcherLayer 
 {
+	ref class NodeGraphProvider;
 
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class Node
@@ -148,28 +149,8 @@ namespace ShaderPatcherLayer
         ShaderPatcher::NodeGraph    ConvertToNative();
 		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input);
 
-        static String^      GenerateShader(NodeGraph^ graph);
-        static Tuple<String^, String^>^ 
-            GeneratePreviewShader(
-			    NodeGraph^ graph, UInt32 previewNodeId, 
-			    PreviewSettings^ settings,
-			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
-        static String^      GenerateCBLayout(NodeGraph^ graph);
-
-		ref class Interface
-		{
-		public:
-			value class Item { public: property String^ Type; property String^ Name; property String^ Semantic; };
-			property IEnumerable<Item>^ Variables;
-			property IEnumerable<Item>^ Resources;
-		};
-        static Interface^	GetInterface(NodeGraph^ graph);
-
-        static NodeGraph^   LoadFromXML(System::IO::Stream^ stream);
-        void                SaveToXML(System::IO::Stream^ stream);
-
-        static void    Load(String^ filename, [Out] NodeGraph^% nodeGraph, [Out] NodeGraphContext^% context);
-        static void    Save(String^ filename, NodeGraph^ nodeGraph, NodeGraphContext^ context);
+		static NodeGraph^		LoadFromXML(System::IO::Stream^ stream);
+        void					SaveToXML(System::IO::Stream^ stream);
 
     private:
         List<Node^>^                        _nodes;
@@ -180,6 +161,59 @@ namespace ShaderPatcherLayer
         List<VisualNode^>^                  _visualNodes;
         List<PreviewSettings^>^             _previewSettings;
     };
+
+	public ref class NodeGraphSignature
+	{
+	public:
+		value class Item {};
+		property IEnumerable<Item>^ Parameters;
+		property IEnumerable<Item>^ CapturedParameters;
+		property IEnumerable<Item>^ TemplateParameters;
+
+		ShaderPatcher::NodeGraphSignature	ConvertToNative();
+		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input);
+	};
+
+	public ref class NodeGraphFile
+    {
+    public:
+		ref class SubGraph
+		{
+		public:
+			NodeGraphSignature^		_signature = nullptr;
+			NodeGraph^				_subGraph = nullptr;
+		};
+		property Dictionary<String^, SubGraph^>^ SubGraphs
+        {
+            Dictionary<String^, SubGraph^>^ get() { if (!_subGraphs) { _subGraphs = gcnew Dictionary<String^, SubGraph^>(); } return _subGraphs; }
+        }
+		property Dictionary<String^,String^>^ Imports
+		{
+            Dictionary<String^,String^>^ get() { if (!_imports) { _imports = gcnew Dictionary<String^,String^>(); } return _imports; }
+        }
+
+        static void		Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphContext^% context);
+        void			Save(String^ filename, NodeGraphContext^ context);
+
+		ShaderPatcher::GraphSyntaxFile	ConvertToNative();
+		static NodeGraphFile^			ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input);
+
+		property NodeGraphProvider^		SignatureProvider;
+
+		Tuple<String^, String^>^ 
+            GeneratePreviewShader(
+				String^ subGraphName,
+				UInt32 previewNodeId, 
+				NodeGraphProvider^ sigProvider,
+			    PreviewSettings^ settings,
+			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+
+        // static String^      GenerateCBLayout(NodeGraph^ graph);
+
+	private:
+		Dictionary<String^, SubGraph^>^	_subGraphs = nullptr;
+		Dictionary<String^,String^>^	_imports = nullptr;
+	};
 
 }
 

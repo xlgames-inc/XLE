@@ -10,7 +10,7 @@
 #include "ShaderDiagramDocument.h"
 
 #include "../GUILayer/MarshalString.h"
-#include "../GUILayer/NativeEngineDevice.h"
+// #include "../GUILayer/NativeEngineDevice.h"
 #include "../GUILayer/CLIXAutoPtr.h"
 #include "../GUILayer/DelayedDeleteQueue.h"
 #include "../ToolsRig/MaterialVisualisation.h"
@@ -23,20 +23,25 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"   // for aligning preview camera to model
+#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../../RenderCore/MinimalShaderSource.h"
+#include "../../RenderCore/BufferView.h"
 
-#include "../../BufferUploads/IBufferUploads.h"
-#include "../../BufferUploads/DataPacket.h"
-#include "../../BufferUploads/ResourceLocator.h"
+// #include "../../BufferUploads/IBufferUploads.h"
+// #include "../../BufferUploads/DataPacket.h"
+// #include "../../BufferUploads/ResourceLocator.h"
 
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/Assets.h"
 
-#include "../../ConsoleRig/ResourceBox.h"
+// #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/PtrUtils.h"
 
 #include <memory>
@@ -139,7 +144,7 @@ namespace ShaderPatcherLayer
         // asynchronous.
 
         auto matParams = RenderCore::Assets::TechParams_SetResHas(mat._matParams, mat._bindings, searchRules);
-        auto geoParams = RenderCore::Techniques::TechParams_SetGeo(geoInputLayout);
+        auto geoParams = RenderCore::Assets::TechParams_SetGeo(geoInputLayout);
 
         const ParameterBox* state[] = {
             &geoParams, 
@@ -168,14 +173,15 @@ namespace ShaderPatcherLayer
 			auto psCompileMarker = _shaderSource->CompileFromMemory(
 				_shaderText.c_str(), "ps_main", PS_DefShaderModel, definesTable.c_str());
 
+			vsCompileMarker->StallWhilePending();
+			psCompileMarker->StallWhilePending();
+
 			using namespace RenderCore;
-			CompiledShaderByteCode vsCode(vsCompileMarker->GetLocator(), ShaderStage::Vertex, "InMemoryShader");
-			CompiledShaderByteCode psCode(psCompileMarker->GetLocator(), ShaderStage::Pixel, "InMemoryShader");
-			vsCode.StallWhilePending();
-			psCode.StallWhilePending();
+			CompiledShaderByteCode vsCode(vsCompileMarker->GetArtifacts()[0].second->GetBlob(), nullptr, "InMemoryShader");
+			CompiledShaderByteCode psCode(psCompileMarker->GetArtifacts()[0].second->GetBlob(), nullptr, "InMemoryShader");
         
 			CachedShader cs;
-			cs._shaderProgram = Metal::ShaderProgram(vsCode, psCode);
+			cs._shaderProgram = Metal::ShaderProgram(Metal::GetObjectFactory(), vsCode, psCode);
 			cs._inputLayout = Metal::BoundInputLayout(geoInputLayout, cs._shaderProgram);
 			cs._uniforms = Metal::BoundUniforms(cs._shaderProgram);
 
@@ -183,7 +189,8 @@ namespace ShaderPatcherLayer
 			shader = &i->second;
 		}
 
-		metalContext.Bind(shader->_inputLayout);
+		// RenderCore::VertexBufferView vbvs[] = {};
+		shader->_inputLayout.Apply(metalContext, {});
 		metalContext.Bind(shader->_shaderProgram);
 
         // We need to build a PredefinedCBLayout, also. Normally, this is built from the 
@@ -288,12 +295,12 @@ namespace ShaderPatcherLayer
 
             // Align the camera if we're drawing with a model...
             if (geometry == PreviewGeometry::Model && !visObject._previewModelFile.empty()) {
-                const auto& model = ::Assets::GetAssetComp<RenderCore::Assets::ModelScaffold>(
+                auto model = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(
                     visObject._previewModelFile.c_str());
-                model.StallWhilePending();
+                model->StallWhilePending();
                 *visSettings._camera = ToolsRig::AlignCameraToBoundingBox(
                     visSettings._camera->_verticalFieldOfView, 
-                    model.GetStaticBoundingBox());
+                    model->Actualize()->GetStaticBoundingBox());
             }
 
             SceneEngine::LightingParserContext parserContext(techContext);
