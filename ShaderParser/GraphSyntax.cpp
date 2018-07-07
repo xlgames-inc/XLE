@@ -12,6 +12,7 @@
 #include "Grammar/GraphSyntaxLexer.h"
 #include "Grammar/GraphSyntaxParser.h"
 #include "Grammar/GraphSyntaxEval.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/FunctionUtils.h"
 #include <unordered_map>
 #include <stack>
@@ -109,20 +110,21 @@ namespace ShaderPatcher
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class GraphSyntaxSignatureProvider : public BasicSignatureProvider
+	class GraphNodeGraphProvider : public BasicNodeGraphProvider, std::enable_shared_from_this<GraphNodeGraphProvider>
     {
     public:
-        Result FindSignature(StringSection<> name);
+        std::optional<Signature> FindSignature(StringSection<> name);
+		std::optional<NodeGraph> FindGraph(StringSection<> name);
 
-        GraphSyntaxSignatureProvider(
-			const GraphSyntaxFile& parsedGraphFile,
+        GraphNodeGraphProvider(
+			const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 			const ::Assets::DirectorySearchRules& searchRules);
-        ~GraphSyntaxSignatureProvider();
+        ~GraphNodeGraphProvider();
     protected:
-		const GraphSyntaxFile* _parsedGraphFile;
+		std::shared_ptr<GraphSyntaxFile> _parsedGraphFile;
     };
 
-	auto GraphSyntaxSignatureProvider::FindSignature(StringSection<> name) -> Result
+	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
 	{
 		// Interpret the given string to find a function signature that matches it
 		// First, check to see if it's scoped as an imported function
@@ -138,34 +140,82 @@ namespace ShaderPatcher
 
 			auto importedName = _parsedGraphFile->_imports.find(import);
 			if (importedName != _parsedGraphFile->_imports.end())
-				return BasicSignatureProvider::FindSignature(importedName->second + ":" + functionName.AsString());
-			return BasicSignatureProvider::FindSignature(import + ":" + functionName.AsString());
+				return BasicNodeGraphProvider::FindSignature(importedName->second + ":" + functionName.AsString());
+			return BasicNodeGraphProvider::FindSignature(import + ":" + functionName.AsString());
 		}
 
 		// Look for the function within the parsed graph syntax file
 		auto i = _parsedGraphFile->_subGraphs.find(name.AsString());
 		if (i != _parsedGraphFile->_subGraphs.end())
-			return { i->first, &i->second._signature };
+			return Signature{ i->first, i->second._signature };
 
 		// Just fallback to default behaviour
-		return BasicSignatureProvider::FindSignature(name);
+		return BasicNodeGraphProvider::FindSignature(name);
 	}
 
-	GraphSyntaxSignatureProvider::GraphSyntaxSignatureProvider(
-		const GraphSyntaxFile& parsedGraphFile,
+	INodeGraphProvider::NodeGraph LoadGraph(StringSection<> filename, StringSection<> entryPoint)
+	{
+		size_t inputFileSize;
+		auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
+		auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
+
+		auto graphSyntax = std::make_shared<ShaderPatcher::GraphSyntaxFile>(ShaderPatcher::ParseGraphSyntax(inputStr));
+		auto main = graphSyntax->_subGraphs.find(entryPoint.AsString());
+		if (main == graphSyntax->_subGraphs.end())
+			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", filename.AsString().c_str()));
+
+		auto sigProvider = ShaderPatcher::MakeGraphSyntaxSignatureProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+
+		return INodeGraphProvider::NodeGraph {
+			main->first,
+			main->second._graph,
+			main->second._signature,
+			std::move(sigProvider) };
+	}
+
+	auto GraphNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
+	{
+		// Interpret the given string to find a function signature that matches it
+		// First, check to see if it's scoped as an imported function
+		auto *scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			auto importedName = _parsedGraphFile->_imports.find(import);
+			if (importedName != _parsedGraphFile->_imports.end())
+				return LoadGraph(importedName->second, functionName);
+			return LoadGraph(import, functionName);
+		}
+
+		// Look for the function within the parsed graph syntax file
+		auto i = _parsedGraphFile->_subGraphs.find(name.AsString());
+		if (i != _parsedGraphFile->_subGraphs.end())
+			return NodeGraph{ i->first, i->second._graph, i->second._signature, shared_from_this() };
+
+		return {};
+	}
+
+	GraphNodeGraphProvider::GraphNodeGraphProvider(
+		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules)
-	: BasicSignatureProvider(searchRules)
-	, _parsedGraphFile(&parsedGraphFile)
+	: BasicNodeGraphProvider(searchRules)
+	, _parsedGraphFile(parsedGraphFile)
 	{}
 
-	GraphSyntaxSignatureProvider::~GraphSyntaxSignatureProvider()
+	GraphNodeGraphProvider::~GraphNodeGraphProvider()
 	{}
 
-	std::shared_ptr<ISignatureProvider> MakeGraphSyntaxSignatureProvider(
-		const GraphSyntaxFile& parsedGraphFile,
+	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxSignatureProvider(
+		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules)
 	{
-		return std::make_shared<GraphSyntaxSignatureProvider>(parsedGraphFile, searchRules);
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, searchRules);
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////

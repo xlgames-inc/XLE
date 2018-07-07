@@ -10,6 +10,7 @@
 #include "../Assets/ConfigFileContainer.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Conversion.h"
 #include <regex>
@@ -134,8 +135,12 @@ namespace ShaderPatcher
 
     ParameterMachine::ParameterMachine()
     {
-        auto buildInterpolatorsSource = LoadSourceFile("xleres/System/BuildInterpolators.h");
-        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(buildInterpolatorsSource));
+		size_t fileSize = 0;
+        auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/System/BuildInterpolators.h", &fileSize);
+        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(
+			MakeStringSection(
+				(const char*)buildInterpolatorsSource.get(),
+				(const char*)PtrAdd(buildInterpolatorsSource.get(), fileSize)));
     }
 
     ParameterMachine::~ParameterMachine() {}
@@ -288,7 +293,6 @@ namespace ShaderPatcher
 
     std::string         GenerateStructureForPreview(
         const StringSection<char> graphName, const NodeGraphSignature& interf,
-		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions)
     {
             //

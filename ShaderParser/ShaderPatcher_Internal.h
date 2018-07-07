@@ -13,7 +13,6 @@ namespace Assets { class DirectorySearchRules; }
 namespace ShaderPatcher
 {
 	std::tuple<std::string, std::string> SplitArchiveName(const std::string& archiveName);
-	std::string LoadSourceFile(StringSection<char> sourceFileName);
 	const ShaderSourceParser::FunctionSignature& LoadFunctionSignature(const std::tuple<std::string, std::string>& splitName, const ::Assets::DirectorySearchRules& searchRules);
     const ShaderSourceParser::ParameterStructSignature& LoadParameterStructSignature(const std::tuple<std::string, std::string>& splitName, const ::Assets::DirectorySearchRules& searchRules);
 

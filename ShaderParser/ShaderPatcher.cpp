@@ -6,6 +6,7 @@
 
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
+#include "SignatureProvider.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
@@ -341,10 +342,10 @@ namespace ShaderPatcher
 
     static std::string TypeFromShaderFragment(
         StringSection<> archiveName, StringSection<> paramName, ParameterDirection direction,
-        ISignatureProvider& sigProvider)
+        INodeGraphProvider& sigProvider)
     {
             // Go back to the shader fragments to find the current type for the given parameter
-		ISignatureProvider::Result sigResult;
+		std::optional<INodeGraphProvider::Signature> sigResult;
 
 		// Some typenames contain a template type in angle brackets. For example, when 
 		// graphs are passed in as parameters, they are given a template signature, in the form:
@@ -356,11 +357,11 @@ namespace ShaderPatcher
 		} else {
 			sigResult = sigProvider.FindSignature(archiveName);
 		}
-        if (!sigResult._signature)
+        if (!sigResult)
             return std::string();
             // Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.AsString().c_str()));
 
-        const auto& sig = *sigResult._signature;
+        const auto& sig = sigResult.value()._signature;
 
             // find a parameter with the right direction & name
         for (const auto& p:sig.GetParameters())
@@ -370,7 +371,7 @@ namespace ShaderPatcher
         return std::string();
     }
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const NodeConnection& connection, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const NodeConnection& connection, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
     {
             //      Check to see what kind of connection it is
             //      By default, let's just assume it's a procedure.
@@ -418,14 +419,14 @@ namespace ShaderPatcher
 		}
 	}
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const ConstantConnection& connection, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
     {
             //  we have a "constant connection" value here. We either extract the name of
             //  the varying parameter, or we interpret this as pure text...
 		return ExpressionString{StripAngleBracket(connection.Value()).first, std::string()};
     }
 
-    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
+    static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
     {
 		auto p = StripAngleBracket(connection.InputName());
 		if (p.second) return ExpressionString{p.first, std::string()};
@@ -436,7 +437,7 @@ namespace ShaderPatcher
 	static NodeGraphSignature::Parameter AsInterfaceParameter(const InputParameterConnection& connection)	{ return NodeGraphSignature::Parameter{connection.InputType()._name, connection.InputName(), ParameterDirection::In, std::string(), connection.Default()}; }
 	static NodeGraphSignature::Parameter AsInterfaceParameter(const NodeConnection& connection)				{ return NodeGraphSignature::Parameter{connection.InputType()._name, connection.OutputParameterName(), ParameterDirection::In}; }
 
-    static ExpressionString ParameterExpression(const NodeGraph& nodeGraph, uint32 nodeId, const NodeGraphSignature::Parameter& signatureParam, NodeGraphSignature& interf, ISignatureProvider& sigProvider)
+    static ExpressionString ParameterExpression(const NodeGraph& nodeGraph, uint32 nodeId, const NodeGraphSignature::Parameter& signatureParam, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
     {
         auto i = FindConnection(nodeGraph.GetNodeConnections(), nodeId, signatureParam._name);
         if (i!=nodeGraph.GetNodeConnections().cend()) {
@@ -508,7 +509,7 @@ namespace ShaderPatcher
             const NodeGraph& graph,
             IteratorRange<const Connection*> range,
             NodeGraphSignature& interf,
-            ISignatureProvider& sigProvider)
+            INodeGraphProvider& sigProvider)
     {
         for (const auto& i:range) {
 			auto* destinationNode = graph.GetNode(i.OutputNodeId());
@@ -543,14 +544,14 @@ namespace ShaderPatcher
     public:
         std::string _name;
         std::string _finalArchiveName;
-        const NodeGraphSignature* _signature = nullptr;
+        NodeGraphSignature _signature;
 		InstantiationParameters _instantiationParameters;
     };
 
     static ResolvedFunction ResolveFunction(
         const std::string& archiveName, 
         const InstantiationParameters& instantiationParameters, 
-        ISignatureProvider& sigProvider)
+        INodeGraphProvider& sigProvider)
     {
         ResolvedFunction result;
 
@@ -565,9 +566,9 @@ namespace ShaderPatcher
             auto restriction = MakeStringSection(marker+1, std::find(archiveName.begin(), archiveName.end(), '>'));
 
             auto sigProviderResult = sigProvider.FindSignature(restriction);
-            result._signature = sigProviderResult._signature;
-            if (!result._signature)
+            if (!sigProviderResult)
                 Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", restriction.AsString().c_str()));
+			result._signature = sigProviderResult.value()._signature;
 
             auto i = instantiationParameters._parameterBindings.find(parameterName.AsString());
             if (i!=instantiationParameters._parameterBindings.end()) {
@@ -587,10 +588,10 @@ namespace ShaderPatcher
         }
 
         auto sigProviderResult = sigProvider.FindSignature(archiveName);
-        result._signature = sigProviderResult._signature;
-        if (!result._signature)
+        if (!sigProviderResult)
             Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.c_str()));
-        result._name = sigProviderResult._name;
+		result._signature = sigProviderResult.value()._signature;        
+        result._name = sigProviderResult.value()._name;
         result._finalArchiveName = archiveName;
         return result;
     }
@@ -606,7 +607,7 @@ namespace ShaderPatcher
         const Node& node, 
         const NodeGraph& nodeGraph,
         const InstantiationParameters& instantiationParameters,
-        ISignatureProvider& sigProvider)
+        INodeGraphProvider& sigProvider)
     {
             //
             //      Parse the fragment again, to get the correct function
@@ -627,7 +628,7 @@ namespace ShaderPatcher
 
         auto sigRes = ResolveFunction(node.ArchiveName(), instantiationParameters, sigProvider);
         auto functionName = sigRes._name;
-        auto& sig = *sigRes._signature;
+        auto& sig = sigRes._signature;
 
             //
             //  There are template parameters in the signature, and if we are passing values
@@ -724,7 +725,7 @@ namespace ShaderPatcher
     static std::tuple<std::string, NodeGraphSignature, DependencyTable> GenerateMainFunctionBody(
         const NodeGraph& graph,
         const InstantiationParameters& instantiationParameters,
-        ISignatureProvider& sigProvider)
+        INodeGraphProvider& sigProvider)
     {
         std::stringstream result;
 
@@ -937,7 +938,7 @@ namespace ShaderPatcher
     GeneratedFunction GenerateFunction(
         const NodeGraph& graph, StringSection<char> name,
         const InstantiationParameters& instantiationParameters,
-        ISignatureProvider& sigProvider)
+        INodeGraphProvider& sigProvider)
     {
 		std::string mainBody;
 		NodeGraphSignature interf;
@@ -1126,6 +1127,4 @@ namespace ShaderPatcher
             result = Hash64(p.first, ShaderPatcher::CalculateHash(p.second, result));
         return result;
     }
-
-    ISignatureProvider::~ISignatureProvider() {}
 }

@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ShaderPatcher.h"
+#include "SignatureProvider.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
 #include <string>
@@ -28,9 +29,10 @@ namespace ShaderPatcher
 	};
 	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
 
-	class ISignatureProvider;
-	std::shared_ptr<ISignatureProvider> MakeGraphSyntaxSignatureProvider(
-		const GraphSyntaxFile& parsedGraphFile,
+	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxSignatureProvider(
+		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules);
+
+	INodeGraphProvider::NodeGraph LoadGraph(StringSection<> filename, StringSection<> entryPoint);
 }
 

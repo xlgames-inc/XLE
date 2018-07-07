@@ -107,6 +107,7 @@
     <ClCompile Include="..\GraphSyntax.cpp" />
     <ClCompile Include="..\InterfaceSignature.cpp" />
     <ClCompile Include="..\ParameterSignature.cpp" />
+    <ClCompile Include="..\ShaderInstantiation.cpp" />
     <ClCompile Include="..\ShaderPatcher.cpp" />
     <ClCompile Include="..\SignatureProvider.cpp" />
     <ClCompile Include="..\StructureForPreview.cpp" />
@@ -123,6 +124,7 @@
     <ClInclude Include="..\GraphSyntax.h" />
     <ClInclude Include="..\InterfaceSignature.h" />
     <ClInclude Include="..\ParameterSignature.h" />
+    <ClInclude Include="..\ShaderInstantiation.h" />
     <ClInclude Include="..\ShaderPatcher.h" />
     <ClInclude Include="..\ShaderPatcher_Internal.h" />
     <ClInclude Include="..\SignatureProvider.h" />

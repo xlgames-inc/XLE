@@ -34,6 +34,7 @@
       <Filter>Generated</Filter>
     </ClCompile>
     <ClCompile Include="..\SignatureProvider.cpp" />
+    <ClCompile Include="..\ShaderInstantiation.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Grammar\ShaderLexer.h">
@@ -62,6 +63,7 @@
       <Filter>Generated</Filter>
     </ClInclude>
     <ClInclude Include="..\SignatureProvider.h" />
+    <ClInclude Include="..\ShaderInstantiation.h" />
   </ItemGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">

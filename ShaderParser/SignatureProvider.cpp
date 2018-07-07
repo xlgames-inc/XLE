@@ -95,7 +95,7 @@ namespace ShaderPatcher
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    auto BasicSignatureProvider::FindSignature(StringSection<> name) -> Result
+    auto BasicNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
     {
         auto splitName = SplitArchiveName(name);
 
@@ -109,13 +109,13 @@ namespace ShaderPatcher
 			existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), std::move(sig), std::string(resolvedFile)}}).first;
         }
         
-        return { existing->second._name, &existing->second._sig, existing->second._sourceFile };
+        return Signature{ existing->second._name, existing->second._sig, existing->second._sourceFile };
     }
 
-    BasicSignatureProvider::BasicSignatureProvider(const ::Assets::DirectorySearchRules& searchRules)
+    BasicNodeGraphProvider::BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules)
     : _searchRules(searchRules) {}
         
-    BasicSignatureProvider::~BasicSignatureProvider() {}
+    BasicNodeGraphProvider::~BasicNodeGraphProvider() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -136,6 +136,8 @@ namespace ShaderPatcher
             result.AddParameter(NodeGraphSignature::Parameter{sig._returnType, "result", ParameterDirection::Out, sig._returnSemantic});
         return result;
     }
+
+	INodeGraphProvider::~INodeGraphProvider() {}
 
 }
 

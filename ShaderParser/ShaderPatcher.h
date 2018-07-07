@@ -240,19 +240,6 @@ namespace ShaderPatcher
         std::vector<TemplateParameter> _templateParameters;
     };
 
-    class ISignatureProvider
-    {
-    public:
-        struct Result 
-        {
-            std::string _name;
-            const NodeGraphSignature* _signature;
-			std::string _sourceFile;
-        };
-        virtual Result FindSignature(StringSection<> name) = 0;
-        virtual ~ISignatureProvider();
-    };
-
         ///////////////////////////////////////////////////////////////
 
     class InstantiationParameters
@@ -282,6 +269,8 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
+	class INodeGraphProvider;
+
     struct GeneratedFunction
     {
     public:
@@ -292,7 +281,7 @@ namespace ShaderPatcher
     GeneratedFunction GenerateFunction(
         const NodeGraph& graph, StringSection<char> name, 
         const InstantiationParameters& instantiationParameters,
-        ISignatureProvider& sigProvider);
+        INodeGraphProvider& sigProvider);
 
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf);
 
@@ -309,7 +298,6 @@ namespace ShaderPatcher
     std::string GenerateStructureForPreview(
         StringSection<char> graphName, 
         const NodeGraphSignature& interf, 
-		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
 	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, StringSection<char> graphName);
