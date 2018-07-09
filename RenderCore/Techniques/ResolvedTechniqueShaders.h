@@ -41,10 +41,10 @@ namespace RenderCore { namespace Techniques
     class TechniqueInterface
     {
     public:
-		uint64  GetHashValue() const;
+		uint64_t	GetHashValue() const;
 
-        void	BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf);
-		void	BindGlobalUniforms();
+        void		BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf);
+		void		BindGlobalUniforms();
 
 		TechniqueInterface(IteratorRange<const InputElementDesc*> vertexInputLayout);
 
@@ -57,23 +57,19 @@ namespace RenderCore { namespace Techniques
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        friend class ResolvedTechniqueInterfaceShaders; // makes internal structure easier
+        friend class ResolvedTechniqueShaders; // makes internal structure easier
     };
 
-	#if defined(_DEBUG)
-		// #define CHECK_TECHNIQUE_HASH_CONFLICTS
-    #endif
-
-    class ResolvedTechniqueInterfaceShaders
+    class ResolvedTechniqueShaders
     {
     public:
 		class ResolvedShader
 		{
 		public:
-			uint64                          _variationHash;
-			Metal::ShaderProgram*           _shaderProgram;
-			Metal::BoundUniforms*           _boundUniforms;
-			Metal::BoundInputLayout*        _boundLayout;
+			uint64_t						_variationHash = 0;
+			Metal::ShaderProgram*           _shaderProgram = nullptr;
+			Metal::BoundUniforms*           _boundUniforms = nullptr;
+			Metal::BoundInputLayout*        _boundLayout = nullptr;
 
 			void Apply(
 				Metal::DeviceContext& devContext,
@@ -84,65 +80,57 @@ namespace RenderCore { namespace Techniques
 				Metal::DeviceContext& context,
 				unsigned streamIdx,
 				const UniformsStream& stream) const;
-
-			ResolvedShader();
 		};
 
         ResolvedShader  FindVariation(
             int techniqueIndex, 
-            const ParameterBox* globalState[ShaderSelectors::Source::Max], 
+            const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
             const TechniqueInterface& techniqueInterface) const;
+
+		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
+			int techniqueIndex,
+			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const;
 
 		const Technique& GetTechnique() const { return *_technique; }
 
-		ResolvedTechniqueInterfaceShaders(const std::shared_ptr<Technique>& technique);
-		~ResolvedTechniqueInterfaceShaders();
+		ResolvedTechniqueShaders(const std::shared_ptr<Technique>& technique);
+		~ResolvedTechniqueShaders();
 
 		const ::Assets::DepValPtr& GetDependencyValidation();
 		static void ConstructToFuture(
-			::Assets::AssetFuture<ResolvedTechniqueInterfaceShaders>& future,
+			::Assets::AssetFuture<ResolvedTechniqueShaders>& future,
 			StringSection<::Assets::ResChar> techniqueName);
 
     private:
 		class Entry
 		{
 		public:
-			mutable std::vector<std::pair<uint64, ResolvedShader>>			_filteredToResolved;
-			mutable std::vector<std::pair<uint64, ResolvedShader>>			_globalToResolved;
-			mutable std::vector<std::shared_ptr<Metal::ShaderProgram>>		_resolvedShaderPrograms;
-			mutable std::vector<std::unique_ptr<Metal::BoundUniforms>>		_resolvedBoundUniforms;
-			mutable std::vector<std::unique_ptr<Metal::BoundInputLayout>>	_resolvedBoundInputLayouts;
+			class BoundShader
+			{
+			public:
+				std::shared_ptr<Metal::ShaderProgram>		_shaderProgram;
+				std::unique_ptr<Metal::BoundUniforms>		_boundUniforms;
+				std::unique_ptr<Metal::BoundInputLayout>	_boundLayout;
+			};
+			mutable std::vector<std::pair<uint64_t, BoundShader>>									_filteredToBoundShader;
+			mutable std::vector<std::pair<uint64_t, ::Assets::FuturePtr<Metal::ShaderProgram>>>		_filteredToResolved;
+			mutable std::vector<std::pair<uint64_t, uint64_t>>										_globalToFiltered;
 
-			#if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-				class HashConflictTest
-				{
-				public:
-					ParameterBox _globalState[ShaderSelectors::Source::Max];
-					uint64 _rawHash; 
-					uint64 _filteredHash; 
-					uint64 _interfaceHash;
-
-					HashConflictTest(const ParameterBox* globalState[ShaderSelectors::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
-					HashConflictTest(const ParameterBox globalState[ShaderSelectors::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
-					HashConflictTest();
-				};
-				mutable std::vector<std::pair<uint64, HashConflictTest>>  _localToResolvedTest;
-				mutable std::vector<std::pair<uint64, HashConflictTest>>  _globalToResolvedTest;
-
-				void TestHashConflict(
-					const ParameterBox* globalState[ShaderSelectors::Source::Max], 
-					const HashConflictTest& comparison) const;
-			#endif
-
-			void        ResolveAndBind( 
-				ResolvedShader& shader, 
-				const TechniqueEntry& techEntry,
-				const ParameterBox* globalState[ShaderSelectors::Source::Max],
-				const TechniqueInterface& techniqueInterface) const;
 			ResolvedShader FindVariation(
 				const TechniqueEntry& techEntry,
-				const ParameterBox* globalState[ShaderSelectors::Source::Max], 
+				const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
 				const TechniqueInterface& techniqueInterface) const;
+
+			::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
+				const TechniqueEntry& techEntry,
+				const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
+
+			static BoundShader MakeBoundShader(
+				const std::shared_ptr<Metal::ShaderProgram>& shader, 
+				const TechniqueEntry& techEntry,
+				const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
+				const TechniqueInterface& techniqueInterface);
+			static ResolvedTechniqueShaders::ResolvedShader AsResolvedShader(uint64_t hash, const BoundShader&);
 		};
         Entry	_entries[size_t(TechniqueIndex::Max)];
 

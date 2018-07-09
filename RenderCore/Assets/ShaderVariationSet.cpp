@@ -66,7 +66,7 @@ namespace RenderCore { namespace Assets
 		XlCatString(resName, ".tech");
 		searchDirs.ResolveFile(resName, dimof(resName), resName);
 
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(MakeStringSection(resName));
+        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(resName));
 
         Variation result;
         result._cbLayout = nullptr;
@@ -77,7 +77,7 @@ namespace RenderCore { namespace Assets
 
     const Techniques::PredefinedCBLayout& ShaderVariationSet::GetCBLayout(StringSection<> techniqueConfigName)
     {
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(techniqueConfigName);
+        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(techniqueConfigName);
         return techConfig.GetTechnique().TechniqueCBLayout();
     }
 

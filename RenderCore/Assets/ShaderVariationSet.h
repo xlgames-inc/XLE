@@ -26,7 +26,7 @@ namespace RenderCore { namespace Assets
         class Variation
         {
         public:
-			Techniques::ResolvedTechniqueInterfaceShaders::ResolvedShader      _shader;
+			Techniques::ResolvedTechniqueShaders::ResolvedShader      _shader;
             const Techniques::PredefinedCBLayout* _cbLayout;
         };
 

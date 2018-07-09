@@ -193,7 +193,7 @@ namespace RenderCore { namespace Assets
 
         auto& techniqueContext = context._parserContext->GetTechniqueContext();
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &techniqueContext._globalEnvironmentState,
@@ -254,7 +254,7 @@ namespace RenderCore { namespace Assets
         // If the technique config has an embedded cblayout, we must return that.
         // Otherwise, we return the default
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(sn));
 		return &shaderType.GetTechnique().TechniqueCBLayout();
     }
 
