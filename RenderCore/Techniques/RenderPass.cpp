@@ -177,6 +177,7 @@ namespace RenderCore { namespace Techniques
                 uniqueAttachments.push_back(s._depthStencil._resourceName);
         }
         // (make unique set)
+        std::sort(uniqueAttachments.begin(), uniqueAttachments.end());
         uniqueAttachments.erase(
             std::unique(uniqueAttachments.begin(), uniqueAttachments.end()),
             uniqueAttachments.end());
