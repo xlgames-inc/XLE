@@ -15,6 +15,7 @@
 #include "../../FrameBufferDesc.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../ConsoleRig/Log.h"
+#include "../../../Core/Exceptions.h"
 
 #include "IncludeGLES.h"
 
@@ -231,6 +232,25 @@ namespace RenderCore { namespace Metal_OpenGLES
                     (s._dsvLoad == LoadStore::Clear_ClearStencil || s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil)
                 &&  (s._dsvHasStencil);
         }
+
+        #if _DEBUG
+            // write masks affect glClear and glClearBuffer calls
+            // https://www.khronos.org/opengl/wiki/Write_Mask
+            if (clearDepth) {
+                GLboolean depthWriteMask;
+                glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteMask);
+                if (!depthWriteMask) {
+                    Throw(::Exceptions::BasicLabel("Attempting to clear depth with depth mask off in subpass %d", (int)subpassIndex));
+                }
+            }
+            if (clearStencil) {
+                GLint stencilWriteMask;
+                glGetIntegerv(GL_STENCIL_WRITEMASK, &stencilWriteMask);
+                if (!(stencilWriteMask & 0xFF)) {
+                    Throw(::Exceptions::BasicLabel("Attempting to clear stencil with stencil mask %u in subpass %d", stencilWriteMask, (int)subpassIndex));
+                }
+            }
+        #endif
 
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
         // For ES2, we have to drop back to the older API
