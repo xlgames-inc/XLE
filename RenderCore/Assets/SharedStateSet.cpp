@@ -13,6 +13,7 @@
 #include "../Techniques/RenderStateResolver.h"
 #include "../Techniques/CompiledRenderStateSet.h"
 #include "../Techniques/PredefinedCBLayout.h"
+#include "../Techniques/ResolvedTechniqueShaders.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/Buffer.h"
@@ -192,7 +193,7 @@ namespace RenderCore { namespace Assets
 
         auto& techniqueContext = context._parserContext->GetTechniqueContext();
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(MakeStringSection(sn));
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
             &techniqueContext._globalEnvironmentState,
@@ -253,8 +254,8 @@ namespace RenderCore { namespace Assets
         // If the technique config has an embedded cblayout, we must return that.
         // Otherwise, we return the default
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
-        auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>(MakeStringSection(sn));
-		return &shaderType.TechniqueCBLayout();
+        auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(MakeStringSection(sn));
+		return &shaderType.GetTechnique().TechniqueCBLayout();
     }
 
     auto SharedStateSet::CaptureState(

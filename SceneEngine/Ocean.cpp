@@ -21,6 +21,7 @@
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Format.h"
@@ -669,7 +670,7 @@ namespace SceneEngine
         const bool useWireframeRender               = Tweakable("OceanRenderWireframe", false);
         if (!useWireframeRender) {
 
-            auto& shaderType = ::Assets::GetAssetDep<Techniques::ShaderType>("xleres/ocean/oceanmaterial.tech");
+            auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>("xleres/ocean/oceanmaterial.tech");
 
             ParameterBox materialParameters;
             materialParameters.SetParameter((const utf8*)"MAT_USE_DERIVATIVES_MAP", unsigned(fftBuffer._useDerivativesMapForNormals));

@@ -13,6 +13,7 @@
     <ClInclude Include="..\Techniques\RenderPass.h" />
     <ClInclude Include="..\Techniques\DrawableDelegates.h" />
     <ClInclude Include="..\Techniques\Drawables.h" />
+    <ClInclude Include="..\Techniques\ResolvedTechniqueShaders.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -24,5 +25,6 @@
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\RenderPass.cpp" />
     <ClCompile Include="..\Techniques\Drawables.cpp" />
+    <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
   </ItemGroup>
 </Project>

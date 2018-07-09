@@ -5,6 +5,8 @@
 #include "ShaderVariationSet.h"
 #include "Services.h"
 #include "../Techniques/ParsingContext.h"
+#include "../Techniques/ResolvedTechniqueShaders.h"
+#include "../Techniques/TechniqueUtils.h"
 #include "../Types.h"
 #include "../../Assets/Assets.h"
 #include "../../Utility/StringFormat.h"
@@ -12,7 +14,7 @@
 namespace RenderCore { namespace Assets
 {
     static Techniques::TechniqueInterface MakeTechInterface(
-        const InputLayout& inputLayout,
+        IteratorRange<const InputElementDesc*> inputLayout,
         const std::initializer_list<uint64_t>& objectCBs)
     {
 		UniformsStreamInterface interf;
@@ -21,24 +23,20 @@ namespace RenderCore { namespace Assets
 			interf.BindConstantBuffer(index++, { o });
 
         Techniques::TechniqueInterface techniqueInterface(inputLayout);
-        Techniques::TechniqueContext::BindGlobalUniforms(techniqueInterface);
+        techniqueInterface.BindGlobalUniforms();
 		techniqueInterface.BindUniformsStream(1, interf);
         return std::move(techniqueInterface);
     }
 
-    ParameterBox TechParams_SetGeo(const InputLayout& inputLayout)
+    ParameterBox TechParams_SetGeo(IteratorRange<const InputElementDesc*> inputLayout)
     {
         ParameterBox result;
-        if (HasElement(inputLayout, "NORMAL"))          result.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);
-        if (HasElement(inputLayout, "TEXCOORD"))        result.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1);
-        if (HasElement(inputLayout, "TEXTANGENT"))      result.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1);
-        if (HasElement(inputLayout, "TEXBITANGENT"))    result.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1);
-        if (HasElement(inputLayout, "COLOR"))           result.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1);
-        return std::move(result);
+		Techniques::SetGeoSelectors(result, inputLayout);
+        return result;
     }
 
     ShaderVariationSet::ShaderVariationSet(
-        const InputLayout& inputLayout,
+        IteratorRange<const InputElementDesc*> inputLayout,
         const std::initializer_list<uint64_t>& objectCBs,
         const ParameterBox& materialParameters)
     : _materialParameters(std::move(materialParameters))
@@ -68,19 +66,19 @@ namespace RenderCore { namespace Assets
 		XlCatString(resName, ".tech");
 		searchDirs.ResolveFile(resName, dimof(resName), resName);
 
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::ShaderType>(MakeStringSection(resName));
+        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(MakeStringSection(resName));
 
         Variation result;
         result._cbLayout = nullptr;
         result._shader = techConfig.FindVariation(techniqueIndex, state, _techniqueInterface);
-        result._cbLayout = &techConfig.TechniqueCBLayout();
+        result._cbLayout = &techConfig.GetTechnique().TechniqueCBLayout();
         return result;
     }
 
     const Techniques::PredefinedCBLayout& ShaderVariationSet::GetCBLayout(StringSection<> techniqueConfigName)
     {
-        auto& techConfig = ::Assets::GetAssetDep<Techniques::ShaderType>(techniqueConfigName);
-        return techConfig.TechniqueCBLayout();
+        auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueInterfaceShaders>(techniqueConfigName);
+        return techConfig.GetTechnique().TechniqueCBLayout();
     }
 
 }}

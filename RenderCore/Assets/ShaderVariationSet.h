@@ -4,9 +4,10 @@
 
 #pragma once
 
-#include "../Techniques/Techniques.h"
+#include "../Techniques/ResolvedTechniqueShaders.h"
 #include "../../Utility/ParameterBox.h"
 
+namespace RenderCore { class InputElementDesc; }
 namespace RenderCore { namespace Techniques
 {
 	class PredefinedCBLayout;
@@ -25,7 +26,7 @@ namespace RenderCore { namespace Assets
         class Variation
         {
         public:
-			Techniques::ResolvedShader      _shader;
+			Techniques::ResolvedTechniqueInterfaceShaders::ResolvedShader      _shader;
             const Techniques::PredefinedCBLayout* _cbLayout;
         };
 
@@ -37,7 +38,7 @@ namespace RenderCore { namespace Assets
         const Techniques::PredefinedCBLayout& GetCBLayout(StringSection<> techniqueConfig);
 
         ShaderVariationSet(
-            const InputLayout& inputLayout,
+            IteratorRange<const InputElementDesc*> inputLayout,
             const std::initializer_list<uint64_t>& objectCBs,
             const ParameterBox& materialParameters);
         ShaderVariationSet();
@@ -46,7 +47,7 @@ namespace RenderCore { namespace Assets
         ~ShaderVariationSet();
     };
 
-    ParameterBox TechParams_SetGeo(const InputLayout& inputLayout);
+    ParameterBox TechParams_SetGeo(IteratorRange<const InputElementDesc*> inputLayout);
 
 }}
 
