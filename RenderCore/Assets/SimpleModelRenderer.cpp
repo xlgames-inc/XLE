@@ -56,7 +56,7 @@ namespace RenderCore { namespace Assets
 	{
 		VariantArray result;
 
-		std::string techniqueConfig = "illum";
+		std::string techniqueConfig = "xleres/techniques/illum.tech";
 
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();

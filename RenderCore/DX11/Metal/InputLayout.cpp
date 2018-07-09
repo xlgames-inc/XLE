@@ -48,10 +48,13 @@ namespace RenderCore { namespace Metal_DX11
 	static std::vector<std::pair<uint64_t, std::pair<const char*, UINT>>> GetInputParameters(ID3D::ShaderReflection& reflection)
 	{
 		std::vector<std::pair<uint64_t, std::pair<const char*, UINT>>> result;
-		unsigned paramCount = reflection.GetNumInterfaceSlots();
-		for (unsigned p=0;p<paramCount; ++p) {
+		D3D11_SHADER_DESC shaderDesc;
+		auto hresult = reflection.GetDesc(&shaderDesc);
+		assert(SUCCEEDED(hresult));
+
+		for (unsigned p=0;p<shaderDesc.InputParameters; ++p) {
 			D3D11_SIGNATURE_PARAMETER_DESC desc;
-			auto hresult = reflection.GetInputParameterDesc(p, &desc);
+			hresult = reflection.GetInputParameterDesc(p, &desc);
 			assert(SUCCEEDED(hresult));
 			if (!desc.SemanticName) continue;
 			auto hash = Hash64(desc.SemanticName) + desc.SemanticIndex;
@@ -77,7 +80,7 @@ namespace RenderCore { namespace Metal_DX11
 				// because CreateInputLayout requires the full semantic name
 				const auto& ele = layouts[slot]._elements[e];
 				auto i = LowerBound(inputParameters, ele._semanticHash);
-				if (i == inputParameters.end() || i->first == ele._semanticHash)
+				if (i == inputParameters.end() || i->first != ele._semanticHash)
 					continue;
 
 				nativeLayout[c].SemanticName = i->second.first;

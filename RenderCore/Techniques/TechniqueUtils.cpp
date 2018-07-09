@@ -176,7 +176,7 @@ namespace RenderCore { namespace Techniques
 	IUniformBufferDelegate::~IUniformBufferDelegate() {}
 	IShaderResourceDelegate::~IShaderResourceDelegate() {}
 	IMaterialDelegate::~IMaterialDelegate() {}
-
+	ITechniqueDelegate::~ITechniqueDelegate() {}
 
 	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const InputElementDesc*> ia)
 	{

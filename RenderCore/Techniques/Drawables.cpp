@@ -12,16 +12,12 @@
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
 #include "../Metal/State.h"
+#include "../Metal/Shader.h"
 
 namespace RenderCore { namespace Techniques
 {
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	const ParameterBox* GetGeometrySelectors(const Techniques::DrawableGeo& geo)
-	{
-		return nullptr;
-	}
 
 	void Draw(
 		IThreadContext& context,
@@ -80,6 +76,10 @@ namespace RenderCore { namespace Techniques
 				MakeStringSection(drawable._techniqueConfig),
 				shaderSelectors,
 				techniqueIndex);
+			if (!shaderProgram)
+				return;
+
+			shaderProgram->Apply(metalContext);
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -93,7 +93,7 @@ namespace RenderCore { namespace Techniques
 				slotBinding[c]._instanceStepDataRate = stream._instanceStepDataRate;
 			}
 
-			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding), *shaderProgram };
+			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding, &slotBinding[drawable._geo->_vertexStreamCount]), *shaderProgram };
 			inputLayout.Apply(metalContext, MakeIteratorRange(vbv));
 
 			metalContext.Bind(

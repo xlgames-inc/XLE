@@ -7,10 +7,12 @@
 #include "BasicScene.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/SimpleModelRenderer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IAnnotator.h"
 #include "../../SceneEngine/LightDesc.h"
@@ -18,11 +20,14 @@
 #include "../../SceneEngine/Tonemap.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetFuture.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
+
+#include "../../RenderCore/Techniques/BasicDelegates.h"
 
 namespace Sample
 {
@@ -36,11 +41,18 @@ namespace Sample
             LightingParserContext& parserContext, 
             unsigned techniqueIndex);
 
+		void RenderOpaque_SimpleModelRenderer(
+            RenderCore::IThreadContext& context, 
+            LightingParserContext& parserContext, 
+            unsigned techniqueIndex);
+
         Model();
         ~Model();
     protected:
         std::unique_ptr<RenderCore::Assets::SharedStateSet> _sharedStateSet;
         mutable std::unique_ptr<RenderCore::Assets::ModelRenderer> _modelRenderer;
+
+		::Assets::FuturePtr<RenderCore::Assets::SimpleModelRenderer> _simpleModelRenderer;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -93,7 +105,8 @@ namespace Sample
                 //  The scene parser is responsible for getting the ordering right. But
                 //  the best ordering depends on the type of scene you want to render.
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _model->RenderOpaque(context, parserContext, techniqueIndex);
+				// _model->RenderOpaque(context, parserContext, techniqueIndex);
+                _model->RenderOpaque_SimpleModelRenderer(context, parserContext, techniqueIndex);
             }
 
         }
@@ -204,7 +217,9 @@ namespace Sample
         return 1; 
     }
 
-    auto BasicSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
+    auto BasicSceneParser::GetShadowProjectionDesc(
+		unsigned index, 
+		const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         -> ShadowProjectionDesc
     {
             //  Shadowing lights can have a ShadowProjectionDesc object associated.
@@ -252,6 +267,9 @@ namespace Sample
     {
         _sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
             RenderCore::Assets::Services::GetTechniqueConfigDirs());
+
+		_simpleModelRenderer = ::Assets::MakeAsset<RenderCore::Assets::SimpleModelRenderer>(
+			"game/model/galleon/galleon.dae");
     }
 
     BasicSceneParser::Model::~Model()
@@ -353,13 +371,45 @@ namespace Sample
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
-        auto captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+        auto captureMarker = _sharedStateSet->CaptureState(
+			context, 
+			parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
 
             //  Finally, we can render the object!
         _modelRenderer->Render(
             RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, Identity<Float4x4>());
     }
+
+	RenderCore::Techniques::SequencerTechnique MakeSequencerTechnique(
+		SceneEngine::LightingParserContext& parserContext)
+	{
+		RenderCore::Techniques::SequencerTechnique result;
+		result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+		result._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+		return result;
+	}
+
+	void BasicSceneParser::Model::RenderOpaque_SimpleModelRenderer(
+        RenderCore::IThreadContext& context, 
+        LightingParserContext& parserContext, 
+        unsigned techniqueIndex)
+    {
+		auto renderer = _simpleModelRenderer->TryActualize();
+		if (!renderer) return;
+
+		auto drawables = renderer->BuildDrawables(0);
+		auto seqTechnique = MakeSequencerTechnique(parserContext);
+
+		ParameterBox seqShaderSelectors;
+		auto i = drawables.begin();
+		for (; i!=drawables.end(); ++i) {
+			RenderCore::Techniques::Draw(
+				context, parserContext, techniqueIndex, 
+				seqTechnique, &seqShaderSelectors, 
+				*(const RenderCore::Techniques::Drawable*)i.get());
+		}
+	}
 
 }
 
