@@ -578,7 +578,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         #endif
                         });
 
-                    #if defined(_DEBUG)
+                    #if defined(_DEBUG) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
                         Log(Verbose) << "Selecting texunit (" << textureUnit << ") for uniform " << AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount) << " in stream " << s << ", slot " << slot << std::endl;
                     #endif
 
