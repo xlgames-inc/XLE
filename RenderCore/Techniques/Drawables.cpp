@@ -33,9 +33,9 @@ namespace RenderCore { namespace Techniques
 	{
 		auto& metalContext = *Metal::DeviceContext::Get(context);
 
-		const ParameterBox* shaderSelectors[Techniques::ShaderParameters::Source::Max] = {nullptr, nullptr, nullptr, nullptr};
-		shaderSelectors[Techniques::ShaderParameters::Source::Runtime] = seqShaderSelectors;
-		shaderSelectors[Techniques::ShaderParameters::Source::GlobalEnvironment] = &parserContext.GetTechniqueContext()._globalEnvironmentState;
+		const ParameterBox* shaderSelectors[Techniques::ShaderSelectors::Source::Max] = {nullptr, nullptr, nullptr, nullptr};
+		shaderSelectors[Techniques::ShaderSelectors::Source::Runtime] = seqShaderSelectors;
+		shaderSelectors[Techniques::ShaderSelectors::Source::GlobalEnvironment] = &parserContext.GetTechniqueContext()._globalEnvironmentState;
 
 		UniformsStreamInterface sequencerInterface;
 		std::vector<ConstantBufferView> sequencerCbvs;
@@ -66,14 +66,14 @@ namespace RenderCore { namespace Techniques
 
 		// this part would normally be a loop -- 
 		{
-			shaderSelectors[Techniques::ShaderParameters::Source::Material] = 
+			shaderSelectors[Techniques::ShaderSelectors::Source::Material] = 
 				sequencerTechnique._materialDelegate->GetShaderSelectors(drawable._material.get());
 
 			ParameterBox geoSelectors;
 			for (unsigned v=0; v<drawable._geo->_vertexStreamCount; ++v)
 				SetGeoSelectors(geoSelectors, MakeIteratorRange(drawable._geo->_vertexStreams[v]._vertexElements));
 
-			shaderSelectors[Techniques::ShaderParameters::Source::Geometry] = &geoSelectors;
+			shaderSelectors[Techniques::ShaderSelectors::Source::Geometry] = &geoSelectors;
 
 			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(
 				parserContext,

@@ -27,11 +27,11 @@ namespace RenderCore { namespace Techniques
 {
     class IStateSetResolver;
 
-    class ShaderParameters
+    class ShaderSelectors
     {
     public:
         struct Source { enum Enum { Geometry, GlobalEnvironment, Runtime, Material, Max }; };
-        ParameterBox    _parameters[Source::Max];
+        ParameterBox    _selectors[Source::Max];
 
         uint64      CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const;
         void        BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const;
@@ -52,28 +52,45 @@ namespace RenderCore { namespace Techniques
             //      index and a set of parameters in ParameterBoxes
             //          -- that is transformed into a concrete shader
 
-    class ParsingContext;
-
-    class ResolvedShader
+	class TechniqueEntry
     {
     public:
-        uint64                          _variationHash;
-        Metal::ShaderProgram*           _shaderProgram;
-        Metal::BoundUniforms*           _boundUniforms;
-        Metal::BoundInputLayout*        _boundLayout;
+        bool IsValid() const { return !_vertexShaderName.empty(); }
+        void MergeIn(const TechniqueEntry& source);
 
-        void Apply(
-            Metal::DeviceContext& devContext,
-            ParsingContext& parserContext,
-			const std::initializer_list<VertexBufferView>& vbs) const;
+        ShaderSelectors		_baseSelectors;
+        ::Assets::rstring   _vertexShaderName;
+        ::Assets::rstring   _pixelShaderName;
+        ::Assets::rstring   _geometryShaderName;
 
-		void ApplyUniforms(
-			Metal::DeviceContext& context,
-			unsigned streamIdx,
-			const UniformsStream& stream) const;
-
-        ResolvedShader();
+        TechniqueEntry();
+        ~TechniqueEntry();
     };
+
+	class Technique
+	{
+	public:
+		auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
+		const PredefinedCBLayout& TechniqueCBLayout() const { return _cbLayout; }
+		TechniqueEntry& GetEntry(unsigned idx);
+		const TechniqueEntry& GetEntry(unsigned idx) const;
+
+        Technique(StringSection<::Assets::ResChar> resourceName);
+        ~Technique();
+	private:
+		TechniqueEntry			_entries[size_t(TechniqueIndex::Max)];
+
+		::Assets::DepValPtr		_validationCallback;
+		PredefinedCBLayout		_cbLayout;
+
+        void ParseConfigFile(
+            InputStreamFormatter<utf8>& formatter, 
+			StringSection<::Assets::ResChar> containingFileName,
+            const ::Assets::DirectorySearchRules& searchRules,
+            std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets);
+	};
+
+    class ParsingContext;
 
         //
         //  <summary>Vertex, constants and resources interface for a technique<summary>
@@ -117,66 +134,54 @@ namespace RenderCore { namespace Techniques
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
 
-        friend class ShaderType; // makes internal structure easier
+        friend class ResolvedShaderSet; // makes internal structure easier
     };
 
-    // #if defined(_DEBUG)
-    //     #define CHECK_TECHNIQUE_HASH_CONFLICTS
-    // #endif
+    #if defined(_DEBUG)
+		// #define CHECK_TECHNIQUE_HASH_CONFLICTS
+    #endif
 
-    class Technique
+    class ResolvedShaderSet
     {
     public:
-        bool IsValid() const { return !_vertexShaderName.empty(); }
-        void MergeIn(const Technique& source);
-		void ReplaceSelfReference(StringSection<::Assets::ResChar> filename);
-
-        ShaderParameters    _baseParameters;
-        ::Assets::rstring   _vertexShaderName;
-        ::Assets::rstring   _pixelShaderName;
-        ::Assets::rstring   _geometryShaderName;
-
-        Technique(Technique&&) never_throws = default;
-        Technique& operator=(Technique&&) never_throws = default;
-		Technique(const Technique&) = default;
-        Technique& operator=(const Technique&) = default;
-        Technique();
-        ~Technique();
-    };
-
-	class TechniqueSetFile
-	{
-	public:
-		std::vector<std::pair<uint64_t, Technique>> _settings;
-		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-
-		TechniqueSetFile(
-            Utility::InputStreamFormatter<utf8>& formatter, 
-			const ::Assets::DirectorySearchRules& searchRules, 
-			const ::Assets::DepValPtr& depVal);
-		~TechniqueSetFile();
-	private:
-		::Assets::DepValPtr _depVal;
-	};
-
-    class ShaderType
-    {
-    public:
-        ResolvedShader  FindVariation(
-            int techniqueIndex, 
-            const ParameterBox* globalState[ShaderParameters::Source::Max], 
-            const TechniqueInterface& techniqueInterface) const;
-
-        auto GetDependencyValidation() const -> const ::Assets::DepValPtr& { return _validationCallback; }
-		const PredefinedCBLayout& TechniqueCBLayout() const { return _cbLayout; }
-
-        ShaderType(StringSection<::Assets::ResChar> resourceName);
-        ~ShaderType();
-    private:
-		class TechniqueObj
+		class ResolvedShader
 		{
 		public:
-			Technique _technique;
+			uint64                          _variationHash;
+			Metal::ShaderProgram*           _shaderProgram;
+			Metal::BoundUniforms*           _boundUniforms;
+			Metal::BoundInputLayout*        _boundLayout;
+
+			void Apply(
+				Metal::DeviceContext& devContext,
+				ParsingContext& parserContext,
+				const std::initializer_list<VertexBufferView>& vbs) const;
+
+			void ApplyUniforms(
+				Metal::DeviceContext& context,
+				unsigned streamIdx,
+				const UniformsStream& stream) const;
+
+			ResolvedShader();
+		};
+
+        ResolvedShader  FindVariation(
+            int techniqueIndex, 
+            const ParameterBox* globalState[ShaderSelectors::Source::Max], 
+            const TechniqueInterface& techniqueInterface) const;
+        
+		ResolvedShaderSet(const std::shared_ptr<Technique>& technique);
+		~ResolvedShaderSet();
+
+		const ::Assets::DepValPtr& GetDependencyValidation();
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ResolvedShaderSet>& future,
+			StringSection<::Assets::ResChar> techniqueName);
+
+    private:
+		class Entry
+		{
+		public:
 			mutable std::vector<std::pair<uint64, ResolvedShader>>			_filteredToResolved;
 			mutable std::vector<std::pair<uint64, ResolvedShader>>			_globalToResolved;
 			mutable std::vector<std::shared_ptr<Metal::ShaderProgram>>		_resolvedShaderPrograms;
@@ -187,40 +192,36 @@ namespace RenderCore { namespace Techniques
 				class HashConflictTest
 				{
 				public:
-					ParameterBox _globalState[ShaderParameters::Source::Max];
+					ParameterBox _globalState[ShaderSelectors::Source::Max];
 					uint64 _rawHash; 
 					uint64 _filteredHash; 
 					uint64 _interfaceHash;
 
-					HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
-					HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
+					HashConflictTest(const ParameterBox* globalState[ShaderSelectors::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
+					HashConflictTest(const ParameterBox globalState[ShaderSelectors::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash);
 					HashConflictTest();
 				};
 				mutable std::vector<std::pair<uint64, HashConflictTest>>  _localToResolvedTest;
 				mutable std::vector<std::pair<uint64, HashConflictTest>>  _globalToResolvedTest;
 
 				void TestHashConflict(
-					const ParameterBox* globalState[ShaderParameters::Source::Max], 
+					const ParameterBox* globalState[ShaderSelectors::Source::Max], 
 					const HashConflictTest& comparison) const;
 			#endif
 
 			void        ResolveAndBind( 
 				ResolvedShader& shader, 
-				const ParameterBox* globalState[ShaderParameters::Source::Max],
+				const TechniqueEntry& techEntry,
+				const ParameterBox* globalState[ShaderSelectors::Source::Max],
 				const TechniqueInterface& techniqueInterface) const;
-			ResolvedShader FindVariation(  
-				const ParameterBox* globalState[ShaderParameters::Source::Max], 
+			ResolvedShader FindVariation(
+				const TechniqueEntry& techEntry,
+				const ParameterBox* globalState[ShaderSelectors::Source::Max], 
 				const TechniqueInterface& techniqueInterface) const;
 		};
-        TechniqueObj			_techniques[size_t(TechniqueIndex::Max)];
-        ::Assets::DepValPtr		_validationCallback;
-		PredefinedCBLayout		_cbLayout;
+        Entry	_entries[size_t(TechniqueIndex::Max)];
 
-        void ParseConfigFile(
-            InputStreamFormatter<utf8>& formatter, 
-			StringSection<::Assets::ResChar> containingFileName,
-            const ::Assets::DirectorySearchRules& searchRules,
-            std::vector<std::shared_ptr<::Assets::DependencyValidation>>& inheritedAssets);
+		std::shared_ptr<Technique> _technique;
     };
 
         //////////////////////////////////////////////////////////////////
