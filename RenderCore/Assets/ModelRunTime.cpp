@@ -195,19 +195,12 @@ namespace RenderCore { namespace Assets
             ModelConstruction::ParamBoxDescriptions& paramBoxDesc, bool normalFromSkinning)
         {
                 //  Build a parameter box for this geometry configuration. The input assembly
-            ParameterBox geoParameters;
-            if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
-            if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
-            if (HasElement(ia, "NORMAL") || normalFromSkinning) 
-                { geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
-            if (HasElement(ia, "TEXTANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
-            if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
-            if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
-                { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
-            if (HasElement(ia, "PER_VERTEX_AO"))
-                { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
-            auto result = sharedStateSet.InsertParameterBox(geoParameters);
-            paramBoxDesc.Add(result, geoParameters);
+            ParameterBox geoSelectors;
+			Techniques::SetGeoSelectors(geoSelectors, ia);
+			if (normalFromSkinning)
+				geoSelectors.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1);            
+            auto result = sharedStateSet.InsertParameterBox(geoSelectors);
+            paramBoxDesc.Add(result, geoSelectors);
             return result;
         }
 
@@ -455,15 +448,15 @@ namespace RenderCore { namespace Assets
     }
 
     unsigned BuildLowLevelInputAssembly(
-        InputElementDesc dst[], unsigned dstMaxCount,
-        const VertexElement* source, unsigned sourceCount,
+        IteratorRange<InputElementDesc*> dst,
+        IteratorRange<const VertexElement*> source,
         unsigned lowLevelSlot)
     {
         unsigned vertexElementCount = 0;
-        for (unsigned i=0; i<sourceCount; ++i) {
+        for (unsigned i=0; i<source.size(); ++i) {
             auto& sourceElement = source[i];
-            assert((vertexElementCount+1) <= dstMaxCount);
-            if ((vertexElementCount+1) <= dstMaxCount) {
+            assert((vertexElementCount+1) <= dst.size());
+            if ((vertexElementCount+1) <= dst.size()) {
                     // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
                     //  should be one after another in the vb (that is, not interleaved)
                 dst[vertexElementCount++] = InputElementDesc(
@@ -473,6 +466,22 @@ namespace RenderCore { namespace Assets
         }
         return vertexElementCount;
     }
+
+	std::vector<MiniInputElementDesc> BuildLowLevelInputAssembly(IteratorRange<const VertexElement*> source)
+	{
+		std::vector<MiniInputElementDesc> result;
+		result.reserve(source.size());
+		for (unsigned i=0; i<source.size(); ++i) {
+            auto& sourceElement = source[i];
+			#if defined(_DEBUG)
+				auto expectedOffset = CalculateVertexStride(MakeIteratorRange(result), false);
+				assert(expectedOffset == sourceElement._alignedByteOffset);
+			#endif
+			result.push_back(
+				MiniInputElementDesc{Hash64(sourceElement._semanticName) + sourceElement._semanticIndex, sourceElement._nativeFormat});
+		}
+		return result;
+	}
 
     ModelRenderer::ModelRenderer(
         const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
@@ -952,11 +961,11 @@ namespace RenderCore { namespace Assets
             // Build vertex input layout desc
         InputElementDesc inputDesc[12];
         unsigned vertexElementCount = BuildLowLevelInputAssembly(
-            inputDesc, dimof(inputDesc), geo._vb._ia._elements);
+            MakeIteratorRange(inputDesc), MakeIteratorRange(geo._vb._ia._elements));
         for (unsigned s=0; s!=supplements.size(); ++s)
             vertexElementCount += BuildLowLevelInputAssembly(
-                &inputDesc[vertexElementCount], dimof(inputDesc) - vertexElementCount,
-                supplements[s]->_ia._elements, 1+s);
+                MakeIteratorRange(&inputDesc[vertexElementCount], &inputDesc[dimof(inputDesc)]),
+                MakeIteratorRange(supplements[s]->_ia._elements), 1+s);
 
             // Setup the geo param box and the technique interface
             // from the vertex input layout
@@ -1024,14 +1033,14 @@ namespace RenderCore { namespace Assets
             InputElementDesc inputDescForRender[12];
             unsigned eleCount = 
                 BuildLowLevelInputAssembly(
-                    inputDescForRender, dimof(inputDescForRender),
-                    geo._animatedVertexElements._ia._elements);
+                    MakeIteratorRange(inputDescForRender),
+                    MakeIteratorRange(geo._animatedVertexElements._ia._elements));
 
                 // (add the unanimated part)
             eleCount += 
                 BuildLowLevelInputAssembly(
-                    &inputDescForRender[eleCount], dimof(inputDescForRender) - eleCount,
-                    geo._vb._ia._elements, 1);
+                    MakeIteratorRange(&inputDescForRender[eleCount], &inputDescForRender[dimof(inputDescForRender)]),
+                    MakeIteratorRange(geo._vb._ia._elements), 1);
 
             result._skinnedTechniqueInterface = sharedStateSet.InsertTechniqueInterface(
                 inputDescForRender, eleCount, 

@@ -6,14 +6,15 @@
 
 #pragma once
 
-#include "ModelVisualisation.h"
-#include "MaterialBinder.h"
+#include "../../PlatformRig/OverlaySystem.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetUtils.h"
 
 namespace ToolsRig
 {
+	class VisCameraSettings;
+
     class MaterialVisSettings
     {
     public:
@@ -39,13 +40,13 @@ namespace ToolsRig
     class MaterialVisObject
     {
     public:
-        RenderCore::Techniques::Material _parameters;
-        ::Assets::DirectorySearchRules _searchRules;
-        IMaterialBinder::SystemConstants _systemConstants;
-        std::shared_ptr<IMaterialBinder> _materialBinder;
+        RenderCore::Techniques::Material	_parameters;
+        ::Assets::DirectorySearchRules		_searchRules;
+        // IMaterialBinder::SystemConstants _systemConstants;
+        // std::shared_ptr<IMaterialBinder> _materialBinder;
 
-        ::Assets::rstring _previewModelFile;
-        uint64 _previewMaterialBinding;
+        ::Assets::rstring	_previewModelFile;
+        uint64				_previewMaterialBinding;
 
         MaterialVisObject();
         ~MaterialVisObject();
@@ -79,7 +80,7 @@ namespace ToolsRig
             RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& lightingParser,
             const MaterialVisSettings& settings,
-            const VisEnvSettings& envSettings,
+			const VisEnvSettings& envSettings,
             const MaterialVisObject& object);
     protected:
         class Pimpl;

@@ -5,9 +5,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TechniqueUtils.h"
+#include "DrawableDelegates.h"
 #include "../../RenderCore/Metal/Forward.h"
+#include "../../RenderCore/Metal/State.h"			// (required for Metal::SamplerState size)
+#include "../../RenderCore/Metal/TextureView.h"
+#include "../../RenderCore/Types.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
+#include "../../Utility/ParameterBox.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -167,6 +173,45 @@ namespace RenderCore { namespace Techniques
         return MakeSharedPkt(MakeLocalTransform(localToWorld, worldSpaceCameraPosition));
     }
 
+	IUniformBufferDelegate::~IUniformBufferDelegate() {}
+	IShaderResourceDelegate::~IShaderResourceDelegate() {}
+	IMaterialDelegate::~IMaterialDelegate() {}
+
+
+	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const InputElementDesc*> ia)
+	{
+		if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
+        if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
+        if (HasElement(ia, "NORMAL"))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
+        if (HasElement(ia, "TEXTANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
+        if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+        if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+        if (HasElement(ia, "PER_VERTEX_AO"))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
+	}
+
+	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const MiniInputElementDesc*> ia)
+	{
+		static auto TEXCOORD = Hash64("TEXCOORD");
+		static auto COLOR = Hash64("COLOR");
+		static auto NORMAL = Hash64("NORMAL");
+		static auto TEXTANGENT = Hash64("TEXTANGENT");
+		static auto TEXBITANGENT = Hash64("TEXBITANGENT");
+		static auto BONEINDICES = Hash64("BONEINDICES");
+		static auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
+		static auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
+
+		if (HasElement(ia, TEXCOORD))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
+        if (HasElement(ia, COLOR))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
+        if (HasElement(ia, NORMAL))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
+        if (HasElement(ia, TEXTANGENT))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
+        if (HasElement(ia, TEXBITANGENT))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+        if (HasElement(ia, BONEINDICES) && HasElement(ia, BONEWEIGHTS))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+        if (HasElement(ia, PER_VERTEX_AO))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
+	}
 
 }}
 

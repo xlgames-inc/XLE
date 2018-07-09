@@ -86,6 +86,9 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#pragma push_macro("new")
+#undef new
+
     template<typename Type>
         Type* VariantArray::Allocate(size_t count)
     {
@@ -126,6 +129,8 @@ namespace Utility
 
         return (Type*)&_dataStore[startSize];
     }
+
+#pragma pop_macro("new")
 
     template<typename Type>
         auto VariantArray::MakeEntry() -> Entry

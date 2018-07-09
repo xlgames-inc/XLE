@@ -16,6 +16,7 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 
@@ -24,6 +25,7 @@
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
 #include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/SimpleModelRenderer.h"
 
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/Assets.h"
@@ -65,7 +67,7 @@ namespace ToolsRig
     class MaterialSceneParser : public VisSceneParser
     {
     public:
-        void ExecuteScene(  
+        void ExecuteScene(
             RenderCore::IThreadContext& context,
             SceneEngine::LightingParserContext& parserContext,
             const SceneEngine::SceneParseSettings& parseSettings,
@@ -77,8 +79,7 @@ namespace ToolsRig
                 ||  parseSettings._batchFilter == BF::General
                 ||  parseSettings._batchFilter == BF::DMShadows) {
 
-                auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-                Draw(*metalContext, parserContext, techniqueIndex);
+                Draw(context, parserContext, techniqueIndex);
             }
         }
 
@@ -90,10 +91,11 @@ namespace ToolsRig
                 ||      parseSettings._batchFilter == BF::DMShadows);
         }
 
-        void Draw(  Metal::DeviceContext& metalContext, 
+        void Draw(  IThreadContext& threadContext, 
                     SceneEngine::LightingParserContext& parserContext,
                     unsigned techniqueIndex) const
         {
+			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             if (techniqueIndex!=3)
                 metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
 
@@ -156,7 +158,7 @@ namespace ToolsRig
         }
 
         void DrawModel(
-            Metal::DeviceContext& metalContext, 
+            IThreadContext& threadContext, 
             SceneEngine::LightingParserContext& parserContext,
             unsigned techniqueIndex) const;
 
@@ -171,38 +173,11 @@ namespace ToolsRig
         const MaterialVisObject*    _object;
     };
 
-    static Metal::Buffer LoadVertexBuffer(
-        const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::VertexData& vb)
-    {
-        auto buffer = std::make_unique<uint8[]>(vb._size);
-		{
-            auto inputFile = scaffold.OpenLargeBlocks();
-            inputFile->Seek(vb._offset, Utility::FileSeekAnchor::Current);
-            inputFile->Read(buffer.get(), vb._size, 1);
-        }
-		return Metal::MakeVertexBuffer(
-			Metal::GetObjectFactory(),
-			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), vb._size)));
-    }
-
-    static Metal::Buffer LoadIndexBuffer(
-        const RenderCore::Assets::ModelScaffold& scaffold,
-        RenderCore::Assets::IndexData& ib)
-    {
-        auto buffer = std::make_unique<uint8[]>(ib._size);
-        {
-            auto inputFile = scaffold.OpenLargeBlocks();
-            inputFile->Seek(ib._offset, Utility::FileSeekAnchor::Current);
-            inputFile->Read(buffer.get(), ib._size, 1);
-        }
-		return Metal::MakeIndexBuffer(
-			Metal::GetObjectFactory(),
-			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), ib._size)));
-    }
+    
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void MaterialSceneParser::DrawModel(  
-        Metal::DeviceContext& metalContext, 
+        IThreadContext& threadContext, 
         SceneEngine::LightingParserContext& parserContext,
         unsigned techniqueIndex) const
     {
@@ -218,123 +193,30 @@ namespace ToolsRig
         if (_object->_previewModelFile.empty()) return;
 
         using namespace RenderCore::Assets;
-        const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
-        const uint64 boundMaterial = _object->_previewMaterialBinding;
+        auto modelFile = MakeStringSection(_object->_previewModelFile);
+        uint64 boundMaterial = _object->_previewMaterialBinding;
 
-        auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
-		modelFuture->StallWhilePending();
+        auto modelFuture = ::Assets::MakeAsset<SimpleModelRenderer>(modelFile);
+		auto state = modelFuture->StallWhilePending();
+
+		if (state != ::Assets::AssetState::Ready)
+			return;
+
 		auto& model = *modelFuture->Actualize();
 
-        // const auto& skeletonScaff = ::Assets::GetAssetComp<SkeletonScaffold>(modelFile);
-        // skeletonScaff.StallWhilePending();
-        // const auto& skeleton = skeletonScaff.GetTransformationMachine();
-        const auto& skeleton = model.EmbeddedSkeleton();
+		auto drawables = model.BuildDrawables(boundMaterial);
 
-        SkeletonBinding skelBinding(
-            skeleton.GetOutputInterface(),
-            model.CommandStream().GetInputInterface());
+		Techniques::SequencerTechnique seqTechnique;
+		ParameterBox seqShaderSelectors;
 
-        auto transformCount = skeleton.GetOutputMatrixCount();
-        auto skelTransforms = std::make_unique<Float4x4[]>(transformCount);
-        skeleton.GenerateOutputTransforms(skelTransforms.get(), transformCount, &skeleton.GetDefaultParameters());
-
-        const auto& cmdStream = model.CommandStream();
-        const auto& immData = model.ImmutableData();
-        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetGeoCall(c);
-            
-            auto& rawGeo = immData._geos[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
-
-                    // reject geometry that doesn't match the material
-                    // binding that we want
-                if (boundMaterial != 0
-                    && geoCall._materialGuids[drawCall._subMaterialIndex] != boundMaterial)
-                    continue;
-
-                    // now we have at least once piece of geometry
-                    // that we want to render... We need to bind the material,
-                    // index buffer and vertex buffer and topology
-                    // then we just execute the draw command
-
-                InputElementDesc metalVertInput[16];
-                unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
-                    rawGeo._vb._ia._elements);
-
-                IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
-                auto machineOutput = skelBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                if (machineOutput < transformCount) {
-                    sysContants._objectToWorld = skelTransforms[machineOutput];
-                } else {
-                    sysContants._objectToWorld = Identity<Float4x4>();
-                }
-
-				auto vb = LoadVertexBuffer(model, rawGeo._vb);
-				VertexBufferView vbv { &vb };
-
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, sysContants, 
-                    _object->_searchRules, MakeIteratorRange(metalVertInput, metalVertInput+eleCount),
-					MakeIteratorRange(&vbv, &vbv+1));
-                if (!shaderProgram) return;
-
-                auto ib = LoadIndexBuffer(model, rawGeo._ib);
-				metalContext.Bind(ib, rawGeo._ib._format);
-
-                metalContext.Bind(drawCall._topology);
-                metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
-            }
-        }
-
-        for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetSkinCall(c);
-            
-            auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
-
-                    // reject geometry that doesn't match the material
-                    // binding that we want
-                if (boundMaterial != 0
-                    && geoCall._materialGuids[drawCall._subMaterialIndex] != boundMaterial)
-                    continue;
-
-                    // now we have at least once piece of geometry
-                    // that we want to render... We need to bind the material,
-                    // index buffer and vertex buffer and topology
-                    // then we just execute the draw command
-
-                InputElementDesc metalVertInput[16];
-                unsigned eleCount = BuildLowLevelInputAssembly(metalVertInput, dimof(metalVertInput),
-                    rawGeo._vb._ia._elements, 0);
-                eleCount += BuildLowLevelInputAssembly(
-                    metalVertInput + eleCount, dimof(metalVertInput) - eleCount,
-                    rawGeo._animatedVertexElements._ia._elements, 1);
-
-                IMaterialBinder::SystemConstants sysContants = _object->_systemConstants;
-                sysContants._objectToWorld = skelTransforms[
-                    skelBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
-
-				auto vb0 = LoadVertexBuffer(model, rawGeo._vb);
-				auto vb1 = LoadVertexBuffer(model, rawGeo._animatedVertexElements);
-				VertexBufferView vbvs[] = { &vb0, &vb1 };
-
-                auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, sysContants, 
-                    _object->_searchRules, MakeIteratorRange(metalVertInput, metalVertInput+eleCount),
-					MakeIteratorRange(vbvs));
-                if (!shaderProgram) return;
-
-				auto ib = LoadIndexBuffer(model, rawGeo._ib);
-                metalContext.Bind(ib, rawGeo._ib._format);
-
-                metalContext.Bind(drawCall._topology);
-                metalContext.DrawIndexed(drawCall._indexCount, drawCall._firstIndex, drawCall._firstVertex);
-            }
-        }
+		for (const auto&d:drawables)
+			RenderCore::Techniques::Draw(
+				threadContext, 
+				parserContext,
+				seqTechnique,
+				techniqueIndex,
+				&seqShaderSelectors,
+				d);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -384,7 +266,7 @@ namespace ToolsRig
                 SceneEngine::ReturnToSteadyState(*metalContext.get());
                 SceneEngine::SetFrameGlobalStates(*metalContext.get());
             CATCH_ASSETS_END(parserContext)
-            sceneParser.Draw(*metalContext.get(), parserContext, 0);
+            sceneParser.Draw(context, parserContext, 0);
                 
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;

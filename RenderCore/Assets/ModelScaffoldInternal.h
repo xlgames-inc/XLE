@@ -14,6 +14,8 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 
+namespace RenderCore { class MiniInputElementDesc; }
+
 namespace RenderCore { namespace Assets 
 {
     typedef uint64 MaterialGuid;
@@ -82,12 +84,6 @@ namespace RenderCore { namespace Assets
         unsigned    _firstVertex;
         unsigned    _subMaterialIndex;
         Topology	_topology;
-
-        DrawCallDesc(
-            unsigned firstIndex, unsigned indexCount, unsigned firstVertex, unsigned subMaterialIndex, 
-			Topology topology)
-        : _firstIndex(firstIndex), _indexCount(indexCount), _firstVertex(firstVertex)
-        , _subMaterialIndex(subMaterialIndex), _topology(topology) {}
     };
 
     class VertexElement
@@ -185,6 +181,14 @@ namespace RenderCore { namespace Assets
         unsigned    _geoId;
         VertexData  _vb;
     };
+
+	unsigned BuildLowLevelInputAssembly(
+        IteratorRange<InputElementDesc*> dst,
+        IteratorRange<const VertexElement*> source,
+        unsigned lowLevelSlot = 0);
+
+	std::vector<MiniInputElementDesc> BuildLowLevelInputAssembly(
+		IteratorRange<const VertexElement*> source);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

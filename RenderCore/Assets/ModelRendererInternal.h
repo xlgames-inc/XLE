@@ -13,7 +13,7 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/IteratorUtils.h"
 
-namespace RenderCore { class IResource; class ConstantBufferView; }
+namespace RenderCore { class IResource; class ConstantBufferView; class MiniInputElementDesc; }
 namespace RenderCore { namespace Assets 
 {
     class SkinningBindingBox;
@@ -240,21 +240,6 @@ namespace RenderCore { namespace Assets
         void StartBuildingSkinning(Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
         void EndBuildingSkinning(Metal::DeviceContext& context) const;
     };
-
-    unsigned BuildLowLevelInputAssembly(
-        InputElementDesc dst[], unsigned dstMaxCount,
-        const VertexElement* source, unsigned sourceCount,
-        unsigned lowLevelSlot = 0);
-
-    inline unsigned BuildLowLevelInputAssembly(
-        InputElementDesc dst[], unsigned dstMaxCount,
-        const SerializableVector<VertexElement>& source,
-        unsigned lowLevelSlot = 0)
-    {
-        return BuildLowLevelInputAssembly(
-            dst, dstMaxCount,
-            AsPointer(source.cbegin()), (unsigned)source.size(), lowLevelSlot);
-    }
 
     class PreparedAnimation
     {

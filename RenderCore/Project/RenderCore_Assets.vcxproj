@@ -83,6 +83,7 @@
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\ShaderVariationSet.cpp" />
     <ClCompile Include="..\Assets\SharedStateSet.cpp" />
+    <ClCompile Include="..\Assets\SimpleModelRenderer.cpp" />
     <ClCompile Include="..\Assets\SkinningRunTime.cpp" />
     <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\Assets\TransformationCommands.cpp" />
@@ -117,6 +118,7 @@
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\Assets\ShaderVariationSet.h" />
     <ClInclude Include="..\Assets\SharedStateSet.h" />
+    <ClInclude Include="..\Assets\SimpleModelRenderer.h" />
     <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
     <ClInclude Include="..\GeoProc\GeometryAlgorithm.h" />

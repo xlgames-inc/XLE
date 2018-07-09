@@ -200,19 +200,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         std::vector<DrawCallDesc> preskinningDrawCalls;
         if (bucketEnd[0] > bucketStart[0]) {
-            preskinningDrawCalls.push_back(DrawCallDesc(
-                ~unsigned(0x0), bucketEnd[0] - bucketStart[0], bucketStart[0],
-                4, Topology::PointList));
+            preskinningDrawCalls.push_back(
+				DrawCallDesc{~unsigned(0x0), bucketEnd[0] - bucketStart[0], bucketStart[0], 4, Topology::PointList});
         }
         if (bucketEnd[1] > bucketStart[1]) {
-            preskinningDrawCalls.push_back(DrawCallDesc(
-                ~unsigned(0x0), bucketEnd[1] - bucketStart[1], bucketStart[1],
-                2, Topology::PointList));
+            preskinningDrawCalls.push_back(
+				DrawCallDesc{~unsigned(0x0), bucketEnd[1] - bucketStart[1], bucketStart[1], 2, Topology::PointList});
         }
         if (bucketEnd[2] > bucketStart[2]) {
-            preskinningDrawCalls.push_back(DrawCallDesc(
-                ~unsigned(0x0), bucketEnd[2] - bucketStart[2], bucketStart[2],
-                1, Topology::PointList));
+            preskinningDrawCalls.push_back(
+				DrawCallDesc{~unsigned(0x0), bucketEnd[2] - bucketStart[2], bucketStart[2], 1, Topology::PointList});
         }
 
         assert(bucketEnd[2] <= unifiedVertexCount);

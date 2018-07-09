@@ -11,6 +11,8 @@
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
     <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />
     <ClInclude Include="..\Techniques\RenderPass.h" />
+    <ClInclude Include="..\Techniques\DrawableDelegates.h" />
+    <ClInclude Include="..\Techniques\Drawables.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -21,5 +23,6 @@
     <ClCompile Include="..\Techniques\PredefinedCBLayout.cpp" />
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\RenderPass.cpp" />
+    <ClCompile Include="..\Techniques\Drawables.cpp" />
   </ItemGroup>
 </Project>

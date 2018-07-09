@@ -91,6 +91,9 @@
       <Filter>Assets\Material</Filter>
     </ClCompile>
     <ClCompile Include="..\Assets\ShaderVariationSet.cpp" />
+    <ClCompile Include="..\Assets\SimpleModelRenderer.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
@@ -178,5 +181,8 @@
       <Filter>Assets\Material</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\ShaderVariationSet.h" />
+    <ClInclude Include="..\Assets\SimpleModelRenderer.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

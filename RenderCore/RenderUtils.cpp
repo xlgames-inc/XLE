@@ -230,6 +230,14 @@ namespace RenderCore
         return ~0u;
     }
 
+	bool HasElement(IteratorRange<const MiniInputElementDesc*> elements, uint64 semanticHash)
+	{
+		for (const auto&e:elements)
+			if (e._semanticHash == semanticHash)
+				return true;
+		return false;
+	}
+
 	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment)
 	{
         // note -- following alignment rules suggested by Apple in OpenGL ES guide

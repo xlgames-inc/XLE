@@ -100,6 +100,7 @@ namespace RenderCore
     } attribute_packed;
 #pragma pack(pop)
 
+	bool HasElement(IteratorRange<const MiniInputElementDesc*> elements, uint64 semanticHash);
 	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment=true);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

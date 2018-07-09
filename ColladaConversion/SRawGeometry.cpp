@@ -763,10 +763,10 @@ namespace ColladaConversion
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
             assert(i->_topology == Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
             finalDrawOperations.push_back(
-                DrawCallDesc(
+                DrawCallDesc{
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 
                     (unsigned)std::distance(matBindingSymbols.begin(), matBindingSymbols.find(i->_materialBinding)),
-                    i->_topology));
+					i->_topology});
             finalIndexCount += i->_indexBuffer.size();
         }
 

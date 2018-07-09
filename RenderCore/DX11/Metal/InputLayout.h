@@ -47,8 +47,16 @@ namespace RenderCore { namespace Metal_DX11
 
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader);
-		BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader);
-        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& shader);
+		
+		struct SlotBinding
+        {
+            IteratorRange<const MiniInputElementDesc*> _elements;
+            unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
+        };
+        BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const ShaderProgram& program);
+
         explicit BoundInputLayout(DeviceContext& context);
 		BoundInputLayout();
         ~BoundInputLayout();

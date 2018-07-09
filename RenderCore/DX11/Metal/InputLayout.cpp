@@ -61,41 +61,50 @@ namespace RenderCore { namespace Metal_DX11
 		return result;
 	}
 
-	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader)
+	static intrusive_ptr<ID3D::InputLayout> BuildInputLayout(IteratorRange<const BoundInputLayout::SlotBinding*> layouts, const CompiledShaderByteCode& shader)
 	{
 		auto byteCode = shader.GetByteCode();
 		auto reflection = CreateReflection(shader);
 		auto inputParameters = GetInputParameters(*reflection);
 
-		UINT accumulatingOffset = 0; 
-
 		D3D11_INPUT_ELEMENT_DESC nativeLayout[D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT];
-		for (unsigned c = 0; c<std::min(dimof(nativeLayout), layout.size()); ++c) {
-			// We have to lookup the name of an input parameter that matches the hash,
-			// because CreateInputLayout requires the full semantic name
-			auto i = LowerBound(inputParameters, layout[c]._semanticHash);
-			if (i==inputParameters.end() || i->first == layout[c]._semanticHash)
-				continue;
+		unsigned c=0;
+		for (unsigned slot=0; slot<layouts.size(); ++slot) {
+			UINT accumulatingOffset = 0;
+			for (unsigned e=0; e<layouts[slot]._elements.size() && c<D3D11_IA_VERTEX_INPUT_RESOURCE_SLOT_COUNT; ++e) {
 
-			nativeLayout[c].SemanticName = i->second.first;
-			nativeLayout[c].SemanticIndex = i->second.second;
-			nativeLayout[c].Format = AsDXGIFormat(layout.first[c]._nativeFormat);
-			nativeLayout[c].InputSlot = 0;
-			nativeLayout[c].AlignedByteOffset = accumulatingOffset;
-			nativeLayout[c].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
-			nativeLayout[c].InstanceDataStepRate = 0;
+				// We have to lookup the name of an input parameter that matches the hash,
+				// because CreateInputLayout requires the full semantic name
+				const auto& ele = layouts[slot]._elements[e];
+				auto i = LowerBound(inputParameters, ele._semanticHash);
+				if (i == inputParameters.end() || i->first == ele._semanticHash)
+					continue;
 
-			accumulatingOffset += BitsPerPixel(layout.first[c]._nativeFormat) / 8;
+				nativeLayout[c].SemanticName = i->second.first;
+				nativeLayout[c].SemanticIndex = i->second.second;
+				nativeLayout[c].Format = AsDXGIFormat(ele._nativeFormat);
+				nativeLayout[c].InputSlot = slot;
+				nativeLayout[c].AlignedByteOffset = accumulatingOffset;
+				nativeLayout[c].InputSlotClass = D3D11_INPUT_PER_VERTEX_DATA;
+				nativeLayout[c].InstanceDataStepRate = layouts[slot]._instanceStepDataRate;
+				++c;
+
+				accumulatingOffset += BitsPerPixel(ele._nativeFormat) / 8;
+			}
 		}
 
 		return GetObjectFactory().CreateInputLayout(
-			nativeLayout, (unsigned)std::min(dimof(nativeLayout), layout.size()),
+			nativeLayout, c,
 			byteCode.begin(), byteCode.size());
 	}
 
-	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const MiniInputElementDesc*> layout)
+	static std::vector<unsigned> CalculateVertexStrides(IteratorRange<const BoundInputLayout::SlotBinding*> layouts)
 	{
-		return std::vector<unsigned> { RenderCore::CalculateVertexStride(layout) };
+		std::vector<unsigned> result;
+		result.reserve(layouts.size());
+		for (const auto&l:layouts)
+			result.push_back(RenderCore::CalculateVertexStride(l._elements));
+		return result;
 	}
 
 	void BoundInputLayout::Apply(DeviceContext& context, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
@@ -131,17 +140,11 @@ namespace RenderCore { namespace Metal_DX11
 		_vertexStrides = CalculateVertexStrides(layout);
     }
 
-	BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& shader)
+	BoundInputLayout::BoundInputLayout(IteratorRange<const SlotBinding*> layouts, const ShaderProgram& shader)
     {
             // need constructor deferring!
-        _underlying = BuildInputLayout(layout, shader.GetCompiledCode(ShaderStage::Vertex));
-		_vertexStrides = CalculateVertexStrides(layout);
-    }
-
-    BoundInputLayout::BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader)
-    {
-        _underlying = BuildInputLayout(layout, shader);
-		_vertexStrides = CalculateVertexStrides(layout);
+        _underlying = BuildInputLayout(layouts, shader.GetCompiledCode(ShaderStage::Vertex));
+		_vertexStrides = CalculateVertexStrides(layouts);
     }
 
     BoundInputLayout::BoundInputLayout(DeviceContext& context)

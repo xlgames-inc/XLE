@@ -10,7 +10,11 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Math/ProjectionMath.h"
+#include "../../Utility/IteratorUtils.h"
 
+namespace Utility { class ParameterBox; }
+
+namespace RenderCore { class InputElementDesc; class MiniInputElementDesc; }
 namespace RenderCore { namespace Techniques
 {
 
@@ -84,5 +88,7 @@ namespace RenderCore { namespace Techniques
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
     LocalTransformConstants MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
 
+	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const InputElementDesc*> ia);
+	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const MiniInputElementDesc*> ia);
 }}
 
