@@ -94,6 +94,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ObjectFactory& operator=(const ObjectFactory&) = delete;
         ObjectFactory(const ObjectFactory&) = delete;
+        
+        Threading::Mutex _compiledShadersLock;
+        std::unordered_map<uint64_t, intrusive_ptr<GlObject<GlObject_Type::Shader>>> _compiledShaders;
 
         static bool WriteObjectLabels();
     private:
