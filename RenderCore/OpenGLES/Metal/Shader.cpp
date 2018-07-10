@@ -50,13 +50,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         OGLESShaderCompiler();
         ~OGLESShaderCompiler();
-
-        static Threading::Mutex s_compiledShadersLock;
-        static std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> s_compiledShaders;
     };
-
-    Threading::Mutex OGLESShaderCompiler::s_compiledShadersLock;
-    std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> OGLESShaderCompiler::s_compiledShaders;
 
     void OGLESShaderCompiler::AdaptShaderModel(
         ResChar destination[],
@@ -304,10 +298,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
             hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
         {
-            ScopedLock(s_compiledShadersLock);
-            while (s_compiledShaders.find(hashCode) != s_compiledShaders.end())
+            ScopedLock(objectFactory._compiledShadersLock);
+            while (objectFactory._compiledShaders.find(hashCode) != objectFactory._compiledShaders.end())
                 ++hashCode;     // uniquify this hash. There are some edge cases where we can end up compiling the same shader twice; it's better to tread safely here
-            s_compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
+            objectFactory._compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
         }
 
         struct OutputBlob
@@ -371,10 +365,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         assert(vsByteCode.size() == sizeof(uint64_t) && fsByteCode.size() == sizeof(uint64_t));
         intrusive_ptr<OpenGL::Shader> vs, fs;
         {
-            ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
-            vs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)vsByteCode.first];
-            fs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)fsByteCode.first];
-            assert(vs && fs);
+            ScopedLock(factory._compiledShadersLock);
+            vs = factory._compiledShaders[*(uint64_t*)vsByteCode.first];
+            fs = factory._compiledShaders[*(uint64_t*)fsByteCode.first];
+			assert(vs && fs);
         }
 
         _depVal = std::make_shared<Assets::DependencyValidation>();
@@ -570,17 +564,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         return stream;
-    }
-
-    void DestroyGLESCachedShaders()
-    {
-        try {
-            ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
-            decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
-        } catch (const std::system_error&) {
-            // suppress a system error here, which can sometimes happen due to shutdown order issues
-            // (if the mutex has been destroyed before this is called)
-        }
     }
 
 }}
