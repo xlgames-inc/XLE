@@ -5,6 +5,7 @@
 #include "Metal/Resource.h"
 #include "Metal/Format.h"
 #include "../IAnnotator.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Core/Exceptions.h"
@@ -45,6 +46,10 @@ namespace RenderCore { namespace ImplOpenGLES
     Device::Device()
     {
         auto* t = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES3];
+        if (!t) {
+            Log(Debug) << "Falling back to OpenGLES2.0 because GLES3.0 context failed to be constructed" << std::endl;
+            t = [[EAGLContext alloc] initWithAPI:kEAGLRenderingAPIOpenGLES2];
+        }
         _sharedContext = TBC::moveptr(t);
         [EAGLContext setCurrentContext:_sharedContext.get()];
         auto featureSet = AsGLESFeatureSet(_sharedContext.get().API);

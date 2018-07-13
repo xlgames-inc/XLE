@@ -140,6 +140,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             // write only textures can become render buffers
             auto fmt = AsTexelFormatType(desc._textureDesc._format);
+            if (!(factory.GetFeatureSet() & FeatureSet::GLES300) && fmt._type != 0) {
+                fmt._internalFormat = fmt._format;
+            }
+
             bool canBeRenderBuffer = desc._cpuAccess == 0 && desc._gpuAccess == GPUAccess::Write && (!(desc._bindFlags & BindFlag::ShaderResource)) && !initializer;
             if (!canBeRenderBuffer) {
 
