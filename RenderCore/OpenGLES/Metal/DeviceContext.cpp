@@ -235,11 +235,21 @@ namespace RenderCore { namespace Metal_OpenGLES
     void GraphicsPipeline::DrawInstances(unsigned vertexCount, unsigned instanceCount, unsigned startVertexLocation)
     {
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
-            assert(_featureSet & FeatureSet::GLES300);
-            glDrawArraysInstanced(
-                GLenum(_nativeTopology),
-                startVertexLocation, vertexCount,
-                instanceCount);
+            if (_featureSet & FeatureSet::GLES300) {
+                glDrawArraysInstanced(
+                    GLenum(_nativeTopology),
+                    startVertexLocation, vertexCount,
+                    instanceCount);
+            } else {
+                #if GL_EXT_draw_instanced
+                    glDrawArraysInstancedEXT(
+                        GLenum(_nativeTopology),
+                        startVertexLocation, vertexCount,
+                        instanceCount);
+                #else
+                    assert(0);      // no support for instanced draw calls on this feature set
+                #endif
+            }
         #else
             glDrawArraysInstancedARB(
                 GLenum(_nativeTopology),
@@ -253,12 +263,23 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         assert(baseVertexLocation==0);  // (doesn't seem to be supported. Maybe best to remove it from the interface)
         #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
-            assert(_featureSet & FeatureSet::GLES300);
-            glDrawElementsInstanced(
-                GLenum(_nativeTopology), GLsizei(indexCount),
-                GLenum(_indicesFormat),
-                (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
-                instanceCount);
+            if (_featureSet & FeatureSet::GLES300) {
+                glDrawElementsInstanced(
+                    GLenum(_nativeTopology), GLsizei(indexCount),
+                    GLenum(_indicesFormat),
+                    (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
+                    instanceCount);
+            } else {
+                #if GL_EXT_draw_instanced
+                    glDrawElementsInstancedEXT(
+                        GLenum(_nativeTopology), GLsizei(indexCount),
+                        GLenum(_indicesFormat),
+                        (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
+                        instanceCount);
+                #else
+                    assert(0);      // no support for instanced draw calls on this feature set
+                #endif
+            }
         #else
             glDrawElementsInstancedARB(
                 GLenum(_nativeTopology), GLsizei(indexCount),

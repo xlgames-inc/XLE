@@ -185,6 +185,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
 
         bool supportsGLES300 = strstr((const char*)sourceCode, "SUPPORT_GLSL300");
+        bool objectFactorySupportsGLES300 = !!(objectFactory.GetFeatureSet() & FeatureSet::GLES300);
 
         #if PLATFORMOS_TARGET == PLATFORMOS_OSX
             // hack for version string for OSX
@@ -192,9 +193,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                 ? "#version 120\n#define FRAGMENT_SHADER 1\n"
                 : "#version 120\n";
             (void)supportsGLES300;
+            (void)objectFactorySupportsGLES300;
         #else
             const GLchar* versionDecl;
-            if (supportsGLES300) {
+            if (supportsGLES300 && objectFactorySupportsGLES300) {
                 versionDecl = isFragmentShader
                     ? "#version 300 es\n#define FRAGMENT_SHADER 1\n"
                     : "#version 300 es\n";

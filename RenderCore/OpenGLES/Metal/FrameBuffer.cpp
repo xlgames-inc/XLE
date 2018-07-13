@@ -321,7 +321,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                     sp._resolveWidth = desc._textureDesc._width;
                     sp._resolveHeight = desc._textureDesc._height;
                 }
-                glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers);
+                if (factory.GetFeatureSet() & FeatureSet::GLES300)
+					glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers);       // glDrawBuffers enters the API in GLES3.0
 
                 if (spDesc._depthStencilResolve._resourceName != ~0) {
                     const auto& attachmentView = spDesc._depthStencilResolve;

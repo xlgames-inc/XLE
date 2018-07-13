@@ -20,6 +20,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned guid = enableMipmaps ? _guid : (_guid+1);
         if (_prebuiltSamplerMipmaps) {
             assert(textureUnit < capture._samplerStateBindings.size());
+            assert(_gles300Factory);
             if (capture._samplerStateBindings[textureUnit] != guid) {
                 glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
                 capture._samplerStateBindings[textureUnit] = guid;
@@ -33,7 +34,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 assert(activeTexture == GL_TEXTURE0 + textureUnit);
             #endif
 
-            if (capture._samplerStateBindings[textureUnit] != 0) {
+            if (_gles300Factory && capture._samplerStateBindings[textureUnit] != 0) {
                 glBindSampler(textureUnit, 0);
                 capture._samplerStateBindings[textureUnit] = 0;
             }
@@ -51,7 +52,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             glTexParameteri(bindingTarget, GL_TEXTURE_MAG_FILTER, _maxFilter);
             glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_S, _wrapS);
             glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_T, _wrapT);
-            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
+            if (_gles300Factory)
+                glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
 
             glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_MODE, _compareMode);
             glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_FUNC, _compareFunc);
@@ -65,6 +67,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     void SamplerState::Apply(unsigned textureUnit, unsigned bindingTarget, bool enableMipmaps) const never_throws
     {
         if (_prebuiltSamplerMipmaps) {
+            assert(_gles300Factory);
             glBindSampler(textureUnit, enableMipmaps ? _prebuiltSamplerMipmaps->AsRawGLHandle() : _prebuiltSamplerNoMipmaps->AsRawGLHandle());
         } else {
             #if defined(_DEBUG)
@@ -75,13 +78,15 @@ namespace RenderCore { namespace Metal_OpenGLES
                 assert(activeTexture == GL_TEXTURE0 + textureUnit);
             #endif
 
-            glBindSampler(textureUnit, 0);
+            if (_gles300Factory)
+                glBindSampler(textureUnit, 0);
 
             glTexParameteri(bindingTarget, GL_TEXTURE_MIN_FILTER, enableMipmaps ? _minFilter : _maxFilter);
             glTexParameteri(bindingTarget, GL_TEXTURE_MAG_FILTER, _maxFilter);
             glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_S, _wrapS);
             glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_T, _wrapT);
-            glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
+            if (_gles300Factory)
+                glTexParameteri(bindingTarget, GL_TEXTURE_WRAP_R, _wrapR);
 
             glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_MODE, _compareMode);
             glTexParameteri(bindingTarget, GL_TEXTURE_COMPARE_FUNC, _compareFunc);
@@ -203,6 +208,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         #endif
 
+        _gles300Factory = !!(objectFactory.GetFeatureSet() & FeatureSet::GLES300);
+
         CheckGLError("Construct Sampler State");
     }
 
@@ -219,6 +226,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         _wrapR = AsGLenum(AddressMode::Wrap);
         // Note -- default constructor must not invoke ObjectFactory::CreateSampler(), because
         // it is used pre-operator= sometimes, when the default constructor is expected to be low overhead
+        _gles300Factory = !!(GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300);
     }
 
     BlendState::BlendState() {}
