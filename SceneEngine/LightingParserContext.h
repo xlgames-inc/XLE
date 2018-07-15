@@ -15,10 +15,10 @@ namespace RenderCore { class IThreadContext; }
 namespace SceneEngine
 {
     class MetricsBox;
-    class ISceneParser;
     class PreparedDMShadowFrustum;
     class PreparedRTShadowFrustum;
     class ILightingParserPlugin;
+	class RenderingQualitySettings;
 
     using LightId = unsigned;
 
@@ -41,45 +41,11 @@ namespace SceneEngine
 
 		LightingParserContext();
 		~LightingParserContext();
+		LightingParserContext(LightingParserContext&& moveFrom);
+		LightingParserContext& operator=(LightingParserContext&& moveFrom);
 
     private:
         MetricsBox*         _metricsBox = nullptr;
-
-        friend class AttachedSceneMarker;
-        AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
-        friend AttachedSceneMarker LightingParser_SetupScene(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-            ISceneParser*, unsigned, unsigned);
-    };
-
-    class AttachedSceneMarker
-    {
-    public:
-        PreparedScene& GetPreparedScene() { return _preparedScene; }
-
-        AttachedSceneMarker() : _parserContext(nullptr) {}
-        AttachedSceneMarker(AttachedSceneMarker&& moveFrom) never_throws
-        : _parserContext(moveFrom._parserContext)
-        {
-            moveFrom._parserContext = nullptr; 
-            moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
-        }
-        const AttachedSceneMarker& operator=(AttachedSceneMarker&& moveFrom) never_throws
-        {
-            _parserContext = moveFrom._parserContext;
-            moveFrom._parserContext = nullptr;
-            moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
-        }
-        ~AttachedSceneMarker() {}
-
-        AttachedSceneMarker(const AttachedSceneMarker&) = delete;
-        const AttachedSceneMarker& operator=(const AttachedSceneMarker&) = delete;
-    private:
-        AttachedSceneMarker(LightingParserContext& parserContext) : _parserContext(&parserContext) {}
-        LightingParserContext*  _parserContext;
-        PreparedScene           _preparedScene;
-
-        friend class LightingParserContext;
     };
 }
 

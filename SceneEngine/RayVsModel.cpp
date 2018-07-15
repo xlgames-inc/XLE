@@ -7,6 +7,7 @@
 #include "RayVsModel.h"
 #include "SceneEngineUtils.h"
 #include "LightingParser.h"
+#include "LightingParserContext.h"
 #include "MetalStubs.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -205,7 +206,7 @@ namespace SceneEngine
         Metal::ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
         metalContext->Bind(newViewport);
 
-        RenderingQualitySettings qualitySettings(UInt2(256, 256));
+		RenderingQualitySettings qualitySettings{UInt2(256, 256)};
 
         Float4x4 specialProjMatrix = MakeFloat4x4(
             0.f, 0.f, 0.f, 0.5f,

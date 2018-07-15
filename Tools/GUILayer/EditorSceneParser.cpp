@@ -64,7 +64,7 @@ namespace GUILayer
 
         float GetTimeValue() const;
         void PrepareEnvironmentalSettings(const char envSettings[]);
-        void AddLightingPlugins(LightingParserContext& parserContext);
+        std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> GetLightingPlugins();
 
         void RenderShadowForHiddenPlacements(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext) const;
 
@@ -219,10 +219,12 @@ namespace GUILayer
         }
     }
 
-    void EditorSceneParser::AddLightingPlugins(LightingParserContext& parserContext)
+	std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> EditorSceneParser::GetLightingPlugins()
     {
-        parserContext._plugins.push_back(_editorScene->_vegetationSpawnManager->GetParserPlugin());
-        parserContext._plugins.push_back(_editorScene->_volumeFogManager->GetParserPlugin());
+		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> result;
+        result.push_back(_editorScene->_vegetationSpawnManager->GetParserPlugin());
+        result.push_back(_editorScene->_volumeFogManager->GetParserPlugin());
+		return result;
     }
 
     EditorSceneParser::EditorSceneParser(
@@ -271,26 +273,25 @@ namespace GUILayer
             _sceneParser->PrepareEnvironmentalSettings(
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
 
-            auto qualSettings = SceneEngine::RenderingQualitySettings(threadContext.GetStateDesc()._viewportDimensions);
-            qualSettings._lightingModel = 
-                (::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
-                ? RenderingQualitySettings::LightingModel::Deferred 
-                : RenderingQualitySettings::LightingModel::Forward;
-
-			SceneEngine::LightingParserContext lightingParserContext;
-            _sceneParser->AddLightingPlugins(lightingParserContext);
+			auto lightingPlugins = _sceneParser->GetLightingPlugins();
+			auto qualSettings = SceneEngine::RenderingQualitySettings{
+				UInt2(threadContext.GetStateDesc()._viewportDimensions[0], threadContext.GetStateDesc()._viewportDimensions[1]),
+				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
+					? RenderingQualitySettings::LightingModel::Deferred 
+					: RenderingQualitySettings::LightingModel::Forward,
+				MakeIteratorRange(lightingPlugins)};
 
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
             if (screenshot) {
                 PlatformRig::TiledScreenshot(
-                    threadContext, parserContext, lightingParserContext,
+                    threadContext, parserContext,
                     *_sceneParser.get(), _sceneParser->GetCameraDesc(),
                     qualSettings, UInt2(screenshot, screenshot));
                 screenshot = 0;
             }
             
             SceneEngine::LightingParser_ExecuteScene(
-                threadContext, parserContext, lightingParserContext, *_sceneParser.get(), 
+                threadContext, parserContext, *_sceneParser.get(), 
                 _sceneParser->GetCameraDesc(), qualSettings);
         }
 

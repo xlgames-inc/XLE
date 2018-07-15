@@ -306,22 +306,25 @@ namespace ToolsRig
             model._model);
         sceneParser.Prepare();
 
-        auto qualSettings = SceneEngine::RenderingQualitySettings(context.GetStateDesc()._viewportDimensions);
-
-		SceneEngine::LightingParserContext lightingParserContext;
-		lightingParserContext._plugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
+		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
+			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
+		};
+        auto qualSettings = SceneEngine::RenderingQualitySettings{
+			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
+			SceneEngine::RenderingQualitySettings::LightingModel::Deferred,
+			MakeIteratorRange(lightingPlugins)};
 
         auto& screenshot = Tweakable("Screenshot", 0);
         if (screenshot) {
             PlatformRig::TiledScreenshot(
-                context, parserContext, lightingParserContext,
+                context, parserContext,
                 sceneParser, sceneParser.GetCameraDesc(),
                 qualSettings, UInt2(screenshot, screenshot));
             screenshot = 0;
         }
 
         LightingParser_ExecuteScene(
-            context, parserContext, lightingParserContext, sceneParser, sceneParser.GetCameraDesc(),
+            context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
             qualSettings);
     }
 

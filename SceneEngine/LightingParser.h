@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Math/Matrix.h"
+#include "../Math/Vector.h"
 #include "../Utility/IteratorUtils.h"
 #include <functional>
 
@@ -19,14 +20,18 @@ namespace RenderCore { namespace Techniques { class CameraDesc; class Projection
 namespace SceneEngine
 {
     using MetalContext = RenderCore::Metal::DeviceContext;
+	class LightingParserContext;
+    class SceneParseSettings;
+    class ISceneParser;
+    class PreparedScene;
+	class ILightingParserPlugin;
 
     namespace ShaderLightDesc { class BasicEnvironment; }
 
     class RenderingQualitySettings
     {
     public:
-        VectorPattern<unsigned, 2>  _dimensions;
-        unsigned    _samplingCount, _samplingQuality;
+		UInt2 _dimensions;
 
         enum class LightingModel
         {
@@ -34,21 +39,13 @@ namespace SceneEngine
             Deferred
         };
 
-        LightingModel _lightingModel;
+        LightingModel _lightingModel = LightingModel::Deferred;
 
-        RenderingQualitySettings();
-        RenderingQualitySettings(
-            VectorPattern<unsigned, 2> dimensions,
-            LightingModel lightingModel = LightingModel::Deferred,
-            unsigned samplingCount = 1,
-            unsigned samplingQuality = 0);
+		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
+
+		unsigned    _samplingCount = 0u;
+		unsigned	_samplingQuality = 0u;
     };
-
-    class LightingParserContext;
-    class SceneParseSettings;
-    class ISceneParser;
-    class AttachedSceneMarker;
-    class PreparedScene;
 
     /// <summary>Execute rendering</summary>
     /// This is the main entry point for rendering a scene.
@@ -72,43 +69,26 @@ namespace SceneEngine
     /// <code>
     ///     auto renderDevice = RenderCore::CreateDevice();
     ///     auto presentationChain = renderDevice->CreatePresentationChain(...);
-    ///     LightingParserContext lightingParserContext(...);
+    ///     RenderCore::Techniques::ParsingContext parsingContext(...);
+	///		std::shared_ptr<SceneEngine::ISceneParser> scene = ...;
     ///     renderDevice->BeginFrame(presentationChain.get());
     ///
-    ///     SceneEngine::RenderingQualitySettings qualitySettings;
     ///     auto presChainDesc = presentationChain->GetDesc();
-    ///     qualitySettings._width = presChainDesc._width;
-    ///     qualitySettings._height = presChainDesc._height;
-    ///     qualitySettings._samplingCount = 1; 
-    ///     qualitySettings._samplingQuality = 0;
-    ///
-    ///     auto context = RenderCore::Metal::DeviceContext::GetImmediateContext(renderDevice.get());
-    ///     SceneEngine::LightingParser_Execute(context, lightingParserContext, qualitySettings);
+	///     SceneEngine::RenderingQualitySettings qualitySettings {
+	///			UInt2(presChainDesc._width, presChainDesc._height) };
+	///
+    ///     auto lightingParserContext = SceneEngine::LightingParser_Execute(
+	///			renderDevice->GetImmediateContext(), 
+	///			parsingContext, *scene, qualitySettings);
     ///
     ///     presentationChain->Present();
     /// </code>
-    void LightingParser_ExecuteScene(
+    LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
-        ISceneParser& sceneParser,
+		ISceneParser& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
-
-    /// <summary>Executes the scene currently set to the parser context</summary>
-    /// The currently attached scene will be rendered.
-    /// Call LightingParser_SetupScene to attach a scene to the parser context before
-    /// calling this.
-    /// The other version of LightingParser_ExecuteScene is intended for most cases. But
-    /// this version can be used for special case purpose (for example, when a special
-    /// case projection matrix is required)
-    void LightingParser_ExecuteScene(
-        RenderCore::IThreadContext& metalContext, 
-		RenderCore::Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
-		ISceneParser& sceneParser,
-        const RenderingQualitySettings& qualitySettings,
-        PreparedScene& preparedScene);
 
     /// <summary>Initialise basic states for scene rendering</summary>
     /// Some render operations don't want to use the full lighting parser structure.
@@ -116,18 +96,12 @@ namespace SceneEngine
     /// global states that are normally managed by the lighting parser.
     /// Note -- don't call this if you're using LightingParser_Execute.
     /// <seealso cref="LightingParser_Execute"/>
-    auto LightingParser_SetupScene(
+    LightingParserContext LightingParser_SetupScene(
         RenderCore::IThreadContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
         ISceneParser* sceneParser = nullptr,
-        unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1)
-        -> AttachedSceneMarker;
-
-	void LightingParser_SetupScene(
-        RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext,
-		unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
+		const RenderingQualitySettings& qualitySettings = {},
+        unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
 
     /// <summary>Set camera related states after camera changes</summary>
     /// Normally this is called automatically by the system.

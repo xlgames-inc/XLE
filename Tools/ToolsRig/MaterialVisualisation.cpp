@@ -262,17 +262,19 @@ namespace ToolsRig
 
         MaterialSceneParser sceneParser(settings, envSettings, object);
         sceneParser.Prepare();
-        SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
-
-		SceneEngine::LightingParserContext lightingParserContext;
-        lightingParserContext._plugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
+		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
+			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
+		};
+        SceneEngine::RenderingQualitySettings qualSettings{
+			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
+			SceneEngine::RenderingQualitySettings::LightingModel::Deferred,
+			MakeIteratorRange(lightingPlugins)};
 
         if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
                 
             auto metalContext = Metal::DeviceContext::Get(context);
-            auto marker = SceneEngine::LightingParser_SetupScene(
-                context, parserContext, lightingParserContext,
-                &sceneParser);
+            auto lightingParserContext = SceneEngine::LightingParser_SetupScene(
+                context, parserContext, &sceneParser);
             SceneEngine::LightingParser_SetGlobalTransform(
                 context, parserContext, 
                 SceneEngine::BuildProjectionDesc(sceneParser.GetCameraDesc(), qualSettings._dimensions));
@@ -285,12 +287,12 @@ namespace ToolsRig
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
             SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, lightingParserContext,
+                context, parserContext,
                 sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
             SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, lightingParserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
+                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         }
 
         return true;

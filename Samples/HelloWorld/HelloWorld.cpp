@@ -301,7 +301,6 @@ namespace Sample
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
     {
-		SceneEngine::LightingParserContext lightingParserContext;
         auto& namedRes = parsingContext.GetNamedResources();
         auto viewContext = presentationChain->GetDesc();
         auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
@@ -316,13 +315,15 @@ namespace Sample
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
-        if (scene) {
-            LightingParser_ExecuteScene(
-                context, parsingContext, lightingParserContext, *scene, scene->GetCameraDesc(),
-                RenderingQualitySettings(
+        LightingParserContext lightingParserContext;
+		if (scene) {
+            lightingParserContext = LightingParser_ExecuteScene(
+                context, parsingContext, *scene, scene->GetCameraDesc(),
+                RenderingQualitySettings{
                     UInt2(viewContext->_width, viewContext->_height),
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    samples._sampleCount, samples._samplingQuality));
+					{},
+					samples._sampleCount, samples._samplingQuality});
         }
 
         if (overlaySys) {

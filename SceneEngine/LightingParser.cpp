@@ -1178,11 +1178,11 @@ namespace SceneEngine
 		LightingParserContext& lightingParserContext,
         ISceneParser& sceneParser);
 
-    AttachedSceneMarker LightingParser_SetupScene(
+    LightingParserContext LightingParser_SetupScene(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
         ISceneParser* sceneParser,
+		const RenderingQualitySettings& qualitySettings,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {
         struct GlobalCBuffer
@@ -1197,6 +1197,10 @@ namespace SceneEngine
             metalContext, Techniques::TechniqueContext::CB_GlobalState,
             &time, sizeof(time));
 
+		LightingParserContext lightingParserContext;
+		lightingParserContext._plugins.insert(
+			lightingParserContext._plugins.end(),
+			qualitySettings._lightingPlugins.begin(), qualitySettings._lightingPlugins.end());
         if (sceneParser)
             LightingParser_InitBasicLightEnv(context, parserContext, lightingParserContext, *sceneParser);
 
@@ -1204,46 +1208,7 @@ namespace SceneEngine
         metalContext.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
         lightingParserContext.SetMetricsBox(&metricsBox);
 
-        return lightingParserContext.SetSceneParser(sceneParser);
-    }
-
-	void LightingParser_SetupScene(
-        RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext,
-		unsigned samplingPassIndex, unsigned samplingPassCount)
-	{
-		struct GlobalCBuffer
-        {
-            float _time; unsigned _samplingPassIndex; 
-            unsigned _samplingPassCount; unsigned _dummy;
-        } time { 0.f, samplingPassIndex, samplingPassCount, 0 };
-
-		auto& metalContext = *Metal::DeviceContext::Get(context);
-        parserContext.SetGlobalCB(
-            metalContext, Techniques::TechniqueContext::CB_GlobalState,
-            &time, sizeof(time));
-	}
-
-    void LightingParser_ExecuteScene(
-        RenderCore::IThreadContext& context, 
-        Techniques::ParsingContext& parserContext,
-		LightingParserContext& lightingParserContext,
-        ISceneParser& scene,
-        const RenderCore::Techniques::CameraDesc& camera,
-        const RenderingQualitySettings& qualitySettings)
-    {
-        auto marker = LightingParser_SetupScene(context, parserContext, lightingParserContext, &scene);
-        LightingParser_SetGlobalTransform(
-            context, parserContext, 
-            BuildProjectionDesc(camera, qualitySettings._dimensions));
-        scene.PrepareScene(context, parserContext, marker.GetPreparedScene());
-
-        // Throw in a "frame priority barrier" here, right after the prepare scene. This will
-        // force all uploads started during PrepareScene to be completed when we next call
-        // bufferUploads.Update(). Normally we want a gap between FramePriority_Barrier() and
-        // Update(), because this gives some time for the background thread to run.
-        GetBufferUploads().FramePriority_Barrier();
-        LightingParser_ExecuteScene(context, parserContext, lightingParserContext, scene, qualitySettings, marker.GetPreparedScene());
+        return lightingParserContext;
     }
 
     void LightingParser_ExecuteScene(
@@ -1281,6 +1246,30 @@ namespace SceneEngine
         CATCH_ASSETS_END(parserContext)
     }
 
+	LightingParserContext LightingParser_ExecuteScene(
+        RenderCore::IThreadContext& context, 
+        Techniques::ParsingContext& parserContext,
+        ISceneParser& scene,
+        const RenderCore::Techniques::CameraDesc& camera,
+        const RenderingQualitySettings& qualitySettings)
+    {
+        auto lightingParserContext = LightingParser_SetupScene(context, parserContext, &scene, qualitySettings);
+        LightingParser_SetGlobalTransform(
+            context, parserContext, 
+            BuildProjectionDesc(camera, qualitySettings._dimensions));
+		PreparedScene preparedScene;
+        scene.PrepareScene(context, parserContext, preparedScene);
+
+        // Throw in a "frame priority barrier" here, right after the prepare scene. This will
+        // force all uploads started during PrepareScene to be completed when we next call
+        // bufferUploads.Update(). Normally we want a gap between FramePriority_Barrier() and
+        // Update(), because this gives some time for the background thread to run.
+        GetBufferUploads().FramePriority_Barrier();
+        LightingParser_ExecuteScene(context, parserContext, lightingParserContext, scene, qualitySettings, preparedScene);
+
+		return lightingParserContext;
+    }
+
     void LightingParserContext::SetMetricsBox(MetricsBox* box)
     {
         _metricsBox = box;
@@ -1292,27 +1281,26 @@ namespace SceneEngine
         _preparedRTShadows.clear();
     }
 
-    AttachedSceneMarker LightingParserContext::SetSceneParser(ISceneParser* sceneParser)
-    {
-        return AttachedSceneMarker(*this);
-    }
-
 	LightingParserContext::LightingParserContext() {}
 	LightingParserContext::~LightingParserContext() {}
+	LightingParserContext::LightingParserContext(LightingParserContext&& moveFrom)
+	: _preparedDMShadows(std::move(moveFrom._preparedDMShadows))
+	, _preparedRTShadows(std::move(moveFrom._preparedRTShadows))
+	, _plugins(std::move(moveFrom._plugins))
+	, _metricsBox(moveFrom._metricsBox)
+	{
+		moveFrom._metricsBox = nullptr;
+	}
 
-    RenderingQualitySettings::RenderingQualitySettings()
-    {
-        _dimensions = {0,0};
-        _lightingModel = LightingModel::Deferred;
-        _samplingCount = _samplingQuality = 0;
-    }
-
-    RenderingQualitySettings::RenderingQualitySettings(
-        VectorPattern<unsigned, 2> dimensions, 
-        LightingModel lightingModel, unsigned samplingCount, unsigned samplingQuality)
-    : _dimensions(dimensions), _lightingModel(lightingModel), _samplingCount(samplingCount), _samplingQuality(samplingQuality)
-    {}
-
+	LightingParserContext& LightingParserContext::operator=(LightingParserContext&& moveFrom)
+	{
+		_preparedDMShadows = std::move(moveFrom._preparedDMShadows);
+		_preparedRTShadows = std::move(moveFrom._preparedRTShadows);
+		_plugins = std::move(moveFrom._plugins);
+		_metricsBox = moveFrom._metricsBox;
+		moveFrom._metricsBox = nullptr;
+		return *this;
+	}
 
     ISceneParser::~ISceneParser() {}
 

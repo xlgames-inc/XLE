@@ -10,6 +10,7 @@
 #include "Terrain.h"
 #include "PlacementsManager.h"
 #include "SceneParser.h"
+#include "LightingParserContext.h"
 
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
