@@ -8,7 +8,6 @@
 #include "ExportedNativeTypes.h"
 #include "EditorInterfaceUtils.h"
 #include "../ToolsRig/VisualisationUtils.h"
-#include "../ToolsRig/MaterialBinder.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
@@ -132,7 +131,7 @@ namespace GUILayer
 
     
     static MaterialVisSettings::GeometryType AsManaged(
-        ToolsRig::MaterialVisSettings::GeometryType::Enum input)
+        ToolsRig::MaterialVisSettings::GeometryType input)
     {
         switch (input) {
         case ToolsRig::MaterialVisSettings::GeometryType::Sphere:
@@ -146,7 +145,7 @@ namespace GUILayer
         }
     }
 
-    static ToolsRig::MaterialVisSettings::GeometryType::Enum AsNative(
+    static ToolsRig::MaterialVisSettings::GeometryType AsNative(
          MaterialVisSettings::GeometryType input)
     {
         switch (input) {
@@ -162,7 +161,7 @@ namespace GUILayer
     }
 
     static MaterialVisSettings::LightingType AsManaged(
-        ToolsRig::MaterialVisSettings::LightingType::Enum input)
+        ToolsRig::MaterialVisSettings::LightingType input)
     {
         switch (input) {
         case ToolsRig::MaterialVisSettings::LightingType::Deferred:
@@ -174,7 +173,7 @@ namespace GUILayer
         }
     }
 
-    static ToolsRig::MaterialVisSettings::LightingType::Enum AsNative(
+    static ToolsRig::MaterialVisSettings::LightingType AsNative(
          MaterialVisSettings::LightingType input)
     {
         switch (input) {

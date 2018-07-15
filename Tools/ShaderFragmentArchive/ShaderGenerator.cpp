@@ -347,6 +347,18 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	ShaderPatcher::NodeGraphSignature	NodeGraphSignature::ConvertToNative()
+	{
+		return {};
+	}
+
+	NodeGraphSignature^			NodeGraphSignature::ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input)
+	{
+		return nullptr;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	class ShaderGeneratorProvider : public ShaderPatcher::BasicNodeGraphProvider, std::enable_shared_from_this<ShaderGeneratorProvider>
     {
     public:
@@ -439,6 +451,16 @@ namespace ShaderPatcherLayer
 	{}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ShaderPatcher::GraphSyntaxFile	NodeGraphFile::ConvertToNative()
+	{
+		return {};
+	}
+
+	NodeGraphFile^			NodeGraphFile::ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input)
+	{
+		return nullptr;
+	}
 
 	Tuple<String^, String^>^ 
 		NodeGraphFile::GeneratePreviewShader(

@@ -22,6 +22,8 @@ namespace RenderCore
 			StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 			StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 
+		void ClearCaches();
+
         MinimalShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler);
         ~MinimalShaderSource();
 

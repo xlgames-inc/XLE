@@ -7,37 +7,27 @@
 #include "MaterialVisualisation.h"
 #include "VisualisationUtils.h"
 #include "VisualisationGeo.h"
-#include "../../SceneEngine/LightingParserContext.h"
+
 #include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/PreparedScene.h"
 
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/BufferView.h"
-
 #include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../../RenderCore/Assets/ModelImmutableData.h"
-#include "../../RenderCore/Assets/ModelRendererInternal.h"      // for BuildLowLevelInputAssembly
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/SimpleModelRenderer.h"
+#include "../../RenderCore/IThreadContext.h"
 
-#include "../../Assets/IFileSystem.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
-
-#include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/VariantUtils.h"
-#include "../../Math/Transformations.h"
+
 
 namespace ToolsRig
 {
@@ -68,6 +58,23 @@ namespace ToolsRig
         _cubeVCount = unsigned(cubeGeometry.size());
     }
 
+	class MaterialSceneParserDrawable : public Techniques::Drawable
+	{
+	public:
+		Topology	_topology;
+		unsigned	_vertexCount;
+
+		static void DrawFn(
+			Metal::DeviceContext& metalContext,
+			Techniques::ParsingContext& parserContext,
+			const MaterialSceneParserDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
+			const Metal::ShaderProgram&)
+		{
+			metalContext.Bind(drawable._topology);
+			metalContext.Draw(drawable._vertexCount);
+		}
+	};
+
     class MaterialSceneParser : public VisSceneParser
     {
     public:
@@ -84,7 +91,7 @@ namespace ToolsRig
                 ||  parseSettings._batchFilter == BF::General
                 ||  parseSettings._batchFilter == BF::DMShadows) {
 
-                Draw(context, parserContext, lightingParserContext, techniqueIndex);
+                Draw(context, parserContext, techniqueIndex);
             }
         }
 
@@ -98,11 +105,8 @@ namespace ToolsRig
 
         void Draw(  IThreadContext& threadContext, 
                     RenderCore::Techniques::ParsingContext& parserContext,
-					SceneEngine::LightingParserContext& lightingParserContext,
                     unsigned techniqueIndex) const
         {
-			assert(0);
-#if 0
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             if (techniqueIndex!=3)
                 metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
@@ -110,6 +114,8 @@ namespace ToolsRig
                 // disable blending to avoid problem when rendering single component stuff 
                 //  (ie, nodes that output "float", not "float4")
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
+
+			VariantArray drawables;
             
             auto geoType = _settings->_geometryType;
             if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
@@ -122,55 +128,61 @@ namespace ToolsRig
                     { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
-                auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vertices));
-				VertexBufferView vbvs[] = {&vertexBuffer};
-
-				auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex3D_InputLayout,
-					MakeIteratorRange(vbvs));
-                if (!shaderProgram) return;
-
-                metalContext.Bind(Topology::TriangleStrip);
-                metalContext.Draw(dimof(vertices));
+				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
+				drawable._techniqueConfig = "xleres/techniques/illum.tech";
+				drawable._material = nullptr;
+				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
+				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
+				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
+				drawable._geo->_vertexStreamCount = 1;
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
+				drawable._topology = Topology::TriangleStrip;
+				drawable._vertexCount = (unsigned)dimof(vertices);
 
             } else if (geoType == MaterialVisSettings::GeometryType::Model) {
 
-                DrawModel(threadContext, parserContext, lightingParserContext, techniqueIndex);
+                drawables = DrawModel();
 
             } else {
 
-                unsigned count;
+                unsigned count = 0;
                 const auto& cachedGeo = ConsoleRig::FindCachedBox2<CachedVisGeo>();
-				VertexBufferView vbv;
+				RenderCore::IResourcePtr vb;
                 if (geoType == MaterialVisSettings::GeometryType::Sphere) {
-					vbv = cachedGeo._sphereBuffer;
+					vb = cachedGeo._sphereBuffer;
                     count = cachedGeo._sphereVCount;
                 } else if (geoType == MaterialVisSettings::GeometryType::Cube) {
-					vbv = cachedGeo._cubeBuffer;
+					vb = cachedGeo._cubeBuffer;
                     count = cachedGeo._cubeVCount;
                 } else return;
 
-				auto shaderProgram = _object->_materialBinder->Apply(
-                    metalContext, parserContext, techniqueIndex,
-                    _object->_parameters, _object->_systemConstants, 
-                    _object->_searchRules, Vertex3D_InputLayout,
-					MakeIteratorRange(&vbv, &vbv+1));
-                if (!shaderProgram) return;
-                
-                metalContext.Bind(Topology::TriangleList);
-                metalContext.Draw(count);
+				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
+				drawable._techniqueConfig = "xleres/techniques/illum.tech";
+				drawable._material = nullptr;
+				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
+				drawable._geo->_vertexStreams[0]._resource = vb;
+				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
+				drawable._geo->_vertexStreamCount = 1;
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
+				drawable._topology = Topology::TriangleList;
+				drawable._vertexCount = count;
 
             }
-#endif
+
+			Techniques::SequencerTechnique seqTechnique;
+			ParameterBox seqShaderSelectors;
+
+			for (auto d=drawables.begin(); d!=drawables.end(); ++d)
+				RenderCore::Techniques::Draw(
+					threadContext, 
+					parserContext,
+					techniqueIndex,
+					seqTechnique,
+					&seqShaderSelectors,
+					*(Techniques::Drawable*)d.get());
         }
 
-        void DrawModel(
-            IThreadContext& threadContext, 
-			RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext,
-            unsigned techniqueIndex) const;
+        VariantArray DrawModel() const;
 
         MaterialSceneParser(
             const MaterialVisSettings& settings,
@@ -186,11 +198,7 @@ namespace ToolsRig
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void MaterialSceneParser::DrawModel(
-        IThreadContext& threadContext, 
-		RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext,
-        unsigned techniqueIndex) const
+    VariantArray MaterialSceneParser::DrawModel() const
     {
             // This mode is a little more complex than the others. We want to
             // load the geometry data for a model and render all the parts of
@@ -201,7 +209,7 @@ namespace ToolsRig
             // It's a little complex. But it's a good way to test the internals of
             // the ModelScaffold class -- because we go through all the parts and
             // use each aspect of the model pipeline. 
-        if (_object->_previewModelFile.empty()) return;
+		if (_object->_previewModelFile.empty()) return {};
 
         using namespace RenderCore::Assets;
         auto modelFile = MakeStringSection(_object->_previewModelFile);
@@ -211,23 +219,10 @@ namespace ToolsRig
 		auto state = modelFuture->StallWhilePending();
 
 		if (state != ::Assets::AssetState::Ready)
-			return;
+			return {};
 
 		auto& model = *modelFuture->Actualize();
-
-		auto drawables = model.BuildDrawables(boundMaterial);
-
-		Techniques::SequencerTechnique seqTechnique;
-		ParameterBox seqShaderSelectors;
-
-		for (auto d=drawables.begin(); d!=drawables.end(); ++d)
-			RenderCore::Techniques::Draw(
-				threadContext, 
-				parserContext,
-				techniqueIndex,
-				seqTechnique,
-				&seqShaderSelectors,
-				*(Techniques::Drawable*)d.get());
+		return model.BuildDrawables(boundMaterial);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -282,17 +277,18 @@ namespace ToolsRig
                 SceneEngine::ReturnToSteadyState(*metalContext.get());
                 SceneEngine::SetFrameGlobalStates(*metalContext.get());
             CATCH_ASSETS_END(parserContext)
-            sceneParser.Draw(context, parserContext, lightingParserContext, 0);
+            sceneParser.Draw(context, parserContext, 0);
                 
-        } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
-            qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
+        } else {
+
+            qualSettings._lightingModel = 
+				(settings._lightingType == MaterialVisSettings::LightingType::Deferred)
+				? SceneEngine::RenderingQualitySettings::LightingModel::Deferred
+				: SceneEngine::RenderingQualitySettings::LightingModel::Forward;
             SceneEngine::LightingParser_ExecuteScene(
                 context, parserContext,
                 sceneParser, sceneParser.GetCameraDesc(), qualSettings);
-        } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
-            qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
-            SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
+
         }
 
         return true;
@@ -343,20 +339,74 @@ namespace ToolsRig
 
     MaterialVisSettings::MaterialVisSettings()
     {
-        _geometryType = GeometryType::Sphere;
-        _lightingType = LightingType::NoLightingParser;
         _camera = std::make_shared<VisCameraSettings>();
         _camera->_position = Float3(-5.f, 0.f, 0.f);
-        _pendingCameraAlignToModel = false;
     }
 
-    MaterialVisObject::MaterialVisObject()
-    {
-        _previewMaterialBinding = 0;
-    }
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    MaterialVisObject::~MaterialVisObject()
+
+	std::pair<DrawPreviewResult, std::string> DrawPreview(
+        RenderCore::IThreadContext& context,
+        const RenderCore::Techniques::TechniqueContext& techContext,
+        PreviewGeometry geometry,
+		ToolsRig::MaterialVisObject& visObject)
     {
+        using namespace ToolsRig;
+
+        try 
+        {
+            MaterialVisSettings visSettings;
+            visSettings._camera = std::make_shared<VisCameraSettings>();
+            visSettings._camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+
+            // Select the geometry type to use.
+            // In the "chart" mode, we are just going to run a pixel shader for every
+            // output pixel, so we want to use a pretransformed quad covering the viewport
+            switch (geometry) {
+            case PreviewGeometry::Plane2D:
+            case PreviewGeometry::Chart:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
+                visObject._parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
+                break;
+
+            case PreviewGeometry::Box:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Cube;
+                break;
+
+            default:
+            case PreviewGeometry::Sphere:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Sphere;
+                break;
+
+            case PreviewGeometry::Model:
+                visSettings._geometryType = MaterialVisSettings::GeometryType::Model;
+                break;
+            };
+
+            // Align the camera if we're drawing with a model...
+            if (geometry == PreviewGeometry::Model && !visObject._previewModelFile.empty()) {
+                auto model = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(
+                    visObject._previewModelFile.c_str());
+                model->StallWhilePending();
+                *visSettings._camera = ToolsRig::AlignCameraToBoundingBox(
+                    visSettings._camera->_verticalFieldOfView, 
+                    model->Actualize()->GetStaticBoundingBox());
+            }
+
+            RenderCore::Techniques::ParsingContext parserContext(techContext);
+            bool result = ToolsRig::MaterialVisLayer::Draw(
+                context, parserContext, 
+                visSettings, VisEnvSettings(), visObject);
+            if (result)
+                return std::make_pair(DrawPreviewResult::Success, std::string());
+
+            if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult::Pending, std::string());
+        }
+        catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
+        catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
+
+        return std::make_pair(DrawPreviewResult::Error, std::string());
     }
 
 }

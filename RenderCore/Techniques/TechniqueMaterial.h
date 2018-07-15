@@ -6,8 +6,9 @@
 
 #pragma once
 
-#include "Techniques.h"
 #include "RenderStateResolver.h"
+#include "../../Assets/AssetsCore.h"
+#include "../../Utility/ParameterBox.h"
 
 namespace RenderCore { namespace Techniques
 {

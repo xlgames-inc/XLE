@@ -10,7 +10,7 @@
 #include "../../Utility/IteratorUtils.h"
 #include <vector>
 
-namespace RenderCore { class InputElementDesc; }
+namespace RenderCore { class InputElementDesc; class MiniInputElementDesc; }
 namespace ToolsRig
 {
     namespace Internal
@@ -38,6 +38,9 @@ namespace ToolsRig
 
     extern IteratorRange<const RenderCore::InputElementDesc*> Vertex2D_InputLayout;
     extern IteratorRange<const RenderCore::InputElementDesc*> Vertex3D_InputLayout;
+
+	extern std::vector<RenderCore::MiniInputElementDesc> Vertex2D_MiniInputLayout;
+    extern std::vector<RenderCore::MiniInputElementDesc> Vertex3D_MiniInputLayout;
 
     std::vector<Internal::Vertex3D>     BuildGeodesicSphere(int detail = 4);
     std::vector<Internal::Vertex3D>     BuildCube();

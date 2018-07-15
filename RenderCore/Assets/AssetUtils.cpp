@@ -4,6 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "AssetUtils.h"
 #include "DeferredShaderResource.h"
 #include "Services.h"
 #include "../IDevice.h"
@@ -40,7 +41,16 @@ namespace RenderCore { namespace Assets
 
 	RenderCore::IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data)
 	{
-		auto& device = RenderCore::Assets::Services::GetDevice();
+		return CreateStaticVertexBuffer(RenderCore::Assets::Services::GetDevice(), data);
+	}
+
+	RenderCore::IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data)
+	{
+		return CreateStaticIndexBuffer(RenderCore::Assets::Services::GetDevice(), data);
+	}
+
+	RenderCore::IResourcePtr CreateStaticVertexBuffer(IDevice& device, IteratorRange<const void*> data)
+	{
 		return device.CreateResource(
 			CreateDesc(
 				BindFlag::VertexBuffer, 0, GPUAccess::Read,
@@ -52,9 +62,8 @@ namespace RenderCore { namespace Assets
 			});
 	}
 
-	RenderCore::IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data)
+	RenderCore::IResourcePtr CreateStaticIndexBuffer(IDevice& device, IteratorRange<const void*> data)
 	{
-		auto& device = RenderCore::Assets::Services::GetDevice();
 		return device.CreateResource(
 			CreateDesc(
 				BindFlag::IndexBuffer, 0, GPUAccess::Read,

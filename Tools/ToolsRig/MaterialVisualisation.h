@@ -10,6 +10,9 @@
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetUtils.h"
+#include <memory>
+
+namespace RenderCore { namespace Techniques { class TechniqueContext; } }
 
 namespace ToolsRig
 {
@@ -20,19 +23,13 @@ namespace ToolsRig
     public:
         std::shared_ptr<VisCameraSettings> _camera;
         
-        struct GeometryType
-        {
-            enum Enum { Sphere, Cube, Plane2D, Model };
-        };
-        GeometryType::Enum _geometryType;
+        enum class GeometryType { Sphere, Cube, Plane2D, Model };
+        GeometryType _geometryType = GeometryType::Sphere;
 
-        struct LightingType
-        {
-            enum Enum { Deferred, Forward, NoLightingParser };
-        };
-        LightingType::Enum _lightingType;
+        enum class LightingType { Deferred, Forward, NoLightingParser };
+        LightingType _lightingType = LightingType::NoLightingParser;
 
-        mutable bool _pendingCameraAlignToModel;
+        mutable bool _pendingCameraAlignToModel = false;
 
         MaterialVisSettings();
     };
@@ -42,14 +39,8 @@ namespace ToolsRig
     public:
         RenderCore::Techniques::Material	_parameters;
         ::Assets::DirectorySearchRules		_searchRules;
-        // IMaterialBinder::SystemConstants _systemConstants;
-        // std::shared_ptr<IMaterialBinder> _materialBinder;
-
-        ::Assets::rstring	_previewModelFile;
-        uint64				_previewMaterialBinding;
-
-        MaterialVisObject();
-        ~MaterialVisObject();
+        ::Assets::rstring					_previewModelFile;
+        uint64_t							_previewMaterialBinding = 0;
     };
 
     class VisEnvSettings;
@@ -86,6 +77,25 @@ namespace ToolsRig
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+
+	enum class DrawPreviewResult
+    {
+        Error,
+        Pending,
+        Success
+    };
+
+	enum class PreviewGeometry
+    {
+        Chart, Plane2D, Box, Sphere, Model
+    };
+
+	std::pair<DrawPreviewResult, std::string> DrawPreview(
+        RenderCore::IThreadContext& context,
+        const RenderCore::Techniques::TechniqueContext& techContext,
+        PreviewGeometry geometry,
+		ToolsRig::MaterialVisObject& sourceVisObject);
     
 }
 

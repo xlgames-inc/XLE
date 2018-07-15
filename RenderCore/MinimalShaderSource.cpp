@@ -61,6 +61,10 @@ namespace RenderCore
             definesTable);
     }
 
+	void MinimalShaderSource::ClearCaches()
+	{
+	}
+
     MinimalShaderSource::MinimalShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler)
     : _compiler(compiler) {}
     MinimalShaderSource::~MinimalShaderSource() {}

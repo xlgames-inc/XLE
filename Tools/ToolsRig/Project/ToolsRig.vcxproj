@@ -84,7 +84,6 @@
     <ClCompile Include="..\DivergentAsset.cpp" />
     <ClCompile Include="..\GenerateAO.cpp" />
     <ClCompile Include="..\ManipulatorsRender.cpp" />
-    <ClCompile Include="..\MaterialBinder.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\ModelVisualisation.cpp" />
     <ClCompile Include="..\ObjectPlaceholders.cpp" />
@@ -105,7 +104,6 @@
     <ClInclude Include="..\IManipulator.h" />
     <ClInclude Include="..\ManipulatorsRender.h" />
     <ClInclude Include="..\ManipulatorsUtil.h" />
-    <ClInclude Include="..\MaterialBinder.h" />
     <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ModelVisualisation.h" />
     <ClInclude Include="..\ObjectPlaceholders.h" />
