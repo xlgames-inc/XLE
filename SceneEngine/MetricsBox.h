@@ -9,6 +9,8 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../Assets/AssetsCore.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
     class MetricsBox
@@ -31,7 +33,8 @@ namespace SceneEngine
 
     void RenderGPUMetrics(
         RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parsingContext,
+        RenderCore::Techniques::ParsingContext& parsingContext,
+		const MetricsBox& metricBox,
         const ::Assets::ResChar shaderName[],
         std::initializer_list<const ::Assets::ResChar*> valueSources,
         unsigned protectStates = ~0u);       // ProtectState::States::BitField

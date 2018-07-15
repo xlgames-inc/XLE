@@ -321,7 +321,6 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////s
     // for draw debugging...
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -333,12 +332,13 @@ namespace SceneEngine
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 namespace SceneEngine
 {
     void RenderFluidDebugging2D(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)
@@ -411,7 +411,7 @@ namespace SceneEngine
 
     void RenderFluidDebugging3D(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data)

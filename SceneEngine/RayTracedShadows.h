@@ -9,23 +9,26 @@
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+
 namespace SceneEngine
 {
-    class LightingParserContext;
     class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
     class IMainTargets;
     class PreparedScene;
+	class ISceneParser;
+	class LightingParserContext;
 
     PreparedRTShadowFrustum PrepareRTShadows(
         RenderCore::IThreadContext& context, 
-        RenderCore::Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex);
 
     void RTShadows_DrawMetrics(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, 
+        RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
         IMainTargets& mainTargets);
 }

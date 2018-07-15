@@ -9,12 +9,12 @@
 #include "DeepOceanSim.h"
 #include "SimplePatchBox.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "SurfaceHeightsProvider.h"
 #include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -305,7 +305,7 @@ namespace SceneEngine
 
     static bool GridIsVisible(
         const ShallowWaterSim::SimulationContext& context,
-        LightingParserContext& parserContext, Int2 grid, 
+        Techniques::ParsingContext& parserContext, Int2 grid, 
         float baseWaterHeight)
     {
         Float3 mins( grid[0]    * context._gridPhysicalDimension + context._physicalMins[0],  grid[1]    * context._gridPhysicalDimension + context._physicalMins[1], baseWaterHeight - 3.f);
@@ -780,7 +780,7 @@ namespace SceneEngine
 
     void ShallowWaterSim::ExecuteSim(
         const SimulationContext& context, 
-        LightingParserContext& parserContext, 
+        Techniques::ParsingContext& parserContext, 
         const SimSettings& settings,
         unsigned bufferCounter,
         const Int2* validGridBegin, const Int2* validGridEnd)
@@ -1043,7 +1043,7 @@ namespace SceneEngine
     }
 
     void ShallowWaterSim::RenderWireframe(
-        MetalContext& metalContext, LightingParserContext& parserContext, 
+        MetalContext& metalContext, RenderCore::Techniques::ParsingContext& parserContext, 
         const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
         unsigned bufferCounter, BorderMode::Enum borderMode)
     {
@@ -1095,7 +1095,7 @@ namespace SceneEngine
     }
 
     void ShallowWaterSim::RenderVelocities(
-        MetalContext& metalContext, LightingParserContext& parserContext, 
+        MetalContext& metalContext, RenderCore::Techniques::ParsingContext& parserContext, 
         const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
         unsigned bufferCounter, BorderMode::Enum borderMode,
         bool showErosion)
@@ -1207,7 +1207,7 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::pair<Float3, Float3> CalculateMouseOverRay(MetalContext& context, LightingParserContext& parserContext)
+    static std::pair<Float3, Float3> CalculateMouseOverRay(MetalContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
             // calculate a world space ray underneath the mouse cursor
         auto cursorPos = GetCursorPos();
@@ -1236,7 +1236,7 @@ namespace SceneEngine
 
     Float4 OceanHack_CompressionConstants(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         float baseHeight, float compressionAmount, float compressionRadius)
     {
         static unsigned framesMouseDown = 0;

@@ -35,6 +35,7 @@
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
@@ -509,9 +510,10 @@ namespace Overlays
 
         auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
-        SceneEngine::LightingParserContext lightingParserContext(techniqueContext);
+		Techniques::ParsingContext parsingContext(techniqueContext);
+        SceneEngine::LightingParserContext lightingParserContext;
         SceneEngine::LightingParser_ExecuteScene(
-            context, lightingParserContext, *sceneParser.get(), 
+            context, parsingContext, lightingParserContext, *sceneParser.get(), 
             sceneParser->GetCameraDesc(), qualitySettings);
     }
 

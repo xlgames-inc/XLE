@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DeepOceanSim.h"
-#include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "SceneEngineUtils.h"
 #include "MetalStubs.h"
@@ -18,6 +17,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -71,7 +71,7 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void DeepOceanSim::Update(
-        Metal::DeviceContext* context, LightingParserContext& parserContext, 
+        Metal::DeviceContext* context, RenderCore::Techniques::ParsingContext& parserContext, 
         const DeepOceanSimSettings& oceanSettings, unsigned bufferCounter)
     {
         const unsigned dimensions = oceanSettings._gridDimensions;
@@ -201,7 +201,7 @@ namespace SceneEngine
 
     void DeepOceanSim::DrawDebugging(   
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         const DeepOceanSimSettings& oceanSettings)
     {
         using namespace RenderCore;

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "LightingParser.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Assets/DelayedDrawCall.h"       // for DelayStep
@@ -15,6 +14,7 @@
 #include "../Utility/UTFUtils.h"
 
 namespace RenderCore { namespace Assets { class ModelCache; }}
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace Utility
 {
     template<typename Type> class InputStreamFormatter;
@@ -85,23 +85,20 @@ namespace SceneEngine
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg,
         VegetationSpawnResources& resources);
 
-    bool VegetationSpawn_DrawInstances(
-        RenderCore::Metal::DeviceContext* context,
-        VegetationSpawnResources& resources,
-        unsigned instanceId, unsigned indexCount, 
-        unsigned startIndexLocation, unsigned baseVertexLocation);
+	class ILightingParserPlugin;
 
     class VegetationSpawnManager
     {
     public:
         void Render(
-            RenderCore::Metal::DeviceContext& context, 
-            LightingParserContext& lightingParserContext,
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parsingContext,
             unsigned techniqueIndex,
             RenderCore::Assets::DelayStep delayStep);
         bool HasContent(RenderCore::Assets::DelayStep delayStep) const;

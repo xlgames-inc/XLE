@@ -5,12 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Sky.h"
-#include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
 #include "MetalStubs.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -197,16 +197,17 @@ namespace SceneEngine
         _validationCallback = std::move(validationCallback);
     }
 
-    void    Sky_Render(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool blendFog)
+    void    Sky_Render(RenderCore::IThreadContext& threadContext, Techniques::ParsingContext& parserContext, const GlobalLightingDesc& globalLightingDesc, bool blendFog)
     {
-        CATCH_ASSETS_BEGIN
-            const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
-            SkyTextureParts textureParts = globalDesc;
-            if (!textureParts.IsGood()) return;
+		SkyTextureParts textureParts = globalLightingDesc;
+		if (!textureParts.IsGood()) return;
 
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
+
+        CATCH_ASSETS_BEGIN
             auto& res = ConsoleRig::FindCachedBoxDep2<SkyShaderRes>(textureParts._projectionType, blendFog, CurrentSkyGeometryType);
 
-            struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalDesc._skyBrightness };
+            struct SkyRenderSettings { float _brightness; unsigned _dummy[3]; } settings = { globalLightingDesc._skyBrightness };
             ConstantBufferView cbvs[] = { MakeSharedPkt(settings) };
 
             res._uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
@@ -230,14 +231,16 @@ namespace SceneEngine
         context.Bind(RenderCore::Topology::TriangleList);
     }
 
-    void    Sky_RenderPostFog(  RenderCore::Metal::DeviceContext& context, 
-                                LightingParserContext& parserContext)
+    void    Sky_RenderPostFog(  RenderCore::IThreadContext& threadContext, 
+                                Techniques::ParsingContext& parserContext,
+								const GlobalLightingDesc& globalLightingDesc)
     {
-        CATCH_ASSETS_BEGIN
-            const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
-            SkyTextureParts textureParts(globalDesc);
-            if (!textureParts.IsGood()) return;
+		SkyTextureParts textureParts = globalLightingDesc;
+		if (!textureParts.IsGood()) return;
 
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
+
+        CATCH_ASSETS_BEGIN
             auto& res = ConsoleRig::FindCachedBoxDep2<SkyShaderRes>(
                 textureParts._projectionType, false, CurrentSkyGeometryType);
             if (!res._postFogShader)

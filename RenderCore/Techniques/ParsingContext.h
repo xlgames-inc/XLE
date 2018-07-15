@@ -13,6 +13,7 @@
 #include "../../Utility/MemoryUtils.h"
 #include <vector>
 #include <memory>
+#include <functional>
 
 namespace Assets { namespace Exceptions { class RetrievalError; }}
 namespace Utility { class ParameterBox; }
@@ -56,6 +57,10 @@ namespace RenderCore { namespace Techniques
         const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
+
+			//  ----------------- Overlays for late rendering -----------------
+        typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;
+        std::vector<PendingOverlay> _pendingOverlays;
 
             //  ----------------- Exception reporting -----------------
         class StringHelpers

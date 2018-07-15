@@ -14,7 +14,7 @@
 #include "../Utility/IteratorUtils.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; } }
 
 namespace SceneEngine
 {
@@ -89,7 +89,8 @@ namespace SceneEngine
     /// </code>
     void LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         ISceneParser& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings);
@@ -103,7 +104,8 @@ namespace SceneEngine
     /// case projection matrix is required)
     void LightingParser_ExecuteScene(
         RenderCore::IThreadContext& metalContext, 
-        LightingParserContext& parserContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         const RenderingQualitySettings& qualitySettings,
         PreparedScene& preparedScene);
 
@@ -114,10 +116,16 @@ namespace SceneEngine
     /// Note -- don't call this if you're using LightingParser_Execute.
     /// <seealso cref="LightingParser_Execute"/>
     auto LightingParser_SetupScene(
-        MetalContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         ISceneParser* sceneParser = nullptr,
         unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1)
+        -> AttachedSceneMarker;
+
+	auto LightingParser_SetupScene(
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext)
         -> AttachedSceneMarker;
 
     /// <summary>Set camera related states after camera changes</summary>
@@ -129,8 +137,8 @@ namespace SceneEngine
     /// far clip distance)
     /// <seealso cref="LightingParser_SetupScene"/>
     void LightingParser_SetGlobalTransform( 
-        MetalContext& context, 
-        LightingParserContext& parserContext, 
+        RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc);
 
     void LightingParser_Overlays(   
@@ -172,7 +180,7 @@ namespace SceneEngine
         unsigned    GetSamplingCount() const;
         IMainTargets& GetMainTargets() const;
 
-        typedef void ResolveFn(MetalContext*, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
+        typedef void ResolveFn(RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);
         void        SetPass(Pass::Enum newPass);
 
@@ -210,17 +218,20 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			PreparedScene&) const = 0;
 
         virtual void OnLightingResolvePrepare(
-            MetalContext&, LightingParserContext&, LightingResolveContext&) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			LightingResolveContext&) const = 0;
 
         virtual void OnPostSceneRender(
-            MetalContext&, LightingParserContext&, 
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
             const SceneParseSettings&, unsigned techniqueIndex) const = 0;
 
         virtual void InitBasicLightEnvironment(
-            MetalContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			ShaderLightDesc::BasicEnvironment& env) const = 0;
     };
 }
 

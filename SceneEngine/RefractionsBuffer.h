@@ -13,10 +13,10 @@
 #include "../Utility/IntrusivePtr.h"
 
 namespace BufferUploads { class ResourceLocator; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     class RefractionsBuffer
     {
     public:
@@ -33,7 +33,7 @@ namespace SceneEngine
 
         void Build(
             RenderCore::Metal::DeviceContext& context, 
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             float standardDeviationForBlur);
         
         const SRV& GetSRV() { return _refractionsFrontSRV; }

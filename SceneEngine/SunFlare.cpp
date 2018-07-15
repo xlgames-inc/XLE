@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SunFlare.h"
-#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
@@ -19,6 +18,7 @@
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -180,17 +180,18 @@ namespace SceneEngine
     }
 
     void SunFlare_Execute(
-        RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
-        const RenderCore::Metal::ShaderResourceView& depthsSRV)
+        RenderCore::IThreadContext& threadContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const RenderCore::Metal::ShaderResourceView& depthsSRV,
+		const LightDesc& sunDesc)
     {
         using namespace RenderCore;
 
-        if (!parserContext.GetSceneParser() || !parserContext.GetSceneParser()->GetLightCount())
+        /*if (!parserContext.GetSceneParser() || !parserContext.GetSceneParser()->GetLightCount())
             return;
 
             // avoid completely if we're facing away
-        const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);
+        const auto& sunDesc = parserContext.GetSceneParser()->GetLightDesc(0);*/
         const auto& projDesc = parserContext.GetProjectionDesc();
         if (Dot(ExtractForward_Cam(projDesc._cameraToWorld), sunDesc._position) < 0.f)
             return;
@@ -220,8 +221,9 @@ namespace SceneEngine
             ||  (vAngle - flareAngle) >  .5f * projDesc._verticalFov)
             return;
 
-        SavedTargets savedTargets(*context);
-        Metal::ViewportDesc savedViewport(*context);
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
+        SavedTargets savedTargets(context);
+        Metal::ViewportDesc savedViewport(context);
         
         CATCH_ASSETS_BEGIN
 
@@ -242,9 +244,9 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-            context->Bind(Topology::TriangleStrip);
-            context->Bind(Techniques::CommonResources()._dssDisable);
-            context->UnbindInputLayout();
+            context.Bind(Topology::TriangleStrip);
+            context.Bind(Techniques::CommonResources()._dssDisable);
+            context.UnbindInputLayout();
 
             const bool doDirectBlur = Tweakable("SunFlareDirectBlur", false);
             const bool singlePass = Tweakable("SunFlareSinglePass", false);
@@ -254,96 +256,96 @@ namespace SceneEngine
 
             const auto& res = ConsoleRig::FindCachedBoxDep2<SunFlareRes>(singlePass, rowsOptimisation, UInt2(resX, resY));
             if (!doDirectBlur) {
-                context->Bind(Techniques::CommonResources()._blendOpaque);
-                context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
+                context.Bind(Techniques::CommonResources()._blendOpaque);
+                context.Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(resY), 0.f, 1.f));
 
                 if (!singlePass) {
-                    context->Bind(MakeResourceList(res._tempRTV[1]), nullptr);
+                    context.Bind(MakeResourceList(res._tempRTV[1]), nullptr);
                     ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
-                    res._toRadialUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
-					res._toRadialUniforms.Apply(*context, 1, 
+                    res._toRadialUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._toRadialUniforms.Apply(context, 1, 
 						UniformsStream{
 							MakeIteratorRange(constants), 
 							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
                 
-                    context->Bind(*res._toRadialShader);
-                    context->Draw(4);
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
+                    context.Bind(*res._toRadialShader);
+                    context.Draw(4);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
 
                 if (rowsOptimisation)
-                    context->Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
+                    context.Bind(Metal::ViewportDesc(0.f, 0.f, float(resX), float(1), 0.f, 1.f));
 
                 {
-                    context->Bind(MakeResourceList(res._tempRTV[0]), nullptr);
+                    context.Bind(MakeResourceList(res._tempRTV[0]), nullptr);
                     ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { singlePass ? &depthsSRV : &res._tempSRV[1] };
-                    res._blurUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
-					res._blurUniforms.Apply(*context, 1, 
+                    res._blurUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._blurUniforms.Apply(context, 1, 
 						UniformsStream{
 							MakeIteratorRange(constants), 
 							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-                    context->Bind(*res._blurShader);
-                    context->Draw(4);
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
+                    context.Bind(*res._blurShader);
+                    context.Draw(4);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
 
     ///////////////////////////////////////////////////////////////////////////////////////////////////
                 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-                context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+                context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 #endif
-                context->Bind(savedViewport);
-                context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+                context.Bind(savedViewport);
+                context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
                     ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &res._tempSRV[0] };
-                    res._commitUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
-					res._commitUniforms.Apply(*context, 1, 
+                    res._commitUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._commitUniforms.Apply(context, 1, 
 						UniformsStream{
 							MakeIteratorRange(constants), 
 							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-                    context->Bind(*res._commitShader);
-                    context->Bind(Topology::TriangleList);
-                    context->Draw(64*3);
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
+                    context.Bind(*res._commitShader);
+                    context.Bind(Topology::TriangleList);
+                    context.Draw(64*3);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
 
             } else {
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
-                context->GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+                context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
 #endif
-                context->Bind(savedViewport);
-                context->Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+                context.Bind(savedViewport);
+                context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
 
                 {
                     ConstantBufferView constants[] = { settingsPkt };
                     const Metal::ShaderResourceView* srvs[] = { &depthsSRV };
-                    res._directBlurUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
-					res._directBlurUniforms.Apply(*context, 1, 
+                    res._directBlurUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					res._directBlurUniforms.Apply(context, 1, 
                         UniformsStream{
 							MakeIteratorRange(constants), 
 							UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
-                    context->Bind(*res._directBlurShader);
-                    context->Bind(Topology::TriangleList);
-                    context->Draw(64*3);
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 3, 1);
+                    context.Bind(*res._directBlurShader);
+                    context.Bind(Topology::TriangleList);
+                    context.Draw(64*3);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 3, 1);
                 }
                 
             }
 
         CATCH_ASSETS_END(parserContext)
 
-        context->Bind(Topology::TriangleList);
-        context->Bind(Techniques::CommonResources()._dssReadWrite);
-        savedTargets.ResetToOldTargets(*context);
-        context->Bind(savedViewport);
+        context.Bind(Topology::TriangleList);
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
+        savedTargets.ResetToOldTargets(context);
+        context.Bind(savedViewport);
     }
 }
 

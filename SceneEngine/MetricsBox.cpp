@@ -6,12 +6,12 @@
 
 #include "MetricsBox.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
@@ -42,7 +42,8 @@ namespace SceneEngine
 
     void RenderGPUMetrics(
         RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parsingContext,
+        RenderCore::Techniques::ParsingContext& parsingContext,
+		const MetricsBox& metricBox,
         const ::Assets::ResChar shaderName[],
         std::initializer_list<const ::Assets::ResChar*> valueSources,
         unsigned protectStates)
@@ -88,7 +89,7 @@ namespace SceneEngine
         unsigned globalCB[4] = { unsigned(viewport.Width), unsigned(viewport.Height), 0, 0 };
         uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
 		ConstantBufferView cbvs[] = { MakeSharedPkt(globalCB) };
-		Metal::ShaderResourceView* srvs[] = { &parsingContext.GetMetricsBox()->_metricsBufferSRV };
+		const Metal::ShaderResourceView* srvs[] = { &metricBox._metricsBufferSRV };
 		uniforms.Apply(
 			context, 1, 
             UniformsStream{

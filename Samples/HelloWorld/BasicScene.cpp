@@ -398,7 +398,7 @@ namespace Sample
 		auto renderer = _simpleModelRenderer->TryActualize();
 		if (!renderer) return;
 
-		auto drawables = renderer->BuildDrawables(0);
+		auto drawables = renderer->BuildDrawables();
 		auto seqTechnique = MakeSequencerTechnique(parserContext);
 
 		ParameterBox seqShaderSelectors;

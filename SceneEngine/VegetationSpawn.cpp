@@ -19,6 +19,7 @@
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IAnnotator.h"
@@ -40,6 +41,7 @@
 #include "../RenderCore/Assets/DelayedDrawCall.h"
 #include "../RenderCore/Assets/SharedStateSet.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
@@ -208,7 +210,8 @@ namespace SceneEngine
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg, VegetationSpawnResources& res)
     {
@@ -330,10 +333,10 @@ namespace SceneEngine
                 //  We have to call "SetGlobalTransform" to force the camera changes to have effect.
                 //  Ideally there would be a cleaner way to automatically update the constants
                 //  when the bound camera changes...
-            LightingParser_SetGlobalTransform(*metalContext, parserContext, newProjDesc);
+            LightingParser_SetGlobalTransform(context, parserContext, newProjDesc);
 
             MetalStubs::BindSO(*metalContext, MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
-            parserContext.GetSceneParser()->ExecuteScene(context, parserContext, parseSettings, preparedScene, 5);
+            lightingParserContext.GetSceneParser()->ExecuteScene(context, parserContext, lightingParserContext, parseSettings, preparedScene, 5);
             MetalStubs::UnbindSO(*metalContext);
 
                 //  After the scene execute, we need to use a compute shader to separate the 
@@ -417,7 +420,7 @@ namespace SceneEngine
 #endif
 
             // (reset the camera transform if it's changed)
-        LightingParser_SetGlobalTransform(*metalContext, parserContext, oldCamera);
+        LightingParser_SetGlobalTransform(context, parserContext, oldCamera);
 
         MetalStubs::UnbindSO(*metalContext);
         MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
@@ -437,7 +440,7 @@ namespace SceneEngine
 #endif
     }
 
-    bool VegetationSpawn_DrawInstances(
+    static bool VegetationSpawn_DrawInstances(
         Metal::DeviceContext& context,
         VegetationSpawnResources& res,
         unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
@@ -554,15 +557,17 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			PreparedScene&) const;
         virtual void OnLightingResolvePrepare(
-            Metal::DeviceContext& context, LightingParserContext& parserContext,
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&,
             LightingResolveContext& resolveContext) const;
         virtual void OnPostSceneRender(
-            Metal::DeviceContext& context, LightingParserContext& parserContext, 
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
             const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
         virtual void InitBasicLightEnvironment(
-            Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			ShaderLightDesc::BasicEnvironment& env) const;
 
         VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl);
         ~VegetationSpawnPlugin();
@@ -572,25 +577,26 @@ namespace SceneEngine
     };
 
     void VegetationSpawnPlugin::OnPreScenePrepare(
-        RenderCore::IThreadContext& context, LightingParserContext& parserContext, 
+        RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene) const
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
         GPUAnnotation anno(context, "VegetationSpawn");
-        VegetationSpawn_Prepare(context, parserContext, preparedScene, _pimpl->_cfg, *_pimpl->_resources.get()); 
+        VegetationSpawn_Prepare(context, parserContext, lightingParserContext, preparedScene, _pimpl->_cfg, *_pimpl->_resources.get()); 
     }
 
     void VegetationSpawnPlugin::OnLightingResolvePrepare(
-        Metal::DeviceContext& context, LightingParserContext& parserContext,
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&,
         LightingResolveContext& resolveContext) const {}
 
     void VegetationSpawnPlugin::OnPostSceneRender(
-        Metal::DeviceContext& context, LightingParserContext& parserContext, 
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
         const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
 
     void VegetationSpawnPlugin::InitBasicLightEnvironment(
-        Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
 
     VegetationSpawnPlugin::VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl)
     : _pimpl(&pimpl) {}
@@ -647,12 +653,14 @@ namespace SceneEngine
     }
 
     void VegetationSpawnManager::Render(
-        Metal::DeviceContext& context, LightingParserContext& parserContext,
+        RenderCore::IThreadContext& threadContext, RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
         _pimpl->FillInDrawCallSets();
+
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
         auto& sharedStates = _pimpl->_modelCache->GetSharedStateSet();
         auto captureMarker = sharedStates.CaptureState(

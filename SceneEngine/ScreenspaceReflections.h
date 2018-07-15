@@ -8,17 +8,21 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
-    class LightingParserContext;
+	class GlobalLightingDesc;
     RenderCore::Metal::ShaderResourceView
-        ScreenSpaceReflections_BuildTextures(  RenderCore::Metal::DeviceContext* context, 
-                                                LightingParserContext& parserContext,
-                                                unsigned width, unsigned height, bool useMsaaSamplers, 
-                                                const RenderCore::Metal::ShaderResourceView& gbufferDiffuse,
-                                                const RenderCore::Metal::ShaderResourceView& gbufferNormals,
-                                                const RenderCore::Metal::ShaderResourceView& gbufferParam,
-                                                const RenderCore::Metal::ShaderResourceView& depthsSRV);
+        ScreenSpaceReflections_BuildTextures(	
+			RenderCore::Metal::DeviceContext* context, 
+            RenderCore::Techniques::ParsingContext& parserContext,
+            unsigned width, unsigned height, bool useMsaaSamplers, 
+            const RenderCore::Metal::ShaderResourceView& gbufferDiffuse,
+            const RenderCore::Metal::ShaderResourceView& gbufferNormals,
+            const RenderCore::Metal::ShaderResourceView& gbufferParam,
+            const RenderCore::Metal::ShaderResourceView& depthsSRV,
+			const GlobalLightingDesc& globalLightingDesc);
 }
 
 

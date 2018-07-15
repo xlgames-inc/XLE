@@ -22,6 +22,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Format.h"
@@ -464,7 +465,7 @@ namespace SceneEngine
     }
 
     void DrawProjectorFrustums( RenderCore::Metal::DeviceContext* context,
-                                LightingParserContext& parserContext,
+                                Techniques::ParsingContext& parserContext,
                                 Techniques::ProjectionDesc& mainCameraProjection,
                                 float oceanBaseHeight)
     {
@@ -592,7 +593,8 @@ namespace SceneEngine
                 //////////////////////////////////////////////////////////////////////////
 
     void RenderOceanSurface(RenderCore::Metal::DeviceContext* context, 
-                            LightingParserContext& parserContext,
+                            Techniques::ParsingContext& parserContext,
+							LightingParserContext& lightingParserContext,
                             const DeepOceanSimSettings& oceanSettings, 
                             const OceanLightingSettings& oceanLightingSettings,
                             DeepOceanSim& fftBuffer, ShallowWaterSim* shallowWater, 
@@ -611,7 +613,7 @@ namespace SceneEngine
 
         const unsigned dimensions = oceanSettings._gridDimensions;
         const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
-        const float currentTime = parserContext.GetSceneParser()->GetTimeValue();
+        const float currentTime = lightingParserContext.GetSceneParser()->GetTimeValue();
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
         auto renderingConstants = BuildOceanRenderingConstants(oceanSettings, OceanWorldToReflection, currentTime);
 
@@ -649,7 +651,7 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////
         
-        const auto& globalDesc = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+        const auto& globalDesc = lightingParserContext.GetSceneParser()->GetGlobalLightingDesc();
         auto skyProjectionType = SkyTextureParts(globalDesc).BindPS(*context, 6);
 
         bool doDynamicReflection = OceanReflectionResource.GetUnderlying() != nullptr;
@@ -783,7 +785,9 @@ namespace SceneEngine
     
         ////////////////////////////////
 
-    void Ocean_Execute( DeviceContext* context, LightingParserContext& parserContext,
+    void Ocean_Execute( RenderCore::IThreadContext& threadContext,
+						Techniques::ParsingContext& parserContext,
+						LightingParserContext& lightingParserContext,
                         const DeepOceanSimSettings& settings,
                         const OceanLightingSettings& lightingSettings,
                         const ShaderResourceView& depthBufferSRV)
@@ -792,14 +796,16 @@ namespace SceneEngine
 
         CATCH_ASSETS_BEGIN
 
+			auto& context = *Metal::DeviceContext::Get(threadContext);
+
                 //      We need to take a copy of the back buffer for refractions
                 //      we could blur it here -- but is it better blurred or sharp?
-            ViewportDesc mainViewportDesc(*context);
+            ViewportDesc mainViewportDesc(context);
             auto& refractionBox = ConsoleRig::FindCachedBox<RefractionsBuffer>(
                 RefractionsBuffer::Desc(unsigned(mainViewportDesc.Width/2.f), unsigned(mainViewportDesc.Height/2.f)));
-            refractionBox.Build(*context, parserContext, 1.6f);
+            refractionBox.Build(context, parserContext, 1.6f);
 
-			auto duplicatedDepthBuffer = Duplicate(*context, Metal::AsResource(*depthBufferSRV.GetResource()));
+			auto duplicatedDepthBuffer = Duplicate(context, Metal::AsResource(*depthBufferSRV.GetResource()));
             ShaderResourceView secondaryDepthBufferSRV(
                 duplicatedDepthBuffer, 
                 {{TextureViewDesc::Aspect::Depth}});
@@ -816,14 +822,14 @@ namespace SceneEngine
                 settings._gridDimensions, settings._gridDimensions, useDerivativesMap, true);
             ShallowWaterSim* shallowWaterBox = nullptr;
 
-            context->Bind(Techniques::CommonResources()._dssReadOnly);   // write disabled
-            fftBuffer.Update(context, parserContext, settings, OceanBufferCounter);
+            context.Bind(Techniques::CommonResources()._dssReadOnly);   // write disabled
+            fftBuffer.Update(&context, parserContext, settings, OceanBufferCounter);
             if (doShallowWater && MainSurfaceHeightsProvider) {
                 shallowWaterBox = &ConsoleRig::FindCachedBox<ShallowWaterSim>(
                     ShallowWaterSim::Desc(shallowGridDimension, simulatingGridsCount, usePipeModel, false, false, true));
                 shallowWaterBox->ExecuteSim(
                     ShallowWaterSim::SimulationContext(
-                        *context, settings, shallowGridPhysicalDimension,
+                        context, settings, shallowGridPhysicalDimension,
                         Zero<Float2>(),
                         MainSurfaceHeightsProvider,
                         &fftBuffer._workingTextureRealSRV,
@@ -833,7 +839,7 @@ namespace SceneEngine
                     OceanBufferCounter);
             }
             RenderOceanSurface(
-                context, parserContext, settings, lightingSettings, fftBuffer, shallowWaterBox, 
+                &context, parserContext, lightingParserContext, settings, lightingSettings, fftBuffer, shallowWaterBox, 
                 &refractionBox, 
                 //mainTargets._msaaDepthBufferSRV,
                 secondaryDepthBufferSRV,

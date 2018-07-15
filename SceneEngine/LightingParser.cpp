@@ -34,6 +34,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -67,7 +68,8 @@ namespace SceneEngine
 
     void LightingParser_ResolveGBuffer( 
         IThreadContext& context,
-        LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         IMainTargets& mainTargets);
 
     class LightResolveResourcesRes
@@ -80,7 +82,8 @@ namespace SceneEngine
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         Metal::DeviceContext& context,
-        LightingParserContext& parserContext);
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext);
 
     class StateSetResolvers
     {
@@ -182,7 +185,7 @@ namespace SceneEngine
 
     void LightingParser_SetGlobalTransform(
         Metal::DeviceContext& context, 
-        LightingParserContext& parserContext, 
+        Techniques::ParsingContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         parserContext.GetProjectionDesc() = projDesc;
@@ -251,30 +254,32 @@ namespace SceneEngine
     }
 
     void LightingParser_PostProcess(
-        Metal::DeviceContext& context, 
-        LightingParserContext& parserContext)
+        IThreadContext& context, 
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext)
     {
         // nothing here yet!
     }
 
     void LightingParser_PreTranslucency(    
-        Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         const Metal::ShaderResourceView& depthsSRV)
     {
-        Metal::GPUAnnotation anno(context, "PreTranslucency");
+        GPUAnnotation anno(context, "PreTranslucency");
 
             // note --  these things can be executed by the scene parser? Are they better
             //          off handled by the scene parser, or the lighting parser?
         if (Tweakable("OceanDoSimulation", true)) {
-            Ocean_Execute(&context, parserContext, GlobalOceanSettings, GlobalOceanLightingSettings, depthsSRV);
+            Ocean_Execute(context, parserContext, lightingParserContext, GlobalOceanSettings, GlobalOceanLightingSettings, depthsSRV);
         }
 
         if (Tweakable("DoSky", true)) {
-            Sky_RenderPostFog(context, parserContext);
+            Sky_RenderPostFog(context, parserContext, lightingParserContext.GetSceneParser()->GetGlobalLightingDesc());
         }
 
-        auto gblLighting = parserContext.GetSceneParser()->GetGlobalLightingDesc();
+        auto gblLighting = lightingParserContext.GetSceneParser()->GetGlobalLightingDesc();
         if (Tweakable("DoAtmosBlur", true) && gblLighting._doAtmosphereBlur) {
             float farClip = parserContext.GetProjectionDesc()._farClip;
             AtmosphereBlur_Execute(
@@ -287,29 +292,31 @@ namespace SceneEngine
     }
         
     void LightingParser_PostGBufferEffects(    
-        Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
+        IThreadContext& context, 
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         const Metal::ShaderResourceView& depthsSRV,
         const Metal::ShaderResourceView& normalsSRV)
     {
-        Metal::GPUAnnotation anno(context, "PostGBuffer");
+        GPUAnnotation anno(context, "PostGBuffer");
         
         if (Tweakable("DoRain", false)) {
-            Rain_Render(&context, parserContext);
-            Rain_RenderSimParticles(&context, parserContext, depthsSRV, normalsSRV);
+            Rain_Render(context, parserContext);
+            Rain_RenderSimParticles(context, parserContext, depthsSRV, normalsSRV);
         }
 
         if (Tweakable("DoSparks", false)) {
-            SparkParticleTest_RenderSimParticles(&context, parserContext, depthsSRV, normalsSRV);
+            SparkParticleTest_RenderSimParticles(context, parserContext, lightingParserContext.GetSceneParser()->GetTimeValue(), depthsSRV, normalsSRV);
         }
 
         if (Tweakable("DoSun", false)) {
-            SunFlare_Execute(&context, parserContext, depthsSRV);
+            SunFlare_Execute(context, parserContext, depthsSRV, lightingParserContext.GetSceneParser()->GetLightDesc(0));
         }
     }
 
     void LightingParser_Overlays(   IThreadContext& context,
-                                    LightingParserContext& parserContext)
+									Techniques::ParsingContext& parserContext,
+                                    LightingParserContext& lightingParserContext)
     {
         GPUAnnotation anno(context, "Overlays");
 
@@ -329,7 +336,7 @@ namespace SceneEngine
             FFT_DoDebugging(metalContext.get());
         }
 
-        if (Tweakable("MetricsRender", false) && parserContext.GetMetricsBox()) {
+        if (Tweakable("MetricsRender", false) && lightingParserContext.GetMetricsBox()) {
             CATCH_ASSETS_BEGIN
 
                 using namespace RenderCore;
@@ -344,7 +351,7 @@ namespace SceneEngine
                     3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
                 metalContext->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 metalContext->Bind(DepthStencilState(false));
-                metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(parserContext.GetMetricsBox()->_metricsBufferSRV));
+                metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(lightingParserContext.GetMetricsBox()->_metricsBufferSRV));
                 unsigned dimensions[4] = { unsigned(mainViewportDesc.Width), unsigned(mainViewportDesc.Height), 0, 0 };
                 metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
                 metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(MakeMetalCB(dimensions, sizeof(dimensions))));
@@ -360,13 +367,15 @@ namespace SceneEngine
     }
 
     void LightingParser_PrepareShadows(
-        IThreadContext& context, Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext, PreparedScene& preparedScene,
+        IThreadContext& context,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+        LightingParserContext& lightingParserContext, PreparedScene& preparedScene,
         IMainTargets& mainTargets);
 
     static void ExecuteScene(
         IThreadContext& context,
-        LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         const SPS& parseSettings,
         PreparedScene& preparedScene,
         unsigned techniqueIndex,
@@ -374,8 +383,8 @@ namespace SceneEngine
     {
         CATCH_ASSETS_BEGIN
             GPUAnnotation anno(context, name);
-            parserContext.GetSceneParser()->ExecuteScene(
-                context, parserContext, parseSettings, preparedScene, techniqueIndex);
+            lightingParserContext.GetSceneParser()->ExecuteScene(
+                context, parserContext, lightingParserContext, parseSettings, preparedScene, techniqueIndex);
         CATCH_ASSETS_END(parserContext)
     }
 
@@ -387,12 +396,13 @@ namespace SceneEngine
     static void ForwardLightingModel_Render(
         IThreadContext& context,
         Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         IMainTargets& targets)
     {
         const auto sampleCount = targets.GetSampling()._sampleCount;
-        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
+        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, lightingParserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
@@ -410,7 +420,7 @@ namespace SceneEngine
         {
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             ExecuteScene(
-                context, parserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
+                context, parserContext, lightingParserContext, SPS(SPS::BatchFilter::PreDepth, normalRenderToggles),
                 preparedScene,
                 TechniqueIndex_DepthOnly, "MainScene-DepthOnly");
         }
@@ -431,7 +441,7 @@ namespace SceneEngine
             /////
             
         ExecuteScene(
-            context, parserContext, SPS(SPS::BatchFilter::General, normalRenderToggles),
+            context, parserContext, lightingParserContext, SPS(SPS::BatchFilter::General, normalRenderToggles),
             preparedScene,
             TechniqueIndex_General, "MainScene-General");
 
@@ -486,8 +496,8 @@ namespace SceneEngine
 
     static void LightingParser_DeferredPostGBuffer(
         IThreadContext& context,
-        Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         IMainTargets& mainTargets)
     {
@@ -495,29 +505,30 @@ namespace SceneEngine
             //  Render translucent objects (etc)
             //  everything after the gbuffer resolve
         LightingParser_PreTranslucency(
-            metalContext, parserContext, 
+            context, parserContext, lightingParserContext,
             mainTargets.GetSRV(IMainTargets::MultisampledDepth));
 
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         ReturnToSteadyState(metalContext);
 
             // We must bind all of the lighting resolve resources here
             //  -- because we'll be doing lighting operations in the pixel
             //      shaders in a forward-lit way
-        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext);
+        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, lightingParserContext);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
 
         AutoCleanup bindShadowsCleanup;
-        if (!parserContext._preparedDMShadows.empty()) {
-            BindShadowsForForwardResolve(metalContext, parserContext, parserContext._preparedDMShadows[0].second);
+        if (!lightingParserContext._preparedDMShadows.empty()) {
+            BindShadowsForForwardResolve(metalContext, parserContext, lightingParserContext._preparedDMShadows[0].second);
             bindShadowsCleanup = MakeAutoCleanup(
                 [&metalContext, &parserContext]() 
                 { UnbindShadowsForForwardResolve(metalContext, parserContext); });
         }
                     
         //////////////////////////////////////////////////////////////////////////////////////////////////
-        const bool hasOITrans = BatchHasContent(parserContext, SPS::BatchFilter::OITransparent);
+        const bool hasOITrans = BatchHasContent(lightingParserContext, SPS::BatchFilter::OITransparent);
 
         enum OIMode { Unordered, Stochastic, DepthWeighted, SortedRef } oiMode;
         switch (Tweakable("OITransMode", 1)) {
@@ -540,15 +551,15 @@ namespace SceneEngine
         if (oiMode == OIMode::SortedRef && Tweakable("TransPrePass", false)) {
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
             ExecuteScene(
-                context, parserContext, SPS::BatchFilter::TransparentPreDepth,
+                context, parserContext, lightingParserContext, SPS::BatchFilter::TransparentPreDepth,
                 preparedScene,
                 TechniqueIndex_DepthOnly, "MainScene-TransPreDepth");
         }
 
-        if (BatchHasContent(parserContext, SPS::BatchFilter::Transparent)) {
+        if (BatchHasContent(lightingParserContext, SPS::BatchFilter::Transparent)) {
             StateSetChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
             ExecuteScene(
-                context, parserContext, SPS::BatchFilter::Transparent,
+                context, parserContext, lightingParserContext, SPS::BatchFilter::Transparent,
                 preparedScene,
                 TechniqueIndex_General, "MainScene-PostGBuffer");
         }
@@ -622,12 +633,12 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         LightingParser_PostGBufferEffects(
-            metalContext, parserContext, 
+            context, parserContext, lightingParserContext,
             mainTargets.GetSRV(IMainTargets::MultisampledDepth), 
             mainTargets.GetSRV(IMainTargets::GBufferNormals));
 
-        for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
+        for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
+            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, SPS::BatchFilter::Transparent, TechniqueIndex_General);
     }
 
     class FrameBufferDescBox
@@ -814,7 +825,8 @@ namespace SceneEngine
     void LightingParser_MainScene(
         IThreadContext& context,
         Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         MainTargets& mainTargets,
         const RenderingQualitySettings& qualitySettings)
@@ -879,13 +891,13 @@ namespace SceneEngine
                 metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]));
 
                 ExecuteScene(
-                    context, parserContext, SPS::BatchFilter::General,
+                    context, parserContext, lightingParserContext, SPS::BatchFilter::General,
                     preparedScene,
                     TechniqueIndex_Deferred, "MainScene-OpaqueGBuffer");
             } CATCH_ASSETS_END(parserContext)
 
-            for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
-                (*p)->OnPostSceneRender(metalContext, parserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
+            for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
+                (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, SPS::BatchFilter::General, TechniqueIndex_Deferred);
 
                 //
             //////////////////////////////////////////////////////////////////////////////////////
@@ -893,14 +905,14 @@ namespace SceneEngine
                 //
 
             CATCH_ASSETS_BEGIN {
-                LightingParser_ResolveGBuffer(context, parserContext, mainTargets);
+                LightingParser_ResolveGBuffer(context, parserContext, lightingParserContext, mainTargets);
             } CATCH_ASSETS_END(parserContext)
 
                 // Post lighting resolve operations... (must rebind the depth buffer)
             metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
             CATCH_ASSETS_BEGIN
-                LightingParser_DeferredPostGBuffer(context, metalContext, parserContext, preparedScene, mainTargets);
+                LightingParser_DeferredPostGBuffer(context, parserContext, lightingParserContext, preparedScene, mainTargets);
             CATCH_ASSETS_END(parserContext)
 
         } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Forward) {
@@ -960,9 +972,9 @@ namespace SceneEngine
             LightingParser_PostProcess(metalContext, parserContext);
 #endif
 
-            auto toneMapSettings = parserContext.GetSceneParser()->GetToneMapSettings();
+            auto toneMapSettings = lightingParserContext.GetSceneParser()->GetToneMapSettings();
             LuminanceResult luminanceResult;
-            if (parserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
+            if (lightingParserContext.GetSceneParser()->GetToneMapSettings()._flags & ToneMapSettings::Flags::EnableToneMap) {
                     //  (must resolve luminance early, because we use it during the MSAA resolve)
                 luminanceResult = ToneMap_SampleLuminance(
                     context, parserContext, toneMapSettings, 
@@ -995,7 +1007,8 @@ namespace SceneEngine
 
     PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         IThreadContext& context,
-        Metal::DeviceContext& metalContext, LightingParserContext& parserContext, 
+        Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext, 
         PreparedScene& preparedScene,
         IMainTargets& mainTargets,
         const ShadowProjectionDesc& frustum,
@@ -1006,8 +1019,10 @@ namespace SceneEngine
             return PreparedDMShadowFrustum();
 
         SPS sceneParseSettings(SPS::BatchFilter::DMShadows, ~SPS::Toggles::BitField(0), shadowFrustumIndex);
-        if (!BatchHasContent(parserContext, sceneParseSettings))
+        if (!BatchHasContent(lightingParserContext, sceneParseSettings))
             return PreparedDMShadowFrustum();
+
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
         PreparedDMShadowFrustum preparedResult;
         preparedResult.InitialiseConstants(&metalContext, frustum._projections);
@@ -1091,34 +1106,37 @@ namespace SceneEngine
         StateSetChangeMarker stateMarker(parserContext, resources._stateResolver);
         metalContext.Bind(resources._rasterizerState);
         ExecuteScene(
-            context, parserContext, sceneParseSettings,
+            context, parserContext, lightingParserContext, sceneParseSettings,
             preparedScene,
             TechniqueIndex_ShadowGen, "ShadowGen-Prepare");
 
-        for (auto p=parserContext._plugins.cbegin(); p!=parserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(metalContext, parserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
+        for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
+            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, sceneParseSettings, TechniqueIndex_ShadowGen);
         
         return std::move(preparedResult);
     }
 
     PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
         IThreadContext& context,
-        Metal::DeviceContext& metalContext, LightingParserContext& parserContext,
+		Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene, const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
-        return PrepareRTShadows(context, metalContext, parserContext, preparedScene, frustum, shadowFrustumIndex);
+        return PrepareRTShadows(context, parserContext, lightingParserContext, preparedScene, frustum, shadowFrustumIndex);
     }
 
     void LightingParser_PrepareShadows(
-        IThreadContext& context, Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext, PreparedScene& preparedScene,
+        IThreadContext& context,
+        Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
+		PreparedScene& preparedScene,
         IMainTargets& mainTargets)
     {
-        auto* scene = parserContext.GetSceneParser();
+        auto* scene = lightingParserContext.GetSceneParser();
         if (!scene) {
-            parserContext._preparedDMShadows.clear();
-            parserContext._preparedRTShadows.clear();
+            lightingParserContext._preparedDMShadows.clear();
+            lightingParserContext._preparedRTShadows.clear();
             return;
         }
 
@@ -1126,22 +1144,22 @@ namespace SceneEngine
 
             // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = scene->GetShadowProjectionCount();
-        parserContext._preparedDMShadows.reserve(shadowFrustumCount);
+        lightingParserContext._preparedDMShadows.reserve(shadowFrustumCount);
 
         for (unsigned c=0; c<shadowFrustumCount; ++c) {
             auto frustum = scene->GetShadowProjectionDesc(c, parserContext.GetProjectionDesc());
             CATCH_ASSETS_BEGIN
                 if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 
-                    auto shadow = LightingParser_PrepareDMShadow(context, metalContext, parserContext, preparedScene, mainTargets, frustum, c);
+                    auto shadow = LightingParser_PrepareDMShadow(context, parserContext, lightingParserContext, preparedScene, mainTargets, frustum, c);
                     if (shadow.IsReady())
-                        parserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+                        lightingParserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
                 } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
 
-                    auto shadow = LightingParser_PrepareRTShadow(context, metalContext, parserContext, preparedScene, frustum, c);
+                    auto shadow = LightingParser_PrepareRTShadow(context, parserContext, lightingParserContext, preparedScene, frustum, c);
                     if (shadow.IsReady())
-                        parserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+                        lightingParserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
                 }
             CATCH_ASSETS_END(parserContext)
@@ -1150,12 +1168,14 @@ namespace SceneEngine
 
     void LightingParser_InitBasicLightEnv(  
         Metal::DeviceContext& context,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         ISceneParser& sceneParser);
 
     AttachedSceneMarker LightingParser_SetupScene(
-        Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         ISceneParser* sceneParser,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {
@@ -1166,45 +1186,48 @@ namespace SceneEngine
         } time { 0.f, samplingPassIndex, samplingPassCount, 0 };
         if (sceneParser)
             time._time = sceneParser->GetTimeValue();
+		auto& metalContext = *Metal::DeviceContext::Get(context);
         parserContext.SetGlobalCB(
-            context, Techniques::TechniqueContext::CB_GlobalState,
+            metalContext, Techniques::TechniqueContext::CB_GlobalState,
             &time, sizeof(time));
 
         if (sceneParser)
-            LightingParser_InitBasicLightEnv(context, parserContext, *sceneParser);
+            LightingParser_InitBasicLightEnv(metalContext, parserContext, lightingParserContext, *sceneParser);
 
         auto& metricsBox = ConsoleRig::FindCachedBox2<MetricsBox>();
-        context.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
-        parserContext.SetMetricsBox(&metricsBox);
+        metalContext.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
+        lightingParserContext.SetMetricsBox(&metricsBox);
 
-        return parserContext.SetSceneParser(sceneParser);
+        return lightingParserContext.SetSceneParser(sceneParser);
     }
 
     void LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         ISceneParser& scene,
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings)
     {
-        auto metalContext = Metal::DeviceContext::Get(context);
-        auto marker = LightingParser_SetupScene(*metalContext.get(), parserContext, &scene);
+        auto& metalContext = *Metal::DeviceContext::Get(context);
+        auto marker = LightingParser_SetupScene(context, parserContext, lightingParserContext, &scene);
         LightingParser_SetGlobalTransform(
-            *metalContext.get(), parserContext, 
+            metalContext, parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions));
-        scene.PrepareScene(context, parserContext, marker.GetPreparedScene());
+        scene.PrepareScene(context, parserContext, lightingParserContext, marker.GetPreparedScene());
 
         // Throw in a "frame priority barrier" here, right after the prepare scene. This will
         // force all uploads started during PrepareScene to be completed when we next call
         // bufferUploads.Update(). Normally we want a gap between FramePriority_Barrier() and
         // Update(), because this gives some time for the background thread to run.
         GetBufferUploads().FramePriority_Barrier();
-        LightingParser_ExecuteScene(context, parserContext, qualitySettings, marker.GetPreparedScene());
+        LightingParser_ExecuteScene(context, parserContext, lightingParserContext, qualitySettings, marker.GetPreparedScene());
     }
 
     void LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         const RenderingQualitySettings& qualitySettings,
         PreparedScene& preparedScene)
     {
@@ -1219,19 +1242,19 @@ namespace SceneEngine
 
         {
             GPUAnnotation anno(context, "Prepare");
-            for (auto i=parserContext._plugins.cbegin(); i!=parserContext._plugins.cend(); ++i) {
+            for (auto i=lightingParserContext._plugins.cbegin(); i!=lightingParserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    (*i)->OnPreScenePrepare(context, parserContext, preparedScene);
+                    (*i)->OnPreScenePrepare(context, parserContext, lightingParserContext, preparedScene);
                 CATCH_ASSETS_END(parserContext)
             }
 
-            LightingParser_PrepareShadows(context, *metalContext, parserContext, preparedScene, mainTargets);
+            LightingParser_PrepareShadows(context, parserContext, lightingParserContext, preparedScene, mainTargets);
         }
 
         GetBufferUploads().Update(context, true);
 
         CATCH_ASSETS_BEGIN
-            LightingParser_MainScene(context, *metalContext, parserContext, preparedScene, mainTargets, qualitySettings);
+            LightingParser_MainScene(context, *metalContext, parserContext, lightingParserContext, preparedScene, mainTargets, qualitySettings);
         CATCH_ASSETS_END(parserContext)
     }
 
@@ -1246,24 +1269,15 @@ namespace SceneEngine
         _preparedRTShadows.clear();
     }
 
-    LightingParserContext::LightingParserContext(
-        const Techniques::TechniqueContext& techniqueContext, 
-        Techniques::AttachmentPool* namedResources,
-		RenderCore::Techniques::FrameBufferPool* frameBufferPool)
-    : ParsingContext(techniqueContext, namedResources, frameBufferPool)
-    , _sceneParser(nullptr)
-    {
-        _metricsBox = nullptr;
-    }
-
-    LightingParserContext::~LightingParserContext() {}
-
     AttachedSceneMarker LightingParserContext::SetSceneParser(ISceneParser* sceneParser)
     {
         assert(_sceneParser == nullptr);
         _sceneParser = sceneParser;
         return AttachedSceneMarker(*this);
     }
+
+	LightingParserContext::LightingParserContext() {}
+	LightingParserContext::~LightingParserContext() {}
 
     RenderingQualitySettings::RenderingQualitySettings()
     {

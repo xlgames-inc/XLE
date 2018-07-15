@@ -7,7 +7,6 @@
 #include "OverlaySystem.h"
 #include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"

@@ -7,17 +7,18 @@
 #include "DualContourRender.h"
 #include "DualContour.h"
 #include "OITInternal.h"
-#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "RefractionsBuffer.h"  // for BuildDuplicatedDepthBuffer
 #include "MetalStubs.h"
 
 #include "../RenderCore/Format.h"
+#include "../RenderCore/BufferView.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/ShaderVariationSet.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/State.h"
@@ -117,7 +118,7 @@ namespace SceneEngine
 
     static void MainRender(
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex, const DualContourRenderer::Pimpl* pimpl)
     {
         TRY {
@@ -151,7 +152,7 @@ namespace SceneEngine
 
     static void ResolveOIT(
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         TransparencyTargetsBox& targets,
         Metal::ShaderResourceView& duplicatedDepthBuffer)
     {
@@ -181,7 +182,7 @@ namespace SceneEngine
 
     static void RenderMainSceneViaOIT(
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         const DualContourRenderer::Pimpl* pimpl)
     {
         TRY {
@@ -247,7 +248,7 @@ namespace SceneEngine
 
     void DualContourRenderer::Render(
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex) const
     {
             // render as a solid object (into main scene or shadow scene)
@@ -258,7 +259,7 @@ namespace SceneEngine
 
     void DualContourRenderer::RenderUnsortedTrans(
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex) const
     {
             // (intended to be used when rendering wireframe)
@@ -270,7 +271,7 @@ namespace SceneEngine
 
     void DualContourRenderer::RenderAsCloud( 
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
             // render as a cloud, during a post-opaque rendering
         RenderMainSceneViaOIT(context, parserContext, _pimpl.get());
@@ -313,8 +314,8 @@ namespace SceneEngine
     {}
 
     void    DualContourMesh_DebuggingRender(
-            RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& parserContext,
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex,
             const DualContourMesh& mesh)
     {
@@ -332,16 +333,18 @@ namespace SceneEngine
                 { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
                 ParameterBox());
 
+			auto& metalContext = *Metal::DeviceContext::Get(context);
+
             auto shader = material.FindVariation(parserContext, techniqueIndex, "illum");
             if (shader._shader._shaderProgram) {
-				shader._shader.ApplyUniforms(*context, 0, parserContext.GetGlobalUniformsStream());
+				shader._shader.ApplyUniforms(metalContext, 0, parserContext.GetGlobalUniformsStream());
 				ConstantBufferView cbvs[] = {
                     MakeLocalTransformPacket(
                         Identity<Float4x4>(),
                         ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
                     shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
                 };
-				shader._shader.ApplyUniforms(*context, 1, UniformsStream{MakeIteratorRange(cbvs)});
+				shader._shader.ApplyUniforms(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
                 auto vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(mesh._vertices));
 
@@ -353,16 +356,16 @@ namespace SceneEngine
                 auto ib = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(ibData));
 				
 				shader._shader.Apply(
-                    *context, parserContext, 
+                    metalContext, parserContext, 
 					{VertexBufferView{vb}});
-                context->Bind(
+                metalContext.Bind(
 					*(Metal::Resource*)ib->QueryInterface(typeid(Metal::Resource).hash_code()), 
 					(indexSize==4)?Format::R32_UINT:Format::R16_UINT);
 
-                context->Bind(Topology::TriangleList);
-                context->Bind(Techniques::CommonResources()._dssReadWrite);
+                metalContext.Bind(Topology::TriangleList);
+                metalContext.Bind(Techniques::CommonResources()._dssReadWrite);
 
-                context->DrawIndexed(unsigned(ibDataCount));
+                metalContext.DrawIndexed(unsigned(ibDataCount));
             }
         }
         CATCH_ASSETS(parserContext)

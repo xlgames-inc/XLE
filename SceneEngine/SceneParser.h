@@ -8,7 +8,7 @@
 
 #include "../RenderCore/IThreadContext_Forward.h"
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; } }
 
 namespace SceneEngine
 {
@@ -56,13 +56,15 @@ namespace SceneEngine
         virtual auto GetCameraDesc() const -> RenderCore::Techniques::CameraDesc = 0;
         virtual void ExecuteScene(
             RenderCore::IThreadContext& context,
-            LightingParserContext& parserContext, 
+			RenderCore::Techniques::ParsingContext& parserContext,
+            LightingParserContext& lightingParserContext, 
             const SceneParseSettings& parseSettings,
             PreparedScene& preparedPackets,
             unsigned techniqueIndex) const = 0;
         virtual void PrepareScene(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext,
+			RenderCore::Techniques::ParsingContext& parserContext,
+            LightingParserContext& lightingParserContext,
             PreparedScene& preparedPackets) const = 0;
         virtual bool HasContent(const SceneParseSettings& parseSettings) const = 0;
 

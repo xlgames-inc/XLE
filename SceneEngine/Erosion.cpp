@@ -10,7 +10,6 @@
 #include "DeepOceanSim.h"
 #include "SceneEngineUtils.h"
 #include "SurfaceHeightsProvider.h"
-#include "LightingParserContext.h"
 #include "MetalStubs.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -20,6 +19,7 @@
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../Assets/Assets.h"
 #include "../Utility/BitUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -343,7 +343,7 @@ namespace SceneEngine
 
     void    ErosionSimulation::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderDebugMode mode,
         const Float2& worldSpaceOffset)
     {

@@ -6,13 +6,13 @@
 
 #include "LightingTargets.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "MetalStubs.h"
 
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetUtils.h"
@@ -537,7 +537,7 @@ namespace SceneEngine
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool useMsaaSamplers, unsigned debuggingType)
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, bool useMsaaSamplers, unsigned debuggingType)
     {
         using namespace RenderCore;
 

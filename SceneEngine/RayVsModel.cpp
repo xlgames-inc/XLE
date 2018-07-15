@@ -16,6 +16,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -32,7 +33,7 @@ namespace SceneEngine
         ModelIntersectionResources* _res;
         MetalStubs::GeometryShader::StreamOutputInitializers _oldSO;
 
-        LightingParserContext _parserContext;
+        RenderCore::Techniques::ParsingContext _parserContext;
 
         Pimpl(const Techniques::TechniqueContext& techniqueContext)
             : _parserContext(techniqueContext) {}
@@ -175,7 +176,7 @@ namespace SceneEngine
                 9, MakeMetalCB(&frustumDefinitionCBuffer, sizeof(frustumDefinitionCBuffer))));
     }
 
-    LightingParserContext& ModelIntersectionStateContext::GetParserContext()
+    RenderCore::Techniques::ParsingContext& ModelIntersectionStateContext::GetParserContext()
     {
         return _pimpl->_parserContext;
     }
@@ -219,9 +220,9 @@ namespace SceneEngine
         Techniques::CameraDesc camera;
         if (cameraForLOD) { camera = *cameraForLOD; }
 
-        auto marker = LightingParser_SetupScene(*metalContext.get(), _pimpl->_parserContext);
+        auto marker = LightingParser_SetupScene(*threadContext, _pimpl->_parserContext);
         LightingParser_SetGlobalTransform(
-            *metalContext.get(), _pimpl->_parserContext, 
+            *threadContext, _pimpl->_parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions, &specialProjMatrix));
 
         _pimpl->_oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();

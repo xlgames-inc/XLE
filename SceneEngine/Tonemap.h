@@ -17,7 +17,6 @@ namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
     class ToneMapSettings;
     class ToneMapLuminanceResult;
 
@@ -38,13 +37,6 @@ namespace SceneEngine
         LuminanceResult& operator=(const LuminanceResult&) = delete;
         LuminanceResult(const LuminanceResult&) = delete;
     };
-
-    LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
-        const ToneMapSettings& settings,
-        const RenderCore::Metal::ShaderResourceView& inputResource,
-        bool doAdapt = true);
 
     LuminanceResult ToneMap_SampleLuminance(
         RenderCore::IThreadContext& context, 
@@ -70,7 +62,7 @@ namespace SceneEngine
     };
 
     void AtmosphereBlur_Execute(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext,
         const AtmosphereBlurSettings& settings);
 
     class ToneMapSettings 

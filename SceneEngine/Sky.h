@@ -11,18 +11,11 @@
 #include "../RenderCore/Metal/Forward.h"
 
 namespace RenderCore { namespace Assets { class DeferredShaderResource; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { class IThreadContext; }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-    void    Sky_Render(
-        RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
-        bool blendFog);
-    void    Sky_RenderPostFog(
-        RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext);
-
     class SkyTextureParts
     {
     public:
@@ -40,5 +33,16 @@ namespace SceneEngine
             GlobalLightingDesc::SkyTextureType assetType);
         SkyTextureParts(const GlobalLightingDesc& globalDesc);
     };
+
+	void    Sky_Render(
+        RenderCore::IThreadContext& threadContext, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+		const GlobalLightingDesc& globalLightingDesc,
+        bool blendFog);
+    void    Sky_RenderPostFog(
+        RenderCore::IThreadContext& threadContext, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+		const SkyTextureParts& globalLightingDesc);
+
 }
 

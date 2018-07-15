@@ -24,6 +24,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../Assets/Assets.h"
@@ -147,8 +148,8 @@ namespace SceneEngine
 
     PreparedRTShadowFrustum PrepareRTShadows(
         IThreadContext& context,
-        Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
         PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
@@ -157,7 +158,7 @@ namespace SceneEngine
             SceneParseSettings::BatchFilter::RayTracedShadows, 
             ~SceneParseSettings::Toggles::BitField(0),
             shadowFrustumIndex);
-        if (!parserContext.GetSceneParser()->HasContent(sceneParseSettings))
+        if (!lightingParserContext.GetSceneParser()->HasContent(sceneParseSettings))
             return PreparedRTShadowFrustum();
 
         GPUAnnotation anno(context, "Prepare-RTShadows");
@@ -180,6 +181,8 @@ namespace SceneEngine
             InputElementDesc("C", 0, Format::R32G32B32A32_FLOAT),
             InputElementDesc("D", 0, Format::R32G32B32_FLOAT)
         };
+
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
         MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 5, 3);
 
@@ -239,8 +242,8 @@ namespace SceneEngine
             });
 
         CATCH_ASSETS_BEGIN
-            parserContext.GetSceneParser()->ExecuteScene(
-                context, parserContext, sceneParseSettings, 
+            lightingParserContext.GetSceneParser()->ExecuteScene(
+                context, parserContext, lightingParserContext, sceneParseSettings, 
                 preparedScene, TechniqueIndex_RTShadowGen);
         CATCH_ASSETS_END(parserContext)
 
@@ -297,7 +300,9 @@ namespace SceneEngine
 
     void RTShadows_DrawMetrics(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext, IMainTargets& mainTargets)
+        RenderCore::Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
+		IMainTargets& mainTargets)
     {
         SavedTargets savedTargets(context);
         auto restoreMarker = savedTargets.MakeResetMarker(context);
@@ -334,7 +339,7 @@ namespace SceneEngine
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
 
-        for (const auto& p:parserContext._preparedRTShadows) {
+        for (const auto& p:lightingParserContext._preparedRTShadows) {
             const Metal::ShaderResourceView* srvs[] = 
                 { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &mainTargets.GetSRV(IMainTargets::MultisampledDepth) };
 

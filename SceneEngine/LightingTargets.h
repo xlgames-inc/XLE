@@ -16,6 +16,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 
 namespace RenderCore { class TextureViewDesc; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -211,8 +212,7 @@ namespace SceneEngine
         void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets);
     #endif
 
-    class LightingParserContext;
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool useMsaaSamplers, unsigned debuggingType);
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, bool useMsaaSamplers, unsigned debuggingType);
 
 }
 

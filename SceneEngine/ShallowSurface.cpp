@@ -18,6 +18,7 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -374,7 +375,7 @@ namespace SceneEngine
 
     void ShallowSurface::UpdateSimulation(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         ISurfaceHeightsProvider* surfaceHeights)
     {
         _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
@@ -435,7 +436,7 @@ namespace SceneEngine
 
     void ShallowSurface::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         unsigned skyProjType, bool refractionsEnable)
     {
@@ -553,7 +554,7 @@ namespace SceneEngine
 
     static bool BindRefractions(
         Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         float refractionStdDev, bool doStepDown)
     {
         Metal::ViewportDesc mainViewportDesc(metalContext);
@@ -580,9 +581,10 @@ namespace SceneEngine
 
     void ShallowSurfaceManager::RenderDebugging(
         Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
-        ISurfaceHeightsProvider* surfaceHeights)
+        ISurfaceHeightsProvider* surfaceHeights,
+		const GlobalLightingDesc& globalLightingDesc)
     {
         if (_pimpl->_surfaces.empty()) return;
         if (!Tweakable("DoShallowSurface", true)) return;
@@ -612,7 +614,7 @@ namespace SceneEngine
                 metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1, _pimpl->_oceanSim->_normalsTextureSRV));
             }
 
-            auto skyProjectionType = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
+            auto skyProjectionType = SkyTextureParts(globalLightingDesc).BindPS(metalContext, 11);
 
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4,
 				*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));

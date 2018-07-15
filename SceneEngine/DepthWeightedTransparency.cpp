@@ -6,7 +6,6 @@
 
 #include "DepthWeightedTransparency.h"
 #include "GestaltResource.h"
-#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
@@ -17,6 +16,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
@@ -164,7 +164,7 @@ namespace SceneEngine
 
     DepthWeightedTransparencyOp::DepthWeightedTransparencyOp(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext) 
+        RenderCore::Techniques::ParsingContext& parserContext) 
     : _context(&context)
     , _parserContext(&parserContext)
     , _box(nullptr)

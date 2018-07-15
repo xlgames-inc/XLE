@@ -6,9 +6,9 @@
 
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "MetalStubs.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -66,7 +66,7 @@ namespace SceneEngine
 
     void RefractionsBuffer::Build(
         RenderCore::Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         float standardDeviationForBlur)
     {
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp

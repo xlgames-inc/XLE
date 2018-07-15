@@ -7,9 +7,6 @@
 #pragma once
 
 #include "PreparedScene.h"
-#include "../RenderCore/IThreadContext_Forward.h"
-#include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Metal/Forward.h"
 #include <functional>
 
 namespace RenderCore { namespace Techniques 
@@ -17,7 +14,10 @@ namespace RenderCore { namespace Techniques
     class CameraDesc; class ProjectionDesc; 
     class TechniqueContext;
     class TechniqueInterface;
+	class ParsingContext;
 }}
+
+namespace RenderCore { class IThreadContext; }
 
 namespace SceneEngine
 {
@@ -31,7 +31,7 @@ namespace SceneEngine
 
     using LightId = unsigned;
 
-    class LightingParserContext : public RenderCore::Techniques::ParsingContext
+    class LightingParserContext
     {
     public:
 
@@ -39,34 +39,28 @@ namespace SceneEngine
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }
         void            SetMetricsBox(MetricsBox* box);
         ISceneParser*   GetSceneParser()                    { return _sceneParser; }
+		const ISceneParser*   GetSceneParser() const		{ return _sceneParser; }
 
             //  ----------------- Working shadow state ----------------- 
         std::vector<std::pair<LightId, PreparedDMShadowFrustum>>    _preparedDMShadows;
         std::vector<std::pair<LightId, PreparedRTShadowFrustum>>    _preparedRTShadows;
-
-            //  ----------------- Overlays for late rendering -----------------
-        typedef std::function<void(RenderCore::Metal::DeviceContext&, LightingParserContext&)> PendingOverlay;
-        std::vector<PendingOverlay> _pendingOverlays;
 
             //  ----------------- Plugins -----------------
         std::vector<std::shared_ptr<ILightingParserPlugin>> _plugins;
 
         void Reset();
 
-        LightingParserContext(
-            const RenderCore::Techniques::TechniqueContext& techniqueContext, 
-            RenderCore::Techniques::AttachmentPool* namedResources = nullptr,
-			RenderCore::Techniques::FrameBufferPool* frameBufferPool = nullptr);
-        ~LightingParserContext();
+		LightingParserContext();
+		~LightingParserContext();
 
     private:
-        MetricsBox*         _metricsBox;
-        ISceneParser*       _sceneParser;
+        MetricsBox*         _metricsBox = nullptr;
+        ISceneParser*       _sceneParser = nullptr;
 
         friend class AttachedSceneMarker;
         AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
         friend AttachedSceneMarker LightingParser_SetupScene(
-            RenderCore::Metal::DeviceContext&, LightingParserContext&, 
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
             ISceneParser*, unsigned, unsigned);
     };
 

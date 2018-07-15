@@ -18,7 +18,7 @@
 
 #define TERRAIN_ENABLE_EDITING
 
-namespace RenderCore { namespace Techniques { class  ProjectionDesc; }}
+namespace RenderCore { namespace Techniques { class  ProjectionDesc; class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -95,7 +95,7 @@ namespace SceneEngine
 		void CompletePendingUploads(); 
 		std::vector<std::pair<uint64, uint32>> CompletePendingUploads_Bridge();
         void QueueUploads(TerrainRenderingContext& terrainContext);
-        void Render(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext);
+        void Render(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, TerrainRenderingContext& terrainContext);
 
         Int2 GetHeightsElementSize() const                  { return _heightMapTileSet->GetTileSize(); }
         const TerrainCoverageId* GetCoverageIds() const     { return AsPointer(_coverageIds.cbegin()); }
@@ -212,7 +212,7 @@ namespace SceneEngine
         friend class TerrainSurfaceHeightsProvider;
 
         void    CullNodes(const RenderCore::Techniques::ProjectionDesc& projDesc, TerrainRenderingContext& terrainContext, CellRenderInfo& cellRenderInfo, const Float4x4& localToWorld);
-        void    RenderNode(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, TerrainRenderingContext& terrainContext, CellRenderInfo& cellRenderInfo, unsigned absNodeIndex, int8 neighbourLodDiffs[4]);
+        void    RenderNode(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, TerrainRenderingContext& terrainContext, CellRenderInfo& cellRenderInfo, unsigned absNodeIndex, int8 neighbourLodDiffs[4]);
 
         void    CullNodes(
             TerrainRenderingContext& terrainContext, TerrainCollapseContext& collapseContext,
@@ -357,8 +357,8 @@ namespace SceneEngine
 
         enum Mode { Mode_Normal, Mode_RayTest, Mode_VegetationPrepare };
 
-        void    EnterState(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext, const TerrainMaterialTextures& materials, UInt2 elementSize, Mode mode = Mode_Normal);
-        void    ExitState(RenderCore::Metal::DeviceContext* context, LightingParserContext& parserContext);
+        void    EnterState(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, const TerrainMaterialTextures& materials, UInt2 elementSize, Mode mode = Mode_Normal);
+        void    ExitState(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext);
     };
 }
 

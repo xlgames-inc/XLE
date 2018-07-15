@@ -6,7 +6,6 @@
 
 #include "Tonemap.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "LightDesc.h"
 #include "GestaltResource.h"
@@ -14,6 +13,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -574,8 +574,8 @@ namespace SceneEngine
     }
 
     LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+		RenderCore::Techniques::ParsingContext& parserContext,
         const ToneMapSettings& settings,
         const RenderCore::Metal::ShaderResourceView& inputResource,
         bool doAdapt)
@@ -595,20 +595,6 @@ namespace SceneEngine
         }
 
         return LuminanceResult();
-    }
-
-    LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::IThreadContext& context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        const ToneMapSettings& settings,
-        const RenderCore::Metal::ShaderResourceView& inputResource,
-        bool doAdapt)
-    {
-        auto& toneMapRes = GetResources(inputResource);
-        bool success = TryCalculateInputs(
-            context, parserContext, 
-            toneMapRes, settings, inputResource, doAdapt);
-        return LuminanceResult(toneMapRes._propertiesBuffer.SRV(), toneMapRes._bloomBuffers[0]._bloomBuffer.SRV(), success);
     }
 
     LuminanceResult::LuminanceResult() : _isGood(false) {}
@@ -925,12 +911,14 @@ namespace SceneEngine
     AtmosphereBlurResources::~AtmosphereBlurResources() {}
 
     void AtmosphereBlur_Execute(
-        Metal::DeviceContext& context, LightingParserContext& parserContext,
+        RenderCore::IThreadContext& threadContext, RenderCore::Techniques::ParsingContext& parserContext,
         const AtmosphereBlurSettings& settings)
     {
             //  simple distance blur for the main camera
             //  sometimes called depth-of-field; but really it's blurring of distant objects
             //  caused by the atmosphere. Depth of field is an artifact that occurs in lens.
+
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
         Metal::ViewportDesc viewport(context);
         SavedTargets savedTargets(context);

@@ -6,7 +6,6 @@
 
 #include "StochasticTransparency.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "GestaltResource.h"
 #include "MetricsBox.h"
 #include "MetalStubs.h"
@@ -17,6 +16,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -163,7 +163,7 @@ namespace SceneEngine
 
     StochasticTransparencyOp::StochasticTransparencyOp(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext) 
+        Techniques::ParsingContext& parserContext) 
     : _context(&context)
     , _parserContext(&parserContext)
     , _box(nullptr)
@@ -231,7 +231,7 @@ namespace SceneEngine
         _box = &box;
     }
 
-    void StochasticTransparencyOp::PrepareSecondPass(Metal::DepthStencilView& mainDSV)
+    void StochasticTransparencyOp::PrepareSecondPass(Metal::DepthStencilView& mainDSV, const MetricsBox& metricsBox)
     {
         if (!_box) return;
 
@@ -240,7 +240,7 @@ namespace SceneEngine
             _context->ClearUInt(_box->_metricsTexture.UAV(), { 0,0,0,0 });
             _context->Bind(
                 MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV, 
-                MakeResourceList(_parserContext->GetMetricsBox()->_metricsBufferUAV, _box->_metricsTexture.UAV()));
+                MakeResourceList(metricsBox._metricsBufferUAV, _box->_metricsTexture.UAV()));
         } else
             _context->Bind(MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV);
         if (_box->_primIdsTexture.IsGood()) _context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(8, _box->_primIdsTexture.SRV()));
@@ -283,7 +283,7 @@ namespace SceneEngine
         if (Tweakable("StochTransMetrics", false) && _box->_metricsTexture.IsGood()) {
             auto* box = _box;
             _parserContext->_pendingOverlays.push_back(
-                [box](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
+                [box](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext)
                 {
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "xleres/basic2d.vsh:fullscreen:vs_*",
@@ -306,6 +306,7 @@ namespace SceneEngine
 
                     RenderGPUMetrics(
                         context, parserContext,
+						MetricsBox{MetricsBox::Desc{}},
                         "xleres/forward/transparency/stochasticdebug.sh",
                         {"LitFragmentCount", "AveLitFragment", "PartialLitFragment"});
                 });

@@ -7,10 +7,10 @@
 #include "SceneEngineUtils.h"
 #include "MetalStubs.h"
 
-#include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -186,7 +186,7 @@ namespace SceneEngine
 
     void DrawPendingResources(   
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext, 
+        SceneEngine::Techniques::ParsingContext& parserContext, 
         const std::shared_ptr<RenderOverlays::Font>& font)
     {
         if (    !parserContext._stringHelpers->_pendingAssets[0]
@@ -274,7 +274,7 @@ namespace SceneEngine
 
     void DrawQuickMetrics(   
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext, 
+        SceneEngine::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font)
     {
         if (parserContext._stringHelpers->_quickMetrics[0]) {
@@ -696,7 +696,7 @@ namespace SceneEngine
 
 	RenderCore::Techniques::RenderPassInstance RenderPassToPresentationTarget(
 		RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
 	{
 		RenderCore::SubpassDesc subPasses[] = {{std::vector<RenderCore::AttachmentViewDesc>{RenderCore::AttachmentViewDesc{0}}}};
 		RenderCore::FrameBufferDesc fbDesc = MakeIteratorRange(subPasses);

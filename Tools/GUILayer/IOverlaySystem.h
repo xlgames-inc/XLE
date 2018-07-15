@@ -24,7 +24,8 @@ namespace GUILayer
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) = 0; 
+            RenderCore::Techniques::ParsingContext& parserContext,
+			SceneEngine::LightingParserContext& lightingParserContext) = 0; 
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext) = 0;

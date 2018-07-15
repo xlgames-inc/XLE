@@ -5,10 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "RenderingUtils.h"
-#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -20,7 +20,7 @@
 
 namespace SceneEngine
 {
-    void DrawBasisAxes(RenderCore::Metal::DeviceContext* context, SceneEngine::LightingParserContext& parserContext, const Float3& offset)
+    void DrawBasisAxes(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, const Float3& offset)
     {
         CATCH_ASSETS_BEGIN
 
@@ -60,14 +60,16 @@ namespace SceneEngine
             ConstantBufferView constantBufferPackets[2];
             constantBufferPackets[0] = MakeLocalTransformPacket(Identity<Float4x4>(), ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
+			auto& metalContext = *Metal::DeviceContext::Get(context);
+
             const auto& shaderProgram = ::Assets::GetAsset<ShaderProgram>(
                 "xleres/forward/illum.vsh:main:" VS_DefShaderModel, 
                 "xleres/forward/illum.psh:main", 
                 "GEO_HAS_COLOUR=1");
             BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
 			VertexBufferView vbvs[] = {&vertexBuffer};
-			boundVertexInputLayout.Apply(*context, MakeIteratorRange(vbvs));
-            context->Bind(shaderProgram);
+			boundVertexInputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
+            metalContext.Bind(shaderProgram);
 
 			UniformsStreamInterface usi;
 			usi.BindConstantBuffer(0, {ObjectCB::LocalTransform});
@@ -76,11 +78,11 @@ namespace SceneEngine
 				Metal::PipelineLayoutConfig{},
 				TechniqueContext::GetGlobalUniformsStreamInterface(),
 				usi);
-            boundLayout.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
-			boundLayout.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets)});
+            boundLayout.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+			boundLayout.Apply(metalContext, 1, UniformsStream{MakeIteratorRange(constantBufferPackets)});
 
-            context->Bind(Topology::LineList);
-            context->Draw(dimof(vertices));
+            metalContext.Bind(Topology::LineList);
+            metalContext.Draw(dimof(vertices));
 
         CATCH_ASSETS_END(parserContext)
     }

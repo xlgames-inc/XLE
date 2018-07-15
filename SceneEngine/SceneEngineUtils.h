@@ -24,7 +24,7 @@
 namespace RenderOverlays { class Font; }
 namespace RenderCore { class ResourceDesc; class TextureDesc; namespace BindFlag { typedef unsigned BitField; }; enum class UnderlyingAPI; class IResource; }
 namespace BufferUploads { class ResourceLocator; }
-namespace RenderCore { namespace Techniques { class RenderPassInstance; }}
+namespace RenderCore { namespace Techniques { class RenderPassInstance; class ParsingContext; }}
 
 namespace Utility
 {
@@ -139,11 +139,11 @@ namespace SceneEngine
     class LightingParserContext;
     void DrawPendingResources(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font);
     void DrawQuickMetrics(   
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font);
 
     class FormatStack
@@ -311,7 +311,7 @@ namespace SceneEngine
 
 	RenderCore::Techniques::RenderPassInstance RenderPassToPresentationTarget(
 		RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext);
+        RenderCore::Techniques::ParsingContext& parserContext);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

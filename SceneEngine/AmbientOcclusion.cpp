@@ -6,7 +6,6 @@
 
 #include "AmbientOcclusion.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/Shader.h"

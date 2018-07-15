@@ -9,19 +9,20 @@
 #include "Terrain.h"
 #include "TerrainConfig.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "Noise.h"
 #include "Erosion.h"
 #include "SurfaceHeightsProvider.h"
 #include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/BufferView.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
@@ -570,28 +571,28 @@ namespace SceneEngine
         }
     }
 
-    void    GenericUberSurfaceInterface::RenderDebugging(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void    GenericUberSurfaceInterface::RenderDebugging(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (!_pimpl->_gpucache[0])
             return;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
         CATCH_ASSETS_BEGIN
             using namespace RenderCore;
             Metal::ShaderResourceView gpuCacheSRV(_pimpl->_gpucache[0]->GetUnderlying());
-            metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, gpuCacheSRV));
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, gpuCacheSRV));
             auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2D.vsh:fullscreen:vs_*", 
                 "xleres/ui/terrainmodification.sh:GpuCacheDebugging:ps_*",
                 "");
-            metalContext->Bind(debuggingShader);
-            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
-            SetupVertexGeneratorShader(*metalContext);
-            metalContext->Draw(4);
+            metalContext.Bind(debuggingShader);
+            metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
+            SetupVertexGeneratorShader(metalContext);
+            metalContext.Draw(4);
         CATCH_ASSETS_END(parserContext)
 
-        MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(*metalContext, 5, 1);
+        MetalStubs::UnbindPS<RenderCore::Metal::ShaderResourceView>(metalContext, 5, 1);
     }
 
     void GenericUberSurfaceInterface::SetShortCircuitBridge(const std::shared_ptr<ShortCircuitBridge>& bridge)
@@ -922,7 +923,7 @@ namespace SceneEngine
 
     void    HeightsUberSurfaceInterface::Erosion_RenderDebugging(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         const TerrainCoordinateSystem& coords)
     {
         if (!Erosion_IsPrepared()) return;

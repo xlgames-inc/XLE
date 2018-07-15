@@ -15,6 +15,7 @@
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext; class CameraDesc;
+	class ParsingContext;
 }}
 
 namespace SceneEngine
@@ -40,7 +41,7 @@ namespace SceneEngine
         std::vector<ResultEntry> GetResults();
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
         void SetFrustum(const Float4x4& frustum);
-        LightingParserContext& GetParserContext();
+        RenderCore::Techniques::ParsingContext& GetParserContext();
 
         enum TestType { RayTest = 0, FrustumTest = 1 };
 

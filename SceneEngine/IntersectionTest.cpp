@@ -18,6 +18,7 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
@@ -31,15 +32,15 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::pair<Float3, bool> FindTerrainIntersection(
-        RenderCore::Metal::DeviceContext* devContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
         CATCH_ASSETS_BEGIN
             TerrainManager::IntersectionResult intersections[8];
             unsigned intersectionCount = terrainManager.CalculateIntersections(
-                intersections, dimof(intersections), worldSpaceRay, devContext, parserContext);
+                intersections, dimof(intersections), worldSpaceRay, context, parserContext);
 
             if (intersectionCount > 0)
                 return std::make_pair(intersections[0]._intersectionPoint, true);
@@ -50,25 +51,24 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::pair<Float3, bool> FindTerrainIntersection(
-        RenderCore::Metal::DeviceContext* devContext,
-        const IntersectionTestContext& context,
+        const IntersectionTestContext& intersectionContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
             //  create a new device context and lighting parser context, and use
             //  this to find an accurate terrain collision.
-        auto viewportDims = context.GetViewportSize();
+        auto viewportDims = intersectionContext.GetViewportSize();
         RenderCore::Metal::ViewportDesc newViewport(
             0.f, 0.f, float(viewportDims[0]), float(viewportDims[1]), 0.f, 1.f);
-        devContext->Bind(newViewport);
+        RenderCore::Metal::DeviceContext::Get(*intersectionContext.GetThreadContext())->Bind(newViewport);
 
-        LightingParserContext parserContext(context.GetTechniqueContext());
-        auto marker = LightingParser_SetupScene(*devContext, parserContext);
+        RenderCore::Techniques::ParsingContext parserContext(intersectionContext.GetTechniqueContext());
+        auto marker = LightingParser_SetupScene(*intersectionContext.GetThreadContext(), parserContext);
         LightingParser_SetGlobalTransform(
-            *devContext, parserContext,
-            BuildProjectionDesc(context.GetCameraDesc(), viewportDims));
+            *intersectionContext.GetThreadContext(), parserContext,
+            BuildProjectionDesc(intersectionContext.GetCameraDesc(), viewportDims));
 
-        return FindTerrainIntersection(devContext, parserContext, terrainManager, worldSpaceRay);
+        return FindTerrainIntersection(*intersectionContext.GetThreadContext(), parserContext, terrainManager, worldSpaceRay);
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
@@ -108,7 +108,7 @@ namespace SceneEngine
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
-                metalContext.get(), context, *_terrainManager.get(), worldSpaceRay);
+                context, *_terrainManager.get(), worldSpaceRay);
             if (intersection.second) {
                 float distance = Magnitude(intersection.first - worldSpaceRay.first);
                 if (distance < result._distance) {

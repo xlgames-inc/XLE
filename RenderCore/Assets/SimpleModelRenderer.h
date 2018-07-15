@@ -21,7 +21,7 @@ namespace RenderCore { namespace Assets
 	class SimpleModelRenderer
 	{
 	public:
-		VariantArray BuildDrawables(uint64_t materialFilter);
+		VariantArray BuildDrawables(uint64_t materialFilter = 0);
 
 		SimpleModelRenderer(const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold);
 

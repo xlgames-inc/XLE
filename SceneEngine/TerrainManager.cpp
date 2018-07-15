@@ -19,9 +19,10 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/TextureView.h"
-#include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Format.h"
 #include "../RenderCore/ResourceUtils.h"
 #include "../Math/Transformations.h"
 #include "../Math/Geometry.h"
@@ -657,8 +658,8 @@ namespace SceneEngine
     }
 
     void TerrainManager::Prepare(
-        Metal::DeviceContext* context,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        Techniques::ParsingContext& parserContext,
         PreparedScene& preparedPackets)
     {
         assert(_pimpl);
@@ -688,7 +689,7 @@ namespace SceneEngine
 
         state->_queuedNodes.erase(state->_queuedNodes.begin(), state->_queuedNodes.end());
         state->_queuedNodes.reserve(2048);
-        state->_currentViewport = Metal::ViewportDesc(*context);
+        state->_currentViewport = Metal::ViewportDesc(*Metal::DeviceContext::Get(context));
         _pimpl->CullNodes(parserContext.GetProjectionDesc(), *state);
 
         renderer->QueueUploads(*state);
@@ -696,13 +697,14 @@ namespace SceneEngine
         if (!_pimpl->_textures || _pimpl->_textures->GetDependencyValidation()->GetValidationIndex() > 0) {
             _pimpl->_textures.reset();
             _pimpl->_textures = std::make_unique<TerrainMaterialTextures>(
-                *context, _pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());
+                context, _pimpl->_matCfg, _pimpl->_cfg.EncodedGradientFlags());
         }
     }
 
     void TerrainManager::Render(
-        Metal::DeviceContext* context, 
-        LightingParserContext& parserContext, 
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
         PreparedScene& preparedPackets,
         unsigned techniqueIndex)
     {
@@ -712,17 +714,19 @@ namespace SceneEngine
 
         auto* state = preparedPackets.Get<TerrainRenderingContext>(0);
         if (!state) return;
+		
+		auto& metalContext = *Metal::DeviceContext::Get(context);
 
         // Check for short-circuit events.
         if (renderer->IsShortCircuitAllowed()) {
             auto completed = renderer->CompletePendingUploads_Bridge();
-            _pimpl->ShortCircuitFinishedUploads(*context, MakeIteratorRange(completed));
-            _pimpl->FlushShortCircuitQueue(*context);
+            _pimpl->ShortCircuitFinishedUploads(metalContext, MakeIteratorRange(completed));
+            _pimpl->FlushShortCircuitQueue(metalContext);
         } else {
             renderer->CompletePendingUploads();
         }
 
-        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(8, 
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(8, 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Diffuse], 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Normal], 
             _pimpl->_textures->_srv[TerrainMaterialTextures::Roughness]));
@@ -733,8 +737,8 @@ namespace SceneEngine
             : TerrainRenderingContext::Mode_Normal;
 
         Float3 sunDirection(0.f, 0.f, 1.f);
-        if (parserContext.GetSceneParser() && parserContext.GetSceneParser()->GetLightCount() > 0)
-            sunDirection = parserContext.GetSceneParser()->GetLightDesc(0)._position;
+        if (lightingParserContext.GetSceneParser() && lightingParserContext.GetSceneParser()->GetLightCount() > 0)
+            sunDirection = lightingParserContext.GetSceneParser()->GetLightDesc(0)._position;
 
             // We want to project the sun direction onto the plane for the precalculated sun movement.
             // Then find the appropriate angle for on that plane.
@@ -757,15 +761,15 @@ namespace SceneEngine
             0.f, 0.f, 0.f
         };
         auto lightingConstantsBuffer = MakeMetalCB(terrainLightingConstants, sizeof(terrainLightingConstants));
-        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer, _pimpl->_textures->_procTexContsBuffer));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, _pimpl->_textures->_texturingConstants, lightingConstantsBuffer, _pimpl->_textures->_procTexContsBuffer));
         if (mode == TerrainRenderingContext::Mode_VegetationPrepare) {
                 // this cb required in the geometry shader for vegetation prepare mode!
-            context->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(6, lightingConstantsBuffer));  
+            metalContext.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(6, lightingConstantsBuffer));  
         }
 
-        state->EnterState(context, parserContext, *_pimpl->_textures, renderer->GetHeightsElementSize(), mode);
-        renderer->Render(context, parserContext, *state);
-        state->ExitState(context, parserContext);
+        state->EnterState(metalContext, parserContext, *_pimpl->_textures, renderer->GetHeightsElementSize(), mode);
+        renderer->Render(metalContext, parserContext, *state);
+        state->ExitState(metalContext, parserContext);
 
         // if (_pimpl->_coverageInterfaces.size() > 0)
         //     parserContext._pendingOverlays.push_back(
@@ -777,15 +781,17 @@ namespace SceneEngine
     unsigned TerrainManager::CalculateIntersections(
         IntersectionResult intersections[], unsigned maxIntersections,
         std::pair<Float3, Float3> ray,
-        RenderCore::Metal::DeviceContext* context,
-        LightingParserContext& parserContext)
+        RenderCore::IThreadContext& context,
+        Techniques::ParsingContext& parserContext)
     {
         assert(_pimpl);
         if (!_pimpl->_renderer) return 0;
 
+		auto& metalContext = *Metal::DeviceContext::Get(context);
+
             // we can only do this on the immediate context (because we need to execute
             // and readback GPU data)
-        assert(context->IsImmediate());
+        assert(metalContext.IsImmediate());
 
             //  we can use the same culling as the rendering part. But ideally we want to cull nodes
             //  that are outside of the camera frustum, or that don't intersect the ray
@@ -798,7 +804,7 @@ namespace SceneEngine
             GetPriorityMode());
         state._queuedNodes.erase(state._queuedNodes.begin(), state._queuedNodes.end());
         state._queuedNodes.reserve(2048);
-        state._currentViewport = Metal::ViewportDesc(*context);        // (accurate viewport is required to get the lodding right)
+        state._currentViewport = Metal::ViewportDesc(metalContext);        // (accurate viewport is required to get the lodding right)
         const auto& projDesc = parserContext.GetProjectionDesc();
 		_pimpl->CullNodes(projDesc, state);
 
@@ -831,7 +837,7 @@ namespace SceneEngine
             //  we need to create a structured buffer for the result, and bind it to the geometry shader
 		if (_pimpl->_renderer->IsShortCircuitAllowed()) {
 			auto completed = _pimpl->_renderer->CompletePendingUploads_Bridge();
-			_pimpl->ShortCircuitFinishedUploads(*context, MakeIteratorRange(completed));
+			_pimpl->ShortCircuitFinishedUploads(metalContext, MakeIteratorRange(completed));
 		} else {
 			_pimpl->_renderer->CompletePendingUploads();
 		}
@@ -855,7 +861,7 @@ namespace SceneEngine
 
             gpuOutput = outputRes->GetUnderlying();
             if (gpuOutput)
-                MetalStubs::BindSO(*context, MakeResourceList(gpuOutput));
+                MetalStubs::BindSO(metalContext, MakeResourceList(gpuOutput));
         }
 
         struct RayTestBuffer
@@ -863,14 +869,14 @@ namespace SceneEngine
             Float3 _rayStart; float _dummy0;
             Float3 _rayEnd; float _dummy1;
         } rayTestBuffer = { ray.first, 0.f, ray.second, 0.f };
-        context->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(2, MakeMetalCB(&rayTestBuffer, sizeof(rayTestBuffer))));
+        metalContext.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(2, MakeMetalCB(&rayTestBuffer, sizeof(rayTestBuffer))));
 
-        state.EnterState(context, parserContext, 
+        state.EnterState(metalContext, parserContext, 
             TerrainMaterialTextures(), _pimpl->_renderer->GetHeightsElementSize(), TerrainRenderingContext::Mode_RayTest);
-        _pimpl->_renderer->Render(context, parserContext, state);
-        state.ExitState(context, parserContext);
+        _pimpl->_renderer->Render(metalContext, parserContext, state);
+        state.ExitState(metalContext, parserContext);
 
-        MetalStubs::UnbindSO(*context);
+        MetalStubs::UnbindSO(metalContext);
 
         unsigned resultCount = 0;
         if (outputRes && gpuOutput) {

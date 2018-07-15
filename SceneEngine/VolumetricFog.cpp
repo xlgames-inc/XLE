@@ -6,6 +6,7 @@
 
 #include "VolumetricFog.h"
 #include "SceneEngineUtils.h"
+#include "LightingParserContext.h"
 #include "LightDesc.h"
 #include "Noise.h"
 #include "LightInternal.h"
@@ -15,6 +16,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"
@@ -523,7 +525,7 @@ namespace SceneEngine
 
     VolumetricFogDensityTable::~VolumetricFogDensityTable() {}
 
-    static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, VolumetricFogResources& res);
+    static void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext, VolumetricFogResources& res);
     static bool UseESMShadowMaps() { return Tweakable("VolFogESM", false); }
     static unsigned GetShadowCascadeMode(PreparedShadowFrustum& shadowFrustum)
     {
@@ -571,14 +573,16 @@ namespace SceneEngine
         return RenderCore::MakeSharedPkt(constants);
     }
 
-    void VolumetricFog_Build(   RenderCore::Metal::DeviceContext* context, 
-                                LightingParserContext& lightingParserContext,
+    void VolumetricFog_Build(   RenderCore::IThreadContext& threadContext, 
+                                Techniques::ParsingContext& parsingContext,
                                 bool useMsaaSamplers, 
                                 PreparedDMShadowFrustum& shadowFrustum,
                                 const VolumetricFogConfig::Renderer& rendererCfg,
                                 const VolumetricFogConfig::FogVolume& cfg)
     {
         CATCH_ASSETS_BEGIN
+
+			auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -602,16 +606,16 @@ namespace SceneEngine
                 unsigned(shadowFrustum._resolveParameters._shadowTextureSize) / (blurredShadowSize*blurDownsample);
             const auto gridDims = rendererCfg._gridDimensions;
 
-            SavedTargets savedTargets(*context);
+            SavedTargets savedTargets(context);
             Metal::ViewportDesc newViewport(0, 0, float(blurredShadowSize), float(blurredShadowSize), 0.f, 1.f);
-            context->Bind(newViewport);
-            context->Bind(Techniques::CommonResources()._blendOpaque);
-            SetupVertexGeneratorShader(*context);
-            context->Bind(*fogShaders._buildExponentialShadowMap);
+            context.Bind(newViewport);
+            context.Bind(Techniques::CommonResources()._blendOpaque);
+            SetupVertexGeneratorShader(context);
+            context.Bind(*fogShaders._buildExponentialShadowMap);
 
-            auto* shadowSRV = lightingParserContext.GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
+            auto* shadowSRV = parsingContext.GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
             assert(shadowSRV);
-            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(2, *shadowSRV));
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(2, *shadowSRV));
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
@@ -621,11 +625,11 @@ namespace SceneEngine
                     globalsBuffer = { c + rendererCfg._skipShadowFrustums, downsampleScaleFactor, { 0u,0u } };
                 constantBufferPackets2[1] = MakeSharedPkt(globalsBuffer);
 
-                fogShaders._buildExponentialShadowMapBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
-				fogShaders._buildExponentialShadowMapBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
+                fogShaders._buildExponentialShadowMapBinding.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
+				fogShaders._buildExponentialShadowMapBinding.Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
 
-                context->Bind(MakeResourceList(*i), nullptr);
-                context->Draw(4);
+                context.Bind(MakeResourceList(*i), nullptr);
+                context.Draw(4);
             }
 
             if (fogShaders._horizontalFilter && fogShaders._verticalFilter) {
@@ -636,76 +640,76 @@ namespace SceneEngine
                     ConstantBufferView constantBufferPackets[2];
                     constantBufferPackets[0] = MakeSharedPkt(globalsBuffer);
                     constantBufferPackets[1] = &fogShaders._filterWeightsConstants;
-                    fogShaders._horizontalFilterBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
-					fogShaders._horizontalFilterBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets)});
+                    fogShaders._horizontalFilterBinding.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
+					fogShaders._horizontalFilterBinding.Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets)});
 
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
-                    context->Bind(MakeResourceList(*i2), nullptr);
-                    context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(fogRes._shadowMapSRV));
-                    context->Bind(*fogShaders._horizontalFilter);
-                    context->Draw(4);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
+                    context.Bind(MakeResourceList(*i2), nullptr);
+                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(fogRes._shadowMapSRV));
+                    context.Bind(*fogShaders._horizontalFilter);
+                    context.Draw(4);
 
-                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
-                    context->Bind(MakeResourceList(*i), nullptr);
-                    context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(fogRes._shadowMapTempSRV));
-                    context->Bind(*fogShaders._verticalFilter);
-                    context->Draw(4);
+                    MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
+                    context.Bind(MakeResourceList(*i), nullptr);
+                    context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(fogRes._shadowMapTempSRV));
+                    context.Bind(*fogShaders._verticalFilter);
+                    context.Draw(4);
                 }
             }
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
-            MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
-            savedTargets.ResetToOldTargets(*context);
-            context->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
+            savedTargets.ResetToOldTargets(context);
+            context.Bind(Techniques::CommonResources()._blendStraightAlpha);
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(9, 
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(9, 
                 ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(
                     "xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
-            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 Techniques::CommonResources()._defaultSampler, 
                 Techniques::CommonResources()._linearClampSampler));
 
                 //  Inject the starting light into the volume texture (using compute shader)
-            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 fogRes._inscatterShadowingValuesUAV, fogRes._densityValuesUAV,
                 fogRes._transmissionValuesUAV, fogRes._inscatterFinalsValuesUAV));
-            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(2, fogRes._shadowMapSRV));
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(2, fogRes._shadowMapSRV));
 
-            fogShaders._injectLightBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
-			fogShaders._injectLightBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
-            context->Bind(*fogShaders._injectLight);
-            context->Dispatch(gridDims[0]/10, gridDims[1]/10, gridDims[2]/8);
+            fogShaders._injectLightBinding.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
+			fogShaders._injectLightBinding.Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
+            context.Bind(*fogShaders._injectLight);
+            context.Dispatch(gridDims[0]/10, gridDims[1]/10, gridDims[2]/8);
 
-            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 2);
 
                 // do light propagation
-            context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._densityValuesSRV, fogRes._inscatterPointLightsValuesSRV));
-            fogShaders._propagateLightBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
-			fogShaders._propagateLightBinding.Apply(*context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
-            context->Bind(*fogShaders._propagateLight);
-            context->Dispatch(gridDims[0]/10, gridDims[1]/10, 1);
+            context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, fogRes._inscatterShadowingValuesSRV, fogRes._densityValuesSRV, fogRes._inscatterPointLightsValuesSRV));
+            fogShaders._propagateLightBinding.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
+			fogShaders._propagateLightBinding.Apply(context, 1, UniformsStream{MakeIteratorRange(constantBufferPackets2)});
+            context.Bind(*fogShaders._propagateLight);
+            context.Dispatch(gridDims[0]/10, gridDims[1]/10, 1);
 
-            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 4);
-            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 2, 4);
-            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 13, 3);
-            context->Unbind<Metal::ComputeShader>();
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 4);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 2, 4);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 13, 3);
+            context.Unbind<Metal::ComputeShader>();
 
             ///////////////////////////////////////////////////////////////////////////////////////
 
             if (Tweakable("VolumetricFogDebugging", false)) {
-                lightingParserContext._pendingOverlays.push_back(
+                parsingContext._pendingOverlays.push_back(
                     std::bind(&VolumetricFog_DrawDebugging, std::placeholders::_1, std::placeholders::_2, std::ref(fogRes)));
             }
-        CATCH_ASSETS_END(lightingParserContext)
+        CATCH_ASSETS_END(parsingContext)
     }
 
-    void VolumetricFog_Resolve( RenderCore::Metal::DeviceContext* context, 
-                                LightingParserContext& lightingParserContext,
+    void VolumetricFog_Resolve( RenderCore::IThreadContext& threadContext, 
+                                Techniques::ParsingContext& parsingContext,
                                 unsigned samplingCount, bool useMsaaSamplers, bool flipDirection,
                                 PreparedShadowFrustum* shadowFrustum,
                                 const VolumetricFogConfig::Renderer& rendererCfg,
@@ -746,27 +750,29 @@ namespace SceneEngine
         };
         // prebuiltConstants[1] = &fogTable._tableConstants;
 
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
+
         if (doShadows) {
 
-            fogShaders._resolveLightBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
-			fogShaders._resolveLightBinding.Apply(*context, 1, 
+            fogShaders._resolveLightBinding.Apply(metalContext, 0, parsingContext.GetGlobalUniformsStream());
+			fogShaders._resolveLightBinding.Apply(metalContext, 1, 
                 UniformsStream{
                     MakeIteratorRange(constantBufferPackets),
 					UniformsStream::MakeResources(MakeIteratorRange(srvs))});
-            context->Bind(*fogShaders._resolveLight);
+            metalContext.Bind(*fogShaders._resolveLight);
 
         } else {
 
-            fogShaders._resolveLightNoGridBinding.Apply(*context, 0, lightingParserContext.GetGlobalUniformsStream());
-			fogShaders._resolveLightNoGridBinding.Apply(*context, 1, 
+            fogShaders._resolveLightNoGridBinding.Apply(metalContext, 0, parsingContext.GetGlobalUniformsStream());
+			fogShaders._resolveLightNoGridBinding.Apply(metalContext, 1, 
                 UniformsStream{
 					MakeIteratorRange(constantBufferPackets),
 					UniformsStream::MakeResources(MakeIteratorRange(srvs))});
-            context->Bind(*fogShaders._resolveLightNoGrid);
+            metalContext.Bind(*fogShaders._resolveLightNoGrid);
 
         }
 
-        context->Draw(4);
+        metalContext.Draw(4);
     }
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
@@ -885,17 +891,20 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
+            IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
+			PreparedScene&) const;
 
         virtual void OnLightingResolvePrepare(
-            MetalContext&, LightingParserContext&, LightingResolveContext&) const;
+            IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
+			LightingResolveContext&) const;
 
         virtual void OnPostSceneRender(
-            MetalContext&, LightingParserContext&, 
+            IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
             const SceneParseSettings&, unsigned techniqueIndex) const;
 
         virtual void InitBasicLightEnvironment(
-            MetalContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const;
+            IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
+			ShaderLightDesc::BasicEnvironment& env) const;
 
         VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl);
         ~VolumetricFogPlugin();
@@ -905,39 +914,42 @@ namespace SceneEngine
     };
 
     static void DoVolumetricFogResolve(
-        MetalContext* metalContext, LightingParserContext& parserContext, 
+        IThreadContext& threadContext, Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
         LightingResolveContext& resolveContext, unsigned resolvePass,
         const VolumetricFogConfig::Renderer& rendererCfg,
         const VolumetricFogConfig::FogVolume& volume)
     {
-        Metal::GPUAnnotation anno(*metalContext, "VolFog");
+        GPUAnnotation anno(threadContext, "VolFog");
 
         const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
         const auto samplingCount = resolveContext.GetSamplingCount();
         VolumetricFog_Resolve(
-            metalContext, parserContext, 
+            threadContext, parserContext, 
             (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
-            &parserContext._preparedDMShadows[0].second, rendererCfg, volume);
+            &lightingParserContext._preparedDMShadows[0].second, rendererCfg, volume);
     }
 
     static void DoVolumetricFogResolveNoGrid(
-        MetalContext* metalContext, LightingParserContext& parserContext, 
+        IThreadContext& threadContext, Techniques::ParsingContext& parserContext, 
         LightingResolveContext& resolveContext, unsigned resolvePass,
         const VolumetricFogConfig::Renderer& rendererCfg,
         const VolumetricFogConfig::FogVolume& volume)
     {
-        Metal::GPUAnnotation anno(*metalContext, "VolFog");
+        GPUAnnotation anno(threadContext, "VolFog");
 
         const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
         const auto samplingCount = resolveContext.GetSamplingCount();
         VolumetricFog_Resolve(
-            metalContext, parserContext, 
+            threadContext, parserContext, 
             (resolvePass==0)?samplingCount:1, useMsaaSamplers, resolvePass==1,
             nullptr, rendererCfg, volume);
     }
 
     void VolumetricFogPlugin::OnLightingResolvePrepare(
-        MetalContext& metalContext, LightingParserContext& parserContext, 
+        IThreadContext& threadContext, 
+		Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext, 
         LightingResolveContext& resolveContext) const 
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
@@ -957,24 +969,24 @@ namespace SceneEngine
         using namespace std::placeholders;
         auto& cfg = _pimpl->_cfg._volumes[0];
         bool doShadows = 
-                !parserContext._preparedDMShadows.empty() && parserContext._preparedDMShadows[0].second.IsReady() 
+                !lightingParserContext._preparedDMShadows.empty() && lightingParserContext._preparedDMShadows[0].second.IsReady() 
             && (cfg._material._flags & unsigned(VolumetricFogMaterial::Flags::EnableShadows));
         if (doShadows) {
 
             const auto useMsaaSamplers = resolveContext.UseMsaaSamplers();
             VolumetricFog_Build(
-                &metalContext, parserContext, 
-                useMsaaSamplers, parserContext._preparedDMShadows[0].second,
+                threadContext, parsingContext, 
+                useMsaaSamplers, lightingParserContext._preparedDMShadows[0].second,
                 _pimpl->_cfg._renderer, cfg);
 
             resolveContext.AppendResolve(
-                std::bind(DoVolumetricFogResolve, _1, _2, _3, _4, 
+                std::bind(DoVolumetricFogResolve, _1, _2, _3, _4, _5, 
                     std::ref(_pimpl->_cfg._renderer),
                     std::ref(cfg)));
         } else {
 
             resolveContext.AppendResolve(
-                std::bind(DoVolumetricFogResolveNoGrid, _1, _2, _3, _4, 
+                std::bind(DoVolumetricFogResolveNoGrid, _1, _2, _4, _5, 
                     std::ref(_pimpl->_cfg._renderer),
                     std::ref(cfg)));
 
@@ -982,15 +994,15 @@ namespace SceneEngine
     }
 
     void VolumetricFogPlugin::OnPreScenePrepare(
-        RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const {}
+        RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, PreparedScene&) const {}
     
     void VolumetricFogPlugin::OnPostSceneRender(
-        MetalContext&, LightingParserContext&, 
+        RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
         const SceneParseSettings&, unsigned techniqueIndex) const {}
 
     void VolumetricFogPlugin::InitBasicLightEnvironment(
-        MetalContext& metalContext,
-        LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const
+        RenderCore::IThreadContext& metalContext,
+        Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
 
@@ -1036,7 +1048,7 @@ namespace SceneEngine
 
         ///////////////////////////////////////////////////////////////////////////////////////////////
 
-    void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, VolumetricFogResources& res)
+    void VolumetricFog_DrawDebugging(RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext, VolumetricFogResources& res)
     {
             // draw debugging for blurred shadows texture
         using namespace RenderCore;

@@ -8,7 +8,6 @@
 #include "OITInternal.h"
 #include "SceneEngineUtils.h"
 #include "SceneParser.h"
-#include "LightingParserContext.h"
 #include "Noise.h"
 #include "MetricsBox.h"
 #include "LightDesc.h"
@@ -16,6 +15,7 @@
 #include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
@@ -121,7 +121,7 @@ namespace SceneEngine
 
     TransparencyTargetsBox* OrderIndependentTransparency_Prepare(
         Metal::DeviceContext& metalContext, 
-        LightingParserContext&, const Metal::ShaderResourceView& depthBufferDupe)
+        RenderCore::Techniques::ParsingContext&, const Metal::ShaderResourceView& depthBufferDupe)
     {
         Metal::ViewportDesc mainViewport(metalContext);
 
@@ -163,16 +163,17 @@ namespace SceneEngine
 
     void OrderIndependentTransparency_Resolve(  
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         TransparencyTargetsBox& transparencyTargets,
-        const Metal::ShaderResourceView& originalDepthStencilSRV)
+        const Metal::ShaderResourceView& originalDepthStencilSRV,
+		MetricsBox& metricsBox)
     {
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         SavedTargets savedTargets(metalContext);
         auto resetMarker = savedTargets.MakeResetMarker(metalContext);
 
         CATCH_ASSETS_BEGIN
-            auto metricsUAV = parserContext.GetMetricsBox()->_metricsBufferUAV.GetUnderlying();
+            auto metricsUAV = metricsBox._metricsBufferUAV.GetUnderlying();
             metalContext.GetUnderlying()->OMSetRenderTargetsAndUnorderedAccessViews(
                 1, savedTargets.GetRenderTargets(), nullptr,
                 1, 1, &metricsUAV, nullptr);

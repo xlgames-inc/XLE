@@ -327,7 +327,7 @@ namespace SceneEngine
     }
 
     TerrainMaterialTextures::TerrainMaterialTextures(
-        Metal::DeviceContext& metalContext,
+        IThreadContext& context,
         const TerrainMaterialConfig& scaffold, 
         bool useGradFlagMaterials)
     {
@@ -479,6 +479,8 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
         _validationCallback = std::make_shared<::Assets::DependencyValidation>();
+
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
         for (auto i=atlasTextureNames.cbegin(); i!=atlasTextureNames.cend(); ++i) {
             ResolvedTextureFiles texFiles(i->c_str(), scaffold._searchRules);

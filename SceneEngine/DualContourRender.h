@@ -10,6 +10,8 @@
 #include <memory>
 
 namespace Assets { class DependencyValidation; }
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -21,16 +23,16 @@ namespace SceneEngine
     public:
         void Render(
             RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& lightingParserContext,
+            RenderCore::Techniques::ParsingContext& lightingParserContext,
             unsigned techniqueIndex) const;
 
         void RenderAsCloud( 
             RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& lightingParserContext);
+            RenderCore::Techniques::ParsingContext& lightingParserContext);
 
         void RenderUnsortedTrans(
             RenderCore::Metal::DeviceContext* context, 
-            LightingParserContext& lightingParserContext,
+            RenderCore::Techniques::ParsingContext& lightingParserContext,
             unsigned techniqueIndex) const;
 
         DualContourRenderer(const DualContourMesh& mesh);
@@ -44,8 +46,8 @@ namespace SceneEngine
     };
 
     void    DualContourMesh_DebuggingRender(
-                RenderCore::Metal::DeviceContext* context, 
-                LightingParserContext& lightingParserContext,
-                unsigned techniqueIndex, const DualContourMesh& mesh);
+        RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::ParsingContext& parsingContext,
+        unsigned techniqueIndex, const DualContourMesh& mesh);
 
 }

@@ -6,21 +6,28 @@
 
 #pragma once
 
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
+
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-    void    Rain_Render(RenderCore::Metal::DeviceContext* context, 
-                        LightingParserContext& parserContext);
-    void    Rain_RenderSimParticles(RenderCore::Metal::DeviceContext* context, 
-                                    LightingParserContext& parserContext,
-                                    const RenderCore::Metal::ShaderResourceView& depthsSRV,
-                                    const RenderCore::Metal::ShaderResourceView& normalsSRV);
+    void    Rain_Render(
+		RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext);
 
-    void    SparkParticleTest_RenderSimParticles(   RenderCore::Metal::DeviceContext* context, 
-                                                    LightingParserContext& parserContext,
-                                                    const RenderCore::Metal::ShaderResourceView& depthsSRV,
-                                                    const RenderCore::Metal::ShaderResourceView& normalsSRV);
+    void    Rain_RenderSimParticles(
+		RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+        const RenderCore::Metal::ShaderResourceView& depthsSRV,
+        const RenderCore::Metal::ShaderResourceView& normalsSRV);
+
+    void    SparkParticleTest_RenderSimParticles(
+		RenderCore::IThreadContext& context, 
+        RenderCore::Techniques::ParsingContext& parserContext,
+		float timeValue,
+		const RenderCore::Metal::ShaderResourceView& depthsSRV,
+        const RenderCore::Metal::ShaderResourceView& normalsSRV);
 }
 

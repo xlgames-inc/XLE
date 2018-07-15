@@ -8,7 +8,6 @@
 
 #include "ScreenspaceReflections.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "SceneParser.h"
 #include "Sky.h"
 #include "LightDesc.h"
@@ -17,6 +16,7 @@
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Assets/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"
@@ -255,13 +255,15 @@ namespace SceneEngine
 
         ////////////////////////////////
 
-    static void ScreenSpaceReflections_DrawDebugging(   Metal::DeviceContext& context, 
-                                                        LightingParserContext& parserContext,
-                                                        ScreenSpaceReflectionsResources& resources,
-                                                        Metal::ShaderResourceView gbufferDiffuse,
-                                                        Metal::ShaderResourceView gbufferNormals,
-                                                        Metal::ShaderResourceView gbufferParam,
-                                                        Metal::ShaderResourceView depthsSRV);
+    static void ScreenSpaceReflections_DrawDebugging(   
+		Metal::DeviceContext& context, 
+        Techniques::ParsingContext& parserContext,
+        ScreenSpaceReflectionsResources& resources,
+        Metal::ShaderResourceView gbufferDiffuse,
+        Metal::ShaderResourceView gbufferNormals,
+        Metal::ShaderResourceView gbufferParam,
+        Metal::ShaderResourceView depthsSRV,
+		const GlobalLightingDesc& globalLightingDesc);
 
     ScreenSpaceReflectionsResources::Desc GetConfig(unsigned width, unsigned height, bool useMsaaSamplers, bool hasGBufferProperties)
     {
@@ -278,12 +280,13 @@ namespace SceneEngine
 
     Metal::ShaderResourceView
         ScreenSpaceReflections_BuildTextures(   Metal::DeviceContext* context, 
-                                                LightingParserContext& parserContext,
+                                                Techniques::ParsingContext& parserContext,
                                                 unsigned width, unsigned height, bool useMsaaSamplers, 
                                                 const Metal::ShaderResourceView& gbufferDiffuse,
                                                 const Metal::ShaderResourceView& gbufferNormals,
                                                 const Metal::ShaderResourceView& gbufferParam,
-                                                const Metal::ShaderResourceView& depthsSRV)
+                                                const Metal::ShaderResourceView& depthsSRV,
+												GlobalLightingDesc& globalLightingDesc)
     {
             //
             //      Build textures and resources related to screen space textures
@@ -369,19 +372,21 @@ namespace SceneEngine
         if (Tweakable("ScreenspaceReflectionDebugging", false)) {
             parserContext._pendingOverlays.push_back(
                 std::bind(  &ScreenSpaceReflections_DrawDebugging, 
-                            std::placeholders::_1, std::placeholders::_2, std::ref(res), gbufferDiffuse, gbufferNormals, gbufferParam, depthsSRV));
+                            std::placeholders::_1, std::placeholders::_2, std::ref(res), gbufferDiffuse, gbufferNormals, gbufferParam, depthsSRV, globalLightingDesc));
         }
 
         return res._reflections.SRV();
     }
 
-    static void ScreenSpaceReflections_DrawDebugging(   Metal::DeviceContext& context, 
-                                                        LightingParserContext& parserContext,
-                                                        ScreenSpaceReflectionsResources& resources,
-                                                        Metal::ShaderResourceView gbufferDiffuse,
-                                                        Metal::ShaderResourceView gbufferNormals,
-                                                        Metal::ShaderResourceView gbufferParam,
-                                                        Metal::ShaderResourceView depthsSRV)
+    static void ScreenSpaceReflections_DrawDebugging(   
+		Metal::DeviceContext& context, 
+        Techniques::ParsingContext& parserContext,
+        ScreenSpaceReflectionsResources& resources,
+        Metal::ShaderResourceView gbufferDiffuse,
+        Metal::ShaderResourceView gbufferNormals,
+        Metal::ShaderResourceView gbufferParam,
+        Metal::ShaderResourceView depthsSRV,
+		const GlobalLightingDesc& globalLightingDesc)
     {
         StringMeld<256> definesBuffer;
         definesBuffer 
@@ -397,7 +402,7 @@ namespace SceneEngine
 
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, resources._mask.SRV(), resources._downsampledNormals.SRV()));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(10, resources._downsampledDepth.SRV(), resources._reflections.SRV()));
-        SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(context, 7);
+        SkyTextureParts(globalLightingDesc).BindPS(context, 7);
 
             // todo -- we have to bind the gbuffer here!
         context.InvalidateCachedState();
