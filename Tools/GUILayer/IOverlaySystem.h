@@ -5,7 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
-#include "../../PlatformRig/OverlaySystem.h"
+
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+namespace SceneEngine { class LightingParserContext; }
 
 namespace GUILayer 
 {

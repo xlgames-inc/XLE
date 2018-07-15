@@ -32,6 +32,7 @@
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/ModelCache.h"
 #include "../../Utility/PtrUtils.h"
@@ -54,7 +55,8 @@ namespace GUILayer
     {
         using namespace SceneEngine;
 
-        LightingParserContext lightingParserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get(), pimpl._frameBufferPool.get());
+        RenderCore::Techniques::ParsingContext parserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get(), pimpl._frameBufferPool.get());
+		LightingParserContext lightingParserContext;
         lightingParserContext._plugins.push_back(pimpl._stdPlugin);
 
         auto stateDesc = context.GetStateDesc();
@@ -63,7 +65,7 @@ namespace GUILayer
         pimpl._namedResources->Bind(0u, presentationResource);
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, lightingParserContext);
+            overlaySys->RenderToScene(context, parserContext, lightingParserContext);
         }
 
         {
@@ -77,20 +79,20 @@ namespace GUILayer
                 *pimpl._namedResources);
 
             ///////////////////////////////////////////////////////////////////////
-            bool hasPendingMessage = lightingParserContext.HasPendingAssets() || lightingParserContext.HasInvalidAssets() || lightingParserContext.HasErrorString();
+            bool hasPendingMessage = parserContext.HasPendingAssets() || parserContext.HasInvalidAssets() || parserContext.HasErrorString();
             if (hasPendingMessage) {
                 auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-                DrawPendingResources(context, lightingParserContext, defaultFont0);
+                DrawPendingResources(context, parserContext, defaultFont0);
             }
             ///////////////////////////////////////////////////////////////////////
 
             if (overlaySys) {
-                overlaySys->RenderWidgets(context, lightingParserContext);
+                overlaySys->RenderWidgets(context, parserContext);
             }
         }
 
         pimpl._namedResources->Unbind(0u);
-        return PlatformRig::FrameRig::RenderResult(lightingParserContext.HasPendingAssets());
+        return PlatformRig::FrameRig::RenderResult(parserContext.HasPendingAssets());
     }
 
     bool LayerControl::Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig)
@@ -160,7 +162,8 @@ namespace GUILayer
     }
 
     void InputLayer::RenderToScene(
-        RenderCore::IThreadContext&, 
+        RenderCore::IThreadContext&,
+		RenderCore::Techniques::ParsingContext&,
         SceneEngine::LightingParserContext&) {}
     void InputLayer::RenderWidgets(
         RenderCore::IThreadContext&, 
@@ -292,7 +295,7 @@ namespace GUILayer
                 RenderCore::Techniques::ParsingContext& parserContext,
 				SceneEngine::LightingParserContext& lightingParserContext)
             {
-                _managedOverlay->RenderToScene(device, parserContext);
+                _managedOverlay->RenderToScene(device, parserContext, lightingParserContext);
             }
             
             void RenderWidgets(

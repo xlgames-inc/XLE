@@ -11,7 +11,6 @@
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/LightingParser.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/PreparedScene.h"
@@ -23,6 +22,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
@@ -98,7 +98,8 @@ namespace ToolsRig
     public:
         void ExecuteScene(  
             RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& parserContext, 
+			RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext, 
             const SceneEngine::SceneParseSettings& parseSettings,
             SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const 
@@ -309,14 +310,14 @@ namespace ToolsRig
         auto& screenshot = Tweakable("Screenshot", 0);
         if (screenshot) {
             PlatformRig::TiledScreenshot(
-                context, parserContext,
+                context, parserContext, lightingParserContext,
                 sceneParser, sceneParser.GetCameraDesc(),
                 qualSettings, UInt2(screenshot, screenshot));
             screenshot = 0;
         }
 
         LightingParser_ExecuteScene(
-            context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
+            context, parserContext, lightingParserContext, sceneParser, sceneParser.GetCameraDesc(),
             qualSettings);
     }
 
@@ -519,7 +520,7 @@ namespace ToolsRig
             ModelIntersectionStateContext::RayTest,
             context.GetThreadContext(), context.GetTechniqueContext(), 
             &cam);
-        LightingParserContext parserContext(context.GetTechniqueContext());
+        RenderCore::Techniques::ParsingContext parserContext(context.GetTechniqueContext());
         stateContext.SetRay(worldSpaceRay);
 
         {

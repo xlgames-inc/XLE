@@ -8,6 +8,7 @@
 #include "ExportedNativeTypes.h"
 #include "EditorInterfaceUtils.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/MaterialBinder.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
@@ -29,7 +30,7 @@ namespace GUILayer
         if (!_visObject) { return; }
 
         ToolsRig::MaterialVisLayer::Draw(
-            context, parserContext, _settings->GetUnderlying(), 
+            context, parserContext, lightingParserContext, _settings->GetUnderlying(), 
             *_envSettings.get(), *_visObject.get());
     }
 
@@ -57,8 +58,9 @@ namespace GUILayer
             for each(auto c in _config)
 				RenderCore::Assets::MergeIn_Stall(resMat, *c->GetUnderlying(), searchRules);
 
-        const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
-        visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);
+		assert(0);
+        // const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
+        // visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);
         visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
         visObject->_previewMaterialBinding = _materialBinding;
 

@@ -13,10 +13,10 @@ namespace SceneEngine
 {
     class IntersectionTestContext;
     class IntersectionTestScene;
-    class LightingParserContext;
 }
 
 namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace ToolsRig
 {
@@ -29,7 +29,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
         virtual void Render(
             RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext) = 0;
+            RenderCore::Techniques::ParsingContext& parserContext) = 0;
 
         virtual const char* GetName() const = 0;
         virtual std::string GetStatusText() const = 0;

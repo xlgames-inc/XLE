@@ -11,7 +11,6 @@
 
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/IntersectionTest.h"
 
 #include "../../RenderOverlays/DebuggingDisplay.h"
@@ -88,7 +87,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         const char* GetName() const;
         std::string GetStatusText() const;
@@ -485,7 +484,7 @@ namespace ToolsRig
 
     void SelectAndEdit::Render(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         std::vector<std::pair<uint64, uint64>> activeSelection;
 
@@ -593,7 +592,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         const char* GetName() const;
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
@@ -711,7 +710,7 @@ namespace ToolsRig
 
     void PlaceSingle::Render(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         ++_rendersSinceHitTest;
         if (_transaction && _transaction->GetObjectCount()) {
@@ -777,7 +776,7 @@ namespace ToolsRig
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         const char* GetName() const;
         std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
@@ -1246,7 +1245,7 @@ namespace ToolsRig
 
     void ScatterPlacements::Render(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (_hasHoverPoint)
             RenderCylinderHighlight(context, parserContext, _hoverPoint, _radius);
@@ -1591,7 +1590,7 @@ namespace ToolsRig
 		RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::LightingParserContext& lightingParserContext)
     {
-        _pimpl->_placementsDispl->RenderToScene(device, parserContext);
+        _pimpl->_placementsDispl->RenderToScene(device, parserContext, lightingParserContext);
     }
 
     auto PlacementsManipulatorsManager::GetInputLister() -> std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>

@@ -17,8 +17,10 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Drawables.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/BufferView.h"
 
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
@@ -33,6 +35,7 @@
 
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include "../../Utility/VariantUtils.h"
 #include "../../Math/Transformations.h"
 
 namespace ToolsRig
@@ -69,7 +72,8 @@ namespace ToolsRig
     public:
         void ExecuteScene(
             RenderCore::IThreadContext& context,
-            SceneEngine::LightingParserContext& parserContext,
+			RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext,
             const SceneEngine::SceneParseSettings& parseSettings,
             SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const 
@@ -79,7 +83,7 @@ namespace ToolsRig
                 ||  parseSettings._batchFilter == BF::General
                 ||  parseSettings._batchFilter == BF::DMShadows) {
 
-                Draw(context, parserContext, techniqueIndex);
+                Draw(context, parserContext, lightingParserContext, techniqueIndex);
             }
         }
 
@@ -92,9 +96,12 @@ namespace ToolsRig
         }
 
         void Draw(  IThreadContext& threadContext, 
-                    SceneEngine::LightingParserContext& parserContext,
+                    RenderCore::Techniques::ParsingContext& parserContext,
+					SceneEngine::LightingParserContext& lightingParserContext,
                     unsigned techniqueIndex) const
         {
+			assert(0);
+#if 0
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             if (techniqueIndex!=3)
                 metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
@@ -129,7 +136,7 @@ namespace ToolsRig
 
             } else if (geoType == MaterialVisSettings::GeometryType::Model) {
 
-                DrawModel(metalContext, parserContext, techniqueIndex);
+                DrawModel(threadContext, parserContext, lightingParserContext, techniqueIndex);
 
             } else {
 
@@ -155,11 +162,13 @@ namespace ToolsRig
                 metalContext.Draw(count);
 
             }
+#endif
         }
 
         void DrawModel(
             IThreadContext& threadContext, 
-            SceneEngine::LightingParserContext& parserContext,
+			RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext,
             unsigned techniqueIndex) const;
 
         MaterialSceneParser(
@@ -176,9 +185,10 @@ namespace ToolsRig
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void MaterialSceneParser::DrawModel(  
+    void MaterialSceneParser::DrawModel(
         IThreadContext& threadContext, 
-        SceneEngine::LightingParserContext& parserContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext,
         unsigned techniqueIndex) const
     {
             // This mode is a little more complex than the others. We want to
@@ -209,14 +219,14 @@ namespace ToolsRig
 		Techniques::SequencerTechnique seqTechnique;
 		ParameterBox seqShaderSelectors;
 
-		for (const auto&d:drawables)
+		for (auto d=drawables.begin(); d!=drawables.end(); ++d)
 			RenderCore::Techniques::Draw(
 				threadContext, 
 				parserContext,
-				seqTechnique,
 				techniqueIndex,
+				seqTechnique,
 				&seqShaderSelectors,
-				d);
+				*(Techniques::Drawable*)d.get());
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -225,7 +235,8 @@ namespace ToolsRig
 
     bool MaterialVisLayer::Draw(
         IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		SceneEngine::LightingParserContext& lightingParserContext,
         const MaterialVisSettings& settings,
         const VisEnvSettings& envSettings,
         const MaterialVisObject& object)
@@ -257,26 +268,26 @@ namespace ToolsRig
                 
             auto metalContext = Metal::DeviceContext::Get(context);
             auto marker = SceneEngine::LightingParser_SetupScene(
-                *metalContext.get(), parserContext, 
+                context, parserContext, lightingParserContext,
                 &sceneParser);
             SceneEngine::LightingParser_SetGlobalTransform(
-                *metalContext.get(), parserContext, 
+                context, parserContext, 
                 SceneEngine::BuildProjectionDesc(sceneParser.GetCameraDesc(), qualSettings._dimensions));
             CATCH_ASSETS_BEGIN
                 SceneEngine::ReturnToSteadyState(*metalContext.get());
                 SceneEngine::SetFrameGlobalStates(*metalContext.get());
             CATCH_ASSETS_END(parserContext)
-            sceneParser.Draw(context, parserContext, 0);
+            sceneParser.Draw(context, parserContext, lightingParserContext, 0);
                 
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Deferred) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
             SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, 
+                context, parserContext, lightingParserContext,
                 sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         } else if (settings._lightingType == MaterialVisSettings::LightingType::Forward) {
             qualSettings._lightingModel = SceneEngine::RenderingQualitySettings::LightingModel::Forward;
             SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
+                context, parserContext, lightingParserContext, sceneParser, sceneParser.GetCameraDesc(), qualSettings);
         }
 
         return true;
@@ -300,7 +311,7 @@ namespace ToolsRig
         RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::LightingParserContext& lightingParserContext)
     {
-        Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
+        Draw(context, parserContext, lightingParserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
     }
 
     void MaterialVisLayer::RenderWidgets(

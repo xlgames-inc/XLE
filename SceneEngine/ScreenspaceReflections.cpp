@@ -279,7 +279,7 @@ namespace SceneEngine
     }
 
     Metal::ShaderResourceView
-        ScreenSpaceReflections_BuildTextures(   Metal::DeviceContext* context, 
+        ScreenSpaceReflections_BuildTextures(   Metal::DeviceContext& context, 
                                                 Techniques::ParsingContext& parserContext,
                                                 unsigned width, unsigned height, bool useMsaaSamplers, 
                                                 const Metal::ShaderResourceView& gbufferDiffuse,
@@ -296,25 +296,25 @@ namespace SceneEngine
         auto& res = ConsoleRig::FindCachedBoxDep<ScreenSpaceReflectionsResources>(cfg);
 
         ProtectState protectState(
-            *context,
+            context,
               ProtectState::States::RenderTargets | ProtectState::States::Viewports
             | ProtectState::States::BlendState | ProtectState::States::RasterizerState);
 
         auto& commonResources = Techniques::CommonResources();
-        context->Bind(commonResources._blendOpaque);
-        context->Bind(commonResources._cullDisable);
+        context.Bind(commonResources._blendOpaque);
+        context.Bind(commonResources._cullDisable);
         Metal::ViewportDesc newViewport(0, 0, float(cfg._width), float(cfg._height), 0.f, 1.f);
-        context->Bind(newViewport);
+        context.Bind(newViewport);
 
             //  
             //      Downsample the normal & depth textures 
             //
-        context->Bind(MakeResourceList(res._downsampledDepth.RTV(), res._downsampledNormals.RTV()), nullptr);
-        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(gbufferDiffuse, gbufferNormals, gbufferParam, depthsSRV));
-        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parserContext.GetGlobalTransformCB()));
-        context->Bind(*res._downsampleTargets);
-        SetupVertexGeneratorShader(*context);
-        context->Draw(4);
+        context.Bind(MakeResourceList(res._downsampledDepth.RTV(), res._downsampledNormals.RTV()), nullptr);
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(gbufferDiffuse, gbufferNormals, gbufferParam, depthsSRV));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parserContext.GetGlobalTransformCB()));
+        context.Bind(*res._downsampleTargets);
+        SetupVertexGeneratorShader(context);
+        context.Draw(4);
 
         auto& projDesc = parserContext.GetProjectionDesc();
         struct ViewProjectionParameters
@@ -327,24 +327,24 @@ namespace SceneEngine
             //
             //      Build the mask texture by sampling the downsampled textures
             //
-        context->Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
-        context->BindCS(MakeResourceList(res._mask.UAV()));
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(parserContext.GetGlobalTransformCB(), MakeMetalCB(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, Metal::ConstantBuffer(), parserContext.GetGlobalStateCB()));
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(commonResources._linearWrapSampler, commonResources._linearClampSampler));
-        context->Bind(*res._buildMask);
-        context->Dispatch((cfg._width + (64-1))/64, (cfg._height + (64-1))/64);
+        context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
+        context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
+        context.BindCS(MakeResourceList(res._mask.UAV()));
+        context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(parserContext.GetGlobalTransformCB(), MakeMetalCB(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, Metal::ConstantBuffer(), parserContext.GetGlobalStateCB()));
+        context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(commonResources._linearWrapSampler, commonResources._linearClampSampler));
+        context.Bind(*res._buildMask);
+        context.Dispatch((cfg._width + (64-1))/64, (cfg._height + (64-1))/64);
 
             //
             //      Now write the reflections texture
             //
-        context->BindCS(MakeResourceList(res._reflections.UAV()));
-        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, res._mask.SRV()));
-        context->Bind(*res._buildReflections);
-        context->Dispatch((cfg._width + (16-1))/16, (cfg._height + (16-1))/16);
+        context.BindCS(MakeResourceList(res._reflections.UAV()));
+        context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, res._mask.SRV()));
+        context.Bind(*res._buildReflections);
+        context.Dispatch((cfg._width + (16-1))/16, (cfg._height + (16-1))/16);
 
-        MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 1);
-        MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 0, 4);
+        MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
+        MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 0, 4);
 
             //
             //      Blur the result in 2 steps
@@ -355,18 +355,18 @@ namespace SceneEngine
             XlSetMemory(filteringWeights, 0, sizeof(filteringWeights));
             static float standardDeviation = 1.2f; // 0.809171316279f; // 1.6f;
             BuildGaussianFilteringWeights(filteringWeights, standardDeviation, 7);
-            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(filteringWeights, sizeof(filteringWeights))));
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(MakeMetalCB(filteringWeights, sizeof(filteringWeights))));
 
-            context->Bind(MakeResourceList(res._downsampledNormals.RTV()), nullptr);
-            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, res._reflections.SRV()));
-            context->Bind(*res._horizontalBlur);
-            context->Draw(4);
-            MetalStubs::UnbindPS<Metal::ShaderResourceView>(*context, 0, 1);
+            context.Bind(MakeResourceList(res._downsampledNormals.RTV()), nullptr);
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, res._reflections.SRV()));
+            context.Bind(*res._horizontalBlur);
+            context.Draw(4);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
 
-            context->Bind(MakeResourceList(res._reflections.RTV()), nullptr);
-            context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, res._downsampledNormals.SRV()));
-            context->Bind(*res._verticalBlur);
-            context->Draw(4);
+            context.Bind(MakeResourceList(res._reflections.RTV()), nullptr);
+            context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(0, res._downsampledNormals.SRV()));
+            context.Bind(*res._verticalBlur);
+            context.Draw(4);
         }
 
         if (Tweakable("ScreenspaceReflectionDebugging", false)) {

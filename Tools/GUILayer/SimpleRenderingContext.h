@@ -10,7 +10,7 @@
 #include "../../Core/Types.h"
 #include <memory>
 
-namespace SceneEngine { class LightingParserContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace GUILayer
 {
@@ -44,7 +44,7 @@ namespace GUILayer
             const float color[], const float xform[]);
 
         void InitState(bool depthTest, bool depthWrite);
-        SceneEngine::LightingParserContext& GetParsingContext() { return *_parsingContext; }
+        RenderCore::Techniques::ParsingContext& GetParsingContext() { return *_parsingContext; }
         RenderCore::Metal::DeviceContext& GetDevContext() { return *_devContext.get(); }
         RenderCore::IThreadContext& GetThreadContext() { return *_threadContext; }
 
@@ -56,7 +56,7 @@ namespace GUILayer
         !SimpleRenderingContext();
     protected:
         RetainedRenderResources^ _retainedRes;
-        SceneEngine::LightingParserContext* _parsingContext;
+        RenderCore::Techniques::ParsingContext* _parsingContext;
         clix::shared_ptr<RenderCore::Metal::DeviceContext> _devContext;
         RenderCore::IThreadContext* _threadContext;     // note -- keeping an unprotected pointer here (SimpleRenderingContext is typically short lived). Create must be careful to manage lifetimes
     };

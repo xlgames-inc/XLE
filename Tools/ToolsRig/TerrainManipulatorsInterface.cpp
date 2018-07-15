@@ -46,7 +46,7 @@ namespace ToolsRig
         : _parent(std::move(parent))
     {}
 
-    void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
 		auto a = GetActiveManipulator();
         if (a)

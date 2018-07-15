@@ -311,7 +311,7 @@ namespace GUILayer
         RenderCore::IThreadContext* threadContext,
         RetainedRenderResources^ savedRes, 
         void* parsingContext)
-    : _retainedRes(savedRes), _parsingContext((SceneEngine::LightingParserContext*)parsingContext)
+    : _retainedRes(savedRes), _parsingContext((RenderCore::Techniques::ParsingContext*)parsingContext)
     , _threadContext(threadContext)
     {
         _devContext = RenderCore::Metal::DeviceContext::Get(*threadContext);

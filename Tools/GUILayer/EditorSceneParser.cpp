@@ -30,6 +30,7 @@
 #include "../../SceneEngine/PreparedScene.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../Utility/StringUtils.h"
 #include "../../ConsoleRig/Console.h"
@@ -137,7 +138,7 @@ namespace GUILayer
             if (batchFilter == BF::Transparent) {
                 CATCH_ASSETS_BEGIN
                     scene._placeholders->Render(metalContext, parserContext, techniqueIndex);
-                    scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene));
+                    scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene), lightingParserContext.GetSceneParser()->GetGlobalLightingDesc());
                 CATCH_ASSETS_END(parserContext)
             }
         }

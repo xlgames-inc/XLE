@@ -11,7 +11,6 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/IntersectionTest.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
@@ -89,7 +88,7 @@ namespace ToolsRig
         return input * scale;
     }
 
-	void TerrainManipulatorBase::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+	void TerrainManipulatorBase::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
 	{
         if (_manipulatorContext && _manipulatorContext->_showLockedArea) {
             // If there is a "lock" for the currently visualised layer, we should draw a rectangle to visualize it
@@ -167,7 +166,7 @@ namespace ToolsRig
 
     void    CommonManipulator::Render(
                     RenderCore::IThreadContext& context, 
-                    SceneEngine::LightingParserContext& parserContext)
+                    RenderCore::Techniques::ParsingContext& parserContext)
     {
 		TerrainManipulatorBase::Render(context, parserContext);
             //  Draw a highlight on the area that we're going to modify. Since we want this to behave like a decal, 
@@ -243,7 +242,7 @@ namespace ToolsRig
         return false;
     }
 
-    void    RectangleManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void    RectangleManipulator::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
 		TerrainManipulatorBase::Render(context, parserContext);
 

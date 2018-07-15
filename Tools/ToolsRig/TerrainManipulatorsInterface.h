@@ -11,7 +11,8 @@
 #include <memory>
 
 namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InputSnapshot; class IInputListener; class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
-namespace SceneEngine { class LightingParserContext; class TerrainManager; class IntersectionTestContext; class IntersectionTestScene; }
+namespace SceneEngine { class TerrainManager; class IntersectionTestContext; class IntersectionTestScene; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace ToolsRig
 {
@@ -22,7 +23,7 @@ namespace ToolsRig
     {
     public:
         void    Render( RenderCore::IThreadContext& context, 
-                        SceneEngine::LightingParserContext& parserContext);
+                        RenderCore::Techniques::ParsingContext& parserContext);
         void    Update();
 
         void SelectManipulator(signed relativeIndex);

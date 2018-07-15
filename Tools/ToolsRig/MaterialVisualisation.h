@@ -79,6 +79,7 @@ namespace ToolsRig
 
         static bool Draw(
             RenderCore::IThreadContext& context,
+			RenderCore::Techniques::ParsingContext& parserContext,
             SceneEngine::LightingParserContext& lightingParser,
             const MaterialVisSettings& settings,
 			const VisEnvSettings& envSettings,

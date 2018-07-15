@@ -74,7 +74,8 @@ namespace PlatformRig
 
         virtual void PrepareScene(
             RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext,
+			RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext,
             SceneEngine::PreparedScene& preparedPackets) const;
 
         unsigned    GetLightCount() const;

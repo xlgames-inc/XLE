@@ -11,6 +11,7 @@
 #include "../../Tools/GUILayer/NativeEngineDevice.h"
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../SceneEngine/LightingParserContext.h"
+#include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/IDevice.h"
 #include <msclr\auto_handle.h>
 #include <memory>

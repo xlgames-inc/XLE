@@ -30,7 +30,7 @@ namespace ToolsRig
         Float2 WorldSpaceToCoverage(unsigned layerId, const Float2& input) const;
         float WorldSpaceToCoverageDistance(unsigned layerId, float input) const;
 
-		virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+		virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         TerrainManipulatorBase(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
@@ -45,7 +45,7 @@ namespace ToolsRig
             const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+        virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength) = 0;
         virtual void    SetActivationState(bool) {}
@@ -73,7 +73,7 @@ namespace ToolsRig
             const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+        virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1) = 0;
         

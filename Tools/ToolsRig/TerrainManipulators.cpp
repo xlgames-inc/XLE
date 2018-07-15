@@ -11,9 +11,6 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/LightingParser.h"
-#include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
@@ -308,7 +305,7 @@ namespace ToolsRig
             const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+        virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual const char* GetName() const { return "Fine Tune"; }
         virtual std::string GetStatusText() const { return std::string(); }
@@ -387,7 +384,7 @@ namespace ToolsRig
         return false;
     }
 
-    void FineTuneManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void FineTuneManipulator::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
         TerrainManipulatorBase::Render(context, parserContext);
         if (_targetPoint.second) {
@@ -495,7 +492,7 @@ namespace ToolsRig
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
         virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
         virtual void SetActivationState(bool newState);
-		virtual void Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+		virtual void Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         PaintCoverageManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
@@ -552,7 +549,7 @@ namespace ToolsRig
         Tweakable("TerrainVisCoverage", 0) = newState ? coverageLayer : 0;
     }
 
-	void PaintCoverageManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+	void PaintCoverageManipulator::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
 	{
 		auto coverageLayer = _manipulatorContext->_activeLayer;
 		if (coverageLayer == SceneEngine::CoverageId_Heights)
@@ -587,7 +584,7 @@ namespace ToolsRig
     public:
         virtual void            PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
         virtual const char*     GetName() const { return "Erosion simulation"; }
-        virtual void            Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+        virtual void            Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
         virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
@@ -615,7 +612,7 @@ namespace ToolsRig
         }
     }
 
-    void    ErosionManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void    ErosionManipulator::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
         RectangleManipulator::Render(context, parserContext);
 

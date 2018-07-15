@@ -15,7 +15,7 @@ namespace SceneEngine
 	class GlobalLightingDesc;
     RenderCore::Metal::ShaderResourceView
         ScreenSpaceReflections_BuildTextures(	
-			RenderCore::Metal::DeviceContext* context, 
+			RenderCore::Metal::DeviceContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext,
             unsigned width, unsigned height, bool useMsaaSamplers, 
             const RenderCore::Metal::ShaderResourceView& gbufferDiffuse,

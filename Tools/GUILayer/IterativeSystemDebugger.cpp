@@ -68,8 +68,8 @@ namespace GUILayer
     }
 
     static void SetGlobalTransform(
-        RenderCore::Metal::DeviceContext& metalContext,
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         Float2 worldDims)
     {
         auto camToWorld = MakeCameraToWorld(
@@ -77,12 +77,12 @@ namespace GUILayer
             Float3(0.f, 1.f, 0.f),
             Float3(0.f, 0.f, 0.f));
         SceneEngine::LightingParser_SetGlobalTransform(
-            metalContext, parserContext, 
+            context, parserContext, 
             SceneEngine::BuildProjectionDesc(
                 camToWorld, 
                 0.f, worldDims[1], worldDims[0], 0.f, 
                 -4096.f, 4096.f));
-        SceneEngine::SetFrameGlobalStates(metalContext);
+        SceneEngine::SetFrameGlobalStates(*SceneEngine::MetalContext::Get(context));
     }
 
     void ErosionOverlay::RenderToScene(
@@ -92,7 +92,7 @@ namespace GUILayer
     {
         auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
         Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
-        SetGlobalTransform(*metalContext, parserContext, worldDims);
+        SetGlobalTransform(device, parserContext, worldDims);
         _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
     }
 
@@ -296,7 +296,7 @@ namespace GUILayer
 
         using RenderFn = std::function<void(
             RenderCore::IThreadContext&,
-            SceneEngine::LightingParserContext&,
+            RenderCore::Techniques::ParsingContext&,
             void*)>;
         using RenderWidgetsFn = std::function<void(
             RenderCore::IThreadContext&,
@@ -339,7 +339,7 @@ namespace GUILayer
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
-        SetGlobalTransform(*metalContext, parserContext, worldDims);
+        SetGlobalTransform(device, parserContext, worldDims);
 
         // _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
         (*_renderFn)(
@@ -380,7 +380,7 @@ namespace GUILayer
     {
         return [settings](
                 RenderCore::IThreadContext& device,
-                SceneEngine::LightingParserContext& parserContext,
+                RenderCore::Techniques::ParsingContext& parserContext,
                 void* sim)
             {
                 ((SimObject*)sim)->RenderDebugging(

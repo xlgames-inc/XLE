@@ -9,14 +9,7 @@
 #include "PreparedScene.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques 
-{
-    class CameraDesc; class ProjectionDesc; 
-    class TechniqueContext;
-    class TechniqueInterface;
-	class ParsingContext;
-}}
-
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace RenderCore { class IThreadContext; }
 
 namespace SceneEngine
@@ -25,9 +18,7 @@ namespace SceneEngine
     class ISceneParser;
     class PreparedDMShadowFrustum;
     class PreparedRTShadowFrustum;
-    class ShadowProjectionConstants;
     class ILightingParserPlugin;
-    class RenderingQualitySettings;
 
     using LightId = unsigned;
 
