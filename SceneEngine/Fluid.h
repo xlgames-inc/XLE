@@ -10,11 +10,10 @@
 #include <memory>
 
 namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     enum class FluidDebuggingMode
     {
         Density, Velocity, Temperature, Vapor, Divergence
@@ -40,7 +39,7 @@ namespace SceneEngine
 
         void RenderDebugging(
             RenderCore::IThreadContext& context,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         ReferenceFluidSolver2D(UInt2 dimensions);
@@ -89,7 +88,7 @@ namespace SceneEngine
 
         void RenderDebugging(
             RenderCore::IThreadContext& context,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         FluidSolver2D(UInt2 dimensions);
@@ -132,7 +131,7 @@ namespace SceneEngine
 
         void RenderDebugging(
             RenderCore::IThreadContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         FluidSolver3D(UInt3 dimensions);

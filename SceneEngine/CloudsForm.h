@@ -11,12 +11,10 @@
 #include "../Math/Vector.h"
 
 namespace RenderCore { class IThreadContext; }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; }}
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     class CloudsForm2D
     {
     public:
@@ -71,7 +69,7 @@ namespace SceneEngine
 
         void RenderDebugging(
             RenderCore::IThreadContext& context,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             FluidDebuggingMode debuggingMode = FluidDebuggingMode::Density);
 
         void RenderWidgets(

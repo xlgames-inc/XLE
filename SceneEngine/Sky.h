@@ -42,7 +42,7 @@ namespace SceneEngine
     void    Sky_RenderPostFog(
         RenderCore::IThreadContext& threadContext, 
         RenderCore::Techniques::ParsingContext& parserContext,
-		const SkyTextureParts& globalLightingDesc);
+		const GlobalLightingDesc& globalLightingDesc);
 
 }
 

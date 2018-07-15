@@ -21,6 +21,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
@@ -69,7 +70,7 @@ namespace Sample
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         const RenderCore::ResourcePtr& resPtr,
-        SceneEngine::LightingParserContext& lightingParserContext, BasicSceneParser* scene,
+        RenderCore::Techniques::ParsingContext& parserContext, BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* debugSystem);
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator);
@@ -251,7 +252,7 @@ namespace Sample
                 }
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(*globalTechniqueContext, &namedResources, &frameBufferPool);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources, &frameBufferPool);
                 //lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
@@ -259,7 +260,7 @@ namespace Sample
                     &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1, std::placeholders::_2,
-                        std::ref(lightingParserContext), mainScene.get(), 
+                        std::ref(parserContext), mainScene.get(), 
                         presentationChain.get(), 
                         frameRig.GetMainOverlaySystem().get()));
 
@@ -295,12 +296,13 @@ namespace Sample
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
         const RenderCore::ResourcePtr& presentationResource,
-        SceneEngine::LightingParserContext& lightingParserContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
         BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
     {
-        auto& namedRes = lightingParserContext.GetNamedResources();
+		SceneEngine::LightingParserContext lightingParserContext;
+        auto& namedRes = parsingContext.GetNamedResources();
         auto viewContext = presentationChain->GetDesc();
         auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
         namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, samples});
@@ -316,7 +318,7 @@ namespace Sample
             //      This is where most rendering actually happens.
         if (scene) {
             LightingParser_ExecuteScene(
-                context, lightingParserContext, *scene, scene->GetCameraDesc(),
+                context, parsingContext, lightingParserContext, *scene, scene->GetCameraDesc(),
                 RenderingQualitySettings(
                     UInt2(viewContext->_width, viewContext->_height),
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
@@ -324,29 +326,29 @@ namespace Sample
         }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, lightingParserContext);
+            overlaySys->RenderToScene(context, parsingContext, lightingParserContext);
         }
 
             // Begin a default render pass just rendering to the 
             // presentation buffer (which is always target "0")
         bool hasPendingResources = false;
         {
-			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, lightingParserContext);
+			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parsingContext);
 
                 //  If we need to, we can render outside of the lighting parser.
                 //  We just need to to use the device context to perform any rendering
                 //  operations here.
             RenderPostScene(context);
-            LightingParser_Overlays(context, lightingParserContext);
+            LightingParser_Overlays(context, parsingContext, lightingParserContext);
 
                 //  The lighting parser will tell us if there where any pending resources
                 //  during the render. Here, we can render them as a short list...
-            hasPendingResources = lightingParserContext.HasPendingAssets();
+            hasPendingResources = parsingContext.HasPendingAssets();
             auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            DrawPendingResources(context, lightingParserContext, defaultFont0);
+            DrawPendingResources(context, parsingContext, defaultFont0);
 
             if (overlaySys) {
-                overlaySys->RenderWidgets(context, lightingParserContext);
+                overlaySys->RenderWidgets(context, parsingContext);
             }
         }
 

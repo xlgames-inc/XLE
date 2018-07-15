@@ -63,7 +63,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext::Get(*intersectionContext.GetThreadContext())->Bind(newViewport);
 
         RenderCore::Techniques::ParsingContext parserContext(intersectionContext.GetTechniqueContext());
-        auto marker = LightingParser_SetupScene(*intersectionContext.GetThreadContext(), parserContext);
+        LightingParser_SetupScene(*intersectionContext.GetThreadContext(), parserContext);
         LightingParser_SetGlobalTransform(
             *intersectionContext.GetThreadContext(), parserContext,
             BuildProjectionDesc(intersectionContext.GetCameraDesc(), viewportDims));

@@ -22,7 +22,8 @@ namespace GUILayer
 {
     void MaterialVisLayer::RenderToScene(
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext)
     {
         if (!_visObject) { Resolve(); }
         if (!_visObject) { return; }

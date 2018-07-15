@@ -220,7 +220,7 @@ namespace SceneEngine
         Techniques::CameraDesc camera;
         if (cameraForLOD) { camera = *cameraForLOD; }
 
-        auto marker = LightingParser_SetupScene(*threadContext, _pimpl->_parserContext);
+        LightingParser_SetupScene(*threadContext, _pimpl->_parserContext);
         LightingParser_SetGlobalTransform(
             *threadContext, _pimpl->_parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions, &specialProjMatrix));

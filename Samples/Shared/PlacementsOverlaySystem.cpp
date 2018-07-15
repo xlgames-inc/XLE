@@ -30,7 +30,8 @@ namespace Sample
 
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext)
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext)
         {
             _placementsManipulators->RenderToScene(devContext, parserContext);
         }

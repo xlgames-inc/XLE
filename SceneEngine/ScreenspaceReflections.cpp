@@ -286,7 +286,7 @@ namespace SceneEngine
                                                 const Metal::ShaderResourceView& gbufferNormals,
                                                 const Metal::ShaderResourceView& gbufferParam,
                                                 const Metal::ShaderResourceView& depthsSRV,
-												GlobalLightingDesc& globalLightingDesc)
+												const GlobalLightingDesc& globalLightingDesc)
     {
             //
             //      Build textures and resources related to screen space textures

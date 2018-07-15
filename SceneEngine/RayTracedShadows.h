@@ -29,6 +29,8 @@ namespace SceneEngine
         unsigned shadowFrustumIndex);
 
     void RTShadows_DrawMetrics(
-        RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
+        RenderCore::Metal::DeviceContext& context,
+		RenderCore::Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
         IMainTargets& mainTargets);
 }

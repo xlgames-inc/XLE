@@ -184,14 +184,14 @@ namespace SceneEngine
     }
 
     void LightingParser_SetGlobalTransform(
-        Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         Techniques::ParsingContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc)
     {
         parserContext.GetProjectionDesc() = projDesc;
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
         parserContext.SetGlobalCB(
-            context, Techniques::TechniqueContext::CB_GlobalTransform,
+            *Metal::DeviceContext::Get(context), Techniques::TechniqueContext::CB_GlobalTransform,
             &globalTransform, sizeof(globalTransform));
     }
 
@@ -481,7 +481,7 @@ namespace SceneEngine
             //          but the "resolve" step must come after sky rendering.
         if (Tweakable("DoSky", true)) {
             Sky_Render(metalContext, parserContext, true);
-            Sky_RenderPostFog(metalContext, parserContext);
+            Sky_RenderPostFog(metalContext, parserContext, lightingParserContext.GetSceneParser()->GetGlobalLightingDesc());
         }
 
         if (useOrderIndependentTransparency) {
@@ -1167,7 +1167,7 @@ namespace SceneEngine
     }
 
     void LightingParser_InitBasicLightEnv(  
-        Metal::DeviceContext& context,
+        RenderCore::IThreadContext& context,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
         ISceneParser& sceneParser);
@@ -1192,7 +1192,7 @@ namespace SceneEngine
             &time, sizeof(time));
 
         if (sceneParser)
-            LightingParser_InitBasicLightEnv(metalContext, parserContext, lightingParserContext, *sceneParser);
+            LightingParser_InitBasicLightEnv(context, parserContext, lightingParserContext, *sceneParser);
 
         auto& metricsBox = ConsoleRig::FindCachedBox2<MetricsBox>();
         metalContext.ClearUInt(metricsBox._metricsBufferUAV, { 0,0,0,0 });
@@ -1200,6 +1200,23 @@ namespace SceneEngine
 
         return lightingParserContext.SetSceneParser(sceneParser);
     }
+
+	void LightingParser_SetupScene(
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		unsigned samplingPassIndex, unsigned samplingPassCount)
+	{
+		struct GlobalCBuffer
+        {
+            float _time; unsigned _samplingPassIndex; 
+            unsigned _samplingPassCount; unsigned _dummy;
+        } time { 0.f, samplingPassIndex, samplingPassCount, 0 };
+
+		auto& metalContext = *Metal::DeviceContext::Get(context);
+        parserContext.SetGlobalCB(
+            metalContext, Techniques::TechniqueContext::CB_GlobalState,
+            &time, sizeof(time));
+	}
 
     void LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context, 
@@ -1209,10 +1226,9 @@ namespace SceneEngine
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderingQualitySettings& qualitySettings)
     {
-        auto& metalContext = *Metal::DeviceContext::Get(context);
         auto marker = LightingParser_SetupScene(context, parserContext, lightingParserContext, &scene);
         LightingParser_SetGlobalTransform(
-            metalContext, parserContext, 
+            context, parserContext, 
             BuildProjectionDesc(camera, qualitySettings._dimensions));
         scene.PrepareScene(context, parserContext, lightingParserContext, marker.GetPreparedScene());
 

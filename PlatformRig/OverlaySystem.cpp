@@ -8,6 +8,7 @@
 #include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -78,10 +79,12 @@ namespace PlatformRig
     }
 
     void OverlaySystemSwitch::RenderToScene(
-        RenderCore::IThreadContext& device, SceneEngine::LightingParserContext& parserContext) 
+        RenderCore::IThreadContext& device, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext);
+            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext, lightingParserContext);
         }
     }
 
@@ -144,11 +147,12 @@ namespace PlatformRig
 
     void OverlaySystemSet::RenderToScene(
         RenderCore::IThreadContext& device, 
-        SceneEngine::LightingParserContext& parserContext) 
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
             CATCH_ASSETS_BEGIN
-                (*i)->RenderToScene(device, parserContext);
+                (*i)->RenderToScene(device, parserContext, lightingParserContext);
             CATCH_ASSETS_END(parserContext)
         }
     }
@@ -189,7 +193,8 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext);
         void SetActivationState(bool);
 
         ConsoleOverlaySystem();
@@ -216,7 +221,8 @@ namespace PlatformRig
 
     void ConsoleOverlaySystem::RenderToScene(
         RenderCore::IThreadContext& device, 
-        SceneEngine::LightingParserContext& parserContext) {}
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext) {}
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 
     ConsoleOverlaySystem::ConsoleOverlaySystem()

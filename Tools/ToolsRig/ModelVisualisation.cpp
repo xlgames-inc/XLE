@@ -272,7 +272,8 @@ namespace ToolsRig
 
     void ModelVisLayer::RenderToScene(
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext)
     {
         using namespace SceneEngine;
 
@@ -356,7 +357,8 @@ namespace ToolsRig
     
     void VisualisationOverlay::RenderToScene(
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext)
     {
         using namespace RenderCore;
         if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
@@ -646,6 +648,7 @@ namespace ToolsRig
 
     void MouseOverTrackingOverlay::RenderToScene(
         RenderCore::IThreadContext&, 
+        RenderCore::Techniques::ParsingContext&,
         SceneEngine::LightingParserContext&) {}
     
     void MouseOverTrackingOverlay::RenderWidgets(

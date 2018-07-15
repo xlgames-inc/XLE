@@ -141,7 +141,8 @@ namespace GUILayer
 
         void RenderToScene(
             RenderCore::IThreadContext& context, 
-            SceneEngine::LightingParserContext& parserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext); 
         void RenderWidgets(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parsingContext);
@@ -288,7 +289,8 @@ namespace GUILayer
 
             void RenderToScene(
                 RenderCore::IThreadContext& device, 
-                SceneEngine::LightingParserContext& parserContext)
+                RenderCore::Techniques::ParsingContext& parserContext,
+				SceneEngine::LightingParserContext& lightingParserContext)
             {
                 _managedOverlay->RenderToScene(device, parserContext);
             }

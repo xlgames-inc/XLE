@@ -30,7 +30,8 @@ namespace PlatformRig
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) = 0; 
+			RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext) = 0; 
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext) = 0;
@@ -50,7 +51,8 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext);
         void SetActivationState(bool newState);
 
         void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
@@ -77,7 +79,8 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext);
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext);
         void SetActivationState(bool newState);
 
         void AddSystem(std::shared_ptr<IOverlaySystem> system);

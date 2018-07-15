@@ -123,10 +123,10 @@ namespace SceneEngine
         unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1)
         -> AttachedSceneMarker;
 
-	auto LightingParser_SetupScene(
+	void LightingParser_SetupScene(
         RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext)
-        -> AttachedSceneMarker;
+        RenderCore::Techniques::ParsingContext& parserContext,
+		unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
 
     /// <summary>Set camera related states after camera changes</summary>
     /// Normally this is called automatically by the system.
@@ -141,9 +141,10 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext, 
         const RenderCore::Techniques::ProjectionDesc& projDesc);
 
-    void LightingParser_Overlays(   
+    void LightingParser_Overlays( 
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext);
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext);
 
     /// <summary>Build a projection desc with parameters from a standard camera</summary>
     RenderCore::Techniques::ProjectionDesc BuildProjectionDesc(

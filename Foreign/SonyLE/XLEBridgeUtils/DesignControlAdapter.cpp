@@ -43,7 +43,8 @@ namespace XLEBridgeUtils
     public:
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) override
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext) override
         {
             auto context = gcnew GUILayer::SimpleRenderingContext(&device, RetainedResources, &parserContext);
             try

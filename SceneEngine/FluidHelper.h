@@ -18,6 +18,7 @@
 #pragma pop_macro("new")
 
 namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -88,18 +89,17 @@ namespace SceneEngine
         const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
         PoissonSolver::Method method);
 
-    class LightingParserContext;
     enum RenderFluidMode { Scalar, Vector };
     void RenderFluidDebugging2D(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data);
 
     void RenderFluidDebugging3D(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data);

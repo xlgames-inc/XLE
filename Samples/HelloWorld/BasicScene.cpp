@@ -8,6 +8,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/Drawables.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/SharedStateSet.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
@@ -16,7 +17,6 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IAnnotator.h"
 #include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Tonemap.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
@@ -38,12 +38,12 @@ namespace Sample
     public:
         void RenderOpaque(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext&, 
             unsigned techniqueIndex);
 
 		void RenderOpaque_SimpleModelRenderer(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext&, 
             unsigned techniqueIndex);
 
         Model();
@@ -66,7 +66,8 @@ namespace Sample
 
     void BasicSceneParser::ExecuteScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext, 
         const SceneParseSettings& parseSettings,
         SceneEngine::PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
@@ -114,7 +115,8 @@ namespace Sample
 
     void BasicSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        LightingParserContext& lightingParserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
     }
@@ -277,7 +279,7 @@ namespace Sample
 
     void BasicSceneParser::Model::RenderOpaque(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         unsigned techniqueIndex)
     {
             //  This class shows a simple method for rendering an object
@@ -382,7 +384,7 @@ namespace Sample
     }
 
 	RenderCore::Techniques::SequencerTechnique MakeSequencerTechnique(
-		SceneEngine::LightingParserContext& parserContext)
+		RenderCore::Techniques::ParsingContext& parserContext)
 	{
 		RenderCore::Techniques::SequencerTechnique result;
 		result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
@@ -392,7 +394,7 @@ namespace Sample
 
 	void BasicSceneParser::Model::RenderOpaque_SimpleModelRenderer(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         unsigned techniqueIndex)
     {
 		auto renderer = _simpleModelRenderer->TryActualize();

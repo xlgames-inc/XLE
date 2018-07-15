@@ -1037,7 +1037,7 @@ namespace SceneEngine
 
     void CloudsForm2D::RenderDebugging(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         static float qcMin = 0.f, qcMax = 1e-3f;

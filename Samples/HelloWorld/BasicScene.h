@@ -33,13 +33,15 @@ namespace Sample
 
         void ExecuteScene(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext& parserContext,
+            LightingParserContext& lightingParserContext, 
             const SceneParseSettings& parseSettings,
             SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const;
         void PrepareScene(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext,
+			RenderCore::Techniques::ParsingContext& parserContext,
+            LightingParserContext& lightingParserContext,
             SceneEngine::PreparedScene& preparedPackets) const;
         bool HasContent(const SceneParseSettings& parseSettings) const;
 

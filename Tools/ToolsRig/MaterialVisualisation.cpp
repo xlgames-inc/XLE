@@ -297,7 +297,8 @@ namespace ToolsRig
 
     void MaterialVisLayer::RenderToScene(
         IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext)
+        RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext)
     {
         Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
     }

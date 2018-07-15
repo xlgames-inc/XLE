@@ -529,7 +529,7 @@ namespace SceneEngine
 
         if (Tweakable("RTShadowMetrics", false)) {
             parserContext._pendingOverlays.push_back(
-                std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(mainTargets)));
+                std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(lightingParserContext), std::ref(mainTargets)));
         }
 
         if (Tweakable("LightResolveDebugging", false)) {

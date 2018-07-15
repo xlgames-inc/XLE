@@ -43,7 +43,8 @@ namespace ToolsRig
         void    Render(         RenderOverlays::IOverlayContext& context, Layout& layout, 
                                 Interactables& interactables, InterfaceState& interfaceState);
         void    RenderToScene(  RenderCore::IThreadContext& context, 
-                                SceneEngine::LightingParserContext& parserContext);
+                                RenderCore::Techniques::ParsingContext& parserContext,
+								SceneEngine::LightingParserContext& lightingParserContext);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         PlacementsWidgets(
@@ -1496,7 +1497,9 @@ namespace ToolsRig
     }
 
     void PlacementsWidgets::RenderToScene(
-        RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+        RenderCore::IThreadContext& context, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext)
     {
         _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
     }
@@ -1584,7 +1587,9 @@ namespace ToolsRig
     }
 
     void PlacementsManipulatorsManager::RenderToScene(
-        RenderCore::IThreadContext& device, SceneEngine::LightingParserContext& parserContext)
+        RenderCore::IThreadContext& device, 
+		RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::LightingParserContext& lightingParserContext)
     {
         _pimpl->_placementsDispl->RenderToScene(device, parserContext);
     }

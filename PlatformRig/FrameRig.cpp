@@ -142,7 +142,8 @@ namespace PlatformRig
 
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext) {}
+            RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::LightingParserContext& lightingParserContext) {}
 
         void RenderWidgets(
             RenderCore::IThreadContext& device, 

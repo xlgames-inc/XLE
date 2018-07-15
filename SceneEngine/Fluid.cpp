@@ -79,7 +79,7 @@ namespace SceneEngine
 
     void ReferenceFluidSolver2D::RenderDebugging(
         RenderCore::IThreadContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
@@ -316,7 +316,7 @@ namespace SceneEngine
 
     void FluidSolver2D::RenderDebugging(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
@@ -564,7 +564,7 @@ namespace SceneEngine
 
     void FluidSolver3D::RenderDebugging(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         switch (debuggingMode) {
