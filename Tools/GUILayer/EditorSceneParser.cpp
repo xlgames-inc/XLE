@@ -242,8 +242,7 @@ namespace GUILayer
     public:
         void RenderToScene(
             RenderCore::IThreadContext& threadContext, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-			SceneEngine::LightingParserContext& lightingParserContext) override;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
         void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parsingContext) override;
@@ -266,8 +265,7 @@ namespace GUILayer
     
     void EditorSceneOverlay::RenderToScene(
         RenderCore::IThreadContext& threadContext, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-		SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (_sceneParser.get()) {
             _sceneParser->PrepareEnvironmentalSettings(
@@ -279,6 +277,7 @@ namespace GUILayer
                 ? RenderingQualitySettings::LightingModel::Deferred 
                 : RenderingQualitySettings::LightingModel::Forward;
 
+			SceneEngine::LightingParserContext lightingParserContext;
             _sceneParser->AddLightingPlugins(lightingParserContext);
 
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);

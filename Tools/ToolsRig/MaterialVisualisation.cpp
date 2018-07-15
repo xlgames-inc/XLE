@@ -9,6 +9,7 @@
 #include "VisualisationGeo.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParser.h"
+#include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/SceneParser.h"
 #include "../../SceneEngine/LightDesc.h"
 #include "../../SceneEngine/PreparedScene.h"
@@ -236,7 +237,6 @@ namespace ToolsRig
     bool MaterialVisLayer::Draw(
         IThreadContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
-		SceneEngine::LightingParserContext& lightingParserContext,
         const MaterialVisSettings& settings,
         const VisEnvSettings& envSettings,
         const MaterialVisObject& object)
@@ -263,6 +263,9 @@ namespace ToolsRig
         MaterialSceneParser sceneParser(settings, envSettings, object);
         sceneParser.Prepare();
         SceneEngine::RenderingQualitySettings qualSettings(context.GetStateDesc()._viewportDimensions);
+
+		SceneEngine::LightingParserContext lightingParserContext;
+        lightingParserContext._plugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
 
         if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
                 
@@ -308,10 +311,9 @@ namespace ToolsRig
 
     void MaterialVisLayer::RenderToScene(
         IThreadContext& context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
-        Draw(context, parserContext, lightingParserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
+        Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
     }
 
     void MaterialVisLayer::RenderWidgets(

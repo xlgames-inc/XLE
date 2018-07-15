@@ -23,14 +23,13 @@ namespace GUILayer
 {
     void MaterialVisLayer::RenderToScene(
         RenderCore::IThreadContext& context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (!_visObject) { Resolve(); }
         if (!_visObject) { return; }
 
         ToolsRig::MaterialVisLayer::Draw(
-            context, parserContext, lightingParserContext, _settings->GetUnderlying(), 
+            context, parserContext, _settings->GetUnderlying(), 
             *_envSettings.get(), *_visObject.get());
     }
 

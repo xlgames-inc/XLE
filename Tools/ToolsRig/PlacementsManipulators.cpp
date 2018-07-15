@@ -42,8 +42,7 @@ namespace ToolsRig
         void    Render(         RenderOverlays::IOverlayContext& context, Layout& layout, 
                                 Interactables& interactables, InterfaceState& interfaceState);
         void    RenderToScene(  RenderCore::IThreadContext& context, 
-                                RenderCore::Techniques::ParsingContext& parserContext,
-								SceneEngine::LightingParserContext& lightingParserContext);
+                                RenderCore::Techniques::ParsingContext& parserContext);
         bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
 
         PlacementsWidgets(
@@ -1497,8 +1496,7 @@ namespace ToolsRig
 
     void PlacementsWidgets::RenderToScene(
         RenderCore::IThreadContext& context, 
-		RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+		RenderCore::Techniques::ParsingContext& parserContext)
     {
         _manipulators[_activeManipulatorIndex]->Render(context, parserContext);
     }
@@ -1587,10 +1585,9 @@ namespace ToolsRig
 
     void PlacementsManipulatorsManager::RenderToScene(
         RenderCore::IThreadContext& device, 
-		RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+		RenderCore::Techniques::ParsingContext& parserContext)
     {
-        _pimpl->_placementsDispl->RenderToScene(device, parserContext, lightingParserContext);
+        _pimpl->_placementsDispl->RenderToScene(device, parserContext);
     }
 
     auto PlacementsManipulatorsManager::GetInputLister() -> std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>

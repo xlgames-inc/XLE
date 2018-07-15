@@ -80,11 +80,10 @@ namespace PlatformRig
 
     void OverlaySystemSwitch::RenderToScene(
         RenderCore::IThreadContext& device, 
-		RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext) 
+		RenderCore::Techniques::ParsingContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext, lightingParserContext);
+            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext);
         }
     }
 
@@ -147,12 +146,11 @@ namespace PlatformRig
 
     void OverlaySystemSet::RenderToScene(
         RenderCore::IThreadContext& device, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext) 
+        RenderCore::Techniques::ParsingContext& parserContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
             CATCH_ASSETS_BEGIN
-                (*i)->RenderToScene(device, parserContext, lightingParserContext);
+                (*i)->RenderToScene(device, parserContext);
             CATCH_ASSETS_END(parserContext)
         }
     }
@@ -193,8 +191,7 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool);
 
         ConsoleOverlaySystem();
@@ -221,8 +218,7 @@ namespace PlatformRig
 
     void ConsoleOverlaySystem::RenderToScene(
         RenderCore::IThreadContext& device, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext) {}
+        RenderCore::Techniques::ParsingContext& parserContext) {}
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 
     ConsoleOverlaySystem::ConsoleOverlaySystem()

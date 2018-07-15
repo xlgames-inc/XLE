@@ -39,8 +39,7 @@ namespace GUILayer
     public:
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext) override;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parsingContext) override;
@@ -87,8 +86,7 @@ namespace GUILayer
 
     void ErosionOverlay::RenderToScene(
         RenderCore::IThreadContext& device,
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
         Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
@@ -287,8 +285,7 @@ namespace GUILayer
     public:
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext) override;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parsingContext) override;
@@ -332,8 +329,7 @@ namespace GUILayer
 
     void CFDOverlay::RenderToScene(
         RenderCore::IThreadContext& device,
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (!(*_renderFn)) return;
 

@@ -13,7 +13,6 @@
 #include <memory>
 #include <vector>
 
-namespace SceneEngine { class LightingParserContext; }
 namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 
@@ -30,8 +29,7 @@ namespace PlatformRig
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-			RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext) = 0; 
+			RenderCore::Techniques::ParsingContext& parserContext) = 0; 
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext) = 0;
@@ -51,8 +49,7 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool newState);
 
         void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
@@ -79,8 +76,7 @@ namespace PlatformRig
             RenderCore::Techniques::ParsingContext& parserContext);
         void RenderToScene(
             RenderCore::IThreadContext& devContext, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool newState);
 
         void AddSystem(std::shared_ptr<IOverlaySystem> system);

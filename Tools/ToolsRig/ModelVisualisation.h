@@ -100,8 +100,7 @@ namespace ToolsRig
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext);
         virtual void RenderWidgets(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parsingContext);
@@ -125,8 +124,7 @@ namespace ToolsRig
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext); 
         virtual void RenderWidgets(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -149,8 +147,7 @@ namespace ToolsRig
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext); 
         virtual void RenderWidgets(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext);

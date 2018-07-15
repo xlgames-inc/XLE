@@ -43,8 +43,7 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& projectionDesc);
         void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext);
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputLister();
 

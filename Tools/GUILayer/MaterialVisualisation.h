@@ -63,8 +63,7 @@ namespace GUILayer
     public:
         virtual void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext) override;
+            RenderCore::Techniques::ParsingContext& parserContext) override;
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& projectionDesc) override;

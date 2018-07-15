@@ -56,8 +56,6 @@ namespace GUILayer
         using namespace SceneEngine;
 
         RenderCore::Techniques::ParsingContext parserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get(), pimpl._frameBufferPool.get());
-		LightingParserContext lightingParserContext;
-        lightingParserContext._plugins.push_back(pimpl._stdPlugin);
 
         auto stateDesc = context.GetStateDesc();
         pimpl._namedResources->Bind(RenderCore::FrameBufferProperties{
@@ -65,7 +63,7 @@ namespace GUILayer
         pimpl._namedResources->Bind(0u, presentationResource);
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, parserContext, lightingParserContext);
+            overlaySys->RenderToScene(context, parserContext);
         }
 
         {
@@ -143,8 +141,7 @@ namespace GUILayer
 
         void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext); 
         void RenderWidgets(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parsingContext);
@@ -163,8 +160,7 @@ namespace GUILayer
 
     void InputLayer::RenderToScene(
         RenderCore::IThreadContext&,
-		RenderCore::Techniques::ParsingContext&,
-        SceneEngine::LightingParserContext&) {}
+		RenderCore::Techniques::ParsingContext&) {}
     void InputLayer::RenderWidgets(
         RenderCore::IThreadContext&, 
         RenderCore::Techniques::ParsingContext&) {}
@@ -292,10 +288,9 @@ namespace GUILayer
 
             void RenderToScene(
                 RenderCore::IThreadContext& device, 
-                RenderCore::Techniques::ParsingContext& parserContext,
-				SceneEngine::LightingParserContext& lightingParserContext)
+                RenderCore::Techniques::ParsingContext& parserContext)
             {
-                _managedOverlay->RenderToScene(device, parserContext, lightingParserContext);
+                _managedOverlay->RenderToScene(device, parserContext);
             }
             
             void RenderWidgets(
@@ -345,7 +340,6 @@ namespace GUILayer
         : EngineControl(control)
     {
         _pimpl.reset(new LayerControlPimpl());
-        _pimpl->_stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
         _pimpl->_namedResources = std::make_shared<RenderCore::Techniques::AttachmentPool>();
 		_pimpl->_frameBufferPool = std::make_shared<RenderCore::Techniques::FrameBufferPool>();

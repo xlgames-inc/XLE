@@ -14,6 +14,8 @@
 #include "../../SceneEngine/RayVsModel.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../SceneEngine/PreparedScene.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
@@ -273,8 +275,7 @@ namespace ToolsRig
 
     void ModelVisLayer::RenderToScene(
         RenderCore::IThreadContext& context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace SceneEngine;
 
@@ -306,6 +307,9 @@ namespace ToolsRig
         sceneParser.Prepare();
 
         auto qualSettings = SceneEngine::RenderingQualitySettings(context.GetStateDesc()._viewportDimensions);
+
+		SceneEngine::LightingParserContext lightingParserContext;
+		lightingParserContext._plugins.push_back(std::make_shared<SceneEngine::LightingParserStandardPlugin>());
 
         auto& screenshot = Tweakable("Screenshot", 0);
         if (screenshot) {
@@ -358,8 +362,7 @@ namespace ToolsRig
     
     void VisualisationOverlay::RenderToScene(
         RenderCore::IThreadContext& context, 
-        RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext)
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderCore;
         if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
@@ -649,8 +652,7 @@ namespace ToolsRig
 
     void MouseOverTrackingOverlay::RenderToScene(
         RenderCore::IThreadContext&, 
-        RenderCore::Techniques::ParsingContext&,
-        SceneEngine::LightingParserContext&) {}
+        RenderCore::Techniques::ParsingContext&) {}
     
     void MouseOverTrackingOverlay::RenderWidgets(
         RenderCore::IThreadContext& threadContext, 

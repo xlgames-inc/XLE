@@ -8,7 +8,6 @@
 
 namespace RenderCore { class IThreadContext; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
-namespace SceneEngine { class LightingParserContext; }
 
 namespace GUILayer 
 {
@@ -27,8 +26,7 @@ namespace GUILayer
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-			SceneEngine::LightingParserContext& lightingParserContext) = 0; 
+            RenderCore::Techniques::ParsingContext& parserContext) = 0; 
         virtual void RenderWidgets(
             RenderCore::IThreadContext& device, 
             RenderCore::Techniques::ParsingContext& parserContext) = 0;

@@ -64,8 +64,7 @@ namespace ToolsRig
 
         virtual void RenderToScene(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext); 
+            RenderCore::Techniques::ParsingContext& parserContext);
         virtual void RenderWidgets(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parsingContext);
@@ -80,7 +79,6 @@ namespace ToolsRig
         static bool Draw(
             RenderCore::IThreadContext& context,
 			RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParser,
             const MaterialVisSettings& settings,
 			const VisEnvSettings& envSettings,
             const MaterialVisObject& object);

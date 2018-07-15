@@ -326,7 +326,7 @@ namespace Sample
         }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, parsingContext, lightingParserContext);
+            overlaySys->RenderToScene(context, parsingContext);
         }
 
             // Begin a default render pass just rendering to the 

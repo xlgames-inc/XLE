@@ -10,7 +10,6 @@
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class  TechniqueContext; class AttachmentPool; class FrameBufferPool; }}
-namespace SceneEngine { class LightingParserStandardPlugin; }
 
 namespace GUILayer 
 {
@@ -49,7 +48,6 @@ namespace GUILayer
     class LayerControlPimpl 
     {
     public:
-        std::shared_ptr<SceneEngine::LightingParserStandardPlugin> _stdPlugin;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
         std::shared_ptr<RenderCore::Techniques::AttachmentPool> _namedResources;
 		std::shared_ptr<RenderCore::Techniques::FrameBufferPool> _frameBufferPool;
