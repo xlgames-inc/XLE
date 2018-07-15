@@ -24,7 +24,8 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
-        PreparedScene& preparedScene,
+        ISceneParser& sceneParser,
+		PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex);
 

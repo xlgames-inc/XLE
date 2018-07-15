@@ -59,7 +59,6 @@ namespace GUILayer
         void PrepareScene(
             RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext,
-            LightingParserContext& lightingParserContext,
             PreparedScene& preparedPackets) const;
         bool HasContent(const SceneParseSettings& parseSettings) const;
 
@@ -105,7 +104,7 @@ namespace GUILayer
         if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && scene._terrainManager) {
             if (batchFilter == BF::General) {
                 CATCH_ASSETS_BEGIN
-                    scene._terrainManager->Render(context, parserContext, lightingParserContext, preparedPackets, techniqueIndex);
+                    scene._terrainManager->Render(context, parserContext, this, preparedPackets, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
             }
         }
@@ -138,7 +137,7 @@ namespace GUILayer
             if (batchFilter == BF::Transparent) {
                 CATCH_ASSETS_BEGIN
                     scene._placeholders->Render(metalContext, parserContext, techniqueIndex);
-                    scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene), lightingParserContext.GetSceneParser()->GetGlobalLightingDesc());
+                    scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene), GetGlobalLightingDesc());
                 CATCH_ASSETS_END(parserContext)
             }
         }
@@ -147,7 +146,6 @@ namespace GUILayer
     void EditorSceneParser::PrepareScene(
         RenderCore::IThreadContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext, 
-        LightingParserContext& lightingParserContext,
         PreparedScene& preparedPackets) const
     {
         auto& scene = *_editorScene;

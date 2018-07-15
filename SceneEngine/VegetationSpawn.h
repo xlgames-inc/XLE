@@ -82,11 +82,13 @@ namespace SceneEngine
     class LightingParserContext;
     class VegetationSpawnResources;
     class PreparedScene;
+	class ISceneParser;
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg,
         VegetationSpawnResources& resources);

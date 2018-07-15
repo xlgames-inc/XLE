@@ -39,7 +39,7 @@ namespace Sample
             unsigned techniqueIndex) const;
         void PrepareScene(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             SceneEngine::PreparedScene& preparedPackets) const;
         virtual bool HasContent(const SceneParseSettings& parseSettings) const;
 

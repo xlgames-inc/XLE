@@ -106,6 +106,7 @@ namespace SceneEngine
         RenderCore::IThreadContext& metalContext, 
 		RenderCore::Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
         const RenderingQualitySettings& qualitySettings,
         PreparedScene& preparedScene);
 
@@ -220,19 +221,19 @@ namespace SceneEngine
     public:
         virtual void OnPreScenePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			PreparedScene&) const = 0;
+			ISceneParser&, PreparedScene&) const = 0;
 
         virtual void OnLightingResolvePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			LightingResolveContext&) const = 0;
+			ISceneParser&, LightingResolveContext&) const = 0;
 
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-            const SceneParseSettings&, unsigned techniqueIndex) const = 0;
+            ISceneParser&, const SceneParseSettings&, unsigned techniqueIndex) const = 0;
 
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ShaderLightDesc::BasicEnvironment& env) const = 0;
+			ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const = 0;
     };
 }
 

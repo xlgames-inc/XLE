@@ -18,7 +18,7 @@ namespace ConsoleRig { class IProgress; }
 
 namespace SceneEngine
 {
-	class LightingParserContext;
+	class ISceneParser;
     class PreparedScene;
     class HeightsUberSurfaceInterface;
     class CoverageUberSurfaceInterface;
@@ -43,7 +43,7 @@ namespace SceneEngine
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
-			LightingParserContext& lightingParserContext,
+			const ISceneParser* sceneParser,
             PreparedScene& preparedPackets,
             unsigned techniqueIndex);
 

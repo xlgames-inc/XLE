@@ -29,8 +29,6 @@ namespace SceneEngine
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }
         void            SetMetricsBox(MetricsBox* box);
-        ISceneParser*   GetSceneParser()                    { return _sceneParser; }
-		const ISceneParser*   GetSceneParser() const		{ return _sceneParser; }
 
             //  ----------------- Working shadow state ----------------- 
         std::vector<std::pair<LightId, PreparedDMShadowFrustum>>    _preparedDMShadows;
@@ -46,7 +44,6 @@ namespace SceneEngine
 
     private:
         MetricsBox*         _metricsBox = nullptr;
-        ISceneParser*       _sceneParser = nullptr;
 
         friend class AttachedSceneMarker;
         AttachedSceneMarker SetSceneParser(ISceneParser* sceneParser);
@@ -73,7 +70,7 @@ namespace SceneEngine
             moveFrom._parserContext = nullptr;
             moveFrom._preparedScene = std::move(moveFrom._preparedScene); 
         }
-        ~AttachedSceneMarker() { if (_parserContext) _parserContext->_sceneParser = nullptr; }
+        ~AttachedSceneMarker() {}
 
         AttachedSceneMarker(const AttachedSceneMarker&) = delete;
         const AttachedSceneMarker& operator=(const AttachedSceneMarker&) = delete;

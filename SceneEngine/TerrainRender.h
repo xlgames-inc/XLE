@@ -22,7 +22,6 @@ namespace RenderCore { namespace Techniques { class  ProjectionDesc; class Parsi
 
 namespace SceneEngine
 {
-    class LightingParserContext;
     class ITerrainFormat;
     using CoverageFormat = RenderCore::Format;
 

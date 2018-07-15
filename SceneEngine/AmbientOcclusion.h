@@ -61,7 +61,6 @@ namespace SceneEngine
         ~AmbientOcclusionResources();
     };
 
-    class LightingParserContext;
     void AmbientOcclusion_Render(   RenderCore::Metal::DeviceContext* context,
                                     RenderCore::Techniques::ParsingContext& parserContext,
                                     AmbientOcclusionResources& resources,

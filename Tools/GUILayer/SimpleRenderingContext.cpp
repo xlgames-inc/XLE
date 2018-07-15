@@ -34,7 +34,6 @@
 #include <vector>
 
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../SceneEngine/LightingParserContext.h"
 
 namespace GUILayer
 {

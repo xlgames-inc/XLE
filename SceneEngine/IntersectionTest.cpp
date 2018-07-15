@@ -7,7 +7,6 @@
 #include "IntersectionTest.h"
 #include "RayVsModel.h"
 #include "LightingParser.h"
-#include "LightingParserContext.h"
 #include "Terrain.h"
 #include "PlacementsManager.h"
 #include "SceneParser.h"

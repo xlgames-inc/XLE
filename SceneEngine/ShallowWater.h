@@ -17,11 +17,9 @@ namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
 {
-
     class ShallowWaterGrid;
     class DeepOceanSim;
     class DeepOceanSimSettings;
-    class LightingParserContext;
     class ISurfaceHeightsProvider;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

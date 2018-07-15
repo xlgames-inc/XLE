@@ -64,7 +64,6 @@ namespace SceneEngine
         virtual void PrepareScene(
             RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext,
-            LightingParserContext& lightingParserContext,
             PreparedScene& preparedPackets) const = 0;
         virtual bool HasContent(const SceneParseSettings& parseSettings) const = 0;
 

@@ -27,12 +27,12 @@ namespace SceneEngine
     using namespace RenderCore::Metal;
 
     void LightingParserStandardPlugin::OnPreScenePrepare(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, PreparedScene&) const
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, PreparedScene&) const
     {
     }
 
     void LightingParserStandardPlugin::InitBasicLightEnvironment(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const {}
 
             ////////////////////////////////////////////////////////////////////////
 
@@ -66,7 +66,7 @@ namespace SceneEngine
 
     static void ScreenSpaceReflections_Prepare(     DeviceContext& metalContext,
                                                     RenderCore::Techniques::ParsingContext& parserContext,
-													LightingParserContext& lightingParserContext,
+													ISceneParser& sceneParser,
                                                     LightingResolveContext& resolveContext)
    {
         if (Tweakable("DoScreenSpaceReflections", false)) {
@@ -76,28 +76,29 @@ namespace SceneEngine
                 unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
                 mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters),
                 mainTargets.GetSRV(IMainTargets::MultisampledDepth),
-				lightingParserContext.GetSceneParser()->GetGlobalLightingDesc());
+				sceneParser.GetGlobalLightingDesc());
         }
     }
 
     void LightingParserStandardPlugin::OnLightingResolvePrepare(
-            RenderCore::IThreadContext& context, 
-			RenderCore::Techniques::ParsingContext& parserContext, 
-            LightingParserContext& lightingParserContext,
-            LightingResolveContext& resolveContext) const
+        RenderCore::IThreadContext& context, 
+		RenderCore::Techniques::ParsingContext& parserContext, 
+        LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
+        LightingResolveContext& resolveContext) const
     {
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         TiledLighting_Prepare(metalContext, parserContext, lightingParserContext, resolveContext);
         AmbientOcclusion_Prepare(metalContext, parserContext, resolveContext);
-        ScreenSpaceReflections_Prepare(metalContext, parserContext, lightingParserContext, resolveContext);
+        ScreenSpaceReflections_Prepare(metalContext, parserContext, sceneParser, resolveContext);
     }
 
 
             ////////////////////////////////////////////////////////////////////////
 
     void LightingParserStandardPlugin::OnPostSceneRender(
-            RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, LightingParserContext& lightingParserContext, 
-            const SceneParseSettings& parseSettings, unsigned techniqueIndex) const
+        RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, LightingParserContext& lightingParserContext, 
+        ISceneParser& sceneParser, const SceneParseSettings& parseSettings, unsigned techniqueIndex) const
     {
         const bool doTiledBeams             = Tweakable("TiledBeams", false);
         const bool doTiledRenderingTest     = Tweakable("DoTileRenderingTest", false);

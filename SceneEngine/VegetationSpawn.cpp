@@ -212,6 +212,7 @@ namespace SceneEngine
         RenderCore::IThreadContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg, VegetationSpawnResources& res)
     {
@@ -336,7 +337,7 @@ namespace SceneEngine
             LightingParser_SetGlobalTransform(context, parserContext, newProjDesc);
 
             MetalStubs::BindSO(*metalContext, MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
-            lightingParserContext.GetSceneParser()->ExecuteScene(context, parserContext, lightingParserContext, parseSettings, preparedScene, 5);
+            sceneParser.ExecuteScene(context, parserContext, lightingParserContext, parseSettings, preparedScene, 5);
             MetalStubs::UnbindSO(*metalContext);
 
                 //  After the scene execute, we need to use a compute shader to separate the 
@@ -558,16 +559,16 @@ namespace SceneEngine
     public:
         virtual void OnPreScenePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			PreparedScene&) const;
+			ISceneParser&, PreparedScene&) const;
         virtual void OnLightingResolvePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&,
-            LightingResolveContext& resolveContext) const;
+            ISceneParser&, LightingResolveContext& resolveContext) const;
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-            const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
+            ISceneParser&, const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ShaderLightDesc::BasicEnvironment& env) const;
+			ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const;
 
         VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl);
         ~VegetationSpawnPlugin();
@@ -579,24 +580,24 @@ namespace SceneEngine
     void VegetationSpawnPlugin::OnPreScenePrepare(
         RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
 		LightingParserContext& lightingParserContext,
-        PreparedScene& preparedScene) const
+        ISceneParser& sceneParser, PreparedScene& preparedScene) const
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
         GPUAnnotation anno(context, "VegetationSpawn");
-        VegetationSpawn_Prepare(context, parserContext, lightingParserContext, preparedScene, _pimpl->_cfg, *_pimpl->_resources.get()); 
+        VegetationSpawn_Prepare(context, parserContext, lightingParserContext, sceneParser, preparedScene, _pimpl->_cfg, *_pimpl->_resources.get()); 
     }
 
     void VegetationSpawnPlugin::OnLightingResolvePrepare(
         RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&,
-        LightingResolveContext& resolveContext) const {}
+        ISceneParser&, LightingResolveContext& resolveContext) const {}
 
     void VegetationSpawnPlugin::OnPostSceneRender(
         RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-        const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
+        ISceneParser&, const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
 
     void VegetationSpawnPlugin::InitBasicLightEnvironment(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const {}
 
     VegetationSpawnPlugin::VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl)
     : _pimpl(&pimpl) {}

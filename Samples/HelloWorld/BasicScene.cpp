@@ -116,7 +116,6 @@ namespace Sample
     void BasicSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
     }

@@ -173,7 +173,7 @@ namespace Sample
 
     void TestPlatformSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
     }

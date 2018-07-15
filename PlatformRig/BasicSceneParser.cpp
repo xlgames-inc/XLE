@@ -54,7 +54,6 @@ namespace PlatformRig
     void BasicSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::LightingParserContext& lightingParserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
     }

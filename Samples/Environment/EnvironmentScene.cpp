@@ -151,7 +151,7 @@ namespace Sample
 
     void EnvironmentSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
         #if defined(ENABLE_TERRAIN)

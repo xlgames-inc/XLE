@@ -892,19 +892,19 @@ namespace SceneEngine
     public:
         virtual void OnPreScenePrepare(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-			PreparedScene&) const;
+			ISceneParser&, PreparedScene&) const;
 
         virtual void OnLightingResolvePrepare(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-			LightingResolveContext&) const;
+			ISceneParser&, LightingResolveContext&) const;
 
         virtual void OnPostSceneRender(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-            const SceneParseSettings&, unsigned techniqueIndex) const;
+            ISceneParser&, const SceneParseSettings&, unsigned techniqueIndex) const;
 
         virtual void InitBasicLightEnvironment(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-			ShaderLightDesc::BasicEnvironment& env) const;
+			ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const;
 
         VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl);
         ~VolumetricFogPlugin();
@@ -950,6 +950,7 @@ namespace SceneEngine
         IThreadContext& threadContext, 
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext, 
+		ISceneParser&, 
         LightingResolveContext& resolveContext) const 
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
@@ -994,15 +995,15 @@ namespace SceneEngine
     }
 
     void VolumetricFogPlugin::OnPreScenePrepare(
-        RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, PreparedScene&) const {}
+        RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, PreparedScene&) const {}
     
     void VolumetricFogPlugin::OnPostSceneRender(
         RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-        const SceneParseSettings&, unsigned techniqueIndex) const {}
+        ISceneParser&, const SceneParseSettings&, unsigned techniqueIndex) const {}
 
     void VolumetricFogPlugin::InitBasicLightEnvironment(
         RenderCore::IThreadContext& metalContext,
-        Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const
+        Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
 

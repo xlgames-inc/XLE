@@ -150,6 +150,7 @@ namespace SceneEngine
         IThreadContext& context,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
         PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
@@ -158,7 +159,7 @@ namespace SceneEngine
             SceneParseSettings::BatchFilter::RayTracedShadows, 
             ~SceneParseSettings::Toggles::BitField(0),
             shadowFrustumIndex);
-        if (!lightingParserContext.GetSceneParser()->HasContent(sceneParseSettings))
+        if (!sceneParser.HasContent(sceneParseSettings))
             return PreparedRTShadowFrustum();
 
         GPUAnnotation anno(context, "Prepare-RTShadows");
@@ -242,7 +243,7 @@ namespace SceneEngine
             });
 
         CATCH_ASSETS_BEGIN
-            lightingParserContext.GetSceneParser()->ExecuteScene(
+            sceneParser.ExecuteScene(
                 context, parserContext, lightingParserContext, sceneParseSettings, 
                 preparedScene, TechniqueIndex_RTShadowGen);
         CATCH_ASSETS_END(parserContext)

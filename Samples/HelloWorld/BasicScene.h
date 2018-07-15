@@ -41,7 +41,6 @@ namespace Sample
         void PrepareScene(
             RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext,
-            LightingParserContext& lightingParserContext,
             SceneEngine::PreparedScene& preparedPackets) const;
         bool HasContent(const SceneParseSettings& parseSettings) const;
 

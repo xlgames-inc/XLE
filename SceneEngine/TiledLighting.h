@@ -13,7 +13,6 @@ namespace RenderCore { namespace Techniques { class ParsingContext; } }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(
         RenderCore::Metal::DeviceContext* context, 
         RenderCore::Techniques::ParsingContext& parsingContext,

@@ -29,8 +29,6 @@ namespace SceneEngine
         RenderCore::Metal::ShaderResourceView   _metricsBufferSRV;
     };
 
-    class LightingParserContext;
-
     void RenderGPUMetrics(
         RenderCore::Metal::DeviceContext& context,
         RenderCore::Techniques::ParsingContext& parsingContext,

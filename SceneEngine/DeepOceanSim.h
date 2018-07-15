@@ -17,8 +17,6 @@ namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     class DeepOceanSimSettings
     {
     public:

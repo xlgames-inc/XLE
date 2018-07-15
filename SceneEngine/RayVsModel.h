@@ -21,7 +21,6 @@ namespace RenderCore { namespace Techniques
 namespace SceneEngine
 {
     class ModelIntersectionResources;
-    class LightingParserContext;
 
     class ModelIntersectionStateContext
     {

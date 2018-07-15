@@ -136,7 +136,6 @@ namespace SceneEngine
 
     void CheckSpecularIBLMipMapCount(const RenderCore::Metal::ShaderResourceView& srv);
 
-    class LightingParserContext;
     void DrawPendingResources(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 

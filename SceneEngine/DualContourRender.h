@@ -16,7 +16,6 @@ namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace SceneEngine
 {
     class DualContourMesh;
-    class LightingParserContext;
 
     class DualContourRenderer
     {

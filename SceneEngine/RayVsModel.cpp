@@ -7,7 +7,6 @@
 #include "RayVsModel.h"
 #include "SceneEngineUtils.h"
 #include "LightingParser.h"
-#include "LightingParserContext.h"
 #include "MetalStubs.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
