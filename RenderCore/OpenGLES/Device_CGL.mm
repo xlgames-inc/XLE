@@ -158,8 +158,8 @@ namespace RenderCore { namespace ImplOpenGLES
     void PresentationChain::CreateUnderlyingContext(Metal_OpenGLES::ObjectFactory& objFactory)
     {
         // destroy the previous context before we started creating the new one
-        _nsContext = nullptr;
 
+        if (!_nsContext) {
             /*CGLPixelFormatAttribute*/
             unsigned pixelAttrs[] = {
                 kCGLPFADoubleBuffer,
@@ -190,8 +190,9 @@ namespace RenderCore { namespace ImplOpenGLES
             CGLReleaseContext(context);
 
             _nsContext.get().view = (NSView*)_platformValue;
-        ((NSOpenGLView*)_platformValue).openGLContext = _nsContext.get();
-        CGLSetCurrentContext(context);
+            ((NSOpenGLView*)_platformValue).openGLContext = _nsContext.get();
+            CGLSetCurrentContext(context);
+        }
 
         const bool useFakeBackbuffer = true;
         if (useFakeBackbuffer) {
@@ -302,8 +303,8 @@ namespace RenderCore { namespace ImplOpenGLES
                 // true pixel coordinates.
                 // Since we're using backing coordinates everywhere else, we need to convert here
                 NSSize correctedSize = [presChain.GetUnderlying().get().view convertSizeFromBacking:srcSize];
-                correctedSize.width *= 2.0f;
-                correctedSize.height *= 2.0f;
+                //correctedSize.width *= 2.0f;
+                //correctedSize.height *= 2.0f;
 
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFramebuffer);
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
