@@ -115,23 +115,26 @@ namespace Assets
 		// We're going to attempt to avoid changing the character type of "filename", so we will
 		// store the marker in the same format as "filename";
 		//
+		// The format of marker is:
+		// [\1|\2]     content    \0
+		// 2bytes    ...bytes     1 * sizeof(char_type) bytes
+		// where \1 indicates content is encoded by utf8 while \2 by utf16.
+		//
 		// Copying into another buffer here is required for two reasons:
 		//		1. prepending the root dir
 		//		2. adding a null terminator to the end of the string
-		result.resize(2 + (_rootUTF8.size() + filename.Length() + 1) * sizeof(utf8));
+		StringSection<utf8> name = filename;
+		if (_ignorePaths) {
+			auto splitName = MakeFileNameSplitter(filename);
+			name = splitName.FileAndExtension();
+		}
+		result.resize(2 + (_rootUTF8.size() + name.Length() + 1) * sizeof(utf8));
 		auto* out = AsPointer(result.begin());
 		*(uint16*)out = 1;
-		utf8* dst = (utf8*)PtrAdd(out, 2);
+		uint8* dst = (uint8*)PtrAdd(out, 2);
 		std::copy(_rootUTF8.begin(), _rootUTF8.end(), dst);
-		if (!_ignorePaths) {
-			std::copy(filename.begin(), filename.end(), &dst[_rootUTF8.size()]);
-			dst[_rootUTF8.size() + filename.Length()] = 0;
-		} else {
-			auto splitName = MakeFileNameSplitter(filename);
-			auto flattenedName = splitName.FileAndExtension();
-			std::copy(flattenedName.begin(), flattenedName.end(), &dst[_rootUTF8.size()]);
-			dst[_rootUTF8.size() + flattenedName.size()] = 0;
-		}
+		std::copy(name.begin(), name.end(), &dst[_rootUTF8.size()]);
+		dst[_rootUTF8.size() + name.Length()] = 0;
 		return TranslateResult::Success;
 	}
 
@@ -139,21 +142,19 @@ namespace Assets
 	{
 		if (filename.IsEmpty())
 			return TranslateResult::Invalid;
-			
-		result.resize(2 + (_rootUTF16.size() + filename.Length() + 1) * sizeof(utf16));
+
+		StringSection<utf16> name = filename;
+		if (_ignorePaths) {
+			auto splitName = MakeFileNameSplitter(filename);
+			name = splitName.FileAndExtension();
+		}
+		result.resize(2 + (_rootUTF16.size() + name.Length() + 1) * sizeof(utf16));
 		auto* out = AsPointer(result.begin());
 		*(uint16*)out = 2;
 		uint16* dst = (uint16*)PtrAdd(out, 2);
 		std::copy(_rootUTF16.begin(), _rootUTF16.end(), dst);
-		if (!_ignorePaths) {
-			std::copy(filename.begin(), filename.end(), &dst[_rootUTF16.size()]);
-			dst[_rootUTF16.size() + filename.Length()] = 0;
-		} else {
-			auto splitName = MakeFileNameSplitter(filename);
-			auto flattenedName = splitName.FileAndExtension();
-			std::copy(flattenedName.begin(), flattenedName.end(), &dst[_rootUTF16.size()]);
-			dst[_rootUTF16.size() + flattenedName.size()] = 0;
-		}
+		std::copy(name.begin(), name.end(), &dst[_rootUTF16.size()]);
+		dst[_rootUTF16.size() + name.Length()] = 0;
 		return TranslateResult::Success;
 	}
 
@@ -281,7 +282,7 @@ namespace Assets
 
 			// primitive utf8 -> utf16 conversion
 			// todo -- better implementation
-            _rootUTF16.reserve(root.size());
+            _rootUTF16.reserve(root.size() + 1);
 			for (const auto*i = root.begin(); i<root.end();)
 				_rootUTF16.push_back((utf16)utf8_nextchar(i, root.end()));
 			_rootUTF16.push_back((utf16)'/');
