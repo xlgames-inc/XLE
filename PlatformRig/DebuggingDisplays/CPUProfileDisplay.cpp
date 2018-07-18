@@ -277,7 +277,7 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext& context, Layout& layout,
         Interactables&interactables, InterfaceState& interfaceState)
     {
-        if (true) {
+        if (false) {
             std::vector<IHierarchicalProfiler::ResolvedEvent> resolvedEvents;
             {
                 ScopedLock(_pimpl->_resolvedEventsLock);
@@ -292,7 +292,7 @@ namespace PlatformRig { namespace Overlays
 	    {
 		    TextStyle fpsStyle{64};
 		    context.DrawText(
-			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
+			    std::make_tuple(AsPixelCoords(Coord2(10, // layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1])),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
 			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
@@ -302,7 +302,7 @@ namespace PlatformRig { namespace Overlays
 	    {
 		    TextStyle fpsStyle{32};
 		    context.DrawText(
-			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
+			    std::make_tuple(AsPixelCoords(Coord2(10, // layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1] + 64)),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
 			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
