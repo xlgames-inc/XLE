@@ -193,7 +193,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
         #endif
 
-        _gles300Factory = !!(objectFactory.GetFeatureSet() & FeatureSet::GLES300);
+        _gles300Factory = !!(GetObjectFactory().GetFeatureSet() & FeatureSet::GLES300);
 
         CheckGLError("Construct Sampler State");
     }
