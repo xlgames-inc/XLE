@@ -160,6 +160,10 @@ namespace RenderCore { namespace ImplOpenGLES
         // destroy the previous context before we started creating the new one
         _nsContext = nullptr;
 
+        id objCObj = (id)_platformValue;
+        if ([objCObj isKindOfClass:NSOpenGLView.class]) {
+            _nsContext = ((NSOpenGLView*)objCObj).openGLContext;
+        } else {
             /*CGLPixelFormatAttribute*/
             unsigned pixelAttrs[] = {
                 kCGLPFADoubleBuffer,
@@ -190,8 +194,7 @@ namespace RenderCore { namespace ImplOpenGLES
             CGLReleaseContext(context);
 
             _nsContext.get().view = (NSView*)_platformValue;
-        ((NSOpenGLView*)_platformValue).openGLContext = _nsContext.get();
-        CGLSetCurrentContext(context);
+        }
 
         const bool useFakeBackbuffer = true;
         if (useFakeBackbuffer) {
