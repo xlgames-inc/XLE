@@ -152,6 +152,13 @@ namespace ShaderPatcherLayer
 		static NodeGraph^		LoadFromXML(System::IO::Stream^ stream);
         void					SaveToXML(System::IO::Stream^ stream);
 
+		Tuple<String^, String^>^ 
+			GeneratePreviewShader(
+				UInt32 previewNodeId, 
+				NodeGraphProvider^ nodeGraphProvider,
+				PreviewSettings^ settings,
+				IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+
     private:
         List<Node^>^                        _nodes;
         List<NodeConnection^>^              _connections;
@@ -198,13 +205,13 @@ namespace ShaderPatcherLayer
 		ShaderPatcher::GraphSyntaxFile	ConvertToNative();
 		static NodeGraphFile^			ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input);
 
-		property NodeGraphProvider^		SignatureProvider;
+		property NodeGraphProvider^					NodeGraphProvider;
+		property GUILayer::DirectorySearchRules^	SearchRules;
 
 		Tuple<String^, String^>^ 
             GeneratePreviewShader(
 				String^ subGraphName,
 				UInt32 previewNodeId, 
-				NodeGraphProvider^ sigProvider,
 			    PreviewSettings^ settings,
 			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
 

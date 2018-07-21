@@ -19,8 +19,8 @@ namespace NodeEditorCore
 {
     public interface IModelConversion
     {
-        ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph, GUILayer.DirectorySearchRules searchRules);
-        void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, HyperGraph.IGraphModel graph);
+        ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph);
+        void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, ShaderPatcherLayer.NodeGraphProvider provider, HyperGraph.IGraphModel graph);
     }
 
     [Export(typeof(IModelConversion))]
@@ -60,10 +60,9 @@ namespace NodeEditorCore
             //
             //      So, let's just build it from the graph control object.
             //
-        public ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph, GUILayer.DirectorySearchRules searchRules)
+        public ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph)
         {
             ShaderPatcherLayer.NodeGraph nodeGraph = new ShaderPatcherLayer.NodeGraph();
-            nodeGraph.SearchRules = searchRules;
             Dictionary<Node, int> nodeToVisualNodeId = new Dictionary<Node, int>();
             foreach (Node n in graph.Nodes)
             {
@@ -253,7 +252,7 @@ namespace NodeEditorCore
             dst.Collapsed = src.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
         }
 
-        public void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, HyperGraph.IGraphModel graph)
+        public void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, ShaderPatcherLayer.NodeGraphProvider provider, HyperGraph.IGraphModel graph)
         {
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to
@@ -283,13 +282,14 @@ namespace NodeEditorCore
                         Node newNode = null;
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            var fn = _shaderFragments.GetFunction(n.FragmentArchiveName, nodeGraph.SearchRules);
+                            // var fn = _shaderFragments.GetFunction(n.FragmentArchiveName, nodeGraph.SearchRules);
                             newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else
                         {
-                            var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName, nodeGraph.SearchRules);
-                            newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
+                            assert(false);
+                            // var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName, nodeGraph.SearchRules);
+                            // newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
                         }
 
                         if (newNode != null)

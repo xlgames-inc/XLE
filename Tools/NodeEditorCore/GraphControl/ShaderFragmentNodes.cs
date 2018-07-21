@@ -33,7 +33,7 @@ namespace NodeEditorCore
 
     public interface IDiagramDocument
     {
-        ShaderPatcherLayer.NodeGraph NodeGraph { get; }
+        ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
         ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
         HyperGraph.IGraphModel ViewModel { get; set; }
         GUILayer.DirectorySearchRules SearchRules { get; set; }
@@ -52,9 +52,13 @@ namespace NodeEditorCore
         public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
         public GUILayer.DirectorySearchRules SearchRules { get; set; }
 
-        public ShaderPatcherLayer.NodeGraph NodeGraph 
+        public ShaderPatcherLayer.NodeGraphFile NodeGraphFile
         {
-            get { return _converter.ToShaderPatcherLayer(ViewModel, SearchRules); }  // note -- a lot of conversion work here every frame
+            get {
+                var file = new ShaderPatcherLayer.NodeGraphFile();
+                file.SubGraphs.Add("main", _converter.ToShaderPatcherLayer(ViewModel));
+                return file;
+            }
         }
 
         public HyperGraph.IGraphModel ViewModel { get; set; }
@@ -63,18 +67,17 @@ namespace NodeEditorCore
 
         public void Save(Uri destination)
         {
-            ShaderPatcherLayer.NodeGraph.Save(destination.LocalPath, NodeGraph, GraphContext);
+            NodeGraphFile.Save(destination.LocalPath, GraphContext);
         }
 
         public void Load(Uri source)
         {
-            ShaderPatcherLayer.NodeGraph nativeGraph;
+            ShaderPatcherLayer.NodeGraphFile nativeGraph;
             ShaderPatcherLayer.NodeGraphContext graphContext;
-            // nativeGraph = ShaderPatcherLayer.NodeGraph.Load(source.LocalPath);
-            ShaderPatcherLayer.NodeGraph.Load(source.LocalPath, out nativeGraph, out graphContext);
+            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphContext);
             GraphContext = graphContext;
             SearchRules = nativeGraph.SearchRules;
-            _converter.AddToHyperGraph(nativeGraph, ViewModel);
+            _converter.AddToHyperGraph(nativeGraph.SubGraphs["main"]._subGraph, ViewModel);
         }
 
         [Import]
@@ -235,8 +238,10 @@ namespace NodeEditorCore
                     var prevSettings = PreviewSettings;
                     if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
                         prevSettings.OutputToVisualize = string.Empty;
-                    var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                        doc.NodeGraph, ((ShaderFragmentNodeTag)Node.Tag).Id, prevSettings, doc.GraphContext.Variables);
+                    var shader = doc.NodeGraphFile.GeneratePreviewShader(
+                        "main",
+                        ((ShaderFragmentNodeTag)Node.Tag).Id, 
+                        prevSettings, doc.GraphContext.Variables);
                     _builder = _previewManager.CreatePreviewBuilder(shader);
                     _cachedBitmap = null;
                 }

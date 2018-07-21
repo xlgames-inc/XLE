@@ -462,29 +462,40 @@ namespace ShaderPatcherLayer
 		return nullptr;
 	}
 
+	// auto provider = std::shared_ptr<ShaderGeneratorProvider>(new ShaderGeneratorProvider(this, ::Assets::DirectorySearchRules{}));
+
 	Tuple<String^, String^>^ 
 		NodeGraphFile::GeneratePreviewShader(
 			String^ subGraphName,
 			UInt32 previewNodeId, 
-			NodeGraphProvider^ sigProvider,
+			PreviewSettings^ settings,
+			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
+	{
+		SubGraph^ subGraph = SubGraphs[subGraphName];
+		return subGraph->_subGraph->GeneratePreviewShader(previewNodeId, NodeGraphProvider, settings, variableRestrictions);
+	}
+
+	Tuple<String^, String^>^ 
+		NodeGraph::GeneratePreviewShader(
+			UInt32 previewNodeId, 
+			NodeGraphProvider^ nodeGraphProvider,
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
 	{
 		try
-        {
-			SubGraph^ subGraph = SubGraphs[subGraphName];
-
-            auto nativeGraph = subGraph->_subGraph->ConvertToNative();
+		{
+            auto nativeGraph = ConvertToNative();
 			nativeGraph.Trim(previewNodeId);
 			
 			ShaderPatcher::InstantiationParameters instantiationParams {};
 			ShaderPatcher::NodeGraphSignature mainInstantiationSignature {};
 
-			auto provider = std::shared_ptr<ShaderGeneratorProvider>(new ShaderGeneratorProvider(this, ::Assets::DirectorySearchRules{}));
-
-			auto fragments = ShaderPatcher::InstantiateShader(
-				ShaderPatcher::INodeGraphProvider::NodeGraph{ std::string("preview_graph"), nativeGraph, mainInstantiationSignature, provider }, 
-				instantiationParams);
+			/*auto fragments = ShaderPatcher::InstantiateShader(
+				ShaderPatcher::INodeGraphProvider::NodeGraph { 
+					std::string("preview_graph"), nativeGraph, 
+					mainInstantiationSignature, nodeGraphProvider.AsNative },
+				instantiationParams);*/
+			std::vector<std::string> fragments;
 
 			ShaderPatcher::PreviewOptions options {
 				(settings->Geometry == PreviewGeometry::Chart) ? ShaderPatcher::PreviewOptions::Type::Chart : ShaderPatcher::PreviewOptions::Type::Object,

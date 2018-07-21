@@ -289,9 +289,11 @@ namespace NodeEditorCore
         private void OnShowPreviewShader(object sender, EventArgs e)
         {
             var p = GetPreviewItem(sender);
-            var shader = ShaderPatcherLayer.NodeGraph.GeneratePreviewShader(
-                ConvertToShaderPatcherLayer(Document.SearchRules), AttachedId(sender), 
-                p.PreviewSettings, (Document!=null) ? Document.GraphContext.Variables : null);
+            var shader = ConvertToShaderPatcherLayer(Document.SearchRules).GeneratePreviewShader(
+                AttachedId(sender),
+                Document.NodeGraphFile.NodeGraphProvider,
+                p.PreviewSettings, 
+                (Document!=null) ? Document.GraphContext.Variables : null);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
                 System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
