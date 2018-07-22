@@ -37,7 +37,7 @@ namespace ShaderFragmentArchive
         property List<Parameter^>^      InputParameters;
         property List<Parameter^>^      Outputs;
 
-        Function(StringSection<> name, ShaderPatcher::NodeGraphSignature& function);
+        Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function);
         ~Function();
         System::String^ BuildParametersString();
     };

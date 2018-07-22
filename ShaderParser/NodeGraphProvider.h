@@ -1,6 +1,7 @@
 
 #pragma once
 
+#include "InterfaceSignature.h"
 #include "ShaderPatcher.h"
 #include "../Utility/StringUtils.h"
 #include <unordered_map>
@@ -37,6 +38,7 @@ namespace ShaderPatcher
     {
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
+		std::optional<NodeGraph> FindGraph(StringSection<> name);
 
         BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules);
         ~BasicNodeGraphProvider();

@@ -14,12 +14,9 @@ using namespace System::Drawing;
 using namespace System::Runtime::Serialization;
 using System::Runtime::InteropServices::OutAttribute;
 
-namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; class INodeGraphProvider; }
-
-namespace ShaderFragmentArchive 
-{
-	ref class Function;
-}
+namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; }
+namespace ShaderFragmentArchive { ref class Function; }
+namespace Assets { class DirectorySearchRules; }
 
 namespace ShaderPatcherLayer 
 {
@@ -108,20 +105,7 @@ namespace ShaderPatcherLayer
         [DataMember] int                VisualNodeId;
     };
 
-	    ///////////////////////////////////////////////////////////////
-	public ref class NodeGraphProvider
-	{
-	public:
-		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& GetNative();
-
-		ShaderFragmentArchive::Function^ FindSignature(String^ archiveName);
-
-		NodeGraphProvider();
-		~NodeGraphProvider();
-
-	private:
-		clix::shared_ptr<ShaderPatcher::INodeGraphProvider> _native;
-	};
+	ref class NodeGraphFile;
 
         ///////////////////////////////////////////////////////////////
     public ref class NodeGraph
@@ -162,7 +146,7 @@ namespace ShaderPatcherLayer
             List<PreviewSettings^>^ get() { if (!_previewSettings) { _previewSettings = gcnew List<PreviewSettings^>(); } return _previewSettings; }
         }
 
-        NodeGraph();
+		NodeGraph();
 
         ShaderPatcher::NodeGraph    ConvertToNative();
 		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input);
@@ -173,7 +157,7 @@ namespace ShaderPatcherLayer
 		Tuple<String^, String^>^ 
 			GeneratePreviewShader(
 				UInt32 previewNodeId, 
-				NodeGraphProvider^ nodeGraphProvider,
+				NodeGraphFile^ nodeGraphFile,
 				PreviewSettings^ settings,
 				IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
 
@@ -221,10 +205,9 @@ namespace ShaderPatcherLayer
         void			Save(String^ filename, NodeGraphContext^ context);
 
 		ShaderPatcher::GraphSyntaxFile	ConvertToNative();
-		static NodeGraphFile^			ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input);
-
-		property NodeGraphProvider^					NodeGraphProvider;
-		property GUILayer::DirectorySearchRules^	SearchRules;
+		static NodeGraphFile^			ConvertFromNative(
+			const ShaderPatcher::GraphSyntaxFile& input, 
+			const ::Assets::DirectorySearchRules& searchRules);
 
 		Tuple<String^, String^>^ 
             GeneratePreviewShader(
@@ -233,11 +216,16 @@ namespace ShaderPatcherLayer
 			    PreviewSettings^ settings,
 			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
 
-        // static String^      GenerateCBLayout(NodeGraph^ graph);
+		ShaderFragmentArchive::Function^ FindSignature(String^ archiveName);
 
+		const ::Assets::DirectorySearchRules& GetSearchRules();
+
+		NodeGraphFile();
 	private:
 		Dictionary<String^, SubGraph^>^	_subGraphs = nullptr;
-		Dictionary<String^,String^>^	_imports = nullptr;
+		Dictionary<String^, String^>^	_imports = nullptr;
+
+		clix::shared_ptr<::Assets::DirectorySearchRules> _searchRules;
 	};
 
 }

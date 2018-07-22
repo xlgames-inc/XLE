@@ -20,7 +20,7 @@ namespace NodeEditorCore
     public interface IModelConversion
     {
         ShaderPatcherLayer.NodeGraph ToShaderPatcherLayer(HyperGraph.IGraphModel graph);
-        void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, ShaderPatcherLayer.NodeGraphProvider provider, HyperGraph.IGraphModel graph);
+        void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, ShaderPatcherLayer.NodeGraphFile containingFile, HyperGraph.IGraphModel graph);
     }
 
     [Export(typeof(IModelConversion))]
@@ -252,7 +252,7 @@ namespace NodeEditorCore
             dst.Collapsed = src.State == ShaderPatcherLayer.VisualNode.StateType.Collapsed;
         }
 
-        public void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, ShaderPatcherLayer.NodeGraphProvider provider, HyperGraph.IGraphModel graph)
+        public void AddToHyperGraph(ShaderPatcherLayer.NodeGraph nodeGraph, ShaderPatcherLayer.NodeGraphFile containingFile, HyperGraph.IGraphModel graph)
         {
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to
@@ -282,7 +282,7 @@ namespace NodeEditorCore
                         Node newNode = null;
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            var fn = provider.FindSignature(n.FragmentArchiveName);
+                            var fn = containingFile.FindSignature(n.FragmentArchiveName);
                             newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else

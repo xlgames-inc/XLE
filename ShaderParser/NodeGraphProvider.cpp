@@ -111,6 +111,11 @@ namespace ShaderPatcher
         return Signature{ existing->second._name, existing->second._sig, existing->second._sourceFile };
     }
 
+	auto BasicNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
+	{
+		return {};
+	}
+
     BasicNodeGraphProvider::BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules)
     : _searchRules(searchRules) {}
         

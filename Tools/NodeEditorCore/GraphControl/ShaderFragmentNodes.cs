@@ -36,7 +36,6 @@ namespace NodeEditorCore
         ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
         ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
         HyperGraph.IGraphModel ViewModel { get; set; }
-        GUILayer.DirectorySearchRules SearchRules { get; set; }
 
         uint ShaderStructureHash { get; }
         void Invalidate();
@@ -50,7 +49,6 @@ namespace NodeEditorCore
     public class DiagramDocument : IDiagramDocument
     {
         public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
-        public GUILayer.DirectorySearchRules SearchRules { get; set; }
 
         public ShaderPatcherLayer.NodeGraphFile NodeGraphFile
         {
@@ -78,8 +76,7 @@ namespace NodeEditorCore
             ShaderPatcherLayer.NodeGraphContext graphContext;
             ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphContext);
             GraphContext = graphContext;
-            SearchRules = nativeGraph.SearchRules;
-            _converter.AddToHyperGraph(nativeGraph.SubGraphs["main"]._subGraph, nativeGraph.NodeGraphProvider, ViewModel);
+            _converter.AddToHyperGraph(nativeGraph.SubGraphs["main"]._subGraph, nativeGraph, ViewModel);
         }
 
         [Import]

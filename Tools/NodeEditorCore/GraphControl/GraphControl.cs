@@ -291,7 +291,7 @@ namespace NodeEditorCore
             var p = GetPreviewItem(sender);
             var shader = ConvertToShaderPatcherLayer().GeneratePreviewShader(
                 AttachedId(sender),
-                Document.NodeGraphFile.NodeGraphProvider,
+                Document.NodeGraphFile,
                 p.PreviewSettings, 
                 (Document!=null) ? Document.GraphContext.Variables : null);
 

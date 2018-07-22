@@ -17,7 +17,7 @@
 namespace ShaderFragmentArchive
 {
 
-    Function::Function(StringSection<> name, ShaderPatcher::NodeGraphSignature& function)
+    Function::Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function)
     {
         InputParameters = gcnew List<Parameter^>();
         Outputs = gcnew List<Parameter^>();

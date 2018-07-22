@@ -360,31 +360,21 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class ShaderGeneratorProvider : public ShaderPatcher::BasicNodeGraphProvider, std::enable_shared_from_this<ShaderGeneratorProvider>
+	class GraphNodeGraphProvider : public ShaderPatcher::BasicNodeGraphProvider, std::enable_shared_from_this<GraphNodeGraphProvider>
     {
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
 		std::optional<NodeGraph> FindGraph(StringSection<> name);
 
-        ShaderGeneratorProvider(
+        GraphNodeGraphProvider(
 			NodeGraphFile^ parsedGraphFile,
 			const ::Assets::DirectorySearchRules& searchRules);
-        ~ShaderGeneratorProvider();
+        ~GraphNodeGraphProvider();
     protected:
 		gcroot<NodeGraphFile^> _parsedGraphFile;
     };
 
-	template<typename Type>
-		static Type^ Find(Dictionary<String^, Type^>^ dictionary, StringSection<> search)
-	{
-		String^ searchKey = clix::marshalString<clix::E_UTF8>(search);
-		if (dictionary->ContainsKey(searchKey))
-			return (*dictionary)[searchKey];
-		return nullptr;
-	}
-		
-
-	auto ShaderGeneratorProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
+	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
 	{
 		// Interpret the given string to find a function signature that matches it
 		// First, check to see if it's scoped as an imported function
@@ -395,75 +385,83 @@ namespace ShaderPatcherLayer
 			++scopingOperator;
 		}
 		if (scopingOperator < name.end()) {
-			auto searchName = MakeStringSection(name.begin(), scopingOperator-1);
+			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
 			auto functionName = MakeStringSection(scopingOperator+1, name.end());
 
-			auto importedName = Find(_parsedGraphFile->Imports, searchName);
-			if (importedName)
+			System::String^ importedName = nullptr;
+			if (_parsedGraphFile->Imports->TryGetValue(clix::marshalString<clix::E_UTF8>(import), importedName))
 				return BasicNodeGraphProvider::FindSignature(clix::marshalString<clix::E_UTF8>(importedName) + ":" + functionName.AsString());
-			return BasicNodeGraphProvider::FindSignature(searchName.AsString() + ":" + functionName.AsString());
+			return BasicNodeGraphProvider::FindSignature(import + ":" + functionName.AsString());
 		}
 
 		// Look for the function within the parsed graph syntax file
-		auto i = Find(_parsedGraphFile->SubGraphs, name);
-		if (i)
-			return Signature{ name.AsString(), i->_signature->ConvertToNative() };
+		NodeGraphFile::SubGraph^ subGraph = nullptr;
+		System::String^ str = clix::marshalString<clix::E_UTF8>(name);
+		if (_parsedGraphFile->SubGraphs->TryGetValue(str, subGraph))
+			return Signature{ name.AsString(), subGraph->_signature->ConvertToNative() };
 
 		// Just fallback to default behaviour
 		return BasicNodeGraphProvider::FindSignature(name);
 	}
 
-	auto ShaderGeneratorProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
+	auto GraphNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
 	{
-		// Interpret the given string to find a function signature that matches it
-		// First, check to see if it's scoped as an imported function
-		auto *scopingOperator = name.begin() + 1;
-		while (scopingOperator < name.end()) {
-			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
-				break;
-			++scopingOperator;
-		}
-		if (scopingOperator < name.end()) {
-			auto searchName = MakeStringSection(name.begin(), scopingOperator-1);
-			auto functionName = MakeStringSection(scopingOperator+1, name.end());
-
-			auto importedName = Find(_parsedGraphFile->Imports, searchName);
-			if (importedName)
-				return ShaderPatcher::LoadGraph(clix::marshalString<clix::E_UTF8>(importedName), functionName);
-			return ShaderPatcher::LoadGraph(searchName, functionName);
-		}
-
-		// Look for the function within the parsed graph syntax file
-		auto i = Find(_parsedGraphFile->SubGraphs, name);
-		if (i)
-			return NodeGraph{ name.AsString(), i->_subGraph->ConvertToNative(), i->_signature->ConvertToNative(), shared_from_this() };
-
 		return {};
 	}
 
-	ShaderGeneratorProvider::ShaderGeneratorProvider(
+	GraphNodeGraphProvider::GraphNodeGraphProvider(
 		NodeGraphFile^ parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules)
 	: BasicNodeGraphProvider(searchRules)
 	, _parsedGraphFile(parsedGraphFile)
 	{}
 
-	ShaderGeneratorProvider::~ShaderGeneratorProvider()
+	GraphNodeGraphProvider::~GraphNodeGraphProvider()
 	{}
+
+	std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeGraphSyntaxProvider(
+		NodeGraphFile^ parsedGraphFile,
+		const ::Assets::DirectorySearchRules& searchRules)
+	{
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, searchRules);
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	ShaderPatcher::GraphSyntaxFile	NodeGraphFile::ConvertToNative()
 	{
-		return {};
+		ShaderPatcher::GraphSyntaxFile result;
+		for each(KeyValuePair<String^, String^> entry in Imports)
+			result._imports.insert(
+				std::make_pair(
+					clix::marshalString<clix::E_UTF8>(entry.Key),
+					clix::marshalString<clix::E_UTF8>(entry.Value)));
+		for each(KeyValuePair<String^, SubGraph^> entry in SubGraphs)
+			result._subGraphs.insert(
+				std::make_pair(
+					clix::marshalString<clix::E_UTF8>(entry.Key),
+					ShaderPatcher::GraphSyntaxFile::SubGraph {
+						entry.Value->_signature->ConvertToNative(), 
+						entry.Value->_subGraph->ConvertToNative() }));
+		return result;
 	}
 
-	NodeGraphFile^			NodeGraphFile::ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input)
+	NodeGraphFile^			NodeGraphFile::ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		return nullptr;
+		NodeGraphFile^ result = gcnew NodeGraphFile;
+		for (const auto&p:input._imports)
+			result->Imports->Add(
+				clix::marshalString<clix::E_UTF8>(p.first),
+				clix::marshalString<clix::E_UTF8>(p.second));
+		for (const auto&p:input._subGraphs) {
+			NodeGraphFile::SubGraph^ subGraph = gcnew NodeGraphFile::SubGraph;
+			subGraph->_signature = NodeGraphSignature::ConvertFromNative(p.second._signature);
+			subGraph->_subGraph = NodeGraph::ConvertFromNative(p.second._graph);
+			result->SubGraphs->Add(clix::marshalString<clix::E_UTF8>(p.first), subGraph);
+		}
+		result->_searchRules = std::make_shared<::Assets::DirectorySearchRules>(searchRules);
+		return result;
 	}
-
-	// auto provider = std::shared_ptr<ShaderGeneratorProvider>(new ShaderGeneratorProvider(this, ::Assets::DirectorySearchRules{}));
 
 	Tuple<String^, String^>^ 
 		NodeGraphFile::GeneratePreviewShader(
@@ -473,13 +471,57 @@ namespace ShaderPatcherLayer
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
 	{
 		SubGraph^ subGraph = SubGraphs[subGraphName];
-		return subGraph->_subGraph->GeneratePreviewShader(previewNodeId, NodeGraphProvider, settings, variableRestrictions);
+		return subGraph->_subGraph->GeneratePreviewShader(previewNodeId, this, settings, variableRestrictions);
+	}
+
+	const ::Assets::DirectorySearchRules& NodeGraphFile::GetSearchRules()
+	{
+		return *_searchRules.get();
+	}
+
+	static ShaderFragmentArchive::Function^ AsManaged(const std::optional<ShaderPatcher::INodeGraphProvider::Signature>& sig)
+	{
+		if (!sig) return nullptr;
+		return gcnew ShaderFragmentArchive::Function { sig.value()._name, sig.value()._signature };
+	}
+
+	ShaderFragmentArchive::Function^ NodeGraphFile::FindSignature(String^ archiveName)
+	{
+		auto name = clix::marshalString<clix::E_UTF8>(archiveName);
+		auto scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			System::String^ importedName = nullptr;
+			if (Imports->TryGetValue(clix::marshalString<clix::E_UTF8>(import), importedName))
+				return AsManaged(ShaderPatcher::BasicNodeGraphProvider(*_searchRules.get()).FindSignature(clix::marshalString<clix::E_UTF8>(importedName) + ":" + functionName.AsString()));
+			return AsManaged(ShaderPatcher::BasicNodeGraphProvider(*_searchRules.get()).FindSignature(import + ":" + functionName.AsString()));
+		}
+
+		// Look for the function within the parsed graph syntax file
+		NodeGraphFile::SubGraph^ subGraph = nullptr;
+		if (SubGraphs->TryGetValue(archiveName, subGraph))
+			return gcnew ShaderFragmentArchive::Function{ MakeStringSection(name), subGraph->_signature->ConvertToNative() };
+
+		// Just fallback to default behaviour
+		return AsManaged(ShaderPatcher::BasicNodeGraphProvider(*_searchRules.get()).FindSignature(name));
+	}
+
+	NodeGraphFile::NodeGraphFile()
+	{
+		_searchRules = std::make_shared<::Assets::DirectorySearchRules>();
 	}
 
 	Tuple<String^, String^>^ 
 		NodeGraph::GeneratePreviewShader(
 			UInt32 previewNodeId, 
-			NodeGraphProvider^ nodeGraphProvider,
+			NodeGraphFile^ nodeGraphFile,
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
 	{
@@ -491,12 +533,16 @@ namespace ShaderPatcherLayer
 			ShaderPatcher::InstantiationParameters instantiationParams {};
 			ShaderPatcher::NodeGraphSignature mainInstantiationSignature {};
 
-			/*auto fragments = ShaderPatcher::InstantiateShader(
+			auto provider = MakeGraphSyntaxProvider(
+				nodeGraphFile,
+				nodeGraphFile->GetSearchRules());
+
+			auto fragments = ShaderPatcher::InstantiateShader(
 				ShaderPatcher::INodeGraphProvider::NodeGraph { 
 					std::string("preview_graph"), nativeGraph, 
-					mainInstantiationSignature, nodeGraphProvider.AsNative },
-				instantiationParams);*/
-			std::vector<std::string> fragments;
+					mainInstantiationSignature, 
+					provider },
+				instantiationParams);
 
 			ShaderPatcher::PreviewOptions options {
 				(settings->Geometry == PreviewGeometry::Chart) ? ShaderPatcher::PreviewOptions::Type::Chart : ShaderPatcher::PreviewOptions::Type::Object,
@@ -646,6 +692,8 @@ namespace ShaderPatcherLayer
         auto graphChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphChunk);
         if (graphChunk != chunks.end()) {
 			nodeGraph = gcnew NodeGraphFile;
+			nodeGraph->_searchRules = std::make_shared<::Assets::DirectorySearchRules>(
+				::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
             array<Byte>^ managedArray = nullptr;
             System::IO::MemoryStream^ memStream = nullptr;
             try
@@ -665,8 +713,7 @@ namespace ShaderPatcherLayer
 			auto graphSyntaxChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsGraphSyntaxChunk);
 			if (graphSyntaxChunk != chunks.end()) {
 				auto nativeGraph = ::ShaderPatcher::ParseGraphSyntax(graphSyntaxChunk->_content);
-				// nativeGraph.SetSearchRules(::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
-				nodeGraph = NodeGraphFile::ConvertFromNative(nativeGraph);
+				nodeGraph = NodeGraphFile::ConvertFromNative(nativeGraph, ::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
 			} else {
 				throw gcnew System::Exception("Could not find node graph chunk within compound text file");
 			}
@@ -827,28 +874,5 @@ namespace ShaderPatcherLayer
             delete stream;
         }
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& NodeGraphProvider::GetNative()
-	{
-		return _native.GetNativePtr();
-	}
-
-	ShaderFragmentArchive::Function^ NodeGraphProvider::FindSignature(String^ archiveName)
-	{
-		if (!_native)
-			return nullptr;
-		auto nativeArchiveName = clix::marshalString<clix::E_UTF8>(archiveName);
-		auto signature = _native->FindSignature(MakeStringSection(nativeArchiveName));
-		if (!signature)
-			return nullptr;
-		return gcnew ShaderFragmentArchive::Function(
-			MakeStringSection(signature->_name),
-			signature->_signature);
-	}
-
-	NodeGraphProvider::NodeGraphProvider() {}
-	NodeGraphProvider::~NodeGraphProvider() {}
 
 }
