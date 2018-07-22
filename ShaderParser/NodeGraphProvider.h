@@ -6,10 +6,10 @@
 #include <unordered_map>
 #include <optional>
 
-namespace ShaderSourceParser { class FunctionSignature; }
-
 namespace ShaderPatcher
 {
+	class FunctionSignature;
+
 	class INodeGraphProvider
     {
     public:
@@ -50,7 +50,5 @@ namespace ShaderPatcher
 		};
         std::unordered_map<uint64, Entry> _cache;        
     };
-
-    NodeGraphSignature AsNodeGraphSignature(const ShaderSourceParser::FunctionSignature& sig);
 }
 

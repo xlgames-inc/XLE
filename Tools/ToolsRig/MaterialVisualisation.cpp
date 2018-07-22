@@ -17,6 +17,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
@@ -70,6 +71,7 @@ namespace ToolsRig
 			const MaterialSceneParserDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
 			const Metal::ShaderProgram&)
 		{
+			assert(!drawable._geo->_ib);
 			metalContext.Bind(drawable._topology);
 			metalContext.Draw(drawable._vertexCount);
 		}
@@ -170,6 +172,8 @@ namespace ToolsRig
             }
 
 			Techniques::SequencerTechnique seqTechnique;
+			seqTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+			seqTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
 			ParameterBox seqShaderSelectors;
 
 			for (auto d=drawables.begin(); d!=drawables.end(); ++d)

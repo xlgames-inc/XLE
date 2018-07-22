@@ -282,12 +282,12 @@ namespace NodeEditorCore
                         Node newNode = null;
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            // var fn = _shaderFragments.GetFunction(n.FragmentArchiveName, nodeGraph.SearchRules);
+                            var fn = provider.FindSignature(n.FragmentArchiveName);
                             newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else
                         {
-                            assert(false);
+                            System.Diagnostics.Debug.Assert(false);
                             // var ps = _shaderFragments.GetParameterStruct(n.FragmentArchiveName, nodeGraph.SearchRules);
                             // newNode = _nodeCreator.CreateParameterNode(ps, n.FragmentArchiveName, AsSourceType(n.NodeType));
                         }

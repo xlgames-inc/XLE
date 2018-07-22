@@ -76,7 +76,7 @@ namespace ShaderPatcher
         ParameterMachine();
         ~ParameterMachine();
     private:
-        ShaderSourceParser::ShaderFragmentSignature _systemHeader;
+        ShaderPatcher::ShaderFragmentSignature _systemHeader;
     };
 
     auto ParameterMachine::GetBuildInterpolator(const NodeGraphSignature::Parameter& param) const
@@ -86,14 +86,14 @@ namespace ShaderPatcher
         auto i = std::find_if(
             _systemHeader._functions.cbegin(),
             _systemHeader._functions.cend(),
-            [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+            [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
 
         if (i == _systemHeader._functions.cend()) {
             searchName = "BuildInterpolator_" + param._name;
             i = std::find_if(
                 _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
-                [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+                [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
         }
 
         if (i == _systemHeader._functions.cend()) {
@@ -101,22 +101,27 @@ namespace ShaderPatcher
             i = std::find_if(
                 _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
-                [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+                [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
         }
 
         if (i != _systemHeader._functions.cend()) {
+			auto p = std::find_if(i->second.GetParameters().begin(), i->second.GetParameters().end(),
+				[](const ShaderPatcher::NodeGraphSignature::Parameter& p) { 
+					return p._direction == ShaderPatcher::ParameterDirection::Out 
+						&& XlCompareString(MakeStringSection(p._name), "result");
+				});
             VaryingParamsFlags::BitField flags = 0;
-            if (!i->_returnSemantic.empty()) {
+            if (p != i->second.GetParameters().end() && !p->_semantic.empty()) {
                     // using regex, convert the semantic value into a series of flags...
                 static std::regex FlagsParse(R"--(NE(?:_([^_]*))*)--");
                 std::smatch match;
-                if (std::regex_match(i->_returnSemantic.begin(), i->_returnSemantic.end(), match, FlagsParse))
+                if (std::regex_match(p->_semantic.begin(), p->_semantic.end(), match, FlagsParse))
                     for (unsigned c=1; c<match.size(); ++c)
                         if (XlEqString(MakeStringSection(AsPointer(match[c].first), AsPointer(match[c].second)), "WritesVSOutput"))
                             flags |= VaryingParamsFlags::WritesVSOutput;
             }
 
-            return std::make_pair(i->_name, flags);
+            return std::make_pair(i->first, flags);
         }
 
         return std::make_pair(std::string(), 0);
@@ -127,9 +132,9 @@ namespace ShaderPatcher
         std::string searchName = "BuildSystem_" + param._type;
         auto i = std::find_if(
             _systemHeader._functions.cbegin(), _systemHeader._functions.cend(),
-            [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+            [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
         if (i != _systemHeader._functions.cend())
-            return i->_name;
+            return i->first;
         return std::string();
     }
 

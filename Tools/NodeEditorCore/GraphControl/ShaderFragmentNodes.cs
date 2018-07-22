@@ -56,7 +56,9 @@ namespace NodeEditorCore
         {
             get {
                 var file = new ShaderPatcherLayer.NodeGraphFile();
-                file.SubGraphs.Add("main", _converter.ToShaderPatcherLayer(ViewModel));
+                var subGraph = new ShaderPatcherLayer.NodeGraphFile.SubGraph();
+                subGraph._subGraph = _converter.ToShaderPatcherLayer(ViewModel);
+                file.SubGraphs.Add("main", subGraph);
                 return file;
             }
         }
@@ -77,7 +79,7 @@ namespace NodeEditorCore
             ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphContext);
             GraphContext = graphContext;
             SearchRules = nativeGraph.SearchRules;
-            _converter.AddToHyperGraph(nativeGraph.SubGraphs["main"]._subGraph, ViewModel);
+            _converter.AddToHyperGraph(nativeGraph.SubGraphs["main"]._subGraph, nativeGraph.NodeGraphProvider, ViewModel);
         }
 
         [Import]

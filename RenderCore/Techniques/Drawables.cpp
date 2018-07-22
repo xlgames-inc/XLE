@@ -96,9 +96,10 @@ namespace RenderCore { namespace Techniques
 			Metal::BoundInputLayout inputLayout { MakeIteratorRange(slotBinding, &slotBinding[drawable._geo->_vertexStreamCount]), *shaderProgram };
 			inputLayout.Apply(metalContext, MakeIteratorRange(vbv));
 
-			metalContext.Bind(
-				Metal::AsResource(*drawable._geo->_ib.get()),
-				drawable._geo->_ibFormat);
+			if (drawable._geo->_ib)
+				metalContext.Bind(
+					Metal::AsResource(*drawable._geo->_ib.get()),
+					drawable._geo->_ibFormat);
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -108,7 +109,7 @@ namespace RenderCore { namespace Techniques
 				sequencerInterface,
 				sequencerTechnique._materialDelegate->GetInterface(drawable._material.get()),
 				UniformsStreamInterface{},	// geo stream,
-				*drawable._uniformsInterface};
+				drawable._uniformsInterface ? *drawable._uniformsInterface : UniformsStreamInterface{}};
 
 			boundUniforms.Apply(
 				metalContext, 0, 

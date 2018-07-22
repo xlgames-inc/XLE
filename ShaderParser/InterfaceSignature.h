@@ -10,30 +10,48 @@
 #include "../Core/Exceptions.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 
-namespace ShaderSourceParser
+namespace ShaderPatcher
 {
-    using StringType = std::string;
-
-    class FunctionSignature
+    enum class ParameterDirection { In, Out };
+    class NodeGraphSignature
     {
     public:
-        StringType  _name;
-		StringType  _returnType;
-        StringType  _returnSemantic;
+		class Parameter
+		{
+		public:
+			std::string _type, _name;
+			ParameterDirection _direction = ParameterDirection::In;
+            std::string _semantic, _default;
+		};
 
-        class Parameter
+        // Returns the list of parameters taken as input through the function call mechanism
+        auto GetParameters() const -> IteratorRange<const Parameter*>	{ return MakeIteratorRange(_functionParameters); }
+		auto GetParameters() -> IteratorRange<Parameter*>	{ return MakeIteratorRange(_functionParameters); }
+        void AddParameter(const Parameter& param);
+
+        // Returns the list of parameters that are accesses as global scope variables (or captured from a containing scope)
+        // In other words, these aren't explicitly passed to the function, but the function needs to interact with them, anyway
+        auto GetCapturedParameters() const -> IteratorRange<const Parameter*>		{ return MakeIteratorRange(_capturedParameters); }
+        void AddCapturedParameter(const Parameter& param);
+
+        class TemplateParameter
         {
         public:
-            enum Direction { In = 1<<0, Out = 1<<1 };
-            StringType _name;
-			StringType _type;
-            StringType _semantic;
-            unsigned _direction;
+            std::string _name;
+            std::string _restriction;
         };
-
-        std::vector<Parameter> _parameters;
+        auto GetTemplateParameters() const -> IteratorRange<const TemplateParameter*>   { return MakeIteratorRange(_templateParameters); }
+        void AddTemplateParameter(const TemplateParameter& param);
+		
+        NodeGraphSignature();
+        ~NodeGraphSignature();
+    private:
+        std::vector<Parameter> _functionParameters;
+        std::vector<Parameter> _capturedParameters;
+        std::vector<TemplateParameter> _templateParameters;
     };
 
     class ParameterStructSignature
@@ -42,23 +60,25 @@ namespace ShaderSourceParser
         class Parameter
         {
         public:
-            StringType _name;
-			StringType _type;
-            StringType _semantic;
+            std::string _name;
+			std::string _type;
+            std::string _semantic;
         };
 
-        StringType _name;
+        std::string _name;
         std::vector<Parameter> _parameters;
     };
 
     class ShaderFragmentSignature
     {
     public:
-        std::vector<FunctionSignature>          _functions;
-        std::vector<ParameterStructSignature>   _parameterStructs;
+        std::vector<std::pair<std::string, NodeGraphSignature>>	_functions;
+        std::vector<ParameterStructSignature>					_parameterStructs;
     };
+}
 
-
-    ShaderFragmentSignature     BuildShaderFragmentSignature(StringSection<char> sourceCode);
+namespace ShaderSourceParser
+{
+    ShaderPatcher::ShaderFragmentSignature     BuildShaderFragmentSignature(StringSection<char> sourceCode);
 }
 

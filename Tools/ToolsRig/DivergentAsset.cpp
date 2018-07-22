@@ -143,6 +143,7 @@ namespace ToolsRig
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/AssetHeap.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Utility/StringFormat.h"
 
 namespace ToolsRig
@@ -152,11 +153,18 @@ namespace ToolsRig
 		std::shared_ptr<DivergentAsset<AssetType>> CreateDivergentAsset(Params... params)
 	{
 		auto& set = ::Assets::GetAssetSetManager().GetSetForType<AssetType>();
+		std::shared_ptr<AssetType> originalAsset;
 
-		auto originalFuture = set.Get(params...);
-		originalFuture->StallWhilePending();
+		TRY {
+			auto originalFuture = set.Get(params...);
+			originalFuture->StallWhilePending();
+			originalAsset = originalFuture->Actualize();
+		} CATCH (const std::exception& e) {
+			Log(Verbose) << "Cannot construct divergent asset from existing source for parameters (" << ::Assets::Internal::AsString(params...) << "). Got exception (" << e.what() << "). Starting with blank default." << std::endl;
+			originalAsset = std::make_shared<AssetType>();
+		} CATCH_END
 
-		auto divergentAsset = std::make_shared<DivergentAsset<AssetType>>(originalFuture->Actualize());
+		auto divergentAsset = std::make_shared<DivergentAsset<AssetType>>(originalAsset);
 		auto workingAsset = divergentAsset->GetWorkingAsset();
 		auto idInAssetHeap = set.SetShadowingAsset(std::move(workingAsset), params...);
 

@@ -212,7 +212,7 @@ namespace MaterialTool
 
             logRedirect.Dispose();
             engineDevice.PrepareForShutdown();
-            XLEBridgeUtils.Utils.DetachLibrary();
+            XLEBridgeUtils.Utils.DetachLibrary(engineDevice);
             attach0.Dispose();
             engineDevice.Dispose();
         }

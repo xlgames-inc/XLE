@@ -7,13 +7,14 @@
 #pragma once
 
 #include "../GUILayer/CLIXAutoPtr.h"
+#include "../../Utility/StringUtils.h"
 #include <memory>
 
 using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
 using namespace System::ComponentModel::Composition;
 
-namespace ShaderSourceParser { class FunctionSignature; class ParameterStructSignature; }
+namespace ShaderPatcher { class NodeGraphSignature; class ParameterStructSignature; }
 namespace Utility { class OnChangeCallback; }
 
 namespace ShaderFragmentArchive 
@@ -36,7 +37,7 @@ namespace ShaderFragmentArchive
         property List<Parameter^>^      InputParameters;
         property List<Parameter^>^      Outputs;
 
-        Function(ShaderSourceParser::FunctionSignature& function);
+        Function(StringSection<> name, ShaderPatcher::NodeGraphSignature& function);
         ~Function();
         System::String^ BuildParametersString();
     };
@@ -74,7 +75,7 @@ namespace ShaderFragmentArchive
         property System::String^		Name;
         property List<Parameter^>^      Parameters;
 
-        ParameterStruct(ShaderSourceParser::ParameterStructSignature& parameterStruct);
+        ParameterStruct(ShaderPatcher::ParameterStructSignature& parameterStruct);
         ~ParameterStruct();
         System::String^ BuildBodyString();
     };

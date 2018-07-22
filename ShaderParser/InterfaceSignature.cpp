@@ -40,19 +40,19 @@ namespace ShaderSourceParser
 	class WorkingInterfaceStructure
 	{
 	public:
-		ShaderFragmentSignature _signature;
+		ShaderPatcher::ShaderFragmentSignature _signature;
 
 		std::vector<std::pair<uint64_t, StringId>> _stringTableToId;
 		std::vector<std::string> _stringTable;
-		std::vector<FunctionSignature::Parameter> _parameterTable;
-		std::vector<ParameterStructSignature::Parameter> _variableTable;
+		std::vector<ShaderPatcher::NodeGraphSignature::Parameter> _parameterTable;
+		std::vector<ShaderPatcher::ParameterStructSignature::Parameter> _variableTable;
 
 		std::string GetString(StringId id) const { return id != ~0u ? _stringTable[id] : std::string(); }
 	};
 
 	static pANTLR3_BASE_TREE BuildAST(struct ShaderParser_Ctx_struct& parser)
     {
-		using namespace AntlrHelper;
+		using namespace ShaderSourceParser::AntlrHelper;
         ExceptionContext exceptionContext;
         auto result = parser.entrypoint(&parser).tree;
         if (!exceptionContext._exceptions._errors.empty())
@@ -60,9 +60,9 @@ namespace ShaderSourceParser
 		return result;
     }
 
-    ShaderFragmentSignature BuildShaderFragmentSignature(StringSection<char> sourceCode)
+    ShaderPatcher::ShaderFragmentSignature BuildShaderFragmentSignature(StringSection<char> sourceCode)
     {
-		using namespace AntlrHelper;
+		using namespace ShaderSourceParser::AntlrHelper;		
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
             (ANTLR3_UINT8*)sourceCode.begin(), ANTLR3_ENC_8BIT, 
             (unsigned)sourceCode.size(), (ANTLR3_UINT8*)"InputStream");
@@ -115,8 +115,22 @@ extern "C" FormalArgId FormalArg_Register(const void* ctx, struct SSPFormalArg a
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
 	auto result = (StringId)w->_parameterTable.size();
-	w->_parameterTable.push_back(
-		ShaderSourceParser::FunctionSignature::Parameter{ w->GetString(arg._name), w->GetString(arg._type), w->GetString(arg._semantic), arg._directionFlags });
+	const unsigned directionFlagOut = 1<<1;
+	const unsigned directionFlagIn = 1<<0;
+	if (arg._directionFlags & directionFlagIn)
+		w->_parameterTable.push_back(
+			ShaderPatcher::NodeGraphSignature::Parameter { 
+				w->GetString(arg._type), 
+				w->GetString(arg._name), 
+				ShaderPatcher::ParameterDirection::In,
+				w->GetString(arg._semantic) });
+	if (arg._directionFlags & directionFlagOut)
+		w->_parameterTable.push_back(
+			ShaderPatcher::NodeGraphSignature::Parameter { 
+				w->GetString(arg._type), 
+				w->GetString(arg._name), 
+				ShaderPatcher::ParameterDirection::Out,
+				w->GetString(arg._semantic) });
 	return result;
 }
 
@@ -125,27 +139,33 @@ extern "C" VariableId Variable_Register(const void* ctx, StringId name, StringId
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
 	auto result = (StringId)w->_variableTable.size();
 	w->_variableTable.push_back(
-		ShaderSourceParser::ParameterStructSignature::Parameter{ w->GetString(name), w->GetString(type), w->GetString(semantic) });
+		ShaderPatcher::ParameterStructSignature::Parameter{ 
+			w->GetString(name), 
+			w->GetString(type), 
+			w->GetString(semantic) });
 	return result;
 }
 
 extern "C" FunctionId Function_Register(const void* ctx, struct SSPFunction* func)
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
-	ShaderSourceParser::FunctionSignature result;
-	result._name = w->GetString(func->_name);
-	result._returnType = w->GetString(func->_returnType);
-	result._returnSemantic = w->GetString(func->_returnSemantic);
+	ShaderPatcher::NodeGraphSignature result;
+	auto name = w->GetString(func->_name);
+	result.AddParameter(
+		ShaderPatcher::NodeGraphSignature::Parameter {
+			w->GetString(func->_returnType), "result", 
+			ShaderPatcher::ParameterDirection::Out,
+			w->GetString(func->_returnSemantic) });
 	for (unsigned p=func->_firstArg; p<=func->_lastArg; ++p)
-		result._parameters.push_back(w->_parameterTable[p]);
-	w->_signature._functions.emplace_back(std::move(result));
+		result.AddParameter(w->_parameterTable[p]);
+	w->_signature._functions.emplace_back(std::make_pair(name, std::move(result)));
 	return (FunctionId)(w->_signature._functions.size()-1);
 }
 
 extern "C" ParameterStructId ParameterStruct_Register(const void* ctx, struct SSPParameterStruct* paramStruct)
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
-	ShaderSourceParser::ParameterStructSignature result;
+	ShaderPatcher::ParameterStructSignature result;
 	result._name = w->GetString(paramStruct->_name);
 	for (unsigned p=paramStruct->_firstParameter; p<=paramStruct->_lastParameter; ++p)
 		result._parameters.push_back(w->_variableTable[p]);

@@ -30,32 +30,32 @@ namespace ShaderPatcher
 	class ShaderFragment
 	{
 	public:
-		auto GetFunction(StringSection<char> fnName) const -> const ShaderSourceParser::FunctionSignature*;
-		auto GetParameterStruct(StringSection<char> structName) const -> const ShaderSourceParser::ParameterStructSignature*;
+		auto GetFunction(StringSection<char> fnName) const -> const NodeGraphSignature*;
+		auto GetParameterStruct(StringSection<char> structName) const -> const ParameterStructSignature*;
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 		ShaderFragment(StringSection<::Assets::ResChar> fn);
 		~ShaderFragment();
 	private:
-		ShaderSourceParser::ShaderFragmentSignature _sig;
+		ShaderFragmentSignature _sig;
 		::Assets::DepValPtr _depVal;
 	};
 
-	auto ShaderFragment::GetFunction(StringSection<char> fnName) const -> const ShaderSourceParser::FunctionSignature*
+	auto ShaderFragment::GetFunction(StringSection<char> fnName) const -> const NodeGraphSignature*
 	{
 		auto i = std::find_if(
 			_sig._functions.cbegin(), _sig._functions.cend(),
-            [fnName](const ShaderSourceParser::FunctionSignature& signature) { return XlEqString(MakeStringSection(signature._name), fnName); });
+            [fnName](const std::pair<std::string, NodeGraphSignature>& signature) { return XlEqString(MakeStringSection(signature.first), fnName); });
         if (i!=_sig._functions.cend())
-			return AsPointer(i);
+			return &i->second;
 		return nullptr;
 	}
 
-	auto ShaderFragment::GetParameterStruct(StringSection<char> structName) const -> const ShaderSourceParser::ParameterStructSignature*
+	auto ShaderFragment::GetParameterStruct(StringSection<char> structName) const -> const ParameterStructSignature*
 	{
 		auto i = std::find_if(
 			_sig._parameterStructs.cbegin(), _sig._parameterStructs.cend(),
-            [structName](const ShaderSourceParser::ParameterStructSignature& signature) { return XlEqString(MakeStringSection(signature._name), structName); });
+            [structName](const ParameterStructSignature& signature) { return XlEqString(MakeStringSection(signature._name), structName); });
         if (i!=_sig._parameterStructs.cend())
 			return AsPointer(i);
 		return nullptr;
@@ -71,7 +71,7 @@ namespace ShaderPatcher
 
 	ShaderFragment::~ShaderFragment() {}
 
-	static const ShaderSourceParser::FunctionSignature& LoadFunctionSignature(StringSection<> fileName, StringSection<> fnName)
+	static const NodeGraphSignature& LoadFunctionSignature(StringSection<> fileName, StringSection<> fnName)
     {
         TRY {
 			auto& frag = ::Assets::GetAssetDep<ShaderFragment>(fileName);
@@ -79,7 +79,7 @@ namespace ShaderPatcher
 			if (fn != nullptr) return *fn;
         } CATCH (...) {
         } CATCH_END
-		static ShaderSourceParser::FunctionSignature blank;
+		static NodeGraphSignature blank;
         return blank;
     }
 
@@ -104,9 +104,8 @@ namespace ShaderPatcher
         if (existing == _cache.end()) {
 			char resolvedFile[MaxPath];
 			_searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
-            auto res = LoadFunctionSignature(resolvedFile, std::get<1>(splitName));
-            auto sig = AsNodeGraphSignature(res);
-			existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), std::move(sig), std::string(resolvedFile)}}).first;
+            auto sig = LoadFunctionSignature(resolvedFile, std::get<1>(splitName));
+			existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), sig, std::string(resolvedFile)}}).first;
         }
         
         return Signature{ existing->second._name, existing->second._sig, existing->second._sourceFile };
@@ -118,24 +117,6 @@ namespace ShaderPatcher
     BasicNodeGraphProvider::~BasicNodeGraphProvider() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    NodeGraphSignature AsNodeGraphSignature(const ShaderSourceParser::FunctionSignature& sig)
-    {
-        NodeGraphSignature result;
-        for (auto& p:sig._parameters) {
-            ParameterDirection dir = ParameterDirection::In;
-            switch (p._direction) {
-            case ShaderSourceParser::FunctionSignature::Parameter::In: dir = ParameterDirection::In; break;
-            case ShaderSourceParser::FunctionSignature::Parameter::Out: dir = ParameterDirection::Out; break;
-            default: assert(0); // in/out not supported
-            }
-
-            result.AddParameter(NodeGraphSignature::Parameter{p._type, p._name, dir, p._semantic});
-        }
-        if (!sig._returnType.empty())
-            result.AddParameter(NodeGraphSignature::Parameter{sig._returnType, "result", ParameterDirection::Out, sig._returnSemantic});
-        return result;
-    }
 
 	INodeGraphProvider::~INodeGraphProvider() {}
 

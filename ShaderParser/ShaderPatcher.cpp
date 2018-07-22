@@ -11,6 +11,7 @@
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
 #include "../Core/Exceptions.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/PtrUtils.h"
@@ -878,13 +879,15 @@ namespace ShaderPatcher
     {
 	    // Look for another parameter with the same name...
 	    auto existing = std::find_if(dst.begin(), dst.end(),
-		    [&param](const NodeGraphSignature::Parameter& p) { return p._name == param._name; });
+		    [&param](const NodeGraphSignature::Parameter& p) { return p._name == param._name && p._direction == param._direction; });
 	    if (existing != dst.end()) {
 		    // If we have 2 parameters with the same name, we're going to expect they
 		    // also have the same type and semantic (otherwise we would need to adjust
 		    // the name to avoid conflicts).
-		    if (existing->_type != param._type || existing->_semantic != param._semantic)
-			    Throw(::Exceptions::BasicLabel("Main function parameters with the same name, but different types/semantics (%s)", param._name.c_str()));
+		    if (existing->_type != param._type || existing->_semantic != param._semantic) {
+			    // Throw(::Exceptions::BasicLabel("Main function parameters with the same name, but different types/semantics (%s)", param._name.c_str()));
+				Log(Debug) << "Main function parameters with the same name, but different types/semantics (" << param._name << ")" << std::endl;
+			}
 	    } else {
 		    dst.push_back(param);
 	    }

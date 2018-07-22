@@ -22,8 +22,10 @@ namespace MaterialTool
 
             // We need to calculate the interface for the node graph and
             // find the variables from there...
-            var interf = ShaderPatcherLayer.NodeGraph.GetInterface(context.NodeGraph);
-            var sugg = interf.Variables.Select(x => x.Name);
+            System.Diagnostics.Debug.Assert(false);
+            // var interf = ShaderPatcherLayer.NodeGraph.GetInterface(context.NodeGraph);
+            // var sugg = interf.Variables.Select(x => x.Name);
+            IEnumerable<String> sugg = null;
 
             {
                 _variables.AutoGenerateColumns = false;

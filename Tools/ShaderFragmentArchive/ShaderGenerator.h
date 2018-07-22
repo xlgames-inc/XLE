@@ -14,12 +14,15 @@ using namespace System::Drawing;
 using namespace System::Runtime::Serialization;
 using System::Runtime::InteropServices::OutAttribute;
 
-namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; }
+namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; class INodeGraphProvider; }
+
+namespace ShaderFragmentArchive 
+{
+	ref class Function;
+}
 
 namespace ShaderPatcherLayer 
 {
-	ref class NodeGraphProvider;
-
         ///////////////////////////////////////////////////////////////
     [DataContract] public ref class Node
     {
@@ -104,6 +107,21 @@ namespace ShaderPatcherLayer
         [DataMember] String^            OutputToVisualize;
         [DataMember] int                VisualNodeId;
     };
+
+	    ///////////////////////////////////////////////////////////////
+	public ref class NodeGraphProvider
+	{
+	public:
+		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& GetNative();
+
+		ShaderFragmentArchive::Function^ FindSignature(String^ archiveName);
+
+		NodeGraphProvider();
+		~NodeGraphProvider();
+
+	private:
+		clix::shared_ptr<ShaderPatcher::INodeGraphProvider> _native;
+	};
 
         ///////////////////////////////////////////////////////////////
     public ref class NodeGraph

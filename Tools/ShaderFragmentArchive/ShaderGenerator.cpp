@@ -8,6 +8,7 @@
 
 #include "ShaderGenerator.h"
 #include "ShaderDiagramDocument.h"
+#include "ShaderFragmentArchive.h"
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
@@ -826,5 +827,28 @@ namespace ShaderPatcherLayer
             delete stream;
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& NodeGraphProvider::GetNative()
+	{
+		return _native.GetNativePtr();
+	}
+
+	ShaderFragmentArchive::Function^ NodeGraphProvider::FindSignature(String^ archiveName)
+	{
+		if (!_native)
+			return nullptr;
+		auto nativeArchiveName = clix::marshalString<clix::E_UTF8>(archiveName);
+		auto signature = _native->FindSignature(MakeStringSection(nativeArchiveName));
+		if (!signature)
+			return nullptr;
+		return gcnew ShaderFragmentArchive::Function(
+			MakeStringSection(signature->_name),
+			signature->_signature);
+	}
+
+	NodeGraphProvider::NodeGraphProvider() {}
+	NodeGraphProvider::~NodeGraphProvider() {}
 
 }

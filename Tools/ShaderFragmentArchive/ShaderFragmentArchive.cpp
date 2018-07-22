@@ -17,32 +17,25 @@
 namespace ShaderFragmentArchive
 {
 
-    Function::Function(ShaderSourceParser::FunctionSignature& function)
+    Function::Function(StringSection<> name, ShaderPatcher::NodeGraphSignature& function)
     {
         InputParameters = gcnew List<Parameter^>();
         Outputs = gcnew List<Parameter^>();
 
         using namespace clix;
-        for (auto i=function._parameters.begin(); i!=function._parameters.end(); ++i) {
+        for (auto& i:function.GetParameters()) {
             Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>(i->_name);
-            p->Type = marshalString<E_UTF8>(i->_type);
-            p->Semantic = marshalString<E_UTF8>(i->_semantic);
+            p->Name = marshalString<E_UTF8>(i._name);
+            p->Type = marshalString<E_UTF8>(i._type);
+            p->Semantic = marshalString<E_UTF8>(i._semantic);
 
-            if (i->_direction & ShaderSourceParser::FunctionSignature::Parameter::In)
+            if (i._direction == ShaderPatcher::ParameterDirection::In)
                 InputParameters->Add(p);
-            if (i->_direction & ShaderSourceParser::FunctionSignature::Parameter::Out)
+            if (i._direction == ShaderPatcher::ParameterDirection::Out)
                 Outputs->Add(p);
         }
 
-        if (!function._returnType.empty() && function._returnType != "void") {
-            Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>("result");
-            p->Type = marshalString<E_UTF8>(function._returnType);
-            Outputs->Add(p);
-        }
-
-        Name = marshalString<E_UTF8>(function._name);
+        Name = marshalString<E_UTF8>(name);
     }
 
     Function::~Function() { delete InputParameters; delete Outputs; }
@@ -68,7 +61,7 @@ namespace ShaderFragmentArchive
         return stringBuilder.ToString();
     }
 
-    ParameterStruct::ParameterStruct(ShaderSourceParser::ParameterStructSignature& parameterStruct)
+    ParameterStruct::ParameterStruct(ShaderPatcher::ParameterStructSignature& parameterStruct)
     {
         Parameters = gcnew List<Parameter^>();
 
@@ -186,7 +179,7 @@ namespace ShaderFragmentArchive
                     //
 
                 for (auto i=nativeSignature._functions.begin(); i!=nativeSignature._functions.end(); ++i) {
-                    Function^ function = gcnew Function(*i);
+                    Function^ function = gcnew Function(MakeStringSection(i->first), i->second);
                     Functions->Add(function);
                 }
 

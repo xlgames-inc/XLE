@@ -23,6 +23,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../BufferUploads/IBufferUploads.h"
@@ -298,7 +299,7 @@ namespace ShaderPatcherLayer
     public:
         ConsoleRig::AttachRef<::Assets::Services> _attachRef1;
         ConsoleRig::AttachRef<RenderCore::Assets::Services> _attachRef2;
-        // ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
+        ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
     };
 
 	LibraryAttachMarker::LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice)
@@ -309,7 +310,7 @@ namespace ShaderPatcherLayer
         auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();
         _pimpl->_attachRef1 = crossModule.Attach<::Assets::Services>();
         _pimpl->_attachRef2 = crossModule.Attach<RenderCore::Assets::Services>();
-        // _pimpl->_attachRef3 = crossModule.Attach<RenderCore::Metal::ObjectFactory>();
+        _pimpl->_attachRef3 = crossModule.Attach<RenderCore::Metal::ObjectFactory>();
 	}
 
 	LibraryAttachMarker::~LibraryAttachMarker()
@@ -320,9 +321,9 @@ namespace ShaderPatcherLayer
             GUILayer::DelayedDeleteQueue::FlushQueue();
         
             ConsoleRig::ResourceBoxes_Shutdown();
-            // Assets::Dependencies_Shutdown();     (can't do this properly here!)
+            Assets::Dependencies_Shutdown();    //  (can't do this properly here!)
 
-			// _pimpl->_attachRef3.Detach();
+			_pimpl->_attachRef3.Detach();
 			_pimpl->_attachRef2.Detach();
 			_pimpl->_attachRef1.Detach();
 			ConsoleRig::GlobalServices::GetInstance().DetachCurrentModule();
