@@ -299,18 +299,10 @@ namespace RenderCore { namespace ImplOpenGLES
                     glBlitFramebuffer(0, 0, (GLint)srcSize.width, (GLint)srcSize.height, 0, 0, (GLint)srcSize.width, (GLint)srcSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
                     srcFramebuffer = presChain._fakeBackBufferResolveFrameBuffer->AsRawGLHandle();
                 }
-
-                // The coordinates used with glBltFramebuffer with framebuffer 0 appear to be
-                // view coordinates (as opposed to "backing" coordinates). Backing coordinates are
-                // true pixel coordinates.
-                // Since we're using backing coordinates everywhere else, we need to convert here
-                NSSize correctedSize = [presChain.GetUnderlying().get().view convertSizeFromBacking:srcSize];
-                correctedSize.width *= 2.0f;
-                correctedSize.height *= 2.0f;
-
+                
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFramebuffer);
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-                glBlitFramebuffer(0, 0, (GLint)srcSize.width, (GLint)srcSize.height, 0, 0, (GLint)correctedSize.width, (GLint)correctedSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                glBlitFramebuffer(0, 0, (GLint)srcSize.width, (GLint)srcSize.height, 0, 0, (GLint)srcSize.width, (GLint)srcSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
             }
 
