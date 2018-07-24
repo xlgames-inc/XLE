@@ -111,9 +111,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             unsigned colorAttachmentIterator = 0;
 
             #if defined(_DEBUG)
-                int maxDrawBuffers = 0;
-                glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
-                assert(sp._rtvCount <= maxDrawBuffers);
+                if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                    int maxDrawBuffers = 0;
+                    glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
+                    assert(sp._rtvCount <= maxDrawBuffers);
+                }
             #endif
 
             bool bindingToBackbuffer = false;
@@ -186,7 +188,8 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
-            glDrawBuffers(sp._rtvCount, drawBuffers);
+            if (factory.GetFeatureSet() & FeatureSet::GLES300)
+                glDrawBuffers(sp._rtvCount, drawBuffers);
 
             // auto validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
             // assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
