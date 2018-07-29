@@ -21,6 +21,7 @@ namespace Conversion
 	template<typename Output> Output Convert(const std::basic_string<utf16>& input);
     template<typename Output> Output Convert(const std::basic_string<ucs2>& input);
     template<typename Output> Output Convert(const std::basic_string<ucs4>& input);
+    template<typename Output> Output Convert(const std::basic_string<char>& input);
 
 	template<typename Output> Output Convert(StringSection<utf8> input);
 	template<typename Output> Output Convert(StringSection<utf16> input);
@@ -54,18 +55,6 @@ namespace Conversion
         }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-        // We want "char" to be interchangeable with "utf8", for convenience's sake
-
-    template<typename Output> Output Convert(const std::basic_string<char>& input)
-    {
-        return Convert<Output>(reinterpret_cast<const std::basic_string<utf8>&>(input));
-    }
-
-    template<typename Output> Output Convert(const std::basic_string<utf8>& input)
-    {
-        return Convert<Output>(reinterpret_cast<const std::basic_string<char>&>(input));
-    }
 
     template<> inline std::basic_string<char> Convert(const std::basic_string<char>& input) { return input; }
     template<> inline std::basic_string<utf8> Convert(const std::basic_string<utf8>& input) { return input; }

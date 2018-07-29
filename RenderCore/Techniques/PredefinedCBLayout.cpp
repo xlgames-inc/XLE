@@ -80,10 +80,9 @@ namespace RenderCore { namespace Techniques
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
             if (a && match.size() >= 4) {
                 Element e;
-                std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
-                e._name = Conversion::Convert<std::string>(name);
-                e._hash = ParameterBox::MakeParameterNameHash(name);
-                e._hash64 = Hash64(AsPointer(name.begin()), AsPointer(name.end()));
+                e._name = match[2].str();
+                e._hash = ParameterBox::MakeParameterNameHash(e._name);
+                e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
                 e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
                 auto size = e._type.GetSize();
@@ -128,12 +127,12 @@ namespace RenderCore { namespace Techniques
                             buffer1, dimof(buffer1), e._type,
                             buffer0, defaultType);
                         if (castSuccess) {
-                            _defaults.SetParameter(name.c_str(), buffer1, e._type);
+                            _defaults.SetParameter((const utf8*)e._name.c_str(), buffer1, e._type);
                         } else {
                             Log(Warning) << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
                         }
                     } else {
-                        _defaults.SetParameter(name.c_str(), buffer0, defaultType);
+                        _defaults.SetParameter((const utf8*)e._name.c_str(), buffer0, defaultType);
                     }
                 }
             } else {
