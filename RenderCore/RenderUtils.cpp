@@ -255,6 +255,24 @@ namespace RenderCore
         return result / 8;
 	}
 
+    unsigned CalculatePrimitiveCount(Topology topology, unsigned vertexCount, unsigned drawCallCount)
+    {
+        switch (topology) {
+		case Topology::TriangleList:
+			return vertexCount / 3;
+		case Topology::TriangleStrip:
+			return vertexCount - 2 * drawCallCount;
+		case Topology::LineList:
+			return vertexCount / 2;
+		case Topology::LineStrip:
+			return vertexCount - 1 * drawCallCount;
+		case Topology::PointList:
+			return vertexCount;
+		default:
+			return 0;
+	    }
+    }
+
     IDevice::~IDevice() {}
     IThreadContext::~IThreadContext() {}
     IPresentationChain::~IPresentationChain() {}
