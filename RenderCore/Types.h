@@ -132,6 +132,8 @@ namespace RenderCore
 		PatchList16 = 48    // D3D11_PRIMITIVE_TOPOLOGY_16_CONTROL_POINT_PATCHLIST	= 48
 	};
 
+	unsigned CalculatePrimitiveCount(Topology topology, unsigned vertexCount, unsigned drawCallCount = 1);
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/// <summary>Texture address modes</summary>
