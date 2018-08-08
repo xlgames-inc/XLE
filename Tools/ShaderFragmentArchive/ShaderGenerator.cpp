@@ -531,17 +531,11 @@ namespace ShaderPatcherLayer
 			nativeGraph.Trim(previewNodeId);
 			
 			ShaderPatcher::InstantiationParameters instantiationParams {};
-			ShaderPatcher::NodeGraphSignature mainInstantiationSignature {};
+			instantiationParams._generateDanglingOutputs = true;
 
-			auto provider = MakeGraphSyntaxProvider(
-				nodeGraphFile,
-				nodeGraphFile->GetSearchRules());
-
-			auto fragments = ShaderPatcher::InstantiateShader(
-				ShaderPatcher::INodeGraphProvider::NodeGraph { 
-					std::string("preview_graph"), nativeGraph, 
-					mainInstantiationSignature, 
-					provider },
+			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, nodeGraphFile->GetSearchRules());
+			auto mainInstantiation = ShaderPatcher::InstantiateShader(
+				"preview_graph", nativeGraph,  provider,
 				instantiationParams);
 
 			ShaderPatcher::PreviewOptions options {
@@ -557,16 +551,16 @@ namespace ShaderPatcherLayer
 							clix::marshalString<clix::E_UTF8>(v.Value)));
 
 			auto structureForPreview = GenerateStructureForPreview(
-				"preview", mainInstantiationSignature, options);
+				"preview", mainInstantiation._entryPointSignature, options);
 
-			fragments.push_back(structureForPreview);
+			mainInstantiation._sourceFragments.push_back(structureForPreview);
 
 			std::stringstream str;
-			for (const auto&f:fragments) str << f;
+			for (const auto&f:mainInstantiation._sourceFragments) str << f;
 
             return gcnew Tuple<String^,String^>(
                 marshalString<E_UTF8>(str.str()),
-                marshalString<E_UTF8>(ShaderPatcher::GenerateMaterialCBuffer(mainInstantiationSignature)));
+                marshalString<E_UTF8>(ShaderPatcher::GenerateMaterialCBuffer(mainInstantiation._entryPointSignature)));
         } catch (const std::exception& e) {
             return gcnew Tuple<String^,String^>(
                 "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),

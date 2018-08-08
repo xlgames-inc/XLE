@@ -12,12 +12,26 @@
 namespace ShaderPatcher
 {
 	class InstantiationParameters;
-	std::vector<std::string> InstantiateShader(
+
+	class InstantiatedShader
+	{
+	public:
+		std::vector<std::string> _sourceFragments;
+		NodeGraphSignature _entryPointSignature;
+	};
+
+	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
-		const ShaderPatcher::InstantiationParameters& instantiationParameters);
+		const InstantiationParameters& instantiationParameters);
 
-	std::vector<std::string> InstantiateShader(
+	InstantiatedShader InstantiateShader(
 		const INodeGraphProvider::NodeGraph& initialGraph,
-		const ShaderPatcher::InstantiationParameters& instantiationParameters);
+		const InstantiationParameters& instantiationParameters);
+
+	InstantiatedShader InstantiateShader(
+		StringSection<> shaderName,
+		const NodeGraph& graph,
+		const std::shared_ptr<INodeGraphProvider>& subProvider,
+		const InstantiationParameters& instantiationParameters);
 }

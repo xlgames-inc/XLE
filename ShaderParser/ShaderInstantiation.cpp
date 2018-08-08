@@ -20,18 +20,9 @@ namespace ShaderPatcher
         return baseName + "_" + std::to_string(instantiationHash);
     }
 
-	std::vector<std::string> InstantiateShader(
-		StringSection<> entryFile,
-		StringSection<> entryFn,
-		const ShaderPatcher::InstantiationParameters& instantiationParameters)
-	{
-		return InstantiateShader(
-			ShaderPatcher::LoadGraph(entryFile, entryFn),
-			instantiationParameters);
-	}
-
-	std::vector<std::string> InstantiateShader(
-		const INodeGraphProvider::NodeGraph& initialGraph,
+	static InstantiatedShader InstantiateShader(
+        const ShaderPatcher::INodeGraphProvider::NodeGraph& initialGraph,
+		bool useScaffoldFunction,
 		const ShaderPatcher::InstantiationParameters& instantiationParameters)
 	{
 		std::set<std::string> includes;
@@ -39,14 +30,15 @@ namespace ShaderPatcher
 		struct PendingInstantiation
 		{
 			ShaderPatcher::INodeGraphProvider::NodeGraph _graph;
+			bool _useScaffoldFunction;
 			ShaderPatcher::InstantiationParameters _instantiationParams;
 		};
 
-        std::vector<std::string> fragments;
+        InstantiatedShader result;
 		std::stack<PendingInstantiation> instantiations;
-		instantiations.emplace(PendingInstantiation{initialGraph, instantiationParameters});
+		instantiations.emplace(PendingInstantiation{initialGraph, useScaffoldFunction, instantiationParameters});
 
-		bool rootInstantiation = true;
+		bool entryPointInstantiation = true;
         while (!instantiations.empty()) {
             auto inst = std::move(instantiations.top());
             instantiations.pop();
@@ -54,18 +46,19 @@ namespace ShaderPatcher
 			// Slightly different rules for function name generation with inst._scope is not null. inst._scope is
 			// only null for the original instantiation request -- in that case, we want the outer most function
 			// to have the same name as the original request
-			auto scaffoldName = MakeGraphName(inst._graph._name, inst._instantiationParams.CalculateHash());
-			if (rootInstantiation) {
-				scaffoldName = inst._graph._name;
-				rootInstantiation = false;
-			}
-			auto implementationName = scaffoldName + "_impl";
+			auto scaffoldName = entryPointInstantiation ? inst._graph._name : MakeGraphName(inst._graph._name, inst._instantiationParams.CalculateHash());
+			auto implementationName = inst._useScaffoldFunction ? (scaffoldName + "_impl") : scaffoldName;
 			auto instFn = ShaderPatcher::GenerateFunction(
 				inst._graph._graph, implementationName, 
 				inst._instantiationParams, *inst._graph._subProvider);
 
-			fragments.push_back(ShaderPatcher::GenerateScaffoldFunction(inst._graph._signature, instFn._signature, scaffoldName, implementationName));
-			fragments.push_back(instFn._text);
+			if (inst._useScaffoldFunction)
+				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(inst._graph._signature, instFn._signature, scaffoldName, implementationName));
+			result._sourceFragments.push_back(instFn._text);
+
+			if (entryPointInstantiation)
+				result._entryPointSignature = instFn._signature;
+			entryPointInstantiation = false;
                 
 			for (const auto&dep:instFn._dependencies._dependencies) {
 
@@ -80,7 +73,7 @@ namespace ShaderPatcher
 				// if it's a graph file, then we must create a specific instantiation
 				if (XlEqString(MakeFileNameSplitter(filename).Extension(), "graph")) {
 					instantiations.emplace(
-						PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), dep._parameters});
+						PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
 				} else {
 					// This is just an include of a normal shader header
 					if (!inst._instantiationParams._parameterBindings.empty()) {
@@ -97,9 +90,40 @@ namespace ShaderPatcher
 			std::stringstream str;
 			for (const auto&i:includes)
 				str << "#include <" << i << ">" << std::endl;
-			fragments.push_back(str.str());
+			result._sourceFragments.push_back(str.str());
 		}
 
-		return fragments;
+		return result;
+	}
+
+	InstantiatedShader InstantiateShader(
+		StringSection<> entryFile,
+		StringSection<> entryFn,
+		const ShaderPatcher::InstantiationParameters& instantiationParameters)
+	{
+		return InstantiateShader(
+			ShaderPatcher::LoadGraph(entryFile, entryFn), true,
+			instantiationParameters);
+	}
+
+	InstantiatedShader InstantiateShader(
+		const INodeGraphProvider::NodeGraph& initialGraph,
+		const ShaderPatcher::InstantiationParameters& instantiationParameters)
+	{
+		return InstantiateShader(
+			initialGraph, true,
+			instantiationParameters);
+	}
+
+	InstantiatedShader InstantiateShader(
+		StringSection<> shaderName,
+		const NodeGraph& graph,
+		const std::shared_ptr<INodeGraphProvider>& subProvider,
+		const InstantiationParameters& instantiationParameters)
+	{
+		return InstantiateShader(
+			INodeGraphProvider::NodeGraph { shaderName.AsString(), graph, {}, subProvider }, 
+			false,
+			instantiationParameters);
 	}
 }
