@@ -70,10 +70,10 @@ namespace ToolsRig
     float VisSceneParser::GetTimeValue() const { return 0.f; }
 
     VisSceneParser::VisSceneParser(
-        std::shared_ptr<VisCameraSettings> settings, 
-        const VisEnvSettings& envSettings)
-    : _settings(std::move(settings)) 
-    , _envSettings(&envSettings)
+        const std::shared_ptr<VisCameraSettings>& settings, 
+        const std::shared_ptr<VisEnvSettings>& envSettings)
+    : _settings(settings) 
+    , _envSettings(envSettings)
     {}
     VisSceneParser::~VisSceneParser() {}
 

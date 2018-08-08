@@ -26,7 +26,7 @@ namespace GUILayer
         enum class LightingType { Deferred, Forward, NoLightingParser };
 
         property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
-        property LightingType Lighting { LightingType get(); void set(LightingType); }
+        property LightingType Lighting;
         property bool ResetCamera { void set(bool); }
 
         property VisCameraSettings^ Camera
@@ -40,6 +40,7 @@ namespace GUILayer
         {
             _object = std::move(attached);
             _camSettings = gcnew VisCameraSettings(_object->_camera);
+			Lighting = LightingType::NoLightingParser;
         }
 
         ~MaterialVisSettings() { delete _camSettings; _object.reset(); }
@@ -50,6 +51,7 @@ namespace GUILayer
         }
 
         const ToolsRig::MaterialVisSettings& GetUnderlying() { return *_object.get(); }
+		const std::shared_ptr<ToolsRig::MaterialVisSettings>& GetUnderlyingPtr() { return _object.GetNativePtr(); }
 
     protected:
         clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;

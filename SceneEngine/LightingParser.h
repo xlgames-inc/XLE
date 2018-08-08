@@ -36,7 +36,8 @@ namespace SceneEngine
         enum class LightingModel
         {
             Forward,
-            Deferred
+            Deferred,
+			Direct
         };
 
         LightingModel _lightingModel = LightingModel::Deferred;

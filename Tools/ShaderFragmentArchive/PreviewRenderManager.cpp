@@ -18,6 +18,7 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -201,6 +202,11 @@ namespace ShaderPatcherLayer
 
         metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f));
 
+		RenderCore::Techniques::AttachmentPool attachmentPool;
+		RenderCore::Techniques::FrameBufferPool frameBufferPool;
+		attachmentPool.Bind(FrameBufferProperties{(unsigned)width, (unsigned)height, TextureSamples::Create()});
+		attachmentPool.Bind(0, targets[0]->GetUnderlying());
+
             ////////////
 
 		ToolsRig::MaterialVisObject visObject;
@@ -208,7 +214,7 @@ namespace ShaderPatcherLayer
 		visObject._searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visObject._previewModelFile));
 		visObject._parameters = CreatePreviewMaterial(doc, visObject._searchRules);
 
-        auto result = DrawPreview(*context, *_pimpl->_techContext, AsNative(geometry), visObject);
+        auto result = DrawPreview(*context, *_pimpl->_techContext, &attachmentPool, &frameBufferPool, AsNative(geometry), visObject);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {
             return GenerateErrorBitmap(result.second.c_str(), size);
         } else if (result.first == ToolsRig::DrawPreviewResult::Pending) {

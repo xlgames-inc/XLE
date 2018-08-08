@@ -396,14 +396,14 @@ namespace SceneEngine
 
     static void ForwardLightingModel_Render(
         IThreadContext& context,
-        Metal::DeviceContext& metalContext,
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
 		ISceneParser& sceneParser,
         PreparedScene& preparedScene,
-        IMainTargets& targets)
+        unsigned sampleCount)
     {
-        const auto sampleCount = targets.GetSampling()._sampleCount;
+		auto& metalContext = *Metal::DeviceContext::Get(context);
+
         auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, sceneParser);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
@@ -937,10 +937,19 @@ namespace SceneEngine
             if (!parserContext._preparedDMShadows.empty())
                 BindShadowsForForwardResolve(metalContext, parserContext, parserContext._preparedDMShadows[0].second);
 
-            ForwardLightingModel_Render(context, metalContext, parserContext, preparedScene, mainTargets);
+            const auto sampleCount = mainTargets.GetSampling()._sampleCount;
+			ForwardLightingModel_Render(context, parserContext, lightingParserContext, preparedScene, sampleCount);
 #endif
 
-        }
+        } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Direct) {
+
+			if (!lightingParserContext._preparedDMShadows.empty())
+                BindShadowsForForwardResolve(metalContext, parserContext, lightingParserContext._preparedDMShadows[0].second);
+
+			const auto sampleCount = mainTargets.GetSampling()._sampleCount;
+			ForwardLightingModel_Render(context, parserContext, lightingParserContext, sceneParser, preparedScene, sampleCount);
+
+		}
 
         {
             GPUAnnotation anno(context, "Resolve-MSAA-HDR");

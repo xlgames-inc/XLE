@@ -20,6 +20,19 @@
 
 namespace GUILayer
 {
+	static ToolsRig::DrawPreviewLightingType AsNative(
+         MaterialVisSettings::LightingType input)
+    {
+        switch (input) {
+        case MaterialVisSettings::LightingType::Deferred:
+            return ToolsRig::DrawPreviewLightingType::Deferred;
+        case MaterialVisSettings::LightingType::Forward:
+            return ToolsRig::DrawPreviewLightingType::Forward;
+        default:
+            return ToolsRig::DrawPreviewLightingType::NoLightingParser;
+        }
+    }
+
     void MaterialVisLayer::RenderToScene(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext)
@@ -27,9 +40,8 @@ namespace GUILayer
         if (!_visObject) { Resolve(); }
         if (!_visObject) { return; }
 
-        ToolsRig::MaterialVisLayer::Draw(
-            context, parserContext, _settings->GetUnderlying(), 
-            *_envSettings.get(), *_visObject.get());
+		auto sceneParser = ToolsRig::CreateMaterialVisSceneParser(_settings->GetUnderlyingPtr(), _envSettings.GetNativePtr(), _visObject.GetNativePtr());
+        ToolsRig::MaterialVisLayer::Draw(context, parserContext, AsNative(_settings->Lighting), *sceneParser);
     }
 
     void MaterialVisLayer::RenderWidgets(
@@ -160,32 +172,6 @@ namespace GUILayer
         }
     }
 
-    static MaterialVisSettings::LightingType AsManaged(
-        ToolsRig::MaterialVisSettings::LightingType input)
-    {
-        switch (input) {
-        case ToolsRig::MaterialVisSettings::LightingType::Deferred:
-            return MaterialVisSettings::LightingType::Deferred;
-        case ToolsRig::MaterialVisSettings::LightingType::Forward:
-            return MaterialVisSettings::LightingType::Forward;
-        default:
-            return MaterialVisSettings::LightingType::NoLightingParser;
-        }
-    }
-
-    static ToolsRig::MaterialVisSettings::LightingType AsNative(
-         MaterialVisSettings::LightingType input)
-    {
-        switch (input) {
-        case MaterialVisSettings::LightingType::Deferred:
-            return ToolsRig::MaterialVisSettings::LightingType::Deferred;
-        case MaterialVisSettings::LightingType::Forward:
-            return ToolsRig::MaterialVisSettings::LightingType::Forward;
-        default:
-            return ToolsRig::MaterialVisSettings::LightingType::NoLightingParser;
-        }
-    }
-
     MaterialVisSettings::GeometryType MaterialVisSettings::Geometry::get()
     {
         return AsManaged(_object->_geometryType);
@@ -194,16 +180,6 @@ namespace GUILayer
     void MaterialVisSettings::Geometry::set(GeometryType value)
     {
         _object->_geometryType = AsNative(value);
-    }
-
-    MaterialVisSettings::LightingType MaterialVisSettings::Lighting::get()
-    {
-        return AsManaged(_object->_lightingType);
-    }
-
-    void MaterialVisSettings::Lighting::set(LightingType value)
-    {
-        _object->_lightingType = AsNative(value);
     }
 
     void MaterialVisSettings::ResetCamera::set(bool value)

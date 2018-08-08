@@ -196,7 +196,7 @@ namespace ToolsRig
 
         ModelSceneParser(
             const ModelVisSettings& settings,
-            const VisEnvSettings& envSettings,
+            const std::shared_ptr<VisEnvSettings>& envSettings,
             ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet,
             const ModelScaffold* modelScaffold = nullptr)
         : VisSceneParser(settings._camera, envSettings)
@@ -225,9 +225,8 @@ namespace ToolsRig
     {
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
-        static VisEnvSettings tempHack;
         return std::make_unique<ModelSceneParser>(
-            settings, tempHack,
+            settings, std::make_shared<VisEnvSettings>(),
             *model._renderer, model._boundingBox, *model._sharedStateSet);
     }
 
@@ -295,13 +294,15 @@ namespace ToolsRig
             _pimpl->_settings->_changeEvent.Trigger();
         }
 
-        const auto* envSettings = _pimpl->_envSettings.get();
+        auto envSettings = _pimpl->_envSettings;
         if (!envSettings)
-            envSettings = &::Assets::GetAssetDep<VisEnvSettings>(
-                MakeStringSection(_pimpl->_settings->_envSettingsFile));
+            envSettings = ::Assets::MakeAsset<VisEnvSettings>(
+                MakeStringSection(_pimpl->_settings->_envSettingsFile))->TryActualize();
+		if (!envSettings)
+			envSettings = std::make_shared<VisEnvSettings>();
 
         ModelSceneParser sceneParser(
-            *_pimpl->_settings, *envSettings,
+            *_pimpl->_settings, envSettings,
             *model._renderer, model._boundingBox, *model._sharedStateSet,
             model._model);
         sceneParser.Prepare();

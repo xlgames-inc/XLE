@@ -61,12 +61,12 @@ namespace ToolsRig
         void Prepare();
 
         VisSceneParser(
-            std::shared_ptr<VisCameraSettings> settings, 
-            const VisEnvSettings& envSettings);
+            const std::shared_ptr<VisCameraSettings>& settings, 
+            const std::shared_ptr<VisEnvSettings>& envSettings);
         ~VisSceneParser();
     protected:
         std::shared_ptr<VisCameraSettings> _settings;
-        const VisEnvSettings* _envSettings;
+        std::shared_ptr<VisEnvSettings> _envSettings;
         virtual const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
     };
 

@@ -97,6 +97,32 @@ namespace ToolsRig
             }
         }
 
+		virtual void PrepareScene(
+            RenderCore::IThreadContext& context, 
+			RenderCore::Techniques::ParsingContext& parserContext,
+            SceneEngine::PreparedScene& preparedPackets) const
+		{
+			// if we need to reset the camera, do so now...
+			if (_settings->_pendingCameraAlignToModel) {
+				if (_settings->_geometryType == MaterialVisSettings::GeometryType::Model && !_object->_previewModelFile.empty()) {
+						// this is more tricky... when using a model, we have to get the bounding box for the model
+					using namespace RenderCore::Assets;
+					const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
+					auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
+					modelFuture->StallWhilePending();
+					auto model = modelFuture->TryActualize();
+					if (model)
+						*_settings->_camera = AlignCameraToBoundingBox(_settings->_camera->_verticalFieldOfView, model->GetStaticBoundingBox());
+				} else {
+						// just reset camera to the default
+					*_settings->_camera = VisCameraSettings();
+					_settings->_camera->_position = Float3(-5.f, 0.f, 0.f);
+				}
+
+				_settings->_pendingCameraAlignToModel = false;
+			}
+		}
+
         bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
         {
             using BF = SceneEngine::SceneParseSettings::BatchFilter;
@@ -189,16 +215,23 @@ namespace ToolsRig
         VariantArray DrawModel() const;
 
         MaterialSceneParser(
-            const MaterialVisSettings& settings,
-            const VisEnvSettings& envSettings,
-            const MaterialVisObject& object)
-        : VisSceneParser(settings._camera, std::move(envSettings)), _settings(&settings), _object(&object) {}
+            const std::shared_ptr<MaterialVisSettings>& settings,
+            const std::shared_ptr<VisEnvSettings>& envSettings,
+            const std::shared_ptr<MaterialVisObject>& object)
+        : VisSceneParser(settings->_camera, envSettings), _settings(settings), _object(object) {}
 
     protected:
-        const MaterialVisSettings*  _settings;
-        const MaterialVisObject*    _object;
+        std::shared_ptr<MaterialVisSettings>  _settings;
+        std::shared_ptr<MaterialVisObject>    _object;
     };
 
+	std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
+		const std::shared_ptr<MaterialVisSettings>& settings,
+        const std::shared_ptr<VisEnvSettings>& envSettings,
+        const std::shared_ptr<MaterialVisObject>& object)
+	{
+		return std::make_shared<MaterialSceneParser>(settings, envSettings, object);
+	}
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -233,67 +266,36 @@ namespace ToolsRig
 
     VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box);
 
+	static SceneEngine::RenderingQualitySettings::LightingModel AsLightingModel(DrawPreviewLightingType lightingType)
+	{
+		switch (lightingType) {
+		case DrawPreviewLightingType::Deferred:
+			return SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
+		case DrawPreviewLightingType::Forward:
+			return SceneEngine::RenderingQualitySettings::LightingModel::Forward;
+		default:
+		case DrawPreviewLightingType::NoLightingParser:
+			return SceneEngine::RenderingQualitySettings::LightingModel::Direct;
+		}
+	}
+
     bool MaterialVisLayer::Draw(
         IThreadContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
-        const MaterialVisSettings& settings,
-        const VisEnvSettings& envSettings,
-        const MaterialVisObject& object)
+        DrawPreviewLightingType lightingType,
+		SceneEngine::ISceneParser& sceneParser)
     {
-            // if we need to reset the camera, do so now...
-        if (settings._pendingCameraAlignToModel) {
-            if (settings._geometryType == MaterialVisSettings::GeometryType::Model && !object._previewModelFile.empty()) {
-                    // this is more tricky... when using a model, we have to get the bounding box for the model
-                using namespace RenderCore::Assets;
-                const ::Assets::ResChar* modelFile = object._previewModelFile.c_str();
-                auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
-                modelFuture->StallWhilePending();
-				const auto& model = *modelFuture->Actualize();
-                *settings._camera = AlignCameraToBoundingBox(settings._camera->_verticalFieldOfView, model.GetStaticBoundingBox());
-            } else {
-                    // just reset camera to the default
-                *settings._camera = VisCameraSettings();
-                settings._camera->_position = Float3(-5.f, 0.f, 0.f);
-            }
-
-            settings._pendingCameraAlignToModel = false;
-        }
-
-        MaterialSceneParser sceneParser(settings, envSettings, object);
-        sceneParser.Prepare();
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 		};
         SceneEngine::RenderingQualitySettings qualSettings{
 			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
-			SceneEngine::RenderingQualitySettings::LightingModel::Deferred,
+			AsLightingModel(lightingType),
 			MakeIteratorRange(lightingPlugins)};
 
-        if (settings._lightingType == MaterialVisSettings::LightingType::NoLightingParser) {
-                
-            auto metalContext = Metal::DeviceContext::Get(context);
-            auto lightingParserContext = SceneEngine::LightingParser_SetupScene(
-                context, parserContext, &sceneParser);
-            SceneEngine::LightingParser_SetGlobalTransform(
-                context, parserContext, 
-                SceneEngine::BuildProjectionDesc(sceneParser.GetCameraDesc(), qualSettings._dimensions));
-            CATCH_ASSETS_BEGIN
-                SceneEngine::ReturnToSteadyState(*metalContext.get());
-                SceneEngine::SetFrameGlobalStates(*metalContext.get());
-            CATCH_ASSETS_END(parserContext)
-            sceneParser.Draw(context, parserContext, 0);
-                
-        } else {
-
-            qualSettings._lightingModel = 
-				(settings._lightingType == MaterialVisSettings::LightingType::Deferred)
-				? SceneEngine::RenderingQualitySettings::LightingModel::Deferred
-				: SceneEngine::RenderingQualitySettings::LightingModel::Forward;
-            SceneEngine::LightingParser_ExecuteScene(
-                context, parserContext,
-                sceneParser, sceneParser.GetCameraDesc(), qualSettings);
-
-        }
+        SceneEngine::LightingParser_ExecuteScene(
+            context, parserContext,
+            sceneParser, sceneParser.GetCameraDesc(), qualSettings);
 
         return true;
     }
@@ -303,9 +305,8 @@ namespace ToolsRig
     class MaterialVisLayer::Pimpl
     {
     public:
-        std::shared_ptr<MaterialVisSettings> _settings;
-        std::shared_ptr<VisEnvSettings> _envSettings;
-        std::shared_ptr<MaterialVisObject> _object;
+		std::shared_ptr<SceneEngine::ISceneParser> _sceneParser;
+		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::NoLightingParser;
     };
 
     auto MaterialVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -315,7 +316,7 @@ namespace ToolsRig
         IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        Draw(context, parserContext, *_pimpl->_settings, *_pimpl->_envSettings, *_pimpl->_object);
+        Draw(context, parserContext, _pimpl->_lightingType, *_pimpl->_sceneParser);
     }
 
     void MaterialVisLayer::RenderWidgets(
@@ -325,15 +326,16 @@ namespace ToolsRig
 
     void MaterialVisLayer::SetActivationState(bool) {}
 
+	void MaterialVisLayer::SetLightingType(DrawPreviewLightingType newType)
+	{
+		_pimpl->_lightingType = newType;
+	}
+
     MaterialVisLayer::MaterialVisLayer(
-        std::shared_ptr<MaterialVisSettings> settings,
-        std::shared_ptr<VisEnvSettings> envSettings,
-        std::shared_ptr<MaterialVisObject> object)
+		std::shared_ptr<SceneEngine::ISceneParser> sceneParser)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = std::move(settings);
-        _pimpl->_envSettings = std::move(envSettings);
-        _pimpl->_object = std::move(object);
+		_pimpl->_sceneParser = sceneParser;
     }
 
     MaterialVisLayer::~MaterialVisLayer()
@@ -353,6 +355,8 @@ namespace ToolsRig
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
         const RenderCore::Techniques::TechniqueContext& techContext,
+		RenderCore::Techniques::AttachmentPool* attachmentPool,
+		RenderCore::Techniques::FrameBufferPool* frameBufferPool,
         PreviewGeometry geometry,
 		ToolsRig::MaterialVisObject& visObject)
     {
@@ -360,9 +364,11 @@ namespace ToolsRig
 
         try 
         {
-            MaterialVisSettings visSettings;
-            visSettings._camera = std::make_shared<VisCameraSettings>();
-            visSettings._camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+            auto visSettings = std::make_shared<MaterialVisSettings>();
+            visSettings->_camera = std::make_shared<VisCameraSettings>();
+            visSettings->_camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+
+			auto visObjCopy = std::make_shared<ToolsRig::MaterialVisObject>();
 
             // Select the geometry type to use.
             // In the "chart" mode, we are just going to run a pixel shader for every
@@ -370,21 +376,21 @@ namespace ToolsRig
             switch (geometry) {
             case PreviewGeometry::Plane2D:
             case PreviewGeometry::Chart:
-                visSettings._geometryType = MaterialVisSettings::GeometryType::Plane2D;
-                visObject._parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
+                visSettings->_geometryType = MaterialVisSettings::GeometryType::Plane2D;
+                visObjCopy->_parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
                 break;
 
             case PreviewGeometry::Box:
-                visSettings._geometryType = MaterialVisSettings::GeometryType::Cube;
+                visSettings->_geometryType = MaterialVisSettings::GeometryType::Cube;
                 break;
 
             default:
             case PreviewGeometry::Sphere:
-                visSettings._geometryType = MaterialVisSettings::GeometryType::Sphere;
+                visSettings->_geometryType = MaterialVisSettings::GeometryType::Sphere;
                 break;
 
             case PreviewGeometry::Model:
-                visSettings._geometryType = MaterialVisSettings::GeometryType::Model;
+                visSettings->_geometryType = MaterialVisSettings::GeometryType::Model;
                 break;
             };
 
@@ -393,15 +399,17 @@ namespace ToolsRig
                 auto model = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(
                     visObject._previewModelFile.c_str());
                 model->StallWhilePending();
-                *visSettings._camera = ToolsRig::AlignCameraToBoundingBox(
-                    visSettings._camera->_verticalFieldOfView, 
+                *visSettings->_camera = ToolsRig::AlignCameraToBoundingBox(
+                    visSettings->_camera->_verticalFieldOfView, 
                     model->Actualize()->GetStaticBoundingBox());
             }
 
-            RenderCore::Techniques::ParsingContext parserContext(techContext);
+			auto sceneParser = CreateMaterialVisSceneParser(visSettings, std::make_shared<VisEnvSettings>(), visObjCopy);
+
+            RenderCore::Techniques::ParsingContext parserContext(techContext, attachmentPool, frameBufferPool);
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
-                visSettings, VisEnvSettings(), visObject);
+                DrawPreviewLightingType::NoLightingParser, *sceneParser);
             if (result)
                 return std::make_pair(DrawPreviewResult::Success, std::string());
 
