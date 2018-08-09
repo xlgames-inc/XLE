@@ -5,10 +5,10 @@
 #pragma once
 
 #include "DrawableDelegates.h"
+#include "PredefinedCBLayout.h"
 
 namespace RenderCore { namespace Techniques
 {
-
 	class MaterialDelegate_Basic : public IMaterialDelegate
     {
     public:
@@ -24,6 +24,9 @@ namespace RenderCore { namespace Techniques
 
         MaterialDelegate_Basic();
 		~MaterialDelegate_Basic();
+
+	private:
+		PredefinedCBLayout _cbLayout;
     };
 
 	class TechniqueDelegate_Basic : public ITechniqueDelegate
@@ -38,5 +41,15 @@ namespace RenderCore { namespace Techniques
 		TechniqueDelegate_Basic();
 		~TechniqueDelegate_Basic();
 	};
+
+	class GlobalCBDelegate : public IUniformBufferDelegate
+    {
+    public:
+        ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext);
+        IteratorRange<const ConstantBufferElementDesc*> GetLayout() const;
+		GlobalCBDelegate(unsigned cbIndex = 0) : _cbIndex(cbIndex) {}
+	private:
+		unsigned _cbIndex = 0;
+    };
 
 }}

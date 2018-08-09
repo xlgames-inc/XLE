@@ -49,6 +49,13 @@ namespace RenderCore { namespace Metal_DX11
 		}
     }
 
+	void* Buffer::QueryInterface(size_t guid)
+	{
+		if (guid == typeid(Buffer).hash_code())
+			return this;
+		return Resource::QueryInterface(guid);
+	}
+
 	static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
     {
         return CreateDesc(

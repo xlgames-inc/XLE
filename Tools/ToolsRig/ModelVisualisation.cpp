@@ -32,6 +32,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -517,6 +518,9 @@ namespace ToolsRig
         std::pair<Float3, Float3> worldSpaceRay) const -> Result
     {
         using namespace SceneEngine;
+
+		Log(Verbose) << "Disabling GPU ray intersection test because it causes device removal errors on DX11 currently" << std::endl;
+		return {};
 
         auto model = GetModel(*_cache, *_settings);
 		if (!model._renderer || !model._sharedStateSet)

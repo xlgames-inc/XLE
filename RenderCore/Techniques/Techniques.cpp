@@ -545,7 +545,7 @@ namespace RenderCore { namespace Techniques
 		static auto HashOrthoShadowProjection = Hash64("OrthogonalShadowProjection");
 		static auto HashBasicLightingEnvironment = Hash64("BasicLightingEnvironment");
 		static UniformsStreamInterface globalUniforms;
-		static bool setupGlobalUniforms;
+		static bool setupGlobalUniforms = false;
 		if (!setupGlobalUniforms) {
 			globalUniforms.BindConstantBuffer(CB_GlobalTransform, { HashGlobalTransform });
 			globalUniforms.BindConstantBuffer(CB_GlobalState, { HashGlobalState });

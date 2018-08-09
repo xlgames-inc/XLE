@@ -10,7 +10,7 @@
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/IteratorUtils.h"
 
-namespace RenderCore { class IResource; }
+namespace RenderCore { class IResource; class ConstantBufferView; }
 namespace Utility { class ParameterBox; }
 
 namespace RenderCore { namespace Techniques 
@@ -20,16 +20,16 @@ namespace RenderCore { namespace Techniques
     class IUniformBufferDelegate
     {
     public:
-        virtual RenderCore::SharedPkt WriteBuffer(ParsingContext& context, const void* objectContext) = 0;
-        virtual IteratorRange<const RenderCore::ConstantBufferElementDesc*> GetLayout() const = 0;
+        virtual ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext) = 0;
+        virtual IteratorRange<const ConstantBufferElementDesc*> GetLayout() const = 0;
         virtual ~IUniformBufferDelegate();
     };
 
     class IShaderResourceDelegate
     {
     public:
-        using SRV = RenderCore::Metal::ShaderResourceView;
-        using SamplerState = RenderCore::Metal::SamplerState;
+        using SRV = Metal::ShaderResourceView;
+        using SamplerState = Metal::SamplerState;
         virtual void GetShaderResources(
 			ParsingContext& context, const void* objectContext,
 			IteratorRange<SRV*> dstSRVs,
@@ -41,13 +41,13 @@ namespace RenderCore { namespace Techniques
     class IMaterialDelegate
     {
     public:
-        virtual RenderCore::UniformsStreamInterface GetInterface(const void* objectContext) const = 0;
+        virtual UniformsStreamInterface GetInterface(const void* objectContext) const = 0;
         virtual uint64_t GetInterfaceHash(const void* objectContext) const = 0;
 		virtual const ParameterBox* GetShaderSelectors(const void* objectContext) const = 0;
         virtual void ApplyUniforms(
             ParsingContext& context,
-            RenderCore::Metal::DeviceContext& devContext,
-            const RenderCore::Metal::BoundUniforms& boundUniforms,
+            Metal::DeviceContext& devContext,
+            const Metal::BoundUniforms& boundUniforms,
             unsigned streamIdx,
             const void* objectContext) const = 0;
         virtual ~IMaterialDelegate();
@@ -56,7 +56,7 @@ namespace RenderCore { namespace Techniques
 	class ITechniqueDelegate
 	{
 	public:
-		virtual RenderCore::Metal::ShaderProgram* GetShader(
+		virtual Metal::ShaderProgram* GetShader(
 			ParsingContext& context,
 			StringSection<::Assets::ResChar> techniqueCfgFile,
 			const ParameterBox* shaderSelectors[],		// ShaderSelectors::Source::Max

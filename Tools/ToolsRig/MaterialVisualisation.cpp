@@ -200,6 +200,11 @@ namespace ToolsRig
 			Techniques::SequencerTechnique seqTechnique;
 			seqTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
 			seqTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+
+			auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
+			for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
+				seqTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
+
 			ParameterBox seqShaderSelectors;
 
 			for (auto d=drawables.begin(); d!=drawables.end(); ++d)

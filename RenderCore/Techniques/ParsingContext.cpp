@@ -24,15 +24,42 @@ namespace RenderCore { namespace Techniques
             return;
         }
 
-        if (!_globalCBs[index]->IsGood()) {
-            *_globalCBs[index] = Metal::MakeConstantBuffer(
-				Metal::GetObjectFactory(), 
-				MakeIteratorRange(newData, PtrAdd(newData, dataSize)),
-				false);
-        } else {
-            _globalCBs[index]->Update(context, newData, dataSize);
-        }
+		if (!_globalCBs[index]) {
+			_globalCBs[index] = std::make_shared<Metal::Buffer>(
+				Metal::GetObjectFactory(),
+				CreateDesc(
+					BindFlag::ConstantBuffer,
+					CPUAccess::WriteDynamic,
+					GPUAccess::Read,
+					LinearBufferDesc::Create(unsigned(dataSize)),
+					"GlobalCB"),
+				MakeIteratorRange(newData, PtrAdd(newData, dataSize)));
+
+			_globalCBVs[index] = { _globalCBs[index].get() };
+		} else {
+			auto* buffer = (Metal::Buffer*)_globalCBs[index]->QueryInterface(typeid(Metal::Buffer).hash_code());
+			if (buffer)
+				buffer->Update(context, newData, dataSize);
+		}
     }
+
+	Metal::Buffer&			ParsingContext::GetGlobalTransformCB()
+	{
+		assert(_globalCBs[0]);
+		return *(Metal::Buffer*)_globalCBs[0]->QueryInterface(typeid(Metal::Buffer).hash_code());
+	}
+
+    Metal::Buffer&			ParsingContext::GetGlobalStateCB()
+	{
+		assert(_globalCBs[1]);
+		return *(Metal::Buffer*)_globalCBs[1]->QueryInterface(typeid(Metal::Buffer).hash_code());
+	}
+
+	const std::shared_ptr<IResource>& ParsingContext::GetGlobalCB(unsigned index)
+	{
+		assert(index < dimof(_globalCBs));
+		return _globalCBs[index];
+	}
 
     void ParsingContext::Process(const ::Assets::Exceptions::RetrievalError& e)
     {
@@ -79,8 +106,8 @@ namespace RenderCore { namespace Techniques
         _namedResources = namedResources;
 		_frameBufferPool = frameBufferPool;
 
-        for (unsigned c=0; c<dimof(_globalCBs); ++c)
-            _globalCBs[c] = std::make_unique<Metal::ConstantBuffer>();
+		for (unsigned c=0; c<dimof(_globalCBs); ++c)
+			_globalCBs[c] = nullptr;
 
         _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
         #pragma push_macro("new")
@@ -88,7 +115,7 @@ namespace RenderCore { namespace Techniques
             new(_projectionDesc.get()) ProjectionDesc();
         #pragma pop_macro("new")
 
-        static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
+		static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
         for (unsigned c=0; c<dimof(_globalCBs); ++c)
 			_globalCBVs[c] = { _globalCBs[c].get() };
     }

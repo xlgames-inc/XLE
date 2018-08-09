@@ -17,26 +17,36 @@ namespace Utility { class VariantArray; }
 namespace RenderCore { namespace Assets 
 {
 	class ModelScaffold;
+	class MaterialScaffold;
 
 	class SimpleModelRenderer
 	{
 	public:
 		VariantArray BuildDrawables(uint64_t materialFilter = 0);
 
-		SimpleModelRenderer(const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold);
+		SimpleModelRenderer(
+			const std::shared_ptr<ModelScaffold>& modelScaffold,
+			const std::shared_ptr<MaterialScaffold>& materialScaffold);
 
 		const ::Assets::DepValPtr& GetDependencyValidation();
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
+			StringSection<::Assets::ResChar> modelScaffoldName,
+			StringSection<::Assets::ResChar> materialScaffoldName);
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<SimpleModelRenderer>& future,
 			StringSection<::Assets::ResChar> modelScaffoldName);
+
 	private:
-		std::shared_ptr<RenderCore::Assets::ModelScaffold> _modelScaffold;
+		std::shared_ptr<ModelScaffold> _modelScaffold;
+		std::shared_ptr<MaterialScaffold> _materialScaffold;
 
 		std::unique_ptr<Float4x4[]> _baseTransforms;
 		unsigned _baseTransformCount;
 
-		std::vector<std::shared_ptr<RenderCore::Techniques::DrawableGeo>> _geos;
-		std::vector<std::shared_ptr<RenderCore::Techniques::DrawableGeo>> _boundSkinnedControllers;
+		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _geos;
+		std::vector<std::shared_ptr<Techniques::DrawableGeo>> _boundSkinnedControllers;
 
 		SkeletonBinding _skeletonBinding;
 

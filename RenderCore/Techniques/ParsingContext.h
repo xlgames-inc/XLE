@@ -17,6 +17,7 @@
 
 namespace Assets { namespace Exceptions { class RetrievalError; }}
 namespace Utility { class ParameterBox; }
+namespace RenderCore { class IResource; }
 
 namespace RenderCore { namespace Techniques 
 {
@@ -44,13 +45,14 @@ namespace RenderCore { namespace Techniques
         const ProjectionDesc&   GetProjectionDesc() const   { return *_projectionDesc; }
 
             //  ----------------- Working technique context -----------------
-        TechniqueContext&               GetTechniqueContext()               { return *_techniqueContext.get(); }
-		UniformsStream					GetGlobalUniformsStream() const;
-        Metal::ConstantBuffer&          GetGlobalTransformCB()              { return *_globalCBs[0]; }
-        Metal::ConstantBuffer&          GetGlobalStateCB()                  { return *_globalCBs[1]; }
+        TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
+		UniformsStream			GetGlobalUniformsStream() const;
+        Metal::Buffer&			GetGlobalTransformCB();
+        Metal::Buffer&			GetGlobalStateCB();
         void    SetGlobalCB(
             Metal::DeviceContext& context, unsigned index, 
             const void* newData, size_t dataSize);
+		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);
         std::shared_ptr<IStateSetResolver> SetStateSetResolver(
             std::shared_ptr<IStateSetResolver> stateSetResolver);
         const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
@@ -86,7 +88,7 @@ namespace RenderCore { namespace Techniques
         ParsingContext(const ParsingContext&) = delete;
 
     protected:
-        std::unique_ptr<Metal::ConstantBuffer>      _globalCBs[5];
+        std::shared_ptr<IResource>					_globalCBs[5];
 		ConstantBufferView							_globalCBVs[5];
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;

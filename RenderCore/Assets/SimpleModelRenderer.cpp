@@ -6,6 +6,7 @@
 #include "ModelRunTime.h"
 #include "ModelScaffoldInternal.h"
 #include "ModelImmutableData.h"
+#include "MaterialScaffold.h"
 #include "AssetUtils.h"
 #include "../Techniques/Drawables.h"
 #include "../Techniques/TechniqueUtils.h"
@@ -139,8 +140,11 @@ namespace RenderCore { namespace Assets
 
 	const ::Assets::DepValPtr& SimpleModelRenderer::GetDependencyValidation() { return _modelScaffold->GetDependencyValidation(); }
 
-	SimpleModelRenderer::SimpleModelRenderer(const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold)
+	SimpleModelRenderer::SimpleModelRenderer(
+		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
+		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold)
 	: _modelScaffold(modelScaffold)
+	, _materialScaffold(materialScaffold)
 	{
 		using namespace RenderCore::Assets;
 
@@ -190,14 +194,17 @@ namespace RenderCore { namespace Assets
 
 	void SimpleModelRenderer::ConstructToFuture(
 		::Assets::AssetFuture<SimpleModelRenderer>& future,
-		StringSection<::Assets::ResChar> modelScaffoldName)
+		StringSection<::Assets::ResChar> modelScaffoldName,
+		StringSection<::Assets::ResChar> materialScaffoldName)
 	{
 		auto scaffoldFuture = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(modelScaffoldName);
+		auto materialFuture = ::Assets::MakeAsset<RenderCore::Assets::MaterialScaffold>(materialScaffoldName, modelScaffoldName);
 
 		future.SetPollingFunction(
-			[scaffoldFuture](::Assets::AssetFuture<SimpleModelRenderer>& thatFuture) -> bool {
+			[scaffoldFuture, materialFuture](::Assets::AssetFuture<SimpleModelRenderer>& thatFuture) -> bool {
 
 			auto scaffoldActual = scaffoldFuture->TryActualize();
+			auto materialActual = materialFuture->TryActualize();
 
 			if (!scaffoldActual) {
 				auto state = scaffoldFuture->GetAssetState();
@@ -208,12 +215,27 @@ namespace RenderCore { namespace Assets
 				return true;
 			}
 
-			auto newModel = std::make_shared<SimpleModelRenderer>(scaffoldActual);
+			if (!materialActual) {
+				auto state = materialFuture->GetAssetState();
+				if (state == ::Assets::AssetState::Invalid) {
+					thatFuture.SetInvalidAsset(materialFuture->GetDependencyValidation(), nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newModel = std::make_shared<SimpleModelRenderer>(scaffoldActual, materialActual);
 			thatFuture.SetAsset(std::move(newModel), {});
 			return false;
 		});
 	}
 
+	void SimpleModelRenderer::ConstructToFuture(
+		::Assets::AssetFuture<SimpleModelRenderer>& future,
+		StringSection<::Assets::ResChar> modelScaffoldName)
+	{
+		ConstructToFuture(future, modelScaffoldName, modelScaffoldName);
+	}
 
 	static IResourcePtr LoadVertexBuffer(
         const RenderCore::Assets::ModelScaffold& scaffold,

@@ -943,6 +943,8 @@ namespace SceneEngine
 
         } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Direct) {
 
+			auto rpi = RenderPassToPresentationTarget(context, parserContext);
+
 			if (!lightingParserContext._preparedDMShadows.empty())
                 BindShadowsForForwardResolve(metalContext, parserContext, lightingParserContext._preparedDMShadows[0].second);
 
