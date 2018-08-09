@@ -944,6 +944,7 @@ namespace SceneEngine
         } else if (qualitySettings._lightingModel == RenderingQualitySettings::LightingModel::Direct) {
 
 			auto rpi = RenderPassToPresentationTarget(context, parserContext);
+			metalContext.Bind(Metal::ViewportDesc{0.f, 0.f, (float)qualitySettings._dimensions[0], (float)qualitySettings._dimensions[1]});
 
 			if (!lightingParserContext._preparedDMShadows.empty())
                 BindShadowsForForwardResolve(metalContext, parserContext, lightingParserContext._preparedDMShadows[0].second);

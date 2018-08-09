@@ -19,6 +19,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/SimpleModelRenderer.h"
@@ -71,6 +72,14 @@ namespace ToolsRig
 			const MaterialSceneParserDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
 			const Metal::ShaderProgram&)
 		{
+			if (boundUniforms._boundUniformBufferSlots[3] != 0) {
+				ConstantBufferView cbvs[] = {
+					Techniques::MakeLocalTransformPacket(
+						Identity<Float4x4>(), 
+						ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
+				boundUniforms.Apply(metalContext, 3, UniformsStream{MakeIteratorRange(cbvs)});
+			}
+
 			assert(!drawable._geo->_ib);
 			metalContext.Bind(drawable._topology);
 			metalContext.Draw(drawable._vertexCount);
@@ -144,16 +153,19 @@ namespace ToolsRig
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
 
 			VariantArray drawables;
+
+			auto usi = std::make_shared<UniformsStreamInterface>();
+			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
             
             auto geoType = _settings->_geometryType;
             if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
                 const Internal::Vertex3D    vertices[] = 
                 {
-                    { Float3(-1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
-                    { Float3( 1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
-                    { Float3(-1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
-                    { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
+                    { Float3(0.f, -1.f, -1.f),  Float3(1.f, 0.f, 0.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3(0.f, -1.f,  1.f),  Float3(1.f, 0.f, 0.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
+					{ Float3(0.f,  1.f, -1.f),  Float3(1.f, 0.f, 0.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3(0.f,  1.f,  1.f),  Float3(1.f, 0.f, 0.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
 				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
@@ -166,6 +178,7 @@ namespace ToolsRig
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
 				drawable._topology = Topology::TriangleStrip;
 				drawable._vertexCount = (unsigned)dimof(vertices);
+				drawable._uniformsInterface = usi;
 
             } else if (geoType == MaterialVisSettings::GeometryType::Model) {
 
@@ -194,6 +207,7 @@ namespace ToolsRig
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&MaterialSceneParserDrawable::DrawFn;
 				drawable._topology = Topology::TriangleList;
 				drawable._vertexCount = count;
+				drawable._uniformsInterface = usi;
 
             }
 
