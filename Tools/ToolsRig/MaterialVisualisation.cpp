@@ -113,10 +113,10 @@ namespace ToolsRig
 		{
 			// if we need to reset the camera, do so now...
 			if (_settings->_pendingCameraAlignToModel) {
-				if (_settings->_geometryType == MaterialVisSettings::GeometryType::Model && !_object->_previewModelFile.empty()) {
+				if (_settings->_geometryType == MaterialVisSettings::GeometryType::Model && !_settings->_previewModelFile.empty()) {
 						// this is more tricky... when using a model, we have to get the bounding box for the model
 					using namespace RenderCore::Assets;
-					const ::Assets::ResChar* modelFile = _object->_previewModelFile.c_str();
+					const ::Assets::ResChar* modelFile = _settings->_previewModelFile.c_str();
 					auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
 					modelFuture->StallWhilePending();
 					auto model = modelFuture->TryActualize();
@@ -235,21 +235,18 @@ namespace ToolsRig
 
         MaterialSceneParser(
             const std::shared_ptr<MaterialVisSettings>& settings,
-            const std::shared_ptr<VisEnvSettings>& envSettings,
-            const std::shared_ptr<MaterialVisObject>& object)
-        : VisSceneParser(settings->_camera, envSettings), _settings(settings), _object(object) {}
+            const std::shared_ptr<VisEnvSettings>& envSettings)
+        : VisSceneParser(settings->_camera, envSettings), _settings(settings) {}
 
     protected:
         std::shared_ptr<MaterialVisSettings>  _settings;
-        std::shared_ptr<MaterialVisObject>    _object;
     };
 
 	std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
 		const std::shared_ptr<MaterialVisSettings>& settings,
-        const std::shared_ptr<VisEnvSettings>& envSettings,
-        const std::shared_ptr<MaterialVisObject>& object)
+        const std::shared_ptr<VisEnvSettings>& envSettings)
 	{
-		return std::make_shared<MaterialSceneParser>(settings, envSettings, object);
+		return std::make_shared<MaterialSceneParser>(settings, envSettings);
 	}
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -265,11 +262,11 @@ namespace ToolsRig
             // It's a little complex. But it's a good way to test the internals of
             // the ModelScaffold class -- because we go through all the parts and
             // use each aspect of the model pipeline. 
-		if (_object->_previewModelFile.empty()) return {};
+		if (_settings->_previewModelFile.empty()) return {};
 
         using namespace RenderCore::Assets;
-        auto modelFile = MakeStringSection(_object->_previewModelFile);
-        uint64 boundMaterial = _object->_previewMaterialBinding;
+        auto modelFile = MakeStringSection(_settings->_previewModelFile);
+        uint64 boundMaterial = _settings->_previewMaterialBinding;
 
         auto modelFuture = ::Assets::MakeAsset<SimpleModelRenderer>(modelFile);
 		auto state = modelFuture->StallWhilePending();
@@ -362,68 +359,29 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    MaterialVisSettings::MaterialVisSettings()
-    {
-        _camera = std::make_shared<VisCameraSettings>();
-        _camera->_position = Float3(-5.f, 0.f, 0.f);
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
         const RenderCore::Techniques::TechniqueContext& techContext,
 		RenderCore::Techniques::AttachmentPool* attachmentPool,
 		RenderCore::Techniques::FrameBufferPool* frameBufferPool,
-        PreviewGeometry geometry,
-		ToolsRig::MaterialVisObject& visObject)
+		const std::shared_ptr<MaterialVisSettings>& visObject)
     {
         using namespace ToolsRig;
 
         try 
         {
-            auto visSettings = std::make_shared<MaterialVisSettings>();
-            visSettings->_camera = std::make_shared<VisCameraSettings>();
-            visSettings->_camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
-
-			auto visObjCopy = std::make_shared<ToolsRig::MaterialVisObject>();
-
-            // Select the geometry type to use.
-            // In the "chart" mode, we are just going to run a pixel shader for every
-            // output pixel, so we want to use a pretransformed quad covering the viewport
-            switch (geometry) {
-            case PreviewGeometry::Plane2D:
-            case PreviewGeometry::Chart:
-                visSettings->_geometryType = MaterialVisSettings::GeometryType::Plane2D;
-                visObjCopy->_parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
-                break;
-
-            case PreviewGeometry::Box:
-                visSettings->_geometryType = MaterialVisSettings::GeometryType::Cube;
-                break;
-
-            default:
-            case PreviewGeometry::Sphere:
-                visSettings->_geometryType = MaterialVisSettings::GeometryType::Sphere;
-                break;
-
-            case PreviewGeometry::Model:
-                visSettings->_geometryType = MaterialVisSettings::GeometryType::Model;
-                break;
-            };
-
             // Align the camera if we're drawing with a model...
-            if (geometry == PreviewGeometry::Model && !visObject._previewModelFile.empty()) {
+            if (visObject->_geometryType == MaterialVisSettings::GeometryType::Model && !visObject->_previewModelFile.empty()) {
                 auto model = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(
-                    visObject._previewModelFile.c_str());
+                    visObject->_previewModelFile.c_str());
                 model->StallWhilePending();
-                *visSettings->_camera = ToolsRig::AlignCameraToBoundingBox(
-                    visSettings->_camera->_verticalFieldOfView, 
+                *visObject->_camera = ToolsRig::AlignCameraToBoundingBox(
+                    visObject->_camera->_verticalFieldOfView, 
                     model->Actualize()->GetStaticBoundingBox());
             }
 
-			auto sceneParser = CreateMaterialVisSceneParser(visSettings, std::make_shared<VisEnvSettings>(), visObjCopy);
+			auto sceneParser = CreateMaterialVisSceneParser(visObject, std::make_shared<VisEnvSettings>());
 
             RenderCore::Techniques::ParsingContext parserContext(techContext, attachmentPool, frameBufferPool);
             bool result = ToolsRig::MaterialVisLayer::Draw(

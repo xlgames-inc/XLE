@@ -15,8 +15,6 @@
 
 using namespace System::Collections::Generic;
 
-namespace ToolsRig { class MaterialVisObject; }
-
 namespace GUILayer
 {
     public ref class MaterialVisSettings
@@ -83,14 +81,13 @@ namespace GUILayer
         ~MaterialVisLayer();
         
     protected:
-        clix::shared_ptr<ToolsRig::MaterialVisObject> _visObject;
         clix::shared_ptr<ToolsRig::VisEnvSettings> _envSettings;
         IEnumerable<RawMaterial^>^ _config;
         System::String^ _previewModel;
         uint64 _materialBinding;
         MaterialVisSettings^ _settings;
+		bool _nativeVisSettingsDirty;
 
-        void Resolve();
         void ChangeHandler(System::Object^ sender, System::EventArgs^ args);
         void ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args);
         void PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args);

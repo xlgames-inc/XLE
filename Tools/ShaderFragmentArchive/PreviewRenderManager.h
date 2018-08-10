@@ -19,16 +19,12 @@ namespace ShaderPatcherLayer
     
     public interface class IPreviewBuilder
     {
-    public:
-        System::Drawing::Bitmap^ Build(
-            NodeGraphContext^ doc, System::Drawing::Size^ size, 
-            PreviewGeometry geometry, unsigned targetToVisualize);
-    };
-
-    public interface class IManager
-    {
-        using ShaderText = System::Tuple<System::String^, System::String^>;
-        IPreviewBuilder^ CreatePreviewBuilder(ShaderText^ shaderText);
+	public:
+		System::Drawing::Bitmap^ BuildPreviewImage(
+            NodeGraphContext^ doc, 
+			System::Drawing::Size^ size, 
+            PreviewGeometry geometry, 
+			unsigned targetToVisualize);
     };
 
 	class AttachPimpl;

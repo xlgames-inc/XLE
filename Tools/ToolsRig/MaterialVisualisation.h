@@ -22,20 +22,14 @@ namespace ToolsRig
     class MaterialVisSettings
     {
     public:
-        std::shared_ptr<VisCameraSettings> _camera;
+        std::shared_ptr<VisCameraSettings> _camera = std::make_shared<VisCameraSettings>();
         
         enum class GeometryType { Sphere, Cube, Plane2D, Model };
         GeometryType _geometryType = GeometryType::Sphere;
 
         mutable bool _pendingCameraAlignToModel = false;
 
-        MaterialVisSettings();
-    };
-
-    class MaterialVisObject
-    {
-    public:
-        RenderCore::Techniques::Material	_parameters;
+		RenderCore::Techniques::Material	_parameters;
         ::Assets::DirectorySearchRules		_searchRules;
         ::Assets::rstring					_previewModelFile;
         uint64_t							_previewMaterialBinding = 0;
@@ -50,11 +44,6 @@ namespace ToolsRig
         Success
     };
 
-	enum class PreviewGeometry
-    {
-        Chart, Plane2D, Box, Sphere, Model
-    };
-
 	enum class DrawPreviewLightingType { Deferred, Forward, NoLightingParser };
 
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
@@ -62,13 +51,11 @@ namespace ToolsRig
         const RenderCore::Techniques::TechniqueContext& techContext,
 		RenderCore::Techniques::AttachmentPool* attachmentPool,
 		RenderCore::Techniques::FrameBufferPool* frameBufferPool,
-        PreviewGeometry geometry,
-		ToolsRig::MaterialVisObject& sourceVisObject);
+		const std::shared_ptr<MaterialVisSettings>& visObject);
 
 	std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
 		const std::shared_ptr<MaterialVisSettings>& settings,
-        const std::shared_ptr<VisEnvSettings>& envSettings,
-        const std::shared_ptr<MaterialVisObject>& object);
+        const std::shared_ptr<VisEnvSettings>& envSettings);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 

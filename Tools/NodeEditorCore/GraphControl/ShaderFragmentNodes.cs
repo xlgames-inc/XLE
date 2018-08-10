@@ -199,7 +199,6 @@ namespace NodeEditorCore
     {
         public ShaderFragmentPreviewItem()
         {
-            _builder = null;
             _cachedBitmap = null;
             Geometry = ShaderPatcherLayer.PreviewGeometry.Plane2D;
             OutputToVisualize = "";
@@ -227,11 +226,22 @@ namespace NodeEditorCore
                 var currentHash = doc.ShaderStructureHash;
                 if (currentHash != _shaderStructureHash)
                 {
-                    _builder = null;
-                    _shaderStructureHash = currentHash;
+                    _cachedBitmap = null;
+                    
                 }
 
-                if (_builder == null)
+                // (assuming no rotation on this transformation -- scale is easy to find)
+                Size idealSize = new Size((int)(graphics.Transform.Elements[0] * size.Width), (int)(graphics.Transform.Elements[3] * size.Height));
+                if (_cachedBitmap != null)
+                {
+                    // compare the current bitmap size to the size we'd like
+                    Size bitmapSize = _cachedBitmap.Size;
+                    float difference = System.Math.Max(System.Math.Abs(1.0f - bitmapSize.Width / (float)(idealSize.Width)), System.Math.Abs(1.0f - bitmapSize.Height / (float)(idealSize.Height)));
+                    if (difference > 0.1f)
+                        _cachedBitmap = null;
+                }
+
+                if (_cachedBitmap == null)
                 {
                         // note -- much of this work doesn't really need to be repeated for each node.
                     var prevSettings = PreviewSettings;
@@ -241,31 +251,14 @@ namespace NodeEditorCore
                         "main",
                         ((ShaderFragmentNodeTag)Node.Tag).Id, 
                         prevSettings, doc.GraphContext.Variables);
-                    _builder = _previewManager.CreatePreviewBuilder(shader);
-                    _cachedBitmap = null;
-                }
 
-                if (_builder == null)
-                    return;
-                
-                    // (assuming no rotation on this transformation -- scale is easy to find)
-                Size idealSize = new Size((int)(graphics.Transform.Elements[0] * size.Width), (int)(graphics.Transform.Elements[3] * size.Height));
-                if (_cachedBitmap != null)
-                {
-                        // compare the current bitmap size to the size we'd like
-                    Size bitmapSize = _cachedBitmap.Size;
-                    float difference = System.Math.Max(System.Math.Abs(1.0f - bitmapSize.Width / (float)(idealSize.Width)), System.Math.Abs(1.0f - bitmapSize.Height / (float)(idealSize.Height)));
-                    if (difference > 0.1f)
-                        _cachedBitmap = null;
-                }
-
-                if (_cachedBitmap == null)
-                {
                     uint target = 0;
                     if (OutputToVisualize.StartsWith("SV_Target"))
                         if (!uint.TryParse(OutputToVisualize.Substring(9), out target))
                             target = 0;
-                    _cachedBitmap = _builder.Build(doc.GraphContext, idealSize, Geometry, target);
+
+                    _cachedBitmap = _previewManager.BuildPreviewImage(doc.GraphContext, idealSize, Geometry, target);
+                    _shaderStructureHash = currentHash;
                 }
 
                 if (_cachedBitmap != null)
@@ -276,7 +269,7 @@ namespace NodeEditorCore
         public override SizeF   Measure(Graphics graphics) { return new SizeF(196, 196); }
         public override void    RenderConnector(Graphics graphics, RectangleF bounds) { }
 
-        public void InvalidateShaderStructure() { _cachedBitmap = null; _builder = null; _shaderStructureHash = 0;  }
+        public void InvalidateShaderStructure() { _cachedBitmap = null; _shaderStructureHash = 0;  }
         public void InvalidateParameters() { _cachedBitmap = null; }
 
         public override bool OnStartDrag(PointF location, out PointF original_location)
@@ -325,11 +318,10 @@ namespace NodeEditorCore
         private ShaderPatcherLayer.PreviewGeometry _previewGeometry;
         private string _outputToVisualize;
         [Import]
-        private ShaderPatcherLayer.IManager _previewManager;
+        private ShaderPatcherLayer.IPreviewBuilder _previewManager;
 
         // bitmap cache --
         private uint _shaderStructureHash;
-        private ShaderPatcherLayer.IPreviewBuilder _builder; 
         private System.Drawing.Bitmap _cachedBitmap;
     }
 

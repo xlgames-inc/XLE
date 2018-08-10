@@ -37,10 +37,23 @@ namespace GUILayer
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        if (!_visObject) { Resolve(); }
-        if (!_visObject) { return; }
+		if (_nativeVisSettingsDirty) {
+			auto& visObject = *_settings->GetUnderlyingPtr();
+			visObject._parameters = RenderCore::Techniques::Material{};
+			visObject._searchRules = ::Assets::DirectorySearchRules{};
+        
+			auto previewModel = clix::marshalString<clix::E_UTF8>(_previewModel);
+			visObject._searchRules.AddSearchDirectoryFromFilename(MakeStringSection(previewModel));
 
-		auto sceneParser = ToolsRig::CreateMaterialVisSceneParser(_settings->GetUnderlyingPtr(), _envSettings.GetNativePtr(), _visObject.GetNativePtr());
+			if (_config)
+				for each(auto c in _config)
+					RenderCore::Assets::MergeIn_Stall(visObject._parameters, *c->GetUnderlying(), visObject._searchRules);
+
+			visObject._previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
+			visObject._previewMaterialBinding = _materialBinding;
+		}
+
+		auto sceneParser = ToolsRig::CreateMaterialVisSceneParser(_settings->GetUnderlyingPtr(), _envSettings.GetNativePtr());
         ToolsRig::MaterialVisLayer::Draw(context, parserContext, AsNative(_settings->Lighting), *sceneParser);
     }
 
@@ -51,50 +64,24 @@ namespace GUILayer
 
     void MaterialVisLayer::SetActivationState(bool newState) {}
 
-    void MaterialVisLayer::Resolve()
-    {
-        if (!_config) { _visObject.reset(); return; }
-
-        clix::shared_ptr<ToolsRig::MaterialVisObject> visObject(
-            std::make_shared<ToolsRig::MaterialVisObject>());
-
-        auto& resMat = visObject->_parameters;
-        auto& searchRules = visObject->_searchRules;
-        
-		auto previewModel = clix::marshalString<clix::E_UTF8>(_previewModel);
-		searchRules.AddSearchDirectoryFromFilename(MakeStringSection(previewModel));
-
-        if (_config)
-            for each(auto c in _config)
-				RenderCore::Assets::MergeIn_Stall(resMat, *c->GetUnderlying(), searchRules);
-
-		assert(0);
-        // const ::Assets::ResChar* shader = (resMat._techniqueConfig[0]) ? resMat._techniqueConfig : "illum";
-        // visObject->_materialBinder = std::make_shared<ToolsRig::MaterialBinder>(shader);
-        visObject->_previewModelFile = clix::marshalString<clix::E_UTF8>(_previewModel);
-        visObject->_previewMaterialBinding = _materialBinding;
-
-        _visObject = visObject;
-    }
-
     void MaterialVisLayer::ChangeHandler(System::Object^ sender, System::EventArgs^ args)
     {
-        _visObject.reset();
+        _nativeVisSettingsDirty = true;
     }
 
     void MaterialVisLayer::ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args)
     {
-        _visObject.reset();
+        _nativeVisSettingsDirty = true;
     }
 
     void MaterialVisLayer::PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args)
     {
-        _visObject.reset();
+        _nativeVisSettingsDirty = true;
     }
 
     void MaterialVisLayer::SetConfig(IEnumerable<RawMaterial^>^ config, System::String^ previewModel, uint64 materialBinding)
     {
-        _visObject.reset();
+        _nativeVisSettingsDirty = true;
 
         auto listChangeHandler = gcnew ListChangedEventHandler(this, &MaterialVisLayer::ListChangeHandler);
         auto propChangeHandler = gcnew PropertyChangedEventHandler(this, &MaterialVisLayer::PropChangeHandler);
@@ -130,6 +117,7 @@ namespace GUILayer
     MaterialVisLayer::MaterialVisLayer(MaterialVisSettings^ settings)
     : _settings(settings)
     {
+		_nativeVisSettingsDirty = true;
         _config = nullptr;
         _previewModel = "";
         _materialBinding = 0;

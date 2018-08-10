@@ -14,6 +14,7 @@
 #include "../GUILayer/CLIXAutoPtr.h"
 
 #include "../ToolsRig/MaterialVisualisation.h"
+#include "../ToolsRig/VisualisationUtils.h"
 
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
@@ -52,19 +53,24 @@ namespace ShaderPatcherLayer
         std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
     };
 
-    [Export(IManager::typeid)]
+    [Export(IPreviewBuilder::typeid)]
     [Export(Manager::typeid)]
     [PartCreationPolicy(CreationPolicy::Shared)]
-    public ref class Manager : IManager
+    public ref class Manager : IPreviewBuilder
     {
     public:
-        virtual IPreviewBuilder^ CreatePreviewBuilder(IManager::ShaderText^ shaderText);
+		virtual System::Drawing::Bitmap^ BuildPreviewImage(
+            NodeGraphContext^ doc, 
+			System::Drawing::Size^ size, 
+            PreviewGeometry geometry, 
+			unsigned targetToVisualize);
 
         Manager();
     private:
         clix::auto_ptr<ManagerPimpl> _pimpl;
 
         ~Manager();
+		System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -97,69 +103,21 @@ namespace ShaderPatcherLayer
 		return result;
 	}
 
-	ToolsRig::PreviewGeometry AsNative(PreviewGeometry geo)
-    {
-		switch (geo) {
-		case PreviewGeometry::Chart: return ToolsRig::PreviewGeometry::Chart;
-		default:
-		case PreviewGeometry::Plane2D: return ToolsRig::PreviewGeometry::Plane2D;
-		case PreviewGeometry::Box: return ToolsRig::PreviewGeometry::Box;
-		case PreviewGeometry::Sphere: return ToolsRig::PreviewGeometry::Sphere;
-		case PreviewGeometry::Model: return ToolsRig::PreviewGeometry::Model;
-		}
-    };
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class PreviewBuilderPimpl
-    {
-    public:
-        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techContext;
-        std::shared_ptr<RenderCore::IDevice> _device;
-        std::string _shaderText;
-        RenderCore::Techniques::PredefinedCBLayout _cbLayout;
-    };
-
-    public ref class PreviewBuilder : IPreviewBuilder
-    {
-    public:
-        virtual System::Drawing::Bitmap^ Build(
-            NodeGraphContext^ doc, Size^ size, PreviewGeometry geometry, unsigned targetToVisualize);
-
-        PreviewBuilder(
-            std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
-            std::shared_ptr<RenderCore::IDevice> device,
-            System::String^ shaderText, System::String^ cbLayout);
-        ~PreviewBuilder();
-    private:
-        PreviewBuilderPimpl*        _pimpl;
-
-        System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
-    };
-
-    System::Drawing::Bitmap^    PreviewBuilder::GenerateErrorBitmap(const char str[], Size^ size)
-    {
-            //      Previously, we got an error while rendering this item.
-            //      Render some text to the bitmap with an error string. Just
-            //      use the gdi for this (don't bother rendering via D3D)
-
-        using System::Drawing::Bitmap;
-        using namespace System::Drawing;
-        Bitmap^ newBitmap = gcnew Bitmap(size->Width, size->Height, Imaging::PixelFormat::Format32bppArgb);
-
-        Graphics^ dc = Graphics::FromImage(newBitmap);
-        dc->FillRectangle(gcnew SolidBrush(Color::Black), 0, 0, newBitmap->Width, newBitmap->Height);
-        dc->DrawString(gcnew String(str), gcnew Font("Arial", 9), gcnew SolidBrush(Color::White), RectangleF(0.f, 0.f, float(newBitmap->Width), float(newBitmap->Height)));
-        delete dc;
-
-        return newBitmap;
-    }
-
-    System::Drawing::Bitmap^ PreviewBuilder::Build(NodeGraphContext^ doc, Size^ size, PreviewGeometry geometry, uint targetToVisualize)
+	System::Drawing::Bitmap^ Manager::BuildPreviewImage(
+        NodeGraphContext^ doc, 
+		System::Drawing::Size^ size, 
+        PreviewGeometry geometry, 
+		unsigned targetToVisualize)
     {
         using namespace RenderCore;
+
+		// auto nativeCBLayout = clix::marshalString<clix::E_UTF8>(cbLayout);
+        // auto cbLayout = RenderCore::Techniques::PredefinedCBLayout(MakeStringSection(nativeCBLayout), true);
+		// _pimpl->_shaderSource, 
+		// _pimpl->_globalTechniqueContext, 
+        // _pimpl->_device,
 
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
@@ -209,12 +167,39 @@ namespace ShaderPatcherLayer
 
             ////////////
 
-		ToolsRig::MaterialVisObject visObject;
-		visObject._previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-		visObject._searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visObject._previewModelFile));
-		visObject._parameters = CreatePreviewMaterial(doc, visObject._searchRules);
+		auto visSettings = std::make_shared<ToolsRig::MaterialVisSettings>();
+        visSettings->_camera = std::make_shared<ToolsRig::VisCameraSettings>();
+        visSettings->_camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
 
-        auto result = DrawPreview(*context, *_pimpl->_techContext, &attachmentPool, &frameBufferPool, AsNative(geometry), visObject);
+        // Select the geometry type to use.
+        // In the "chart" mode, we are just going to run a pixel shader for every
+        // output pixel, so we want to use a pretransformed quad covering the viewport
+        switch (geometry) {
+        case PreviewGeometry::Plane2D:
+        case PreviewGeometry::Chart:
+            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
+            visSettings->_parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
+            break;
+
+        case PreviewGeometry::Box:
+            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
+            break;
+
+        default:
+        case PreviewGeometry::Sphere:
+            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
+            break;
+
+        case PreviewGeometry::Model:
+            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Model;
+            break;
+        };
+
+		visSettings->_previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+		visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
+		visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
+
+        auto result = DrawPreview(*context, *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool, visSettings);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {
             return GenerateErrorBitmap(result.second.c_str(), size);
         } else if (result.first == ToolsRig::DrawPreviewResult::Pending) {
@@ -254,34 +239,24 @@ namespace ShaderPatcherLayer
         return nullptr;
     }
 
-    PreviewBuilder::PreviewBuilder(
-        std::shared_ptr<RenderCore::ShaderService::IShaderSource> shaderSource, 
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techContext,
-        std::shared_ptr<RenderCore::IDevice> device,
-        System::String^ shaderText, System::String^ cbLayout)
+	System::Drawing::Bitmap^    Manager::GenerateErrorBitmap(const char str[], Size^ size)
     {
-        _pimpl = new PreviewBuilderPimpl();
-        _pimpl->_shaderText = clix::marshalString<clix::E_UTF8>(shaderText);
-        auto nativeCBLayout = clix::marshalString<clix::E_UTF8>(cbLayout);
-        _pimpl->_cbLayout = RenderCore::Techniques::PredefinedCBLayout(MakeStringSection(nativeCBLayout), true);
-        _pimpl->_shaderSource = std::move(shaderSource);
-        _pimpl->_techContext = std::move(techContext);
-        _pimpl->_device = std::move(device);
+            //      Previously, we got an error while rendering this item.
+            //      Render some text to the bitmap with an error string. Just
+            //      use the gdi for this (don't bother rendering via D3D)
+
+        using System::Drawing::Bitmap;
+        using namespace System::Drawing;
+        Bitmap^ newBitmap = gcnew Bitmap(size->Width, size->Height, Imaging::PixelFormat::Format32bppArgb);
+
+        Graphics^ dc = Graphics::FromImage(newBitmap);
+        dc->FillRectangle(gcnew SolidBrush(Color::Black), 0, 0, newBitmap->Width, newBitmap->Height);
+        dc->DrawString(gcnew String(str), gcnew Font("Arial", 9), gcnew SolidBrush(Color::White), RectangleF(0.f, 0.f, float(newBitmap->Width), float(newBitmap->Height)));
+        delete dc;
+
+        return newBitmap;
     }
 
-    PreviewBuilder::~PreviewBuilder()
-    {
-        delete _pimpl;
-    }
-
-    IPreviewBuilder^    Manager::CreatePreviewBuilder(IManager::ShaderText^ shaderText)
-    {
-        return gcnew PreviewBuilder(
-            _pimpl->_shaderSource, _pimpl->_globalTechniqueContext, 
-            _pimpl->_device,
-            shaderText->Item1, shaderText->Item2);
-    }
-    
     Manager::Manager()
     {
         _pimpl.reset(new ManagerPimpl());
