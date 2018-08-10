@@ -551,7 +551,7 @@ namespace ShaderPatcherLayer
 							clix::marshalString<clix::E_UTF8>(v.Value)));
 
 			auto structureForPreview = GenerateStructureForPreview(
-				"preview", mainInstantiation._entryPointSignature, options);
+				"preview_graph", mainInstantiation._entryPointSignature, options);
 
 			mainInstantiation._sourceFragments.push_back(structureForPreview);
 

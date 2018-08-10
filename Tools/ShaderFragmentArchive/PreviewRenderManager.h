@@ -11,6 +11,7 @@
 namespace ShaderPatcherLayer
 {
     ref class NodeGraphContext;
+	ref class NodeGraphPreviewConfiguration;
 
     public enum class PreviewGeometry
     {
@@ -22,6 +23,7 @@ namespace ShaderPatcherLayer
 	public:
 		System::Drawing::Bitmap^ BuildPreviewImage(
             NodeGraphContext^ doc, 
+			NodeGraphPreviewConfiguration^ nodeGraphFile,
 			System::Drawing::Size^ size, 
             PreviewGeometry geometry, 
 			unsigned targetToVisualize);

@@ -228,6 +228,16 @@ namespace ShaderPatcherLayer
 		clix::shared_ptr<::Assets::DirectorySearchRules> _searchRules;
 	};
 
+	public ref class NodeGraphPreviewConfiguration
+	{
+	public:
+		NodeGraphFile^		_nodeGraph;
+		String^				_subGraphName;
+		UInt32				_previewNodeId; 
+		PreviewSettings^	_settings;
+		IEnumerable<KeyValuePair<String^, String^>>^ _variableRestrictions;
+	};
+
 }
 
 

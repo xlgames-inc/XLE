@@ -12,7 +12,7 @@
 #include "../../Assets/AssetUtils.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; class ITechniqueDelegate; class IMaterialDelegate; } }
 namespace SceneEngine { class ISceneParser; }
 
 namespace ToolsRig
@@ -33,6 +33,9 @@ namespace ToolsRig
         ::Assets::DirectorySearchRules		_searchRules;
         ::Assets::rstring					_previewModelFile;
         uint64_t							_previewMaterialBinding = 0;
+
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
     };
 
     class VisEnvSettings;

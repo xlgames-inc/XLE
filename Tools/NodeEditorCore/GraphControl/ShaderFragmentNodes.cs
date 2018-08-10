@@ -247,17 +247,23 @@ namespace NodeEditorCore
                     var prevSettings = PreviewSettings;
                     if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
                         prevSettings.OutputToVisualize = string.Empty;
-                    var shader = doc.NodeGraphFile.GeneratePreviewShader(
-                        "main",
-                        ((ShaderFragmentNodeTag)Node.Tag).Id, 
-                        prevSettings, doc.GraphContext.Variables);
 
                     uint target = 0;
                     if (OutputToVisualize.StartsWith("SV_Target"))
                         if (!uint.TryParse(OutputToVisualize.Substring(9), out target))
                             target = 0;
 
-                    _cachedBitmap = _previewManager.BuildPreviewImage(doc.GraphContext, idealSize, Geometry, target);
+                    _cachedBitmap = _previewManager.BuildPreviewImage(
+                        doc.GraphContext,
+                        new ShaderPatcherLayer.NodeGraphPreviewConfiguration
+                        {
+                            _nodeGraph = doc.NodeGraphFile,
+                            _subGraphName = "main",
+                            _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
+                            _settings = prevSettings,
+                            _variableRestrictions = doc.GraphContext.Variables
+                        },
+                        idealSize, Geometry, target);
                     _shaderStructureHash = currentHash;
                 }
 

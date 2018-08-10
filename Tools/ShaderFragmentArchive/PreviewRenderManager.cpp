@@ -8,6 +8,7 @@
 #include "PreviewRenderManager.h"
 #include "TypeRules.h"
 #include "ShaderDiagramDocument.h"
+#include "ShaderGenerator.h"
 
 #include "../GUILayer/MarshalString.h"
 #include "../GUILayer/NativeEngineDevice.h"
@@ -20,6 +21,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/Shader.h"
@@ -33,11 +35,13 @@
 #include "../../BufferUploads/ResourceLocator.h"
 
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/IAssetCompiler.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/PtrUtils.h"
 
 #include <memory>
+#include <sstream>
 
 using namespace System::ComponentModel::Composition;
 
@@ -61,6 +65,7 @@ namespace ShaderPatcherLayer
     public:
 		virtual System::Drawing::Bitmap^ BuildPreviewImage(
             NodeGraphContext^ doc, 
+			NodeGraphPreviewConfiguration^ previewConfig,
 			System::Drawing::Size^ size, 
             PreviewGeometry geometry, 
 			unsigned targetToVisualize);
@@ -105,19 +110,111 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static RenderCore::CompiledShaderByteCode MakeCompiledShaderByteCode(
+		RenderCore::ShaderService::IShaderSource& shaderSource,
+		StringSection<> sourceCode, StringSection<> definesTable,
+		RenderCore::ShaderStage stage)
+	{
+		const char* entryPoint = nullptr, *shaderModel = nullptr;
+		switch (stage) {
+		case RenderCore::ShaderStage::Vertex:
+			entryPoint = "vs_main"; shaderModel = VS_DefShaderModel;
+			break;
+		case RenderCore::ShaderStage::Pixel:
+			entryPoint = "ps_main"; shaderModel = PS_DefShaderModel;
+			break;
+		default:
+			break;
+		}
+		if (!entryPoint || !shaderModel) return {};
+
+		auto future = shaderSource.CompileFromMemory(sourceCode, entryPoint, shaderModel, definesTable);
+		auto state = future->GetAssetState();
+		auto artifacts = future->GetArtifacts();
+		if (state == ::Assets::AssetState::Invalid || artifacts.empty()) {
+			// try to find an artifact named "log". If it doesn't exist, just drop back to the first one
+			::Assets::IArtifact* logArtifact = nullptr;
+			for (const auto& e:artifacts)
+				if (e.first == "log") {
+					logArtifact = e.second.get();
+					break;
+				}
+			if (!logArtifact && !artifacts.empty())
+				logArtifact = artifacts[0].second.get();
+			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob()));
+		}
+
+		return RenderCore::CompiledShaderByteCode{
+			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};
+	}
+
+	class TechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	{
+	public:
+		virtual RenderCore::Metal::ShaderProgram* GetShader(
+			RenderCore::Techniques::ParsingContext& context,
+			StringSection<::Assets::ResChar> techniqueCfgFile,
+			const ParameterBox* shaderSelectors[],
+			unsigned techniqueIndex)
+		{
+			auto previewShader = _config->_nodeGraph->GeneratePreviewShader(
+				_config->_subGraphName,
+				_config->_previewNodeId,
+				_config->_settings,
+				_config->_variableRestrictions);
+
+			auto shaderCode = clix::marshalString<clix::E_UTF8>(previewShader->Item1);
+			std::string definesTable;
+
+			{
+				std::vector<std::pair<const utf8*, std::string>> defines;
+				for (unsigned c=0; c<RenderCore::Techniques::ShaderSelectors::Source::Max; ++c)
+					BuildStringTable(defines, *shaderSelectors[c]);
+				std::stringstream str;
+				for (auto&d:defines) {
+					str << d.first;
+					if (!d.second.empty())
+						str << "=" << d.second;
+					str << ";";
+				}
+				if (_pretransformedFlag) str << "GEO_PRETRANSFORMED=1;";
+				definesTable = str.str();
+			}
+
+			auto vsCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Vertex);
+			auto psCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Pixel);
+			if (vsCode.GetStage() != RenderCore::ShaderStage::Vertex || psCode.GetStage() != RenderCore::ShaderStage::Pixel) return nullptr;
+
+			static RenderCore::Metal::ShaderProgram result;
+			result = RenderCore::Metal::ShaderProgram { RenderCore::Metal::GetObjectFactory(), vsCode, psCode };
+			return &result;
+		}
+
+		TechniqueDelegate(
+			const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource, 
+			NodeGraphPreviewConfiguration^ config,
+			bool pretransformedFlag)
+		: _shaderSource(shaderSource)
+		, _config(config)
+		, _pretransformedFlag(pretransformedFlag)
+		{}
+				
+	private:
+		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
+		gcroot<NodeGraphPreviewConfiguration^> _config;
+		bool _pretransformedFlag;
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 	System::Drawing::Bitmap^ Manager::BuildPreviewImage(
         NodeGraphContext^ doc, 
+		NodeGraphPreviewConfiguration^ previewConfig,
 		System::Drawing::Size^ size, 
         PreviewGeometry geometry, 
 		unsigned targetToVisualize)
     {
         using namespace RenderCore;
-
-		// auto nativeCBLayout = clix::marshalString<clix::E_UTF8>(cbLayout);
-        // auto cbLayout = RenderCore::Techniques::PredefinedCBLayout(MakeStringSection(nativeCBLayout), true);
-		// _pimpl->_shaderSource, 
-		// _pimpl->_globalTechniqueContext, 
-        // _pimpl->_device,
 
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
@@ -143,22 +240,22 @@ namespace ShaderPatcherLayer
                 "PreviewBuilderDepthBuffer"));
 
         auto context = _pimpl->_device->GetImmediateContext();
-        auto metalContext = Metal::DeviceContext::Get(*context);
+        auto& metalContext = *Metal::DeviceContext::Get(*context);
         float clearColor[] = { 0.05f, 0.05f, 0.2f, 1.f };
 
         Metal::RenderTargetView rtvs[maxTargets];
         for (unsigned c=0; c<(targetToVisualize+1); ++c) {
             rtvs[c] = Metal::RenderTargetView(targets[c]->GetUnderlying());
-            metalContext->Clear(rtvs[c], clearColor);
+            metalContext.Clear(rtvs[c], clearColor);
         }
 
         Metal::DepthStencilView dsv(depthBuffer->GetUnderlying());
-        metalContext->Clear(dsv, Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0x0);
+        metalContext.Clear(dsv, Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0x0);
         RenderCore::ResourceList<Metal::RenderTargetView, maxTargets> rtvList(
             std::initializer_list<Metal::RenderTargetView>(rtvs, ArrayEnd(rtvs)));
-        metalContext->Bind(rtvList, &dsv);
+        metalContext.Bind(rtvList, &dsv);
 
-        metalContext->Bind(Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f));
+        metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f));
 
 		RenderCore::Techniques::AttachmentPool attachmentPool;
 		RenderCore::Techniques::FrameBufferPool frameBufferPool;
@@ -171,6 +268,8 @@ namespace ShaderPatcherLayer
         visSettings->_camera = std::make_shared<ToolsRig::VisCameraSettings>();
         visSettings->_camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
 
+		bool pretransformed = false;
+
         // Select the geometry type to use.
         // In the "chart" mode, we are just going to run a pixel shader for every
         // output pixel, so we want to use a pretransformed quad covering the viewport
@@ -178,7 +277,7 @@ namespace ShaderPatcherLayer
         case PreviewGeometry::Plane2D:
         case PreviewGeometry::Chart:
             visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
-            visSettings->_parameters._matParams.SetParameter(u("GEO_PRETRANSFORMED"), "1");
+			pretransformed = true;
             break;
 
         case PreviewGeometry::Box:
@@ -198,6 +297,7 @@ namespace ShaderPatcherLayer
 		visSettings->_previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 		visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
 		visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
+		visSettings->_techniqueDelegate = std::make_shared<TechniqueDelegate>(_pimpl->_shaderSource, previewConfig, pretransformed);
 
         auto result = DrawPreview(*context, *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool, visSettings);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {

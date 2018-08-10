@@ -90,7 +90,7 @@ namespace ShaderPatcher
 			std::stringstream str;
 			for (const auto&i:includes)
 				str << "#include <" << i << ">" << std::endl;
-			result._sourceFragments.push_back(str.str());
+			result._sourceFragments.insert(result._sourceFragments.begin(), str.str());
 		}
 
 		return result;

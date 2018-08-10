@@ -254,6 +254,8 @@ namespace ShaderPatcher
 						return "float2(localPosition.x * 0.5 + 0.5, localPosition.y * -0.5 + 0.5)";
 					} else if (dimensionality == 3) {
 						return "worldPosition.xyz";
+					} else if (dimensionality == 4) {
+						return "float4(worldPosition.xyz, 1.0)";
 					}
 				}
             }
@@ -435,34 +437,15 @@ namespace ShaderPatcher
                     for (const auto& i:interf.GetParameters()) {
 						if (i._direction != ParameterDirection::Out) continue;
 
-                        assert(0);
-                        #if 0
-                            const auto& signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName), searchRules);
-                            if (!signature._name.empty()) {
-                                for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
-                                        // todo -- what if this is also a parameter struct?
-                                    auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(p->_type));
-                                    auto dim = type._arrayCount;
-                                    for (unsigned c=0; c<dim; ++c) {
-                                        std::stringstream str;
-                                        str << i._name << "." << p->_name;
-                                        if (dim != 1) str << "[" << c << "]";
-                                        chartLines.push_back(
-                                            PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
-                                    }
-                                }
-                            } else {
-                                auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
-                                auto dim = type._arrayCount;
-                                for (unsigned c=0; c<dim; ++c) {
-                                    std::stringstream str;
-                                    str << i._name;
-                                    if (dim != 1) str << "[" << c << "]";
-                                    chartLines.push_back(
-                                        PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
-                                }
-                            }
-                        #endif
+                        auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
+                        auto dim = type._arrayCount;
+                        for (unsigned c=0; c<dim; ++c) {
+                            std::stringstream str;
+                            str << i._name;
+                            if (dim != 1) str << "[" << c << "]";
+                            chartLines.push_back(
+                                PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
+                        }
                     }
                 }
 

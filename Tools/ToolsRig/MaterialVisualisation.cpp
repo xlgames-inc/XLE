@@ -162,10 +162,10 @@ namespace ToolsRig
 
                 const Internal::Vertex3D    vertices[] = 
                 {
-                    { Float3(0.f, -1.f, -1.f),  Float3(1.f, 0.f, 0.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
-                    { Float3(0.f, -1.f,  1.f),  Float3(1.f, 0.f, 0.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
-					{ Float3(0.f,  1.f, -1.f),  Float3(1.f, 0.f, 0.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
-                    { Float3(0.f,  1.f,  1.f),  Float3(1.f, 0.f, 0.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
+                    { Float3(-1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3( 1.f, -1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 1.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3(-1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(0.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) },
+                    { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
 				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
@@ -212,8 +212,12 @@ namespace ToolsRig
             }
 
 			Techniques::SequencerTechnique seqTechnique;
-			seqTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
-			seqTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+			seqTechnique._techniqueDelegate = _settings->_techniqueDelegate;
+			seqTechnique._materialDelegate = _settings->_materialDelegate;
+			if (!seqTechnique._techniqueDelegate)
+				seqTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+			if (!seqTechnique._materialDelegate)
+				seqTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
 
 			auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 			for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
@@ -387,10 +391,15 @@ namespace ToolsRig
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, parserContext, 
                 DrawPreviewLightingType::NoLightingParser, *sceneParser);
-            if (result)
+            if (parserContext.HasInvalidAssets())
+				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
+			if (parserContext.HasErrorString())
+				return std::make_pair(DrawPreviewResult::Error, parserContext._stringHelpers->_errorString);
+			if (result)
                 return std::make_pair(DrawPreviewResult::Success, std::string());
 
             if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult::Pending, std::string());
+			
         }
         catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
         catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
