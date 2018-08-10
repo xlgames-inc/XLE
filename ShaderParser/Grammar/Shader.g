@@ -221,6 +221,7 @@ semantic
 	:	':' n=Identifier -> ^(SEMANTIC $n)
 	;
 
+/*
 sampler_type_name : 'sampler' | 'sampler1D' | 'sampler2D' | 'sampler3D' | 'samplerCUBE' | 'sampler_state' | 'SamplerState' | 'SamplerComparisonState' ;
 
 texture_type_name	: 'texture' 
@@ -236,17 +237,25 @@ texture_type_name	: 'texture'
 
 structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer' | 'AppendStructuredBuffer';
 
-streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream';
+streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream'; 
 
 type_name
 	:	sampler_type_name										-> ^(TYPE_NAME sampler_type_name)
-	|	texture_type_name ('<' staticExpressionList '>')?		-> ^(TYPE_NAME texture_type_name staticExpressionList)
+	|	texture_type_name										-> ^(TYPE_NAME texture_type_name)
+	|	texture_type_name ('<' staticExpressionList '>')		-> ^(TYPE_NAME texture_type_name staticExpressionList)
 	|	structuredBufferTypeName '<' staticExpressionList '>'	-> ^(TYPE_NAME structuredBufferTypeName staticExpressionList)
 	|	streamOutputObject '<' staticExpressionList '>'			-> ^(TYPE_NAME streamOutputObject staticExpressionList)
 	|	'InputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'InputPatch' staticExpressionList)
 	|	'OutputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'OutputPatch' staticExpressionList)
 	|	ident													-> ^(TYPE_NAME ident)
 	;
+*/
+
+type_name
+	:	ident										-> ^(TYPE_NAME ident)
+	|	ident ('<' staticExpressionList '>')		-> ^(TYPE_NAME ident staticExpressionList)
+	;
+
 	
 ident
 	:	id=Identifier

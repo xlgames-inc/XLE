@@ -28,7 +28,7 @@
 namespace ShaderPatcher
 {
 
-    static const std::string s_resultName = "result";
+    const std::string s_resultName = "!result";
     static const uint32 s_nodeId_Invalid = ~0u;
 
         ///////////////////////////////////////////////////////////////
@@ -314,9 +314,21 @@ namespace ShaderPatcher
         return buffer;
     }
 
+	static std::string SantizeIdentifier(const std::string& input)
+	{
+		std::string result;
+		result.reserve(input.size());
+		for (auto c:input)
+			if ((c >= '0' && c <= '9') || c == '_' || (c >= 'A' && c <= 'Z') || (c >= 'a' && c <= 'z')) {
+				result.push_back(c);
+			} else
+				result.push_back('_');
+		return result;
+	}
+
     static std::string OutputTemporaryForNode(uint32 nodeId, const std::string& outputName)
     {
-        return std::string("Output_") + AsString(nodeId) + "_" + outputName;
+        return std::string("Output_") + AsString(nodeId) + "_" + SantizeIdentifier(outputName);
     }
 
     template<typename Connection>

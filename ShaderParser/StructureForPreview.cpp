@@ -108,7 +108,7 @@ namespace ShaderPatcher
 			auto p = std::find_if(i->second.GetParameters().begin(), i->second.GetParameters().end(),
 				[](const ShaderPatcher::NodeGraphSignature::Parameter& p) { 
 					return p._direction == ShaderPatcher::ParameterDirection::Out 
-						&& XlCompareString(MakeStringSection(p._name), "result");
+						&& XlCompareString(MakeStringSection(p._name), MakeStringSection(ShaderPatcher::s_resultName));
 				});
             VaryingParamsFlags::BitField flags = 0;
             if (p != i->second.GetParameters().end() && !p->_semantic.empty()) {

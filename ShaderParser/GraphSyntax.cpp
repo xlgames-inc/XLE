@@ -376,7 +376,7 @@ extern "C" GraphSignatureId GraphSignature_Register(const void* ctx)
 extern "C" void GraphSignature_ReturnType(const void* ctx, GraphSignatureId sigId, const char returnType[])
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._pendingSignatures[sigId].AddParameter({returnType, "result", ShaderPatcher::ParameterDirection::Out});
+	f._pendingSignatures[sigId].AddParameter({returnType, ShaderPatcher::s_resultName, ShaderPatcher::ParameterDirection::Out});
 }
 
 extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[])

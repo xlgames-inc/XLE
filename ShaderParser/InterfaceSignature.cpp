@@ -151,11 +151,13 @@ extern "C" FunctionId Function_Register(const void* ctx, struct SSPFunction* fun
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
 	ShaderPatcher::NodeGraphSignature result;
 	auto name = w->GetString(func->_name);
-	result.AddParameter(
-		ShaderPatcher::NodeGraphSignature::Parameter {
-			w->GetString(func->_returnType), "result", 
-			ShaderPatcher::ParameterDirection::Out,
-			w->GetString(func->_returnSemantic) });
+	auto returnType = w->GetString(func->_returnType);
+	if (!returnType.empty() && !XlEqString(returnType, "void"))
+		result.AddParameter(
+			ShaderPatcher::NodeGraphSignature::Parameter {
+				returnType, ShaderPatcher::s_resultName,
+				ShaderPatcher::ParameterDirection::Out,
+				w->GetString(func->_returnSemantic) });
 	for (unsigned p=func->_firstArg; p<=func->_lastArg; ++p)
 		result.AddParameter(w->_parameterTable[p]);
 	w->_signature._functions.emplace_back(std::make_pair(name, std::move(result)));

@@ -75,6 +75,9 @@ namespace ShaderPatcher
         std::vector<std::pair<std::string, NodeGraphSignature>>	_functions;
         std::vector<ParameterStructSignature>					_parameterStructs;
     };
+
+	
+	extern const std::string s_resultName;
 }
 
 namespace ShaderSourceParser
