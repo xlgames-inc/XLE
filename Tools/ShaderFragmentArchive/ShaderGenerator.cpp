@@ -4,11 +4,9 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "stdafx.h"
-
 #include "ShaderGenerator.h"
-#include "ShaderDiagramDocument.h"
 #include "ShaderFragmentArchive.h"
+#include "PreviewRenderManager.h"
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
@@ -17,6 +15,7 @@
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileUtils.h"
+#include <sstream>
 
 using namespace System::Runtime::Serialization;
 
@@ -213,139 +212,6 @@ namespace ShaderPatcherLayer
 		return result;
 	}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-    String^         NodeGraph::GenerateShader(NodeGraph^ graph)
-    {
-        try
-        {
-            auto nativeGraph = graph->ConvertToNative();
-            ShaderPatcher::NodeGraphSignature interf;
-			std::string shaderBody;
-			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
-            return marshalString<E_UTF8>(ShaderPatcher::GenerateShaderHeader(nativeGraph) + shaderBody);
-        } catch (const std::exception& e) {
-            return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
-        } catch (...) {
-            return "Unknown exception while generating shader";
-        }
-    }
-    
-    static std::string GenerateCBLayoutInt(ShaderPatcher::NodeGraphSignature& interf)
-    {
-        std::stringstream str;
-            // Input parameters that can be stored in a cbuffer become
-            // part of our cblayout
-        auto globalParams = interf.GetCapturedParameters();
-        for (unsigned c=0; c<globalParams.size(); ++c) {
-            const auto& p = globalParams[c];
-            str << p._type << " " << p._name;
-            if (!p._default.empty())
-                str << " = " << p._default;
-            str << ";" << std::endl;
-        }
-        return str.str();
-    }
-
-    Tuple<String^,String^>^ NodeGraph::GeneratePreviewShader(
-		NodeGraph^ graph, UInt32 previewNodeId, 
-		PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
-    {
-        try
-        {
-            auto nativeGraph = graph->ConvertToNative();
-			nativeGraph.Trim(previewNodeId);
-			ShaderPatcher::NodeGraphSignature interf;
-			std::string shaderBody;
-			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
-
-            ShaderPatcher::PreviewOptions options = 
-				{
-					(settings->Geometry == PreviewGeometry::Chart)
-						? ShaderPatcher::PreviewOptions::Type::Chart
-						: ShaderPatcher::PreviewOptions::Type::Object,
-					String::IsNullOrEmpty(settings->OutputToVisualize) 
-						? std::string() 
-						: marshalString<E_UTF8>(settings->OutputToVisualize),
-					ShaderPatcher::PreviewOptions::VariableRestrictions()
-				};
-			if (variableRestrictions)
-				for each(auto v in variableRestrictions)
-					options._variableRestrictions.push_back(
-						std::make_pair(
-							clix::marshalString<clix::E_UTF8>(v.Key),
-							clix::marshalString<clix::E_UTF8>(v.Value)));
-                
-            return gcnew Tuple<String^,String^>(
-                marshalString<E_UTF8>(
-                        ShaderPatcher::GenerateShaderHeader(nativeGraph)
-					+	ShaderPatcher::GenerateMaterialCBuffer(interf)
-                    +   shaderBody 
-                    +   ShaderPatcher::GenerateStructureForPreview("preview", interf, nativeGraph.GetSearchRules(), options)),
-                marshalString<E_UTF8>(GenerateCBLayoutInt(interf)));
-        } catch (const std::exception& e) {
-            return gcnew Tuple<String^,String^>(
-                "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),
-                String::Empty);
-        } catch (...) {
-            return gcnew Tuple<String^,String^>(
-                "Unknown exception while generating shader",
-                String::Empty);
-        }
-    }
-
-    String^      NodeGraph::GenerateCBLayout(NodeGraph^ graph)
-    {
-        try
-        {
-            auto nativeGraph = graph->ConvertToNative();
-			ShaderPatcher::NodeGraphSignature interf;
-			std::string shaderBody;
-			std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
-            return clix::marshalString<clix::E_UTF8>(GenerateCBLayoutInt(interf));
-        } catch (const std::exception& e) {
-            return "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what());
-        } catch (...) {
-            return "Unknown exception while generating shader";
-        }
-    }
-
-	NodeGraph::Interface^	NodeGraph::GetInterface()
-	{
-		auto nativeGraph = ConvertToNative();
-        ShaderPatcher::NodeGraphSignature interf;
-		std::string shaderBody;
-		std::tie(shaderBody, interf) = ShaderPatcher::GenerateFunction(nativeGraph);
-
-		auto variables = gcnew List<Interface::Item>();
-		for (const auto& i:interf.GetParameters()) {
-			if (i._direction != ShaderPatcher::ParameterDirection::In)
-				continue;
-
-			Interface::Item item;
-			item.Type = clix::marshalString<clix::E_UTF8>(i._type);
-			item.Name = clix::marshalString<clix::E_UTF8>(i._name);
-			item.Semantic = clix::marshalString<clix::E_UTF8>(i._semantic);
-			variables->Add(item);
-		}
-
-		auto resources = gcnew List<Interface::Item>();
-		for (const auto& i2:interf.GetCapturedParameters()) {
-			Interface::Item item;
-			item.Type = clix::marshalString<clix::E_UTF8>(i2._type);
-			item.Name = clix::marshalString<clix::E_UTF8>(i2._name);
-			item.Semantic = clix::marshalString<clix::E_UTF8>(i2._semantic);
-			variables->Add(item);
-		}
-
-		auto result = gcnew NodeGraph::Interface();
-		result->Variables = variables;
-		result->Resources = resources;
-		return result;
-	}
-#endif
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	ShaderPatcher::NodeGraphSignature	NodeGraphSignature::ConvertToNative()
@@ -353,9 +219,48 @@ namespace ShaderPatcherLayer
 		return {};
 	}
 
+	static NodeGraphSignature::ParameterDirection AsManagedParameterDirections(ShaderPatcher::ParameterDirection input)
+	{
+		switch (input) {
+		default:
+		case ShaderPatcher::ParameterDirection::In:
+			return NodeGraphSignature::ParameterDirection::In;
+		case ShaderPatcher::ParameterDirection::Out:
+			return NodeGraphSignature::ParameterDirection::Out;
+		}
+	}
+
 	NodeGraphSignature^			NodeGraphSignature::ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input)
 	{
-		return nullptr;
+		NodeGraphSignature^ result = gcnew NodeGraphSignature;
+		result->_parameters = gcnew List<Parameter^>();
+		for (auto&p:input.GetParameters()) {
+			Parameter^ param = gcnew Parameter;
+			param->Type = clix::marshalString<clix::E_UTF8>(p._type);
+			param->Name = clix::marshalString<clix::E_UTF8>(p._name);
+			param->Direction = AsManagedParameterDirections(p._direction);
+			param->Semantic = clix::marshalString<clix::E_UTF8>(p._semantic);
+			param->Default = clix::marshalString<clix::E_UTF8>(p._default);
+			result->_parameters->Add(param);
+		}
+		result->_capturedParameters = gcnew List<Parameter^>();
+		for (auto&p:input.GetCapturedParameters()) {
+			Parameter^ param = gcnew Parameter;
+			param->Type = clix::marshalString<clix::E_UTF8>(p._type);
+			param->Name = clix::marshalString<clix::E_UTF8>(p._name);
+			param->Direction = AsManagedParameterDirections(p._direction);
+			param->Semantic = clix::marshalString<clix::E_UTF8>(p._semantic);
+			param->Default = clix::marshalString<clix::E_UTF8>(p._default);
+			result->_capturedParameters->Add(param);
+		}
+		result->_templateParameters = gcnew List<TemplateParameter^>();
+		for (auto&p:input.GetTemplateParameters()) {
+			TemplateParameter^ param = gcnew TemplateParameter;
+			param->Name = clix::marshalString<clix::E_UTF8>(p._name);
+			param->Restriction = clix::marshalString<clix::E_UTF8>(p._restriction);
+			result->_templateParameters->Add(param);
+		}
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -602,10 +602,11 @@ namespace NodeEditorCore
 
             if (fn != null)
             {
-                foreach (var param in fn.InputParameters)
-                    node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, true, false));
-                foreach (var output in fn.Outputs)
-                    node.AddItem(new ShaderFragmentNodeItem(output.Name, output.Type, archiveName + ":" + output.Name, false, true));
+                foreach (var param in fn.Signature.Parameters)
+                {
+                    bool isInput = param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In;
+                    node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, isInput, !isInput));
+                }
             }
             return node;
         }

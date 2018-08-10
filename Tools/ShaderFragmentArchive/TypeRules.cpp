@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "Stdafx.h"
 #include "TypeRules.h"
 
 namespace ShaderPatcherLayer

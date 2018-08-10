@@ -6,17 +6,17 @@
 
 #pragma once
 
+#include "ShaderGenerator.h"
 #include "../GUILayer/CLIXAutoPtr.h"
+
+using System::Collections::Generic::Dictionary;
+using System::String;
+using System::Object;
+using namespace System::Runtime::Serialization;
 
 namespace ShaderPatcherLayer
 {
-    ref class NodeGraphContext;
 	ref class NodeGraphPreviewConfiguration;
-
-    public enum class PreviewGeometry
-    {
-        Chart, Plane2D, Box, Sphere, Model
-    };
     
     public interface class IPreviewBuilder
     {

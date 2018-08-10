@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "stdafx.h"
-
 using namespace System;
 using namespace System::Reflection;
 using namespace System::Runtime::CompilerServices;

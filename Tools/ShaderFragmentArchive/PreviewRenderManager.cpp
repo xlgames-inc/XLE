@@ -4,10 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "stdafx.h"
 #include "PreviewRenderManager.h"
 #include "TypeRules.h"
-#include "ShaderDiagramDocument.h"
 #include "ShaderGenerator.h"
 
 #include "../GUILayer/MarshalString.h"

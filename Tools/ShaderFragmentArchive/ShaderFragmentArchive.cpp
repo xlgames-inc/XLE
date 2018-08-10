@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "stdafx.h"
-
 #include "ShaderFragmentArchive.h"
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/InterfaceSignature.h"
@@ -19,33 +17,20 @@ namespace ShaderFragmentArchive
 
     Function::Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function)
     {
-        InputParameters = gcnew List<Parameter^>();
-        Outputs = gcnew List<Parameter^>();
-
-        using namespace clix;
-        for (auto& i:function.GetParameters()) {
-            Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>(i._name);
-            p->Type = marshalString<E_UTF8>(i._type);
-            p->Semantic = marshalString<E_UTF8>(i._semantic);
-
-            if (i._direction == ShaderPatcher::ParameterDirection::In)
-                InputParameters->Add(p);
-            if (i._direction == ShaderPatcher::ParameterDirection::Out)
-                Outputs->Add(p);
-        }
-
-        Name = marshalString<E_UTF8>(name);
+		Signature = ShaderPatcherLayer::NodeGraphSignature::ConvertFromNative(function);
+        Name = clix::marshalString<clix::E_UTF8>(name);
     }
 
-    Function::~Function() { delete InputParameters; delete Outputs; }
+    Function::~Function() {}
 
     System::String^     Function::BuildParametersString()
     {
         System::Text::StringBuilder stringBuilder;
         stringBuilder.Append("(");
         bool first = true;
-        for each(Parameter^ p in InputParameters) {
+        for each(auto p in Signature->Parameters) {
+			if (p->Direction != ShaderPatcherLayer::NodeGraphSignature::ParameterDirection::In) continue;
+
             if (!first) stringBuilder.Append(", ");
             first = false;
 
@@ -397,17 +382,8 @@ namespace ShaderFragmentArchive
 
             for each(Function^ fn in str->Functions) {
                 if (fn->Name == parameterStructName) {
-                    for each(Function::Parameter^ p in fn->InputParameters) {
-                        if (p->Name == parameterName) {
-                            Parameter^ result = gcnew Parameter("");
-                            result->Name = p->Name;
-                            result->Type = p->Type;
-                            result->Source = Parameter::SourceType::Material;
-                            result->Semantic = p->Semantic;
-                            return result;
-                        }
-                    }
-                    for each(Function::Parameter^ p in fn->Outputs) {
+                    for each(auto p in fn->Signature->Parameters) {
+						if (p->Direction != ShaderPatcherLayer::NodeGraphSignature::ParameterDirection::In) continue;
                         if (p->Name == parameterName) {
                             Parameter^ result = gcnew Parameter("");
                             result->Name = p->Name;

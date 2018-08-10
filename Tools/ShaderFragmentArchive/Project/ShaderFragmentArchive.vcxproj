@@ -92,24 +92,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../PreviewRenderManager.h" />
-    <ClInclude Include="../ShaderDiagramDocument.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />
     <ClInclude Include="../ShaderGenerator.h" />
-    <ClInclude Include="../Stdafx.h" />
     <ClInclude Include="../TypeRules.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../AssemblyInfo.cpp" />
     <ClCompile Include="../PreviewRenderManager.cpp" />
-    <ClCompile Include="../ShaderDiagramDocument.cpp" />
     <ClCompile Include="../ShaderFragmentArchive.cpp" />
     <ClCompile Include="../ShaderGenerator.cpp" />
-    <ClCompile Include="../Stdafx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="../TypeRules.cpp" />
   </ItemGroup>
   <ItemGroup>

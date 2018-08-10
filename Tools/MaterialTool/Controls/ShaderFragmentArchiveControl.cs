@@ -41,12 +41,10 @@ namespace MaterialTool.Controls
             var fragmentTree = new Aga.Controls.Tree.TreeViewAdv();
             var treeColumn1 = new Aga.Controls.Tree.TreeColumn();
             var treeColumn3 = new Aga.Controls.Tree.TreeColumn();
-            var treeColumn4 = new Aga.Controls.Tree.TreeColumn();
             var treeColumn5 = new Aga.Controls.Tree.TreeColumn();
             var icon = new Aga.Controls.Tree.NodeControls.NodeStateIcon();
             var visibleName = new Aga.Controls.Tree.NodeControls.NodeTextBox();
-            var returnType = new Aga.Controls.Tree.NodeControls.NodeTextBox();
-            var parameters = new Aga.Controls.Tree.NodeControls.NodeTextBox();
+            var signature = new Aga.Controls.Tree.NodeControls.NodeTextBox();
             var exceptionString = new Aga.Controls.Tree.NodeControls.NodeTextBox();
 
             // treeColumn1
@@ -55,15 +53,10 @@ namespace MaterialTool.Controls
             treeColumn1.TooltipText = null;
             treeColumn1.Width = 300;
             // treeColumn3
-            treeColumn3.Header = "ReturnType";
+            treeColumn3.Header = "Signature";
             treeColumn3.SortOrder = System.Windows.Forms.SortOrder.None;
             treeColumn3.TooltipText = null;
-            treeColumn3.Width = 75;
-            // treeColumn4
-            treeColumn4.Header = "Parameters";
-            treeColumn4.SortOrder = System.Windows.Forms.SortOrder.None;
-            treeColumn4.TooltipText = null;
-            treeColumn4.Width = 400;
+            treeColumn3.Width = 400;
             // treeColumn5
             treeColumn5.Header = "Exception";
             treeColumn5.SortOrder = System.Windows.Forms.SortOrder.None;
@@ -82,18 +75,12 @@ namespace MaterialTool.Controls
             visibleName.Trimming = System.Drawing.StringTrimming.EllipsisCharacter;
             // visibleName.Font = new System.Drawing.Font("Arial", 10F, System.Drawing.FontStyle.Italic, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             visibleName.UseCompatibleTextRendering = true;
-            // _returnType
-            returnType.DataPropertyName = "ReturnType";
-            returnType.IncrementalSearchEnabled = true;
-            returnType.LeftMargin = 3;
-            returnType.ParentColumn = treeColumn3;
-            returnType.UseCompatibleTextRendering = true;
-            // _parameters
-            parameters.DataPropertyName = "Parameters";
-            parameters.IncrementalSearchEnabled = true;
-            parameters.LeftMargin = 3;
-            parameters.ParentColumn = treeColumn4;
-            parameters.UseCompatibleTextRendering = true;
+            // _signature
+            signature.DataPropertyName = "Signature";
+            signature.IncrementalSearchEnabled = true;
+            signature.LeftMargin = 3;
+            signature.ParentColumn = treeColumn3;
+            signature.UseCompatibleTextRendering = true;
             // _exceptionString
             exceptionString.DataPropertyName = "ExceptionString";
             exceptionString.IncrementalSearchEnabled = true;
@@ -106,7 +93,6 @@ namespace MaterialTool.Controls
             fragmentTree.ColumnFont = new System.Drawing.Font("Tahoma", 8.25F, System.Drawing.FontStyle.Regular, System.Drawing.GraphicsUnit.Point, ((byte)(0)));
             fragmentTree.Columns.Add(treeColumn1);
             fragmentTree.Columns.Add(treeColumn3);
-            fragmentTree.Columns.Add(treeColumn4);
             fragmentTree.Columns.Add(treeColumn5);
             fragmentTree.DefaultToolTipProvider = null;
             fragmentTree.Dock = System.Windows.Forms.DockStyle.Fill;
@@ -123,8 +109,7 @@ namespace MaterialTool.Controls
             fragmentTree.Name = "_fragmentTree";
             fragmentTree.NodeControls.Add(icon);
             fragmentTree.NodeControls.Add(visibleName);
-            fragmentTree.NodeControls.Add(returnType);
-            fragmentTree.NodeControls.Add(parameters);
+            fragmentTree.NodeControls.Add(signature);
             fragmentTree.NodeControls.Add(exceptionString);
             fragmentTree.RowHeight = 32;
             fragmentTree.SelectedNode = null;

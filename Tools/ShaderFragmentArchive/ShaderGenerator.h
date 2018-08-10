@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "PreviewRenderManager.h"
+#include "../GUILayer/CLIXAutoPtr.h"
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -97,12 +97,38 @@ namespace ShaderPatcherLayer
     };
 
         ///////////////////////////////////////////////////////////////
+	public enum class PreviewGeometry
+    {
+        Chart, Plane2D, Box, Sphere, Model
+    };
+
     [DataContract] public ref class PreviewSettings
     {
     public:
         [DataMember] PreviewGeometry    Geometry;
         [DataMember] String^            OutputToVisualize;
         [DataMember] int                VisualNodeId;
+    };
+
+		///////////////////////////////////////////////////////////////
+	[DataContract] public ref class NodeGraphContext
+    {
+    public:
+        property String^ DefaultsMaterial;
+        property String^ PreviewModelFile;
+
+        // Restrictions placed on the input variables
+        [DataMember] property Dictionary<String^, String^>^ Variables { Dictionary<String^, String^>^ get() { if (!_variables) _variables = gcnew Dictionary<String^, String^>(); return _variables; } }
+
+        // Configuration settings for the output file
+        [DataMember] bool HasTechniqueConfig;
+        [DataMember] property Dictionary<String^, String^>^ ShaderParameters { Dictionary<String^, String^>^ get() { if (!_shaderParameters) _shaderParameters = gcnew Dictionary<String^, String^>(); return _shaderParameters; } }
+
+		NodeGraphContext() { HasTechniqueConfig = false; }
+
+    private:
+        Dictionary<String^, String^>^ _variables = nullptr;
+        Dictionary<String^, String^>^ _shaderParameters = nullptr;
     };
 
 	ref class NodeGraphFile;
@@ -174,13 +200,36 @@ namespace ShaderPatcherLayer
 	public ref class NodeGraphSignature
 	{
 	public:
-		value class Item {};
-		property IEnumerable<Item>^ Parameters;
-		property IEnumerable<Item>^ CapturedParameters;
-		property IEnumerable<Item>^ TemplateParameters;
+		enum class ParameterDirection { In, Out };
+
+		ref class Parameter
+        {
+        public:
+            property System::String^		Type;
+            property System::String^		Name;
+			property ParameterDirection		Direction;
+			property System::String^		Semantic;
+			property System::String^		Default;
+        };
+
+		property IEnumerable<Parameter^>^	Parameters { IEnumerable<Parameter^>^ get() { return _parameters; } }
+		property IEnumerable<Parameter^>^	CapturedParameters { IEnumerable<Parameter^>^ get() { return _capturedParameters; } }
+
+		ref class TemplateParameter
+		{
+		public:
+			property System::String^		Name;
+            property System::String^		Restriction;
+		};
+		property IEnumerable<TemplateParameter^>^	TemplateParameters { IEnumerable<TemplateParameter^>^ get() { return _templateParameters; } }
 
 		ShaderPatcher::NodeGraphSignature	ConvertToNative();
 		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input);
+
+	private:
+		List<Parameter^>^				_parameters;
+        List<Parameter^>^				_capturedParameters;
+        List<TemplateParameter^>^		_templateParameters;
 	};
 
 	public ref class NodeGraphFile

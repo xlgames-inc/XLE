@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "ShaderGenerator.h"
 #include "../GUILayer/CLIXAutoPtr.h"
 #include "../../Utility/StringUtils.h"
 #include <memory>
@@ -24,18 +25,8 @@ namespace ShaderFragmentArchive
     public ref class Function
     {
     public:
-        property System::String^    Name;
-
-        ref class Parameter
-        {
-        public:
-            property System::String^    Type;
-            property System::String^    Semantic;
-            property System::String^    Name;
-        };
-
-        property List<Parameter^>^      InputParameters;
-        property List<Parameter^>^      Outputs;
+        property System::String^							Name;
+		property ShaderPatcherLayer::NodeGraphSignature^	Signature;
 
         Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function);
         ~Function();

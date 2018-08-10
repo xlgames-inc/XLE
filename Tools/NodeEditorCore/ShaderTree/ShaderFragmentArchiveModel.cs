@@ -173,18 +173,11 @@ namespace NodeEditorCore
 
         public class ShaderFragmentItem : BaseItem
         {
-            public string _returnType = "";
-            public string ReturnType
+            public string _signature = "";
+            public string Signature
             {
-                get { return _returnType; }
-                set { _returnType = value; }
-            }
-
-            public string _parameters = "";
-            public string Parameters
-            {
-                get { return _parameters; }
-                set { _parameters = value; }
+                get { return _signature; }
+                set { _signature = value; }
             }
 
             public string FunctionName { get; set; }
@@ -201,11 +194,11 @@ namespace NodeEditorCore
 
         public class ParameterStructItem : BaseItem
         {
-            public string _parameters = "";
-            public string Parameters
+            public string _signature = "";
+            public string Signature
             {
-                get { return _parameters; }
-                set { _parameters = value; }
+                get { return _signature; }
+                set { _signature = value; }
             }
 
             public string StructName { get; set; }
@@ -371,9 +364,13 @@ namespace NodeEditorCore
                         {
                             ShaderFragmentItem fragItem = new ShaderFragmentItem(parent, this);
                             fragItem.FunctionName = f.Name;
-                            if (f.Outputs.Count!=0)
-                                fragItem.ReturnType = f.Outputs[0].Type;
-                            fragItem.Parameters = f.BuildParametersString();
+                            fragItem.Signature = f.BuildParametersString();
+                            foreach (var p in f.Signature.Parameters)
+                                if (p.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out)
+                                {
+                                    fragItem.Signature = fragItem.Signature + " -> " + p.Type;
+                                    break;
+                                }
                             fragItem.ArchiveName = basePath + ":" + f.Name;
                             items.Add(fragItem);
                         }
@@ -382,7 +379,7 @@ namespace NodeEditorCore
                         {
                             ParameterStructItem paramItem = new ParameterStructItem(parent, this);
                             paramItem.StructName = p.Name;
-                            paramItem.Parameters = p.BuildBodyString();
+                            paramItem.Signature = p.BuildBodyString();
                             paramItem.ArchiveName = basePath + ":" + p.Name;
                             items.Add(paramItem);
                         }
