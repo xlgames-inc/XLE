@@ -31,7 +31,7 @@ namespace MaterialTool
             documentService.DocumentClosed += documentService_DocumentClosed;
         }
 
-        public virtual void RegisterControl(DiagramDocument doc, Control control, ControlInfo controlInfo, IControlHostClient client)
+        public virtual void RegisterControl(IDocument doc, Control control, ControlInfo controlInfo, IControlHostClient client)
         {
             _controls.Add(doc, new Pair<Control, ControlInfo>(control, controlInfo));
             _hostService.RegisterControl(control, controlInfo, client);
@@ -49,22 +49,22 @@ namespace MaterialTool
             return result;
         }
 
-        public IEnumerable< KeyValuePair<DiagramDocument, Pair<Control, ControlInfo>>> DiagramControls
+        public IEnumerable< KeyValuePair<IDocument, Pair<Control, ControlInfo>>> DiagramControls
         {
             get { return _controls; }
         }
 
-        public ControlInfo GetControlInfo(DiagramDocument domNode)
+        public ControlInfo GetControlInfo(IDocument domNode)
         {
             return (from ctrol in _controls where ctrol.Key == domNode select ctrol.Value.Second).FirstOrDefault();
         }
         
-        public DiagramDocument GetDomNode(Control control)
+        public IDocument GetDomNode(Control control)
         {
             return (from ctrol in _controls where ctrol.Value.Second.Control == control select ctrol.Key).FirstOrDefault();
         }
 
-        private void UnregisterControl(DiagramDocument circuitNode, Control control)
+        private void UnregisterControl(IDocument circuitNode, Control control)
         {
             //it's OK if the CircuitEditingContext was already removed or wasn't added to IContextRegistry.
             _contextRegistry.RemoveContext(circuitNode.As<DiagramEditingContext>());
@@ -80,7 +80,7 @@ namespace MaterialTool
 
         private void documentService_DocumentClosed(object sender, DocumentEventArgs e)
         {
-            if (e.Document.Is<DiagramDocument>())
+            if (e.Document.Is<IDocument>())
             {
                 foreach (var circuitControl in _controls.ToArray())
                 {
@@ -94,6 +94,6 @@ namespace MaterialTool
 
         private readonly IControlHostService _hostService;
         private readonly IContextRegistry _contextRegistry;
-        private readonly Dictionary<DiagramDocument, Pair<Control, ControlInfo>> _controls = new Dictionary<DiagramDocument, Pair<Control, ControlInfo>>();
+        private readonly Dictionary<IDocument, Pair<Control, ControlInfo>> _controls = new Dictionary<IDocument, Pair<Control, ControlInfo>>();
      }
 }

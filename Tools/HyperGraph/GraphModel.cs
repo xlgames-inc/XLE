@@ -15,7 +15,6 @@ namespace HyperGraph
 
         private readonly List<Node> _graphNodes = new List<Node>();
         private static uint _nextRevisionIndex = 1;
-        private uint _revisionIndex;
 
         public ICompatibilityStrategy CompatibilityStrategy { get; set; }
 
@@ -359,8 +358,8 @@ namespace HyperGraph
 
         public GraphModel() { UpdateRevisionIndex(); }
 
-        private void UpdateRevisionIndex() { _revisionIndex = _nextRevisionIndex++; }
-        public uint GlobalRevisionIndex { get { return _revisionIndex; } }
+        private void UpdateRevisionIndex() { GlobalRevisionIndex = _nextRevisionIndex++; }
+        public uint GlobalRevisionIndex { get; private set; }
 
         public void InvokeMiscChange(bool rebuildShaders) { if (rebuildShaders) UpdateRevisionIndex(); MiscChange.Invoke(this, EventArgs.Empty); }
     }

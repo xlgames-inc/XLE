@@ -20,9 +20,9 @@ using System.Drawing.Drawing2D;
 
 namespace MaterialTool.Controls
 {
-    interface IDiagramControl
+    interface ISubGraphControl
     {
-        void SetContext(DiagramDocument context);
+        void SetContext(SubGraphEditingContext context);
     }
 
     class AdaptableSet : IAdaptable, IDecoratable
@@ -53,18 +53,18 @@ namespace MaterialTool.Controls
         private IEnumerable<object> _subObjects;
     }
 
-    [Export(typeof(IDiagramControl))]
+    [Export(typeof(ISubGraphControl))]
     [PartCreationPolicy(CreationPolicy.NonShared)]
-    class DiagramControl : AdaptableControl, IDiagramControl
+    class SubGraphControl : AdaptableControl, ISubGraphControl
     {
-        public DiagramControl()
+        public SubGraphControl()
         {
             this.AllowDrop = true;
             this.BackColor = System.Drawing.Color.FromArgb(((int)(((byte)(70)))), ((int)(((byte)(70)))), ((int)(((byte)(70)))));
             Paint += child_Paint;
         }
 
-        public void SetContext(DiagramDocument context)
+        public void SetContext(SubGraphEditingContext context)
         {
             var existingContext = context as ISelectionContext;
             if (existingContext != null)
@@ -79,10 +79,10 @@ namespace MaterialTool.Controls
             graphAdapter.ShowLabels = false;
             graphAdapter.Model = context.Model;
             graphAdapter.Selection = context.DiagramSelection; 
-            graphAdapter.Context = context.UnderlyingDocument;
-            graphAdapter.ModelConversion = _modelConversion;
+            graphAdapter.Context = context;
             graphAdapter.NodeFactory = _nodeFactory;
-            graphAdapter.Document = context.UnderlyingDocument;
+
+            graphAdapter.AddContextMenuItem("Show Preview Shader", OnShowPreviewShader);
 
             // calling Adapt will unbind previous adapters
             var hoverAdapter = new HoverAdapter();
@@ -133,6 +133,21 @@ namespace MaterialTool.Controls
             Invalidate();
         }
 
+        private void OnShowPreviewShader(object sender, EventArgs e)
+        {
+            var adapter = As<HyperGraphAdapter>();
+            var p = adapter.GetNodePreviewContext(sender);
+            SubGraphEditingContext subgraphContext = ContextAs<SubGraphEditingContext>();
+            var shader = _modelConversion.ToShaderPatcherLayer(subgraphContext.Model).GeneratePreviewShader(
+                p.NodeId,
+                subgraphContext.ContainingDocument.NodeGraphFile,
+                p.PreviewSettings,
+                subgraphContext.ContainingDocument.GraphContext.Variables);
+
+            ControlsLibrary.BasicControls.TextWindow.Show(
+                System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
+        }
+
         private void EndHover(object sender, EventArgs args)
         {
             if (_hover == null) return;
@@ -144,10 +159,11 @@ namespace MaterialTool.Controls
         void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
         {
                 // update the "defaults material"
-            var doc = ContextAs<DiagramDocument>().UnderlyingDocument;
-            if (doc.GraphContext.DefaultsMaterial != _activeMaterialContext.MaterialName) {
-                doc.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
-                doc.Invalidate();
+            var context = ContextAs<SubGraphEditingContext>();
+            if (context.ContainingDocument.GraphContext.DefaultsMaterial != _activeMaterialContext.MaterialName) {
+                context.ContainingDocument.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
+                System.Diagnostics.Debug.Assert(false);
+                // doc.ContainingDocument.Invalidate();
             }
             GUILayer.EngineDevice.GetInstance().ForegroundUpdate();
         }

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 using System;
+using System.ComponentModel.Composition;
 using Sce.Atf;
 
 namespace MaterialTool
@@ -12,8 +13,35 @@ namespace MaterialTool
     /// <summary>
     /// Adapts the circuit to IDocument and synchronizes URI and dirty bit changes to the
     /// ControlInfo instance used to register the viewing control in the UI</summary>
-    public class DiagramDocument : DiagramEditingContext, IDocument
+    [Export(typeof(NodeEditorCore.IDiagramDocument))]
+    [Export(typeof(DiagramDocument))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
+    public class DiagramDocument : NodeEditorCore.IDiagramDocument, IDocument
     {
+        #region IDiagramDocument Members
+        public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
+        public ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; set; }
+
+        public void Invalidate()
+        {
+            System.Diagnostics.Debug.Assert(false);
+        }
+
+        public void Save(Uri destination)
+        {
+            NodeGraphFile.Save(destination.LocalPath, GraphContext);
+        }
+
+        public void Load(Uri source)
+        {
+            ShaderPatcherLayer.NodeGraphFile nativeGraph;
+            ShaderPatcherLayer.NodeGraphContext graphContext;
+            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphContext);
+            GraphContext = graphContext;
+            NodeGraphFile = nativeGraph;
+        }
+        #endregion
+
         #region IDocument Members
         bool IDocument.IsReadOnly
         {
@@ -74,25 +102,30 @@ namespace MaterialTool
 
         #endregion
 
-        public NodeEditorCore.IDiagramDocument UnderlyingDocument;
+        internal void Model_MiscChange(object sender, EventArgs e) { SetDirty(true); }
+        internal void Model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e) { SetDirty(true); }
+        internal void Model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e) { SetDirty(true); }
+        internal void Model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
+        internal void Model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
+    }
 
-        public DiagramDocument(NodeEditorCore.IDiagramDocument underlyingDoc, Uri uri) : base(underlyingDoc.ViewModel) 
+    public class SubGraphEditingContext : DiagramEditingContext, NodeEditorCore.ISubGraphEditingContext
+    {
+        public NodeEditorCore.IDiagramDocument ContainingDocument { get; set; }
+        public String SubGraphName { get; set; }
+        public uint GlobalRevisionIndex { get { return Model.GlobalRevisionIndex; } }
+
+        public SubGraphEditingContext(String subGraphName, HyperGraph.IGraphModel viewModel, DiagramDocument containingDocument) : base(viewModel) 
         {
-            UnderlyingDocument = underlyingDoc;
-            _uri = uri;
+            SubGraphName = subGraphName;
+            ContainingDocument = containingDocument;
 
                 // tracking for dirty flag --
-            Model.NodeAdded += Model_NodeAdded;
-            Model.NodeRemoved += Model_NodeRemoved;
-            Model.ConnectionAdded += Model_ConnectionAdded;
-            Model.ConnectionRemoved += Model_ConnectionRemoved;
-            Model.MiscChange += Model_MiscChange;
+            Model.NodeAdded += containingDocument.Model_NodeAdded;
+            Model.NodeRemoved += containingDocument.Model_NodeRemoved;
+            Model.ConnectionAdded += containingDocument.Model_ConnectionAdded;
+            Model.ConnectionRemoved += containingDocument.Model_ConnectionRemoved;
+            Model.MiscChange += containingDocument.Model_MiscChange;
         }
-
-        void Model_MiscChange(object sender, EventArgs e) { SetDirty(true); }
-        void Model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e) { SetDirty(true); }
-        void Model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e) { SetDirty(true); }
-        void Model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
-        void Model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
     }
 }

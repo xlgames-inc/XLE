@@ -14,9 +14,7 @@ namespace NodeEditorCore
     public class GraphControl : HyperGraph.GraphControl, IDisposable
     {
         HyperGraph.IGraphModel  GetGraphModel() { return base._model; }
-        public IModelConversion ModelConversion { get; set; }
         public IShaderFragmentNodeCreator NodeFactory { get; set; }
-        public IDiagramDocument Document { get; set; }
 
         public GraphControl()
         {
@@ -34,19 +32,23 @@ namespace NodeEditorCore
 
         private ContextMenuStrip CreateNodeMenu()
         {
-            var showPreviewShaderItem = new ToolStripMenuItem() { Text = "Show Preview Shader" };
-            showPreviewShaderItem.Click += new EventHandler(this.OnShowPreviewShader);
-
             var refreshToolStripMenuItem = new ToolStripMenuItem() { Text = "Refresh" };
-            refreshToolStripMenuItem.Click += new EventHandler(this.refreshToolStripMenuItem_Click);
+            refreshToolStripMenuItem.Click += new EventHandler(this.RefreshToolStripMenuItem_Click);
 
             var setArchiveName = new ToolStripMenuItem() { Text = "Set Archive Name" };
             setArchiveName.Click += SetArchiveName_Click;
 
             return new ContextMenuStrip(this._components)
                 {
-                    Items = { showPreviewShaderItem, refreshToolStripMenuItem, setArchiveName }
+                    Items = { refreshToolStripMenuItem, setArchiveName }
                 };
+        }
+
+        public void AddContextMenuItem(string text, System.EventHandler handler)
+        {
+            var item = new ToolStripMenuItem() { Text = text };
+            item.Click += handler;
+            _nodeMenu.Items.Add(item);
         }
 
         private ContextMenuStrip CreateEmptySpaceMenu()
@@ -274,16 +276,32 @@ namespace NodeEditorCore
             return NodeFactory.FindNodeFromId(GetGraphModel(), id);
         }
 
-        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
-        {
-            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
-        }
-
         private ShaderFragmentPreviewItem GetPreviewItem(object sender)
         {
             var n = GetNode(AttachedId(sender));
             if (n == null) return null;
             return (ShaderFragmentPreviewItem)n.Items.Where(x => x is ShaderFragmentPreviewItem).FirstOrDefault();
+        }
+
+        public class NodePreviewContext
+        {
+            public uint NodeId { get; set; }
+            public ShaderPatcherLayer.PreviewSettings PreviewSettings { get; set; }
+        }
+
+        public NodePreviewContext GetNodePreviewContext(object sender)
+        {
+            return new NodePreviewContext
+            {
+                NodeId = AttachedId(sender),
+                PreviewSettings = GetPreviewItem(sender).PreviewSettings
+            };
+        }
+
+        /*
+        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
+        {
+            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
         }
 
         private void OnShowPreviewShader(object sender, EventArgs e)
@@ -298,30 +316,14 @@ namespace NodeEditorCore
             ControlsLibrary.BasicControls.TextWindow.Show(
                 System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
         }
-        private void refreshToolStripMenuItem_Click(object sender, EventArgs e)
+        */
+
+        private void RefreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var p = GetPreviewItem(sender);
             if (p!=null) p.InvalidateShaderStructure();
         }
-        private void addParameterToolStripMenuItem_Click(object sender, EventArgs e)
-        {
-            //      Add a new parameter to the attached parameter node
-            // var n = ShaderFragmentNodeUtil.GetParameterNode(graphControl, AttachedId(sender));
-            // if (n != null)
-            // {
-            //     var param = ShaderFragmentArchive.Archive.GetParameterStruct("LocalArchive[NewParameter]");
-            //     if (param.Name.Length == 0)
-            //     {
-            //         param.Name = "NewParameter";
-            //     }
-            //     if (param.Type.Length == 0)
-            //     {
-            //         param.Type = "float";
-            //     }
-            // 
-            //     n.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, param.ArchiveName, false, true));
-            // }
-        }
+
         private void SetArchiveName_Click(object sender, EventArgs e)
         {
             var n = GetNode(AttachedId(sender));

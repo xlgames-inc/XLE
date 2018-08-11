@@ -135,22 +135,25 @@ namespace MaterialTool
 
         public IDocument Open(Uri uri)
         {
-            var underlyingDoc = _exportProvider.GetExport<NodeEditorCore.IDiagramDocument>().Value;
-            underlyingDoc.ViewModel = new HyperGraph.GraphModel();
-            underlyingDoc.ViewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();
-            underlyingDoc.GraphContext = new ShaderPatcherLayer.NodeGraphContext();
+            var doc = _exportProvider.GetExport<DiagramDocument>().Value;
+            doc.GraphContext = new ShaderPatcherLayer.NodeGraphContext();
 
             // When creating a new document, we'll pass through here with a file that
             // doesn't exist... So let's check if we need to load it now...
             if (File.Exists(uri.LocalPath))
-                underlyingDoc.Load(uri);
+                doc.Load(uri);
 
-            underlyingDoc.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
-            underlyingDoc.GraphContext.PreviewModelFile = "game/model/galleon/galleon.dae";
+            doc.Uri = uri;
+            doc.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
+            doc.GraphContext.PreviewModelFile = "game/model/galleon/galleon.dae";
 
-            var doc = new DiagramDocument(underlyingDoc, uri) { NodeFactory = _nodeFactory };
-            var control = _exportProvider.GetExport<Controls.IDiagramControl>().Value;
-            control.SetContext(doc);
+            var viewModel = new HyperGraph.GraphModel();
+            viewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();
+            _modelConversion.AddToHyperGraph(doc.NodeGraphFile.SubGraphs["main"]._subGraph, doc.NodeGraphFile, viewModel);
+
+            var subgraphContext = new SubGraphEditingContext("main", viewModel, doc) { NodeFactory = _nodeFactory };
+            var control = _exportProvider.GetExport<Controls.ISubGraphControl>().Value;
+            control.SetContext(subgraphContext);
 
                 // Create a control for the new document, and register it!
             _controlRegistry.RegisterControl(
@@ -172,7 +175,7 @@ namespace MaterialTool
         public void Save(IDocument document, Uri uri)
         {
             var doc = (DiagramDocument)document;
-            doc.UnderlyingDocument.Save(uri);
+            doc.Save(uri);
             doc.Uri = uri;
         }
 
@@ -181,9 +184,9 @@ namespace MaterialTool
             m_documentRegistry.Remove(document);
         }
 
-        #endregion
+#endregion
 
-        #region IControlHostClient Members
+#region IControlHostClient Members
 
         public void Activate(Control control)
         {
@@ -194,9 +197,9 @@ namespace MaterialTool
             {
                 m_contextRegistry.ActiveContext = context;
 
-                var circuitDocument = context.As<DiagramDocument>();
+                var circuitDocument = context.As<SubGraphEditingContext>();
                 if (circuitDocument != null)
-                    m_documentRegistry.ActiveDocument = circuitDocument;
+                    m_documentRegistry.ActiveDocument = circuitDocument.ContainingDocument as IDocument;
             }
         }
 
@@ -207,12 +210,12 @@ namespace MaterialTool
             var adaptableControl = (AdaptableControl)control;
 
             bool closed = true;
-            var doc = adaptableControl.ContextAs<DiagramDocument>();
+            var doc = adaptableControl.ContextAs<SubGraphEditingContext>();
             if (doc != null)
             {
-                closed = m_documentService.Close(doc);
+                closed = m_documentService.Close(doc.ContainingDocument as IDocument);
                 if (closed)
-                    Close(doc);
+                    Close(doc.ContainingDocument as IDocument);
             }
             else
             {
@@ -222,7 +225,7 @@ namespace MaterialTool
             return closed;
         }
 
-        #endregion
+#endregion
 
         /// <summary>
         /// Gets and sets a string to be used as the initial directory for the open/save dialog box
@@ -311,6 +314,9 @@ namespace MaterialTool
         private NodeEditorCore.IShaderFragmentNodeCreator _nodeFactory;
 
         [Import]
-        private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext; 
+        private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
+
+        [Import]
+        private NodeEditorCore.IModelConversion _modelConversion;
     }
 }

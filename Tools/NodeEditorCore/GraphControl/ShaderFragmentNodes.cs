@@ -35,52 +35,17 @@ namespace NodeEditorCore
     {
         ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
         ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
-        HyperGraph.IGraphModel ViewModel { get; set; }
 
-        uint ShaderStructureHash { get; }
         void Invalidate();
-
         void Save(Uri destination);
         void Load(Uri source);
     }
 
-    [Export(typeof(IDiagramDocument))]
-    [PartCreationPolicy(CreationPolicy.NonShared)]
-    public class DiagramDocument : IDiagramDocument
+    public interface ISubGraphEditingContext
     {
-        public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
-
-        public ShaderPatcherLayer.NodeGraphFile NodeGraphFile
-        {
-            get {
-                var file = new ShaderPatcherLayer.NodeGraphFile();
-                var subGraph = new ShaderPatcherLayer.NodeGraphFile.SubGraph();
-                subGraph._subGraph = _converter.ToShaderPatcherLayer(ViewModel);
-                file.SubGraphs.Add("main", subGraph);
-                return file;
-            }
-        }
-
-        public HyperGraph.IGraphModel ViewModel { get; set; }
-        public uint ShaderStructureHash { get { return ViewModel.GlobalRevisionIndex; } }
-        public void Invalidate() { ViewModel.InvokeMiscChange(true); }
-
-        public void Save(Uri destination)
-        {
-            NodeGraphFile.Save(destination.LocalPath, GraphContext);
-        }
-
-        public void Load(Uri source)
-        {
-            ShaderPatcherLayer.NodeGraphFile nativeGraph;
-            ShaderPatcherLayer.NodeGraphContext graphContext;
-            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphContext);
-            GraphContext = graphContext;
-            _converter.AddToHyperGraph(nativeGraph.SubGraphs["main"]._subGraph, nativeGraph, ViewModel);
-        }
-
-        [Import]
-        private IModelConversion _converter;
+        IDiagramDocument ContainingDocument { get; set; }
+        String SubGraphName { get; set; }
+        uint GlobalRevisionIndex { get; }
     }
 
     #region Node Items
@@ -220,15 +185,12 @@ namespace NodeEditorCore
                 // This is a more convenient way to track invalidation, also -- because we
                 // can just check if there have been any changes since our last cached bitmap.
 
-                var doc = context as IDiagramDocument;
-                if (doc == null) return;
+                var editingContext = context as ISubGraphEditingContext;
+                if (editingContext == null) return;
 
-                var currentHash = doc.ShaderStructureHash;
+                uint currentHash = editingContext.GlobalRevisionIndex;
                 if (currentHash != _shaderStructureHash)
-                {
                     _cachedBitmap = null;
-                    
-                }
 
                 // (assuming no rotation on this transformation -- scale is easy to find)
                 Size idealSize = new Size((int)(graphics.Transform.Elements[0] * size.Width), (int)(graphics.Transform.Elements[3] * size.Height));
@@ -254,14 +216,14 @@ namespace NodeEditorCore
                             target = 0;
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
-                        doc.GraphContext,
+                        editingContext.ContainingDocument.GraphContext,
                         new ShaderPatcherLayer.NodeGraphPreviewConfiguration
                         {
-                            _nodeGraph = doc.NodeGraphFile,
-                            _subGraphName = "main",
+                            _nodeGraph = editingContext.ContainingDocument.NodeGraphFile,
+                            _subGraphName = editingContext.SubGraphName,
                             _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
                             _settings = prevSettings,
-                            _variableRestrictions = doc.GraphContext.Variables
+                            _variableRestrictions = editingContext.ContainingDocument.GraphContext.Variables
                         },
                         idealSize, Geometry, target);
                     _shaderStructureHash = currentHash;

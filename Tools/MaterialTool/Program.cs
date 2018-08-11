@@ -129,14 +129,14 @@ namespace MaterialTool
                 typeof(ShaderPatcherLayer.Manager),
                 typeof(ShaderFragmentArchive.Archive),
                
-                typeof(Controls.DiagramControl),
+                typeof(Controls.SubGraphControl),
                 typeof(Controls.ShaderFragmentArchiveControl),
                 typeof(Controls.DiagramLister),
 
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
-                typeof(NodeEditorCore.DiagramDocument),
+                typeof(DiagramDocument),
 
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),

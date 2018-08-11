@@ -23,7 +23,7 @@ namespace MaterialTool
                     var doc = d as DiagramDocument;
                     if (doc == null) continue;
 
-                    var gc = doc.UnderlyingDocument.GraphContext;
+                    var gc = doc.GraphContext;
                     if (gc.HasTechniqueConfig)
                     {
                         var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
