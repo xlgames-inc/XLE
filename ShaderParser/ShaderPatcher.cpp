@@ -28,7 +28,7 @@
 namespace ShaderPatcher
 {
 
-    const std::string s_resultName = "!result";
+    const std::string s_resultName = "result";
     static const uint32 s_nodeId_Invalid = ~0u;
 
         ///////////////////////////////////////////////////////////////
@@ -436,7 +436,7 @@ namespace ShaderPatcher
     {
             //  we have a "constant connection" value here. We either extract the name of
             //  the varying parameter, or we interpret this as pure text...
-		return ExpressionString{StripAngleBracket(connection.Value()).first, std::string()};
+		return ExpressionString{connection.Value(), std::string()};
     }
 
     static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const InputParameterConnection& connection, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
@@ -460,19 +460,7 @@ namespace ShaderPatcher
 
         auto ci = FindConnection(nodeGraph.GetConstantConnections(), nodeId, signatureParam._name);
         if (ci!=nodeGraph.GetConstantConnections().cend()) {
-			auto p = StripAngleBracket(ci->Value());
-			if (p.second) {
-				auto paramToAdd = AsInterfaceParameter(*ci);
-				paramToAdd._name = p.first;
-				if (paramToAdd._type.empty() || XlEqStringI(MakeStringSection(paramToAdd._type), "auto"))
-					paramToAdd._type = signatureParam._type;
-
-				interf.AddCapturedParameter(paramToAdd);
-				auto e = QueryExpression(nodeGraph, *ci, interf, sigProvider);
-				if (!e._expression.empty()) return e;
-			} else {
-				return ExpressionString{ci->Value(), std::string()};
-			}
+			return ExpressionString{ci->Value(), std::string()};
 		}
 
         auto ti = FindConnection(nodeGraph.GetInputParameterConnections(), nodeId, signatureParam._name);

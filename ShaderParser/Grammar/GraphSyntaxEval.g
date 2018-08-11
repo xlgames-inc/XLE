@@ -133,7 +133,7 @@ connection returns [ConnectionId connection = ~0u]
 		}
 	| ^(RETURN_CONNECTION r=rconnection)
 		{
-			ConnectorId left = Connector_Register(ctx, ~0u, "!result");
+			ConnectorId left = Connector_Register(ctx, ~0u, "result");
 			$connection = Connection_Register(ctx, left, r);
 		}
 	;

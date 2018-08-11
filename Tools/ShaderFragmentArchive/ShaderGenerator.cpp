@@ -99,8 +99,23 @@ namespace ShaderPatcherLayer
             res.Add(ShaderPatcherLayer::ConvertToNative(n));
         for each(NodeConnection^ c in NodeConnections)
             res.Add(ShaderPatcherLayer::ConvertToNative(c));
-        for each(ConstantConnection^ c in ConstantConnections)
-            res.Add(ShaderPatcherLayer::ConvertToNative(c));
+
+		System::Text::RegularExpressions::Regex^ rgx = gcnew System::Text::RegularExpressions::Regex("<(.*)>", System::Text::RegularExpressions::RegexOptions::IgnoreCase);
+        for each(ConstantConnection^ c in ConstantConnections) {
+			auto match = rgx->Match(c->Value);
+			if (match && match->Success && match->Groups->Count >= 2) {
+				res.Add(
+					ShaderPatcher::InputParameterConnection{
+						c->OutputNodeID,
+						marshalString<E_UTF8>(c->OutputParameterName),
+						ShaderPatcher::Type("auto"),
+						marshalString<E_UTF8>(match->Groups[1]->Value),
+						{},
+						{}});
+			} else {
+				res.Add(ShaderPatcherLayer::ConvertToNative(c));
+			}
+		}
         for each(InputParameterConnection^ c in InputParameterConnections)
             res.Add(ShaderPatcherLayer::ConvertToNative(c));
         for each(OutputParameterConnection^ c in OutputParameterConnections)
@@ -214,11 +229,6 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	ShaderPatcher::NodeGraphSignature	NodeGraphSignature::ConvertToNative()
-	{
-		return {};
-	}
-
 	static NodeGraphSignature::ParameterDirection AsManagedParameterDirections(ShaderPatcher::ParameterDirection input)
 	{
 		switch (input) {
@@ -228,6 +238,48 @@ namespace ShaderPatcherLayer
 		case ShaderPatcher::ParameterDirection::Out:
 			return NodeGraphSignature::ParameterDirection::Out;
 		}
+	}
+
+	static ShaderPatcher::ParameterDirection AsNativeParameterDirections(NodeGraphSignature::ParameterDirection input)
+	{
+		switch (input) {
+		default:
+		case NodeGraphSignature::ParameterDirection::In:
+			return ShaderPatcher::ParameterDirection::In;
+		case NodeGraphSignature::ParameterDirection::Out:
+			return ShaderPatcher::ParameterDirection::Out;
+		}
+	}
+	
+	ShaderPatcher::NodeGraphSignature	NodeGraphSignature::ConvertToNative()
+	{
+		ShaderPatcher::NodeGraphSignature result;
+		for each(auto p in Parameters) {
+			result.AddParameter(
+				ShaderPatcher::NodeGraphSignature::Parameter {
+					clix::marshalString<clix::E_UTF8>(p->Type),
+					clix::marshalString<clix::E_UTF8>(p->Name),
+					AsNativeParameterDirections(p->Direction),
+					clix::marshalString<clix::E_UTF8>(p->Semantic),
+					clix::marshalString<clix::E_UTF8>(p->Default)});
+		}
+		for each(auto p in CapturedParameters) {
+			result.AddCapturedParameter(
+				ShaderPatcher::NodeGraphSignature::Parameter {
+					clix::marshalString<clix::E_UTF8>(p->Type),
+					clix::marshalString<clix::E_UTF8>(p->Name),
+					AsNativeParameterDirections(p->Direction),
+					clix::marshalString<clix::E_UTF8>(p->Semantic),
+					clix::marshalString<clix::E_UTF8>(p->Default)});
+		}
+		for each(auto p in TemplateParameters) {
+			result.AddTemplateParameter(
+				ShaderPatcher::NodeGraphSignature::TemplateParameter {
+					clix::marshalString<clix::E_UTF8>(p->Name),
+					clix::marshalString<clix::E_UTF8>(p->Restriction)});
+		}
+
+		return result;
 	}
 
 	NodeGraphSignature^			NodeGraphSignature::ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input)
