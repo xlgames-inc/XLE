@@ -1,7 +1,7 @@
 // CompoundDocument:1
 #include "xleres/System/Prefix.h"
 
-#include "xleres/ProcMat/Wood/WoodModulator002.sh"
+#include "xleres/Objects/Example/ProcWood/WoodModulator002.sh"
 #include "xleres/Nodes/Basic.sh"
 #include "xleres/Nodes/Texture.sh"
 
@@ -301,7 +301,7 @@ void WoodPlanks(float width, float length, float height, float3 offcenter, float
 			<OutputNodeID>77</OutputNodeID>
 			<OutputParameterName>lhs</OutputParameterName>
 			<InputNodeID>82</InputNodeID>
-			<InputParameterName>result</InputParameterName>
+			<InputParameterName>fnResult</InputParameterName>
 			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
 			<Semantic i:nil="true" />
@@ -328,7 +328,7 @@ void WoodPlanks(float width, float length, float height, float3 offcenter, float
 			<OutputNodeID>75</OutputNodeID>
 			<OutputParameterName>position</OutputParameterName>
 			<InputNodeID>85</InputNodeID>
-			<InputParameterName>result</InputParameterName>
+			<InputParameterName>fnResult</InputParameterName>
 			<InputType>float3</InputType>
 			<OutputType>float3</OutputType>
 			<Semantic i:nil="true" />
@@ -444,7 +444,7 @@ void WoodPlanks(float width, float length, float height, float3 offcenter, float
 	</NodeConnections>
 	<Nodes>
 		<Node>
-			<FragmentArchiveName>xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
 			<NodeId>78</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>0</VisualNodeId>
@@ -462,7 +462,7 @@ void WoodPlanks(float width, float length, float height, float3 offcenter, float
 			<VisualNodeId>3</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
 			<NodeId>76</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>4</VisualNodeId>
@@ -474,7 +474,7 @@ void WoodPlanks(float width, float length, float height, float3 offcenter, float
 			<VisualNodeId>5</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/ProcMat\Wood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\WoodModulator002.sh:WoodModulator002</FragmentArchiveName>
 			<NodeId>79</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>6</VisualNodeId>

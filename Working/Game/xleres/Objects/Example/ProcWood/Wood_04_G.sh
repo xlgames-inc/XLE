@@ -2,10 +2,10 @@
 #include "xleres/System/Prefix.h"
 
 #include "xleres/Nodes/Basic.sh"
-#include "xleres/ProcMat/Wood/WoodRings002.sh"
-#include "xleres/ProcMat/Wood/WoodPlanks.sh"
+#include "xleres/Objects/Example/ProcWood/WoodRings002.sh"
+#include "xleres/Objects/Example/ProcWood/WoodPlanks.sh"
 #include "xleres/Nodes/Color.sh"
-#include "xleres/ProcMat/Wood/WoodGnarlGrainStain.sh"
+#include "xleres/Objects/Example/ProcWood/WoodGnarlGrainStain.sh"
 
 
 void Wood_04_G(float3 coords, out float3 color : SV_Target0)
@@ -276,13 +276,13 @@ void Wood_04_G(float3 coords, out float3 color : SV_Target0)
 			<VisualNodeId>0</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/ProcMat\Wood\WoodRings002.sh:WoodRings002</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\WoodRings002.sh:WoodRings002</FragmentArchiveName>
 			<NodeId>44</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>2</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/ProcMat\Wood\WoodPlanks.sh:WoodPlanks</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\WoodPlanks.sh:WoodPlanks</FragmentArchiveName>
 			<NodeId>37</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>3</VisualNodeId>
@@ -318,7 +318,7 @@ void Wood_04_G(float3 coords, out float3 color : SV_Target0)
 			<VisualNodeId>8</VisualNodeId>
 		</Node>
 		<Node>
-			<FragmentArchiveName>xleres/ProcMat\Wood\WoodGnarlGrainStain.sh:WoodGnarlGrainStain</FragmentArchiveName>
+			<FragmentArchiveName>xleres/Objects/Example/ProcWood\WoodGnarlGrainStain.sh:WoodGnarlGrainStain</FragmentArchiveName>
 			<NodeId>43</NodeId>
 			<NodeType>Procedure</NodeType>
 			<VisualNodeId>9</VisualNodeId>
