@@ -305,7 +305,8 @@ namespace SceneEngine
         pimpl->_materialConstants = cbLayout.BuildCBDataAsPkt(ParameterBox());
 
         pimpl->_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
-        ::Assets::RegisterAssetDependency(pimpl->_dependencyValidation, cbLayout.GetDependencyValidation());
+		if (cbLayout.GetDependencyValidation())
+			::Assets::RegisterAssetDependency(pimpl->_dependencyValidation, cbLayout.GetDependencyValidation());
 
         _pimpl = std::move(pimpl);
     }

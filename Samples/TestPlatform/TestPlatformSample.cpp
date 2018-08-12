@@ -25,20 +25,26 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Tools/ToolsRig/BasicManipulators.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/AssetSetManager.h"
+#include "../../Assets/OSFileSystem.h"
+#include "../../Assets/MountingTree.h"
 
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
-
-#include "../../SceneEngine/StraightSkeleton.h"
+#include "../../Utility/Streams/FileSystemMonitor.h"
 
 #include <functional>
 
@@ -69,11 +75,15 @@ namespace Sample
             auto clientRect = _window.GetRect();
 
             _rDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
-            _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
-                    clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
+            _presChain = _rDevice->CreatePresentationChain(
+				_window.GetUnderlyingHandle(), 
+                    RenderCore::PresentationChainDesc{unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1])});
 
             _assetServices = std::make_unique<::Assets::Services>(0);
+			_assetServices->AttachCurrentModule();
+			ConsoleRig::GlobalServices::GetCrossModule().Publish(*_assetServices);
             _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice);
+			_renderAssetServices->AttachCurrentModule();
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
             // auto v = _rDevice->GetVersionInformation();
@@ -95,46 +105,22 @@ namespace Sample
 
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& lightingParserContext, 
+        const RenderCore::ResourcePtr& presentationResource,
+		RenderCore::Techniques::ParsingContext& parsingContext,
         TestPlatformSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void TestStraightSkeleton()
-	{
-		using namespace SceneEngine::StraightSkeleton;
-		#if 0
-			Float2 pts[] = {
-				Float2(-2,-1),
-				Float2( 2,-1),
-				Float2( 2, 1),
-				Float2(-2, 1)
-			};
-		#elif 1
-			Float2 pts[] = {
-				Float2(-2,-1),
-				Float2( 3,-1),
-				Float2( 3, 3),
-				Float2( 1, 3),
-				Float2( 1, 1),
-				Float2(-2, 1)
-			};
-		#endif
-		auto graph = BuildGraphFromVertexLoop(MakeIteratorRange(pts));
-		auto skel = graph.GenerateSkeleton(std::numeric_limits<float>::max());
-		(void)skel;
-	}
-
     void ExecuteSample()
     {
         using namespace PlatformRig;
         using namespace Sample;
 
-		TestStraightSkeleton();
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
-        LogInfo << "Building primary managers";
+        Log(Verbose) << "Building primary managers";
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
@@ -144,11 +130,11 @@ namespace Sample
             &RenderCore::Assets::Services::GetBufferUploads());
 
             // main scene
-        LogInfo << "Creating main scene";
+        Log(Verbose) << "Creating main scene";
         auto mainScene = std::make_shared<TestPlatformSceneParser>();
         
         {
-            LogInfo << "Setup tools and debugging";
+            Log(Verbose) << "Setup tools and debugging";
             FrameRig frameRig;
             
             InitDebugDisplays(*frameRig.GetDebugSystem());
@@ -163,13 +149,16 @@ namespace Sample
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
 
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
-            primMan._assetServices->GetAssetSets().LogReport();
+            // primMan._assetServices->GetAssetSets().LogReport();
 
                 //  One last object required for rendering:
                 //      *   the DeviceContext provides the methods for directly 
                 //          interacting with the GPU
-            LogInfo << "Setup frame rig and rendering context";
+            Log(Verbose) << "Setup frame rig and rendering context";
             auto context = primMan._rDevice->GetImmediateContext();
+
+			RenderCore::Techniques::AttachmentPool namedResources;
+			RenderCore::Techniques::FrameBufferPool frameBufferPool;
 
                 //  Finally, we execute the frame loop
             for (;;) {
@@ -177,16 +166,15 @@ namespace Sample
                     break;
 
                     // ------- Render ----------------------------------------
-                SceneEngine::LightingParserContext lightingParserContext(
-                    *primMan._globalTechContext);
-                lightingParserContext._plugins.push_back(stdPlugin);
+                RenderCore::Techniques::ParsingContext parserContext(*primMan._globalTechContext, &namedResources, &frameBufferPool);
+                // lightingParserContext._plugins.push_back(stdPlugin);
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), primMan._presChain.get(), 
                     &g_cpuProfiler,
                     std::bind(
-                        RenderFrame, std::placeholders::_1,
-                        std::ref(lightingParserContext), mainScene.get(), 
+                        RenderFrame, std::placeholders::_1, std::placeholders::_2,
+                        std::ref(parserContext), mainScene.get(), 
                         primMan._presChain.get(), 
                         frameRig.GetMainOverlaySystem().get()));
 
@@ -198,8 +186,8 @@ namespace Sample
             }
         }
 
-        LogInfo << "Starting shutdown";
-        primMan._assetServices->GetAssetSets().LogReport();
+        Log(Verbose) << "Starting shutdown";
+        // primMan._assetServices->GetAssetSets().LogReport();
         RenderCore::Metal::DeviceContext::PrepareForDestruction(primMan._rDevice.get(), primMan._presChain.get());
 
         mainScene.reset();
@@ -209,6 +197,7 @@ namespace Sample
         RenderOverlays::CleanupFontSystem();
         
         primMan._renderAssetServices.reset();
+		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*primMan._assetServices);
         primMan._assetServices.reset();
         TerminateFileSystemMonitoring();
     }
@@ -232,12 +221,18 @@ namespace Sample
 
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& lightingParserContext,
+        const RenderCore::ResourcePtr& presentationResource,
+		RenderCore::Techniques::ParsingContext& parsingContext,
         TestPlatformSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
     {
         CPUProfileEvent pEvnt("RenderFrame", g_cpuProfiler);
+		auto& namedRes = parsingContext.GetNamedResources();
+        auto viewContext = presentationChain->GetDesc();
+        auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
+        namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, samples});
+        namedRes.Bind(0u, presentationResource);
 
             //  some scene might need a "prepare" step to 
             //  build some resources before the main render occurs.
@@ -247,25 +242,26 @@ namespace Sample
         if (scene) {
             UInt2 presChainDims(presentationChain->GetDesc()->_width, presentationChain->GetDesc()->_height);
             LightingParser_ExecuteScene(
-                context, lightingParserContext, *scene, scene->GetCameraDesc(),
-                RenderingQualitySettings(
+                context, parsingContext, *scene, scene->GetCameraDesc(),
+                RenderingQualitySettings{
                     presChainDims, 
                     (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
-                    Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0)));
+					{},
+					(uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0)});
         }
 
         if (overlaySys) {
-            overlaySys->RenderToScene(context, lightingParserContext);
+            overlaySys->RenderToScene(context, parsingContext);
         }
 
         auto& usefulFonts = ConsoleRig::FindCachedBox2<UsefulFonts>();
-        DrawPendingResources(context, lightingParserContext, usefulFonts._defaultFont0.get());
+        DrawPendingResources(context, parsingContext, usefulFonts._defaultFont0);
 
         if (overlaySys) {
-            overlaySys->RenderWidgets(context, lightingParserContext);
+            overlaySys->RenderWidgets(context, parsingContext);
         }
 
-        return PlatformRig::FrameRig::RenderResult(lightingParserContext.HasPendingAssets());
+        return PlatformRig::FrameRig::RenderResult(parsingContext.HasPendingAssets());
     }
 
 
