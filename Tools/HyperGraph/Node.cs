@@ -62,6 +62,8 @@ namespace HyperGraph
 		public PointF			Location		{ get; set; }
 		public object			Tag				{ get; set; }
 
+        public object           SubGraphTag     { get; set; }
+
 		public IEnumerable<NodeConnection>	Connections { get { return connections; } }
 		public IEnumerable<NodeItem>		Items		{ get { return nodeItems; } }
 

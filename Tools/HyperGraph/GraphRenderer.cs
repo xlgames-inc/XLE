@@ -116,6 +116,7 @@ namespace HyperGraph
         internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
 
         internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
+        internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
 
         enum ConnectorType { Input, Output };
 
@@ -215,22 +216,37 @@ namespace HyperGraph
 			}
 		}
 
-		public static void PerformLayout(Graphics graphics, IEnumerable<Node> nodes)
+		public static void PerformLayout(Graphics graphics, IGraphModel model)
 		{
-			foreach (var node in nodes.Reverse<Node>())
+            foreach (var node in model.Nodes.Reverse<Node>())
 			{
 				GraphRenderer.PerformLayout(graphics, node);
 			}
-		}
 
-		public static void Render(Graphics graphics, IEnumerable<Node> nodes, bool showLabels, object context)
+            foreach (var subGraph in model.SubGraphs.Reverse<Node>())
+            {
+                GraphRenderer.PerformSubGraphLayout(graphics, subGraph, model);
+            }
+        }
+
+		public static void Render(Graphics graphics, IGraphModel model, bool showLabels, object context)
 		{
 			var skipConnections = new HashSet<NodeConnection>();
-			foreach (var node in nodes.Reverse<Node>())
+
+            foreach (var node in model.SubGraphs.Reverse<Node>())
+            {
+                GraphRenderer.RenderSubGraph(graphics, node, context);
+            }
+            foreach (var node in model.SubGraphs.Reverse<Node>())
+            {
+                GraphRenderer.RenderConnections(graphics, node, skipConnections, showLabels);
+            }
+
+            foreach (var node in model.Nodes.Reverse<Node>())
 			{
 				GraphRenderer.RenderConnections(graphics, node, skipConnections, showLabels);
 			}
-			foreach (var node in nodes.Reverse<Node>())
+			foreach (var node in model.Nodes.Reverse<Node>())
 			{
 				GraphRenderer.Render(graphics, node, context);
 			}
@@ -365,52 +381,40 @@ namespace HyperGraph
             else if ((node.state & RenderState.Hover) != 0)     { brush = HoverBrush; }
             else                                                { brush = NormalBrush; }
 
-            const Boolean roundedRectRendering = false;
-            if (roundedRectRendering)
+            var rect = new Rectangle((int)left, (int)top, (int)(right - left), (int)(bottom - top));
+
+            if (node.SubGraphTag == null)
             {
-                using (var path = new GraphicsPath(FillMode.Winding))
-                {
-                    path.AddArc(left, top, cornerSize, cornerSize, 180, 90);
-                    path.AddArc(right - cornerSize, top, cornerSize, cornerSize, 270, 90);
-
-                    path.AddArc(right - cornerSize, bottom - cornerSize, cornerSize, cornerSize, 0, 90);
-                    path.AddArc(left, bottom - cornerSize, cornerSize, cornerSize, 90, 90);
-                    path.CloseFigure();
-
-                    graphics.FillPath(brush, path);
-                    graphics.DrawPath(BorderPen, path);
-                }
+                graphics.DrawRectangle(DottedPen, rect);
+                RenderItem(graphics, new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0), node.titleItem, node.titleItem.bounds.Location, context);
+                return;
             }
-            else 
+
+            if (node.Collapsed)
             {
-                var rect = new Rectangle((int)left, (int)top, (int)(right - left), (int)(bottom - top));
+                graphics.FillRectangle(TitleAreaBrush, rect);
+            }
+            else
+            {
+                int titleHeight = (node.titleItem != null) ? (int)(node.titleItem.bounds.Height + GraphConstants.TopHeight) : 0;
+                titleHeight = Math.Min((int)(bottom - top), titleHeight);
 
-                if (node.Collapsed)
-                {
-                    graphics.FillRectangle(TitleAreaBrush, rect);
-                }
-                else
-                {
-                    int titleHeight = (node.titleItem != null) ? (int)(node.titleItem.bounds.Height + GraphConstants.TopHeight) : 0;
-                    titleHeight = Math.Min((int)(bottom - top), titleHeight);
+                var titleRect = new Rectangle((int)left, (int)top, (int)(right - left), titleHeight);
+                var backgroundRect = new Rectangle((int)left, (int)top + titleHeight, (int)(right - left), (int)(bottom - top) - titleHeight);
 
-                    var titleRect = new Rectangle((int)left, (int)top, (int)(right - left), titleHeight);
-                    var backgroundRect = new Rectangle((int)left, (int)top + titleHeight, (int)(right - left), (int)(bottom - top) - titleHeight);
+                DrawShadow(graphics, rect);
+                graphics.FillRectangle(brush, backgroundRect);
+                if (titleHeight != 0)
+                    graphics.FillRectangle(TitleAreaBrush, titleRect);
+                graphics.DrawRectangle(BorderPen, rect);
+            }
 
-                    DrawShadow(graphics, rect);
-                    graphics.FillRectangle(brush, backgroundRect);
-                    if (titleHeight != 0)
-                        graphics.FillRectangle(TitleAreaBrush, titleRect);
-                    graphics.DrawRectangle(BorderPen, rect);
-                }
-
-                if ((node.state & RenderState.Focus) != 0)
-                {
-                    // We're going to draw a outline around the edge of the entire node
-                    // This should be a thick line, with some bright color
-                    var outline = new Rectangle(rect.Left - 4, rect.Top - 4, rect.Width + 8, rect.Height + 8);
-                    graphics.DrawRectangle(FocusPen, outline);
-                }
+            if ((node.state & RenderState.Focus) != 0)
+            {
+                // We're going to draw a outline around the edge of the entire node
+                // This should be a thick line, with some bright color
+                var outline = new Rectangle(rect.Left - 4, rect.Top - 4, rect.Width + 8, rect.Height + 8);
+                graphics.DrawRectangle(FocusPen, outline);
             }
 
             if (node.Collapsed)
@@ -440,7 +444,110 @@ namespace HyperGraph
 			}
 		}
 
-		public static void RenderConnections(Graphics graphics, Node node, HashSet<NodeConnection> skipConnections, bool showLabels)
+        static void RenderSubGraph(Graphics graphics, Node node, object context)
+        {
+            var size = node.bounds.Size;
+            var position = node.bounds.Location;
+
+            var cornerSize = GraphConstants.CornerSize;
+            var left = position.X;
+            var top = position.Y;
+            var right = position.X + size.Width;
+            var bottom = position.Y + size.Height;
+
+            using (var path = new GraphicsPath(FillMode.Winding))
+            {
+                path.AddArc(left, top, cornerSize, cornerSize, 180, 90);
+                path.AddArc(right - cornerSize, top, cornerSize, cornerSize, 270, 90);
+
+                path.AddArc(right - cornerSize, bottom - cornerSize, cornerSize, cornerSize, 0, 90);
+                path.AddArc(left, bottom - cornerSize, cornerSize, cornerSize, 90, 90);
+                path.CloseFigure();
+
+                graphics.DrawPath(DottedPen, path);
+            }
+
+            foreach (var item in node.Items)    // (don't use EnumerateItems because we want to show collapsed nodes)
+            {
+                // note --  the "connected" state is not stored in the retained state member
+                //          ... so if we want to colour the connectors based on if they are connected,
+                //          we need to look for connections now.
+                var inputConnector = item.Input;
+                if (inputConnector != null && inputConnector.Enabled && !inputConnector.bounds.IsEmpty)
+                    RenderConnector(graphics, inputConnector.bounds, inputConnector.state, ConnectorType.Input, inputConnector, node.Collapsed);
+                var outputConnector = item.Output;
+                if (outputConnector != null && outputConnector.Enabled && !outputConnector.bounds.IsEmpty)
+                    RenderConnector(graphics, outputConnector.bounds, outputConnector.state, ConnectorType.Output, outputConnector, node.Collapsed);
+            }
+        }
+
+        public static void PerformSubGraphLayout(Graphics graphics, Node node, IGraphModel model)
+        {
+            if (node == null)
+                return;
+
+            float minX = System.Single.MaxValue, minY = System.Single.MaxValue;
+            float maxX = System.Single.MinValue, maxY = System.Single.MinValue;
+
+            foreach (var n in model.Nodes)
+            {
+                if (n.SubGraphTag == node.SubGraphTag)
+                {
+                    minX = Math.Min(n.bounds.Left, minX);
+                    minY = Math.Min(n.bounds.Top, minY);
+                    maxX = Math.Max(n.bounds.Right, maxX);
+                    maxY = Math.Max(n.bounds.Bottom, maxY);
+                }
+            }
+
+            float[] widths = new float[] { 8, 8, 8 };
+            foreach (var item in EnumerateNodeItems(node))
+            {
+                var side = GetSide(item);
+                var itemSize = item.Measure(graphics);
+
+                if (side != 1)
+                    itemSize = AdjustConnectorSize(itemSize);
+
+                widths[side] = Math.Max(widths[side], itemSize.Width);
+            }
+
+            float leftBorder = widths[2] + 256, rightBorder = widths[0] + 256;
+
+            if (minX >= maxX || minY >= maxY)
+            {
+                minX = node.Location.X + leftBorder;
+                minY = node.Location.Y;
+            }
+
+            maxX = Math.Max(minX + 128, maxX);
+            maxY = Math.Max(minY + 32, maxY);
+
+            node.Location = new PointF(minX - leftBorder, minY);
+            node.bounds = new RectangleF(
+                minX - leftBorder, minY - 32,
+                (maxX + rightBorder) - (minX - leftBorder),
+                maxY - minY + 64);
+
+            var path = new GraphicsPath(FillMode.Winding);
+
+            PointF[] positions = new PointF[] { node.Location, node.Location, node.Location };
+            foreach (var item in EnumerateNodeItems(node))
+            {
+                var side = GetSide(item);
+                var itemSize = PreRenderItem(graphics, item, positions[side]);
+
+                if (item.Input != null && item.Input.Enabled)
+                    item.Input.bounds = new RectangleF(node.bounds.Right - widths[side], positions[side].Y, widths[side], itemSize.Height);
+
+                if (item.Output != null && item.Output.Enabled)
+                    item.Output.bounds = new RectangleF(node.bounds.Left, positions[side].Y, widths[side], itemSize.Height);
+
+                positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
+            }
+        }
+
+        public static void RenderConnections(Graphics graphics, Node node, HashSet<NodeConnection> skipConnections, bool showLabels)
 		{
 			foreach (var connection in node.Connections.Reverse<NodeConnection>())
 			{

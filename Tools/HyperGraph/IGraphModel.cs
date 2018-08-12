@@ -53,12 +53,14 @@ namespace HyperGraph
     public interface IGraphModel
     {
         IEnumerable<Node> Nodes { get; }
+        IEnumerable<Node> SubGraphs { get; }
 
         void BringElementToFront(IElement element);
         bool AddNode(Node node);
         bool AddNodes(IEnumerable<Node> nodes);
         void RemoveNode(Node node);
         bool RemoveNodes(IEnumerable<Node> nodes);
+        bool AddSubGraph(Node subGraph);
         void InvokeMiscChange(bool rebuildShaders);
 
         NodeConnection Connect(NodeItem from, NodeItem to, string name = "");

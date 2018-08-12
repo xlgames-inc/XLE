@@ -13,7 +13,13 @@ namespace HyperGraph
             get { return _graphNodes; }
         }
 
+        public IEnumerable<Node> SubGraphs
+        {
+            get { return _subGraphNodes; }
+        }
+
         private readonly List<Node> _graphNodes = new List<Node>();
+        private readonly List<Node> _subGraphNodes = new List<Node>();
         private static uint _nextRevisionIndex = 1;
 
         public ICompatibilityStrategy CompatibilityStrategy { get; set; }
@@ -40,7 +46,7 @@ namespace HyperGraph
                         var selection = element as NodeSelection;
                         foreach (var node in selection.Nodes.Reverse<Node>())
                         {
-                            if (_graphNodes[0] != node)
+                            if (_graphNodes.Contains(node) && _graphNodes[0] != node)
                             {
                                 _graphNodes.Remove(node);
                                 _graphNodes.Insert(0, node);
@@ -52,7 +58,7 @@ namespace HyperGraph
                 case ElementType.Node:
                     {
                         var node = element as Node;
-                        if (_graphNodes[0] != node)
+                        if (_graphNodes.Contains(node) && _graphNodes[0] != node)
                         {
                             _graphNodes.Remove(node);
                             _graphNodes.Insert(0, node);
@@ -167,6 +173,7 @@ namespace HyperGraph
 
             DisconnectAll(node);
             _graphNodes.Remove(node);
+            _subGraphNodes.Remove(node);
             UpdateRevisionIndex();
             if (InvalidateViews != null) 
                 InvalidateViews(this, EventArgs.Empty);
@@ -198,6 +205,7 @@ namespace HyperGraph
 
                 DisconnectAll(node);
                 _graphNodes.Remove(node);
+                _subGraphNodes.Remove(node);
                 modified = true;
 
                 if (NodeRemoved != null)
@@ -209,6 +217,32 @@ namespace HyperGraph
                     InvalidateViews(this, EventArgs.Empty);
             }
             return modified;
+        }
+
+        public bool AddSubGraph(Node subGraph)
+        {
+            if (subGraph == null ||
+                _subGraphNodes.Contains(subGraph))
+                return false;
+
+            _subGraphNodes.Insert(0, subGraph);
+            if (NodeAdded != null)
+            {
+                var eventArgs = new AcceptNodeEventArgs(subGraph);
+                NodeAdded(this, eventArgs);
+                if (eventArgs.Cancel)
+                {
+                    _subGraphNodes.Remove(subGraph);
+                    return false;
+                }
+            }
+
+            BringElementToFront(subGraph);
+            // FocusElement = node;
+            UpdateRevisionIndex();
+            if (InvalidateViews != null)
+                InvalidateViews(this, EventArgs.Empty);
+            return true;
         }
         #endregion
 

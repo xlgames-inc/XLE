@@ -268,6 +268,12 @@ namespace NodeEditorCore
                 //      can adapt to changes in the tool and data.
                 //
             {
+                    // --------< SubGraph >--------
+                var subGraphTag = "main";
+                Node subgraph = _nodeCreator.CreateNode(null, subGraphTag, null);
+                subgraph.SubGraphTag = subGraphTag;
+                graph.AddSubGraph(subgraph);
+
                     // --------< Basic Nodes >--------
                 var newNodes = new Dictionary<int, Node>();
                 var nodeIdToControlNode = new Dictionary<UInt64, Node>();
@@ -294,6 +300,7 @@ namespace NodeEditorCore
 
                         if (newNode != null)
                         {
+                            newNode.SubGraphTag = subGraphTag;
                             MatchVisualNode(newNode, visualNode);
                             newNodes[n.VisualNodeId] = newNode;
                             nodeIdToControlNode[n.NodeId] = newNode;
@@ -347,16 +354,7 @@ namespace NodeEditorCore
                         (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
                         () => new ShaderFragmentNodeItem(c.OutputParameterName, c.Type, null, true, false));
 
-                    Node srcNode;
-                    if (!newNodes.ContainsKey(c.VisualNodeId))
-                    {
-                        srcNode = _nodeCreator.CreateInterfaceNode("Inputs", InterfaceDirection.In);
-                        MatchVisualNode(srcNode, nodeGraph.VisualNodes[c.VisualNodeId]);
-                        newNodes[c.VisualNodeId] = srcNode;
-                        graph.AddNode(srcNode);
-                    } 
-                    else
-                        srcNode = newNodes[c.VisualNodeId];
+                    Node srcNode = subgraph;
 
                     var srcItem = FindOrCreateNodeItem(
                         srcNode,
@@ -380,16 +378,7 @@ namespace NodeEditorCore
                         (item) => (item.Output != null && item.Output.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.InputParameterName)),
                         () => new ShaderFragmentNodeItem(c.InputParameterName, c.Type, null, false, true));
 
-                    Node dstNode;
-                    if (!newNodes.ContainsKey(c.VisualNodeId))
-                    {
-                        dstNode = _nodeCreator.CreateInterfaceNode("Outputs", InterfaceDirection.Out);
-                        MatchVisualNode(dstNode, nodeGraph.VisualNodes[c.VisualNodeId]);
-                        newNodes[c.VisualNodeId] = dstNode;
-                        graph.AddNode(dstNode);
-                    }
-                    else
-                        dstNode = newNodes[c.VisualNodeId];
+                    Node dstNode = subgraph;
 
                     var dstItem = FindOrCreateNodeItem(
                         dstNode,

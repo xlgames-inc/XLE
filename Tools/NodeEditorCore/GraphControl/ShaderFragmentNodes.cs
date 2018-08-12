@@ -25,7 +25,6 @@ namespace NodeEditorCore
         Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
-        Node CreateInterfaceNode(String title, InterfaceDirection direction);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
@@ -307,6 +306,7 @@ namespace NodeEditorCore
         {
             if (null == from.Item.Tag && null == to.Item.Tag) return HyperGraph.Compatibility.ConnectionType.Compatible;
             if (null == from.Item.Tag || null == to.Item.Tag) return HyperGraph.Compatibility.ConnectionType.Incompatible;
+            if (null == from.Node.SubGraphTag  || from.Node.SubGraphTag != to.Node.SubGraphTag) return HyperGraph.Compatibility.ConnectionType.Incompatible;    // can't connect different subgraph
 
             if (from.Item.Tag is string && to.Item.Tag is string)
             {

@@ -298,26 +298,6 @@ namespace NodeEditorCore
             };
         }
 
-        /*
-        private ShaderPatcherLayer.NodeGraph ConvertToShaderPatcherLayer()
-        {
-            return ModelConversion.ToShaderPatcherLayer(GetGraphModel());
-        }
-
-        private void OnShowPreviewShader(object sender, EventArgs e)
-        {
-            var p = GetPreviewItem(sender);
-            var shader = ConvertToShaderPatcherLayer().GeneratePreviewShader(
-                AttachedId(sender),
-                Document.NodeGraphFile,
-                p.PreviewSettings, 
-                (Document!=null) ? Document.GraphContext.Variables : null);
-
-            ControlsLibrary.BasicControls.TextWindow.Show(
-                System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
-        }
-        */
-
         private void RefreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
             var p = GetPreviewItem(sender);
@@ -341,6 +321,7 @@ namespace NodeEditorCore
         }
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {
+#if false
             using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
@@ -355,9 +336,11 @@ namespace NodeEditorCore
                     GetGraphModel().AddNode(n);
                 }
             }
+#endif
         }
         private void OnCreateOutputParameterNode(object sender, EventArgs e)
         {
+#if false
             using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
@@ -372,6 +355,7 @@ namespace NodeEditorCore
                     GetGraphModel().AddNode(n);
                 }
             }
+#endif
         }
 
         #endregion

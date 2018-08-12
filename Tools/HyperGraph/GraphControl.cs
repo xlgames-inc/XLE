@@ -511,7 +511,18 @@ namespace HyperGraph
 				}
 			}
 
-			var skipConnections		= new HashSet<NodeConnection>();
+            foreach (var subGraph in model.SubGraphs)
+            {
+                var inputConnector = FindInputConnectorAt(subGraph, location);
+                if (inputConnector != null && (acceptElement == null || acceptElement(inputConnector)))
+                    return inputConnector;
+
+                var outputConnector = FindOutputConnectorAt(subGraph, location);
+                if (outputConnector != null && (acceptElement == null || acceptElement(outputConnector)))
+                    return outputConnector;
+            }
+
+            var skipConnections		= new HashSet<NodeConnection>();
 			var foundConnections	= new List<NodeConnection>();
             foreach (var node in model.Nodes)
 			{
@@ -524,7 +535,18 @@ namespace HyperGraph
 					}
 				}
 			}
-			foreach (var connection in foundConnections)
+            foreach (var subGraph in model.Nodes)
+            {
+                foreach (var connection in subGraph.Connections)
+                {
+                    if (skipConnections.Add(connection)) // if we can add it, we haven't checked it yet
+                    {
+                        if (connection.bounds.Contains(location))
+                            foundConnections.Insert(0, connection);
+                    }
+                }
+            }
+            foreach (var connection in foundConnections)
 			{
 				if (connection.textBounds.Contains(location) && (acceptElement == null || acceptElement(connection)))
 					return connection;
@@ -615,8 +637,8 @@ namespace HyperGraph
             if (_model == null || !_model.Nodes.Any())
                 return;
 
-            GraphRenderer.PerformLayout(e.Graphics, _model.Nodes);
-            GraphRenderer.Render(e.Graphics, _model.Nodes, ShowLabels, Context);
+            GraphRenderer.PerformLayout(e.Graphics, _model);
+            GraphRenderer.Render(e.Graphics, _model, ShowLabels, Context);
 			
 			if (command == CommandMode.Edit)
 			{
@@ -1097,7 +1119,16 @@ namespace HyperGraph
 									node.Location = new Point(	(int)Math.Round(node.Location.X - deltaX),
 																(int)Math.Round(node.Location.Y - deltaY));
 								}
-								snappedLocation = lastLocation = currentLocation;
+
+                                var subGraphKey = FindOverlappingSubGraph(selection.bounds);
+                                foreach (var node in selection.Nodes)
+                                {
+                                    // Reassign subgraph, if we haven't got one assigned already
+                                    if (node.SubGraphTag == null || node.SubGraphTag == pendingAssignmentSubgraphKey)
+                                        node.SubGraphTag = (subGraphKey != null) ? pendingAssignmentSubgraphKey : null;
+                                }
+
+                                snappedLocation = lastLocation = currentLocation;
                                 ctrl.Invalidate();
                                 _model.InvokeMiscChange(false);
 								return;
@@ -1107,7 +1138,15 @@ namespace HyperGraph
 								var node = DragElement as Node;
 								node.Location	= new Point((int)Math.Round(node.Location.X - deltaX),
 															(int)Math.Round(node.Location.Y - deltaY));
-								snappedLocation = lastLocation = currentLocation;
+
+                                // Reassign subgraph, if we haven't got one assigned already
+                                if (node.SubGraphTag == null || node.SubGraphTag == pendingAssignmentSubgraphKey)
+                                {
+                                    var subGraphKey = FindOverlappingSubGraph(node.bounds);
+                                    node.SubGraphTag = (subGraphKey != null) ? pendingAssignmentSubgraphKey : null;
+                                }
+
+                                snappedLocation = lastLocation = currentLocation;
                                 ctrl.Invalidate();
                                 _model.InvokeMiscChange(false);
 								return;
@@ -1428,11 +1467,31 @@ namespace HyperGraph
 							needRedraw = true;
 							return;
 						}
-						default:
-						case ElementType.NodeSelection:
+                        case ElementType.NodeSelection:
+                        {
+                            var selection = DragElement as NodeSelection;
+                            var subGraphKey = FindOverlappingSubGraph(selection.bounds);
+                            foreach (var node in selection.Nodes)
+                            {
+                                // Reassign subgraph, if we haven't got one assigned already
+                                if (node.SubGraphTag == null || node.SubGraphTag == pendingAssignmentSubgraphKey)
+                                    node.SubGraphTag = subGraphKey;
+                            }
+                            needRedraw = true;
+                            return;
+                        }
+                        case ElementType.Node:
+                        {
+                            var node = DragElement as Node;
+                            // Complete subgraph assignment, if we haven't got a permanent assignment already
+                            if (node.SubGraphTag == null || node.SubGraphTag == pendingAssignmentSubgraphKey)
+                                node.SubGraphTag = FindOverlappingSubGraph(node.bounds);
+                            needRedraw = true;
+                            return;
+                        }
+                        default:
 						case ElementType.Connection:
 						case ElementType.NodeItem:
-						case ElementType.Node:
 						{
 							needRedraw = true;
 							return;
@@ -1657,11 +1716,26 @@ namespace HyperGraph
 		#endregion
 
 
+        private object FindOverlappingSubGraph(RectangleF rect)
+        {
+            foreach (var sg in _model.SubGraphs)
+            {
+                if (sg.bounds.IntersectsWith(rect))
+                    return sg.SubGraphTag;
+            }
+            return null;
+        }
+
 		#region OnDragEnter
 		Node dragNode = null;
+        string pendingAssignmentSubgraphKey = "PendingAssignment";
 		private void OnDragEnter(object sender, DragEventArgs drgevent)
 		{
-			dragNode = null;
+            if (dragNode != null)
+            {
+                _model.RemoveNode(dragNode);
+                dragNode = null;
+            }
 
 			foreach (var name in drgevent.Data.GetFormats())
 			{
@@ -1671,6 +1745,12 @@ namespace HyperGraph
                     if (_model.AddNode(node))
 					{
 						dragNode = node;
+
+                        // Find subgraph to assign it to (based on boundary overlap)
+                        if (dragNode.SubGraphTag == null || dragNode.SubGraphTag == pendingAssignmentSubgraphKey) {
+                            var subGraphKey = FindOverlappingSubGraph(dragNode.bounds);
+                            dragNode.SubGraphTag = (subGraphKey != null) ? pendingAssignmentSubgraphKey : null;
+                        }
 
 						drgevent.Effect = DragDropEffects.Copy;
 					}
@@ -1699,7 +1779,15 @@ namespace HyperGraph
 			if (dragNode.Location != location)
 			{
 				dragNode.Location = location;
-				ctrl.Invalidate();
+
+                // Reassign subgraph, if we haven't got one assigned already
+                if (dragNode.SubGraphTag == null || dragNode.SubGraphTag == pendingAssignmentSubgraphKey)
+                {
+                    var subGraphKey = FindOverlappingSubGraph(dragNode.bounds);
+                    dragNode.SubGraphTag = (subGraphKey != null) ? pendingAssignmentSubgraphKey : null;
+                }
+
+                ctrl.Invalidate();
 			}
 			
 			drgevent.Effect = DragDropEffects.Copy;
@@ -1719,7 +1807,14 @@ namespace HyperGraph
 		#region OnDragDrop
 		private void OnDragDrop(object sender, DragEventArgs drgevent)
 		{
-		}
+            if (dragNode == null)
+                return;
+
+            // Complete subgraph assignment, if we haven't got a permanent assignment already
+            if (dragNode.SubGraphTag == null || dragNode.SubGraphTag == pendingAssignmentSubgraphKey)
+                dragNode.SubGraphTag = FindOverlappingSubGraph(dragNode.bounds);
+            dragNode = null;
+        }
 		#endregion
 	}
 }
