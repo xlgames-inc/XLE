@@ -52,16 +52,15 @@ namespace NodeEditorCore
         //
     /////////////////////////////////////////////////////////////////////////////////////
         //
-        //          ShaderFragmentNodeItem
+        //          ShaderFragmentNodeConnector
         //
         //      Node Item for the hypergraph that represents an input or output
         //      of a shader graph node.
         //  
     
-    internal class ShaderFragmentNodeItem : NodeItem
+    internal class ShaderFragmentNodeConnector : NodeConnector
     {
-        public ShaderFragmentNodeItem(string name, string type, string archiveName, bool inputEnabled=false, bool outputEnabled=false) :
-            base(inputEnabled, outputEnabled)
+        public ShaderFragmentNodeConnector(string name, string type, string archiveName)
         {
             this.Name = name;
             this.Type = type;
@@ -128,9 +127,7 @@ namespace NodeEditorCore
                 Math.Max(GraphConstants.MinimumItemHeight, mainStringSize.Height));
         }
         
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context) {}
-
-        public override void RenderConnector(Graphics graphics, RectangleF bounds)
+        public override void Render(Graphics graphics, RectangleF bounds, object context)
         {
             graphics.DrawString(
                 this.Name, SystemFonts.MenuFont, Brushes.White,
@@ -148,6 +145,16 @@ namespace NodeEditorCore
 
         internal virtual string GetNameText() { return this.Name; }
         internal virtual string GetTypeText() { return "(" + this.ShortType + ")"; }
+
+        internal static Node.Column GetDirectionalColumn(InterfaceDirection direction)
+        {
+            switch (direction)
+            {
+                case InterfaceDirection.In: return Node.Column.Input;
+                default:
+                case InterfaceDirection.Out: return Node.Column.Output;
+            }
+        }
     }
 
         //
@@ -169,12 +176,12 @@ namespace NodeEditorCore
             _shaderStructureHash = 0;
         }
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
         {
             if (Node.Tag is ShaderFragmentNodeTag)
             {
                 SizeF size = Measure(graphics);
-                if (!graphics.IsVisible(new Rectangle() {X = (int)location.X, Y = (int)location.Y, Width = (int)size.Width, Height = (int)size.Height }))
+                if (!graphics.IsVisible(boundary))
                     return;
 
                 // We need to get some global context information 
@@ -229,12 +236,11 @@ namespace NodeEditorCore
                 }
 
                 if (_cachedBitmap != null)
-                    graphics.DrawImage(_cachedBitmap, new RectangleF() { X = location.X, Y = location.Y, Width = size.Width, Height = size.Height });
+                    graphics.DrawImage(_cachedBitmap, boundary);
             }
         }
 
         public override SizeF   Measure(Graphics graphics) { return new SizeF(196, 196); }
-        public override void    RenderConnector(Graphics graphics, RectangleF bounds) { }
 
         public void InvalidateShaderStructure() { _cachedBitmap = null; _shaderStructureHash = 0;  }
         public void InvalidateParameters() { _cachedBitmap = null; }
@@ -304,14 +310,14 @@ namespace NodeEditorCore
     {
         public HyperGraph.Compatibility.ConnectionType CanConnect(NodeConnector from, NodeConnector to)
         {
-            if (null == from.Item.Tag && null == to.Item.Tag) return HyperGraph.Compatibility.ConnectionType.Compatible;
-            if (null == from.Item.Tag || null == to.Item.Tag) return HyperGraph.Compatibility.ConnectionType.Incompatible;
+            if (null == from.Tag && null == to.Tag) return HyperGraph.Compatibility.ConnectionType.Compatible;
+            if (null == from.Tag || null == to.Tag) return HyperGraph.Compatibility.ConnectionType.Incompatible;
             if (null == from.Node.SubGraphTag  || from.Node.SubGraphTag != to.Node.SubGraphTag) return HyperGraph.Compatibility.ConnectionType.Incompatible;    // can't connect different subgraph
 
-            if (from.Item.Tag is string && to.Item.Tag is string)
+            if (from.Tag is string && to.Tag is string)
             {
-                string fromType = (string)from.Item.Tag;
-                string toType = (string)to.Item.Tag;
+                string fromType = (string)from.Tag;
+                string toType = (string)to.Tag;
 
                     // we use "auto" when we want one end to match whatever is on the other end.
                     // so, "auto" can match to anything -- except another auto. Auto to auto is always incompatible.
@@ -337,18 +343,21 @@ namespace NodeEditorCore
             return HyperGraph.Compatibility.ConnectionType.Incompatible;
         }
     }
-    internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentNodeItem
+    internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentNodeConnector
     {
         public ShaderFragmentInterfaceParameterItem(string name, string type, InterfaceDirection direction) :
-            base(name, type, string.Empty, direction == InterfaceDirection.Out, direction == InterfaceDirection.In)
-        {}
+            base(name, type, string.Empty)
+        {
+            Direction = direction;
+        }
 
         public string Semantic { get; set; }
         public string Default { get; set; }
+        public InterfaceDirection Direction { get; set; }
 
         // private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF location, object context)
         {
             /*
             var size = Measure(graphics);
@@ -372,6 +381,7 @@ namespace NodeEditorCore
 
         internal override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
     }
+    
     internal class ShaderFragmentAddParameterItem : NodeItem
     {
         public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
@@ -381,7 +391,9 @@ namespace NodeEditorCore
                 var result = fm.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Node.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, Direction) { Semantic = fm.Semantic, Default = fm.Default });
+                    Node.AddItem(
+                        new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, Direction) { Semantic = fm.Semantic, Default = fm.Default }, 
+                        ShaderFragmentNodeConnector.GetDirectionalColumn(Direction));
                 }
             }
             return true;
@@ -392,26 +404,19 @@ namespace NodeEditorCore
             return new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
         }
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
         {
-            var size = Measure(graphics);
-            size.Width = Math.Max(minimumSize.Width, size.Width);
-            size.Height = Math.Max(minimumSize.Height, size.Height);
-
-            using (var path = GraphRenderer.CreateRoundedRectangle(size, location))
+            using (var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location))
             {
                 using (var brush = new SolidBrush(Color.FromArgb(64, Color.Black)))
                     graphics.FillPath(brush, path);
 
-                var rect = new RectangleF(location, size);
                 graphics.DrawString(
                     "+", SystemFonts.MenuFont, 
-                    ((GetState() & RenderState.Hover) != 0) ? Brushes.White : Brushes.Black, rect, 
+                    ((GetState() & RenderState.Hover) != 0) ? Brushes.White : Brushes.Black, boundary, 
                     GraphConstants.CenterTextStringFormat);
             }
         }
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 
         public InterfaceDirection Direction = InterfaceDirection.In;
     }
@@ -537,12 +542,12 @@ namespace NodeEditorCore
                 compositionBatch.AddPart(previewItem);
                 _composer.Compose(compositionBatch);
             }
-            node.AddItem(previewItem);
+            node.AddItem(previewItem, Node.Column.Center);
 
                 // Drop-down selection box for "preview mode"
             var enumList = AsEnumList(previewItem.Geometry, PreviewGeoNames);
-            var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
-            node.AddItem(previewModeSelection);
+            var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
+            node.AddItem(previewModeSelection, Node.Column.Center);
             previewModeSelection.SelectionChanged += 
                 (object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args) => 
                 {
@@ -557,8 +562,8 @@ namespace NodeEditorCore
                 // note --  should could potentially become a more complex editing control
                 //          it might be useful to have some preset defaults and helpers rather than just
                 //          requiring the user to construct the raw string
-            var outputToVisualize = new HyperGraph.Items.NodeTextBoxItem(previewItem.OutputToVisualize, false, false);
-            node.AddItem(outputToVisualize);
+            var outputToVisualize = new HyperGraph.Items.NodeTextBoxItem(previewItem.OutputToVisualize);
+            node.AddItem(outputToVisualize, Node.Column.Center);
             outputToVisualize.TextChanged +=
                 (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
 
@@ -567,7 +572,9 @@ namespace NodeEditorCore
                 foreach (var param in fn.Signature.Parameters)
                 {
                     bool isInput = param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In;
-                    node.AddItem(new ShaderFragmentNodeItem(param.Name, param.Type, archiveName + ":" + param.Name, isInput, !isInput));
+                    node.AddItem(
+                        new ShaderFragmentNodeConnector(param.Name, param.Type, archiveName + ":" + param.Name),
+                        ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out));
                 }
             }
             return node;
@@ -582,25 +589,22 @@ namespace NodeEditorCore
                 var newType = AsEnumValue<ParamSourceType>(item.Items[args.Index], ParamSourceTypeNames);
 
                     //  We might have to change the input/output settings on this node
-                bool isOutput = newType == ParamSourceType.Output;
-                var oldItems = new List<HyperGraph.NodeItem>(node.Items);
+                bool isInput = newType != ParamSourceType.Output;
+                var oldColumn = ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.Out : InterfaceDirection.In);
+                var newColumn = ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out);
+                var oldItems = new List<HyperGraph.NodeItem>(node.ItemsForColumn(oldColumn));
                 foreach (var i in oldItems)
                 {
-                    if (i is ShaderFragmentNodeItem)
+                    if (i is ShaderFragmentNodeConnector)
                     {
                                 // if this is a node item with exactly 1 input/output
                                 // and it is not in the correct direction, then we have to change it.
                                 //  we can't change directly. We need to delete and recreate this node item.
-                        var fragItem = (ShaderFragmentNodeItem)i;
-                        if (    (fragItem.Output.Enabled ^ fragItem.Input.Enabled) == true &&
-                                (fragItem.Output.Enabled) != (isOutput == false))
-                        {
-                            var newItem = new ShaderFragmentNodeItem(
-                                fragItem.Name, fragItem.Type, fragItem.ArchiveName,
-                                isOutput ? true : false, isOutput ? false : true);
-                            node.RemoveItem(fragItem);
-                            node.AddItem(newItem);
-                        }
+                        var fragItem = (ShaderFragmentNodeConnector)i;
+                        node.RemoveItem(fragItem);
+                        node.AddItem(
+                            new ShaderFragmentNodeConnector(fragItem.Name, fragItem.Type, fragItem.ArchiveName),
+                            newColumn);
                     }
                 }
             }
@@ -612,8 +616,8 @@ namespace NodeEditorCore
             node.Tag = new ShaderParameterNodeTag(archiveName);
 
             var enumList = AsEnumList(sourceType, ParamSourceTypeNames);
-            var typeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2, false, false);
-            node.AddItem(typeSelection);
+            var typeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
+            node.AddItem(typeSelection, Node.Column.Center);
             typeSelection.SelectionChanged += ParameterNodeTypeChanged;
             return node;
         }
@@ -625,10 +629,10 @@ namespace NodeEditorCore
             {
                 foreach (var param in parameter.Parameters)
                 {
-                    bool isOutput = type == ParamSourceType.Output;
-                    node.AddItem(new ShaderFragmentNodeItem(
-                        param.Name, param.Type, archiveName + ":" + param.Name,
-                        isOutput ? true : false, isOutput ? false : true));
+                    bool isInput = type != ParamSourceType.Output;
+                    node.AddItem(
+                        new ShaderFragmentNodeConnector(param.Name, param.Type, archiveName + ":" + param.Name),
+                        ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out));
                 }
             }
             return node;
@@ -638,7 +642,7 @@ namespace NodeEditorCore
         {
             var node = new Node(title);
             node.Tag = new ShaderInterfaceParameterNodeTag { Direction = direction };
-            node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction });
+            node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction }, Node.Column.Center);
             return node;
         }
 
@@ -663,37 +667,21 @@ namespace NodeEditorCore
                 return node.Title;
             }
 
-            var item = o as ShaderFragmentNodeItem;
+            var item = o as ShaderFragmentNodeConnector;
             if (item != null)
             {
                 string result = item.GetNameText() + " " + item.GetTypeText();
-                if (item.Input != null && item.Input.Enabled)
+                foreach (var c in item.Connectors)
                 {
-                    foreach (var c in item.Input.Connectors)
+                    var t = (c.From != null) ? (c.From as ShaderFragmentNodeConnector) : null;
+                    if (t != null)
                     {
-                        var t = (c.From != null) ? (c.From.Item as ShaderFragmentNodeItem) : null;
-                        if (t != null)
-                        {
-                            result += " <- " + t.GetNameText() + " in " + t.Node.Title;
-                        }
-                        else
-                            result += " <- " + c.Name;
+                        result += " <-> " + t.GetNameText() + " in " + t.Node.Title;
                     }
+                    else
+                        result += " <-> " + c.Name;
                 }
 
-                if (item.Output != null && item.Output.Enabled)
-                {
-                    foreach (var c in item.Output.Connectors)
-                    {
-                        var t = (c.To != null) ? (c.To.Item as ShaderFragmentNodeItem) : null;
-                        if (t != null)
-                        {
-                            result += " -> " + t.GetNameText() + " in " + t.Node.Title;
-                        }
-                        else
-                            result += " -> " + c.Name;
-                    }
-                }
                 return result;
             }
 

@@ -101,7 +101,7 @@ namespace NodeEditorCore
                     {
                         //  This is a hack... But there should be a drop down list that
                         //  can tell us the type of this parameter struct box.
-                        foreach (var i in n.Items)
+                        foreach (var i in n.CenterItems)
                         {
                             if (i is HyperGraph.Items.NodeDropDownItem)
                             {
@@ -128,7 +128,7 @@ namespace NodeEditorCore
                         var dstNode = connection.To.Node.Tag as ShaderFragmentNodeTag;
                         if (dstNode == null) continue;
 
-                        var dstItem = connection.To.Item as ShaderFragmentNodeItem;
+                        var dstItem = connection.To as ShaderFragmentNodeConnector;
                         if (dstItem == null) continue;
 
                         if (connection.From == null && connection.To.Node == n)
@@ -139,11 +139,11 @@ namespace NodeEditorCore
                                     {   Value = connection.Name,
                                         OutputNodeID = dstNode.Id, OutputParameterName = dstItem.Name });
                         }
-                        else if (connection.To.Node == n && connection.To.Item is ShaderFragmentInterfaceParameterItem)
+                        else if (connection.To.Node == n && connection.To is ShaderFragmentInterfaceParameterItem)
                         {
                                 // this is an output parameter. This is the only case where we creating the connection
                                 // while processing the node on the "out" side
-                            var outputParam = (ShaderFragmentInterfaceParameterItem)connection.To.Item;
+                            var outputParam = (ShaderFragmentInterfaceParameterItem)connection.To;
                             var resultConnection = new ShaderPatcherLayer.OutputParameterConnection
                                 {
                                     VisualNodeId = visualNodeId,    // (visual node for the output box)
@@ -151,20 +151,20 @@ namespace NodeEditorCore
                                     Name = outputParam.Name,
                                     Semantic = outputParam.Semantic
                                 };
-                            if (connection.From.Item is ShaderFragmentNodeItem)
+                            if (connection.From is ShaderFragmentNodeConnector)
                             {
-                                var tag = connection.From.Item.Node.Tag as ShaderFragmentNodeTag;
+                                var tag = connection.From.Node.Tag as ShaderFragmentNodeTag;
                                 if (tag != null) resultConnection.InputNodeID = tag.Id;
-                                resultConnection.InputParameterName = ((ShaderFragmentNodeItem)connection.From.Item).Name;
+                                resultConnection.InputParameterName = ((ShaderFragmentNodeConnector)connection.From).Name;
                             }
                             nodeGraph.OutputParameterConnections.Add(resultConnection);
                         }
                         else if (connection.From.Node == n)
                         {
-                            if (connection.From.Item is ShaderFragmentInterfaceParameterItem)
+                            if (connection.From is ShaderFragmentInterfaceParameterItem)
                             {
                                 // it's an input parameter... we just need type, name, semantic
-                                var inputParam = (ShaderFragmentInterfaceParameterItem)connection.From.Item;
+                                var inputParam = (ShaderFragmentInterfaceParameterItem)connection.From;
                                 nodeGraph.InputParameterConnections.Add(
                                     new ShaderPatcherLayer.InputParameterConnection
                                         {
@@ -177,7 +177,7 @@ namespace NodeEditorCore
                                             Default = inputParam.Default
                                         });
                             }
-                            else if (connection.To.Item is ShaderFragmentInterfaceParameterItem)
+                            else if (connection.To is ShaderFragmentInterfaceParameterItem)
                             {
                                 // it's an output parameter... 
                                 // this will be handled when processing the node on the out side
@@ -192,9 +192,9 @@ namespace NodeEditorCore
                                         OutputParameterName = dstItem.Name
                                     };
 
-                                if (connection.From.Item is ShaderFragmentNodeItem)
+                                if (connection.From is ShaderFragmentNodeConnector)
                                 {
-                                    var sourceItem = (ShaderFragmentNodeItem)connection.From.Item;
+                                    var sourceItem = (ShaderFragmentNodeConnector)connection.From;
                                     resultConnection.InputParameterName = sourceItem.Name;
                                     resultConnection.InputType = TypeFromNodeItem(sourceItem);
                                 }
@@ -211,9 +211,9 @@ namespace NodeEditorCore
                                 InputNodeID = nTag.Id
                             };
 
-                        if (connection.From.Item is ShaderFragmentNodeItem)
+                        if (connection.From is ShaderFragmentNodeConnector)
                         {
-                            var sourceItem = (ShaderFragmentNodeItem)connection.From.Item;
+                            var sourceItem = (ShaderFragmentNodeConnector)connection.From;
                             resultConnection.InputParameterName = sourceItem.Name;
                             resultConnection.Type = TypeFromNodeItem(sourceItem);
                         }
@@ -222,7 +222,7 @@ namespace NodeEditorCore
                 }
 
                 // build the preview settings objects
-                foreach (var i in n.Items)
+                foreach (var i in n.CenterItems)
                 {
                     var preview = i as ShaderFragmentPreviewItem;
                     if (preview == null) continue;
@@ -236,7 +236,7 @@ namespace NodeEditorCore
             return nodeGraph;
         }
 
-        private string TypeFromNodeItem(ShaderFragmentNodeItem nodeItem)
+        private string TypeFromNodeItem(ShaderFragmentNodeConnector nodeItem)
         {
             if (nodeItem.ArchiveName != null && nodeItem.ArchiveName.Length != 0)
             {
@@ -315,15 +315,17 @@ namespace NodeEditorCore
                 {
                     if (nodeIdToControlNode.ContainsKey(c.InputNodeID) && nodeIdToControlNode.ContainsKey(c.OutputNodeID))
                     {
-                        var inputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.InputNodeID],
-                            (item) => (item.Output != null && item.Output.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.InputParameterName)),
-                            () => new ShaderFragmentNodeItem(c.InputParameterName, c.InputType, null, false, true));
+                        var inputItem = FindOrCreateNodeItem(
+                            nodeIdToControlNode[c.InputNodeID], Node.Column.Output,
+                            (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.InputParameterName)),
+                            () => new ShaderFragmentNodeConnector(c.InputParameterName, c.InputType, null));
                         
-                        var outputItem = FindOrCreateNodeItem(nodeIdToControlNode[c.OutputNodeID],
-                            (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
-                            () => new ShaderFragmentNodeItem(c.OutputParameterName, "", null, true, false));
+                        var outputItem = FindOrCreateNodeItem(
+                            nodeIdToControlNode[c.OutputNodeID], Node.Column.Input,
+                            (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
+                            () => new ShaderFragmentNodeConnector(c.OutputParameterName, "", null));
 
-                        graph.Connect(inputItem.Output, outputItem.Input);
+                        graph.Connect(inputItem, outputItem);
                     }
                 }
 
@@ -333,12 +335,13 @@ namespace NodeEditorCore
                     if (nodeIdToControlNode.ContainsKey(c.OutputNodeID))
                     {
                         var node = nodeIdToControlNode[c.OutputNodeID];
-                        var outputItem = FindOrCreateNodeItem(node,
-                            (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
-                            () => new ShaderFragmentNodeItem(c.OutputParameterName, "float", null, true, false));
+                        var outputItem = FindOrCreateNodeItem(
+                            node, Node.Column.Input,
+                            (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
+                            () => new ShaderFragmentNodeConnector(c.OutputParameterName, "float", null));
 
                         var connection = new NodeConnection();
-                        connection.To = outputItem.Input;
+                        connection.To = outputItem;
                         connection.Name = c.Value;
                         node.AddConnection(connection);
                     }
@@ -350,14 +353,14 @@ namespace NodeEditorCore
                     if (!nodeIdToControlNode.ContainsKey(c.OutputNodeID)) continue;
 
                     var dstItem = FindOrCreateNodeItem(
-                        nodeIdToControlNode[c.OutputNodeID],
-                        (item) => (item.Input != null && item.Input.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.OutputParameterName)),
-                        () => new ShaderFragmentNodeItem(c.OutputParameterName, c.Type, null, true, false));
+                        nodeIdToControlNode[c.OutputNodeID], Node.Column.Input,
+                        (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
+                        () => new ShaderFragmentNodeConnector(c.OutputParameterName, c.Type, null));
 
                     Node srcNode = subgraph;
 
                     var srcItem = FindOrCreateNodeItem(
-                        srcNode,
+                        srcNode, Node.Column.Output,
                         (item) => {
                             var i = item as ShaderFragmentInterfaceParameterItem;
                             if (i==null) return false;
@@ -365,7 +368,7 @@ namespace NodeEditorCore
                         },
                         () => new ShaderFragmentInterfaceParameterItem(c.Name, c.Type, InterfaceDirection.In) { Semantic = c.Semantic, Default = c.Default });
 
-                    graph.Connect(srcItem.Output, dstItem.Input);
+                    graph.Connect(srcItem, dstItem);
                 }
 
                     // --------< Output Parameter Connections >--------
@@ -374,14 +377,14 @@ namespace NodeEditorCore
                     if (!nodeIdToControlNode.ContainsKey(c.InputNodeID)) continue;
 
                     var srcItem = FindOrCreateNodeItem(
-                        nodeIdToControlNode[c.InputNodeID],
-                        (item) => (item.Output != null && item.Output.Enabled && item is ShaderFragmentNodeItem && ((ShaderFragmentNodeItem)item).Name.Equals(c.InputParameterName)),
-                        () => new ShaderFragmentNodeItem(c.InputParameterName, c.Type, null, false, true));
+                        nodeIdToControlNode[c.InputNodeID], Node.Column.Output,
+                        (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.InputParameterName)),
+                        () => new ShaderFragmentNodeConnector(c.InputParameterName, c.Type, null));
 
                     Node dstNode = subgraph;
 
                     var dstItem = FindOrCreateNodeItem(
-                        dstNode,
+                        dstNode, Node.Column.Input,
                         (item) =>
                         {
                             var i = item as ShaderFragmentInterfaceParameterItem;
@@ -390,19 +393,22 @@ namespace NodeEditorCore
                         },
                         () => new ShaderFragmentInterfaceParameterItem(c.Name, c.Type, InterfaceDirection.Out) { Semantic = c.Semantic });
 
-                    graph.Connect(srcItem.Output, dstItem.Input);
+                    graph.Connect(srcItem, dstItem);
                 }
             }
         }
 
-        private static NodeItem FindOrCreateNodeItem(Node node, Func<NodeItem, bool> predicate, Func<NodeItem> creator)
+        private static NodeConnector FindOrCreateNodeItem(Node node, Node.Column column, Func<NodeConnector, bool> predicate, Func<NodeConnector> creator)
         {
-            foreach (var i in node.Items)
-                if (predicate(i))
-                    return i;
+            foreach (var i in node.ItemsForColumn(column))
+            {
+                var c = i as NodeConnector;
+                if (c != null && predicate(c))
+                    return c;
+            }
 
             var newItem = creator();
-            node.AddItem(newItem);
+            node.AddItem(newItem, column);
             return newItem;
         }
 

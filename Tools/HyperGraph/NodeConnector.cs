@@ -28,24 +28,13 @@ using System.Drawing;
 
 namespace HyperGraph
 {
-	public abstract class NodeConnector : IElement
-	{
-		public NodeConnector(NodeItem item, bool enabled) { Item = item; Enabled = enabled; }
-
-		// The Node that owns this NodeConnector
-		public Node				Node			{ get { return Item.Node; } }
-		// The NodeItem that owns this NodeConnector
-		public NodeItem			Item			{ get; private set; }
-		// Set to true if this NodeConnector can be connected to
-		public bool				Enabled			{ get; internal set; }
-		
-		// Iterates through all the connectors connected to this connector
-		public IEnumerable<NodeConnection> Connectors
+	public abstract class NodeConnector : NodeItem
+    {
+        // Iterates through all the connectors connected to this connector
+        public IEnumerable<NodeConnection> Connectors
 		{
 			get
 			{
-				if (!Enabled)
-					yield break;
 				var parentNode = Node;
 				if (parentNode == null)
 					yield break;
@@ -62,8 +51,6 @@ namespace HyperGraph
 		{
 			get
 			{
-				if (!Enabled)
-					return false;
 				var parentNode = Node;
 				if (parentNode == null)
 					return false;
@@ -76,22 +63,6 @@ namespace HyperGraph
 			}
 		}
 
-		internal PointF			Center			{ get { return new PointF((bounds.Left + bounds.Right) / 2.0f, (bounds.Top + bounds.Bottom) / 2.0f); } }
-		internal RectangleF		bounds;
-		internal RenderState	state;
-
-		public abstract ElementType ElementType { get; }
-	}
-
-	public sealed class NodeInputConnector : NodeConnector
-	{
-		public NodeInputConnector(NodeItem item, bool enabled) : base(item, enabled) { }
-		public override ElementType ElementType { get { return ElementType.InputConnector; } }
-	}
-
-	public sealed class NodeOutputConnector : NodeConnector
-	{
-		public NodeOutputConnector(NodeItem item, bool enabled) : base(item, enabled) { }
-		public override ElementType ElementType { get { return ElementType.OutputConnector; } }
-	}
+        public new ElementType ElementType      { get { return ElementType.Connector; } }
+    }
 }

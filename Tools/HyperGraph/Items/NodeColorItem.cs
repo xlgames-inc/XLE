@@ -34,8 +34,7 @@ namespace HyperGraph.Items
 	{
 		public event EventHandler<NodeItemEventArgs> Clicked;
 
-		public NodeColorItem(string text, Color color, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
+		public NodeColorItem(string text, Color color)
 		{
 			this.Text = text;
 			this.Color = color;
@@ -79,16 +78,7 @@ namespace HyperGraph.Items
 				if (this.TextSize.IsEmpty)
 				{
 					var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.MinimumItemHeight);
-
-					if (this.Input.Enabled != this.Output.Enabled)
-					{
-						if (this.Input.Enabled)
-							this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.LeftMeasureTextStringFormat);
-						else
-							this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.RightMeasureTextStringFormat);
-					} else
-						this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.CenterMeasureTextStringFormat);
-
+					this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.CenterMeasureTextStringFormat);
 					this.TextSize.Width  = Math.Max(size.Width, this.TextSize.Width + ColorBoxSize + Spacing);
 					this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height);
 				}
@@ -99,29 +89,12 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
-
 			var alignment	= HorizontalAlignment.Center;
 			var format		= GraphConstants.CenterTextStringFormat;
-			if (this.Input.Enabled != this.Output.Enabled)
-			{
-				if (this.Input.Enabled)
-				{
-					alignment	= HorizontalAlignment.Left;
-					format		= GraphConstants.LeftTextStringFormat;
-				} else
-				{
-					alignment	= HorizontalAlignment.Right;
-					format		= GraphConstants.RightTextStringFormat;
-				}
-			}
-
-			var rect		= new RectangleF(location, size);
-			var colorBox	= new RectangleF(location, size);
+			var rect		= boundary;
+            var colorBox	= boundary;
 			colorBox.Width	= ColorBoxSize;
 			switch (alignment)
 			{
@@ -158,7 +131,5 @@ namespace HyperGraph.Items
 			//}
 			//graphics.DrawRectangle(Pens.Black, colorBox.X, colorBox.Y, colorBox.Width, colorBox.Height);
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

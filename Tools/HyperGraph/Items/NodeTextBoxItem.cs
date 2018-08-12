@@ -42,14 +42,7 @@ namespace HyperGraph.Items
 	{
 		public event EventHandler<AcceptNodeTextChangedEventArgs> TextChanged;
 
-		public NodeTextBoxItem(string text, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
-		{
-			this.Text = text;
-		}
-
-		public NodeTextBoxItem(string text) :
-			this(text, false, false)
+		public NodeTextBoxItem(string text)
 		{
 			this.Text = text;
 		}
@@ -119,28 +112,23 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
+			var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
 
-			var path = GraphRenderer.CreateRoundedRectangle(size, location);
-
-			location.Y += 1;
-			location.X += 1;
+            RectangleF textBoundary = boundary;
+            textBoundary.Inflate(-1.0f, -1.0f);
 
 			if ((state & RenderState.Hover) == RenderState.Hover)
 			{
 				graphics.DrawPath(Pens.White, path);
-				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);
-			} else
+				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
+			}
+            else
 			{
 				graphics.DrawPath(Pens.Black, path);
-				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, new RectangleF(location, size), GraphConstants.LeftTextStringFormat);
+				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
 			}
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

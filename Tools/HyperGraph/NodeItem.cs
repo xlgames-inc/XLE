@@ -36,23 +36,8 @@ namespace HyperGraph
 
 	public abstract class NodeItem : IElement
 	{
-		public NodeItem()
-		{
-			this.Input		= new NodeInputConnector(this, false);
-			this.Output		= new NodeOutputConnector(this, false);
-		}
-
-		public NodeItem(bool enableInput, bool enableOutput)
-		{
-			this.Input		= new NodeInputConnector(this, enableInput);
-			this.Output		= new NodeOutputConnector(this, enableOutput);
-		}
-
 		public Node					Node			{ get; internal set; }
 		public object				Tag				{ get; set; }
-
-		public NodeConnector		Input			{ get; private set; }
-		public NodeConnector		Output			{ get; private set; }
 
 		internal RectangleF		    bounds;
         internal RenderState		state			= RenderState.None;
@@ -71,8 +56,7 @@ namespace HyperGraph
 		public virtual bool			OnDrag(PointF location)		 { return false; }		
 		public virtual bool			OnEndDrag() 				 { return false; }
 		public abstract SizeF		Measure(Graphics context);
-		public abstract void		Render(Graphics graphics, SizeF minimumSize, PointF position, object context);
-        public abstract void        RenderConnector(Graphics graphics, RectangleF rectangle);
+		public abstract void		Render(Graphics graphics, RectangleF rectangle, object context);
 
 		public ElementType ElementType { get { return ElementType.NodeItem; } }
 

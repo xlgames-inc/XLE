@@ -66,8 +66,7 @@ namespace HyperGraph
                         }
                         break;
                     }
-                case ElementType.InputConnector:
-                case ElementType.OutputConnector:
+                case ElementType.Connector:
                     var connector = element as NodeConnector;
                     BringElementToFront(connector.Node);
                     break;
@@ -247,13 +246,20 @@ namespace HyperGraph
         #endregion
 
         #region Connect / Disconnect
-        public NodeConnection Connect(NodeItem from, NodeItem to, string name)
+        private bool IsInputConnector(NodeConnector connector)
         {
-            return Connect(from.Output, to.Input, name);
+            return connector.Node.InputConnectors.Contains(connector);
         }
 
         public NodeConnection Connect(NodeConnector from, NodeConnector to, string name)
         {
+            if (!IsInputConnector(to))
+            {
+                var temp = from;
+                from = to;
+                to = temp;
+                System.Diagnostics.Debug.Assert(IsInputConnector(to));
+            }
             if (from != null)
             {
                 foreach (var other in from.Node.Connections)
@@ -353,6 +359,13 @@ namespace HyperGraph
 
         public bool ConnectionIsAllowed(NodeConnector from, NodeConnector to)
         {
+            if (!IsInputConnector(to))
+            {
+                var temp = from;
+                from = to;
+                to = temp;
+                System.Diagnostics.Debug.Assert(IsInputConnector(to));
+            }
             if (null != CompatibilityStrategy)
             {
                 if (CompatibilityStrategy.CanConnect(from, to) == ConnectionType.Incompatible)
@@ -459,8 +472,7 @@ namespace HyperGraph
 				    case ElementType.NodeItem:
 					    var focusItem = e as NodeItem;
 					    return (focusItem.Node == element);
-				    case ElementType.InputConnector:
-				    case ElementType.OutputConnector:
+				    case ElementType.Connector:
 					    var focusConnector = e as NodeConnector;
 					    return (focusConnector.Node == element);
 				    case ElementType.NodeSelection:

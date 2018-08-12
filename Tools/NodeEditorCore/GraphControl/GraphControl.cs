@@ -130,23 +130,11 @@ namespace NodeEditorCore
                 else if (result == DialogResult.No)
                 {
                     // we must disconnect before removing the item...
-                    if (interfItem.Output != null)
+                    for (; ; )
                     {
-                        for (; ; )
-                        {
-                            var c = interfItem.Output.Connectors.FirstOrDefault();
-                            if (c == null) break;
-                            GetGraphModel().Disconnect(c);
-                        }
-                    }
-                    if (interfItem.Input != null)
-                    {
-                        for (; ; )
-                        {
-                            var c = interfItem.Input.Connectors.FirstOrDefault();
-                            if (c == null) break;
-                            GetGraphModel().Disconnect(c);
-                        }
+                        var c = interfItem.Connectors.FirstOrDefault();
+                        if (c == null) break;
+                        GetGraphModel().Disconnect(c);
                     }
                     interfItem.Node.RemoveItem(interfItem);
                     GetGraphModel().InvokeMiscChange(true);
@@ -154,9 +142,14 @@ namespace NodeEditorCore
             }
         }
 
+        private bool IsInputConnector(NodeConnector connector)
+        {
+            return connector.Node.InputItems.Contains(connector);
+        }
+
         private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
         {
-            var interfItem = e.Connector.Item as ShaderFragmentInterfaceParameterItem;
+            var interfItem = e.Connector as ShaderFragmentInterfaceParameterItem;
             if (interfItem != null)
             {
                 EditInterfaceParameter(interfItem);
@@ -164,7 +157,7 @@ namespace NodeEditorCore
             }
 
             // For input connectors, we can try to add a constant connection
-            if (e.Connector == e.Connector.Item.Input)
+            if (IsInputConnector(e.Connector))
             {
                 EditSimpleConnection(e.Connector);
             }
@@ -204,16 +197,16 @@ namespace NodeEditorCore
             //         e.Cancel = false;
             //     }
             // }
-            else if (e.Element is NodeConnector && ((NodeConnector)e.Element).Item is ShaderFragmentNodeItem)
+            else if (e.Element is NodeConnector && ((NodeConnector)e.Element) is ShaderFragmentNodeConnector)
             {
                 NodeConnector conn = (NodeConnector)e.Element;
-                var tag = (ShaderFragmentNodeItem)conn.Item;
+                var tag = (ShaderFragmentNodeConnector)conn;
                 if (tag.ArchiveName != null)
                 {
                     // pop up a context menu for this connector
                     var menu = new ContextMenuStrip();
 
-                    var param = conn.Item as ShaderFragmentInterfaceParameterItem;
+                    var param = conn as ShaderFragmentInterfaceParameterItem;
                     if (param != null)
                     {
                         var editItem = new ToolStripMenuItem() { Text = "Edit parameter" };
@@ -221,7 +214,7 @@ namespace NodeEditorCore
                         menu.Items.Add(editItem);
                     }
 
-                    if (conn == conn.Item.Input)
+                    if (IsInputConnector(conn))
                     {
                         var existing = GetSimpleConnection(conn);
                         if (!string.IsNullOrEmpty(existing))
@@ -280,7 +273,7 @@ namespace NodeEditorCore
         {
             var n = GetNode(AttachedId(sender));
             if (n == null) return null;
-            return (ShaderFragmentPreviewItem)n.Items.Where(x => x is ShaderFragmentPreviewItem).FirstOrDefault();
+            return (ShaderFragmentPreviewItem)n.CenterItems.Where(x => x is ShaderFragmentPreviewItem).FirstOrDefault();
         }
 
         public class NodePreviewContext

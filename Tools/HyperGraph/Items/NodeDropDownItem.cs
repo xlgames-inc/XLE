@@ -42,8 +42,7 @@ namespace HyperGraph.Items
 	{
 		public event EventHandler<AcceptNodeSelectionChangedEventArgs> SelectionChanged;
 
-		public NodeDropDownItem(string[] items, int selectedIndex, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
+		public NodeDropDownItem(string[] items, int selectedIndex)
 		{
 			this.Items = items.ToArray();
 			this.SelectedIndex = selectedIndex;
@@ -196,20 +195,17 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
 			var text = string.Empty;
 			if (Items != null &&
 				SelectedIndex >= 0 && SelectedIndex < Items.Length)
 				text = Items[SelectedIndex];
 
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
+			var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
 
-			var path = GraphRenderer.CreateRoundedRectangle(size, location);
-
-            var stringRect = new RectangleF(new PointF(location.X + 1, location.Y + 1), new SizeF(size.Width - 2, size.Height - 2));
+            var stringRect = boundary;
+            stringRect.Inflate(-1.0f, -1.0f);
             var arrowRect = stringRect;
 
             float sep = 2.0f;
@@ -237,7 +233,5 @@ namespace HyperGraph.Items
                     });
 
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

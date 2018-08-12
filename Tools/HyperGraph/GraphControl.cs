@@ -227,8 +227,7 @@ namespace HyperGraph
 					break;
 				}
 
-				case ElementType.InputConnector:
-				case ElementType.OutputConnector:
+				case ElementType.Connector:
 					var connector = element as NodeConnector;
 					connector.state = SetFlag(connector.state, flag, value);
 					break;
@@ -270,8 +269,7 @@ namespace HyperGraph
 					break;
 				}
 
-				case ElementType.InputConnector:
-				case ElementType.OutputConnector:
+				case ElementType.Connector:
 					var connector = element as NodeConnector;
 					connector.state = SetFlag(connector.state, flag, value);
 					SetFlag(connector.Node, flag, value, setConnections);
@@ -442,17 +440,21 @@ namespace HyperGraph
 		#region FindNodeItemAt
 		static NodeItem FindNodeItemAt(Node node, PointF location)
 		{
-			foreach (var item in node.Items)
-			{
-				if (item.bounds.IsEmpty)
-					continue;
+            Node.Column[] columns = new Node.Column[] { Node.Column.Input, Node.Column.Center, Node.Column.Output };
+            foreach (var c in columns)
+            {
+                foreach (var item in node.ItemsForColumn(c))
+                {
+                    if (item.bounds.IsEmpty)
+                        continue;
 
-				if (location.Y < item.bounds.Top)
-					break;
+                    if (location.Y < item.bounds.Top)
+                        break;
 
-				if (location.Y < item.bounds.Bottom)
-					return item;
-			}
+                    if (location.Y < item.bounds.Bottom)
+                        return item;
+                }
+            }
 			return null;
 		}
 		#endregion
@@ -649,17 +651,10 @@ namespace HyperGraph
 						RenderState renderState = RenderState.Dragging | RenderState.Hover;
 						switch (DragElement.ElementType)
 						{
-							case ElementType.OutputConnector:
+							case ElementType.Connector:
 								var outputConnector = DragElement as NodeConnector;
                                 renderState |= (outputConnector.state & (RenderState.Incompatible | RenderState.Compatible | RenderState.Conversion));
-								GraphRenderer.RenderOutputConnection(e.Graphics, outputConnector, 
-									transformed_location.X, transformed_location.Y, renderState);
-								break;
-							case ElementType.InputConnector:
-								var inputConnector = DragElement as NodeConnector;
-                                renderState |= (inputConnector.state & (RenderState.Incompatible | RenderState.Compatible | RenderState.Conversion));
-								GraphRenderer.RenderInputConnection(e.Graphics, inputConnector, 
-									transformed_location.X, transformed_location.Y, renderState);
+								GraphRenderer.RenderConnection(e.Graphics, outputConnector, transformed_location.X, transformed_location.Y, renderState);
 								break;
 						}
 					}
@@ -858,7 +853,7 @@ namespace HyperGraph
 					{
 						var connection = element as NodeConnection;
 						if (connection != null)
-							originalLocation = connection.To.Center;
+							originalLocation = connection.To.bounds.Location;
 					}
 
 					// Should compatible connectors be highlighted?
@@ -873,7 +868,7 @@ namespace HyperGraph
 						}
 						if (connectorFrom != null)
 						{
-							if (element.ElementType == ElementType.InputConnector)
+							if (element.ElementType == ElementType.Connector)
 							{
 								// Iterate over all nodes
                                 foreach (Node graphNode in _model.Nodes)
@@ -938,8 +933,7 @@ namespace HyperGraph
                         {
                             Selection.SelectSingle((element as NodeItem).Node);
                         }
-                        else if (element.ElementType == ElementType.InputConnector
-                            || element.ElementType == ElementType.OutputConnector)
+                        else if (element.ElementType == ElementType.Connector)
                         {
                             Selection.SelectSingle((element as NodeConnector).Node);
                         }
@@ -961,10 +955,15 @@ namespace HyperGraph
 			transformation.TransformPoints(points);
 			originalMouseLocation = ctrl.PointToScreen(new Point((int)points[0].X, (int)points[0].Y));
 		}
-		#endregion
+        #endregion
 
-		#region OnMouseMove
-		private void OnMouseMove(object sender, MouseEventArgs e)
+        #region OnMouseMove
+        private bool IsInputConnector(NodeConnector connector)
+        {
+            return connector.Node.InputConnectors.Contains(connector);
+        }
+
+        private void OnMouseMove(object sender, MouseEventArgs e)
 		{
 			if (DragElement == null &&
 				command != CommandMode.MarqueSelection &&
@@ -1169,10 +1168,9 @@ namespace HyperGraph
 								else
 									DragElement = null;
 
-								goto case ElementType.OutputConnector;
+								goto case ElementType.Connector;
 							}
-							case ElementType.InputConnector:	// drag connection from input or output connector
-							case ElementType.OutputConnector:
+							case ElementType.Connector:	// drag connection from input or output connector
 							{
 								snappedLocation = lastLocation = currentLocation;
 								needRedraw = true;
@@ -1212,39 +1210,20 @@ namespace HyperGraph
 						var node = element as Node;
 						if (DragElement != null)
 						{
-							if (DragElement.ElementType == ElementType.InputConnector)
+							if (DragElement.ElementType == ElementType.Connector)
 							{
 								var dragConnector = DragElement as NodeConnector;
 								if (dragConnector == null)
 									break;
 
-                                var outputConnectors = node.OutputConnectors.ToList();
-								if (outputConnectors.Count == 1)
+                                var connectors = IsInputConnector(dragConnector) ? node.OutputConnectors.ToList() : node.InputConnectors.ToList();
+								if (connectors.Count == 1)
 								{
 									// Check if this connection would be allowed.
-                                    if (_model.ConnectionIsAllowed(dragConnector, outputConnectors[0]))
+                                    if (_model.ConnectionIsAllowed(dragConnector, connectors[0]))
 									{
-										element = outputConnectors[0];
-										goto case ElementType.OutputConnector;
-									}
-								}
-								if (node != dragConnector.Node)
-									draggingOverElement = node;
-							} else
-							if (DragElement.ElementType == ElementType.OutputConnector)
-							{
-								var dragConnector = DragElement as NodeConnector;
-								if (dragConnector == null)
-									break;
-
-                                var inputConnectors = node.InputConnectors.ToList();
-                                if (inputConnectors.Count == 1)
-								{
-									// Check if this connection would be allowed.
-                                    if (_model.ConnectionIsAllowed(dragConnector, inputConnectors[0]))
-									{
-										element = inputConnectors[0];
-										goto case ElementType.InputConnector;
+										element = connectors[0];
+										goto case ElementType.Connector;
 									}
 								}
 								if (node != dragConnector.Node)
@@ -1255,16 +1234,13 @@ namespace HyperGraph
 						}
 						break;
 					}
-					case ElementType.InputConnector:
-					case ElementType.OutputConnector:
+					case ElementType.Connector:
 					{
 						destinationConnector = element as NodeConnector;
 						if (destinationConnector == null)
 							break;
 						
-						if (DragElement != null &&
-							(DragElement.ElementType == ElementType.InputConnector ||
-							 DragElement.ElementType == ElementType.OutputConnector))
+						if (DragElement != null && DragElement.ElementType == ElementType.Connector)
 						{
 							var dragConnector = DragElement as NodeConnector;
 							if (dragConnector != null)
@@ -1351,8 +1327,7 @@ namespace HyperGraph
 			{
 				default:
 				case ElementType.Connection:		return null;
-				case ElementType.InputConnector:	return ((NodeInputConnector)element).Node;
-				case ElementType.OutputConnector:	return ((NodeInputConnector)element).Node;
+				case ElementType.Connector:	        return ((NodeConnector)element).Node;
 				case ElementType.NodeItem:			return ((NodeItem)element).Node;
 				case ElementType.Node:				return (Node)element;
 			}
@@ -1437,28 +1412,13 @@ namespace HyperGraph
 				{
 					switch (DragElement.ElementType)
 					{
-						case ElementType.InputConnector:
+						case ElementType.Connector:
 						{
 							var inputConnector	= (NodeConnector)DragElement;
-							var outputConnector = HoverElement as NodeOutputConnector;
+							var outputConnector = HoverElement as NodeConnector;
                             if (outputConnector != null &&
                                 outputConnector.Node != inputConnector.Node &&
                                 (inputConnector.state & (RenderState.Compatible | RenderState.Conversion)) != 0)
-                            {
-                                var newConnection = _model.Connect(outputConnector, inputConnector);
-                                if (Selection != null)
-                                    Selection.SelectSingle(newConnection);
-                            }
-							needRedraw = true;
-							return;
-						}
-						case ElementType.OutputConnector:
-						{
-							var outputConnector = (NodeConnector)DragElement;
-							var inputConnector	= HoverElement as NodeInputConnector;
-                            if (inputConnector != null &&
-                                inputConnector.Node != outputConnector.Node &&
-                                (outputConnector.state & (RenderState.Compatible | RenderState.Conversion)) != 0)
                             {
                                 var newConnection = _model.Connect(outputConnector, inputConnector);
                                 if (Selection != null)
@@ -1581,8 +1541,7 @@ namespace HyperGraph
                     ctrl.Invalidate();
 					break;
 
-                case ElementType.InputConnector:
-                case ElementType.OutputConnector:
+                case ElementType.Connector:
                     if (ConnectorDoubleClick != null)
                         ConnectorDoubleClick(this, new NodeConnectorEventArgs() { Connector = (NodeConnector)element, Node = ((NodeConnector)element).Node });
                     break;

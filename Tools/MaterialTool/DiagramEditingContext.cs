@@ -233,8 +233,12 @@ namespace MaterialTool
         public IEnumerable<object> GetChildren(object parent)
         {
             var n = parent as HyperGraph.Node;
-            if (n==null) return Enumerable.Empty<object>();
-            return n.Items;
+            if (n != null)
+            {
+                foreach (var i in n.InputItems) yield return i;
+                foreach (var i in n.CenterItems) yield return i;
+                foreach (var i in n.OutputItems) yield return i;
+            }
         }
 
         public void GetInfo(object item, ItemInfo info)

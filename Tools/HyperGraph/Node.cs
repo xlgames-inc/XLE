@@ -57,7 +57,7 @@ namespace HyperGraph
 		}
 		#endregion
 
-		public bool				HasNoItems		{ get { return nodeItems.Count == 0; } }
+		public bool				HasNoItems		{ get { return (inputItems.Count == 0) && (centerItems.Count == 0) && (outputItems.Count == 0); } }
 
 		public PointF			Location		{ get; set; }
 		public object			Tag				{ get; set; }
@@ -65,15 +65,30 @@ namespace HyperGraph
         public object           SubGraphTag     { get; set; }
 
 		public IEnumerable<NodeConnection>	Connections { get { return connections; } }
-		public IEnumerable<NodeItem>		Items		{ get { return nodeItems; } }
+
+		public IEnumerable<NodeItem>		InputItems		{ get { return inputItems; } }
+        public IEnumerable<NodeItem>        CenterItems     { get { return centerItems; } }
+        public IEnumerable<NodeItem>        OutputItems     { get { return outputItems; } }
+
+        public enum Column {  Input, Center, Output };
+        public IEnumerable<NodeItem>        ItemsForColumn(Column c)
+        {
+            if (c == Column.Input) return InputItems;
+            if (c == Column.Center) return CenterItems;
+            if (c == Column.Output) return OutputItems;
+            return null;
+        }
 
         public IEnumerable<NodeConnector>   InputConnectors
         {
             get
             {
-                foreach (var i in nodeItems)
-                    if (i.Input != null && i.Input.Enabled)
-                        yield return i.Input;
+                foreach (var i in InputItems)
+                {
+                    var c = i as NodeConnector;
+                    if (c != null)
+                        yield return c;
+                }
             }
         }
 
@@ -81,9 +96,12 @@ namespace HyperGraph
         {
             get
             {
-                foreach (var i in nodeItems)
-                    if (i.Output != null && i.Output.Enabled)
-                        yield return i.Output;
+                foreach (var i in OutputItems)
+                {
+                    var c = i as NodeConnector;
+                    if (c != null)
+                        yield return c;
+                }
             }
         }
 
@@ -94,31 +112,36 @@ namespace HyperGraph
 
 		private readonly List<NodeConnection>	connections			= new List<NodeConnection>();
 		internal readonly NodeTitleItem			titleItem			= new NodeTitleItem();
-		private readonly List<NodeItem>			nodeItems			= new List<NodeItem>();
+		private readonly List<NodeItem>			inputItems			= new List<NodeItem>();
+        private readonly List<NodeItem>         centerItems         = new List<NodeItem>();
+        private readonly List<NodeItem>         outputItems         = new List<NodeItem>();
 
-		public Node(string title)
+        public Node(string title)
 		{
 			this.Title = title;
 			titleItem.Node = this;
 		}
 
-		public void AddItem(NodeItem item)
+		public void AddItem(NodeItem item, Column column)
 		{
-			if (nodeItems.Contains(item))
-				return;
 			if (item.Node != null)
 				item.Node.RemoveItem(item);
-			nodeItems.Add(item);
+            switch (column)
+            {
+            case Column.Input: inputItems.Add(item); break;
+            case Column.Center: centerItems.Add(item); break;
+            case Column.Output: outputItems.Add(item); break;
+            }
 			item.Node = this;
 		}
 
 		public void RemoveItem(NodeItem item)
 		{
-			if (!nodeItems.Contains(item))
-				return;
 			item.Node = null;
-			nodeItems.Remove(item);
-		}
+			inputItems.Remove(item);
+            centerItems.Remove(item);
+            outputItems.Remove(item);
+        }
 
         public void AddConnection(NodeConnection newConnection)
         {
@@ -137,46 +160,6 @@ namespace HyperGraph
             connections.Insert(0, connection);
             return true;
         }
-
-        // Returns true if there are some connections that aren't connected
-        public bool AnyConnectorsDisconnected
-		{
-			get
-			{
-				foreach (var item in nodeItems)
-				{
-					if (item.Input.Enabled && !item.Input.HasConnection)
-						return true;
-					if (item.Output.Enabled && !item.Output.HasConnection)
-						return true;
-				}
-				return false;
-			}
-		}
-
-		// Returns true if there are some output connections that aren't connected
-		public bool AnyOutputConnectorsDisconnected
-		{
-			get
-			{
-				foreach (var item in nodeItems)
-					if (item.Output.Enabled && !item.Output.HasConnection)
-						return true;
-				return false;
-			}
-		}
-
-		// Returns true if there are some input connections that aren't connected
-		public bool AnyInputConnectorsDisconnected
-		{
-			get
-			{
-				foreach (var item in nodeItems)
-					if (item.Input.Enabled && !item.Input.HasConnection)
-						return true;
-				return false;
-			}
-		}
 
 		public ElementType ElementType { get { return ElementType.Node; } }
 	}
