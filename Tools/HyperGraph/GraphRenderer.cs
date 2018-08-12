@@ -92,13 +92,6 @@ namespace HyperGraph
             return new NodeSize { BaseSize = size, InputPartWidth = sizes[0].Width, OutputPartWidth = sizes[2].Width };
         }
 
-        static SizeF PreRenderItem(Graphics graphics, NodeItem item, PointF position)
-		{
-			var itemSize = item.Measure(graphics);
-			item.bounds = new RectangleF(position, itemSize);
-			return itemSize;
-		}
-
 		static void RenderItem(Graphics graphics, NodeItem item, RectangleF bounds, object context)
 		{
 			item.Render(graphics, bounds, context);
@@ -299,8 +292,9 @@ namespace HyperGraph
                     ++outputConnectorIndex;
 				}
 
-				PreRenderItem(graphics, node.titleItem, position);
-			} 
+                node.titleItem.bounds = new RectangleF(position, node.titleItem.Measure(graphics));
+                node.titleItem.bounds.Width = System.Math.Max(node.titleItem.bounds.Width, node.bounds.Width);
+            } 
             else
 			{
                 PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), position, new PointF(position.X + size.BaseSize.Width, position.Y) };
@@ -310,13 +304,14 @@ namespace HyperGraph
                 {
                     foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
                     {
-                        var itemSize = PreRenderItem(graphics, item, positions[side]);
+                        var itemSize = item.Measure(graphics);
+                        itemSize.Width = System.Math.Max(itemSize.Width, widths[side]);
+                        item.bounds = new RectangleF(positions[side], itemSize);
                         positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
                     }
                 }
 			}
 		}
-        
 
 		static void Render(Graphics graphics, Node node, object context)
 		{
@@ -490,13 +485,14 @@ namespace HyperGraph
 
             var path = new GraphicsPath(FillMode.Winding);
 
-            PointF[] positions = new PointF[] { new PointF(maxX, node.Location.Y), new PointF(node.Location.X + leftBorder, node.Location.Y), node.Location };
+            PointF[] positions = new PointF[] { new PointF(maxX + rightBorder - widths[0], node.Location.Y), new PointF(node.Location.X + leftBorder, node.Location.Y), node.Location };
             for (uint side = 0; side < 3; ++side)
             {
                 foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
                 {
-                    var itemSize = PreRenderItem(graphics, item, positions[side]);
-                    item.bounds = new RectangleF(node.bounds.Right - widths[side], positions[side].Y, widths[side], itemSize.Height);
+                    var itemSize = item.Measure(graphics);
+                    item.bounds = new RectangleF(positions[side], itemSize);
+                    item.bounds.Width = System.Math.Max(item.bounds.Width, widths[side]);
                     positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
                 }
             }

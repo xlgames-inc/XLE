@@ -58,7 +58,7 @@ namespace HyperGraph
 		public abstract SizeF		Measure(Graphics context);
 		public abstract void		Render(Graphics graphics, RectangleF rectangle, object context);
 
-		public ElementType ElementType { get { return ElementType.NodeItem; } }
+		public virtual ElementType ElementType { get { return ElementType.NodeItem; } }
 
         protected RectangleF GetBounds() { return bounds; }
         protected RenderState GetState() { return state; }

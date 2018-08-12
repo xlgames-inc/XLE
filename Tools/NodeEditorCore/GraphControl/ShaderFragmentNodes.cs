@@ -354,31 +354,6 @@ namespace NodeEditorCore
         public string Semantic { get; set; }
         public string Default { get; set; }
         public InterfaceDirection Direction { get; set; }
-
-        // private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
-
-        public override void Render(Graphics graphics, RectangleF location, object context)
-        {
-            /*
-            var size = Measure(graphics);
-            size.Width = Math.Max(minimumSize.Width, size.Width);
-            size.Height = Math.Max(minimumSize.Height, size.Height);
-            var rect = new RectangleF(location, size);
-
-            bool highlight = (GetState() & RenderState.Hover) == RenderState.Hover;
-
-            // We want the item to work like 2 buttons: "edit" and "delete"
-            // Let's split the item into 2 equal parts, and draw button-type shapes there.
-            var editRect = new RectangleF(rect.Left, rect.Top, rect.Width / 2.0f, rect.Height);
-            var deleteRect = new RectangleF((rect.Left + rect.Right) / 2.0f, rect.Top, rect.Width / 2.0f, rect.Height);
-
-            var editPath = GraphRenderer.CreateRoundedRectangle(editRect.Size, editRect.Location);
-            graphics.FillPath(BackgroundBrush, editPath);
-            graphics.DrawPath(highlight ? Pens.White : Pens.LightGray, editPath);
-            graphics.DrawString("Edit", SystemFonts.MenuFont, Brushes.White, editRect, GraphConstants.CenterTextStringFormat);
-            */
-        }
-
         internal override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
     }
     

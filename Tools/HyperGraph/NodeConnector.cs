@@ -63,6 +63,6 @@ namespace HyperGraph
 			}
 		}
 
-        public new ElementType ElementType      { get { return ElementType.Connector; } }
+        public override ElementType ElementType      { get { return ElementType.Connector; } }
     }
 }

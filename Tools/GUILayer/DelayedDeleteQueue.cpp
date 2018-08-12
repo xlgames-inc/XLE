@@ -12,12 +12,26 @@ namespace GUILayer
 {
 	using DeletablePtr = System::Tuple<System::IntPtr, DeletionCallback^>;
     using DeletablePtrList = System::Collections::Generic::List<DeletablePtr^>;
-    static msclr::gcroot<DeletablePtrList^> static_queue = gcnew DeletablePtrList;
+
+	static bool static_hasQueue = false;
+	class QueueContainer
+	{
+	public:
+		msclr::gcroot<DeletablePtrList^> _queue = gcnew DeletablePtrList;
+		QueueContainer() { static_hasQueue = true; }
+		~QueueContainer() { static_hasQueue = false; }
+	};
+
+	static QueueContainer static_queue;
 
     void DelayedDeleteQueue::Add(System::IntPtr ptr, DeletionCallback^ callback)
     {
-        msclr::lock l(static_queue);
-        static_queue->Add(gcnew DeletablePtr(ptr, callback));
+		if (static_hasQueue) {
+			msclr::lock l(static_queue._queue);
+			static_queue._queue->Add(gcnew DeletablePtr(ptr, callback));
+		} else {
+			callback(ptr);
+		}
     }
 
     void DelayedDeleteQueue::FlushQueue()
@@ -25,9 +39,9 @@ namespace GUILayer
         // swap with a new list, so the list doesn't get modified by another thread as we're deleting items
         auto flip = gcnew DeletablePtrList;
         {
-            msclr::lock l(static_queue);
-            auto t = static_queue;
-            static_queue = flip;
+            msclr::lock l(static_queue._queue);
+            auto t = static_queue._queue;
+            static_queue._queue = flip;
             flip = t;
         }
 
