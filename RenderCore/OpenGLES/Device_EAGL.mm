@@ -195,14 +195,6 @@ namespace RenderCore { namespace ImplOpenGLES
         }
 
         [EAGLContext setCurrentContext:_activeFrameContext.get()];
-
-        _activeFrameBuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
-        glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            Throw(std::runtime_error("Framebuffer not complete in PresentationChain::PresentationChain"));
-        }
-
         return _activeFrameRenderbuffer;
     }
 
