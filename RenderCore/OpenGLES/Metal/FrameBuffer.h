@@ -62,5 +62,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndSubpass(DeviceContext& context);
     void EndRenderPass(DeviceContext& context);
+    unsigned GetCurrentSubpassIndex(DeviceContext& context);
 
 }}

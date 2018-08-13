@@ -274,6 +274,20 @@ namespace RenderCore { namespace Metal_OpenGLES
                             glVertexAttribDivisor(c, instanceDataRate[c]);
                     capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
                 }
+            } else {
+                #if GL_ARB_instanced_arrays
+                    auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
+                    if (differences) {
+                        int firstActive = xl_ctz4(differences);
+                        int lastActive = 32u - xl_clz4(differences);
+                        for (int c=firstActive; c<lastActive; ++c)
+                            if (_attributeState & (1<<c))
+                                glVertexAttribDivisorARB(c, instanceDataRate[c]);
+                        capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                    }
+                #else
+                    assert(0);  // no hardware support for variable rate input attributes
+                #endif
             }
 
             // set enable/disable flags --
@@ -298,6 +312,14 @@ namespace RenderCore { namespace Metal_OpenGLES
                 for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                     if (_attributeState & (1<<c))
                         glVertexAttribDivisor(c, instanceDataRate[c]);
+            } else {
+                #if GL_ARB_instanced_arrays
+                    for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
+                        if (_attributeState & (1<<c))
+                            glVertexAttribDivisorARB(c, instanceDataRate[c]);
+                #else
+                    assert(0);  // no hardware support for variable rate input attributes
+                #endif
             }
             for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                 if (_attributeState & (1<<c)) {

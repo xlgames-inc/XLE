@@ -342,6 +342,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
     }
+    
+    unsigned GetCurrentSubpassIndex(DeviceContext& context)
+    {
+        return s_nextSubpass-1;
+    }
 
 }}
 

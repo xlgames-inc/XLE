@@ -142,6 +142,7 @@ namespace RenderCore { namespace Techniques
     public:
         void NextSubpass();
         void End();
+        unsigned GetCurrentSubpassIndex() const;
 
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
 

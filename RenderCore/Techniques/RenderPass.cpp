@@ -90,6 +90,11 @@ namespace RenderCore { namespace Techniques
         Metal::EndSubpass(*_attachedContext);
         Metal::EndRenderPass(*_attachedContext);
     }
+    
+    unsigned RenderPassInstance::GetCurrentSubpassIndex() const
+    {
+        return Metal::GetCurrentSubpassIndex(*_attachedContext);
+    }
 
     class NamedAttachmentsWrapper : public INamedAttachments
     {
