@@ -7,6 +7,7 @@
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
+#include "../Format.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DepVal.h"
@@ -176,6 +177,18 @@ namespace RenderCore { namespace Techniques
     uint64_t PredefinedCBLayout::CalculateHash() const
     {
         return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
+    }
+    
+    auto PredefinedCBLayout::MakeConstantBufferElements() const -> std::vector<ConstantBufferElementDesc>
+    {
+        std::vector<ConstantBufferElementDesc> result;
+        result.reserve(_elements.size());
+        for (auto i=_elements.begin(); i!=_elements.end(); ++i) {
+            result.push_back(ConstantBufferElementDesc {
+                i->_hash64, AsFormat(i->_type),
+                i->_offset, i->_arrayElementCount });
+        }
+        return result;
     }
 
     PredefinedCBLayout::PredefinedCBLayout() 
