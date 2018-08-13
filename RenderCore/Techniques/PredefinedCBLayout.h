@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../UniformsStream.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/StringUtils.h"
@@ -34,6 +35,7 @@ namespace RenderCore { namespace Techniques
         std::vector<uint8> BuildCBDataAsVector(const ParameterBox& parameters) const;
         SharedPkt BuildCBDataAsPkt(const ParameterBox& parameters) const;
         uint64_t CalculateHash() const;
+        std::vector<ConstantBufferElementDesc> MakeConstantBufferElements() const;
 
         PredefinedCBLayout();
         PredefinedCBLayout(StringSection<::Assets::ResChar> initializer);
