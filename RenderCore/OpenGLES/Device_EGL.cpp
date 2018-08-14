@@ -470,8 +470,10 @@ namespace RenderCore { namespace ImplOpenGLES
     PresentationChain::~PresentationChain()
     {
         if (_surface != EGL_NO_SURFACE) {
-            if (_surface == eglGetCurrentSurface(EGL_READ) || _surface == eglGetCurrentSurface(EGL_DRAW))
-                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            if (_surface == eglGetCurrentSurface(EGL_READ) || _surface == eglGetCurrentSurface(EGL_DRAW)) {
+                auto currentContext = eglGetCurrentContext();
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, currentContext);
+            }
             EGLBoolean result = eglDestroySurface(_display, _surface);
             (void)result; assert(result);
         }
