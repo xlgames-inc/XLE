@@ -29,11 +29,11 @@ namespace ShaderPatcher
 {
 
     const std::string s_resultName = "result";
-    static const uint32 s_nodeId_Invalid = ~0u;
+    static const NodeId s_nodeId_Invalid = ~0u;
 
         ///////////////////////////////////////////////////////////////
 
-    Node::Node(const std::string& archiveName, uint32 nodeId, Type type)
+    Node::Node(const std::string& archiveName, ShaderPatcher::NodeId nodeId, Type type)
     : _archiveName(archiveName)
     , _nodeId(nodeId)
     , _type(type)
@@ -41,7 +41,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeBaseConnection::NodeBaseConnection(uint32 outputNodeId, const std::string& outputParameterName)
+    NodeBaseConnection::NodeBaseConnection(NodeId outputNodeId, const std::string& outputParameterName)
     : _outputNodeId(outputNodeId), _outputParameterName(outputParameterName) {}
 
     NodeBaseConnection::NodeBaseConnection(NodeBaseConnection&& moveFrom) never_throws
@@ -59,7 +59,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    NodeConnection::NodeConnection( uint32 outputNodeId, uint32 inputNodeId,
+    NodeConnection::NodeConnection( NodeId outputNodeId, NodeId inputNodeId,
                                     const std::string& outputParameterName,
                                     const std::string& inputParameterName, const Type& inputType)
     :       NodeBaseConnection(outputNodeId, outputParameterName)
@@ -86,7 +86,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    ConstantConnection::ConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value)
+    ConstantConnection::ConstantConnection(NodeId outputNodeId, const std::string& outputParameterName, const std::string& value)
     :   NodeBaseConnection(outputNodeId, outputParameterName)
     ,   _value(value) {}
 
@@ -103,7 +103,7 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    InputParameterConnection::InputParameterConnection(uint32 outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue)
+    InputParameterConnection::InputParameterConnection(NodeId outputNodeId, const std::string& outputParameterName, const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue)
     :   NodeBaseConnection(outputNodeId, outputParameterName)
     ,   _type(type), _name(name), _semantic(semantic), _default(defaultValue) {}
 
@@ -132,7 +132,7 @@ namespace ShaderPatcher
     void NodeGraph::Add(InputParameterConnection&& a) { _inputParameterConnections.emplace_back(std::move(a)); }
     // void NodeGraph::AddTemplateParameterBinding(const std::string& parameter, const std::string& binding) { _templateParameterBindings.insert({parameter, binding}); }
 
-    bool NodeGraph::IsUpstream(uint32 startNode, uint32 searchingForNode)
+    bool NodeGraph::IsUpstream(NodeId startNode, NodeId searchingForNode)
     {
             //  Starting at 'startNode', search upstream and see if we find 'searchingForNode'
         if (startNode == searchingForNode) {
@@ -151,8 +151,8 @@ namespace ShaderPatcher
     }
 
     bool NodeGraph::IsDownstream(
-        uint32 startNode,
-        const uint32* searchingForNodesStart, const uint32* searchingForNodesEnd)
+        NodeId startNode,
+        const NodeId* searchingForNodesStart, const NodeId* searchingForNodesEnd)
     {
         if (std::find(searchingForNodesStart, searchingForNodesEnd, startNode) != searchingForNodesEnd) {
             return true;
@@ -169,20 +169,20 @@ namespace ShaderPatcher
         return false;
     }
 
-    bool            NodeGraph::HasNode(uint32 nodeId)
+    bool            NodeGraph::HasNode(NodeId nodeId)
     {
         return std::find_if(_nodes.begin(), _nodes.end(),
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
     }
 
-	uint32            NodeGraph::GetUniqueNodeId() const
+	NodeId            NodeGraph::GetUniqueNodeId() const
     {
-        uint32 largestId = 0;
+        NodeId largestId = 0;
         std::for_each(_nodes.cbegin(), _nodes.cend(), [&](const Node& n) { largestId = std::max(largestId, n.NodeId()); });
         return largestId+1;
     }
 
-    const Node*     NodeGraph::GetNode(uint32 nodeId) const
+    const Node*     NodeGraph::GetNode(NodeId nodeId) const
     {
         auto res = std::find_if(
             _nodes.cbegin(), _nodes.cend(),
@@ -193,12 +193,12 @@ namespace ShaderPatcher
         return nullptr;
     }
 
-    void NodeGraph::Trim(uint32 previewNode)
+    void NodeGraph::Trim(NodeId previewNode)
     {
         Trim(&previewNode, &previewNode+1);
     }
 
-    void NodeGraph::Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd)
+    void NodeGraph::Trim(const NodeId* trimNodesBegin, const NodeId* trimNodesEnd)
     {
             //
             //      Trim out all of the nodes that are upstream of
@@ -266,7 +266,7 @@ namespace ShaderPatcher
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void OrderNodes(IteratorRange<uint32*> range)
+	static void OrderNodes(IteratorRange<NodeId*> range)
 	{
 		// We need to sort the upstreams in some way that maintains a
 		// consistant ordering. The simplied way is just to use node id.
@@ -277,10 +277,10 @@ namespace ShaderPatcher
 	}
 
     static bool SortNodesFunction(
-        uint32                  node,
-        std::vector<uint32>&    presorted,
-        std::vector<uint32>&    sorted,
-        std::vector<uint32>&    marks,
+        NodeId                  node,
+        std::vector<NodeId>&    presorted,
+        std::vector<NodeId>&    sorted,
+        std::vector<NodeId>&    marks,
         const NodeGraph&        graph)
     {
         if (std::find(presorted.begin(), presorted.end(), node) == presorted.end()) {
@@ -292,7 +292,7 @@ namespace ShaderPatcher
 
         marks.push_back(node);
 
-		std::vector<uint32> upstream;
+		std::vector<NodeId> upstream;
 		upstream.reserve(graph.GetNodeConnections().size());
         for (const auto& i:graph.GetNodeConnections())
             if (i.OutputNodeId() == node)
@@ -307,7 +307,7 @@ namespace ShaderPatcher
         return true;
     }
 
-    static std::string AsString(uint32 i)
+    static std::string AsString(uint32_t i)
     {
         char buffer[128];
         XlI64toA(i, buffer, dimof(buffer), 10);
@@ -326,7 +326,7 @@ namespace ShaderPatcher
 		return result;
 	}
 
-    static std::string OutputTemporaryForNode(uint32 nodeId, const std::string& outputName)
+    static std::string OutputTemporaryForNode(NodeId nodeId, const std::string& outputName)
     {
         return std::string("Output_") + AsString(nodeId) + "_" + SantizeIdentifier(outputName);
     }
@@ -334,7 +334,7 @@ namespace ShaderPatcher
     template<typename Connection>
         const Connection* FindConnection(
             IteratorRange<const Connection*> connections,
-            uint32 nodeId, const std::string& parameterName)
+            NodeId nodeId, const std::string& parameterName)
     {
         return std::find_if(
             connections.cbegin(), connections.cend(),
@@ -450,7 +450,7 @@ namespace ShaderPatcher
 	static NodeGraphSignature::Parameter AsInterfaceParameter(const InputParameterConnection& connection)	{ return NodeGraphSignature::Parameter{connection.InputType()._name, connection.InputName(), ParameterDirection::In, std::string(), connection.Default()}; }
 	static NodeGraphSignature::Parameter AsInterfaceParameter(const NodeConnection& connection)				{ return NodeGraphSignature::Parameter{connection.InputType()._name, connection.OutputParameterName(), ParameterDirection::In}; }
 
-    static ExpressionString ParameterExpression(const NodeGraph& nodeGraph, uint32 nodeId, const NodeGraphSignature::Parameter& signatureParam, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
+    static ExpressionString ParameterExpression(const NodeGraph& nodeGraph, NodeId nodeId, const NodeGraphSignature::Parameter& signatureParam, NodeGraphSignature& interf, INodeGraphProvider& sigProvider)
     {
         auto i = FindConnection(nodeGraph.GetNodeConnections(), nodeId, signatureParam._name);
         if (i!=nodeGraph.GetNodeConnections().cend()) {
@@ -723,7 +723,7 @@ namespace ShaderPatcher
         return std::make_pair(std::move(result), std::move(sigRes));
     }
 
-	static bool HasConnectionStartingAt(const NodeGraph& nodeGraph, uint32_t inputNodeId, StringSection<> parameterName)
+	static bool HasConnectionStartingAt(const NodeGraph& nodeGraph, NodeId inputNodeId, StringSection<> parameterName)
 	{
 		for (const auto&c:nodeGraph.GetNodeConnections())
 			if (c.InputNodeId() == inputNodeId && XlEqString(parameterName, c.InputParameterName()))
@@ -731,13 +731,8 @@ namespace ShaderPatcher
 		return false;
 	}
 
-    static std::tuple<std::string, NodeGraphSignature, DependencyTable> GenerateMainFunctionBody(
-        const NodeGraph& graph,
-        const InstantiationParameters& instantiationParameters,
-        INodeGraphProvider& sigProvider)
-    {
-        std::stringstream result;
-
+	static std::vector<NodeId> SortNodes(const NodeGraph& graph, bool& isAcyclic)
+	{
             /*
 
                 We need to create a directed acyclic graph from the nodes in 'graph'
@@ -778,7 +773,7 @@ namespace ShaderPatcher
 
             */
 
-        std::vector<uint32> presortedNodes, sortedNodes;
+        std::vector<NodeId> presortedNodes, sortedNodes;
         sortedNodes.reserve(graph.GetNodes().size());
 
         for (const auto& i:graph.GetNodes())
@@ -786,19 +781,32 @@ namespace ShaderPatcher
 
 		OrderNodes(MakeIteratorRange(presortedNodes));
 
-        bool acyclic = true;
-        while (!presortedNodes.empty()) {
-            std::vector<uint32> temporaryMarks;
+        isAcyclic = true;
+		while (!presortedNodes.empty()) {
+            std::vector<NodeId> temporaryMarks;
             bool sortReturn = SortNodesFunction(
                 presortedNodes[0],
                 presortedNodes, sortedNodes,
                 temporaryMarks, graph);
 
             if (!sortReturn) {
-                acyclic = false;
+                isAcyclic = false;
                 break;
             }
         }
+
+		return sortedNodes;
+	}
+
+    static std::tuple<std::string, NodeGraphSignature, DependencyTable> GenerateMainFunctionBody(
+        const NodeGraph& graph,
+        const InstantiationParameters& instantiationParameters,
+        INodeGraphProvider& sigProvider)
+    {
+        std::stringstream result;
+
+		bool acyclic = false;
+		auto sortedNodes = SortNodes(graph, acyclic);
 
             //
             //      Now the function calls can be ordered by walking through the
@@ -934,7 +942,7 @@ namespace ShaderPatcher
 
     static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-    static std::string GenerateSignature(const NodeGraphSignature& sig, StringSection<char> name, bool useReturnType = true)
+    static std::string GenerateSignature(const NodeGraphSignature& sig, StringSection<char> name, bool useReturnType = true, bool includeTemplateParameters = false)
 	{
         std::string returnType, returnSemantic;
 
@@ -960,6 +968,13 @@ namespace ShaderPatcher
 			if (!i._semantic.empty())
 				mainFunctionDeclParameters << " : " << i._semantic;
         }
+
+		if (includeTemplateParameters) {
+			for (const auto& i:sig.GetTemplateParameters()) {
+				MaybeComma(mainFunctionDeclParameters);
+				mainFunctionDeclParameters << "graph<" << i._restriction << "> " << i._name;
+			}
+		}
 
         std::stringstream result;
 		if (!returnType.empty()) result << returnType << " ";
@@ -1142,6 +1157,117 @@ namespace ShaderPatcher
 
 			return header.str() + result.str();
 		}
+	}
+
+	static std::string RemoveTemplateRestrictions(const std::string& input)
+	{
+		static std::regex filter(R"--((\w*)<.*>)--");
+		std::smatch matchResult;
+        if (std::regex_match(input, matchResult, filter) && matchResult.size() > 1)
+			return matchResult[1];
+		return input;
+	}
+
+	static void GenerateGraphSyntaxInstantiation(
+		std::ostream& result,
+		const NodeGraph& graph,
+		NodeId nodeId,
+		std::unordered_map<NodeId, std::string>& instantiatedNodes)
+	{
+		auto instantiation = instantiatedNodes.find(nodeId);
+		if (instantiation != instantiatedNodes.end()) {
+			result << instantiation->second;
+			return;
+		}
+
+		auto i2 = std::find_if(graph.GetNodes().cbegin(), graph.GetNodes().cend(), [nodeId](const Node& n) { return n.NodeId() == nodeId; });
+        assert(i2 != graph.GetNodes().cend() && i2->GetType() == Node::Type::Procedure);
+
+		result << RemoveTemplateRestrictions(i2->ArchiveName()) << "(";
+		bool atLeastOneParam = false;
+
+		for (const auto&i:graph.GetInputParameterConnections()) {
+			if (i.OutputNodeId() != nodeId) continue;
+			if (atLeastOneParam) result << ", "; 
+			atLeastOneParam = true;
+			result << i.OutputParameterName() << ":" << i.InputName();
+		}
+
+		for (const auto&i:graph.GetNodeConnections()) {
+			if (i.OutputNodeId() != nodeId) continue;
+			if (atLeastOneParam) result << ", ";
+			atLeastOneParam = true;
+
+			result << i.OutputParameterName() << ":";
+			GenerateGraphSyntaxInstantiation(result, graph, i.InputNodeId(), instantiatedNodes);
+			result << "." << i.InputParameterName();
+		}
+
+		for (const auto&i:graph.GetConstantConnections()) {
+			if (i.OutputNodeId() != nodeId) continue;
+			if (atLeastOneParam) result << ", "; 
+			atLeastOneParam = true;
+			result << i.OutputParameterName() << ":\"" << i.Value() << "\"";
+		}
+
+		result << ")";
+	}
+
+	std::string GenerateGraphSyntax(const NodeGraph& graph, const NodeGraphSignature& interf, StringSection<> name)
+	{
+		std::stringstream result;
+
+		result << GenerateSignature(interf, name, true, true) << std::endl;
+		result << "{" << std::endl;
+
+		bool acyclic = false;
+		auto sortedNodes = SortNodes(graph, acyclic);
+		if (!acyclic) {
+            result << "// Warning! found a cycle in the graph of nodes. Result will be incomplete!" << std::endl;
+        }
+
+		std::unordered_map<NodeId, std::string> instantiatedNodes;
+		unsigned n = 0;
+		for (auto id:sortedNodes) {
+			unsigned outputCount = 0;
+			for (const auto&i:graph.GetNodeConnections())
+				if (i.InputNodeId() == id) ++outputCount;
+			// No need to instantiate nodes that have exactly 1 output connection. These will be instantiated in-place
+			// when the connected node is instantiated. We do actually want to instantiate nodes with zero output connections
+			// -- these are redundant to the final product, but if we don't create them here, they will disappear from the
+			// graph entirely
+			if (outputCount == 1) continue;
+
+			auto i2 = std::find_if(graph.GetNodes().cbegin(), graph.GetNodes().cend(), [id](const Node& n) { return n.NodeId() == id; });
+            if (i2 == graph.GetNodes().cend() || i2->GetType() != Node::Type::Procedure) continue;
+
+			assert(instantiatedNodes.find(id) == instantiatedNodes.end());
+			std::string nodeName = "node_" + std::to_string(n); ++n;
+
+			result << "\tnode " << nodeName << " = ";
+			GenerateGraphSyntaxInstantiation(result, graph, id, instantiatedNodes);
+			result << ";" << std::endl;
+
+			instantiatedNodes.insert(std::make_pair(id, nodeName));
+		}
+
+		for (const auto&i:graph.GetNodeConnections()) {
+			if (i.OutputNodeId() != -1 || i.OutputParameterName() == ShaderPatcher::s_resultName) continue;
+			result << "\t" << i.OutputParameterName() << " = ";
+			GenerateGraphSyntaxInstantiation(result, graph, i.InputNodeId(), instantiatedNodes);
+			result << "." << i.InputParameterName() << ";" << std::endl;
+		}
+
+		for (const auto&i:graph.GetNodeConnections()) {
+			if (i.OutputNodeId() != -1 || i.OutputParameterName() != ShaderPatcher::s_resultName) continue;
+			result << "\treturn ";
+			GenerateGraphSyntaxInstantiation(result, graph, i.InputNodeId(), instantiatedNodes);
+			result << "." << i.InputParameterName() << ";" << std::endl;
+		}
+
+		result << "}" << std::endl;
+
+		return result.str();
 	}
 
 	static uint64_t CalculateHash(const InstantiationParameters::Dependency& dep, uint64_t seed = DefaultSeed64)

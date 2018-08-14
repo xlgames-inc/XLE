@@ -26,6 +26,7 @@ tokens
 	RCONNECTION_REF;					// this is a reference to a node and connector
 	RCONNECTION_FUNCTION_PATH;
 	RETURN_CONNECTION;
+	OUTPUT_CONNECTION;
 
 	GRAPH_TYPE;
 
@@ -84,6 +85,7 @@ declaration
 
 connection 
 	: n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r)
+	| out=Identifier '=' r=rconnection -> ^(OUTPUT_CONNECTION $out $r)
 	| 'return' r=rconnection -> ^(RETURN_CONNECTION $r)
 	;
 
@@ -96,8 +98,10 @@ implementsQualifier
 	: 'implements' functionPath
 	;
 
+direction : 'in' | 'out';
+
 parameterDeclaration
-	: type=typeName name=Identifier implementsQualifier? -> ^(PARAMETER_DECLARATION $name $type)
+	: (dir=direction)? type=typeName name=Identifier -> ^(PARAMETER_DECLARATION $name $type $dir)
 	;
 
 graphSignature

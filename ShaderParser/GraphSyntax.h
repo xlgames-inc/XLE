@@ -28,6 +28,7 @@ namespace ShaderPatcher
 		std::unordered_map<std::string, std::string> _imports;
 	};
 	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
+	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile);
 
 	std::shared_ptr<INodeGraphProvider> MakeGraphSyntaxProvider(
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,

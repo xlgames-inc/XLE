@@ -108,6 +108,16 @@ namespace ShaderPatcher
 		return result;
     }
 
+	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile)
+	{
+		for (auto& i:graphSyntaxFile._imports)
+			str << "import " << i.first << " = \"" << i.second << "\"" << std::endl;
+		if (!graphSyntaxFile._imports.empty()) str << std::endl;
+		for (auto& sg:graphSyntaxFile._subGraphs)
+			str << ShaderPatcher::GenerateGraphSyntax(sg.second._graph, sg.second._signature, sg.first);
+		return str;
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class GraphNodeGraphProvider : public BasicNodeGraphProvider, std::enable_shared_from_this<GraphNodeGraphProvider>
@@ -379,10 +389,10 @@ extern "C" void GraphSignature_ReturnType(const void* ctx, GraphSignatureId sigI
 	f._pendingSignatures[sigId].AddParameter({returnType, ShaderPatcher::s_resultName, ShaderPatcher::ParameterDirection::Out});
 }
 
-extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[])
+extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[], unsigned direction)
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._pendingSignatures[sigId].AddParameter({type, name});
+	f._pendingSignatures[sigId].AddParameter({type, name, ShaderPatcher::ParameterDirection(direction)});
 }
 
 extern "C" void GraphSignature_AddGraphParameter(const void* ctx, GraphSignatureId sigId, const char name[], IdentifierAndScope prototype)

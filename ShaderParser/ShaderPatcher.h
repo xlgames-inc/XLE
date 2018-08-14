@@ -17,6 +17,8 @@
 namespace ShaderPatcher 
 {
 
+	using NodeId = uint32_t;
+
         ///////////////////////////////////////////////////////////////
 
     class Node
@@ -30,7 +32,7 @@ namespace ShaderPatcher
             Uniforms
         };
 
-        Node(const std::string& archiveName, uint32 nodeId, Type type);
+        Node(const std::string& archiveName, ShaderPatcher::NodeId nodeId, Type type);
 
 		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
 			Node(Node&& moveFrom) never_throws = default;
@@ -39,14 +41,14 @@ namespace ShaderPatcher
 			Node& operator=(const Node& cloneFrom) = default;
 		#endif
 
-        const std::string&  ArchiveName() const         { return _archiveName; }
-        uint32              NodeId() const              { return _nodeId; }
-        Type                GetType() const             { return _type; }
+        const std::string&		ArchiveName() const         { return _archiveName; }
+        ShaderPatcher::NodeId   NodeId() const              { return _nodeId; }
+        Type					GetType() const             { return _type; }
         
     private:
-        std::string     _archiveName;
-        uint32          _nodeId;
-        Type            _type;
+        std::string				_archiveName;
+        ShaderPatcher::NodeId   _nodeId;
+        Type					_type;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -64,7 +66,7 @@ namespace ShaderPatcher
     class NodeBaseConnection
     {
     public:
-        NodeBaseConnection(uint32 outputNodeId, const std::string& outputParameterName);
+        NodeBaseConnection(NodeId outputNodeId, const std::string& outputParameterName);
 
         NodeBaseConnection(NodeBaseConnection&& moveFrom) never_throws;
         NodeBaseConnection& operator=(NodeBaseConnection&& moveFrom) never_throws;
@@ -74,11 +76,11 @@ namespace ShaderPatcher
 			NodeBaseConnection& operator=(const NodeBaseConnection&) = default;
 		#endif
 
-        uint32      OutputNodeId() const                { return _outputNodeId; }
+        NodeId				OutputNodeId() const                { return _outputNodeId; }
         const std::string&  OutputParameterName() const { return _outputParameterName; }
 
     protected:
-        uint32          _outputNodeId;
+        NodeId          _outputNodeId;
         std::string     _outputParameterName;
     };
 
@@ -87,7 +89,7 @@ namespace ShaderPatcher
     class NodeConnection : public NodeBaseConnection
     {
     public:
-        NodeConnection( uint32 outputNodeId, uint32 inputNodeId, 
+        NodeConnection( NodeId outputNodeId, NodeId inputNodeId, 
                         const std::string& outputParameterName,
                         const std::string& inputParameterName, const Type& inputType);
 
@@ -99,12 +101,12 @@ namespace ShaderPatcher
 			NodeConnection& operator=(const NodeConnection&) = default;
 		#endif
 
-        uint32              InputNodeId() const         { return _inputNodeId; }
+        NodeId              InputNodeId() const         { return _inputNodeId; }
         const Type&         InputType() const           { return _inputType; }
         const std::string&  InputParameterName() const  { return _inputParameterName; }
 
     private:
-        uint32          _inputNodeId;
+        NodeId          _inputNodeId;
         std::string     _inputParameterName;
         Type            _inputType;
     };
@@ -114,7 +116,7 @@ namespace ShaderPatcher
     class ConstantConnection : public NodeBaseConnection
     {
     public:
-        ConstantConnection(uint32 outputNodeId, const std::string& outputParameterName, const std::string& value);
+        ConstantConnection(NodeId outputNodeId, const std::string& outputParameterName, const std::string& value);
         ConstantConnection(ConstantConnection&& moveFrom) never_throws;
         ConstantConnection& operator=(ConstantConnection&& moveFrom) never_throws;
 
@@ -135,7 +137,7 @@ namespace ShaderPatcher
     {
     public:
         InputParameterConnection(
-            uint32 outputNodeId, const std::string& outputParameterName, 
+            NodeId outputNodeId, const std::string& outputParameterName, 
             const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue);
         InputParameterConnection(InputParameterConnection&& moveFrom) never_throws;
         InputParameterConnection& operator=(InputParameterConnection&& moveFrom) never_throws;
@@ -172,10 +174,10 @@ namespace ShaderPatcher
         void Add(ConstantConnection&&);
         void Add(InputParameterConnection&&);
 
-		void			Trim(const uint32* trimNodesBegin, const uint32* trimNodesEnd);
-        void            Trim(uint32 previewNode);
+		void			Trim(const NodeId* trimNodesBegin, const NodeId* trimNodesEnd);
+        void            Trim(NodeId previewNode);
 
-        const Node*     GetNode(uint32 nodeId) const;
+        const Node*     GetNode(NodeId nodeId) const;
 
         NodeGraph();
         ~NodeGraph();
@@ -193,10 +195,10 @@ namespace ShaderPatcher
         std::vector<ConstantConnection> _constantConnections;
         std::vector<InputParameterConnection> _inputParameterConnections;
 
-        bool        IsUpstream(uint32 startNode, uint32 searchingForNode);
-        bool        IsDownstream(uint32 startNode, const uint32* searchingForNodesStart, const uint32* searchingForNodesEnd);
-        bool        HasNode(uint32 nodeId);
-        uint32      GetUniqueNodeId() const;
+        bool        IsUpstream(NodeId startNode, NodeId searchingForNode);
+        bool        IsDownstream(NodeId startNode, const NodeId* searchingForNodesStart, const NodeId* searchingForNodesEnd);
+        bool        HasNode(NodeId nodeId);
+        NodeId      GetUniqueNodeId() const;
         void        AddDefaultOutputs(const Node& node);
     };
 
@@ -245,6 +247,8 @@ namespace ShaderPatcher
         INodeGraphProvider& sigProvider);
 
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf);
+
+	std::string GenerateGraphSyntax(const NodeGraph& graph, const NodeGraphSignature& interf, StringSection<> name);
 
     struct PreviewOptions
     {

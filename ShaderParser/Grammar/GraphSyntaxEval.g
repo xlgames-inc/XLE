@@ -51,17 +51,14 @@ options
 
 	GraphSignatureId GraphSignature_Register(const void*);
 	void GraphSignature_ReturnType(const void*, GraphSignatureId, const char returnType[]);
-	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[]);
+	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[], unsigned direction);
 	void GraphSignature_AddGraphParameter(const void*, GraphSignatureId, const char name[], IdentifierAndScope prototype);
 
 	typedef unsigned ObjTypeId;
 	static const unsigned ObjType_Graph = 0;
-	// static const unsigned ObjType_Node = 1;
-	// static const unsigned ObjType_GraphSignature = 2;
 
 	void Walk_Push(const void*, ObjTypeId objType, unsigned obj);
 	void Walk_Pop(const void*, ObjTypeId objType);
-	// unsigned Walk_GetActive(const void*, ObjTypeId objType);
 
 	void Import_Register(const void*, const char alias[], const char import[]);
 
@@ -131,6 +128,11 @@ connection returns [ConnectionId connection = ~0u]
 			ConnectorId left = Connector_Register(ctx, n, l);
 			$connection = Connection_Register(ctx, left, r);
 		}
+	| ^(OUTPUT_CONNECTION out=identifier r=rconnection)
+		{
+			ConnectorId left = Connector_Register(ctx, ~0u, out);
+			$connection = Connection_Register(ctx, left, r);
+		}
 	| ^(RETURN_CONNECTION r=rconnection)
 		{
 			ConnectorId left = Connector_Register(ctx, ~0u, "result");
@@ -170,8 +172,11 @@ graphStatement[NodeId containingGraph]
 		}
 	;
 
+direction returns [unsigned dir = 0] : 'in' { dir = 0; } | 'out' { dir = 1; };
+
 graphParameter[GraphSignatureId sigId]
-	: ^(PARAMETER_DECLARATION pname=identifier ptype=identifier) 						{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype); }
+	: ^(PARAMETER_DECLARATION pname=identifier ptype=identifier) 						{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype, 0); }
+	| ^(PARAMETER_DECLARATION pname=identifier ptype=identifier dir=direction)			{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype, dir); }
 	| ^(PARAMETER_DECLARATION pname=identifier ^(GRAPH_TYPE prototype=functionPath))	{ GraphSignature_AddGraphParameter(ctx, $sigId, pname, prototype);  }
 	;
 
