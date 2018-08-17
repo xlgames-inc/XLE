@@ -159,6 +159,7 @@ namespace Utility
         uint64  GetParameterNamesHash() const;
         uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
         bool    AreParameterNamesEqual(const ParameterBox& other) const;
+        IteratorRange<const void*> GetValueTable() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////
             //      M E R G I N G   &   I T E R A T O R                     //
@@ -335,6 +336,11 @@ namespace Utility
     {}
 
     inline ParameterBox::Iterator::Iterator() : _index(0), _box(nullptr) {}
+
+    inline IteratorRange<const void*> ParameterBox::GetValueTable() const
+    {
+        return MakeIteratorRange(_values);
+    }
 
     using StringTable = std::vector<std::pair<const utf8*, std::string>>;
     void    BuildStringTable(StringTable& defines, const ParameterBox& box);
