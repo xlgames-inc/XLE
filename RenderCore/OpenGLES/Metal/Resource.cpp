@@ -5,7 +5,7 @@
 #include "IncludeGLES.h"
 #include <sstream>
 
-#include "../../../../CoreServices/GLWrappers.h"
+#include "GLWrappers.h"
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
