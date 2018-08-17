@@ -779,12 +779,12 @@ namespace Utility
 
     ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
     {
-        return Hash32(name.begin(), name.end());
+        return Hash64(name.begin(), name.end());
     }
 
     ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(StringSection<char> name)
     {
-        return Hash32(name.begin(), name.end());
+        return Hash64(name.begin(), name.end());
     }
 
     void ParameterBox::SetParameter(const utf8 name[], const char* stringDataBegin, const char* stringDataEnd)
