@@ -49,6 +49,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             int         _location;
             GLenum      _type;
             int         _elementCount;
+            unsigned    _activeUniformIndex;
 
             #if defined(STORE_UNIFORM_NAMES)
                 std::string _name;
@@ -72,6 +73,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ShaderIntrospection(const ShaderProgram& shader);
         ~ShaderIntrospection();
+
+        static std::string GetName(const ShaderProgram& shader, const Uniform& uniform);
     private:
         std::vector<std::pair<HashType, Struct>> _structs;
     };

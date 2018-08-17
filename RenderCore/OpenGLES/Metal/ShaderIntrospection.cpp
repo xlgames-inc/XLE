@@ -88,6 +88,26 @@ namespace RenderCore { namespace Metal_OpenGLES
         return {};
     }
 
+    std::string ShaderIntrospection::GetName(const ShaderProgram& program, const Uniform& uniform)
+    {
+        #if defined(STORE_UNIFORM_NAMES)
+            return uniform._name;
+        #else
+            auto glProgram = program.GetUnderlying()->AsRawGLHandle();
+
+            GLint uniformMaxNameLength;
+            glGetProgramiv(glProgram, GL_ACTIVE_UNIFORM_MAX_LENGTH, &uniformMaxNameLength);
+
+            char nameBuffer[uniformMaxNameLength];
+            std::memset(nameBuffer, 0, uniformMaxNameLength);
+
+            GLint size = 0;
+            GLenum type = 0;
+            glGetActiveUniform(glProgram, uniform._activeUniformIndex, uniformMaxNameLength, nullptr, &size, &type, nameBuffer);
+            return nameBuffer;
+        #endif
+    }
+
     static uint64_t HashVariableName(StringSection<> name)
     {
         // If the variable name has array indexor syntax in there, we must strip it off
@@ -159,7 +179,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 i->second._uniforms.emplace_back(
                     Uniform {
                         HashVariableName(separatedNames.second),
-                        location, type, size
+                        location, type, size, c
 
                         #if defined(STORE_UNIFORM_NAMES)
                             , fullName.AsString()
@@ -178,7 +198,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 i->second._uniforms.emplace_back(
                     Uniform {
                         HashVariableName(fullName),
-                        location, type, size
+                        location, type, size, c
 
                         #if defined(_DEBUG)
                             , fullName.AsString()
