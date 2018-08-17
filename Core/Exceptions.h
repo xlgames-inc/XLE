@@ -91,6 +91,7 @@ namespace Exceptions
 
 #pragma warning(push)
 #pragma warning(disable:4793)       // 'Exceptions::BasicLabel::BasicLabel' : function compiled as native :
+#pragma clang diagnostic ignored "-Wformat-nonliteral"
     inline BasicLabel::BasicLabel(const char format[], ...) never_throws
     {
         va_list args;
@@ -103,6 +104,7 @@ namespace Exceptions
     {
         std::vsnprintf(_buffer, dimof(_buffer), format, args);
     }
+#pragma clang diagnostic pop
 #pragma warning(pop)
 
     inline BasicLabel::BasicLabel(const BasicLabel& copyFrom) never_throws
