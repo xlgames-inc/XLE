@@ -104,7 +104,7 @@ namespace Utility
     class ParameterBox
     {
     public:
-        typedef uint32 ParameterNameHash;
+        using ParameterNameHash = uint64_t;
 
         class ParameterName
         {
