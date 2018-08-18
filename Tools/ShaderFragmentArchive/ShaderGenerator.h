@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../GUILayer/CLIXAutoPtr.h"
+#include <unordered_map>
 
 using namespace System;
 using namespace System::Collections::Generic;
@@ -133,6 +134,12 @@ namespace ShaderPatcherLayer
 
 	ref class NodeGraphFile;
 
+	class ConversionContext
+	{
+	public:
+		std::unordered_map<std::string, std::string> _importTable;
+	};
+
         ///////////////////////////////////////////////////////////////
     public ref class NodeGraph
     {
@@ -174,8 +181,8 @@ namespace ShaderPatcherLayer
 
 		NodeGraph();
 
-        ShaderPatcher::NodeGraph    ConvertToNative();
-		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input);
+        ShaderPatcher::NodeGraph    ConvertToNative(ConversionContext& context);
+		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input, const ConversionContext& context);
 
 		static NodeGraph^		LoadFromXML(System::IO::Stream^ stream);
         void					SaveToXML(System::IO::Stream^ stream);
@@ -223,8 +230,8 @@ namespace ShaderPatcherLayer
 		};
 		property IEnumerable<TemplateParameter^>^	TemplateParameters { IEnumerable<TemplateParameter^>^ get() { return _templateParameters; } }
 
-		ShaderPatcher::NodeGraphSignature	ConvertToNative();
-		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input);
+		ShaderPatcher::NodeGraphSignature	ConvertToNative(ConversionContext& context);
+		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input, const ConversionContext& context);
 
 	private:
 		List<Parameter^>^				_parameters;
@@ -238,20 +245,16 @@ namespace ShaderPatcherLayer
 		ref class SubGraph
 		{
 		public:
-			NodeGraphSignature^		_signature = nullptr;
-			NodeGraph^				_subGraph = nullptr;
+			[DataMember] property NodeGraphSignature^	Signature;
+			[DataMember] property NodeGraph^			Graph;
 		};
 		property Dictionary<String^, SubGraph^>^ SubGraphs
         {
             Dictionary<String^, SubGraph^>^ get() { if (!_subGraphs) { _subGraphs = gcnew Dictionary<String^, SubGraph^>(); } return _subGraphs; }
         }
-		property Dictionary<String^,String^>^ Imports
-		{
-            Dictionary<String^,String^>^ get() { if (!_imports) { _imports = gcnew Dictionary<String^,String^>(); } return _imports; }
-        }
 
         static void		Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphContext^% context);
-        void			Save(String^ filename, NodeGraphContext^ context);
+        void			Serialize(System::IO::Stream^ stream, String^ name, NodeGraphContext^ contexts);
 
 		ShaderPatcher::GraphSyntaxFile	ConvertToNative();
 		static NodeGraphFile^			ConvertFromNative(
@@ -265,16 +268,15 @@ namespace ShaderPatcherLayer
 			    PreviewSettings^ settings,
 			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
 
-		ShaderFragmentArchive::Function^ FindSignature(String^ archiveName);
-
-		const ::Assets::DirectorySearchRules& GetSearchRules();
+		GUILayer::DirectorySearchRules^ GetSearchRules();
 
 		NodeGraphFile();
+		~NodeGraphFile();
 	private:
 		Dictionary<String^, SubGraph^>^	_subGraphs = nullptr;
 		Dictionary<String^, String^>^	_imports = nullptr;
 
-		clix::shared_ptr<::Assets::DirectorySearchRules> _searchRules;
+		GUILayer::DirectorySearchRules^ _searchRules;
 	};
 
 	public ref class NodeGraphPreviewConfiguration

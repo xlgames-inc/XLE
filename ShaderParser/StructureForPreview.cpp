@@ -483,7 +483,7 @@ namespace ShaderPatcher
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, const char graphName[])
+	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, StringSection<char> graphName)
 	{
 		std::stringstream mainFunctionParameterSignature;
 		std::stringstream forwardMainParameters;
@@ -500,7 +500,7 @@ namespace ShaderPatcher
 		Plustache::Context context;
 		context.add("MainFunctionParameterSignature", mainFunctionParameterSignature.str());
 		context.add("ForwardMainParameters", forwardMainParameters.str());
-		context.add("GraphName", graphName);
+		context.add("GraphName", graphName.AsString());
 
 		std::stringstream result;
 		Plustache::template_t preprocessor;

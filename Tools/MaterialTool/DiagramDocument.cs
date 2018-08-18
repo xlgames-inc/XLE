@@ -29,7 +29,12 @@ namespace MaterialTool
 
         public void Save(Uri destination)
         {
-            NodeGraphFile.Save(destination.LocalPath, GraphContext);
+            var fileMode = System.IO.File.Exists(destination.LocalPath) ? System.IO.FileMode.Truncate : System.IO.FileMode.OpenOrCreate;
+            using (var fileStream = new System.IO.FileStream(destination.LocalPath, fileMode))
+            {
+                NodeGraphFile.Serialize(fileStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), GraphContext);
+                fileStream.Flush();
+            }
         }
 
         public void Load(Uri source)

@@ -288,7 +288,7 @@ namespace NodeEditorCore
                         Node newNode = null;
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            var fn = containingFile.FindSignature(n.FragmentArchiveName);
+                            var fn = _shaderFragments.GetFunction(n.FragmentArchiveName, containingFile.GetSearchRules());
                             newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, previewSettings);
                         }
                         else

@@ -9,6 +9,7 @@
 #include "../../ShaderParser/InterfaceSignature.h"
 #include "../../ShaderParser/ParameterSignature.h"
 #include "../../ShaderParser/Exceptions.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
 
@@ -17,7 +18,8 @@ namespace ShaderFragmentArchive
 
     Function::Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function)
     {
-		Signature = ShaderPatcherLayer::NodeGraphSignature::ConvertFromNative(function);
+		ShaderPatcherLayer::ConversionContext convContext;
+		Signature = ShaderPatcherLayer::NodeGraphSignature::ConvertFromNative(function, convContext);
         Name = clix::marshalString<clix::E_UTF8>(name);
     }
 
@@ -139,12 +141,12 @@ namespace ShaderFragmentArchive
         ParameterStructs = gcnew List<ParameterStruct^>();
 
         using namespace clix;
-        std::string nativeString;
+		size_t size = 0;
+        std::unique_ptr<uint8[]> file;
         try
         {
 
-            auto contents = System::IO::File::ReadAllText(sourceFile);
-            nativeString = marshalString<E_UTF8>(contents);
+            auto contents = ::Assets::TryLoadFileAsMemoryBlock(marshalString<E_UTF8>(sourceFile), &size);
 
         } catch (System::IO::IOException^) {
 
@@ -154,10 +156,10 @@ namespace ShaderFragmentArchive
 
         }
             
-        if (!nativeString.empty()) {
+        if (file && size != 0) {
 
             try {
-                auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(nativeString));
+                auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size)));
 
                     //
                     //      \todo -- support compilation errors in the shader code!

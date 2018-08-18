@@ -149,7 +149,7 @@ namespace MaterialTool
 
             var viewModel = new HyperGraph.GraphModel();
             viewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();
-            _modelConversion.AddToHyperGraph(doc.NodeGraphFile.SubGraphs["main"]._subGraph, doc.NodeGraphFile, viewModel);
+            _modelConversion.AddToHyperGraph(doc.NodeGraphFile.SubGraphs["main"].Graph, doc.NodeGraphFile, viewModel);
 
             var subgraphContext = new SubGraphEditingContext("main", viewModel, doc) { NodeFactory = _nodeFactory };
             var control = _exportProvider.GetExport<Controls.ISubGraphControl>().Value;
