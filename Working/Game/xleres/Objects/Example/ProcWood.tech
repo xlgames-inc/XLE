@@ -1,215 +1,18 @@
 // CompoundDocument:1
-#include "xleres/System/Prefix.h"
+import wood_04_g = "xleres/objects/example/procwood/wood_04_g.sh"
+import surface = "xleres/surface.h"
+import output = "xleres/nodes/output.sh"
+import materialparam = "xleres/nodes/materialparam.sh"
 
-#include "xleres/Objects/Example/ProcWood/Wood_04_G.sh"
-#include "xleres/Surface.h"
-#include "xleres/Nodes/Output.sh"
-#include "xleres/Nodes/MaterialParam.sh"
-
-
-void ProcWood(VSOutput geo, out GBufferValues result)
+void main()
 {
-	float3 Output_35_result;
-	Output_35_result = GetWorldPosition( geo );
-
-	float3 Output_31_color;
-	Wood_04_G( Output_35_result, Output_31_color );
-
-	CommonMaterialParam Output_33_result;
-	Output_33_result = CommonMaterialParam_Make( .3, .05, 0 );
-
-	float3 Output_34_result;
-	Output_34_result = GetNormal( geo );
-
-	GBufferValues Output_32_result;
-	Output_32_result = Output_PerPixel( Output_31_color, Output_34_result, Output_33_result, 1.0f, 1.0f, 1.0f, 1.0f, 0 );
-
-	result = Output_32_result;
-
+	node node_0 = [[visualNode2]]output::Output_PerPixel(diffuseAlbedo:[[visualNode0]]wood_04_g::Wood_04_G(coords:[[visualNode1]]surface::GetWorldPosition().result).color, material:[[visualNode3]]materialparam::CommonMaterialParam_Make(roughness:".3", specular:".05", metal:"0").result, worldSpaceNormal:[[visualNode4]]surface::GetNormal().result, blendingAlpha:"1.0f", normalMapAccuracy:"1.0f", cookedAmbientOcclusion:"1.0f", cookedLightOcclusion:"1.0f", transmission:"0");
 }
-/* <<Chunk:NodeGraph:ProcWood>>--(
-<?xml version="1.0" encoding="utf-8"?>
-<NodeGraph xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
-	<ConstantConnections>
-		<ConstantConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>blendingAlpha</OutputParameterName>
-			<Value>1.0f</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>normalMapAccuracy</OutputParameterName>
-			<Value>1.0f</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>cookedAmbientOcclusion</OutputParameterName>
-			<Value>1.0f</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>cookedLightOcclusion</OutputParameterName>
-			<Value>1.0f</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>transmission</OutputParameterName>
-			<Value>0</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>33</OutputNodeID>
-			<OutputParameterName>roughness</OutputParameterName>
-			<Value>.3</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>33</OutputNodeID>
-			<OutputParameterName>specular</OutputParameterName>
-			<Value>.05</Value>
-		</ConstantConnection>
-		<ConstantConnection>
-			<OutputNodeID>33</OutputNodeID>
-			<OutputParameterName>metal</OutputParameterName>
-			<Value>0</Value>
-		</ConstantConnection>
-	</ConstantConnections>
-	<InputParameterConnections />
-	<NodeConnections>
-		<NodeConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>diffuseAlbedo</OutputParameterName>
-			<InputNodeID>31</InputNodeID>
-			<InputParameterName>color</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>31</OutputNodeID>
-			<OutputParameterName>coords</OutputParameterName>
-			<InputNodeID>35</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>material</OutputParameterName>
-			<InputNodeID>33</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>CommonMaterialParam</InputType>
-			<OutputType>CommonMaterialParam</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-		<NodeConnection>
-			<OutputNodeID>32</OutputNodeID>
-			<OutputParameterName>worldSpaceNormal</OutputParameterName>
-			<InputNodeID>34</InputNodeID>
-			<InputParameterName>result</InputParameterName>
-			<InputType>float3</InputType>
-			<OutputType>float3</OutputType>
-			<Semantic i:nil="true" />
-		</NodeConnection>
-	</NodeConnections>
-	<Nodes>
-		<Node>
-			<FragmentArchiveName>xleres/Objects/Example/ProcWood\Wood_04_G.sh:Wood_04_G</FragmentArchiveName>
-			<NodeId>31</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>0</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>xleres/Surface.h:GetWorldPosition</FragmentArchiveName>
-			<NodeId>35</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>1</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>xleres/Nodes\Output.sh:Output_PerPixel</FragmentArchiveName>
-			<NodeId>32</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>2</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>xleres/Nodes\MaterialParam.sh:CommonMaterialParam_Make</FragmentArchiveName>
-			<NodeId>33</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>3</VisualNodeId>
-		</Node>
-		<Node>
-			<FragmentArchiveName>xleres/Surface.h:GetNormal</FragmentArchiveName>
-			<NodeId>34</NodeId>
-			<NodeType>Procedure</NodeType>
-			<VisualNodeId>4</VisualNodeId>
-		</Node>
-	</Nodes>
-	<OutputParameterConnections />
-	<PreviewSettingsObjects>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>0</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>1</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize>result.diffuseAlbedo</OutputToVisualize>
-			<VisualNodeId>2</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>3</VisualNodeId>
-		</PreviewSettings>
-		<PreviewSettings>
-			<Geometry>Sphere</Geometry>
-			<OutputToVisualize></OutputToVisualize>
-			<VisualNodeId>4</VisualNodeId>
-		</PreviewSettings>
-	</PreviewSettingsObjects>
-	<VisualNodes>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>281</d4p1:x>
-				<d4p1:y>252</d4p1:y>
-			</Location>
-			<State>Normal</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>-91</d4p1:x>
-				<d4p1:y>340</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>1036</d4p1:x>
-				<d4p1:y>388</d4p1:y>
-			</Location>
-			<State>Normal</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>471</d4p1:x>
-				<d4p1:y>661</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-		<VisualNode>
-			<Location xmlns:d4p1="http://schemas.datacontract.org/2004/07/System.Drawing">
-				<d4p1:x>213</d4p1:x>
-				<d4p1:y>634</d4p1:y>
-			</Location>
-			<State>Collapsed</State>
-		</VisualNode>
-	</VisualNodes>
-</NodeGraph>
-)-- */
+attributes visualNode0(PreviewGeometry:"sphere", X:"281.000000", Y:"252.000000", State:"Normal", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"sphere", X:"-91.000000", Y:"340.000000", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"sphere", X:"1036.000000", Y:"388.000000", State:"Normal", OutputToVisualize:"result.diffuseAlbedo");
+attributes visualNode3(PreviewGeometry:"sphere", X:"471.000000", Y:"661.000000", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphContext:ProcWood>>--(
 <?xml version="1.0" encoding="utf-8"?>
 <NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
@@ -232,7 +35,7 @@ void ProcWood(VSOutput geo, out GBufferValues result)
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
-float4 forward_main(VSOutput geo, SystemInputs sys) : SV_Target0
+float4 forward_main(, SystemInputs sys) : SV_Target0
 {
     // If we're doing to do the alpha threshold test, we
     // should try to do as early in the shader as we can!
@@ -243,7 +46,7 @@ float4 forward_main(VSOutput geo, SystemInputs sys) : SV_Target0
 	// DoAlphaTest(geo, GetAlphaThreshold());
 
 	GBufferValues sample;
-    ProcWood(geo, sample);
+    main(, sample);
 
 	float3 directionToEye = 0.0.xxx;
 	#if (OUTPUT_WORLD_VIEW_VECTOR==1)
@@ -256,7 +59,7 @@ float4 forward_main(VSOutput geo, SystemInputs sys) : SV_Target0
 			LightScreenDest_Create(int2(geo.position.xy), GetSampleIndex(sys))), 1.f);
 
 	#if OUTPUT_FOG_COLOR == 1
-		result.rgb = lerp(geo.fogColor.rgb, result.rgb, geo.fogColor.a);
+		result.rgb = geo.fogColor.rgb + result.rgb * geo.fogColor.a;
 	#endif
 
 	result.a = sample.blendingAlpha;
@@ -276,7 +79,7 @@ float4 forward_main(VSOutput geo, SystemInputs sys) : SV_Target0
 #if !((OUTPUT_TEXCOORD==1) && (MAT_ALPHA_TEST==1))
 	[earlydepthstencil]
 #endif
-GBufferEncoded deferred_main(VSOutput geo)
+GBufferEncoded deferred_main()
 {
     // If we're doing to do the alpha threshold test, we
     // should try to do as early in the shader as we can!
@@ -285,7 +88,7 @@ GBufferEncoded deferred_main(VSOutput geo)
     // somehow...
 	// DoAlphaTest(geo, GetAlphaThreshold());
 	GBufferValues result;
-    ProcWood(geo, result);
+    main(, result);
 	return Encode(result);
 }
 
@@ -293,7 +96,7 @@ GBufferEncoded deferred_main(VSOutput geo)
 
 #include "xleres/Forward/Transparency/util.h"
 
-float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
+float4 io_main(, SystemInputs sys) : SV_Target0
 {
     float destinationDepth = DuplicateOfDepthBuffer[uint2(geo.position.xy)];
 	float ndcComparison = geo.position.z; // / geo.position.w;
@@ -301,7 +104,7 @@ float4 io_main(VSOutput geo, SystemInputs sys) : SV_Target0
 		discard;
 
     GBufferValues sample;
-    ProcWood(geo, sample);
+    main(, sample);
 
 		// note --  At alpha threshold, we just consider
 		//			it opaque. It's a useful optimisation
@@ -343,12 +146,12 @@ float4 stochastic_main(VSOutput geo,
 
 		// Only need to calculate the "alpha" value for this step...
 		GBufferValues sample;
-		ProcWood(geo, sample);
+		main(, sample);
 		return float4(0.0.xxx, sample.blendingAlpha);
 	}
 
 	GBufferValues sample;
-	ProcWood(geo, sample);
+	main(, sample);
 
 	float4 litValue = LightSample(sample, geo, sys);
 	return float4((LightingScale * (1.f - occlusion) * litValue.a) * litValue.rgb, litValue.a);
@@ -375,7 +178,7 @@ float4 stochastic_main(VSOutput geo,
 		)
 	{
 		GBufferValues sample;
-		ProcWood(geo, sample);
+		main(, sample);
 		float alpha = sample.blendingAlpha;
 
 		oCoverage = StochasticTransMask(uint2(geo.position.xy), alpha, primitiveID);
@@ -397,7 +200,7 @@ float4 stochastic_main(VSOutput geo,
 		#if !((OUTPUT_TEXCOORD==1) && ((MAT_ALPHA_TEST==1)||(MAT_ALPHA_TEST_PREDEPTH==1)))
 				// execute sampling only for discard() events
 			GBufferValues sample;
-			ProcWood(geo, sample);
+			main(, sample);
 		#endif
 	}
 
@@ -431,5 +234,10 @@ float4 stochastic_main(VSOutput geo,
         ~Material
             OUTPUT_WORLD_POSITION=1
     PixelShader=<.>:depthonly_main
+)--*/
+
+/* <<Chunk:CBLayout:main>>--(
+
+
 )--*/
 
