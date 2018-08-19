@@ -20,9 +20,9 @@ using System.Drawing.Drawing2D;
 
 namespace MaterialTool.Controls
 {
-    interface ISubGraphControl
+    interface IGraphControl
     {
-        void SetContext(SubGraphEditingContext context);
+        void SetContext(DiagramEditingContext context);
     }
 
     class AdaptableSet : IAdaptable, IDecoratable
@@ -53,9 +53,9 @@ namespace MaterialTool.Controls
         private IEnumerable<object> _subObjects;
     }
 
-    [Export(typeof(ISubGraphControl))]
+    [Export(typeof(IGraphControl))]
     [PartCreationPolicy(CreationPolicy.NonShared)]
-    class SubGraphControl : AdaptableControl, ISubGraphControl
+    class SubGraphControl : AdaptableControl, IGraphControl
     {
         public SubGraphControl()
         {
@@ -64,7 +64,7 @@ namespace MaterialTool.Controls
             Paint += child_Paint;
         }
 
-        public void SetContext(SubGraphEditingContext context)
+        public void SetContext(DiagramEditingContext context)
         {
             var existingContext = context as ISelectionContext;
             if (existingContext != null)
@@ -137,12 +137,12 @@ namespace MaterialTool.Controls
         {
             var adapter = As<HyperGraphAdapter>();
             var p = adapter.GetNodePreviewContext(sender);
-            SubGraphEditingContext subgraphContext = ContextAs<SubGraphEditingContext>();
-            var shader = _modelConversion.ToShaderPatcherLayer(subgraphContext.Model).GeneratePreviewShader(
+            var graphContext = ContextAs<DiagramEditingContext>();
+            var shader = _modelConversion.ToShaderPatcherLayer(graphContext.Model).GeneratePreviewShader(
                 p.SubGraph,
                 p.NodeId,
                 p.PreviewSettings,
-                subgraphContext.ContainingDocument.GraphContext.Variables);
+                graphContext.ContainingDocument.GraphContext.Variables);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
                 System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
@@ -159,7 +159,7 @@ namespace MaterialTool.Controls
         void child_Paint(object sender, System.Windows.Forms.PaintEventArgs e)
         {
                 // update the "defaults material"
-            var context = ContextAs<SubGraphEditingContext>();
+            var context = ContextAs<DiagramEditingContext>();
             if (context.ContainingDocument.GraphContext.DefaultsMaterial != _activeMaterialContext.MaterialName) {
                 context.ContainingDocument.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
                 System.Diagnostics.Debug.Assert(false);

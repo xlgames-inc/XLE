@@ -151,8 +151,8 @@ namespace MaterialTool
             viewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();
             _modelConversion.AddToHyperGraph(doc.NodeGraphFile, viewModel);
 
-            var subgraphContext = new SubGraphEditingContext("main", viewModel, doc) { NodeFactory = _nodeFactory };
-            var control = _exportProvider.GetExport<Controls.ISubGraphControl>().Value;
+            var subgraphContext = new DiagramEditingContext(viewModel, doc) { NodeFactory = _nodeFactory };
+            var control = _exportProvider.GetExport<Controls.IGraphControl>().Value;
             control.SetContext(subgraphContext);
 
                 // Create a control for the new document, and register it!
@@ -197,7 +197,7 @@ namespace MaterialTool
             {
                 m_contextRegistry.ActiveContext = context;
 
-                var circuitDocument = context.As<SubGraphEditingContext>();
+                var circuitDocument = context.As<DiagramEditingContext>();
                 if (circuitDocument != null)
                     m_documentRegistry.ActiveDocument = circuitDocument.ContainingDocument as IDocument;
             }
@@ -210,7 +210,7 @@ namespace MaterialTool
             var adaptableControl = (AdaptableControl)control;
 
             bool closed = true;
-            var doc = adaptableControl.ContextAs<SubGraphEditingContext>();
+            var doc = adaptableControl.ContextAs<DiagramEditingContext>();
             if (doc != null)
             {
                 closed = m_documentService.Close(doc.ContainingDocument as IDocument);

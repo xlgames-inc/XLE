@@ -40,10 +40,9 @@ namespace NodeEditorCore
         void Load(Uri source);
     }
 
-    public interface ISubGraphEditingContext
+    public interface IEditingContext
     {
         IDiagramDocument ContainingDocument { get; set; }
-        String SubGraphName { get; set; }
         uint GlobalRevisionIndex { get; }
     }
 
@@ -189,7 +188,7 @@ namespace NodeEditorCore
                 // This is a more convenient way to track invalidation, also -- because we
                 // can just check if there have been any changes since our last cached bitmap.
 
-                var editingContext = context as ISubGraphEditingContext;
+                var editingContext = context as IEditingContext;
                 if (editingContext == null) return;
 
                 uint currentHash = editingContext.GlobalRevisionIndex;
@@ -222,7 +221,7 @@ namespace NodeEditorCore
                         new ShaderPatcherLayer.NodeGraphPreviewConfiguration
                         {
                             _nodeGraph = editingContext.ContainingDocument.NodeGraphFile,
-                            _subGraphName = editingContext.SubGraphName,
+                            _subGraphName = Node.SubGraphTag as string,
                             _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
                             _settings = prevSettings,
                             _variableRestrictions = editingContext.ContainingDocument.GraphContext.Variables

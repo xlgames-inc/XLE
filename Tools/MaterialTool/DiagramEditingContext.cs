@@ -23,13 +23,18 @@ namespace MaterialTool
         , ISelectionContext
         , ITreeListView
         , IItemView
+        , NodeEditorCore.IEditingContext
     {
         private HyperGraph.IGraphSelection _selection;
 
         public HyperGraph.IGraphModel Model;
         public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
 
-        public DiagramEditingContext(HyperGraph.IGraphModel model)
+        public NodeEditorCore.IDiagramDocument ContainingDocument { get; set; }
+
+        public uint GlobalRevisionIndex { get { return Model.GlobalRevisionIndex; } }
+
+        public DiagramEditingContext(HyperGraph.IGraphModel model, DiagramDocument containingDocument)
         {
             Model = model;
             model.NodeAdded += model_NodeAdded;
@@ -40,6 +45,14 @@ namespace MaterialTool
             _selection = new HyperGraph.GraphSelection();
             _selection.SelectionChanging +=_selection_SelectionChanging;
             _selection.SelectionChanged += _selection_SelectionChanged;
+
+            ContainingDocument = containingDocument;
+                // tracking for dirty flag --
+            Model.NodeAdded += containingDocument.Model_NodeAdded;
+            Model.NodeRemoved += containingDocument.Model_NodeRemoved;
+            Model.ConnectionAdded += containingDocument.Model_ConnectionAdded;
+            Model.ConnectionRemoved += containingDocument.Model_ConnectionRemoved;
+            Model.MiscChange += containingDocument.Model_MiscChange;
         }
 
         #region ISelectionContext Member

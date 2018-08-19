@@ -119,24 +119,4 @@ namespace MaterialTool
         internal void Model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
         internal void Model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
     }
-
-    public class SubGraphEditingContext : DiagramEditingContext, NodeEditorCore.ISubGraphEditingContext
-    {
-        public NodeEditorCore.IDiagramDocument ContainingDocument { get; set; }
-        public String SubGraphName { get; set; }
-        public uint GlobalRevisionIndex { get { return Model.GlobalRevisionIndex; } }
-
-        public SubGraphEditingContext(String subGraphName, HyperGraph.IGraphModel viewModel, DiagramDocument containingDocument) : base(viewModel) 
-        {
-            SubGraphName = subGraphName;
-            ContainingDocument = containingDocument;
-
-                // tracking for dirty flag --
-            Model.NodeAdded += containingDocument.Model_NodeAdded;
-            Model.NodeRemoved += containingDocument.Model_NodeRemoved;
-            Model.ConnectionAdded += containingDocument.Model_ConnectionAdded;
-            Model.ConnectionRemoved += containingDocument.Model_ConnectionRemoved;
-            Model.MiscChange += containingDocument.Model_MiscChange;
-        }
-    }
 }
