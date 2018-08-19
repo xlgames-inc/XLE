@@ -193,7 +193,8 @@ graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName)
 		n=identifier returnType=identifier 
 		{
 			$graphSig._name = n;
-			GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType); 
+			if (strcmp(returnType, "void") != 0)
+				GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType); 
 		}
 		
 		graphParameter[$graphSig._sigId]*

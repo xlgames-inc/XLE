@@ -80,6 +80,8 @@ namespace ShaderPatcher
 
     bool            NodeGraph::HasNode(NodeId nodeId)
     {
+		// Special case node ids are considered to always exist (particularly required when called from Trim())
+		if (nodeId == NodeId_Interface || nodeId == NodeId_Constant) return true;
         return std::find_if(_nodes.begin(), _nodes.end(),
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
     }
@@ -714,7 +716,7 @@ namespace ShaderPatcher
 							if (!HasConnectionStartingAt(graph, i2->NodeId(), p._name)) {
 								auto uniqueName = UniquifyName(p._name, interfContext);
 								interfContext._dangingParameters.push_back({p._type, uniqueName, ParameterDirection::Out});
-								dangingOutBlock << "\t" << uniqueName << OutputTemporaryForNode(i2->NodeId(), p._name) << ";" << std::endl;
+								dangingOutBlock << "\t" << uniqueName << " = " << OutputTemporaryForNode(i2->NodeId(), p._name) << ";" << std::endl;
 							}
 						}
 					}

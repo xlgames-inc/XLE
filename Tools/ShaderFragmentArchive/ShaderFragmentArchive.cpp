@@ -146,7 +146,7 @@ namespace ShaderFragmentArchive
         try
         {
 
-            auto contents = ::Assets::TryLoadFileAsMemoryBlock(marshalString<E_UTF8>(sourceFile), &size);
+            file = ::Assets::TryLoadFileAsMemoryBlock(marshalString<E_UTF8>(sourceFile), &size);
 
         } catch (System::IO::IOException^) {
 
@@ -273,7 +273,7 @@ namespace ShaderFragmentArchive
                     // if the "change marker" is set to a value greater than 
                     //  zero, we have to delete and recreate this object
                     //  (it means the file has changed since the last parse)
-                if (result->GetChangeMarker()>=0) {
+                if (result->GetChangeMarker()>0) {
                     _dictionary->Remove(name);
                 } else
                     return result;
