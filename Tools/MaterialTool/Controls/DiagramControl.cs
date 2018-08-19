@@ -139,8 +139,8 @@ namespace MaterialTool.Controls
             var p = adapter.GetNodePreviewContext(sender);
             SubGraphEditingContext subgraphContext = ContextAs<SubGraphEditingContext>();
             var shader = _modelConversion.ToShaderPatcherLayer(subgraphContext.Model).GeneratePreviewShader(
+                p.SubGraph,
                 p.NodeId,
-                subgraphContext.ContainingDocument.NodeGraphFile,
                 p.PreviewSettings,
                 subgraphContext.ContainingDocument.GraphContext.Variables);
 

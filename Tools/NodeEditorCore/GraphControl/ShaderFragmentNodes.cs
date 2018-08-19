@@ -60,11 +60,10 @@ namespace NodeEditorCore
     
     internal class ShaderFragmentNodeConnector : NodeConnector
     {
-        public ShaderFragmentNodeConnector(string name, string type, string archiveName)
+        public ShaderFragmentNodeConnector(string name, string type)
         {
             this.Name = name;
             this.Type = type;
-            this.ArchiveName = archiveName;
         }
 
         #region Properties
@@ -112,7 +111,6 @@ namespace NodeEditorCore
         }
         public string ShortType { get { return _shortType; } }
         internal SizeF TextSize;
-        public string ArchiveName { get; set; }
         #endregion
 
         public override SizeF Measure(Graphics graphics)
@@ -213,12 +211,10 @@ namespace NodeEditorCore
                 {
                         // note -- much of this work doesn't really need to be repeated for each node.
                     var prevSettings = PreviewSettings;
-                    if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
-                        prevSettings.OutputToVisualize = string.Empty;
 
                     uint target = 0;
-                    if (OutputToVisualize.StartsWith("SV_Target"))
-                        if (!uint.TryParse(OutputToVisualize.Substring(9), out target))
+                    if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
+                        if (!uint.TryParse(prevSettings.OutputToVisualize.Substring(9), out target))
                             target = 0;
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
@@ -267,7 +263,7 @@ namespace NodeEditorCore
         //  we really want to do an InvokeMiscChange on the IGraphModel when these change...
         //  but we don't have any way to find the graph model from here!
         public ShaderPatcherLayer.PreviewGeometry Geometry  { get { return _previewGeometry; }      set { if (_previewGeometry != value) { _previewGeometry = value; InvalidateShaderStructure(); } } }
-        public string OutputToVisualize                     { get { return _outputToVisualize; }    set { if (_outputToVisualize != value) { _outputToVisualize = value; InvalidateShaderStructure(); } } }
+        public string OutputToVisualize                     { get { return _outputToVisualize; }    set { if (_outputToVisualize != value) { _outputToVisualize = (value!=null)?value:string.Empty; InvalidateShaderStructure(); } } }
 
         public ShaderPatcherLayer.PreviewSettings PreviewSettings
         {
@@ -346,7 +342,7 @@ namespace NodeEditorCore
     internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentNodeConnector
     {
         public ShaderFragmentInterfaceParameterItem(string name, string type, InterfaceDirection direction) :
-            base(name, type, string.Empty)
+            base(name, type)
         {
             Direction = direction;
         }
@@ -548,7 +544,7 @@ namespace NodeEditorCore
                 {
                     bool isInput = param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In;
                     node.AddItem(
-                        new ShaderFragmentNodeConnector(param.Name, param.Type, archiveName + ":" + param.Name),
+                        new ShaderFragmentNodeConnector(param.Name, param.Type),
                         ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out));
                 }
             }
@@ -578,7 +574,7 @@ namespace NodeEditorCore
                         var fragItem = (ShaderFragmentNodeConnector)i;
                         node.RemoveItem(fragItem);
                         node.AddItem(
-                            new ShaderFragmentNodeConnector(fragItem.Name, fragItem.Type, fragItem.ArchiveName),
+                            new ShaderFragmentNodeConnector(fragItem.Name, fragItem.Type),
                             newColumn);
                     }
                 }
@@ -606,7 +602,7 @@ namespace NodeEditorCore
                 {
                     bool isInput = type != ParamSourceType.Output;
                     node.AddItem(
-                        new ShaderFragmentNodeConnector(param.Name, param.Type, archiveName + ":" + param.Name),
+                        new ShaderFragmentNodeConnector(param.Name, param.Type),
                         ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out));
                 }
             }

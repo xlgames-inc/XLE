@@ -201,7 +201,7 @@ namespace NodeEditorCore
             {
                 NodeConnector conn = (NodeConnector)e.Element;
                 var tag = (ShaderFragmentNodeConnector)conn;
-                if (tag.ArchiveName != null)
+                if (true)
                 {
                     // pop up a context menu for this connector
                     var menu = new ContextMenuStrip();
@@ -280,14 +280,17 @@ namespace NodeEditorCore
         {
             public uint NodeId { get; set; }
             public ShaderPatcherLayer.PreviewSettings PreviewSettings { get; set; }
+            public string SubGraph { get; set; }
         }
 
         public NodePreviewContext GetNodePreviewContext(object sender)
         {
+            var previewItem = GetPreviewItem(sender);
             return new NodePreviewContext
             {
                 NodeId = AttachedId(sender),
-                PreviewSettings = GetPreviewItem(sender).PreviewSettings
+                PreviewSettings = previewItem.PreviewSettings,
+                SubGraph = previewItem.Node.SubGraphTag as string
             };
         }
 
