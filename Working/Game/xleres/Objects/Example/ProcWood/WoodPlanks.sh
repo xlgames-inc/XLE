@@ -34,13 +34,13 @@ attributes visualNode19(PreviewGeometry:"sphere", X:"-639.000000", Y:"266.000000
 attributes visualNode20(PreviewGeometry:"sphere", X:"-630.000000", Y:"389.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode21(PreviewGeometry:"sphere", X:"-637.000000", Y:"326.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode22(PreviewGeometry:"sphere", X:"-1185.000000", Y:"-260.000000", State:"Normal", OutputToVisualize:"");
-/* <<Chunk:NodeGraphContext:WoodPlanks>>--(
+/* <<Chunk:NodeGraphMetaData:WoodPlanks>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
-</NodeGraphContext>
+</NodeGraphMetaData>
 )-- */
 /* <<Chunk:CBLayout:main>>--(
 

@@ -13,9 +13,9 @@ attributes visualNode1(PreviewGeometry:"sphere", X:"-91.000000", Y:"340.000000",
 attributes visualNode2(PreviewGeometry:"sphere", X:"1036.000000", Y:"388.000000", State:"Normal", OutputToVisualize:"result.diffuseAlbedo");
 attributes visualNode3(PreviewGeometry:"sphere", X:"471.000000", Y:"661.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000", State:"Collapsed", OutputToVisualize:"");
-/* <<Chunk:NodeGraphContext:ProcWood>>--(
+/* <<Chunk:NodeGraphMetaData:ProcWood>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<HasTechniqueConfig>true</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
 		<d2p1:KeyValueOfstringstring>
@@ -24,7 +24,7 @@ attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000",
 		</d2p1:KeyValueOfstringstring>
 	</ShaderParameters>
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
-</NodeGraphContext>
+</NodeGraphMetaData>
 )-- */
 
 

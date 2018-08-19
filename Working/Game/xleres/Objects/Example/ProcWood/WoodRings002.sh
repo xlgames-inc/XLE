@@ -22,13 +22,13 @@ attributes visualNode11(PreviewGeometry:"sphere", X:"352.000000", Y:"745.000000"
 attributes visualNode12(PreviewGeometry:"plane2d", X:"859.000000", Y:"264.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode13(PreviewGeometry:"chart", X:"712.000000", Y:"265.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode14(PreviewGeometry:"sphere", X:"548.000000", Y:"302.000000", State:"Collapsed", OutputToVisualize:"");
-/* <<Chunk:NodeGraphContext:WoodRings002>>--(
+/* <<Chunk:NodeGraphMetaData:WoodRings002>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
-</NodeGraphContext>
+</NodeGraphMetaData>
 )-- */
 /* <<Chunk:CBLayout:main>>--(
 

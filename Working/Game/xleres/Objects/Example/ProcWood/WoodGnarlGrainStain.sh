@@ -26,13 +26,13 @@ attributes visualNode13(PreviewGeometry:"sphere", X:"411.000000", Y:"131.000000"
 attributes visualNode14(PreviewGeometry:"sphere", X:"318.000000", Y:"603.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode15(PreviewGeometry:"sphere", X:"321.000000", Y:"441.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode16(PreviewGeometry:"sphere", X:"2596.000000", Y:"481.000000", State:"Collapsed", OutputToVisualize:"");
-/* <<Chunk:NodeGraphContext:WoodGnarlGrainStain>>--(
+/* <<Chunk:NodeGraphMetaData:WoodGnarlGrainStain>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
-</NodeGraphContext>
+</NodeGraphMetaData>
 )-- */
 /* <<Chunk:CBLayout:main>>--(
 

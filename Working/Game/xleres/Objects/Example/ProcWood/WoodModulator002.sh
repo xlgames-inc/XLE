@@ -14,9 +14,9 @@ attributes visualNode2(PreviewGeometry:"sphere", X:"548.000000", Y:"268.000000",
 attributes visualNode3(PreviewGeometry:"sphere", X:"365.000000", Y:"348.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode4(PreviewGeometry:"sphere", X:"677.000000", Y:"377.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode5(PreviewGeometry:"sphere", X:"717.000000", Y:"279.000000", State:"Collapsed", OutputToVisualize:"");
-/* <<Chunk:NodeGraphContext:WoodModulator002>>--(
+/* <<Chunk:NodeGraphMetaData:WoodModulator002>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphContext xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
@@ -25,7 +25,7 @@ attributes visualNode5(PreviewGeometry:"sphere", X:"717.000000", Y:"279.000000",
 			<d2p1:Value>2.5</d2p1:Value>
 		</d2p1:KeyValueOfstringstring>
 	</Variables>
-</NodeGraphContext>
+</NodeGraphMetaData>
 )-- */
 /* <<Chunk:CBLayout:main>>--(
 
