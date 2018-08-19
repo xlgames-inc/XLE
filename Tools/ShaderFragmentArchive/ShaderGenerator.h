@@ -28,8 +28,6 @@ namespace ShaderPatcherLayer
         enum class Type 
         {
             Procedure,
-			SlotInput,
-            SlotOutput,
 			Uniforms
         };
         [DataMember] String^       FragmentArchiveName;

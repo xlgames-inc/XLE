@@ -33,7 +33,6 @@ namespace NodeEditorCore
             {
                 case ShaderFragmentArchive.Parameter.SourceType.Material:                   return ShaderPatcherLayer.Node.Type.Uniforms;
                 case ShaderFragmentArchive.Parameter.SourceType.System:                     return ShaderPatcherLayer.Node.Type.Uniforms;
-                case ShaderFragmentArchive.Parameter.SourceType.Output:                     return ShaderPatcherLayer.Node.Type.SlotOutput;
                 case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return ShaderPatcherLayer.Node.Type.Uniforms;
                 default:                                                                    return ShaderPatcherLayer.Node.Type.Procedure;
             }
@@ -45,8 +44,6 @@ namespace NodeEditorCore
             {
                 default:
                 case ShaderPatcherLayer.Node.Type.Procedure:            return ShaderFragmentArchive.Parameter.SourceType.Material;
-                case ShaderPatcherLayer.Node.Type.SlotInput:            return ShaderFragmentArchive.Parameter.SourceType.System;
-                case ShaderPatcherLayer.Node.Type.SlotOutput:           return ShaderFragmentArchive.Parameter.SourceType.Output;
                 case ShaderPatcherLayer.Node.Type.Uniforms:             return ShaderFragmentArchive.Parameter.SourceType.Material;
             }
         }

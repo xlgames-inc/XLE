@@ -41,8 +41,6 @@ namespace ShaderPatcherLayer
         switch (e) {
         default:
         case Node::Type::Procedure:					return ShaderPatcher::Node::Type::Procedure;
-        case Node::Type::SlotInput:					return ShaderPatcher::Node::Type::SlotInput;
-        case Node::Type::SlotOutput:				return ShaderPatcher::Node::Type::SlotOutput;
         case Node::Type::Uniforms:                  return ShaderPatcher::Node::Type::Uniforms;
         }
     }
@@ -94,47 +92,37 @@ namespace ShaderPatcherLayer
     using namespace clix;
     static ShaderPatcher::Node                  ConvertToNative(Node^ node, ConversionContext& context)
     {
-        return ShaderPatcher::Node(
+        return ShaderPatcher::Node{
             CompressImportedName(marshalString<E_UTF8>(node->FragmentArchiveName), context), 
-            node->NodeId, ConvertToNative(node->NodeType));
+			node->NodeId, ConvertToNative(node->NodeType)};
     }
     
-    static ShaderPatcher::NodeConnection        ConvertToNative(NodeConnection^ connection)
+    static ShaderPatcher::Connection        ConvertToNative(NodeConnection^ connection)
     {
-        return ShaderPatcher::NodeConnection(
-            connection->OutputNodeID, connection->InputNodeID, 
-            marshalString<E_UTF8>(connection->OutputParameterName),
-            marshalString<E_UTF8>(connection->InputParameterName),
-            ShaderPatcher::Type(marshalString<E_UTF8>(connection->InputType)));
+        return ShaderPatcher::Connection{
+            connection->InputNodeID, marshalString<E_UTF8>(connection->InputParameterName),
+			connection->OutputNodeID, marshalString<E_UTF8>(connection->OutputParameterName)};
     }
 
-    static ShaderPatcher::ConstantConnection        ConvertToNative(ConstantConnection^ connection)
+    static ShaderPatcher::Connection        ConvertToNative(ConstantConnection^ connection)
     {
-        return ShaderPatcher::ConstantConnection(
-            connection->OutputNodeID,
-            marshalString<E_UTF8>(connection->OutputParameterName),
-            marshalString<E_UTF8>(connection->Value));
+        return ShaderPatcher::Connection{
+            ShaderPatcher::NodeId_Constant, marshalString<E_UTF8>(connection->Value),
+			connection->OutputNodeID, marshalString<E_UTF8>(connection->OutputParameterName)};
     }
 
-    static ShaderPatcher::InputParameterConnection        ConvertToNative(InputParameterConnection^ connection)
+    static ShaderPatcher::Connection        ConvertToNative(InputParameterConnection^ connection)
     {
-        return ShaderPatcher::InputParameterConnection(
-            connection->OutputNodeID,
-            marshalString<E_UTF8>(connection->OutputParameterName),
-            ShaderPatcher::Type(marshalString<E_UTF8>(connection->Type)),
-            marshalString<E_UTF8>(connection->Name),
-            marshalString<E_UTF8>(connection->Semantic),
-            connection->Default ? marshalString<E_UTF8>(connection->Default) : std::string());
+        return ShaderPatcher::Connection{
+            ShaderPatcher::NodeId_Interface, marshalString<E_UTF8>(connection->Name),
+			connection->OutputNodeID, marshalString<E_UTF8>(connection->OutputParameterName)};
     }
 
-    static ShaderPatcher::NodeConnection        ConvertToNative(OutputParameterConnection^ connection)
+    static ShaderPatcher::Connection        ConvertToNative(OutputParameterConnection^ connection)
     {
-            // note -- semantic lost!
-        return ShaderPatcher::NodeConnection(
-            ~0u, connection->InputNodeID,
-            marshalString<E_UTF8>(connection->Name),
-            marshalString<E_UTF8>(connection->InputParameterName),
-            ShaderPatcher::Type(marshalString<E_UTF8>(connection->Type)));
+        return ShaderPatcher::Connection{
+            connection->InputNodeID, marshalString<E_UTF8>(connection->InputParameterName),
+			ShaderPatcher::NodeId_Interface, marshalString<E_UTF8>(connection->Name)};
     }
     
     ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative(ConversionContext& context)
@@ -150,13 +138,9 @@ namespace ShaderPatcherLayer
 			auto match = rgx->Match(c->Value);
 			if (match && match->Success && match->Groups->Count >= 2) {
 				res.Add(
-					ShaderPatcher::InputParameterConnection{
-						c->OutputNodeID,
-						marshalString<E_UTF8>(c->OutputParameterName),
-						ShaderPatcher::Type("auto"),
-						marshalString<E_UTF8>(match->Groups[1]->Value),
-						{},
-						{}});
+					ShaderPatcher::Connection{
+						ShaderPatcher::NodeId_Constant, marshalString<E_UTF8>(match->Groups[1]->Value),
+						c->OutputNodeID, marshalString<E_UTF8>(c->OutputParameterName)});
 			} else {
 				res.Add(ShaderPatcherLayer::ConvertToNative(c));
 			}
@@ -175,8 +159,6 @@ namespace ShaderPatcherLayer
         switch (e) {
         default:
 		case ShaderPatcher::Node::Type::Procedure : return Node::Type::Procedure;
-		case ShaderPatcher::Node::Type::SlotInput: return Node::Type::SlotInput;
-		case ShaderPatcher::Node::Type::SlotOutput: return Node::Type::SlotOutput;
 		case ShaderPatcher::Node::Type::Uniforms: return Node::Type::Uniforms;
         }
     }
@@ -190,47 +172,34 @@ namespace ShaderPatcherLayer
 		return result;
     }
     
-    static NodeConnection^ ConvertFromNative(const ShaderPatcher::NodeConnection& connection)
+    static Object^ ConvertFromNative(const ShaderPatcher::Connection& connection)
     {
-        NodeConnection^ result = gcnew NodeConnection;
-        result->OutputNodeID = connection.OutputNodeId(); 
-		result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
-		result->InputNodeID = connection.InputNodeId();
-        result->InputParameterName = marshalString<E_UTF8>(connection.InputParameterName());
-        result->InputType = marshalString<E_UTF8>(connection.InputType()._name);
-		return result;
-    }
-
-    static ConstantConnection^ ConvertFromNative(const ShaderPatcher::ConstantConnection& connection)
-    {
-		ConstantConnection^ result = gcnew ConstantConnection;
-        result->OutputNodeID = connection.OutputNodeId(); 
-		result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
-		result->Value = marshalString<E_UTF8>(connection.Value());
-		return result;
-    }
-
-    static InputParameterConnection^ ConvertFromNative(const ShaderPatcher::InputParameterConnection& connection)
-    {
-		InputParameterConnection^ result = gcnew InputParameterConnection;
-        result->OutputNodeID = connection.OutputNodeId(); 
-		result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
-		result->Type = marshalString<E_UTF8>(connection.InputType()._name);
-        result->Name = marshalString<E_UTF8>(connection.InputName());
-        result->Semantic = marshalString<E_UTF8>(connection.InputSemantic());
-		if (!connection.Default().empty())
-            result->Default = marshalString<E_UTF8>(connection.Default());
-		return result;
-    }
-
-    static OutputParameterConnection^ ConvertFromNativeOutParam(const ShaderPatcher::NodeConnection& connection)
-    {
-		OutputParameterConnection^ result = gcnew OutputParameterConnection;
-		result->InputNodeID = connection.InputNodeId();
-        result->InputParameterName = marshalString<E_UTF8>(connection.InputParameterName());
-        result->Type = marshalString<E_UTF8>(connection.InputType()._name);
-		result->Name = marshalString<E_UTF8>(connection.OutputParameterName());
-		return result;
+		if (connection._inputNodeId == ShaderPatcher::NodeId_Interface) {
+			InputParameterConnection^ result = gcnew InputParameterConnection;
+			result->OutputNodeID = connection.OutputNodeId(); 
+			result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
+			result->Name = marshalString<E_UTF8>(connection.InputParameterName());
+			return result;
+		} else if (connection._inputNodeId == ShaderPatcher::NodeId_Constant) {
+			ConstantConnection^ result = gcnew ConstantConnection;
+			result->OutputNodeID = connection.OutputNodeId(); 
+			result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
+			result->Value = marshalString<E_UTF8>(connection.InputParameterName());
+			return result;
+		} if (connection._outputNodeId == ShaderPatcher::NodeId_Interface) {
+			OutputParameterConnection^ result = gcnew OutputParameterConnection;
+			result->InputNodeID = connection.InputNodeId();
+			result->InputParameterName = marshalString<E_UTF8>(connection.InputParameterName());
+			result->Name = marshalString<E_UTF8>(connection.OutputParameterName());
+			return result;
+		} else {
+			NodeConnection^ result = gcnew NodeConnection;
+			result->OutputNodeID = connection.OutputNodeId(); 
+			result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
+			result->InputNodeID = connection.InputNodeId();
+			result->InputParameterName = marshalString<E_UTF8>(connection.InputParameterName());
+			return result;
+		}
     }
 
 	NodeGraph^ NodeGraph::ConvertFromNative(const ShaderPatcher::NodeGraph& input, const ConversionContext& context)
@@ -239,17 +208,18 @@ namespace ShaderPatcherLayer
 		for (const auto& n:input.GetNodes())
 			result->Nodes->Add(ShaderPatcherLayer::ConvertFromNative(n, context));
 
-		for (const auto& c:input.GetNodeConnections())
-			if (c.OutputNodeId() != ~0u) {
-				result->NodeConnections->Add(ShaderPatcherLayer::ConvertFromNative(c));
+		for (const auto& c:input.GetConnections()) {
+			Object^ con = ShaderPatcherLayer::ConvertFromNative(c);
+			if (InputParameterConnection^ inputP = dynamic_cast<InputParameterConnection^>(con)) {
+				result->InputParameterConnections->Add(inputP);
+			} else if (ConstantConnection^ inputC = dynamic_cast<ConstantConnection^>(con)) {
+				result->ConstantConnections->Add(inputC);
+			} else if (OutputParameterConnection^ outputP = dynamic_cast<OutputParameterConnection^>(con)) {
+				result->OutputParameterConnections->Add(outputP);
 			} else {
-				result->OutputParameterConnections->Add(ConvertFromNativeOutParam(c));
+				result->NodeConnections->Add(dynamic_cast<NodeConnection^>(con));
 			}
-
-		for (const auto& c:input.GetConstantConnections())
-			result->ConstantConnections->Add(ShaderPatcherLayer::ConvertFromNative(c));
-		for (const auto&c:input.GetInputParameterConnections())
-			result->InputParameterConnections->Add(ShaderPatcherLayer::ConvertFromNative(c));
+		}
 
 		// Construct a list of visual nodes for everything that requires one
 		for each(Node^ n in result->Nodes) {
