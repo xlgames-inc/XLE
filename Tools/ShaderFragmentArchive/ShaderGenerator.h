@@ -217,8 +217,8 @@ namespace ShaderPatcherLayer
 			property System::String^		Default;
         };
 
-		property IEnumerable<Parameter^>^	Parameters { IEnumerable<Parameter^>^ get() { return _parameters; } }
-		property IEnumerable<Parameter^>^	CapturedParameters { IEnumerable<Parameter^>^ get() { return _capturedParameters; } }
+		property List<Parameter^>^	Parameters { List<Parameter^>^ get() { return _parameters; } }
+		property List<Parameter^>^	CapturedParameters { List<Parameter^>^ get() { return _capturedParameters; } }
 
 		ref class TemplateParameter
 		{
@@ -226,15 +226,15 @@ namespace ShaderPatcherLayer
 			property System::String^		Name;
             property System::String^		Restriction;
 		};
-		property IEnumerable<TemplateParameter^>^	TemplateParameters { IEnumerable<TemplateParameter^>^ get() { return _templateParameters; } }
+		property List<TemplateParameter^>^	TemplateParameters { List<TemplateParameter^>^ get() { return _templateParameters; } }
 
 		ShaderPatcher::NodeGraphSignature	ConvertToNative(ConversionContext& context);
 		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input, const ConversionContext& context);
 
 	private:
-		List<Parameter^>^				_parameters;
-        List<Parameter^>^				_capturedParameters;
-        List<TemplateParameter^>^		_templateParameters;
+		List<Parameter^>^				_parameters = gcnew List<Parameter^>();
+        List<Parameter^>^				_capturedParameters = gcnew List<Parameter^>();
+        List<TemplateParameter^>^		_templateParameters = gcnew List<TemplateParameter^>();
 	};
 
 	public ref class NodeGraphFile

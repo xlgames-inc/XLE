@@ -29,11 +29,17 @@ namespace MaterialTool
 
         public void Save(Uri destination)
         {
-            var fileMode = System.IO.File.Exists(destination.LocalPath) ? System.IO.FileMode.Truncate : System.IO.FileMode.OpenOrCreate;
-            using (var fileStream = new System.IO.FileStream(destination.LocalPath, fileMode))
+            // Write to memory stream first, and if successful, flush out to a file stream
+            // This avoid making any filesystem changes if NodeGraphFile.Serialize() throws an exception
+            using (var memoryStream = new System.IO.MemoryStream())
             {
-                NodeGraphFile.Serialize(fileStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), GraphContext);
-                fileStream.Flush();
+                NodeGraphFile.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), GraphContext);
+
+                var fileMode = System.IO.File.Exists(destination.LocalPath) ? System.IO.FileMode.Truncate : System.IO.FileMode.OpenOrCreate;
+                using (var fileStream = new System.IO.FileStream(destination.LocalPath, fileMode))
+                {
+                    memoryStream.WriteTo(fileStream);
+                }
             }
         }
 

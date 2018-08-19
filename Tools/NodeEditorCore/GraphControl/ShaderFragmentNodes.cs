@@ -88,7 +88,7 @@ namespace NodeEditorCore
             set
             {
                 _typeText = value;
-                if (value.Length > 0)
+                if (value != null && value.Length > 0)
                 {
                     _shortType = value[0].ToString();
                     if (value.Count() > 0 && Char.IsDigit(value[value.Count() - 1]))
