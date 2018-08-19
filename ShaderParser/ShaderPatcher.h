@@ -16,184 +16,65 @@
 
 namespace ShaderPatcher 
 {
-
 	using NodeId = uint32_t;
+
+	static NodeId NodeId_Interface = (NodeId)-1;
+	static NodeId NodeId_Constant = (NodeId)-2;
 
         ///////////////////////////////////////////////////////////////
 
     class Node
     {
     public:
-        enum class Type
-        {
-            Procedure,
-            SlotInput,
-            SlotOutput,
-            Uniforms
-        };
+        enum class Type { Procedure, Uniforms };
 
-        Node(const std::string& archiveName, ShaderPatcher::NodeId nodeId, Type type);
-
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			Node(Node&& moveFrom) never_throws = default;
-			Node& operator=(Node&& moveFrom) never_throws = default;
-			Node(const Node& cloneFrom) = default;
-			Node& operator=(const Node& cloneFrom) = default;
-		#endif
+		std::string				_archiveName;
+        ShaderPatcher::NodeId   _nodeId;
+        Type					_type;
 
         const std::string&		ArchiveName() const         { return _archiveName; }
         ShaderPatcher::NodeId   NodeId() const              { return _nodeId; }
         Type					GetType() const             { return _type; }
-        
-    private:
-        std::string				_archiveName;
-        ShaderPatcher::NodeId   _nodeId;
-        Type					_type;
     };
 
         ///////////////////////////////////////////////////////////////
 
-    class Type
+    class Connection
     {
     public:
-        std::string _name;
-        Type() {}
-        Type(const std::string& name) : _name(name) {}
+        NodeId				_inputNodeId;
+        std::string			_inputParameterName;
+		NodeId				_outputNodeId;
+        std::string			_outputParameterName;
+
+        NodeId              InputNodeId() const				{ return _inputNodeId; }
+        const std::string&  InputParameterName() const		{ return _inputParameterName; }
+		NodeId				OutputNodeId() const            { return _outputNodeId; }
+        const std::string&  OutputParameterName() const		{ return _outputParameterName; }
     };
-
-        ///////////////////////////////////////////////////////////////
-
-    class NodeBaseConnection
-    {
-    public:
-        NodeBaseConnection(NodeId outputNodeId, const std::string& outputParameterName);
-
-        NodeBaseConnection(NodeBaseConnection&& moveFrom) never_throws;
-        NodeBaseConnection& operator=(NodeBaseConnection&& moveFrom) never_throws;
-
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			NodeBaseConnection(const NodeBaseConnection&) = default;
-			NodeBaseConnection& operator=(const NodeBaseConnection&) = default;
-		#endif
-
-        NodeId				OutputNodeId() const                { return _outputNodeId; }
-        const std::string&  OutputParameterName() const { return _outputParameterName; }
-
-    protected:
-        NodeId          _outputNodeId;
-        std::string     _outputParameterName;
-    };
-
-        ///////////////////////////////////////////////////////////////
-
-    class NodeConnection : public NodeBaseConnection
-    {
-    public:
-        NodeConnection( NodeId outputNodeId, NodeId inputNodeId, 
-                        const std::string& outputParameterName,
-                        const std::string& inputParameterName, const Type& inputType);
-
-        NodeConnection(NodeConnection&& moveFrom) never_throws;
-        NodeConnection& operator=(NodeConnection&& moveFrom) never_throws;
-
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			NodeConnection(const NodeConnection&) = default;
-			NodeConnection& operator=(const NodeConnection&) = default;
-		#endif
-
-        NodeId              InputNodeId() const         { return _inputNodeId; }
-        const Type&         InputType() const           { return _inputType; }
-        const std::string&  InputParameterName() const  { return _inputParameterName; }
-
-    private:
-        NodeId          _inputNodeId;
-        std::string     _inputParameterName;
-        Type            _inputType;
-    };
-
-        ///////////////////////////////////////////////////////////////
-
-    class ConstantConnection : public NodeBaseConnection
-    {
-    public:
-        ConstantConnection(NodeId outputNodeId, const std::string& outputParameterName, const std::string& value);
-        ConstantConnection(ConstantConnection&& moveFrom) never_throws;
-        ConstantConnection& operator=(ConstantConnection&& moveFrom) never_throws;
-
-        #if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			ConstantConnection(const ConstantConnection&) = default;
-			ConstantConnection& operator=(const ConstantConnection&) = default;
-		#endif
-
-        const std::string&  Value() const               { return _value; }
-
-    private:
-        std::string     _value;
-    };
-
-            ///////////////////////////////////////////////////////////////
-
-    class InputParameterConnection : public NodeBaseConnection
-    {
-    public:
-        InputParameterConnection(
-            NodeId outputNodeId, const std::string& outputParameterName, 
-            const Type& type, const std::string& name, const std::string& semantic, const std::string& defaultValue);
-        InputParameterConnection(InputParameterConnection&& moveFrom) never_throws;
-        InputParameterConnection& operator=(InputParameterConnection&& moveFrom) never_throws;
-
-        #if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			InputParameterConnection(const InputParameterConnection&) = default;
-			InputParameterConnection& operator=(const InputParameterConnection&) = default;
-		#endif
-        
-        const Type&         InputType() const           { return _type; }
-        const std::string&  InputName() const           { return _name; }
-        const std::string&  InputSemantic() const       { return _semantic; }
-        const std::string&  Default() const             { return _default; }
-
-    private:
-        Type            _type;
-        std::string     _name;
-        std::string     _semantic;
-        std::string     _default;
-    };
-   
+  
         ///////////////////////////////////////////////////////////////
 
     class NodeGraph
     {
     public:
-        IteratorRange<const Node*>                      GetNodes() const                        { return MakeIteratorRange(_nodes); }
-        IteratorRange<const NodeConnection*>            GetNodeConnections() const              { return MakeIteratorRange(_nodeConnections); }
-        IteratorRange<const ConstantConnection*>        GetConstantConnections() const          { return MakeIteratorRange(_constantConnections); }
-        IteratorRange<const InputParameterConnection*>  GetInputParameterConnections() const    { return MakeIteratorRange(_inputParameterConnections); }
+        IteratorRange<const Node*>			GetNodes() const			{ return MakeIteratorRange(_nodes); }
+        IteratorRange<const Connection*>	GetConnections() const		{ return MakeIteratorRange(_connections); }
 
-        void Add(Node&&);
-        void Add(NodeConnection&&);
-        void Add(ConstantConnection&&);
-        void Add(InputParameterConnection&&);
+        void			Add(Node&&);
+        void			Add(Connection&&);
 
 		void			Trim(const NodeId* trimNodesBegin, const NodeId* trimNodesEnd);
-        void            Trim(NodeId previewNode);
+        void			Trim(NodeId previewNode);
 
         const Node*     GetNode(NodeId nodeId) const;
 
         NodeGraph();
         ~NodeGraph();
 
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			NodeGraph(NodeGraph&&) never_throws = default;
-			NodeGraph& operator=(NodeGraph&&) never_throws = default;
-			NodeGraph(const NodeGraph&) = default;
-			NodeGraph& operator=(const NodeGraph&) = default;
-		#endif
-
     private:
-        std::vector<Node> _nodes;
-        std::vector<NodeConnection> _nodeConnections;
-        std::vector<ConstantConnection> _constantConnections;
-        std::vector<InputParameterConnection> _inputParameterConnections;
+        std::vector<Node>		_nodes;
+        std::vector<Connection> _connections;
 
         bool        IsUpstream(NodeId startNode, NodeId searchingForNode);
         bool        IsDownstream(NodeId startNode, const NodeId* searchingForNodesStart, const NodeId* searchingForNodesEnd);

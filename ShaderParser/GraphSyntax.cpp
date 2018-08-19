@@ -279,7 +279,7 @@ extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAn
 		}
 	}
 
-	ShaderPatcher::Node newNode(archiveName, nextId, ShaderPatcher::Node::Type::Procedure);
+	ShaderPatcher::Node newNode{archiveName, nextId, ShaderPatcher::Node::Type::Procedure};
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -322,39 +322,16 @@ extern "C" ConnectionId Connection_Register(const void* ctx, ConnectorId left, C
 		if ((right & ~0xf0000000u) >= ng._literalConnectors.size())
 			return ~0u;
 
-		ShaderPatcher::ConstantConnection connection(
-			ng._connectors[left].nodeId, ng._connectors[left]._name,
-			ng._literalConnectors[right & ~0xf0000000u]);
-		ng._graph.Add(std::move(connection));
+		ng._graph.Add({
+			ShaderPatcher::NodeId_Constant, ng._literalConnectors[right & ~0xf0000000u],
+			ng._connectors[left].nodeId, ng._connectors[left]._name});
 	} else {
 		if (right >= ng._connectors.size())
 			return ~0u;
 
-		if (ng._connectors[right].nodeId == ~0u) {
-			auto paramName = ng._connectors[right]._name;
-
-			auto i = std::find_if(
-				ng._signature.GetParameters().begin(),
-				ng._signature.GetParameters().end(),
-				[paramName](const ShaderPatcher::NodeGraphSignature::Parameter& p) { return p._name == paramName; });
-			if (i != ng._signature.GetParameters().end()) {
-				ShaderPatcher::InputParameterConnection connection(
-					ng._connectors[left].nodeId, ng._connectors[left]._name,
-					i->_type, i->_name, i->_semantic, i->_default);
-				ng._graph.Add(std::move(connection));
-			} else {
-				ShaderPatcher::InputParameterConnection connection(
-					ng._connectors[left].nodeId, ng._connectors[left]._name,
-					std::string(), std::string(), std::string(), std::string());
-				ng._graph.Add(std::move(connection));
-			}
-		} else {
-			ShaderPatcher::NodeConnection connection(
-				ng._connectors[left].nodeId, ng._connectors[right].nodeId,
-				ng._connectors[left]._name, ng._connectors[right]._name,
-				std::string());
-			ng._graph.Add(std::move(connection));
-		}
+		ng._graph.Add({
+			ng._connectors[right].nodeId, ng._connectors[right]._name,
+			ng._connectors[left].nodeId, ng._connectors[left]._name});
 	}
 
 	return ~0u;
