@@ -32,82 +32,38 @@ namespace ShaderPatcherLayer
         };
         [DataMember] String^       FragmentArchiveName;
         [DataMember] UInt32        NodeId;
-        [DataMember] int           VisualNodeId;
         [DataMember] Type          NodeType;
+		[DataMember] String^	   AttributeTableName;
+
+		static const UInt32 NodeId_Interface = (UInt32)-1;
+		static const UInt32 NodeId_Constant = (UInt32)-2;
     };
 
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class BaseConnection
+    [DataContract] public ref class Connection
     {
     public:
-        [DataMember] UInt32        OutputNodeID;
+        [DataMember] UInt32        InputNodeID;
+        [DataMember] String^       InputParameterName;
+		[DataMember] UInt32        OutputNodeID;
         [DataMember] String^       OutputParameterName;
     };
 
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class NodeConnection : public BaseConnection
-    {
-    public:
-        [DataMember] UInt32        InputNodeID;
-        [DataMember] String^       InputParameterName;
-        [DataMember] String^       InputType;
+    using AttributeTable = Dictionary<String^, String^>;
 
-		// [DataMember] String^       OutputType;
-        // [DataMember] String^       Semantic;
-    };
+	public enum class PreviewGeometry { Chart, Plane2D, Box, Sphere, Model };
+	public enum class StateType { Normal, Collapsed };
 
-        ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class ConstantConnection : public BaseConnection
-    {
-    public:
-        [DataMember] String^       Value;
-    };
-
-		///////////////////////////////////////////////////////////////
-	[DataContract] public ref class InputParameterConnection : public BaseConnection
+	[DataContract] public ref class PreviewSettings
 	{
 	public:
-		[DataMember] String^       Type;
-		[DataMember] String^       Name;
-		[DataMember] String^       Semantic;
-        [DataMember] String^       Default;
-        [DataMember] int           VisualNodeId;
-	};
+		[DataMember] PreviewGeometry    Geometry;
+		[DataMember] String^            OutputToVisualize;
 
-    	///////////////////////////////////////////////////////////////
-	[DataContract] public ref class OutputParameterConnection
-	{
-	public:
-        [DataMember] UInt32        InputNodeID;
-        [DataMember] String^       InputParameterName;
-		[DataMember] String^       Type;
-        [DataMember] String^       Name;
-		[DataMember] String^       Semantic;
-        [DataMember] int           VisualNodeId;
-	};
-
-        ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class VisualNode
-    {
-    public:
-        enum class StateType { Normal, Collapsed };
-        [DataMember] PointF        Location;
-        [DataMember] StateType     State;
-    };
-
-        ///////////////////////////////////////////////////////////////
-	public enum class PreviewGeometry
-    {
-        Chart, Plane2D, Box, Sphere, Model
-    };
-
-    [DataContract] public ref class PreviewSettings
-    {
-    public:
-        [DataMember] PreviewGeometry    Geometry;
-        [DataMember] String^            OutputToVisualize;
-        [DataMember] int                VisualNodeId;
-    };
+		static String^ PreviewGeometryToString(PreviewGeometry geo);
+		static PreviewGeometry PreviewGeometryFromString(String^ input);
+     };
 
 		///////////////////////////////////////////////////////////////
 	[DataContract] public ref class NodeGraphContext
@@ -147,43 +103,15 @@ namespace ShaderPatcherLayer
             List<Node^>^ get() { if (!_nodes) { _nodes = gcnew List<Node^>(); } return _nodes; }
         }
 
-        [DataMember] property List<NodeConnection^>^ NodeConnections
+        [DataMember] property List<Connection^>^ Connections
         {
-            List<NodeConnection^>^ get() { if (!_connections) { _connections = gcnew List<NodeConnection^>(); } return _connections; }
-        }
-
-        [DataMember] property List<ConstantConnection^>^ ConstantConnections
-        {
-            List<ConstantConnection^>^ get() { if (!_constantConnections) { _constantConnections = gcnew List<ConstantConnection^>(); } return _constantConnections; }
-        }
-
-        [DataMember] property List<InputParameterConnection^>^ InputParameterConnections
-        {
-            List<InputParameterConnection^>^ get() { if (!_inputParameterConnections) { _inputParameterConnections = gcnew List<InputParameterConnection^>(); } return _inputParameterConnections; }
-        }
-
-        [DataMember] property List<OutputParameterConnection^>^ OutputParameterConnections
-        {
-            List<OutputParameterConnection^>^ get() { if (!_outputParameterConnections) { _outputParameterConnections = gcnew List<OutputParameterConnection^>(); } return _outputParameterConnections; }
-        }
-
-        [DataMember] property List<VisualNode^>^ VisualNodes
-        {
-            List<VisualNode^>^ get() { if (!_visualNodes) { _visualNodes = gcnew List<VisualNode^>(); } return _visualNodes; }
-        }
-
-        [DataMember] property List<PreviewSettings^>^ PreviewSettingsObjects
-        {
-            List<PreviewSettings^>^ get() { if (!_previewSettings) { _previewSettings = gcnew List<PreviewSettings^>(); } return _previewSettings; }
+            List<Connection^>^ get() { if (!_connections) { _connections = gcnew List<Connection^>(); } return _connections; }
         }
 
 		NodeGraph();
 
         ShaderPatcher::NodeGraph    ConvertToNative(ConversionContext& context);
 		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input, const ConversionContext& context);
-
-		static NodeGraph^		LoadFromXML(System::IO::Stream^ stream);
-        void					SaveToXML(System::IO::Stream^ stream);
 
 		Tuple<String^, String^>^ 
 			GeneratePreviewShader(
@@ -194,12 +122,7 @@ namespace ShaderPatcherLayer
 
     private:
         List<Node^>^                        _nodes;
-        List<NodeConnection^>^              _connections;
-        List<ConstantConnection^>^          _constantConnections;
-        List<InputParameterConnection^>^    _inputParameterConnections;
-        List<OutputParameterConnection^>^   _outputParameterConnections;
-        List<VisualNode^>^                  _visualNodes;
-        List<PreviewSettings^>^             _previewSettings;
+        List<Connection^>^					_connections;
     };
 
 	public ref class NodeGraphSignature
@@ -250,6 +173,10 @@ namespace ShaderPatcherLayer
         {
             Dictionary<String^, SubGraph^>^ get() { if (!_subGraphs) { _subGraphs = gcnew Dictionary<String^, SubGraph^>(); } return _subGraphs; }
         }
+		property Dictionary<String^, AttributeTable^>^ AttributeTables
+        {
+            Dictionary<String^, AttributeTable^>^ get() { if (!_attributeTables) { _attributeTables = gcnew Dictionary<String^, AttributeTable^>(); } return _attributeTables; }
+        }
 
         static void		Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphContext^% context);
         void			Serialize(System::IO::Stream^ stream, String^ name, NodeGraphContext^ contexts);
@@ -272,7 +199,7 @@ namespace ShaderPatcherLayer
 		~NodeGraphFile();
 	private:
 		Dictionary<String^, SubGraph^>^	_subGraphs = nullptr;
-		Dictionary<String^, String^>^	_imports = nullptr;
+		Dictionary<String^, AttributeTable^>^ _attributeTables = nullptr;
 
 		GUILayer::DirectorySearchRules^ _searchRules;
 	};
