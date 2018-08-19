@@ -142,7 +142,7 @@ namespace MaterialTool.Controls
                 p.SubGraph,
                 p.NodeId,
                 p.PreviewSettings,
-                graphContext.ContainingDocument.GraphContext.Variables);
+                graphContext.ContainingDocument.GraphMetaData.Variables);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
                 System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
@@ -160,8 +160,8 @@ namespace MaterialTool.Controls
         {
                 // update the "defaults material"
             var context = ContextAs<DiagramEditingContext>();
-            if (context.ContainingDocument.GraphContext.DefaultsMaterial != _activeMaterialContext.MaterialName) {
-                context.ContainingDocument.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
+            if (context.ContainingDocument.GraphMetaData.DefaultsMaterial != _activeMaterialContext.MaterialName) {
+                context.ContainingDocument.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
                 System.Diagnostics.Debug.Assert(false);
                 // doc.ContainingDocument.Invalidate();
             }

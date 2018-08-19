@@ -62,7 +62,7 @@ namespace ShaderPatcherLayer
     {
     public:
 		virtual System::Drawing::Bitmap^ BuildPreviewImage(
-            NodeGraphContext^ doc, 
+            NodeGraphMetaData^ doc, 
 			NodeGraphPreviewConfiguration^ previewConfig,
 			System::Drawing::Size^ size, 
             PreviewGeometry geometry, 
@@ -78,7 +78,7 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static RenderCore::Techniques::Material CreatePreviewMaterial(ShaderPatcherLayer::NodeGraphContext^ doc, const ::Assets::DirectorySearchRules& searchRules)
+	static RenderCore::Techniques::Material CreatePreviewMaterial(ShaderPatcherLayer::NodeGraphMetaData^ doc, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		RenderCore::Techniques::Material result;
 
@@ -206,7 +206,7 @@ namespace ShaderPatcherLayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	System::Drawing::Bitmap^ Manager::BuildPreviewImage(
-        NodeGraphContext^ doc, 
+        NodeGraphMetaData^ doc, 
 		NodeGraphPreviewConfiguration^ previewConfig,
 		System::Drawing::Size^ size, 
         PreviewGeometry geometry, 

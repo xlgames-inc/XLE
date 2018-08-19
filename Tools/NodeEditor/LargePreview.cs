@@ -17,7 +17,7 @@ namespace NodeEditor
 {
     public partial class LargePreview : Form
     {
-        public LargePreview(ShaderPatcherLayer.PreviewBuilder preview, ShaderPatcherLayer.NodeGraphContext doc)
+        public LargePreview(ShaderPatcherLayer.PreviewBuilder preview, ShaderPatcherLayer.NodeGraphMetaData doc)
         {
             _preview = preview;
             _document = doc;
@@ -41,7 +41,7 @@ namespace NodeEditor
         }
 
         private ShaderPatcherLayer.PreviewBuilder _preview;
-        private ShaderPatcherLayer.NodeGraphContext _document;
+        private ShaderPatcherLayer.NodeGraphMetaData _document;
         private Point _lastDragLocation;
 
         private void LargePreview_MouseDown(object sender, MouseEventArgs e)

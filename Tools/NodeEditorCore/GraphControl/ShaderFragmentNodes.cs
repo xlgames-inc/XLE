@@ -33,9 +33,8 @@ namespace NodeEditorCore
     public interface IDiagramDocument
     {
         ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
-        ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
+        ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; set; }
 
-        void Invalidate();
         void Save(Uri destination);
         void Load(Uri source);
     }
@@ -217,14 +216,14 @@ namespace NodeEditorCore
                             target = 0;
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
-                        editingContext.ContainingDocument.GraphContext,
+                        editingContext.ContainingDocument.GraphMetaData,
                         new ShaderPatcherLayer.NodeGraphPreviewConfiguration
                         {
                             _nodeGraph = editingContext.ContainingDocument.NodeGraphFile,
                             _subGraphName = Node.SubGraphTag as string,
                             _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
                             _settings = prevSettings,
-                            _variableRestrictions = editingContext.ContainingDocument.GraphContext.Variables
+                            _variableRestrictions = editingContext.ContainingDocument.GraphMetaData.Variables
                         },
                         idealSize, Geometry, target);
                     _shaderStructureHash = currentHash;

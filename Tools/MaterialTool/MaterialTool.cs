@@ -136,7 +136,7 @@ namespace MaterialTool
         public IDocument Open(Uri uri)
         {
             var doc = _exportProvider.GetExport<DiagramDocument>().Value;
-            doc.GraphContext = new ShaderPatcherLayer.NodeGraphContext();
+            doc.GraphMetaData = new ShaderPatcherLayer.NodeGraphMetaData();
 
             // When creating a new document, we'll pass through here with a file that
             // doesn't exist... So let's check if we need to load it now...
@@ -144,8 +144,8 @@ namespace MaterialTool
                 doc.Load(uri);
 
             doc.Uri = uri;
-            doc.GraphContext.DefaultsMaterial = _activeMaterialContext.MaterialName;
-            doc.GraphContext.PreviewModelFile = "game/model/galleon/galleon.dae";
+            doc.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
+            doc.GraphMetaData.PreviewModelFile = "game/model/galleon/galleon.dae";
 
             var viewModel = new HyperGraph.GraphModel();
             viewModel.CompatibilityStrategy = _nodeFactory.CreateCompatibilityStrategy();

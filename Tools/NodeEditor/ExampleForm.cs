@@ -269,7 +269,7 @@ namespace NodeEditor
         }
 
         #region Members
-        private ShaderPatcherLayer.NodeGraphContext _document = new ShaderPatcherLayer.NodeGraphContext();
+        private ShaderPatcherLayer.NodeGraphMetaData _document = new ShaderPatcherLayer.NodeGraphMetaData();
         private RibbonTabGroup _tabGroupTextureNode;
         private RibbonLib.Controls.RibbonCheckBox _showLabels;
         private RibbonLib.Controls.RibbonButton _generateTestScript;

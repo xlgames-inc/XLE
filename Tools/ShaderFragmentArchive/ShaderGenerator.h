@@ -66,7 +66,7 @@ namespace ShaderPatcherLayer
      };
 
 		///////////////////////////////////////////////////////////////
-	[DataContract] public ref class NodeGraphContext
+	[DataContract] public ref class NodeGraphMetaData
     {
     public:
         property String^ DefaultsMaterial;
@@ -79,7 +79,7 @@ namespace ShaderPatcherLayer
         [DataMember] bool HasTechniqueConfig;
         [DataMember] property Dictionary<String^, String^>^ ShaderParameters { Dictionary<String^, String^>^ get() { if (!_shaderParameters) _shaderParameters = gcnew Dictionary<String^, String^>(); return _shaderParameters; } }
 
-		NodeGraphContext() { HasTechniqueConfig = false; }
+		NodeGraphMetaData() { HasTechniqueConfig = false; }
 
     private:
         Dictionary<String^, String^>^ _variables = nullptr;
@@ -178,8 +178,8 @@ namespace ShaderPatcherLayer
             Dictionary<String^, AttributeTable^>^ get() { if (!_attributeTables) { _attributeTables = gcnew Dictionary<String^, AttributeTable^>(); } return _attributeTables; }
         }
 
-        static void		Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphContext^% context);
-        void			Serialize(System::IO::Stream^ stream, String^ name, NodeGraphContext^ contexts);
+        static void		Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphMetaData^% context);
+        void			Serialize(System::IO::Stream^ stream, String^ name, NodeGraphMetaData^ contexts);
 
 		ShaderPatcher::GraphSyntaxFile	ConvertToNative();
 		static NodeGraphFile^			ConvertFromNative(

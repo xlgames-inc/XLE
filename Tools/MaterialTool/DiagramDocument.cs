@@ -19,13 +19,8 @@ namespace MaterialTool
     public class DiagramDocument : NodeEditorCore.IDiagramDocument, IDocument
     {
         #region IDiagramDocument Members
-        public ShaderPatcherLayer.NodeGraphContext GraphContext { get; set; }
+        public ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; set; }
         public ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; set; }
-
-        public void Invalidate()
-        {
-            System.Diagnostics.Debug.Assert(false);
-        }
 
         public void Save(Uri destination)
         {
@@ -33,7 +28,7 @@ namespace MaterialTool
             // This avoid making any filesystem changes if NodeGraphFile.Serialize() throws an exception
             using (var memoryStream = new System.IO.MemoryStream())
             {
-                NodeGraphFile.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), GraphContext);
+                NodeGraphFile.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), GraphMetaData);
 
                 var fileMode = System.IO.File.Exists(destination.LocalPath) ? System.IO.FileMode.Truncate : System.IO.FileMode.OpenOrCreate;
                 using (var fileStream = new System.IO.FileStream(destination.LocalPath, fileMode))
@@ -46,9 +41,9 @@ namespace MaterialTool
         public void Load(Uri source)
         {
             ShaderPatcherLayer.NodeGraphFile nativeGraph;
-            ShaderPatcherLayer.NodeGraphContext graphContext;
-            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphContext);
-            GraphContext = graphContext;
+            ShaderPatcherLayer.NodeGraphMetaData graphMetaData;
+            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphMetaData);
+            GraphMetaData = graphMetaData;
             NodeGraphFile = nativeGraph;
         }
         #endregion

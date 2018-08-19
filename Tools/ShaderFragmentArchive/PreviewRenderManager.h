@@ -22,7 +22,7 @@ namespace ShaderPatcherLayer
     {
 	public:
 		System::Drawing::Bitmap^ BuildPreviewImage(
-            NodeGraphContext^ doc, 
+            NodeGraphMetaData^ doc, 
 			NodeGraphPreviewConfiguration^ nodeGraphFile,
 			System::Drawing::Size^ size, 
             PreviewGeometry geometry, 

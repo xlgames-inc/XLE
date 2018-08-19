@@ -552,18 +552,18 @@ namespace ShaderPatcherLayer
         return managedArray;
     }
 
-    static NodeGraphContext^ LoadContext(System::IO::Stream^ stream)
+    static NodeGraphMetaData^ LoadMetaData(System::IO::Stream^ stream)
     {
-        auto serializer = gcnew DataContractSerializer(NodeGraphContext::typeid);
+        auto serializer = gcnew DataContractSerializer(NodeGraphMetaData::typeid);
         try
         {
             auto o = serializer->ReadObject(stream);
-            return dynamic_cast<NodeGraphContext^>(o);
+            return dynamic_cast<NodeGraphMetaData^>(o);
         }
         finally { delete serializer; }
     }
 
-    void NodeGraphFile::Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphContext^% context)
+    void NodeGraphFile::Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphMetaData^% context)
     {
         // Load from a graph model compound text file (that may contain other text chunks)
         // We're going to use a combination of native and managed stuff -- so it's easier
@@ -590,7 +590,7 @@ namespace ShaderPatcherLayer
             {
                 managedArray = AsManagedArray(AsPointer(contextChunk));
                 memStream = gcnew System::IO::MemoryStream(managedArray);
-                context = LoadContext(memStream);
+                context = LoadMetaData(memStream);
             }
             finally
             {
@@ -598,7 +598,7 @@ namespace ShaderPatcherLayer
                 delete managedArray;
             }
         } else {
-            context = gcnew NodeGraphContext();
+            context = gcnew NodeGraphMetaData();
         }
     }
 
@@ -628,7 +628,7 @@ namespace ShaderPatcherLayer
         sw->Write("    PixelShader=<.>:" + entryPoint); sw->WriteLine();
 	}
 
-    void NodeGraphFile::Serialize(System::IO::Stream^ stream, String^ name, NodeGraphContext^ context)
+    void NodeGraphFile::Serialize(System::IO::Stream^ stream, String^ name, NodeGraphMetaData^ context)
     {
         // We want to write this node graph to the given stream.
         // But we're going to write a compound text document, which will include
@@ -650,7 +650,7 @@ namespace ShaderPatcherLayer
 		}
 
         // embed the node graph context
-        sw->Write("/* <<Chunk:NodeGraphContext:" + name + ">>--("); sw->WriteLine();
+        sw->Write("/* <<Chunk:NodeGraphMetaData:" + name + ">>--("); sw->WriteLine();
         sw->Flush();
         SaveToXML(stream, context); sw->WriteLine();
         sw->Write(")-- */"); sw->WriteLine();
