@@ -29,12 +29,14 @@ namespace ShaderPatcher
         enum class Type { Procedure, Uniforms };
 
 		std::string				_archiveName;
-        ShaderPatcher::NodeId   _nodeId;
-        Type					_type;
+        ShaderPatcher::NodeId   _nodeId = 0;
+        Type					_type = Type::Procedure;
+		std::string				_attributeTableName;
 
         const std::string&		ArchiveName() const         { return _archiveName; }
         ShaderPatcher::NodeId   NodeId() const              { return _nodeId; }
         Type					GetType() const             { return _type; }
+		std::string				AttributeTableName() const  { return _attributeTableName; }
     };
 
         ///////////////////////////////////////////////////////////////
@@ -79,9 +81,17 @@ namespace ShaderPatcher
         bool        IsUpstream(NodeId startNode, NodeId searchingForNode);
         bool        IsDownstream(NodeId startNode, const NodeId* searchingForNodesStart, const NodeId* searchingForNodesEnd);
         bool        HasNode(NodeId nodeId);
-        NodeId      GetUniqueNodeId() const;
-        void        AddDefaultOutputs(const Node& node);
     };
+
+		///////////////////////////////////////////////////////////////
+
+	using AttributeTable = std::unordered_map<std::string, std::string>;
+	
+	class AttributeTableSet
+	{
+	public:
+		std::unordered_map<std::string, AttributeTable> _tables;
+	};
 
         ///////////////////////////////////////////////////////////////
 

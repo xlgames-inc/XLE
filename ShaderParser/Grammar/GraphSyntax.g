@@ -11,7 +11,6 @@ tokens
 	TOPLEVEL;
 
 	NODE_DECL;
-	// SLOT_DECL;
 
 	FUNCTION_PATH;
 	FUNCTION_CALL;
@@ -27,6 +26,10 @@ tokens
 	RCONNECTION_FUNCTION_PATH;
 	RETURN_CONNECTION;
 	OUTPUT_CONNECTION;
+
+	ATTRIBUTE_TABLE_NAME;
+	ATTRIBUTE_TABLE;
+	ATTRIBUTE;
 
 	GRAPH_TYPE;
 
@@ -63,7 +66,7 @@ functionPath
 	: i=Identifier '::' f=Identifier -> ^(FUNCTION_PATH $i $f)
 	| f=Identifier -> ^(FUNCTION_PATH $f)
 	;
-functionCall : f=functionPath '(' (functionCallConnection (',' functionCallConnection)*)? ')' -> ^(FUNCTION_CALL $f functionCallConnection*);
+functionCall : ('[[' attributeTableTable=Identifier ']]')? f=functionPath '(' (functionCallConnection (',' functionCallConnection)*)? ')' -> ^(FUNCTION_CALL $f ^(ATTRIBUTE_TABLE_NAME $attributeTableTable)? functionCallConnection*);
 
 lconnection : n=Identifier -> $n;
 rconnection
@@ -109,10 +112,17 @@ graphSignature
 		-> ^(GRAPH_SIGNATURE $name $returnType $parameters*)
 	;
 
+attributeDeclaration
+	: attribute=Identifier ':' value=StringLiteral
+		-> ^(ATTRIBUTE $attribute $value)
+	;
+
 toplevel
 	:	'import' name=Identifier '=' source=StringLiteral -> ^(IMPORT $name $source)
 	|	sig=graphSignature '{' statements += graphStatement* '}'
 			-> ^(GRAPH_DEFINITION $sig $statements*)
+	|	'attributes' name=Identifier '(' (attributes += attributeDeclaration (',' attributes += attributeDeclaration)*)? ')'
+			-> ^(ATTRIBUTE_TABLE $name $attributes*)
 	;
 
 entrypoint

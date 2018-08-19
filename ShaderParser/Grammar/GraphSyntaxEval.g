@@ -17,6 +17,7 @@ options
 	typedef unsigned ConnectorId;
 	typedef unsigned ConnectionId;
 	typedef unsigned GraphSignatureId;
+	typedef unsigned AttributeTableId;
 
 	// #pragma warning(disable:4244)
 	// void CustomDisplayRecognitionError(void * recognizer, void * tokenNames);
@@ -38,7 +39,7 @@ options
 		pANTLR3_COMMON_TOKEN _identifier;
 	};
 
-	NodeId Node_Register(const void*, IdentifierAndScope identifierAndScope);
+	NodeId Node_Register(const void*, IdentifierAndScope identifierAndScope, const char attributeTableName[]);
 	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
 	ConnectorId IdentifierConnector_Register(const void*, IdentifierAndScope identifierAndScope);
@@ -53,6 +54,9 @@ options
 	void GraphSignature_ReturnType(const void*, GraphSignatureId, const char returnType[]);
 	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[], unsigned direction);
 	void GraphSignature_AddGraphParameter(const void*, GraphSignatureId, const char name[], IdentifierAndScope prototype);
+
+	AttributeTableId AttributeTable_Register(const void*, const char name[]);
+	void AttributeTable_AddValue(const void*, AttributeTableId, const char key[], const char value[]);
 
 	typedef unsigned ObjTypeId;
 	static const unsigned ObjType_Graph = 0;
@@ -106,7 +110,8 @@ functionPath returns [IdentifierAndScope res = (IdentifierAndScope){NULL, NULL}]
 stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 
 rnode returns [NodeId node = ~0u]
-	: ^(FUNCTION_CALL f=functionPath { $node = Node_Register(ctx, f); } functionCallConnection[$node]*)
+	: ^(FUNCTION_CALL f=functionPath { $node = Node_Register(ctx, f, NULL); } functionCallConnection[$node]*)
+	| ^(FUNCTION_CALL f=functionPath ^(ATTRIBUTE_TABLE_NAME atn=identifier) { $node = Node_Register(ctx, f, atn); } functionCallConnection[$node]*)
 	| nid=identifier { $node = Node_Find(ctx, nid); }
 	;
 
@@ -207,6 +212,16 @@ graphDefinition returns [GraphId result = ~0u;]
 		{ Walk_Pop(ctx, ObjType_Graph); }
 	);
 
+attributeDefinition [AttributeTableId tableId]
+	: ^(ATTRIBUTE k=identifier v=stringLiteral) { char* s = StripQuotesBrackets(v); AttributeTable_AddValue(ctx, tableId, k, s); free(s); }
+	;
+
+attributeTableDefinition returns [AttributeTableId result = ~0u;]
+	: ^(ATTRIBUTE_TABLE
+		name=identifier { $result = AttributeTable_Register(ctx, name); }
+		attributeDefinition[$result]*)
+	;
+
 toplevel
 	: ^(IMPORT alias=identifier source=stringLiteral) 
 		{ 
@@ -214,7 +229,8 @@ toplevel
 			Import_Register(ctx, alias, stripped); 
 			free(stripped);
 		}
-	| graphDefinition 
+	| graphDefinition
+	| attributeTableDefinition
 	;
 
 entrypoint : toplevel* ;

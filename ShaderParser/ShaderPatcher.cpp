@@ -82,13 +82,6 @@ namespace ShaderPatcher
             [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
     }
 
-	NodeId            NodeGraph::GetUniqueNodeId() const
-    {
-        NodeId largestId = 0;
-        std::for_each(_nodes.cbegin(), _nodes.cend(), [&](const Node& n) { largestId = std::max(largestId, n.NodeId()); });
-        return largestId+1;
-    }
-
     const Node*     NodeGraph::GetNode(NodeId nodeId) const
     {
         auto res = std::find_if(
@@ -1063,6 +1056,9 @@ namespace ShaderPatcher
 
 		auto n = graph.GetNode(nodeId);
         assert(n && n->GetType() == Node::Type::Procedure);
+
+		if (!n->AttributeTableName().empty())
+			result << "[[" << n->AttributeTableName() << "]]";
 
 		result << RemoveTemplateRestrictions(n->ArchiveName()) << "(";
 		bool atLeastOneParam = false;

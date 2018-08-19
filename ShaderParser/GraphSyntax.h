@@ -26,6 +26,7 @@ namespace ShaderPatcher
 
 		std::unordered_map<std::string, SubGraph> _subGraphs;
 		std::unordered_map<std::string, std::string> _imports;
+		std::unordered_map<std::string, AttributeTable> _attributeTables;
 	};
 	GraphSyntaxFile ParseGraphSyntax(StringSection<char> sourceCode);
 	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile);

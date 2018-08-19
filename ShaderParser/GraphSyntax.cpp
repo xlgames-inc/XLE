@@ -25,6 +25,7 @@ typedef unsigned GraphId;
 typedef unsigned ConnectorId;
 typedef unsigned ConnectionId;
 typedef unsigned GraphSignatureId;
+typedef unsigned AttributeTableId;
 
 typedef struct IdentifierAndScopeTag
 {
@@ -59,6 +60,8 @@ namespace ShaderPatcher
 
 		std::unordered_map<std::string, std::string> _imports; 
 		std::vector<Graph> _graphs;
+
+		std::vector<std::pair<std::string, AttributeTable>> _attributeTables;
 	};
 
 	static pANTLR3_BASE_TREE BuildAST(struct GraphSyntaxParser_Ctx_struct& parser)
@@ -105,6 +108,8 @@ namespace ShaderPatcher
 		result._imports = ng._imports;
 		for (auto& f:ng._graphs)
 			result._subGraphs.emplace(std::make_pair(f._name, GraphSyntaxFile::SubGraph{std::move(f._signature), std::move(f._graph)}));
+		for (auto& at:ng._attributeTables)
+			result._attributeTables.insert({at.first, std::move(at.second)});
 		return result;
     }
 
@@ -115,6 +120,17 @@ namespace ShaderPatcher
 		if (!graphSyntaxFile._imports.empty()) str << std::endl;
 		for (auto& sg:graphSyntaxFile._subGraphs)
 			str << ShaderPatcher::GenerateGraphSyntax(sg.second._graph, sg.second._signature, sg.first);
+
+		for (auto& at:graphSyntaxFile._attributeTables) {
+			str << "attributes " << at.first << "(";
+			bool first = true;
+			for (auto& key:at.second) {
+				if (!first) str << ", ";
+				first = false;
+				str << key.first << ":\"" << key.second << "\"";
+			}
+			str << ");" << std::endl;
+		}
 		return str;
 	}
 
@@ -260,7 +276,7 @@ extern "C" GraphId Graph_Register(const void* ctx, const char name[], GraphSigna
 	return nextGraph;
 }
 
-extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAndScope)
+extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAndScope, const char attributeTableName[])
 {
 	auto& ng = ShaderPatcher::GetGraphContext(ctx);
 
@@ -279,7 +295,7 @@ extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAn
 		}
 	}
 
-	ShaderPatcher::Node newNode{archiveName, nextId, ShaderPatcher::Node::Type::Procedure};
+	ShaderPatcher::Node newNode{archiveName, nextId, ShaderPatcher::Node::Type::Procedure, attributeTableName ? std::string(attributeTableName) : std::string()};
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
@@ -404,4 +420,22 @@ extern "C" void Import_Register(const void* ctx, const char alias[], const char 
 	auto& f = ShaderPatcher::GetFileContext(ctx);
 	assert(f._imports.find(alias) == f._imports.end());
 	f._imports.insert(std::make_pair(alias, import));
+}
+
+extern "C" AttributeTableId AttributeTable_Register(const void* ctx, const char name[])
+{
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto existing = std::find_if(f._attributeTables.begin(), f._attributeTables.end(),
+		[name](std::pair<std::string, ShaderPatcher::AttributeTable>& t) { return t.first == name; });
+	assert(existing == f._attributeTables.end());
+
+	f._attributeTables.push_back({name, {}});
+	return AttributeTableId(f._attributeTables.size()-1);
+}
+
+extern "C" void AttributeTable_AddValue(const void* ctx, AttributeTableId tableId, const char key[], const char value[])
+{
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	assert(tableId < f._attributeTables.size());
+	f._attributeTables[tableId].second[key] = value;
 }
