@@ -61,18 +61,14 @@ namespace Utility
 
         template<typename CharType>
             TypeDesc Parse(
-                const CharType expressionBegin[], 
-                const CharType expressionEnd[],
+                StringSection<CharType> expression,
                 void* dest, size_t destSize);
 
         template <typename Type>
-            std::pair<bool, Type> Parse(const char expression[]);
+            std::pair<bool, Type> Parse(StringSection<char> expression);
 
         template <typename Type>
-            std::pair<bool, Type> Parse(const char* expressionBegin, const char* expressionEnd);
-
-        template <typename Type>
-            std::pair<bool, Type> Parse(const utf8* expressionBegin, const utf8* expressionEnd);
+            std::pair<bool, Type> Parse(StringSection<utf8> expression);
 
         bool Cast(
             void* dest, size_t destSize, TypeDesc destType,

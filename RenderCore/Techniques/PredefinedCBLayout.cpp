@@ -117,7 +117,7 @@ namespace RenderCore { namespace Techniques
 
                     uint8 buffer0[256], buffer1[256];
                     auto defaultType = ImpliedTyping::Parse(
-                        match[4].first, match[4].second,
+                        MakeStringSection(match[4].first, match[4].second),
                         buffer0, dimof(buffer0));
 
                     if (!(defaultType == e._type)) {

@@ -413,7 +413,7 @@ namespace EntityInterface
                         // parse the value and add it as a property initializer
                     char intermediateBuffer[64];
                     auto type = ImpliedTyping::Parse(
-                        (const char*)value._start, (const char*)value._end,
+                        value,
                         intermediateBuffer, dimof(intermediateBuffer));
 
                     size_t bufferOffset = initsBuffer.size();

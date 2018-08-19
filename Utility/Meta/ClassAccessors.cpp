@@ -28,7 +28,7 @@ namespace Utility
                 char buffer[256];
                 if (stringForm) {
                     auto parsedType = ImpliedTyping::Parse(
-                        (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
+                        MakeStringSection((const char*)src, (const char*)PtrAdd(src, srcType.GetSize())),
                         buffer, sizeof(buffer));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
 

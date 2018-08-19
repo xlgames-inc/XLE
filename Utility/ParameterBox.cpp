@@ -415,8 +415,7 @@ namespace Utility
 
         template<typename CharType>
             TypeDesc Parse(
-                const CharType expressionBegin[], 
-                const CharType expressionEnd[], 
+                StringSection<CharType> expression,
                 void* dest, size_t destSize)
         {
                 // parse string expression into native types.
@@ -424,11 +423,11 @@ namespace Utility
             static std::basic_regex<CharType> booleanTrue((const CharType*)R"(^(true)|(True)|(y)|(Y)|(yes)|(Yes)|(TRUE)|(Y)|(YES)$)");
             static std::basic_regex<CharType> booleanFalse((const CharType*)R"(^(false)|(False)|(n)|(N)|(no)|(No)|(FALSE)|(N)|(NO)$)");
 
-            if (std::regex_match(expressionBegin, expressionEnd, booleanTrue)) {
+            if (std::regex_match(expression.begin(), expression.end(), booleanTrue)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = true;
                 return TypeDesc(TypeCat::Bool);
-            } else if (std::regex_match(expressionBegin, expressionEnd, booleanFalse)) {
+            } else if (std::regex_match(expression.begin(), expression.end(), booleanFalse)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = false;
                 return TypeDesc(TypeCat::Bool);
@@ -438,18 +437,18 @@ namespace Utility
 
             static std::basic_regex<CharType> unsignedPattern(
                 (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))(u|U|(u8)|(u16)|(u32)|(u64)|(U8)|(U16)|(U32)|(U64))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, unsignedPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), unsignedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
 
                 uint64 value;
-                auto len = expressionEnd - expressionBegin;
-                if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
+                auto len = expression.size();
+                if (len > 2 && (expression.begin()[0] == '0' && expression.begin()[1] == 'x')) {
                         // hex form
-                    value = XlAtoUI64(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoUI64(&expression.begin()[2], nullptr, 16);
                 } else {
-                    value = XlAtoUI64(expressionBegin);
+                    value = XlAtoUI64(expression.begin());
                 }
 
                 if (precision == 8) {
@@ -474,18 +473,18 @@ namespace Utility
             }
 
             static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(i64)|(I8)|(I16)|(I32)|(I64))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, cm, signedPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), cm, signedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
 
                 int64 value;
-                auto len = expressionEnd - expressionBegin;
-                if (len > 2 && (expressionBegin[0] == '0' && expressionBegin[1] == 'x')) {
+                auto len = expression.end() - expression.begin();
+                if (len > 2 && (expression.begin()[0] == '0' && expression.begin()[1] == 'x')) {
                         // hex form
-                    value = XlAtoI64(&expressionBegin[2], nullptr, 16);
+                    value = XlAtoI64(&expression.begin()[2], nullptr, 16);
                 } else {
-                    value = XlAtoI64(expressionBegin);
+                    value = XlAtoI64(expression.begin());
                 }
 
                 if (precision == 8) {
@@ -510,7 +509,7 @@ namespace Utility
             }
 
             static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32)|(f64)|(F64))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, floatPattern)) {
+            if (std::regex_match(expression.begin(), expression.end(), floatPattern)) {
                 bool doublePrecision = false;
                 if (cm.size() >= 4 && cm[4].length() > 1) {
                     auto precision = XlAtoUI32(&cm[2].str()[1]);
@@ -519,11 +518,11 @@ namespace Utility
 
                 if (doublePrecision) {
                     assert(destSize >= sizeof(double));
-                    *(double*)dest = XlAtoF64(expressionBegin);
+                    *(double*)dest = Conversion::Convert<double>(expression);
                     return TypeDesc(TypeCat::Double);
                 } else {
                     assert(destSize >= sizeof(float));
-                    *(float*)dest = XlAtoF32(expressionBegin);
+                    *(float*)dest = Conversion::Convert<float>(expression);
                     return TypeDesc(TypeCat::Float);
                 }
             }
@@ -534,7 +533,7 @@ namespace Utility
 
                 static std::basic_regex<CharType> arrayPattern((const CharType*)R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))");
                 // std::match_results<typename std::basic_string<CharType>::const_iterator> cm; 
-                if (std::regex_match(expressionBegin, expressionEnd, cm, arrayPattern)) {
+                if (std::regex_match(expression.begin(), expression.end(), cm, arrayPattern)) {
                     static std::basic_regex<CharType> arrayElementPattern((const CharType*)R"(\s*([^,\s]+)\s*(?:,|$))");
 
                     const auto& subMatch = cm[1];
@@ -555,7 +554,7 @@ namespace Utility
                         const auto& eleMatch = (*rit)[1];
 
                         auto subType = Parse(
-                            eleMatch.first, eleMatch.second,
+                            MakeStringSection(eleMatch.first, eleMatch.second),
                             dstIterator, dstIteratorSize);
 
                         assert(subType._arrayCount <= 1);
@@ -575,7 +574,7 @@ namespace Utility
                         const auto& eleMatch = (*rit)[1];
 
                         auto subType = Parse(
-                            eleMatch.first, eleMatch.second,
+                            MakeStringSection(eleMatch.first, eleMatch.second),
                             dstIterator, dstIteratorSize);
 
                         if (CastType(subType._type, cat) != CastType::Narrowing) {
@@ -633,10 +632,18 @@ namespace Utility
             return TypeDesc(TypeCat::Void);
         }
 
-        template <typename Type> std::pair<bool, Type> Parse(const char* expressionBegin, const char* expressionEnd) 
+		template<>
+            TypeDesc Parse(
+                StringSection<utf8> expression,
+                void* dest, size_t destSize)
+		{
+			return Parse(expression.Cast<char>(), dest, destSize);
+		}
+
+        template <typename Type> std::pair<bool, Type> Parse(StringSection<char> expression) 
         {
             char buffer[NativeRepMaxSize];
-            auto parseType = Parse(expressionBegin, expressionEnd, buffer, sizeof(buffer));
+            auto parseType = Parse(expression, buffer, sizeof(buffer));
             if (parseType == TypeOf<Type>()) {
                 return std::make_pair(true, *(Type*)buffer);
             } else {
@@ -649,15 +656,15 @@ namespace Utility
             return std::make_pair(false, Type());
         }
 
-        template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
+        /*template <typename Type> std::pair<bool, Type> Parse(const char expression[]) 
         {
-            return Parse<Type>(expression, XlStringEnd(expression));
-        }
+            return Parse<Type>(MakeStringSection(expression));
+        }*/
 
         template <typename Type>
-            std::pair<bool, Type> Parse(const utf8* expressionBegin, const utf8* expressionEnd)
+            std::pair<bool, Type> Parse(StringSection<utf8> expression)
         {
-            return Parse<Type>((const char*)expressionBegin, (const char*)expressionEnd);
+            return Parse<Type>(expression.Cast<char>());
         }
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc& desc, bool strongTyping)
@@ -729,48 +736,26 @@ namespace Utility
             return result.str();
         }
 
-        template std::pair<bool, bool> Parse(const char[]);
-        template std::pair<bool, unsigned> Parse(const char[]);
-        template std::pair<bool, signed> Parse(const char[]);
-        template std::pair<bool, uint64> Parse(const char[]);
-        template std::pair<bool, int64> Parse(const char[]);
-        template std::pair<bool, float> Parse(const char[]);
-	template std::pair<bool, double> Parse(const char[]);
+        template std::pair<bool, bool> Parse(StringSection<utf8>);
+        template std::pair<bool, unsigned> Parse(StringSection<utf8>);
+        template std::pair<bool, signed> Parse(StringSection<utf8>);
+        template std::pair<bool, uint64> Parse(StringSection<utf8>);
+        template std::pair<bool, int64> Parse(StringSection<utf8>);
+        template std::pair<bool, float> Parse(StringSection<utf8>);
+		template std::pair<bool, double> Parse(StringSection<utf8>);
         #if defined(HAS_XLE_MATH)
-            template std::pair<bool, Float2> Parse(const char[]);
-            template std::pair<bool, Float3> Parse(const char[]);
-            template std::pair<bool, Float4> Parse(const char[]);
-            template std::pair<bool, Float3x3> Parse(const char[]);
-            template std::pair<bool, Float3x4> Parse(const char[]);
-            template std::pair<bool, Float4x4> Parse(const char[]);
-            template std::pair<bool, UInt2> Parse(const char[]);
-            template std::pair<bool, UInt3> Parse(const char[]);
-            template std::pair<bool, UInt4> Parse(const char[]);
-            template std::pair<bool, Int2> Parse(const char[]);
-            template std::pair<bool, Int3> Parse(const char[]);
-            template std::pair<bool, Int4> Parse(const char[]);
-        #endif
-
-        template std::pair<bool, bool> Parse(const utf8*, const utf8*);
-        template std::pair<bool, unsigned> Parse(const utf8*, const utf8*);
-        template std::pair<bool, signed> Parse(const utf8*, const utf8*);
-        template std::pair<bool, uint64> Parse(const utf8*, const utf8*);
-        template std::pair<bool, int64> Parse(const utf8*, const utf8*);
-        template std::pair<bool, float> Parse(const utf8*, const utf8*);
-	template std::pair<bool, double> Parse(const utf8*, const utf8*);
-        #if defined(HAS_XLE_MATH)
-            template std::pair<bool, Float2> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float3x3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float3x4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Float4x4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, UInt2> Parse(const utf8*, const utf8*);
-            template std::pair<bool, UInt3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, UInt4> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Int2> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Int3> Parse(const utf8*, const utf8*);
-            template std::pair<bool, Int4> Parse(const utf8*, const utf8*);
+            template std::pair<bool, Float2> Parse(StringSection<utf8>);
+            template std::pair<bool, Float3> Parse(StringSection<utf8>);
+            template std::pair<bool, Float4> Parse(StringSection<utf8>);
+            template std::pair<bool, Float3x3> Parse(StringSection<utf8>);
+            template std::pair<bool, Float3x4> Parse(StringSection<utf8>);
+            template std::pair<bool, Float4x4> Parse(StringSection<utf8>);
+            template std::pair<bool, UInt2> Parse(StringSection<utf8>);
+            template std::pair<bool, UInt3> Parse(StringSection<utf8>);
+            template std::pair<bool, UInt4> Parse(StringSection<utf8>);
+            template std::pair<bool, Int2> Parse(StringSection<utf8>);
+            template std::pair<bool, Int3> Parse(StringSection<utf8>);
+            template std::pair<bool, Int4> Parse(StringSection<utf8>);
         #endif
 
     }
@@ -797,7 +782,7 @@ namespace Utility
         }
 
         uint8 buffer[NativeRepMaxSize];
-        auto typeDesc = Parse(stringDataBegin, stringDataEnd, buffer, sizeof(buffer));
+        auto typeDesc = Parse(MakeStringSection(stringDataBegin, stringDataEnd), buffer, sizeof(buffer));
         if (typeDesc._type != TypeCat::Void) {
             SetParameter(name, buffer, typeDesc);
         } else {
@@ -1406,8 +1391,7 @@ namespace Utility
             if (constant_expression<sizeof(CharType) == sizeof(utf8)>::result()) {
 
                 nativeType = Parse(
-                    (const char*)value._start,
-                    (const char*)value._end,
+                    MakeStringSection((const char*)value._start, (const char*)value._end),
                     nativeTypeBuffer, sizeof(nativeTypeBuffer));
 
             } else {
@@ -1420,7 +1404,7 @@ namespace Utility
                 // a failed conversion here is valid, but it means we must treat the value as a string
                 if (valueLen>=0) {
                     nativeType = Parse(
-                        AsPointer(valueBuffer.begin()), AsPointer(valueBuffer.begin()) + valueLen,
+                        MakeStringSection(AsPointer(valueBuffer.begin()), AsPointer(valueBuffer.begin()) + valueLen),
                         nativeTypeBuffer, sizeof(nativeTypeBuffer));
                 }
 

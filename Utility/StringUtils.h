@@ -89,6 +89,9 @@ namespace Utility
         bool IsEmpty() const                            { return _end <= _start; }
         std::basic_string<CharType> AsString() const    { return std::basic_string<CharType>(_start, _end); }
 
+		template<typename OtherCharType>
+			StringSection<OtherCharType> Cast() const { return StringSection<OtherCharType>((const OtherCharType*)_start, (const OtherCharType*)_end); }
+
         const CharType* begin() const   { return _start; }
         const CharType* end() const     { return _end; }
 		size_t size() const				{ return Length(); }

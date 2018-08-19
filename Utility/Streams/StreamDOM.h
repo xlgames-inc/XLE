@@ -172,7 +172,7 @@ namespace Utility
     {
         if (_index == ~unsigned(0)) return std::make_pair(false, Default<Type>());
         const auto& attrib = _doc->_attributes[_index];
-        return ImpliedTyping::Parse<Type>(attrib._value._start, attrib._value._end);
+        return ImpliedTyping::Parse<Type>(attrib._value);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
