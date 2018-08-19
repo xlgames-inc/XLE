@@ -93,11 +93,14 @@ namespace ShaderPatcher
 			char resolvedFile[MaxPath];
 			_searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
 			if (resolvedFile[0]) {
-				auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
-				auto* fn = frag.GetFunction(std::get<1>(splitName));
-				if (fn != nullptr) {
-					existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile)}}).first;
-				}
+				TRY {
+					auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
+					auto* fn = frag.GetFunction(std::get<1>(splitName));
+					if (fn != nullptr) {
+						existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile)}}).first;
+					}
+				} CATCH (const ::Assets::Exceptions::RetrievalError&) {
+				} CATCH_END
 			}
         }
 

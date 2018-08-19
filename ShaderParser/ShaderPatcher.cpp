@@ -48,7 +48,8 @@ namespace ShaderPatcher
 
         for (auto i=_connections.cbegin(); i!=_connections.cend(); ++i) {
             if (i->OutputNodeId() == startNode) {
-                if (IsUpstream(i->InputNodeId(), searchingForNode)) {
+				auto inputNode = i->InputNodeId();
+                if (inputNode != NodeId_Interface && inputNode != NodeId_Constant && IsUpstream(i->InputNodeId(), searchingForNode)) {
                     return true;
                 }
             }
@@ -67,7 +68,8 @@ namespace ShaderPatcher
 
         for (auto i=_connections.cbegin(); i!=_connections.cend(); ++i) {
             if (i->InputNodeId() == startNode) {
-                if (IsDownstream(i->OutputNodeId(), searchingForNodesStart, searchingForNodesEnd)) {
+				auto outputNode = i->OutputNodeId();
+                if (outputNode != NodeId_Interface && outputNode != NodeId_Constant && IsDownstream(outputNode, searchingForNodesStart, searchingForNodesEnd)) {
                     return true;
                 }
             }

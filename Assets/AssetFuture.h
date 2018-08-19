@@ -226,6 +226,7 @@ namespace Assets
 	template<typename AssetType>
 		void AssetFuture<AssetType>::SetInvalidAsset(const DepValPtr& depVal, const Blob& log)
 	{
+		assert(depVal);
 		{
 			ScopedLock(_lock);
 			_pending = nullptr;

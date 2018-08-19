@@ -8,6 +8,7 @@
 #include "AssetFuture.h"
 #include "AssetTraits.h"
 #include "IAssetCompiler.h"
+#include "../ConsoleRig/Log.h"
 #include <memory>
 
 namespace Assets
@@ -62,7 +63,8 @@ namespace Assets
 		} CATCH (const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 		} CATCH (const std::exception& e) {
-			future.SetInvalidAsset(nullptr, AsBlob(e));
+			Log(Warning) << "No dependency validation associated with asset after construction failure. Hot reloading will not function for this asset." << std::endl;
+			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
 		} CATCH_END
 	}
 
@@ -126,7 +128,8 @@ namespace Assets
 		} CATCH(const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 		} CATCH(const std::exception& e) {
-			future.SetInvalidAsset(nullptr, AsBlob(e));
+			Log(Warning) << "No dependency validation associated with asset (" << (initializerCount ? initializers[0].AsString() : "<<empty initializers>>") << ") after construction failure. Hot reloading will not function for this asset." << std::endl;
+			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
 		} CATCH_END
 	}
 

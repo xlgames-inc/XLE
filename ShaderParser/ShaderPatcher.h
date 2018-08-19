@@ -36,7 +36,7 @@ namespace ShaderPatcher
         const std::string&		ArchiveName() const         { return _archiveName; }
         ShaderPatcher::NodeId   NodeId() const              { return _nodeId; }
         Type					GetType() const             { return _type; }
-		std::string				AttributeTableName() const  { return _attributeTableName; }
+		const std::string&		AttributeTableName() const  { return _attributeTableName; }
     };
 
         ///////////////////////////////////////////////////////////////

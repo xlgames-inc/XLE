@@ -58,6 +58,18 @@ namespace ShaderPatcherLayer
 		return VisualNode::StateType::Normal;
 	}
 
+	static std::string PreviewGeometryToString(PreviewGeometry geo)
+	{
+		switch (geo) {
+		case PreviewGeometry::Chart: return "chart";
+		default:
+		case PreviewGeometry::Plane2D: return "plane2d";
+		case PreviewGeometry::Box: return "box";
+		case PreviewGeometry::Sphere: return "sphere";
+		case PreviewGeometry::Model: return "model";
+		}
+	}
+
 	static std::tuple<StringSection<>, StringSection<>> SplitArchiveName(StringSection<> archiveName)
     {
         auto pos = std::find(archiveName.begin(), archiveName.end(), ':');
@@ -346,14 +358,34 @@ namespace ShaderPatcherLayer
 
         GraphNodeGraphProvider(
 			NodeGraphFile^ parsedGraphFile,
+			const std::unordered_map<std::string, std::string>& imports,
 			const ::Assets::DirectorySearchRules& searchRules);
         ~GraphNodeGraphProvider();
     protected:
 		gcroot<NodeGraphFile^> _parsedGraphFile;
+		const std::unordered_map<std::string, std::string>* _imports;
     };
 
 	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
 	{
+		// Interpret the given string to find a function signature that matches it
+		// First, check to see if it's scoped as an imported function
+		auto *scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			auto importedName = _imports->find(import);
+			if (importedName != _imports->end())
+				return BasicNodeGraphProvider::FindSignature(importedName->second + ":" + functionName.AsString());
+			return BasicNodeGraphProvider::FindSignature(import + ":" + functionName.AsString());
+		}
+
 		// Look for the function within the parsed graph syntax file
 		NodeGraphFile::SubGraph^ subGraph = nullptr;
 		System::String^ str = clix::marshalString<clix::E_UTF8>(name);
@@ -373,9 +405,11 @@ namespace ShaderPatcherLayer
 
 	GraphNodeGraphProvider::GraphNodeGraphProvider(
 		NodeGraphFile^ parsedGraphFile,
+		const std::unordered_map<std::string, std::string>& imports,
 		const ::Assets::DirectorySearchRules& searchRules)
 	: BasicNodeGraphProvider(searchRules)
 	, _parsedGraphFile(parsedGraphFile)
+	, _imports(&imports)
 	{}
 
 	GraphNodeGraphProvider::~GraphNodeGraphProvider()
@@ -383,31 +417,70 @@ namespace ShaderPatcherLayer
 
 	std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeGraphSyntaxProvider(
 		NodeGraphFile^ parsedGraphFile,
+		const std::unordered_map<std::string, std::string>& imports,
 		const ::Assets::DirectorySearchRules& searchRules)
 	{
-		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, searchRules);
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static NodeGraphSignature^ BuildSignatureFromGraph(NodeGraph^ graph)
+	{
+		NodeGraphSignature^ result = gcnew NodeGraphSignature;
+		for each(auto input in graph->InputParameterConnections) {
+			auto param = gcnew NodeGraphSignature::Parameter;
+			param->Type = input->Type;
+			param->Name = input->Name;
+			param->Direction = NodeGraphSignature::ParameterDirection::In;
+			param->Semantic = param->Semantic;
+			param->Default = param->Default;
+			result->Parameters->Add(param);
+		}
+
+		for each(auto output in graph->OutputParameterConnections) {
+			auto param = gcnew NodeGraphSignature::Parameter;
+			param->Type = output->Type;
+			param->Name = output->Name;
+			param->Direction = NodeGraphSignature::ParameterDirection::Out;
+			param->Semantic = output->Semantic;
+			result->Parameters->Add(param);
+		}
+
+		return result;
+	}
 
 	ShaderPatcher::GraphSyntaxFile	NodeGraphFile::ConvertToNative()
 	{
 		ConversionContext context;
 		ShaderPatcher::GraphSyntaxFile result;
 		for each(KeyValuePair<String^, SubGraph^> entry in SubGraphs) {
+			auto signature = entry.Value->Signature;
+			if (!signature)
+				signature = BuildSignatureFromGraph(entry.Value->Graph);
+
 			result._subGraphs.insert(
 				std::make_pair(
 					clix::marshalString<clix::E_UTF8>(entry.Key),
 					ShaderPatcher::GraphSyntaxFile::SubGraph {
-						entry.Value->Signature->ConvertToNative(context), 
+						signature->ConvertToNative(context), 
 						entry.Value->Graph->ConvertToNative(context) }));
 			
-			unsigned visualNodeIndex = 0;
+			int visualNodeIndex = 0;
 			for each(VisualNode^ vn in entry.Value->Graph->VisualNodes) {
 				std::unordered_map<std::string, std::string> attributes {
 					{"X", std::to_string(vn->Location.X)},
 					{"Y", std::to_string(vn->Location.Y)},
 					{"State", StateTypeToString(vn->State)}};
+
+				for each(PreviewSettings^ ps in entry.Value->Graph->PreviewSettingsObjects) {
+					if (ps->VisualNodeId == visualNodeIndex) {
+						attributes["PreviewGeometry"] = PreviewGeometryToString(ps->Geometry);
+						if (ps->OutputToVisualize)
+							attributes["OutputToVisualize"] = clix::marshalString<clix::E_UTF8>(ps->OutputToVisualize);
+					}
+				}
+
 				result._attributeTables.emplace(
 					std::make_pair(std::string("visualNode") + std::to_string(visualNodeIndex), std::move(attributes)));
 				++visualNodeIndex;
@@ -498,7 +571,7 @@ namespace ShaderPatcherLayer
 			ShaderPatcher::InstantiationParameters instantiationParams {};
 			instantiationParams._generateDanglingOutputs = true;
 
-			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, nodeGraphFile->GetSearchRules()->GetNative());
+			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());
 			auto mainInstantiation = ShaderPatcher::InstantiateShader(
 				"preview_graph", nativeGraph,  provider,
 				instantiationParams);
@@ -701,31 +774,6 @@ namespace ShaderPatcherLayer
         sw->Write("    PixelShader=<.>:" + entryPoint); sw->WriteLine();
 	}
 
-	static NodeGraphSignature^ BuildSignatureFromGraph(NodeGraph^ graph)
-	{
-		NodeGraphSignature^ result = gcnew NodeGraphSignature;
-		for each(auto input in graph->InputParameterConnections) {
-			auto param = gcnew NodeGraphSignature::Parameter;
-			param->Type = input->Type;
-			param->Name = input->Name;
-			param->Direction = NodeGraphSignature::ParameterDirection::In;
-			param->Semantic = param->Semantic;
-			param->Default = param->Default;
-			result->Parameters->Add(param);
-		}
-
-		for each(auto output in graph->OutputParameterConnections) {
-			auto param = gcnew NodeGraphSignature::Parameter;
-			param->Type = output->Type;
-			param->Name = output->Name;
-			param->Direction = NodeGraphSignature::ParameterDirection::Out;
-			param->Semantic = output->Semantic;
-			result->Parameters->Add(param);
-		}
-
-		return result;
-	}
-
     void NodeGraphFile::Serialize(System::IO::Stream^ stream, String^ name, NodeGraphContext^ context)
     {
         // We want to write this node graph to the given stream.
@@ -740,39 +788,12 @@ namespace ShaderPatcherLayer
         
         sw->Write("// CompoundDocument:1"); sw->WriteLine();
 
-		ConversionContext conversionContext;
-		std::vector<std::string> graphSyntaxStrings;
-		for each(auto g in SubGraphs) {
-			auto s = GenerateGraphSyntax(
-				g.Value->Graph->ConvertToNative(conversionContext),
-				BuildSignatureFromGraph(g.Value->Graph)->ConvertToNative(conversionContext),
-				clix::marshalString<clix::E_UTF8>(g.Key));
-			graphSyntaxStrings.push_back(s);
-		}
-
 		{
 			std::stringstream str;
-			for (auto i:conversionContext._importTable)
-				str << "import " << i.first << " = \"" << i.second << "\";" << std::endl;
-			for (auto g:graphSyntaxStrings)
-				str << g << std::endl;
-
-			unsigned visualNodeIndex = 0;
-			for each(auto g in SubGraphs)
-				for each(auto v in g.Value->Graph->VisualNodes) {
-					str << "attributes visualNode" << visualNodeIndex << "(";
-					str << "X:\"" << v->Location.X << "\", Y:\"" << v->Location.Y << "\", State:\"" << StateTypeToString(v->State) << "\");" << std::endl;
-					++visualNodeIndex;
-				}
+			ShaderPatcher::Serialize(str, ConvertToNative());
 			sw->Write(clix::marshalString<clix::E_UTF8>(str.str()));
 			sw->Flush();
 		}
-
-        // embed the node graph in there, as well
-        sw->Write("/* <<Chunk:NodeGraphFile:" + name + ">>--("); sw->WriteLine();
-        sw->Flush();
-		SaveToXML(stream, SubGraphs); sw->WriteLine();
-        sw->Write(")-- */"); sw->WriteLine();
 
         // embed the node graph context
         sw->Write("/* <<Chunk:NodeGraphContext:" + name + ">>--("); sw->WriteLine();
