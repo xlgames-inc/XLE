@@ -25,6 +25,7 @@ namespace NodeEditorCore
         Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
+        Node CreateSubGraph(String name);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
@@ -420,6 +421,8 @@ namespace NodeEditorCore
         public InterfaceDirection Direction = InterfaceDirection.In;
     }
 
+    internal class ShaderSubGraphNodeTag { }
+
     [Export(typeof(IShaderFragmentNodeCreator))]
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ShaderFragmentNodeCreator : IShaderFragmentNodeCreator
@@ -609,6 +612,14 @@ namespace NodeEditorCore
             var node = new Node(title);
             node.Tag = new ShaderInterfaceParameterNodeTag { Direction = direction };
             node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction }, Node.Column.Center);
+            return node;
+        }
+
+        public Node CreateSubGraph(String name)
+        {
+            var node = new Node(name);
+            node.Tag = new ShaderSubGraphNodeTag();
+            node.SubGraphTag = name;
             return node;
         }
 

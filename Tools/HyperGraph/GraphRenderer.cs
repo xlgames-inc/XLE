@@ -177,7 +177,7 @@ namespace HyperGraph
             return result;
         }
 
-        private static PointF ConnectorInterfacePoint(NodeConnector connector, bool isInput)
+        public static PointF ConnectorInterfacePoint(NodeConnector connector, bool isInput)
         {
             if (connector == null) return new PointF(0.0f, 0.0f);
 
@@ -793,17 +793,37 @@ namespace HyperGraph
 			return path;
 		}
 
-		public static void RenderConnection(Graphics graphics, NodeConnector output, float x, float y, RenderState state)
+        private static bool IsInputConnector(NodeConnector connector)
+        {
+            return connector.Node.InputConnectors.Contains(connector);
+        }
+
+		public static void RenderConnection(Graphics graphics, NodeConnector connector, float x, float y, RenderState state)
 		{
 			if (graphics == null ||
-				output == null)
+                connector == null)
 				return;
+
+            bool isInput = IsInputConnector(connector);
+            var connectorInterface = ConnectorInterfacePoint(connector, isInput);
 			
-            var interfacePoint = ConnectorInterfacePoint(output, false);
-			
-			float centerX;
-			float centerY;
-            using (var path = GetArrowLinePath(interfacePoint.X, interfacePoint.Y, x, y, out centerX, out centerY, true, 0.0f))
+			float startX, startY;
+            float endX, endY;
+            if (isInput)
+            {
+                startX = x; startY = y;
+                endX = connectorInterface.X;
+                endY = connectorInterface.Y;
+            }
+            else
+            {
+                startX = connectorInterface.X;
+                startY = connectorInterface.Y;
+                endX = x; endY = y;
+            }
+
+            float centerX, centerY;
+            using (var path = GetArrowLinePath(startX, startY, endX, endY, out centerX, out centerY, true, 0.0f))
 			{
 				using (var brush = new SolidBrush(GetArrowLineColor(state)))
 				{

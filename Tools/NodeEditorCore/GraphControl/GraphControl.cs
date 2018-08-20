@@ -25,6 +25,7 @@ namespace NodeEditorCore
             // small pieces using the ATF AdaptableControl type stuff...?
             _components = new System.ComponentModel.Container();
             _nodeMenu = CreateNodeMenu();
+            _createSubGraphMenu = CreateSubGraphMenu();
             _emptySpaceMenu = CreateEmptySpaceMenu();
             ConnectorDoubleClick += OnConnectorDoubleClick;
             ShowElementMenu += OnShowElementMenu;
@@ -51,7 +52,7 @@ namespace NodeEditorCore
             _nodeMenu.Items.Add(item);
         }
 
-        private ContextMenuStrip CreateEmptySpaceMenu()
+        private ContextMenuStrip CreateSubGraphMenu()
         {
             var item0 = new ToolStripMenuItem() { Text = "Create Input" };
             item0.Click += new EventHandler(this.OnCreateInputParameterNode);
@@ -62,6 +63,17 @@ namespace NodeEditorCore
             return new ContextMenuStrip(this._components)
             {
                 Items = { item0, item1 }
+            };
+        }
+
+        private ContextMenuStrip CreateEmptySpaceMenu()
+        {
+            var item2 = new ToolStripMenuItem() { Text = "Create new sub-graph" };
+            item2.Click += new EventHandler(this.OnCreateSubGraph);
+
+            return new ContextMenuStrip(this._components)
+            {
+                Items = { item2 }
             };
         }
 
@@ -163,7 +175,7 @@ namespace NodeEditorCore
             }
         }
         
-        #region Element context menu
+        #region Context menu
         void OnShowElementMenu(object sender, AcceptElementLocationEventArgs e)
         {
             if (e.Element == null)
@@ -178,6 +190,13 @@ namespace NodeEditorCore
                 var tag = (ShaderProcedureNodeTag)((Node)e.Element).Tag;
                 _nodeMenu.Tag = tag.Id;
                 _nodeMenu.Show(e.Position);
+                e.Cancel = false;
+            }
+            else
+            if (e.Element is Node && ((Node)e.Element).Tag is ShaderSubGraphNodeTag)
+            {
+                _createSubGraphMenu.Tag = ((Node)e.Element).SubGraphTag;
+                _createSubGraphMenu.Show(e.Position);
                 e.Cancel = false;
             }
             // if (e.Element is Node && ((Node)e.Element).Tag is ShaderParameterNodeTag)
@@ -231,7 +250,7 @@ namespace NodeEditorCore
                         }
                     }
 
-                    if (conn.Node.Connections.Where(x=>x.To==conn||x.From==conn).Any())
+                    if (conn.Node.Connections.Where(x => x.To == conn || x.From == conn).Any())
                     {
                         var removeItem = new ToolStripMenuItem() { Text = "Disconnect" };
                         removeItem.Click += (object o, EventArgs a) => { DisconnectAll(conn); };
@@ -264,9 +283,24 @@ namespace NodeEditorCore
             return 0;
         }
 
+        private object AttachedSubGraphTag(object senderObject)
+        {
+            if (senderObject is ToolStripMenuItem)
+            {
+                return ((ToolStripMenuItem)senderObject).GetCurrentParent().Tag;
+            }
+            return null;
+        }
+
         private HyperGraph.Node GetNode(uint id)
         {
             return NodeFactory.FindNodeFromId(GetGraphModel(), id);
+        }
+
+        private HyperGraph.Node GetSubGraph(uint id)
+        {
+            var subgraphTag = NodeFactory.FindNodeFromId(GetGraphModel(), id).SubGraphTag;
+            return GetGraphModel().SubGraphs.Where(x => x.SubGraphTag == subgraphTag).FirstOrDefault();
         }
 
         private ShaderFragmentPreviewItem GetPreviewItem(object sender)
@@ -315,43 +349,75 @@ namespace NodeEditorCore
                     tag.ArchiveName = dialog.InputText;
             }
         }
+
         private void OnCreateInputParameterNode(object sender, EventArgs e)
         {
-#if false
+            object subgraphTag = AttachedSubGraphTag(sender);
+            var subgraph = GetGraphModel().SubGraphs.Where(x => x.SubGraphTag == subgraphTag).FirstOrDefault();
+            if (subgraph == null) return;
+
             using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    var n = NodeFactory.CreateInterfaceNode("Inputs", InterfaceDirection.In);
-                    var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
-                    if (tag is System.Drawing.PointF)
-                        n.Location = (System.Drawing.PointF)tag;
-                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.In) { Semantic = fm.Semantic, Default = fm.Default });
-
-                    GetGraphModel().AddNode(n);
+                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.In) { Semantic = fm.Semantic, Default = fm.Default }, Node.Column.Output);
                 }
             }
-#endif
         }
+
         private void OnCreateOutputParameterNode(object sender, EventArgs e)
         {
-#if false
+            object subgraphTag = AttachedSubGraphTag(sender);
+            var subgraph = GetGraphModel().SubGraphs.Where(x => x.SubGraphTag == subgraphTag).FirstOrDefault();
+            if (subgraph == null) return;
+
             using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "" })
             {
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    var n = NodeFactory.CreateInterfaceNode("Outputs", InterfaceDirection.Out);
-                    var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
-                    if (tag is System.Drawing.PointF)
-                        n.Location = (System.Drawing.PointF)tag;
-                    n.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.Out) { Semantic = fm.Semantic, Default = fm.Default });
-
-                    GetGraphModel().AddNode(n);
+                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.Out) { Semantic = fm.Semantic, Default = fm.Default }, Node.Column.Input);
                 }
             }
-#endif
+        }
+
+        private bool HasSubGraphNamed(string name)
+        {
+            return GetGraphModel().SubGraphs.Where(x => string.Compare(x.SubGraphTag as string, name) == 0).Any();
+        }
+
+        private void OnCreateSubGraph(object sender, EventArgs e)
+        {
+            // pick out a unique name to seed the entry box
+            string name = "main";
+            if (HasSubGraphNamed(name))
+            {
+                for (int c=0; ; ++c)
+                {
+                    name = "subgraph" + c.ToString();
+                    if (!HasSubGraphNamed(name)) break;
+                }
+            }
+
+            using (var dialog = new HyperGraph.TextEditForm { InputText = name, Text = "New sub-graph name" })
+            {
+                if (dialog.ShowDialog() == DialogResult.OK)
+                {
+                    if (!HasSubGraphNamed(dialog.InputText))
+                    {
+                        var n = NodeFactory.CreateSubGraph(dialog.InputText);
+                        var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
+                        if (tag is System.Drawing.PointF)
+                            n.Location = (System.Drawing.PointF)tag;
+                        GetGraphModel().AddSubGraph(n);
+                    }
+                    else
+                    {
+                        MessageBox.Show("Cannot create sub-graph with name (" + dialog.InputText + ") because a sub-graph with that name already exists");
+                    }
+                }
+            }
         }
 
         #endregion
@@ -363,6 +429,7 @@ namespace NodeEditorCore
         }
 
         private ContextMenuStrip _nodeMenu;
+        private ContextMenuStrip _createSubGraphMenu;
         private ContextMenuStrip _emptySpaceMenu;
         private System.ComponentModel.Container _components;
     }

@@ -115,13 +115,12 @@ namespace NodeEditorCore
 
                 if (resultSubGraph == null)
                 {
-                    result.SubGraphs.Add(
-                        "unplaced",
-                        new ShaderPatcherLayer.NodeGraphFile.SubGraph
-                        {
-                            Graph = new ShaderPatcherLayer.NodeGraph(),
-                            Signature = new ShaderPatcherLayer.NodeGraphSignature()
-                        });
+                    resultSubGraph = new ShaderPatcherLayer.NodeGraphFile.SubGraph
+                    {
+                        Graph = new ShaderPatcherLayer.NodeGraph(),
+                        Signature = new ShaderPatcherLayer.NodeGraphSignature()
+                    };
+                    result.SubGraphs.Add("unplaced", resultSubGraph);
                 }
 
                 // Potentially build a "node" in the patcher layer. This is only required
@@ -302,7 +301,7 @@ namespace NodeEditorCore
             {
                     // --------< SubGraph >--------
                 var subGraphTag = inputSubGraph.Key;
-                Node subgraph = _nodeCreator.CreateNode(null, subGraphTag, null);
+                Node subgraph = _nodeCreator.CreateSubGraph(subGraphTag);
                 subgraph.SubGraphTag = subGraphTag;
                 graph.AddSubGraph(subgraph);
 

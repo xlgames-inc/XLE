@@ -429,8 +429,10 @@ namespace ShaderPatcherLayer
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
 	{
-		SubGraph^ subGraph = SubGraphs[subGraphName];
-		return subGraph->Graph->GeneratePreviewShader(previewNodeId, this, settings, variableRestrictions);
+		SubGraph^ subGraph = nullptr;
+		if (SubGraphs->TryGetValue(subGraphName, subGraph))
+			return subGraph->Graph->GeneratePreviewShader(previewNodeId, this, settings, variableRestrictions);
+		return gcnew Tuple<String^, String^>(String::Empty, String::Empty);
 	}
 
 	GUILayer::DirectorySearchRules^ NodeGraphFile::GetSearchRules()
@@ -483,6 +485,8 @@ namespace ShaderPatcherLayer
 
 			auto structureForPreview = GenerateStructureForPreview(
 				"preview_graph", mainInstantiation._entryPointSignature, options);
+
+			mainInstantiation._sourceFragments.insert(mainInstantiation._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
 
 			mainInstantiation._sourceFragments.push_back(structureForPreview);
 

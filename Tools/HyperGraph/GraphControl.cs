@@ -445,13 +445,7 @@ namespace HyperGraph
             {
                 foreach (var item in node.ItemsForColumn(c))
                 {
-                    if (item.bounds.IsEmpty)
-                        continue;
-
-                    if (location.Y < item.bounds.Top)
-                        break;
-
-                    if (location.Y < item.bounds.Bottom)
+                    if (item.bounds.Contains(location))
                         return item;
                 }
             }
@@ -508,8 +502,6 @@ namespace HyperGraph
                     }
 					if (acceptElement == null || acceptElement(node))
 						return node;
-					else
-						return null;
 				}
 			}
 
@@ -561,8 +553,13 @@ namespace HyperGraph
 						return connection;
 				}
 			}
+            foreach (var subGraph in model.SubGraphs)
+            {
+                if (subGraph.bounds.Contains(location) && (acceptElement == null || acceptElement(subGraph)))
+                    return subGraph;
+            }
 
-			return null;
+            return null;
 		}
 
         public static IEnumerable<IElement> RectangleSelection(IGraphModel model, RectangleF rect, AcceptElement acceptElement = null)
@@ -636,7 +633,7 @@ namespace HyperGraph
 				e.Graphics.DrawRectangle(Pens.DarkGray, marque_rectangle.X, marque_rectangle.Y, marque_rectangle.Width, marque_rectangle.Height);
 			}
 
-            if (_model == null || !_model.Nodes.Any())
+            if (_model == null || (!_model.Nodes.Any() && !_model.SubGraphs.Any()))
                 return;
 
             GraphRenderer.PerformLayout(e.Graphics, _model);
@@ -652,9 +649,9 @@ namespace HyperGraph
 						switch (DragElement.ElementType)
 						{
 							case ElementType.Connector:
-								var outputConnector = DragElement as NodeConnector;
-                                renderState |= (outputConnector.state & (RenderState.Incompatible | RenderState.Compatible | RenderState.Conversion));
-								GraphRenderer.RenderConnection(e.Graphics, outputConnector, transformed_location.X, transformed_location.Y, renderState);
+								var connector = DragElement as NodeConnector;
+                                renderState |= (connector.state & (RenderState.Incompatible | RenderState.Compatible | RenderState.Conversion));
+                                GraphRenderer.RenderConnection(e.Graphics, connector, transformed_location.X, transformed_location.Y, renderState);
 								break;
 						}
 					}
@@ -838,85 +835,47 @@ namespace HyperGraph
 							}
 						}
 					}
-				
 
-					var item = element as NodeItem;
-					if (item != null)
-					{
-						if (!item.OnStartDrag(transformed_location, out originalLocation))
-						{
-							element = item.Node;
-							originalLocation = transformed_location;
-						}
-					}
+                    if (element is NodeConnector)
+                    {
+                        // Should compatible connectors be highlighted?
+                        if (HighlightCompatible && null != _model.CompatibilityStrategy)
+                        {
+                            NodeConnector draggingConnector = (NodeConnector)element;
+                            foreach (Node graphNode in _model.Nodes.Concat(_model.SubGraphs))
+                            {
+                                IEnumerable<NodeConnector> connectors = IsInputConnector(draggingConnector) ? graphNode.OutputConnectors : graphNode.InputConnectors;
+                                foreach (NodeConnector otherConnector in connectors)
+                                {
+                                    var connectionType = _model.CompatibilityStrategy.CanConnect(draggingConnector, otherConnector);
+                                    if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
+                                    {
+                                        SetFlag(otherConnector, RenderState.Compatible, true);
+                                    }
+                                    else if (connectionType == HyperGraph.Compatibility.ConnectionType.Conversion)
+                                    {
+                                        SetFlag(otherConnector, RenderState.Conversion, true);
+                                    }
+                                    else
+                                    {
+                                        SetFlag(otherConnector, RenderState.Incompatible, true);
+                                    }
+                                }
+                            }
+                        }
+                    }
                     else
-					{
-						var connection = element as NodeConnection;
-						if (connection != null)
-							originalLocation = connection.To.bounds.Location;
-					}
-
-					// Should compatible connectors be highlighted?
-                    if (HighlightCompatible && null != _model.CompatibilityStrategy)
-					{
-						var connectorFrom = element as NodeConnector;
-						if (connectorFrom == null)
-						{
-							var connection = element as NodeConnection;
-							if (connection != null)
-								connectorFrom = connection.From;
-						}
-						if (connectorFrom != null)
-						{
-							if (element.ElementType == ElementType.Connector)
-							{
-								// Iterate over all nodes
-                                foreach (Node graphNode in _model.Nodes)
-								{
-									// Check compatibility of node connectors
-									foreach (NodeConnector connectorTo in graphNode.OutputConnectors)
-									{
-                                        var connectionType = _model.CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
-                                        if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
-										{
-											SetFlag(connectorTo, RenderState.Compatible, true);
-                                        }
-                                        else if (connectionType == HyperGraph.Compatibility.ConnectionType.Conversion)
-                                        {
-                                            SetFlag(connectorTo, RenderState.Conversion, true);
-                                        } 
-                                        else
-                                        {
-                                            SetFlag(connectorTo, RenderState.Incompatible, true);
-                                        }
-									}
-								}
-							} else
-							{
-								// Iterate over all nodes
-                                foreach (Node graphNode in _model.Nodes)
-								{
-									// Check compatibility of node connectors
-									foreach (NodeConnector connectorTo in graphNode.InputConnectors)
-									{
-                                        var connectionType = _model.CompatibilityStrategy.CanConnect(connectorFrom, connectorTo);
-                                        if (connectionType == HyperGraph.Compatibility.ConnectionType.Compatible)
-										{
-											SetFlag(connectorTo, RenderState.Compatible, true);
-                                        }
-                                        else if (connectionType == HyperGraph.Compatibility.ConnectionType.Conversion)
-                                        {
-                                            SetFlag(connectorTo, RenderState.Conversion, true);
-                                        }
-                                        else
-                                        {
-                                            SetFlag(connectorTo, RenderState.Incompatible, true);
-                                        }
-									}
-								}
-							}
-						}
-					}
+                    {
+                        var item = element as NodeItem;
+                        if (item != null)
+                        {
+                            if (!item.OnStartDrag(transformed_location, out originalLocation))
+                            {
+                                element = item.Node;
+                                originalLocation = transformed_location;
+                            }
+                        }
+                    }
 
                     if (Selection != null) 
                     {
@@ -1208,7 +1167,7 @@ namespace HyperGraph
 					case ElementType.Node:
 					{
 						var node = element as Node;
-						if (DragElement != null)
+						if (DragElement != null && !_model.SubGraphs.Contains(node))
 						{
 							if (DragElement.ElementType == ElementType.Connector)
 							{
@@ -1246,7 +1205,7 @@ namespace HyperGraph
 							if (dragConnector != null)
 							{
 								if (dragConnector.Node == destinationConnector.Node ||
-									DragElement.ElementType == element.ElementType)
+									IsInputConnector(dragConnector) == IsInputConnector(destinationConnector))
 								{
 									element = null;
 								} else
@@ -1300,13 +1259,7 @@ namespace HyperGraph
 			{
 				if (!destinationConnector.bounds.IsEmpty)
 				{
-					// var pre_points = new PointF[] { 
-					// 	new PointF((destinationConnector.bounds.Left + destinationConnector.bounds.Right) / 2,
-					// 				(destinationConnector.bounds.Top  + destinationConnector.bounds.Bottom) / 2) };
-                    float width = destinationConnector.bounds.Bottom - destinationConnector.bounds.Top - 8; 
-                    var pre_points = new PointF[] { 
-					 	new PointF( destinationConnector.bounds.Left + width / 2.0f + 4.0f,
-					 				(destinationConnector.bounds.Top  + destinationConnector.bounds.Bottom) / 2) };
+                    var pre_points = new PointF[] { GraphRenderer.ConnectorInterfacePoint(destinationConnector, IsInputConnector(destinationConnector)) };
 					transformation.TransformPoints(pre_points);
 					snappedLocation = pre_points[0];
 				}
@@ -1471,7 +1424,7 @@ namespace HyperGraph
 				if (HighlightCompatible)
 				{
 					// Remove all highlight flags
-                    foreach (Node graphNode in _model.Nodes)
+                    foreach (Node graphNode in _model.Nodes.Concat(_model.SubGraphs))
 					{
 						foreach (NodeConnector inputConnector in graphNode.InputConnectors)
                             SetFlag(inputConnector, RenderState.Compatible | RenderState.Incompatible | RenderState.Conversion, false);
