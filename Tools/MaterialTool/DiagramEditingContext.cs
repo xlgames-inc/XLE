@@ -27,32 +27,22 @@ namespace MaterialTool
     {
         private HyperGraph.IGraphSelection _selection;
 
-        public HyperGraph.IGraphModel Model;
         public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
+        public NodeEditorCore.IDiagramDocument Document { get { return _containingDocument; } }
+        public HyperGraph.IGraphModel ViewModel { get { return _containingDocument.ViewModel; } }
 
-        public NodeEditorCore.IDiagramDocument ContainingDocument { get; set; }
-
-        public uint GlobalRevisionIndex { get { return Model.GlobalRevisionIndex; } }
-
-        public DiagramEditingContext(HyperGraph.IGraphModel model, DiagramDocument containingDocument)
+        public DiagramEditingContext(DiagramDocument containingDocument)
         {
-            Model = model;
-            model.NodeAdded += model_NodeAdded;
-            model.NodeRemoved += model_NodeRemoved;
-            model.ConnectionAdded += model_ConnectionAdded;
-            model.ConnectionRemoved += model_ConnectionRemoved;
+            _containingDocument = containingDocument;
+
+            ViewModel.NodeAdded += model_NodeAdded;
+            ViewModel.NodeRemoved += model_NodeRemoved;
+            ViewModel.ConnectionAdded += model_ConnectionAdded;
+            ViewModel.ConnectionRemoved += model_ConnectionRemoved;
 
             _selection = new HyperGraph.GraphSelection();
             _selection.SelectionChanging +=_selection_SelectionChanging;
             _selection.SelectionChanged += _selection_SelectionChanged;
-
-            ContainingDocument = containingDocument;
-                // tracking for dirty flag --
-            Model.NodeAdded += containingDocument.Model_NodeAdded;
-            Model.NodeRemoved += containingDocument.Model_NodeRemoved;
-            Model.ConnectionAdded += containingDocument.Model_ConnectionAdded;
-            Model.ConnectionRemoved += containingDocument.Model_ConnectionRemoved;
-            Model.MiscChange += containingDocument.Model_MiscChange;
         }
 
         #region ISelectionContext Member
@@ -104,7 +94,7 @@ namespace MaterialTool
         #region IEnumerableContext Members
         IEnumerable<object> IEnumerableContext.Items
         {
-            get { return Model.Nodes; }
+            get { return ViewModel.Nodes; }
         }
         #endregion
 
@@ -196,22 +186,22 @@ namespace MaterialTool
             ItemChanged.Raise(this, e);
         }
 
-        void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e)
+        private void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e)
         {
             OnObjectInserted(new ItemInsertedEventArgs<object>(-1, e.Node, sender));
         }
-        
-        void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e)
+
+        private void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e)
         {
             OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Node, sender));
         }
 
-        void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e)
+        private void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e)
         {
             OnObjectInserted(new ItemInsertedEventArgs<object>(-1, e.Connection, sender));
         }
-        
-        void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e)
+
+        private void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e)
         {
             OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Connection, sender));
         }
@@ -240,7 +230,7 @@ namespace MaterialTool
         }
 
         public IEnumerable<object> Roots {
-            get { return Model.Nodes; }
+            get { return ViewModel.Nodes; }
         }
 
         public IEnumerable<object> GetChildren(object parent)
@@ -282,6 +272,7 @@ namespace MaterialTool
         #endregion
 
         public NodeEditorCore.IShaderFragmentNodeCreator NodeFactory;
+        private DiagramDocument _containingDocument;
 
         private static Color s_zeroColor = new Color();
     }

@@ -20,7 +20,14 @@ namespace MaterialTool
     {
         #region IDiagramDocument Members
         public ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; set; }
-        public ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; set; }
+        public ShaderPatcherLayer.NodeGraphFile NodeGraphFile
+        {
+            get {
+                return _modelConversion.ToShaderPatcherLayer(ViewModel);
+            }
+        }
+
+        public uint GlobalRevisionIndex { get { return ViewModel.GlobalRevisionIndex; } }
 
         public void Save(Uri destination)
         {
@@ -40,11 +47,20 @@ namespace MaterialTool
 
         public void Load(Uri source)
         {
-            ShaderPatcherLayer.NodeGraphFile nativeGraph;
+            ShaderPatcherLayer.NodeGraphFile graphFile;
             ShaderPatcherLayer.NodeGraphMetaData graphMetaData;
-            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out nativeGraph, out graphMetaData);
+            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out graphFile, out graphMetaData);
+
             GraphMetaData = graphMetaData;
-            NodeGraphFile = nativeGraph;
+            ViewModel = new HyperGraph.GraphModel();
+            ViewModel.CompatibilityStrategy = _exportProvider.GetExport<NodeEditorCore.IShaderFragmentNodeCreator>().Value.CreateCompatibilityStrategy();
+            _modelConversion.AddToHyperGraph(graphFile, ViewModel);
+
+            ViewModel.NodeAdded += model_NodeAdded;
+            ViewModel.NodeRemoved += model_NodeRemoved;
+            ViewModel.ConnectionAdded += model_ConnectionAdded;
+            ViewModel.ConnectionRemoved += model_ConnectionRemoved;
+            ViewModel.MiscChange += model_MiscChange;
         }
         #endregion
 
@@ -108,10 +124,21 @@ namespace MaterialTool
 
         #endregion
 
-        internal void Model_MiscChange(object sender, EventArgs e) { SetDirty(true); }
-        internal void Model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e) { SetDirty(true); }
-        internal void Model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e) { SetDirty(true); }
-        internal void Model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
-        internal void Model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
+        private void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
+        private void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
+        private void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e) { SetDirty(true); }
+        private void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e) { SetDirty(true); }
+        private void model_MiscChange(object sender, HyperGraph.MiscChangeEventArgs e) { SetDirty(true); }
+
+        public HyperGraph.IGraphModel ViewModel { get; private set; }
+
+        [Import]
+        private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
+
+        [Import]
+        private NodeEditorCore.IShaderFragmentNodeCreator _nodeFactory;
+
+        [Import]
+        private NodeEditorCore.IModelConversion _modelConversion;
     }
 }

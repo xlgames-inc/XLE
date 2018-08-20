@@ -44,7 +44,7 @@ namespace MaterialTool
                         var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
                         if (context != null)
                         {
-                            (new DiagramSettings(context.ContainingDocument)).ShowDialog();
+                            (new DiagramSettings(context.Document)).ShowDialog();
                         }
                         break;
                 }

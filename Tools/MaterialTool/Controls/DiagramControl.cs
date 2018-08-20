@@ -77,7 +77,7 @@ namespace MaterialTool.Controls
             graphAdapter.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));
             graphAdapter.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
             graphAdapter.ShowLabels = false;
-            graphAdapter.Model = context.Model;
+            graphAdapter.Model = context.ViewModel;
             graphAdapter.Selection = context.DiagramSelection; 
             graphAdapter.Context = context;
             graphAdapter.NodeFactory = _nodeFactory;
@@ -138,11 +138,11 @@ namespace MaterialTool.Controls
             var adapter = As<HyperGraphAdapter>();
             var p = adapter.GetNodePreviewContext(sender);
             var graphContext = ContextAs<DiagramEditingContext>();
-            var shader = _modelConversion.ToShaderPatcherLayer(graphContext.Model).GeneratePreviewShader(
+            var shader = graphContext.Document.NodeGraphFile.GeneratePreviewShader(
                 p.SubGraph,
                 p.NodeId,
                 p.PreviewSettings,
-                graphContext.ContainingDocument.GraphMetaData.Variables);
+                graphContext.Document.GraphMetaData.Variables);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
                 System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", "\r\n"));        // (make sure we to convert the line endings into windows form)
@@ -160,8 +160,8 @@ namespace MaterialTool.Controls
         {
                 // update the "defaults material"
             var context = ContextAs<DiagramEditingContext>();
-            if (context.ContainingDocument.GraphMetaData.DefaultsMaterial != _activeMaterialContext.MaterialName) {
-                context.ContainingDocument.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
+            if (context.Document.GraphMetaData.DefaultsMaterial != _activeMaterialContext.MaterialName) {
+                context.Document.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
                 System.Diagnostics.Debug.Assert(false);
                 // doc.ContainingDocument.Invalidate();
             }
@@ -344,13 +344,13 @@ namespace MaterialTool.Controls
 
         public DiagramHitRecord Pick(Point p)
         {
-            return new DiagramHitRecord(HyperGraph.GraphControl.FindElementAt(Context.Model, p));
+            return new DiagramHitRecord(HyperGraph.GraphControl.FindElementAt(Context.ViewModel, p));
         }
 
         public IEnumerable<object> Pick(Rectangle bounds)
         {
             RectangleF rectF = new RectangleF((float)bounds.X, (float)bounds.Y, (float)bounds.Width, (float)bounds.Height);
-            return HyperGraph.GraphControl.RectangleSelection(Context.Model, rectF);
+            return HyperGraph.GraphControl.RectangleSelection(Context.ViewModel, rectF);
         }
 
         public Rectangle GetBounds(IEnumerable<object> items)

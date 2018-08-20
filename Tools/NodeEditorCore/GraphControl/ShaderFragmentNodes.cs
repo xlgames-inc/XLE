@@ -33,16 +33,13 @@ namespace NodeEditorCore
     public interface IDiagramDocument
     {
         ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
-        ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; set; }
-
-        void Save(Uri destination);
-        void Load(Uri source);
+        ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; }
+        uint GlobalRevisionIndex { get; }
     }
 
     public interface IEditingContext
     {
-        IDiagramDocument ContainingDocument { get; set; }
-        uint GlobalRevisionIndex { get; }
+        IDiagramDocument Document { get; }
     }
 
     #region Node Items
@@ -190,7 +187,7 @@ namespace NodeEditorCore
                 var editingContext = context as IEditingContext;
                 if (editingContext == null) return;
 
-                uint currentHash = editingContext.GlobalRevisionIndex;
+                uint currentHash = editingContext.Document.GlobalRevisionIndex;
                 if (currentHash != _shaderStructureHash)
                     _cachedBitmap = null;
 
@@ -216,14 +213,14 @@ namespace NodeEditorCore
                             target = 0;
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
-                        editingContext.ContainingDocument.GraphMetaData,
+                        editingContext.Document.GraphMetaData,
                         new ShaderPatcherLayer.NodeGraphPreviewConfiguration
                         {
-                            _nodeGraph = editingContext.ContainingDocument.NodeGraphFile,
+                            _nodeGraph = editingContext.Document.NodeGraphFile,
                             _subGraphName = Node.SubGraphTag as string,
                             _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
                             _settings = prevSettings,
-                            _variableRestrictions = editingContext.ContainingDocument.GraphMetaData.Variables
+                            _variableRestrictions = editingContext.Document.GraphMetaData.Variables
                         },
                         idealSize, Geometry, target);
                     _shaderStructureHash = currentHash;
