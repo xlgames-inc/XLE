@@ -264,7 +264,8 @@ namespace ShaderPatcherLayer
 
 		auto visSettings = std::make_shared<ToolsRig::MaterialVisSettings>();
         visSettings->_camera = std::make_shared<ToolsRig::VisCameraSettings>();
-        visSettings->_camera->_position = Float3(-4, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+        visSettings->_camera->_position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+		visSettings->_camera->_verticalFieldOfView = 90.f;
 
 		bool pretransformed = false;
 
@@ -280,6 +281,7 @@ namespace ShaderPatcherLayer
 
         case PreviewGeometry::Box:
             visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
+			visSettings->_camera->_position = Float3(-2.1f, 0, 0);
             break;
 
         default:

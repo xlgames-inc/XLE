@@ -103,7 +103,7 @@ namespace HyperGraph.Items
 					this.TextSize = graphics.MeasureString(this.Text, SystemFonts.MenuFont, size, GraphConstants.LeftMeasureTextStringFormat);
 					
 					this.TextSize.Width  = Math.Max(size.Width, this.TextSize.Width + 8);
-					this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height + 2);
+                    this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height);
 				}
 				return this.TextSize;
 			} else
@@ -117,7 +117,6 @@ namespace HyperGraph.Items
 			var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
 
             RectangleF textBoundary = boundary;
-            textBoundary.Inflate(-1.0f, -1.0f);
 
 			if ((state & RenderState.Hover) == RenderState.Hover)
 			{

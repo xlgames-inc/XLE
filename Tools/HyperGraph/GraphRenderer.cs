@@ -61,7 +61,7 @@ namespace HyperGraph
                 return new NodeSize { BaseSize = SizeF.Empty, InputPartWidth = 0, OutputPartWidth = 0 };
 
             SizeF size = Size.Empty;
-            size.Height = (int)GraphConstants.TopHeight;
+            size.Height = node.Collapsed ? GraphConstants.TopHeightCollapsed : GraphConstants.TopHeight;
 
             bool[] firstItem = new bool[3] { true, true, true };
             SizeF[] sizes = new SizeF[3] { size, size, size };
@@ -87,7 +87,7 @@ namespace HyperGraph
                 size.Height = Math.Max(size.Height, sizes[c].Height);
 
             size.Width += GraphConstants.NodeExtraWidth;
-            size.Height += GraphConstants.BottomHeight;
+            size.Height += node.Collapsed ? GraphConstants.BottomHeightCollapsed : GraphConstants.BottomHeight;
 
             return new NodeSize { BaseSize = size, InputPartWidth = sizes[0].Width, OutputPartWidth = sizes[2].Width };
         }
@@ -273,7 +273,7 @@ namespace HyperGraph
 			var size = Measure(graphics, node);
 			var position = node.Location;
             node.bounds = new RectangleF(position, size.BaseSize);
-            position.Y += (int)GraphConstants.TopHeight;
+            position.Y += node.Collapsed ? GraphConstants.TopHeightCollapsed : GraphConstants.TopHeight;
 			
 			if (node.Collapsed)
 			{
@@ -297,17 +297,20 @@ namespace HyperGraph
             } 
             else
 			{
-                PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), position, new PointF(position.X + size.BaseSize.Width, position.Y) };
-                float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width, size.OutputPartWidth };
+                PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X+2, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
+                float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width-4, size.OutputPartWidth };
 
                 for (uint side = 0; side < 3; ++side)
                 {
+                    bool first = true;
                     foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
                     {
+                        if (!first) positions[side].Y += GraphConstants.ItemSpacing;
+                        first = false;
                         var itemSize = item.Measure(graphics);
                         itemSize.Width = System.Math.Max(itemSize.Width, widths[side]);
                         item.bounds = new RectangleF(positions[side], itemSize);
-                        positions[side].Y += itemSize.Height + GraphConstants.ItemSpacing;
+                        positions[side].Y += itemSize.Height;
                     }
                 }
 			}

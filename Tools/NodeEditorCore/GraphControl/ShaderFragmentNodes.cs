@@ -174,7 +174,6 @@ namespace NodeEditorCore
         {
             if (Node.Tag is ShaderFragmentNodeTag)
             {
-                SizeF size = Measure(graphics);
                 if (!graphics.IsVisible(boundary))
                     return;
 
@@ -193,7 +192,7 @@ namespace NodeEditorCore
                     _cachedBitmap = null;
 
                 // (assuming no rotation on this transformation -- scale is easy to find)
-                Size idealSize = new Size((int)(graphics.Transform.Elements[0] * size.Width), (int)(graphics.Transform.Elements[3] * size.Height));
+                Size idealSize = new Size((int)(graphics.Transform.Elements[0] * boundary.Size.Width), (int)(graphics.Transform.Elements[3] * boundary.Size.Height));
                 if (_cachedBitmap != null)
                 {
                     // compare the current bitmap size to the size we'd like

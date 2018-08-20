@@ -66,17 +66,6 @@ options
 
 	void Import_Register(const void*, const char alias[], const char import[]);
 
-	char* StripAngleBrackets(const char* input)
-	{
-		if (!input || !input[0]) return NULL;
-		if (input[0] != '<') return strdup(input);
-
-		char* result = strdup(input+1);
-		size_t len = strlen(result);
-		if (len && result[len-1] == '>') result[len-1] = '\0';
-		return result;
-	}
-
 	char* StripQuotesBrackets(const char* input)
 	{
 		if (!input || !input[0]) return NULL;
