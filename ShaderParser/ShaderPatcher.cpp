@@ -298,6 +298,17 @@ namespace ShaderPatcher
 		return {};
 	}
 
+	static std::pair<std::string, bool> StripAngleBracket(const std::string& str)
+	{
+		std::regex filter("<(.*)>");
+        std::smatch matchResult;
+        if (std::regex_match(str, matchResult, filter) && matchResult.size() > 1) {
+			return std::make_pair(matchResult[1].str(), true);
+		} else {
+			return std::make_pair(str, false);
+		}
+	}
+
     static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const Connection& connection, const std::string& expectedType, GraphInterfaceContext& interfContext, INodeGraphProvider& sigProvider)
     {
 		std::stringstream str;
@@ -307,8 +318,29 @@ namespace ShaderPatcher
 				//  we have a "constant connection" value here. We either extract the name of
 				//  the varying parameter, or we interpret this as pure text...
 			auto value = connection.InputParameterName();
-			auto type = TypeOfConstant(MakeStringSection(value));
-			finalType = WriteCastExpression(str, {value, type}, expectedType);
+			auto stripped = StripAngleBracket(value);
+			if (stripped.second) {
+				// this is actually a parameter name, but expressed in the compressed "<parameter>" syntax
+				auto existing = std::find_if(
+						interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
+						[stripped](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(stripped.first), param._name); });
+				if (existing == interfContext._additionalParameters.end()) {
+					auto predefined = std::find_if(
+						interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
+						[stripped](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(stripped.first), param._name); });
+					if (predefined != interfContext._predefinedParameters.end()) {
+						// It is predefined, but we must add it to "_additionalParameters" to signify that we're using it
+						existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), *predefined);
+					} else {
+						existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), { expectedType, stripped.first, ParameterDirection::In });
+					}
+				}
+					
+				finalType = WriteCastExpression(str, {existing->_name, existing->_type}, expectedType);
+			} else {
+				auto type = TypeOfConstant(MakeStringSection(value));
+				finalType = WriteCastExpression(str, {value, type}, expectedType);
+			}
 
 		} else if (connection.InputNodeId() == NodeId_Interface) {
 
@@ -428,6 +460,7 @@ namespace ShaderPatcher
         std::string _finalArchiveName;
         NodeGraphSignature _signature;
 		InstantiationParameters _instantiationParameters;
+		bool _isGraphSyntaxFile;
     };
 
     static ResolvedFunction ResolveFunction(
@@ -466,6 +499,8 @@ namespace ShaderPatcher
 			} else
 				result._name = result._finalArchiveName;
 
+			result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
+
             return result;
         }
 
@@ -474,7 +509,9 @@ namespace ShaderPatcher
             Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", archiveName.c_str()));
 		result._signature = sigProviderResult.value()._signature;        
         result._name = sigProviderResult.value()._name;
-        result._finalArchiveName = archiveName;
+        // result._finalArchiveName = sigProviderResult.value()._sourceFile.empty() ? archiveName : sigProviderResult.value()._sourceFile + ":" + result._name;
+		result._finalArchiveName = archiveName;
+		result._isGraphSyntaxFile = sigProviderResult.value()._isGraphSyntax;
         return result;
     }
 
@@ -588,11 +625,12 @@ namespace ShaderPatcher
         }
 
         // Append the function call to the dependency table
-        DependencyTable::Dependency dep { sigRes._finalArchiveName, std::move(callInstantiation) };
+        DependencyTable::Dependency dep { sigRes._finalArchiveName, std::move(callInstantiation), sigRes._isGraphSyntaxFile };
+		auto depHash = dep._parameters.CalculateHash();
         auto existing = std::find_if(
             workingDependencyTable._dependencies.begin(), workingDependencyTable._dependencies.end(),
-            [&dep](const DependencyTable::Dependency& d) 
-                { return d._archiveName == dep._archiveName && d._parameters.CalculateHash(); });
+            [&dep, depHash](const DependencyTable::Dependency& d) 
+                { return d._archiveName == dep._archiveName && d._parameters.CalculateHash() == depHash; });
         if (existing == workingDependencyTable._dependencies.end())
             workingDependencyTable._dependencies.emplace_back(std::move(dep));
 

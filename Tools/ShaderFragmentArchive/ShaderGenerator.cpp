@@ -338,7 +338,32 @@ namespace ShaderPatcherLayer
 
 	auto GraphNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
 	{
-		return {};
+		auto *scopingOperator = name.begin() + 1;
+		while (scopingOperator < name.end()) {
+			if (*(scopingOperator-1) == ':' && *scopingOperator == ':')
+				break;
+			++scopingOperator;
+		}
+		if (scopingOperator < name.end()) {
+			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
+			auto functionName = MakeStringSection(scopingOperator+1, name.end());
+
+			auto importedName = _imports->find(import);
+			if (importedName != _imports->end())
+				return BasicNodeGraphProvider::FindGraph(importedName->second + ":" + functionName.AsString());
+			return BasicNodeGraphProvider::FindGraph(import + ":" + functionName.AsString());
+		}
+
+		// Look for the function within the parsed graph syntax file
+		NodeGraphFile::SubGraph^ subGraph = nullptr;
+		System::String^ str = clix::marshalString<clix::E_UTF8>(name);
+		if (_parsedGraphFile->SubGraphs->TryGetValue(str, subGraph)) {
+			ConversionContext convContext;
+			return NodeGraph{ name.AsString(), subGraph->Graph->ConvertToNative(convContext), subGraph->Signature->ConvertToNative(convContext), shared_from_this() };
+		}
+
+		// Just fallback to default behaviour
+		return BasicNodeGraphProvider::FindGraph(name);
 	}
 
 	GraphNodeGraphProvider::GraphNodeGraphProvider(

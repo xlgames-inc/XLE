@@ -8,6 +8,7 @@
 #include "../GUILayer/MarshalString.h"
 #include "../../ShaderParser/InterfaceSignature.h"
 #include "../../ShaderParser/ParameterSignature.h"
+#include "../../ShaderParser/GraphSyntax.h"
 #include "../../ShaderParser/Exceptions.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -48,7 +49,7 @@ namespace ShaderFragmentArchive
         return stringBuilder.ToString();
     }
 
-    ParameterStruct::ParameterStruct(ShaderPatcher::ParameterStructSignature& parameterStruct)
+    ParameterStruct::ParameterStruct(const ShaderPatcher::ParameterStructSignature& parameterStruct)
     {
         Parameters = gcnew List<Parameter^>();
 
@@ -140,13 +141,14 @@ namespace ShaderFragmentArchive
         Functions = gcnew List<Function^>();
         ParameterStructs = gcnew List<ParameterStruct^>();
 
-        using namespace clix;
+		auto nativeFilename = clix::marshalString<clix::E_UTF8>(sourceFile);
+
 		size_t size = 0;
         std::unique_ptr<uint8[]> file;
         try
         {
 
-            file = ::Assets::TryLoadFileAsMemoryBlock(marshalString<E_UTF8>(sourceFile), &size);
+            file = ::Assets::TryLoadFileAsMemoryBlock(nativeFilename, &size);
 
         } catch (System::IO::IOException^) {
 
@@ -158,22 +160,30 @@ namespace ShaderFragmentArchive
             
         if (file && size != 0) {
 
+			auto srcCode = MakeStringSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
             try {
-                auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size)));
+				if (XlEqStringI(MakeFileNameSplitter(nativeFilename).Extension(), "graph")) {
 
-                    //
-                    //      \todo -- support compilation errors in the shader code!
-                    //
+					auto graphSyntax = ShaderPatcher::ParseGraphSyntax(srcCode);
+					for (const auto& subGraph:graphSyntax._subGraphs) {
+						Function^ function = gcnew Function(MakeStringSection(subGraph.first), subGraph.second._signature);
+						Functions->Add(function);
+					}
 
-                for (auto i=nativeSignature._functions.begin(); i!=nativeSignature._functions.end(); ++i) {
-                    Function^ function = gcnew Function(MakeStringSection(i->first), i->second);
-                    Functions->Add(function);
-                }
+				} else {
 
-                for (auto i=nativeSignature._parameterStructs.begin(); i!=nativeSignature._parameterStructs.end(); ++i) {
-                    ParameterStruct^ pstruct = gcnew ParameterStruct(*i);
-                    ParameterStructs->Add(pstruct);
-                }
+					auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(srcCode);
+
+					for (const auto& fn:nativeSignature._functions) {
+						Function^ function = gcnew Function(MakeStringSection(fn.first), fn.second);
+						Functions->Add(function);
+					}
+
+					for (const auto& ps:nativeSignature._parameterStructs) {
+						ParameterStruct^ pstruct = gcnew ParameterStruct(ps);
+						ParameterStructs->Add(pstruct);
+					}
+				}
             } catch (const ShaderSourceParser::Exceptions::ParsingFailure& ) {
                 ExceptionString = "Failed during parsing. Look for compilation errors.";
             }
@@ -182,7 +192,7 @@ namespace ShaderFragmentArchive
 
         std::shared_ptr<ShaderFragmentChangeCallback> changeCallback(
             new ShaderFragmentChangeCallback(this, System::Threading::SynchronizationContext::Current));
-        RegisterFileDependency(changeCallback, (const utf8*)marshalString<E_UTF8>(sourceFile).c_str());
+        RegisterFileDependency(changeCallback, (const utf8*)clix::marshalString<clix::E_UTF8>(sourceFile).c_str());
         _fileChangeCallback = changeCallback;
     }
 

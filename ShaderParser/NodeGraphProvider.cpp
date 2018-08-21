@@ -1,9 +1,11 @@
 
 #include "NodeGraphProvider.h"
 #include "InterfaceSignature.h"
+#include "GraphSyntax.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
+#include "../Utility/Streams/PathUtils.h"
 
 namespace ShaderPatcher
 {
@@ -36,6 +38,8 @@ namespace ShaderPatcher
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 		ShaderFragment(StringSection<::Assets::ResChar> fn);
 		~ShaderFragment();
+
+		bool _isGraphSyntaxFile = false;
 	private:
 		ShaderFragmentSignature _sig;
 		::Assets::DepValPtr _depVal;
@@ -64,7 +68,14 @@ namespace ShaderPatcher
 	ShaderFragment::ShaderFragment(StringSection<::Assets::ResChar> fn)
 	{
 		auto shaderFile = LoadSourceFile(fn);
-		_sig = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(shaderFile));
+		if (XlEqStringI(MakeFileNameSplitter(fn).Extension(), "graph")) {
+			auto graphSyntax = ParseGraphSyntax(shaderFile);
+			for (auto& subGraph:graphSyntax._subGraphs)
+				_sig._functions.emplace_back(std::make_pair(subGraph.first, std::move(subGraph.second._signature)));
+			_isGraphSyntaxFile = true;
+		} else {
+			_sig = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(shaderFile));
+		}
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, fn);
 	}
@@ -97,7 +108,7 @@ namespace ShaderPatcher
 					auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
 					auto* fn = frag.GetFunction(std::get<1>(splitName));
 					if (fn != nullptr) {
-						existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile)}}).first;
+						existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile), frag._isGraphSyntaxFile}}).first;
 					}
 				} CATCH (const ::Assets::Exceptions::RetrievalError&) {
 				} CATCH_END
@@ -105,14 +116,15 @@ namespace ShaderPatcher
         }
 
 		if (existing != _cache.end())        
-			return Signature{ existing->second._name, existing->second._sig, existing->second._sourceFile };
+			return Signature{ existing->second._name, existing->second._sig, existing->second._sourceFile, existing->second._isGraphSyntaxFile };
 
 		return {};
     }
 
 	auto BasicNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
 	{
-		return {};
+		auto splitName = SplitArchiveName(name);
+		return LoadGraph(std::get<0>(splitName), std::get<1>(splitName));
 	}
 
     BasicNodeGraphProvider::BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules)

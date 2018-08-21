@@ -19,6 +19,7 @@ namespace ShaderPatcher
             std::string _name;
             NodeGraphSignature _signature;
 			std::string _sourceFile;
+			bool _isGraphSyntax = false;
         };
         virtual std::optional<Signature> FindSignature(StringSection<> name) = 0;
 
@@ -49,6 +50,7 @@ namespace ShaderPatcher
 			std::string _name;
 			NodeGraphSignature _sig;
 			std::string _sourceFile;
+			bool _isGraphSyntaxFile;
 		};
         std::unordered_map<uint64, Entry> _cache;        
     };

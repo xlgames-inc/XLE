@@ -66,7 +66,7 @@ namespace ShaderFragmentArchive
         property System::String^		Name;
         property List<Parameter^>^      Parameters;
 
-        ParameterStruct(ShaderPatcher::ParameterStructSignature& parameterStruct);
+        ParameterStruct(const ShaderPatcher::ParameterStructSignature& parameterStruct);
         ~ParameterStruct();
         System::String^ BuildBodyString();
     };

@@ -127,9 +127,9 @@ namespace MaterialTool
         public static DocumentClientInfo EditorInfo =
             new DocumentClientInfo(
                 "Shader Graph".Localize(),
-                new string[] { ".tech", ".sh", ".hlsl", ".txt" },
+                new string[] { ".graph", ".tech", ".sh", ".hlsl", ".txt" },
                 null, null, false)
-            { DefaultExtension = ".tech" };
+            { DefaultExtension = ".graph" };
 
         public bool CanOpen(Uri uri) { return EditorInfo.IsCompatibleUri(uri); }
 

@@ -117,7 +117,7 @@ namespace ShaderPatcher
     class DependencyTable
     {
     public:
-        struct Dependency { std::string _archiveName; InstantiationParameters _parameters; };
+        struct Dependency { std::string _archiveName; InstantiationParameters _parameters; bool _isGraphSyntaxFile; };
         std::vector<Dependency> _dependencies;
     };
 

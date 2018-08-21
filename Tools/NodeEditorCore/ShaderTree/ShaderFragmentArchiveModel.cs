@@ -335,6 +335,7 @@ namespace NodeEditorCore
                                     || extension.Equals(".sh", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".tech", StringComparison.CurrentCultureIgnoreCase)
                                     || extension.Equals(".hlsl", StringComparison.CurrentCultureIgnoreCase)
+                                    || extension.Equals(".graph", StringComparison.CurrentCultureIgnoreCase)
                                     )
                                 {
                                     var sfi = new ShaderFileItem(str, parent, this);

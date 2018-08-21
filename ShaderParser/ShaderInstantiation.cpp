@@ -71,7 +71,7 @@ namespace ShaderPatcher
 				}
 
 				// if it's a graph file, then we must create a specific instantiation
-				if (XlEqString(MakeFileNameSplitter(filename).Extension(), "graph")) {
+				if (dep._isGraphSyntaxFile) {
 					instantiations.emplace(
 						PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
 				} else {
@@ -85,6 +85,8 @@ namespace ShaderPatcher
 				}
 			}
         }
+
+		std::reverse(result._sourceFragments.begin(), result._sourceFragments.end());
 
 		{
 			std::stringstream str;

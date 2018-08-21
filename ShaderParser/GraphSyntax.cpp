@@ -173,7 +173,7 @@ namespace ShaderPatcher
 		// Look for the function within the parsed graph syntax file
 		auto i = _parsedGraphFile->_subGraphs.find(name.AsString());
 		if (i != _parsedGraphFile->_subGraphs.end())
-			return Signature{ i->first, i->second._signature };
+			return Signature{ i->first, i->second._signature, {}, true };
 
 		// Just fallback to default behaviour
 		return BasicNodeGraphProvider::FindSignature(name);
@@ -215,8 +215,8 @@ namespace ShaderPatcher
 
 			auto importedName = _parsedGraphFile->_imports.find(import);
 			if (importedName != _parsedGraphFile->_imports.end())
-				return LoadGraph(importedName->second, functionName);
-			return LoadGraph(import, functionName);
+				return BasicNodeGraphProvider::FindGraph(importedName->second + ":" + functionName.AsString());
+			return BasicNodeGraphProvider::FindGraph(import + ":" + functionName.AsString());
 		}
 
 		// Look for the function within the parsed graph syntax file
@@ -224,7 +224,7 @@ namespace ShaderPatcher
 		if (i != _parsedGraphFile->_subGraphs.end())
 			return NodeGraph{ i->first, i->second._graph, i->second._signature, shared_from_this() };
 
-		return {};
+		return BasicNodeGraphProvider::FindGraph(name);
 	}
 
 	GraphNodeGraphProvider::GraphNodeGraphProvider(
