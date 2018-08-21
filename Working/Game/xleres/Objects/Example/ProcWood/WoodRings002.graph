@@ -1,11 +1,11 @@
 // CompoundDocument:1
 import basic = "xleres/nodes/basic.sh"
 
-void main(out float rings)
+void WoodRings002(out float rings)
 {
-	node node_0 = [[visualNode2]]basic::Separate3(input:"coords");
-	node node_1 = [[visualNode6]]basic::Multiply1(lhs:[[visualNode12]]basic::Power1(base:[[visualNode13]]basic::Add1(lhs:[[visualNode1]]basic::Multiply1(lhs:node_0.g, rhs:node_0.g).result, rhs:[[visualNode14]]basic::Multiply1(lhs:node_0.b, rhs:node_0.b).result).result, exponent:".5").result, rhs:"density");
-	rings = [[visualNode7]]basic::Add1(lhs:[[visualNode8]]basic::Multiply1(lhs:[[visualNode9]]basic::Cosine1(x:[[visualNode10]]basic::Multiply1(lhs:[[visualNode11]]basic::Power1(base:[[visualNode4]]basic::Add1(lhs:[[visualNode5]]basic::Subtract1(rhs:[[visualNode3]]basic::Round1(value:node_1.result).result, lhs:node_1.result).result, rhs:".5").result, exponent:"shape").result, rhs:"6.283").result).result, rhs:"strength").result, rhs:".5").result;
+	node node_0 = [[visualNode2]]basic::Separate3(input:"<coords>");
+	node node_1 = [[visualNode6]]basic::Multiply1(lhs:[[visualNode12]]basic::Power1(base:[[visualNode13]]basic::Add1(lhs:[[visualNode1]]basic::Multiply1(lhs:node_0.g, rhs:node_0.g).result, rhs:[[visualNode14]]basic::Multiply1(lhs:node_0.b, rhs:node_0.b).result).result, exponent:".5").result, rhs:"<density>");
+	rings = [[visualNode7]]basic::Add1(lhs:[[visualNode8]]basic::Multiply1(lhs:[[visualNode9]]basic::Cosine1(x:[[visualNode10]]basic::Multiply1(lhs:[[visualNode11]]basic::Power1(base:[[visualNode4]]basic::Add1(lhs:[[visualNode5]]basic::Subtract1(rhs:[[visualNode3]]basic::Round1(value:node_1.result).result, lhs:node_1.result).result, rhs:".5").result, exponent:"<shape>").result, rhs:"6.283").result).result, rhs:"<strength>").result, rhs:".5").result;
 }
 attributes visualNode8(PreviewGeometry:"plane2d", X:"809.000000", Y:"755.000000", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode0(X:"1203.000000", Y:"743.000000", State:"Normal");

@@ -1,11 +1,11 @@
 // CompoundDocument:1
 import basic = "xleres/nodes/basic.sh"
-import woodrings002 = "xleres/objects/example/procwood/woodrings002.sh"
-import woodplanks = "xleres/objects/example/procwood/woodplanks.sh"
+import woodrings002 = "xleres/objects/example/procwood/woodrings002.graph"
+import woodplanks = "xleres/objects/example/procwood/woodplanks.graph"
 import color = "xleres/nodes/color.sh"
-import woodgnarlgrainstain = "xleres/objects/example/procwood/woodgnarlgrainstain.sh"
+import woodgnarlgrainstain = "xleres/objects/example/procwood/woodgnarlgrainstain.graph"
 
-void main(out float3 color)
+void Wood_04_G(out float3 color)
 {
 	node node_0 = [[visualNode6]]color::RGB(r:".307", g:".122", b:".042");
 	node node_1 = [[visualNode9]]woodgnarlgrainstain::WoodGnarlGrainStain(coords:[[visualNode3]]woodplanks::WoodPlanks(offcenter:"5", width:".5", height:".15", shift1:".4", shift2:".1", shift3:".333", length:"2").plankCoords, gnarlStrength:".2", stain:"4", gnarlDensity:".5", grainStrength:"4", grainDensity:"100");

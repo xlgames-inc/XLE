@@ -1,12 +1,12 @@
 // CompoundDocument:1
 import basic = "xleres/nodes/basic.sh"
 
-void main(out float frac, out float int)
+void WoodModulator001(out float frac, out float int)
 {
-	node node_0 = [[visualNode1]]basic::Divide1(lhs:"value", rhs:"period");
+	node node_0 = [[visualNode1]]basic::Divide1(lhs:"<value>", rhs:"<period>");
 	node node_1 = [[visualNode2]]basic::Round1(lhs:node_0.result, multipleOf:".5");
-	frac = [[visualNode5]]basic::Multiply1(lhs:[[visualNode3]]basic::Subtract1(lhs:node_0.result, rhs:node_1.result).result, rhs:"period").result;
-	int = [[visualNode4]]basic::Multiply1(lhs:node_1.result, rhs:"period").result;
+	frac = [[visualNode5]]basic::Multiply1(lhs:[[visualNode3]]basic::Subtract1(lhs:node_0.result, rhs:node_1.result).result, rhs:"<period>").result;
+	int = [[visualNode4]]basic::Multiply1(lhs:node_1.result, rhs:"<period>").result;
 }
 attributes visualNode0(X:"2234.000000", Y:"421.000000", State:"Normal");
 attributes visualNode1(PreviewGeometry:"sphere", X:"1331.000000", Y:"371.000000", State:"Collapsed", OutputToVisualize:"");

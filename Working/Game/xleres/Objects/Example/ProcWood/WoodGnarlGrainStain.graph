@@ -2,11 +2,11 @@
 import texture = "xleres/nodes/texture.sh"
 import basic = "xleres/nodes/basic.sh"
 
-void main(out float grain, out float3 gnarledCoords)
+void WoodGnarlGrainStain(out float grain, out float3 gnarledCoords)
 {
-	node node_0 = [[visualNode0]]texture::NoiseTexture3(scale:"gnarlDensity", detail:"4", distortion:"5", position:"coords");
-	node node_1 = [[visualNode12]]basic::Multiply3(lhs:[[visualNode10]]basic::Add3(rhs:[[visualNode3]]basic::Multiply3Scalar(lhs:[[visualNode13]]basic::Subtract3(lhs:node_0.result, rhs:"float3(0.5, 0.5, 0.5)").result, rhs:"gnarlStrength").result, lhs:"coords").result, rhs:"float3(.1, 2, 2)");
-	grain = [[visualNode9]]basic::Multiply1(lhs:[[visualNode16]]basic::Add1(lhs:[[visualNode2]]basic::Subtract1(lhs:[[visualNode4]]basic::Multiply1(lhs:[[visualNode11]]texture::NoiseTexture3(position:node_1.result, detail:"2.0f", scale:"grainDensity", distortion:"0.0f").fac, rhs:"grainStrength").result, rhs:[[visualNode6]]basic::Subtract1(lhs:[[visualNode5]]basic::Multiply1(lhs:"grainStrength", rhs:".5").result, rhs:".5").result).result, rhs:[[visualNode7]]basic::Subtract1(rhs:[[visualNode14]]basic::Subtract1(lhs:[[visualNode8]]basic::Multiply1(rhs:".5", lhs:"stain").result, rhs:".5").result, lhs:[[visualNode15]]basic::Multiply1(lhs:node_0.fac, rhs:"stain").result).result).result, rhs:".5").result;
+	node node_0 = [[visualNode0]]texture::NoiseTexture3(scale:"<gnarlDensity>", detail:"4", distortion:"5", position:"<coords>");
+	node node_1 = [[visualNode12]]basic::Multiply3(lhs:[[visualNode10]]basic::Add3(rhs:[[visualNode3]]basic::Multiply3Scalar(lhs:[[visualNode13]]basic::Subtract3(lhs:node_0.result, rhs:"float3(0.5, 0.5, 0.5)").result, rhs:"<gnarlStrength>").result, lhs:"<coords>").result, rhs:"float3(.1, 2, 2)");
+	grain = [[visualNode9]]basic::Multiply1(lhs:[[visualNode16]]basic::Add1(lhs:[[visualNode2]]basic::Subtract1(lhs:[[visualNode4]]basic::Multiply1(lhs:[[visualNode11]]texture::NoiseTexture3(position:node_1.result, detail:"2.0f", scale:"<grainDensity>", distortion:"0.0f").fac, rhs:"<grainStrength>").result, rhs:[[visualNode6]]basic::Subtract1(lhs:[[visualNode5]]basic::Multiply1(lhs:"<grainStrength>", rhs:".5").result, rhs:".5").result).result, rhs:[[visualNode7]]basic::Subtract1(rhs:[[visualNode14]]basic::Subtract1(lhs:[[visualNode8]]basic::Multiply1(rhs:".5", lhs:"<stain>").result, rhs:".5").result, lhs:[[visualNode15]]basic::Multiply1(lhs:node_0.fac, rhs:"<stain>").result).result).result, rhs:".5").result;
 	gnarledCoords = node_1.result;
 }
 attributes visualNode8(PreviewGeometry:"sphere", X:"-86.000000", Y:"623.000000", State:"Collapsed", OutputToVisualize:"");
