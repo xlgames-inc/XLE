@@ -554,13 +554,17 @@ namespace RenderCore { namespace Metal_OpenGLES
                 const auto& binding = interf._cbBindings[slot];
                 if (binding._elements.empty()) continue;
 
-                // ensure it's not shadowed by a future binding
-                if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
+                // Ensure it's not shadowed by a future binding
+                // Note that we don't enforce this for bindings to global uniforms. This allows the client to
+                // provide multiple bindings for global, wherein each only binds a subset of all of the global uniforms
+                if (binding._hashName != 0) {
+                    if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
 
-                #if defined(STORE_UNIFORM_NAMES)
-                    assert(boundUniformStructs.find(binding._hashName) == boundUniformStructs.end());
-                    boundUniformStructs.insert(binding._hashName);
-                #endif
+                    #if defined(STORE_UNIFORM_NAMES)
+                        assert(boundUniformStructs.find(binding._hashName) == boundUniformStructs.end());
+                        boundUniformStructs.insert(binding._hashName);
+                    #endif
+                }
 
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
