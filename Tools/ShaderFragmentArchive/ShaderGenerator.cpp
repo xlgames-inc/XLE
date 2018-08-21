@@ -489,7 +489,7 @@ namespace ShaderPatcherLayer
 			nativeGraph.Trim(previewNodeId);
 			
 			ShaderPatcher::InstantiationParameters instantiationParams {};
-			instantiationParams._generateDanglingOutputs = true;
+			instantiationParams._generateDanglingOutputs = previewNodeId;
 
 			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());
 			auto mainInstantiation = ShaderPatcher::InstantiateShader(

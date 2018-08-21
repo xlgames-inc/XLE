@@ -100,7 +100,7 @@ namespace ShaderPatcher
     public:
 		struct Dependency;
         std::unordered_map<std::string, Dependency> _parameterBindings;
-		bool _generateDanglingOutputs = false;
+		NodeId _generateDanglingOutputs = NodeId_Interface;
         uint64_t CalculateHash() const;
 
 		InstantiationParameters(std::initializer_list<std::pair<const std::string, Dependency>> init)
