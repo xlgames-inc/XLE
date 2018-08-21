@@ -543,7 +543,7 @@ namespace Utility
                         arrayElementPattern);
                     std::regex_iterator<const CharType*> rend;
                     
-                    const auto &startIt = rit;
+                    auto startIt = rit;
 
                     auto dstIterator = dest;
                     auto dstIteratorSize = ptrdiff_t(destSize);
