@@ -1,19 +1,18 @@
 // CompoundDocument:1
 import basic = "xleres/nodes/basic.sh"
 
-void WoodModulator001(out float frac, out float int)
+void WoodModulator001(out float frac, out float int, float value, float period)
 {
-	node node_0 = [[visualNode1]]basic::Divide1(lhs:"<value>", rhs:"<period>");
+	node node_0 = [[visualNode0]]basic::Divide1(lhs:value, rhs:period);
 	node node_1 = [[visualNode2]]basic::Round1(lhs:node_0.result, multipleOf:".5");
-	frac = [[visualNode5]]basic::Multiply1(lhs:[[visualNode3]]basic::Subtract1(lhs:node_0.result, rhs:node_1.result).result, rhs:"<period>").result;
-	int = [[visualNode4]]basic::Multiply1(lhs:node_1.result, rhs:"<period>").result;
+	int = [[visualNode1]]basic::Multiply1(lhs:node_1.result, rhs:period).result;
+	frac = [[visualNode3]]basic::Multiply1(lhs:[[visualNode4]]basic::Subtract1(lhs:node_0.result, rhs:node_1.result).result, rhs:period).result;
 }
-attributes visualNode0(X:"2234.000000", Y:"421.000000", State:"Normal");
-attributes visualNode1(PreviewGeometry:"sphere", X:"1331.000000", Y:"371.000000", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode2(PreviewGeometry:"sphere", X:"1540.000000", Y:"433.000000", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode3(PreviewGeometry:"sphere", X:"1704.000000", Y:"345.000000", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode4(PreviewGeometry:"sphere", X:"1921.000000", Y:"475.000000", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode5(PreviewGeometry:"sphere", X:"1916.000000", Y:"391.000000", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode0(PreviewGeometry:"sphere", X:"1328", Y:"371", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"sphere", X:"1921", Y:"475", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"sphere", X:"1540", Y:"433", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"sphere", X:"1916", Y:"391", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(PreviewGeometry:"sphere", X:"1704", Y:"345", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:WoodModulator001>>--(
 <?xml version="1.0" encoding="utf-8"?>
 <NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
@@ -22,8 +21,3 @@ attributes visualNode5(PreviewGeometry:"sphere", X:"1916.000000", Y:"391.000000"
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 </NodeGraphMetaData>
 )-- */
-/* <<Chunk:CBLayout:main>>--(
-
-
-)--*/
-
