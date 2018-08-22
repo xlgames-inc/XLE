@@ -74,8 +74,8 @@ namespace ShaderPatcherLayer
 	PreviewGeometry PreviewSettings::PreviewGeometryFromString(String^ input)
 	{
 		if (!String::Compare(input, "chart", true)) return PreviewGeometry::Chart;
-		if (!String::Compare(input, "plane2d", true)) return PreviewGeometry::Box;
-		if (!String::Compare(input, "box", true)) return PreviewGeometry::Sphere;
+		if (!String::Compare(input, "box", true)) return PreviewGeometry::Box;
+		if (!String::Compare(input, "sphere", true)) return PreviewGeometry::Sphere;
 		if (!String::Compare(input, "model", true)) return PreviewGeometry::Model;
 		return PreviewGeometry::Plane2D;
 	}
@@ -561,7 +561,7 @@ namespace ShaderPatcherLayer
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static bool IsNodeGraphChunk(const ::Assets::TextChunk<char>& chunk)        { return XlEqString(chunk._type, "NodeGraph"); }
-    static bool IsNodeGraphContextChunk(const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "NodeGraphContext"); }
+    static bool IsNodeGraphMetaDataChunk(const ::Assets::TextChunk<char>& chunk) { return XlEqString(chunk._type, "NodeGraphMetaData"); }
 
     static array<Byte>^ AsManagedArray(const ::Assets::TextChunk<char>* chunk)
     {
@@ -611,7 +611,7 @@ namespace ShaderPatcherLayer
 		nodeGraph = NodeGraphFile::ConvertFromNative(nativeGraph, ::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
 
             // now load the context chunk (if it exists)
-		auto contextChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphContextChunk);
+		auto contextChunk = std::find_if(chunks.cbegin(), chunks.cend(), IsNodeGraphMetaDataChunk);
         if (contextChunk != chunks.end()) {
             array<Byte>^ managedArray = nullptr;
             System::IO::MemoryStream^ memStream = nullptr;

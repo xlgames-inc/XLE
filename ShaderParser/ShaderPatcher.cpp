@@ -130,7 +130,7 @@ namespace ShaderPatcher
             std::remove_if(
                 _connections.begin(), _connections.end(),
                 [=](const Connection& connection)
-                    { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()); }),
+                    { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()) || connection.OutputNodeId() == NodeId_Interface; }),
             _connections.end());
     }
 
@@ -298,75 +298,37 @@ namespace ShaderPatcher
 		return {};
 	}
 
-	static std::pair<std::string, bool> StripAngleBracket(const std::string& str)
-	{
-		std::regex filter("<(.*)>");
-        std::smatch matchResult;
-        if (std::regex_match(str, matchResult, filter) && matchResult.size() > 1) {
-			return std::make_pair(matchResult[1].str(), true);
-		} else {
-			return std::make_pair(str, false);
-		}
-	}
-
     static ExpressionString QueryExpression(const NodeGraph& nodeGraph, const Connection& connection, const std::string& expectedType, GraphInterfaceContext& interfContext, INodeGraphProvider& sigProvider)
     {
 		std::stringstream str;
 		std::string finalType;
 		if (connection.InputNodeId() == NodeId_Constant) {
 
-				//  we have a "constant connection" value here. We either extract the name of
-				//  the varying parameter, or we interpret this as pure text...
+				//  we have a "constant connection" value here
 			auto value = connection.InputParameterName();
-			auto stripped = StripAngleBracket(value);
-			if (stripped.second) {
-				// this is actually a parameter name, but expressed in the compressed "<parameter>" syntax
-				auto existing = std::find_if(
-						interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
-						[stripped](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(stripped.first), param._name); });
-				if (existing == interfContext._additionalParameters.end()) {
-					auto predefined = std::find_if(
-						interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
-						[stripped](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(stripped.first), param._name); });
-					if (predefined != interfContext._predefinedParameters.end()) {
-						// It is predefined, but we must add it to "_additionalParameters" to signify that we're using it
-						existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), *predefined);
-					} else {
-						existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), { expectedType, stripped.first, ParameterDirection::In });
-					}
-				}
-					
-				finalType = WriteCastExpression(str, {existing->_name, existing->_type}, expectedType);
-			} else {
-				auto type = TypeOfConstant(MakeStringSection(value));
-				finalType = WriteCastExpression(str, {value, type}, expectedType);
-			}
+			auto type = TypeOfConstant(MakeStringSection(value));
+			finalType = WriteCastExpression(str, {value, type}, expectedType);
 
 		} else if (connection.InputNodeId() == NodeId_Interface) {
 
-			auto p = std::find_if(
-				interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
+			auto existing = std::find_if(
+				interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
 				[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
-			if (p != interfContext._predefinedParameters.end()) {
-				// It is predefined, but we must add it to "_additionalParameters" to signify that we're using it
-				auto existing = std::find_if(
-					interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
+			if (existing == interfContext._additionalParameters.end()) {
+				auto p = std::find_if(
+					interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
 					[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
-				if (existing == interfContext._additionalParameters.end()) {
+				if (p != interfContext._predefinedParameters.end()) {
 					NodeGraphSignature::Parameter newParam = *p;
 					if (newParam._type.empty() || XlEqString(newParam._type, "auto"))
 						newParam._type = expectedType;
 					existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), newParam);
+				} else {
+					existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), {expectedType, connection.InputParameterName()});
 				}
-					
-				finalType = WriteCastExpression(str, {existing->_name, existing->_type}, expectedType);
-			} else {
-				// It's not predefined. We will create an additional input to account for it
-				auto uniqueName = UniquifyName(connection.InputParameterName(), interfContext);
-				interfContext._additionalParameters.push_back({expectedType, uniqueName});
-				str << uniqueName;
-				finalType = expectedType;
 			}
+
+			finalType = WriteCastExpression(str, {existing->_name, existing->_type}, expectedType);
 
 		} else {
 
@@ -424,28 +386,21 @@ namespace ShaderPatcher
 				if (srcNode)
 					inputType = TypeFromShaderFragment(srcNode->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider);
 
-				std::vector<NodeGraphSignature::Parameter>::iterator p;
-
-				auto predefined = std::find_if(
-					interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
+				auto p = std::find_if(
+					interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
 					[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::Out && XlEqString(MakeStringSection(connection.OutputParameterName()), param._name); });
-				if (predefined != interfContext._predefinedParameters.end()) {
-					// It is predefined, but we must add it to "_additionalParameters" to signify that we're using it
-					p = std::find_if(
-						interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
+				if (p == interfContext._additionalParameters.end()) {
+					auto predefined = std::find_if(
+						interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
 						[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::Out && XlEqString(MakeStringSection(connection.OutputParameterName()), param._name); });
-					if (p == interfContext._additionalParameters.end()) {
+					if (predefined != interfContext._predefinedParameters.end()) {
 						NodeGraphSignature::Parameter newParam = *p;
 						if (newParam._type.empty() || XlEqString(newParam._type, "auto"))
 							newParam._type = inputType;
 						p = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), newParam);
+					} else {
+						p = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), {inputType, connection.OutputParameterName(), ParameterDirection::Out});
 					}
-				} else {
-					// It's not predefined. We will create an additional output to account for it
-					auto uniqueName = UniquifyName(connection.OutputParameterName(), interfContext);
-					p = interfContext._additionalParameters.insert(
-						interfContext._additionalParameters.end(),
-						{inputType, uniqueName, ParameterDirection::Out});
 				}
 
 				result << "\t" << p->_name << " = " << QueryExpression(graph, connection, p->_type, interfContext, sigProvider)._expression << ";" << std::endl;

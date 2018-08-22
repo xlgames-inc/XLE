@@ -60,10 +60,6 @@ options
 
 //------------------------------------------------------------------------------------------------
 
-semantic returns [StringId str = ~0u]
-	: ^(SEMANTIC n=Identifier) { str = String_Register(ctx, n); }
-	;
-
 direction returns [unsigned directionFlags = 0u]
 	: DIRECTION_OUT { directionFlags = 1<<1; }
 	| DIRECTION_IN_OUT { directionFlags = (1<<0) | (1<<1); }
@@ -74,6 +70,10 @@ identifier returns [StringId str = ~0u] : Identifier { str = String_Register(ctx
 
 typeName returns [StringId str = ~0u]
 	: ^(TYPE_NAME s=identifier) { str = s; }
+	;
+
+semantic returns [StringId str = ~0u]
+	: ^(SEMANTIC n=identifier) { str = n; }
 	;
 
 subscript : ^(SUBSCRIPT .*) ;

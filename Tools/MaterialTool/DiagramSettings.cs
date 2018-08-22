@@ -22,10 +22,12 @@ namespace MaterialTool
 
             // We need to calculate the interface for the node graph and
             // find the variables from there...
-            System.Diagnostics.Debug.Assert(false);
-            // var interf = ShaderPatcherLayer.NodeGraph.GetInterface(context.NodeGraph);
-            // var sugg = interf.Variables.Select(x => x.Name);
             IEnumerable<String> sugg = null;
+            foreach (var sg in _context.NodeGraphFile.SubGraphs)
+            {
+                var subSugg = sg.Value.Signature.Parameters.Where(x => x.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In).Select(x => x.Name);
+                sugg = (sugg != null) ? sugg.Concat(subSugg) : subSugg;
+            }
 
             {
                 _variables.AutoGenerateColumns = false;
