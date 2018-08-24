@@ -25,8 +25,6 @@
 #include "IncludeGLES.h"
 #include <set>
 
-// #define EXTRA_INPUT_LAYOUT_LOGGING
-
 namespace RenderCore { namespace Metal_OpenGLES
 {
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
