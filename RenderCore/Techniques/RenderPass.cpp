@@ -149,9 +149,12 @@ namespace RenderCore { namespace Techniques
     {
         // look for old FBs, and evict; then just increase the tick id
         const unsigned evictionRange = 10;
-        for (auto&e:_entries)
-            if ((e._tickId + evictionRange) < _currentTickId)
+        for (auto&e:_entries) {
+            if ((e._tickId + evictionRange) < _currentTickId) {
                 e._fb.reset();
+                e._hash = 0;
+            }
+        }
         ++_currentTickId;
     }
 
@@ -189,6 +192,7 @@ namespace RenderCore { namespace Techniques
             if (_pimpl->_entries[c]._hash == hashValue) {
                 _pimpl->_entries[c]._tickId = _pimpl->_currentTickId;
                 _pimpl->IncreaseTickId();
+                assert(_pimpl->_entries[c]._fb != nullptr);
                 return _pimpl->_entries[c]._fb;
             }
             if (_pimpl->_entries[c]._tickId < tickIdOfEarliestEntry) {
