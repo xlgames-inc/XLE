@@ -53,7 +53,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     #endif
                 }
             } else {
-                #if defined(STORE_UNIFORM_NAMES)
+                #if defined(STORE_UNIFORM_NAMES) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
                     Log(Warning) << "In MakeBinding, uniform in shader (" << i._name << ") in struct (" << s->second._name << ") was not matched to binding" << std::endl;
                 #endif
             }

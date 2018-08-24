@@ -15,6 +15,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     #if defined(_DEBUG)
         #define STORE_UNIFORM_NAMES
+        //#define EXTRA_INPUT_LAYOUT_LOGGING
     #endif
 
     /// <summary>A simple abstraction for multiple uniform "set" operations.</summary>
