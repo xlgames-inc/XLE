@@ -136,6 +136,23 @@ namespace NodeEditorCore
                     resultNode.NodeType = ShaderPatcherLayer.Node.Type.Procedure;
                     resultSubGraph.Graph.Nodes.Add(resultNode);
 
+                    var templatedName = System.Text.RegularExpressions.Regex.Match(resultNode.FragmentArchiveName, "(.*)<(.+)>");
+                    if (templatedName.Success)
+                    {
+                        var templateParam = new ShaderPatcherLayer.NodeGraphSignature.TemplateParameter
+                        {
+                            Name = templatedName.Groups[1].Value,
+                            Restriction = templatedName.Groups[2].Value
+                        };
+                        var existing = resultSubGraph.Signature.TemplateParameters.Where(x => String.Compare(x.Name, templateParam.Name) == 0).FirstOrDefault();
+                        if (existing == null)
+                        {
+                            resultSubGraph.Signature.TemplateParameters.Add(templateParam);
+                        }
+                        else if (String.Compare(existing.Restriction, templateParam.Restriction) != 0)
+                            throw new InvalidOperationException("Cannot create program because two template parameters with the same name disagree on restriction (parameter: " + templateParam.Name + " is restricted to both " + templateParam.Restriction + " and " + existing.Restriction);
+                    }
+
                     var attributeTable = new Dictionary<string, string>();
                     attributeTable.Add("X", n.Location.X.ToString());
                     attributeTable.Add("Y", n.Location.Y.ToString());
@@ -338,8 +355,13 @@ namespace NodeEditorCore
                         Dictionary<string, string> attributeTable = null;
                         if (n.AttributeTableName != null && n.AttributeTableName.Length > 0)
                             graphFile.AttributeTables.TryGetValue(n.AttributeTableName, out attributeTable);
+                        
+                        var finalFnName = n.FragmentArchiveName;
+                        var templatedName = System.Text.RegularExpressions.Regex.Match(n.FragmentArchiveName, "(.*)<(.+)>");
+                        if (templatedName.Success)
+                            finalFnName = templatedName.Groups[2].Value;
 
-                        var fn = _shaderFragments.GetFunction(n.FragmentArchiveName, graphFile.GetSearchRules());
+                        var fn = _shaderFragments.GetFunction(finalFnName, graphFile.GetSearchRules());
                         var newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, MakePreviewSettingsFromAttributeTable(attributeTable));
 
                         if (newNode != null)

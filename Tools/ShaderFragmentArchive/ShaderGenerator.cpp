@@ -18,6 +18,7 @@
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Conversion.h"
 #include <sstream>
+#include <regex>
 
 #pragma warning (disable:4505) // 'ShaderPatcherLayer::StateTypeToString': unreferenced local function has been removed
 
@@ -90,14 +91,10 @@ namespace ShaderPatcherLayer
         }
     }
 
-	static std::string CompressImportedName(const std::string& name, ConversionContext& context)
+	static std::string AddToImportTable(StringSection<> import, ConversionContext& context)
 	{
-		auto splitName = SplitArchiveName(name);
-		if (std::get<0>(splitName).IsEmpty())
-			return name;
-
 		char imprt[MaxPath];
-		MakeSplitPath(std::get<0>(splitName)).Rebuild(imprt);
+		MakeSplitPath(import).Rebuild(imprt);
 		auto existing = std::find_if(
 			context._importTable.begin(), context._importTable.end(), 
 			[imprt](const std::pair<std::string, std::string>& p) { return p.second == imprt; } );
@@ -112,21 +109,41 @@ namespace ShaderPatcherLayer
 			}
 		}
 
-		return existing->first + "::" + std::get<1>(splitName).AsString();
+		return existing->first;
+	}
+
+	static std::string CompressImportedName(const std::string& name, ConversionContext& context)
+	{
+		static std::regex basicImport("(.*):(.*)");
+		static std::regex templatedImport("(.*)<(.*):(.*)>");
+
+		std::smatch smatch;
+		if (std::regex_match(name, smatch, templatedImport)) {
+			auto imported = AddToImportTable(MakeStringSection(smatch[2].first, smatch[2].second), context);
+			return smatch[1].str() + "<" + imported + "::" + smatch[3].str() + ">";	// note downgrade to single colon here
+		} else if (std::regex_match(name, smatch, basicImport)) {
+			auto imported = AddToImportTable(MakeStringSection(smatch[1].first, smatch[1].second), context);
+			return imported + "::" + smatch[2].str();	// note downgrade to single colon here
+		}
+
+		return name;
 	}
 
 	static std::string ExpandImportedName(const std::string& name, const ConversionContext& context)
 	{
-		auto doubleColons = name.begin();
-		for (; doubleColons!=name.end() && (doubleColons+1)!=name.end(); ++doubleColons)
-			if (*doubleColons == ':' && *(doubleColons+1) == ':')
-				break;
+		static std::regex basicImport("(.*)::(.*)");
+		static std::regex templatedImport("(.*)<(.*)::(.*)>");
 
-		if (doubleColons==name.end() || (doubleColons+1)==name.end()) return name;
-
-		auto existing = context._importTable.find(std::string(name.begin(), doubleColons));
-		if (existing != context._importTable.end())
-			return existing->second + std::string(doubleColons+1, name.end());	// note downgrade to single colon here
+		std::smatch smatch;
+		if (std::regex_match(name, smatch, templatedImport)) {
+			auto existing = context._importTable.find(smatch[2]);
+			if (existing != context._importTable.end())
+				return smatch[1].str() + "<" + existing->second + ":" + smatch[3].str() + ">";	// note downgrade to single colon here
+		} else if (std::regex_match(name, smatch, basicImport)) {
+			auto existing = context._importTable.find(smatch[1]);
+			if (existing != context._importTable.end())
+				return existing->second + ":" + smatch[2].str();	// note downgrade to single colon here
+		}
 
 		return name;
 	}
@@ -247,7 +264,7 @@ namespace ShaderPatcherLayer
 			result.AddTemplateParameter(
 				ShaderPatcher::NodeGraphSignature::TemplateParameter {
 					clix::marshalString<clix::E_UTF8>(p->Name),
-					clix::marshalString<clix::E_UTF8>(p->Restriction)});
+					CompressImportedName(clix::marshalString<clix::E_UTF8>(p->Restriction), context)});
 		}
 
 		return result;
@@ -280,7 +297,7 @@ namespace ShaderPatcherLayer
 		for (auto&p:input.GetTemplateParameters()) {
 			TemplateParameter^ param = gcnew TemplateParameter;
 			param->Name = clix::marshalString<clix::E_UTF8>(p._name);
-			param->Restriction = clix::marshalString<clix::E_UTF8>(p._restriction);
+			param->Restriction = clix::marshalString<clix::E_UTF8>(ExpandImportedName(p._restriction, context));
 			result->_templateParameters->Add(param);
 		}
 		return result;
