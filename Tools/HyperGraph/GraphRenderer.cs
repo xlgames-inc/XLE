@@ -115,7 +115,7 @@ namespace HyperGraph
 
         private static NodeSize MeasureCircular(Graphics context, Node node)
         {
-            return new NodeSize { BaseSize = new SizeF ( 256, 256 ), InputPartWidth = 0, OutputPartWidth = 0 };
+            return new NodeSize { BaseSize = new SizeF ( 192, 192), InputPartWidth = 0, OutputPartWidth = 0 };
         }
 
         static void RenderItem(Graphics graphics, NodeItem item, RectangleF bounds, object context)
@@ -135,6 +135,7 @@ namespace HyperGraph
 
         internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
         internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
+        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(128, 128, 128)) { DashStyle = DashStyle.Dash, Width = 2 };
 
         enum ConnectorType { Input, Output };
 
@@ -299,9 +300,6 @@ namespace HyperGraph
 
         public static void PerformLayout(Graphics graphics, Node node)
         {
-            if (node == null)
-                return;
-
             if (node.Layout == Node.LayoutType.Rectangular || node.Collapsed)
             {
                 var size = MeasureRectangular(graphics, node);
@@ -354,52 +352,94 @@ namespace HyperGraph
             }
             else
             {
-                node.bounds = new RectangleF(node.Location, MeasureCircular(graphics, node).BaseSize);
-
-                var inputRects = node.InputItems.Select(x => AdjustConnectorSize(x.Measure(graphics)));
-                var outputRects = node.OutputItems.Select(x => AdjustConnectorSize(x.Measure(graphics)));
-
-                float inputHeight = 0.0f, inputWidth = 0.0f, outputHeight = 0.0f, outputWidth = 0.0f;
-                bool firstItem = true;
-                foreach (var i in inputRects)
-                {
-                    if (!firstItem) inputHeight += GraphConstants.ItemSpacing;
-                    firstItem = false;
-                    inputHeight += i.Height;
-                    inputWidth = Math.Max(i.Width, inputWidth);
-                }
-
-                firstItem = true;
-                foreach (var i in outputRects)
-                {
-                    if (!firstItem) outputHeight += GraphConstants.ItemSpacing;
-                    firstItem = false;
-                    outputHeight += i.Height;
-                    outputWidth = Math.Max(i.Width, outputWidth);
-                }
-
-                float y = node.bounds.Top + (node.bounds.Height - inputHeight) / 2.0f;
-                using (var list1enum = node.InputItems.GetEnumerator())
-                using (var list2enum = inputRects.GetEnumerator())
-                while (list1enum.MoveNext() && list2enum.MoveNext())
-                {
-                    var rect = list2enum.Current;
-                    list1enum.Current.bounds = new RectangleF(node.bounds.Left - inputWidth, y, inputWidth, rect.Height);
-                    y += rect.Height + GraphConstants.ItemSpacing;
-                }
-
-                y = node.bounds.Top + (node.bounds.Height - outputHeight) / 2.0f;
-                using (var list1enum = node.OutputItems.GetEnumerator())
-                using (var list2enum = outputRects.GetEnumerator())
-                while (list1enum.MoveNext() && list2enum.MoveNext())
-                {
-                    var rect = list2enum.Current;
-                    list1enum.Current.bounds = new RectangleF(node.bounds.Right, y, outputWidth, rect.Height);
-                    y += rect.Height + GraphConstants.ItemSpacing;
-                }
+                PerformCircularLayout(graphics, node);
             }
         }
 
+        private enum VerticalItemLayoutSide { LeftOfAnchor, RightOfAnchor };
+        private static void LayoutItemsVertically(Graphics graphics, IEnumerable<NodeItem> items, PointF anchor, bool centerAroundAnchor, VerticalItemLayoutSide layoutType)
+        {
+            var inputRects = items.Select(x => AdjustConnectorSize(x.Measure(graphics)));
+
+            float groupHeight = 0.0f, groupWidth = 0.0f;
+            bool firstItem = true;
+            foreach (var i in inputRects)
+            {
+                if (!firstItem) groupHeight += GraphConstants.ItemSpacing;
+                firstItem = false;
+                groupHeight += i.Height;
+                groupWidth = Math.Max(i.Width, groupWidth);
+            }
+
+            float y = anchor.Y;
+            if (centerAroundAnchor)
+                y -= groupHeight / 2.0f;
+            using (var list1enum = items.GetEnumerator())
+            using (var list2enum = inputRects.GetEnumerator())
+                while (list1enum.MoveNext() && list2enum.MoveNext())
+                {
+                    var rect = list2enum.Current;
+                    if (layoutType == VerticalItemLayoutSide.LeftOfAnchor)
+                        list1enum.Current.bounds = new RectangleF(anchor.X - groupWidth, y, groupWidth, rect.Height);
+                    else
+                        list1enum.Current.bounds = new RectangleF(anchor.X, y, groupWidth, rect.Height);
+                    y += rect.Height + GraphConstants.ItemSpacing;
+                }
+        }
+
+        private static void LayoutItemsHorizontally(Graphics graphics, IEnumerable<NodeItem> items, float left, float right, float verticalAnchor)
+        {
+            var inputRects = items.Select(x => x.Measure(graphics));
+
+            float groupHeight = 0.0f, groupWidth = 0.0f;
+            bool firstItem = true;
+            foreach (var i in inputRects)
+            {
+                if (!firstItem) groupWidth += GraphConstants.ItemSpacing;
+                firstItem = false;
+                groupWidth += i.Width;
+                groupHeight = Math.Max(i.Height, groupHeight);
+            }
+
+            float xIterator = (left + right - groupWidth) / 2.0f;
+            using (var list1enum = items.GetEnumerator())
+            using (var list2enum = inputRects.GetEnumerator())
+                while (list1enum.MoveNext() && list2enum.MoveNext())
+                {
+                    var rect = list2enum.Current;
+                    list1enum.Current.bounds = new RectangleF(xIterator, verticalAnchor - groupHeight / 2.0f, rect.Width, groupHeight);
+                    xIterator += rect.Width + GraphConstants.ItemSpacing;
+                }
+        }
+
+        private static void PerformCircularLayout(Graphics graphics, Node node)
+        {
+            node.bounds = new RectangleF(node.Location, MeasureCircular(graphics, node).BaseSize);
+
+            LayoutItemsVertically(
+                graphics, node.InputItems,
+                new PointF(node.bounds.Left, node.bounds.Top + node.bounds.Height / 2.0f),
+                true, VerticalItemLayoutSide.LeftOfAnchor);
+
+            LayoutItemsVertically(
+                graphics, node.OutputItems,
+                new PointF(node.bounds.Right, node.bounds.Top + node.bounds.Height / 2.0f),
+                true, VerticalItemLayoutSide.RightOfAnchor);
+
+            double inflate = (1.4142135623731d - 1.0d) / 2.0d * Math.Max(node.bounds.Size.Width, node.bounds.Size.Height);
+            var centerItemBoundary = node.bounds;
+            centerItemBoundary.Inflate((float)inflate, (float)inflate);
+            foreach (var i in node.CenterItems)
+                i.bounds = centerItemBoundary;
+
+            LayoutItemsHorizontally(
+                graphics, node.TopItems,
+                node.bounds.Left, node.bounds.Right, node.bounds.Top);
+
+            LayoutItemsHorizontally(
+                graphics, node.BottomItems,
+                node.bounds.Left, node.bounds.Right, node.bounds.Bottom);
+        }
 
         static void RenderOutline(Graphics graphics, Node node, object context)
         {
@@ -463,13 +503,26 @@ namespace HyperGraph
                 graphics.DrawRectangle(BorderPen, Rectangle.Round(rect));
             }
 
-            if ((node.state & RenderState.Focus) != 0)
+            var isFocused = (node.state & RenderState.Focus) != 0;
+            if (!node.Collapsed || isFocused)
             {
+                var outlinePen = isFocused ? FocusPen : ThinDottedPen;
+
                 // We're going to draw a outline around the edge of the entire node
                 // This should be a thick line, with some bright color
-                var outline = rect;
-                outline.Inflate(4, 4);
-                graphics.DrawRectangle(FocusPen, Rectangle.Round(outline));
+                if (node.Layout == Node.LayoutType.Rectangular || node.Collapsed)
+                {
+                    var outline = rect;
+                    outline.Inflate(4, 4);
+                    graphics.DrawRectangle(outlinePen, Rectangle.Round(outline));
+                }
+                else
+                {
+                    var outline = rect;
+                    double inflate = (1.4142135623731d - 1.0d) / 2.0d * Math.Max(outline.Size.Width, outline.Size.Height);
+                    outline.Inflate((float)inflate + 4.0f, (float)inflate + 4.0f);
+                    graphics.DrawEllipse(outlinePen, outline);
+                }
             }
 
             if (node.Collapsed)
@@ -479,11 +532,8 @@ namespace HyperGraph
             }
             else
             {
-                var minimumItemSize = new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0);
-                foreach (var item in EnumerateNodeItems(node, NodeColumns.Center))
-                {
+                foreach (var item in node.CenterItems.Concat(node.TopItems).Concat(node.BottomItems))
                     RenderItem(graphics, item, item.bounds, context);
-                }
             }
 
             foreach (var item in node.ItemsForDock(Node.Dock.Input))    // (don't use EnumerateItems because we want to show collapsed nodes)

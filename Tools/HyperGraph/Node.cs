@@ -114,7 +114,7 @@ namespace HyperGraph
                     RemoveItem(titleItem_);
                 if (value.Node != null)
                     value.Node.RemoveItem(value);
-                centerItems.Insert(0, value);
+                topItems.Insert(0, value);
                 value.Node = this;
                 titleItem_ = value;
             }

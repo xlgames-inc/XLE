@@ -49,8 +49,16 @@ namespace HyperGraph.Items
 			}
 		}
 
+        private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+
         public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
+            if (Node.Layout == Node.LayoutType.Circular)
+            {
+                var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
+                graphics.FillPath(BackgroundBrush, path);
+            }
+
             if ((state & RenderState.Hover) == RenderState.Hover)
 				graphics.DrawString(this.Title, SystemFonts.CaptionFont, Brushes.White, boundary, GraphConstants.TitleStringFormat);
 			else

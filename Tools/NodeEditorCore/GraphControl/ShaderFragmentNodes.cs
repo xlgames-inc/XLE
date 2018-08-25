@@ -174,12 +174,6 @@ namespace NodeEditorCore
         {
             if (Node.Tag is ShaderFragmentNodeTag)
             {
-                bool sphereLayout = Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere;
-                if (sphereLayout)
-                {
-                    double inflate = (1.4142135623731d - 1.0d) / 2.0d * Math.Max(boundary.Size.Width, boundary.Size.Height);
-                    boundary.Inflate((float)inflate, (float)inflate);
-                }
                 if (!graphics.IsVisible(boundary))
                     return;
 
@@ -234,7 +228,7 @@ namespace NodeEditorCore
 
                 if (_cachedBitmap != null)
                 {
-                    if (sphereLayout)
+                    if (Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere)
                     {
                         var clipPath = new System.Drawing.Drawing2D.GraphicsPath();
                         clipPath.AddEllipse(boundary);
@@ -518,6 +512,7 @@ namespace NodeEditorCore
         {
             var node = new Node { Title = (fn != null) ? fn.Name : VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName);
+            node.Layout = previewSettings.Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
 
             var previewItem = new ShaderFragmentPreviewItem();
             if (previewSettings != null)
