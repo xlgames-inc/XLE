@@ -31,37 +31,18 @@ namespace HyperGraph.Items
 {
 	internal sealed class NodeTitleItem : NodeItem
 	{
-		#region Text
-		string			internalTitle = string.Empty;
-		public string	Title		
-		{
-			get { return internalTitle; }
-			set
-			{
-				if (internalTitle == value)
-					return;
-				internalTitle = value;
-				ForceResize();
-			}
-		}
-		#endregion
-
-		internal void ForceResize() { TextSize = Size.Empty; }
-		internal SizeF				TextSize;
+		public string	Title { get; set; }
 
         public override SizeF Measure(Graphics graphics)
 		{
 			if (!string.IsNullOrWhiteSpace(this.Title))
 			{
-				if (this.TextSize.IsEmpty)
-				{
-					var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);
-					this.TextSize			= graphics.MeasureString(this.Title, SystemFonts.CaptionFont, size, GraphConstants.TitleMeasureStringFormat);
+				var size = new Size(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);
+				var texSize = graphics.MeasureString(this.Title, SystemFonts.CaptionFont, size, GraphConstants.TitleMeasureStringFormat);
 
-					this.TextSize.Width		= Math.Max(size.Width,  this.TextSize.Width + (GraphConstants.CornerSize * 2));
-					this.TextSize.Height	= Math.Max(size.Height, this.TextSize.Height);
-				}
-				return this.TextSize;
+                texSize.Width   = Math.Max(size.Width, texSize.Width + (GraphConstants.CornerSize * 2));
+                texSize.Height	= Math.Max(size.Height, texSize.Height);
+				return texSize;
 			} else
 			{
 				return new SizeF(GraphConstants.MinimumItemWidth, GraphConstants.TitleHeight);

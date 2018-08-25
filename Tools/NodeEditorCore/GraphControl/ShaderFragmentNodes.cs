@@ -174,6 +174,13 @@ namespace NodeEditorCore
         {
             if (Node.Tag is ShaderFragmentNodeTag)
             {
+                const bool sphereTest = false;
+                if (sphereTest)
+                {
+                    double r = Math.Max(boundary.Size.Width, boundary.Size.Height) / 2.0;
+                    double inflate = Math.Sqrt(2.0 * Math.Pow(r, 2.0)) - r;
+                    boundary.Inflate((float)inflate, (float)inflate);
+                }
                 if (!graphics.IsVisible(boundary))
                     return;
 
@@ -227,7 +234,20 @@ namespace NodeEditorCore
                 }
 
                 if (_cachedBitmap != null)
-                    graphics.DrawImage(_cachedBitmap, boundary);
+                {
+                    if (sphereTest)
+                    {
+                        var clipPath = new System.Drawing.Drawing2D.GraphicsPath();
+                        clipPath.AddEllipse(boundary);
+                        graphics.SetClip(clipPath);
+                        graphics.DrawImage(_cachedBitmap, boundary);
+                        graphics.ResetClip();
+                    }
+                    else
+                    {
+                        graphics.DrawImage(_cachedBitmap, boundary);
+                    }
+                }
             }
         }
 

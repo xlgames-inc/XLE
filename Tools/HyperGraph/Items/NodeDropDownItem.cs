@@ -218,7 +218,8 @@ namespace HyperGraph.Items
             bool highlight = (state & RenderState.Hover) == RenderState.Hover;
 
             graphics.FillPath(BackgroundBrush, path);
-            graphics.DrawPath(highlight ? Pens.White : Pens.LightGray, path);
+            if (highlight)
+                graphics.DrawPath(Pens.LightGray, path);
             graphics.DrawString(text, SystemFonts.MenuFont, Brushes.White, stringRect, GraphConstants.CenterTextStringFormat);
 
                 // draw a little arrow to indicate that it is a drop down list

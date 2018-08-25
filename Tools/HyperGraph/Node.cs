@@ -32,10 +32,8 @@ namespace HyperGraph
 {
 	public class Node : IElement
 	{
-		public string			Title			{ get { return titleItem.Title; } set { titleItem.Title = value; } }
-
-		#region Collapsed
-		internal bool			internalCollapsed;
+        #region Collapsed
+        private bool			internalCollapsed;
 		public bool				Collapsed		
 		{ 
 			get 
@@ -51,8 +49,6 @@ namespace HyperGraph
 			{
 				var oldValue = Collapsed;
 				internalCollapsed = value;
-				if (Collapsed != oldValue)
-					titleItem.ForceResize();
 			} 
 		}
 		#endregion
@@ -105,13 +101,38 @@ namespace HyperGraph
             }
         }
 
+        private NodeItem titleItem_ = null;
+        public NodeItem TitleItem
+        {
+            get { return titleItem_; }
+            set
+            {
+                if (titleItem_ != null)
+                    RemoveItem(titleItem_);
+                if (value.Node != null)
+                    value.Node.RemoveItem(value);
+                centerItems.Insert(0, value);
+                value.Node = this;
+                titleItem_ = value;
+            }
+        }
+
+        public string Title {
+            get {
+                var titleItem = TitleItem as NodeTitleItem;
+                return (titleItem != null) ? titleItem.Title : string.Empty;
+            }
+            set {
+                TitleItem = new NodeTitleItem { Title = value };
+            }
+        }
+
         public RectangleF		bounds;
 		internal RenderState	state			= RenderState.None;
 		internal RenderState	inputState		= RenderState.None;
 		internal RenderState	outputState		= RenderState.None;
 
 		private readonly List<NodeConnection>	connections			= new List<NodeConnection>();
-		internal readonly NodeTitleItem			titleItem			= new NodeTitleItem();
 		private readonly List<NodeItem>			inputItems			= new List<NodeItem>();
         private readonly List<NodeItem>         centerItems         = new List<NodeItem>();
         private readonly List<NodeItem>         outputItems         = new List<NodeItem>();
@@ -119,7 +140,6 @@ namespace HyperGraph
         public Node(string title)
 		{
 			this.Title = title;
-			titleItem.Node = this;
 		}
 
 		public void AddItem(NodeItem item, Column column)

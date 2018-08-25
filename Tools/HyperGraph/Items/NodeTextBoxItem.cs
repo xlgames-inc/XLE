@@ -112,6 +112,8 @@ namespace HyperGraph.Items
 			}
 		}
 
+        private static Brush BackgroundBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+
         public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
 			var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
@@ -120,13 +122,15 @@ namespace HyperGraph.Items
 
 			if ((state & RenderState.Hover) == RenderState.Hover)
 			{
-				graphics.DrawPath(Pens.White, path);
-				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
+                graphics.DrawPath(Pens.LightGray, path);
+                graphics.FillPath(BackgroundBrush, path);
+                graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
 			}
             else
 			{
-				graphics.DrawPath(Pens.Black, path);
-				graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
+                // graphics.DrawPath(Pens.Black, path);
+                graphics.FillPath(BackgroundBrush, path);
+                graphics.DrawString(this.Text, SystemFonts.MenuFont, Brushes.Black, textBoundary, GraphConstants.LeftTextStringFormat);
 			}
 		}
 	}

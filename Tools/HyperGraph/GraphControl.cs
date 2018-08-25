@@ -214,7 +214,8 @@ namespace HyperGraph
 					foreach (var node in selection.Nodes)
 					{
 						node.state = SetFlag(node.state, flag, value);
-						SetFlag(node.titleItem, flag, value);
+                        if (node.TitleItem != null)
+						    SetFlag(node.TitleItem, flag, value);
 					}
 					break;
 				}
@@ -223,7 +224,8 @@ namespace HyperGraph
 				{
 					var node = element as Node;
 					node.state = SetFlag(node.state, flag, value);
-					SetFlag(node.titleItem, flag, value);
+                    if (node.TitleItem != null)
+                        SetFlag(node.TitleItem, flag, value);
 					break;
 				}
 
@@ -256,7 +258,8 @@ namespace HyperGraph
 					foreach (var node in selection.Nodes)
 					{
 						node.state = SetFlag(node.state, flag, value);
-						SetFlag(node.titleItem, flag, value);
+                        if (node.TitleItem != null)
+                            SetFlag(node.TitleItem, flag, value);
 					}
 					break;
 				}
@@ -265,14 +268,14 @@ namespace HyperGraph
 				{
 					var node = element as Node;
 					node.state = SetFlag(node.state, flag, value);
-					SetFlag(node.titleItem, flag, value);
+                    if (node.TitleItem != null)
+                        SetFlag(node.TitleItem, flag, value);
 					break;
 				}
 
 				case ElementType.Connector:
 					var connector = element as NodeConnector;
 					connector.state = SetFlag(connector.state, flag, value);
-					SetFlag(connector.Node, flag, value, setConnections);
 					break;
 
 				case ElementType.Connection:
@@ -1682,7 +1685,8 @@ namespace HyperGraph
 
 			var location = (PointF)ctrl.PointToClient(new Point(drgevent.X, drgevent.Y));
 			location.X -= ((dragNode.bounds.Right - dragNode.bounds.Left) / 2);
-			location.Y -= ((dragNode.titleItem.bounds.Bottom - dragNode.titleItem.bounds.Top) / 2);
+            if (dragNode.TitleItem != null)
+			    location.Y -= ((dragNode.TitleItem.bounds.Bottom - dragNode.TitleItem.bounds.Top) / 2);
 			
 			var points = new PointF[] { location };
 			inverse_transformation.TransformPoints(points);
