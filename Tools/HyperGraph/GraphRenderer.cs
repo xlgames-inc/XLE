@@ -76,7 +76,7 @@ namespace HyperGraph
             return (NodeColumns)Enum.GetValues(typeof(NodeColumns)).GetValue(index);
         }
 
-        private static NodeSize Measure(Graphics context, Node node)
+        private static NodeSize MeasureRectangular(Graphics context, Node node)
         {
             if (node == null)
                 return new NodeSize { BaseSize = SizeF.Empty, InputPartWidth = 0, OutputPartWidth = 0 };
@@ -113,7 +113,12 @@ namespace HyperGraph
             return new NodeSize { BaseSize = size, InputPartWidth = sizes[0].Width, OutputPartWidth = sizes[2].Width };
         }
 
-		static void RenderItem(Graphics graphics, NodeItem item, RectangleF bounds, object context)
+        private static NodeSize MeasureCircular(Graphics context, Node node)
+        {
+            return new NodeSize { BaseSize = new SizeF ( 256, 256 ), InputPartWidth = 0, OutputPartWidth = 0 };
+        }
+
+        static void RenderItem(Graphics graphics, NodeItem item, RectangleF bounds, object context)
 		{
 			item.Render(graphics, bounds, context);
 		}
@@ -293,57 +298,108 @@ namespace HyperGraph
         }
 
         public static void PerformLayout(Graphics graphics, Node node)
-		{
-			if (node == null)
-				return;
-			var size = Measure(graphics, node);
-			var position = node.Location;
-            node.bounds = new RectangleF(position, size.BaseSize);
-            position.Y += node.Collapsed ? GraphConstants.TopHeightCollapsed : GraphConstants.TopHeight;
-			
-			if (node.Collapsed)
-			{
-                uint inputConnectorCount = (uint)node.InputConnectors.Count(), outputConnectorCount = (uint)node.OutputConnectors.Count();
+        {
+            if (node == null)
+                return;
 
-                uint inputConnectorIndex = 0, outputConnectorIndex = 0;
-                foreach (var item in node.InputConnectors)
-				{
-                    item.bounds = CollapsedInputConnector(node.bounds, inputConnectorIndex, inputConnectorCount);
-                    ++inputConnectorIndex;
-                }
+            if (node.Layout == Node.LayoutType.Rectangular || node.Collapsed)
+            {
+                var size = MeasureRectangular(graphics, node);
+                var position = node.Location;
+                node.bounds = new RectangleF(position, size.BaseSize);
+                position.Y += node.Collapsed ? GraphConstants.TopHeightCollapsed : GraphConstants.TopHeight;
 
-                foreach (var item in node.OutputConnectors)
+                if (node.Collapsed)
                 {
-                    item.bounds = CollapsedOutputConnector(node.bounds, outputConnectorIndex, outputConnectorCount);
-                    ++outputConnectorIndex;
-				}
+                    uint inputConnectorCount = (uint)node.InputConnectors.Count(), outputConnectorCount = (uint)node.OutputConnectors.Count();
 
-                if (node.TitleItem != null)
-                {
-                    node.TitleItem.bounds = new RectangleF(position, node.TitleItem.Measure(graphics));
-                    node.TitleItem.bounds.Width = System.Math.Max(node.TitleItem.bounds.Width, node.bounds.Width);
-                }
-            } 
-            else
-			{
-                PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X+2, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
-                float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width-4, size.OutputPartWidth };
-
-                for (uint side = 0; side < 3; ++side)
-                {
-                    bool first = true;
-                    foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
+                    uint inputConnectorIndex = 0, outputConnectorIndex = 0;
+                    foreach (var item in node.InputConnectors)
                     {
-                        if (!first) positions[side].Y += GraphConstants.ItemSpacing;
-                        first = false;
-                        var itemSize = item.Measure(graphics);
-                        itemSize.Width = System.Math.Max(itemSize.Width, widths[side]);
-                        item.bounds = new RectangleF(positions[side], itemSize);
-                        positions[side].Y += itemSize.Height;
+                        item.bounds = CollapsedInputConnector(node.bounds, inputConnectorIndex, inputConnectorCount);
+                        ++inputConnectorIndex;
+                    }
+
+                    foreach (var item in node.OutputConnectors)
+                    {
+                        item.bounds = CollapsedOutputConnector(node.bounds, outputConnectorIndex, outputConnectorCount);
+                        ++outputConnectorIndex;
+                    }
+
+                    if (node.TitleItem != null)
+                    {
+                        node.TitleItem.bounds = new RectangleF(position, node.TitleItem.Measure(graphics));
+                        node.TitleItem.bounds.Width = System.Math.Max(node.TitleItem.bounds.Width, node.bounds.Width);
                     }
                 }
-			}
-		}
+                else
+                {
+                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + 2, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
+                    float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - 4, size.OutputPartWidth };
+
+                    for (uint side = 0; side < 3; ++side)
+                    {
+                        bool first = true;
+                        foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
+                        {
+                            if (!first) positions[side].Y += GraphConstants.ItemSpacing;
+                            first = false;
+                            var itemSize = item.Measure(graphics);
+                            itemSize.Width = System.Math.Max(itemSize.Width, widths[side]);
+                            item.bounds = new RectangleF(positions[side], itemSize);
+                            positions[side].Y += itemSize.Height;
+                        }
+                    }
+                }
+            }
+            else
+            {
+                node.bounds = new RectangleF(node.Location, MeasureCircular(graphics, node).BaseSize);
+
+                var inputRects = node.InputItems.Select(x => AdjustConnectorSize(x.Measure(graphics)));
+                var outputRects = node.OutputItems.Select(x => AdjustConnectorSize(x.Measure(graphics)));
+
+                float inputHeight = 0.0f, inputWidth = 0.0f, outputHeight = 0.0f, outputWidth = 0.0f;
+                bool firstItem = true;
+                foreach (var i in inputRects)
+                {
+                    if (!firstItem) inputHeight += GraphConstants.ItemSpacing;
+                    firstItem = false;
+                    inputHeight += i.Height;
+                    inputWidth = Math.Max(i.Width, inputWidth);
+                }
+
+                firstItem = true;
+                foreach (var i in outputRects)
+                {
+                    if (!firstItem) outputHeight += GraphConstants.ItemSpacing;
+                    firstItem = false;
+                    outputHeight += i.Height;
+                    outputWidth = Math.Max(i.Width, outputWidth);
+                }
+
+                float y = node.bounds.Top + (node.bounds.Height - inputHeight) / 2.0f;
+                using (var list1enum = node.InputItems.GetEnumerator())
+                using (var list2enum = inputRects.GetEnumerator())
+                while (list1enum.MoveNext() && list2enum.MoveNext())
+                {
+                    var rect = list2enum.Current;
+                    list1enum.Current.bounds = new RectangleF(node.bounds.Left - inputWidth, y, inputWidth, rect.Height);
+                    y += rect.Height + GraphConstants.ItemSpacing;
+                }
+
+                y = node.bounds.Top + (node.bounds.Height - outputHeight) / 2.0f;
+                using (var list1enum = node.OutputItems.GetEnumerator())
+                using (var list2enum = outputRects.GetEnumerator())
+                while (list1enum.MoveNext() && list2enum.MoveNext())
+                {
+                    var rect = list2enum.Current;
+                    list1enum.Current.bounds = new RectangleF(node.bounds.Right, y, outputWidth, rect.Height);
+                    y += rect.Height + GraphConstants.ItemSpacing;
+                }
+            }
+        }
+
 
         static void RenderOutline(Graphics graphics, Node node, object context)
         {

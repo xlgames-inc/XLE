@@ -101,6 +101,9 @@ namespace HyperGraph
             }
         }
 
+        public enum LayoutType { Rectangular, Circular };
+        public LayoutType Layout { get; set; }
+
         private NodeItem titleItem_ = null;
         public NodeItem TitleItem
         {
@@ -117,14 +120,14 @@ namespace HyperGraph
             }
         }
 
-        public string Title {
-            get {
+        public string Title
+        {
+            get
+            {
                 var titleItem = TitleItem as NodeTitleItem;
                 return (titleItem != null) ? titleItem.Title : string.Empty;
             }
-            set {
-                TitleItem = new NodeTitleItem { Title = value };
-            }
+            set { TitleItem = new NodeTitleItem { Title = value }; }
         }
 
         public RectangleF		bounds;
@@ -183,5 +186,7 @@ namespace HyperGraph
         }
 
 		public ElementType ElementType { get { return ElementType.Node; } }
+
+        public Node() { Layout = LayoutType.Rectangular; }
 	}
 }

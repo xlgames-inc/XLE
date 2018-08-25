@@ -174,11 +174,10 @@ namespace NodeEditorCore
         {
             if (Node.Tag is ShaderFragmentNodeTag)
             {
-                const bool sphereTest = false;
-                if (sphereTest)
+                bool sphereLayout = Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere;
+                if (sphereLayout)
                 {
-                    double r = Math.Max(boundary.Size.Width, boundary.Size.Height) / 2.0;
-                    double inflate = Math.Sqrt(2.0 * Math.Pow(r, 2.0)) - r;
+                    double inflate = (1.4142135623731d - 1.0d) / 2.0d * Math.Max(boundary.Size.Width, boundary.Size.Height);
                     boundary.Inflate((float)inflate, (float)inflate);
                 }
                 if (!graphics.IsVisible(boundary))
@@ -235,7 +234,7 @@ namespace NodeEditorCore
 
                 if (_cachedBitmap != null)
                 {
-                    if (sphereTest)
+                    if (sphereLayout)
                     {
                         var clipPath = new System.Drawing.Drawing2D.GraphicsPath();
                         clipPath.AddEllipse(boundary);
@@ -543,6 +542,7 @@ namespace NodeEditorCore
                     {
                         var item = (HyperGraph.Items.NodeDropDownItem)sender;
                         previewItem.Geometry = AsEnumValue<ShaderPatcherLayer.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
+                        node.Layout = previewItem.Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
                     }
                 };
 
