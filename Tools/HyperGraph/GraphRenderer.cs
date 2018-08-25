@@ -31,21 +31,38 @@ namespace HyperGraph
 {
 	public static class GraphRenderer
 	{
-		static IEnumerable<NodeItem> EnumerateNodeItems(Node node, Node.Column column)
+        private enum NodeColumns { Input, Center, Output };
+		static IEnumerable<NodeItem> EnumerateNodeItems(Node node, NodeColumns column)
 		{
 			if (node == null)
 				yield break;
 
             if (node.Collapsed)
             {
-                if (node.TitleItem != null)
+                if (column == NodeColumns.Center && node.TitleItem != null)
                     yield return node.TitleItem;
                 yield break;
             }
-			
-			foreach (var item in node.ItemsForColumn(column))
-				yield return item;
-		}
+
+            if (column == NodeColumns.Input)
+            {
+                foreach (var item in node.ItemsForDock(Node.Dock.Input))
+                    yield return item;
+            }
+            else if (column == NodeColumns.Output)
+            {
+                foreach (var item in node.ItemsForDock(Node.Dock.Output))
+                    yield return item;
+            } else
+            {
+                foreach (var item in node.ItemsForDock(Node.Dock.Top))
+                    yield return item;
+                foreach (var item in node.ItemsForDock(Node.Dock.Center))
+                    yield return item;
+                foreach (var item in node.ItemsForDock(Node.Dock.Bottom))
+                    yield return item;
+            }
+        }
 
         private struct NodeSize
         {
@@ -54,7 +71,10 @@ namespace HyperGraph
             internal float OutputPartWidth { get; set; }
         };
 
-        private static Node.Column[] NodeColumns = new Node.Column[]{ Node.Column.Input, Node.Column.Center, Node.Column.Output };
+        private static NodeColumns NodeColumnForIndex(uint index)
+        {
+            return (NodeColumns)Enum.GetValues(typeof(NodeColumns)).GetValue(index);
+        }
 
         private static NodeSize Measure(Graphics context, Node node)
         {
@@ -68,7 +88,7 @@ namespace HyperGraph
             SizeF[] sizes = new SizeF[3] { size, size, size };
             for (uint side = 0; side<3; ++side)
             {
-                foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
+                foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
                 {
                     var itemSize = item.Measure(context);
 
@@ -312,7 +332,7 @@ namespace HyperGraph
                 for (uint side = 0; side < 3; ++side)
                 {
                     bool first = true;
-                    foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
+                    foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
                     {
                         if (!first) positions[side].Y += GraphConstants.ItemSpacing;
                         first = false;
@@ -330,7 +350,7 @@ namespace HyperGraph
             using (var path = new GraphicsPath(FillMode.Winding))
             {
                 Rectangle statusRect; RectangleF clientRect;
-                foreach (var item in node.ItemsForColumn(Node.Column.Input))    // (don't use EnumerateItems because we want to show collapsed nodes)
+                foreach (var item in node.ItemsForDock(Node.Dock.Input))    // (don't use EnumerateItems because we want to show collapsed nodes)
                 {
                     // note --  the "connected" state is not stored in the retained state member
                     //          ... so if we want to colour the connectors based on if they are connected,
@@ -340,7 +360,7 @@ namespace HyperGraph
                         graphics.DrawPath(DottedPen, MakePathForConnector(inputConnector.bounds, inputConnector.state, ConnectorType.Input, out statusRect, out clientRect));
                 }
 
-                foreach (var item in node.ItemsForColumn(Node.Column.Output))
+                foreach (var item in node.ItemsForDock(Node.Dock.Output))
                 {
                     var outputConnector = item as NodeConnector;
                     if (outputConnector != null && !outputConnector.bounds.IsEmpty)
@@ -404,13 +424,13 @@ namespace HyperGraph
             else
             {
                 var minimumItemSize = new SizeF(node.bounds.Width - GraphConstants.NodeExtraWidth, 0);
-                foreach (var item in EnumerateNodeItems(node, Node.Column.Center))
+                foreach (var item in EnumerateNodeItems(node, NodeColumns.Center))
                 {
                     RenderItem(graphics, item, item.bounds, context);
                 }
             }
 
-            foreach (var item in node.ItemsForColumn(Node.Column.Input))    // (don't use EnumerateItems because we want to show collapsed nodes)
+            foreach (var item in node.ItemsForDock(Node.Dock.Input))    // (don't use EnumerateItems because we want to show collapsed nodes)
             {
                 // note --  the "connected" state is not stored in the retained state member
                 //          ... so if we want to colour the connectors based on if they are connected,
@@ -420,7 +440,7 @@ namespace HyperGraph
                     RenderConnector(graphics, inputConnector.bounds, inputConnector.state, ConnectorType.Input, inputConnector, node.Collapsed);
             }
 
-            foreach (var item in node.ItemsForColumn(Node.Column.Output))
+            foreach (var item in node.ItemsForDock(Node.Dock.Output))
             {
                 var outputConnector = item as NodeConnector;
 				if (outputConnector != null && !outputConnector.bounds.IsEmpty)
@@ -451,14 +471,14 @@ namespace HyperGraph
                 graphics.DrawPath(DottedPen, path);
             }
 
-            foreach (var item in node.ItemsForColumn(Node.Column.Input))
+            foreach (var item in node.ItemsForDock(Node.Dock.Input))
             {
                 var inputConnector = item as NodeConnector;
                 if (inputConnector != null && !inputConnector.bounds.IsEmpty)
                     RenderConnector(graphics, inputConnector.bounds, inputConnector.state, ConnectorType.Input, inputConnector, node.Collapsed);
             }
 
-            foreach (var item in node.ItemsForColumn(Node.Column.Output))
+            foreach (var item in node.ItemsForDock(Node.Dock.Output))
             {
                 var outputConnector = item as NodeConnector;
                 if (outputConnector != null && !outputConnector.bounds.IsEmpty)
@@ -488,7 +508,7 @@ namespace HyperGraph
             float[] widths = new float[] { 8, 8, 8 };
             for (uint side = 0; side < 3; ++side)
             {
-                foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
+                foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
                 {
                     var itemSize = item.Measure(graphics);
 
@@ -521,7 +541,7 @@ namespace HyperGraph
             PointF[] positions = new PointF[] { new PointF(maxX + rightBorder - widths[0], node.Location.Y), new PointF(node.Location.X + leftBorder, node.Location.Y), node.Location };
             for (uint side = 0; side < 3; ++side)
             {
-                foreach (var item in EnumerateNodeItems(node, NodeColumns[side]))
+                foreach (var item in EnumerateNodeItems(node, NodeColumnForIndex(side)))
                 {
                     var itemSize = item.Measure(graphics);
                     item.bounds = new RectangleF(positions[side], itemSize);

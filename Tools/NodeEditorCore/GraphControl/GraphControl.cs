@@ -361,7 +361,7 @@ namespace NodeEditorCore
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.In) { Semantic = fm.Semantic, Default = fm.Default }, Node.Column.Output);
+                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.In) { Semantic = fm.Semantic, Default = fm.Default }, Node.Dock.Output);
                 }
             }
         }
@@ -377,7 +377,7 @@ namespace NodeEditorCore
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.Out) { Semantic = fm.Semantic, Default = fm.Default }, Node.Column.Input);
+                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.Out) { Semantic = fm.Semantic, Default = fm.Default }, Node.Dock.Input);
                 }
             }
         }

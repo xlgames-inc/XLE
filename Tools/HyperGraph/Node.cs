@@ -20,12 +20,8 @@
 // THE SOFTWARE.
 #endregion
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Drawing;
-using System.ComponentModel;
 using HyperGraph.Items;
 
 namespace HyperGraph
@@ -63,15 +59,19 @@ namespace HyperGraph
 		public IEnumerable<NodeConnection>	Connections { get { return connections; } }
 
 		public IEnumerable<NodeItem>		InputItems		{ get { return inputItems; } }
+        public IEnumerable<NodeItem>        TopItems        { get { return topItems; } }
         public IEnumerable<NodeItem>        CenterItems     { get { return centerItems; } }
+        public IEnumerable<NodeItem>        BottomItems     { get { return bottomItems; } }
         public IEnumerable<NodeItem>        OutputItems     { get { return outputItems; } }
 
-        public enum Column {  Input, Center, Output };
-        public IEnumerable<NodeItem>        ItemsForColumn(Column c)
+        public enum Dock {  Input, Top, Center, Bottom, Output };
+        public IEnumerable<NodeItem>        ItemsForDock(Dock c)
         {
-            if (c == Column.Input) return InputItems;
-            if (c == Column.Center) return CenterItems;
-            if (c == Column.Output) return OutputItems;
+            if (c == Dock.Input) return InputItems;
+            if (c == Dock.Top) return TopItems;
+            if (c == Dock.Center) return CenterItems;
+            if (c == Dock.Bottom) return BottomItems;
+            if (c == Dock.Output) return OutputItems;
             return null;
         }
 
@@ -134,23 +134,22 @@ namespace HyperGraph
 
 		private readonly List<NodeConnection>	connections			= new List<NodeConnection>();
 		private readonly List<NodeItem>			inputItems			= new List<NodeItem>();
+        private readonly List<NodeItem>         topItems            = new List<NodeItem>();
         private readonly List<NodeItem>         centerItems         = new List<NodeItem>();
+        private readonly List<NodeItem>         bottomItems         = new List<NodeItem>();
         private readonly List<NodeItem>         outputItems         = new List<NodeItem>();
 
-        public Node(string title)
-		{
-			this.Title = title;
-		}
-
-		public void AddItem(NodeItem item, Column column)
+		public void AddItem(NodeItem item, Dock column)
 		{
 			if (item.Node != null)
 				item.Node.RemoveItem(item);
             switch (column)
             {
-            case Column.Input: inputItems.Add(item); break;
-            case Column.Center: centerItems.Add(item); break;
-            case Column.Output: outputItems.Add(item); break;
+            case Dock.Input: inputItems.Add(item); break;
+            case Dock.Top: topItems.Add(item); break;
+            case Dock.Center: centerItems.Add(item); break;
+            case Dock.Bottom: bottomItems.Add(item); break;
+            case Dock.Output: outputItems.Add(item); break;
             }
 			item.Node = this;
 		}
@@ -159,7 +158,9 @@ namespace HyperGraph
 		{
 			item.Node = null;
 			inputItems.Remove(item);
+            topItems.Remove(item);
             centerItems.Remove(item);
+            bottomItems.Remove(item);
             outputItems.Remove(item);
         }
 

@@ -443,10 +443,10 @@ namespace HyperGraph
 		#region FindNodeItemAt
 		static NodeItem FindNodeItemAt(Node node, PointF location)
 		{
-            Node.Column[] columns = new Node.Column[] { Node.Column.Input, Node.Column.Center, Node.Column.Output };
+            Node.Dock[] columns = new Node.Dock[] { Node.Dock.Input, Node.Dock.Top, Node.Dock.Center, Node.Dock.Bottom, Node.Dock.Output };
             foreach (var c in columns)
             {
-                foreach (var item in node.ItemsForColumn(c))
+                foreach (var item in node.ItemsForDock(c))
                 {
                     if (item.bounds.Contains(location))
                         return item;

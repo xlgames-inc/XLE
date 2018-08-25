@@ -323,7 +323,7 @@ namespace NodeEditorCore
                         Default = param.Default
                     };
                     // Note that OutputItems/InputItems are flipped for the subgraph nodes (because of how connectors interface with them)
-                    subgraph.AddItem(item, (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? Node.Column.Output : Node.Column.Input);
+                    subgraph.AddItem(item, (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? Node.Dock.Output : Node.Dock.Input);
                 }
 
                     // --------< Basic Nodes >--------
@@ -366,12 +366,12 @@ namespace NodeEditorCore
                     if (foundInput && foundOutput)
                     {
                         var inputItem = FindOrCreateNodeItem(
-                            nodeIdToControlNode[c.InputNodeID], Node.Column.Output,
+                            nodeIdToControlNode[c.InputNodeID], Node.Dock.Output,
                             (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.InputParameterName)),
                             () => new ShaderFragmentNodeConnector(c.InputParameterName, defaultTypeName));
 
                         var outputItem = FindOrCreateNodeItem(
-                            nodeIdToControlNode[c.OutputNodeID], Node.Column.Input,
+                            nodeIdToControlNode[c.OutputNodeID], Node.Dock.Input,
                             (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
                             () => new ShaderFragmentNodeConnector(c.OutputParameterName, defaultTypeName));
 
@@ -382,7 +382,7 @@ namespace NodeEditorCore
                             // --------< Constant Connection >--------
                         var node = nodeIdToControlNode[c.OutputNodeID];
                         var outputItem = FindOrCreateNodeItem(
-                            node, Node.Column.Input,
+                            node, Node.Dock.Input,
                             (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
                             () => new ShaderFragmentNodeConnector(c.OutputParameterName, defaultTypeName));
 
@@ -395,7 +395,7 @@ namespace NodeEditorCore
                     {
                             // --------< Input Parameter Connection >--------
                         var dstItem = FindOrCreateNodeItem(
-                            nodeIdToControlNode[c.OutputNodeID], Node.Column.Input,
+                            nodeIdToControlNode[c.OutputNodeID], Node.Dock.Input,
                             (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
                             () => new ShaderFragmentNodeConnector(c.OutputParameterName, defaultTypeName));
 
@@ -413,7 +413,7 @@ namespace NodeEditorCore
                             Node srcNode = subgraph;
 
                             var srcItem = FindOrCreateNodeItem(
-                                srcNode, Node.Column.Output,
+                                srcNode, Node.Dock.Output,
                                 (item) =>
                                 {
                                     var i = item as ShaderFragmentInterfaceParameterItem;
@@ -429,14 +429,14 @@ namespace NodeEditorCore
                     {
                             // --------< Output Parameter Connections >--------
                         var srcItem = FindOrCreateNodeItem(
-                            nodeIdToControlNode[c.InputNodeID], Node.Column.Output,
+                            nodeIdToControlNode[c.InputNodeID], Node.Dock.Output,
                             (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.InputParameterName)),
                             () => new ShaderFragmentNodeConnector(c.InputParameterName, defaultTypeName));
 
                         Node dstNode = subgraph;
 
                         var dstItem = FindOrCreateNodeItem(
-                            dstNode, Node.Column.Input,
+                            dstNode, Node.Dock.Input,
                             (item) =>
                             {
                                 var i = item as ShaderFragmentInterfaceParameterItem;
@@ -451,9 +451,9 @@ namespace NodeEditorCore
             }
         }
 
-        private static NodeConnector FindOrCreateNodeItem(Node node, Node.Column column, Func<NodeConnector, bool> predicate, Func<NodeConnector> creator)
+        private static NodeConnector FindOrCreateNodeItem(Node node, Node.Dock dock, Func<NodeConnector, bool> predicate, Func<NodeConnector> creator)
         {
-            foreach (var i in node.ItemsForColumn(column))
+            foreach (var i in node.ItemsForDock(dock))
             {
                 var c = i as NodeConnector;
                 if (c != null && predicate(c))
@@ -461,7 +461,7 @@ namespace NodeEditorCore
             }
 
             var newItem = creator();
-            node.AddItem(newItem, column);
+            node.AddItem(newItem, dock);
             return newItem;
         }
 

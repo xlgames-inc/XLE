@@ -140,13 +140,13 @@ namespace NodeEditorCore
         internal virtual string GetNameText() { return this.Name; }
         internal virtual string GetTypeText() { return "(" + this.ShortType + ")"; }
 
-        internal static Node.Column GetDirectionalColumn(InterfaceDirection direction)
+        internal static Node.Dock GetDirectionalColumn(InterfaceDirection direction)
         {
             switch (direction)
             {
-                case InterfaceDirection.In: return Node.Column.Input;
+                case InterfaceDirection.In: return Node.Dock.Input;
                 default:
-                case InterfaceDirection.Out: return Node.Column.Output;
+                case InterfaceDirection.Out: return Node.Dock.Output;
             }
         }
     }
@@ -517,7 +517,7 @@ namespace NodeEditorCore
 
         public Node CreateNode(ShaderFragmentArchive.Function fn, string archiveName, ShaderPatcherLayer.PreviewSettings previewSettings)
         {
-            var node = new Node((fn!= null) ? fn.Name : VisibleName(archiveName));
+            var node = new Node { Title = (fn != null) ? fn.Name : VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName);
 
             var previewItem = new ShaderFragmentPreviewItem();
@@ -530,12 +530,12 @@ namespace NodeEditorCore
                 compositionBatch.AddPart(previewItem);
                 _composer.Compose(compositionBatch);
             }
-            node.AddItem(previewItem, Node.Column.Center);
+            node.AddItem(previewItem, Node.Dock.Center);
 
                 // Drop-down selection box for "preview mode"
             var enumList = AsEnumList(previewItem.Geometry, PreviewGeoNames);
             var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
-            node.AddItem(previewModeSelection, Node.Column.Center);
+            node.AddItem(previewModeSelection, Node.Dock.Bottom);
             previewModeSelection.SelectionChanged += 
                 (object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args) => 
                 {
@@ -551,7 +551,7 @@ namespace NodeEditorCore
                 //          it might be useful to have some preset defaults and helpers rather than just
                 //          requiring the user to construct the raw string
             var outputToVisualize = new HyperGraph.Items.NodeTextBoxItem(previewItem.OutputToVisualize);
-            node.AddItem(outputToVisualize, Node.Column.Center);
+            node.AddItem(outputToVisualize, Node.Dock.Bottom);
             outputToVisualize.TextChanged +=
                 (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
 
@@ -580,7 +580,7 @@ namespace NodeEditorCore
                 bool isInput = newType != ParamSourceType.Output;
                 var oldColumn = ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.Out : InterfaceDirection.In);
                 var newColumn = ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out);
-                var oldItems = new List<HyperGraph.NodeItem>(node.ItemsForColumn(oldColumn));
+                var oldItems = new List<HyperGraph.NodeItem>(node.ItemsForDock(oldColumn));
                 foreach (var i in oldItems)
                 {
                     if (i is ShaderFragmentNodeConnector)
@@ -600,12 +600,12 @@ namespace NodeEditorCore
 
         public Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title)
         {
-            var node = new Node(title);
+            var node = new Node { Title = title };
             node.Tag = new ShaderParameterNodeTag(archiveName);
 
             var enumList = AsEnumList(sourceType, ParamSourceTypeNames);
             var typeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
-            node.AddItem(typeSelection, Node.Column.Center);
+            node.AddItem(typeSelection, Node.Dock.Center);
             typeSelection.SelectionChanged += ParameterNodeTypeChanged;
             return node;
         }
@@ -628,15 +628,15 @@ namespace NodeEditorCore
 
         public Node CreateInterfaceNode(String title, InterfaceDirection direction)
         {
-            var node = new Node(title);
+            var node = new Node { Title = title };
             node.Tag = new ShaderInterfaceParameterNodeTag { Direction = direction };
-            node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction }, Node.Column.Center);
+            node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction }, Node.Dock.Center);
             return node;
         }
 
         public Node CreateSubGraph(String name)
         {
-            var node = new Node(name);
+            var node = new Node { Title = name };
             node.Tag = new ShaderSubGraphNodeTag();
             node.SubGraphTag = name;
             return node;
