@@ -14,6 +14,7 @@
 #include "Grammar/GraphSyntaxEval.h"
 #include "../Assets/IFileSystem.h"
 #include "../Utility/FunctionUtils.h"
+#include "../ConsoleRig/Log.h"
 #include <unordered_map>
 #include <stack>
 
@@ -54,9 +55,6 @@ namespace ShaderPatcher
 		};
 
 		std::vector<NodeGraphSignature> _pendingSignatures;
-
-		using ActiveStack = std::stack<uint32_t>;
-		std::unordered_map<unsigned, ActiveStack> _stacks;
 
 		std::unordered_map<std::string, std::string> _imports; 
 		std::vector<Graph> _graphs;
@@ -254,12 +252,10 @@ namespace ShaderPatcher
 	}
 
 	WorkingGraphSyntaxFile& GetFileContext(const void* ctx) { return *(WorkingGraphSyntaxFile*)((GraphSyntaxEval_Ctx_struct*)ctx)->_userData; }
-	WorkingGraphSyntaxFile::Graph& GetGraphContext(const void* ctx) 
+	WorkingGraphSyntaxFile::Graph& GetGraphContext(const void* ctx, GraphId gid) 
 	{
 		auto& file = GetFileContext(ctx);
-		assert(!file._stacks[0].empty());
-		unsigned topGraph = file._stacks[0].top();
-		return file._graphs[topGraph];
+		return file._graphs[gid];
 	}
 
 }
@@ -276,9 +272,9 @@ extern "C" GraphId Graph_Register(const void* ctx, const char name[], GraphSigna
 	return nextGraph;
 }
 
-extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAndScope, const char attributeTableName[])
+extern "C" NodeId Node_Register(const void* ctx, GraphId gid, IdentifierAndScope identifierAndScope, const char attributeTableName[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
 
@@ -300,36 +296,36 @@ extern "C" NodeId Node_Register(const void* ctx, IdentifierAndScope identifierAn
 	return nextId;
 }
 
-extern "C" ConnectorId Connector_Register(const void* ctx, NodeId node, const char connectorName[])
+extern "C" ConnectorId Connector_Register(const void* ctx, GraphId gid, NodeId node, const char connectorName[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 	
 	ConnectorId nextId = (ConnectorId)ng._connectors.size();
 	ng._connectors.push_back({node, connectorName});
 	return nextId;
 }
 
-extern "C" ConnectorId LiteralConnector_Register(const void* ctx, const char literal[])
+extern "C" ConnectorId LiteralConnector_Register(const void* ctx, GraphId gid, const char literal[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 	
 	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
 	ng._literalConnectors.push_back(literal);
 	return nextId;
 }
 
-extern "C" ConnectorId IdentifierConnector_Register(const void* ctx, IdentifierAndScope identifierAndScope)
+extern "C" ConnectorId IdentifierConnector_Register(const void* ctx, GraphId gid, IdentifierAndScope identifierAndScope)
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 
 	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
 	ng._literalConnectors.push_back(ShaderPatcher::MakeArchiveName(identifierAndScope));
 	return nextId;
 }
 
-extern "C" ConnectionId Connection_Register(const void* ctx, ConnectorId left, ConnectorId right)
+extern "C" ConnectionId Connection_Register(const void* ctx, GraphId gid, ConnectorId left, ConnectorId right)
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 	
 	if (left >= ng._connectors.size())
 		return ~0u;
@@ -353,15 +349,15 @@ extern "C" ConnectionId Connection_Register(const void* ctx, ConnectorId left, C
 	return ~0u;
 }
 
-extern "C" void Node_Name(const void* ctx, NodeId id, const char name[])
+extern "C" void Node_Name(const void* ctx, GraphId gid, NodeId id, const char name[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 	ng._nodeNameMapping.insert({name, id});
 }
 
-extern "C" NodeId Node_Find(const void* ctx, const char name[])
+extern "C" NodeId Node_Find(const void* ctx, GraphId gid, const char name[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx);
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
 	std::string n(name);
 	auto i = ng._nodeNameMapping.find(n);
 	if (i != ng._nodeNameMapping.end()) return i->second;
@@ -382,10 +378,10 @@ extern "C" void GraphSignature_ReturnType(const void* ctx, GraphSignatureId sigI
 	f._pendingSignatures[sigId].AddParameter({returnType, ShaderPatcher::s_resultName, ShaderPatcher::ParameterDirection::Out});
 }
 
-extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[], unsigned direction)
+extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[], unsigned direction, const char def[])
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._pendingSignatures[sigId].AddParameter({type, name, ShaderPatcher::ParameterDirection(direction)});
+	f._pendingSignatures[sigId].AddParameter({type, name, ShaderPatcher::ParameterDirection(direction), std::string(), def ? def : std::string()});
 }
 
 extern "C" void GraphSignature_AddGraphParameter(const void* ctx, GraphSignatureId sigId, const char name[], IdentifierAndScope prototype)
@@ -401,32 +397,30 @@ extern "C" void GraphSignature_Implements(const void* ctx, GraphSignatureId sigI
 	f._pendingSignatures[sigId].SetImplements(ShaderPatcher::MakeArchiveName(templ));
 }
 
-extern "C" void Walk_Push(const void* ctx, unsigned objType, unsigned id)
-{
-	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._stacks[objType].push(id);
-}
-
-extern "C" void Walk_Pop(const void* ctx, unsigned objType)
-{
-	auto& f = ShaderPatcher::GetFileContext(ctx);
-	assert(!f._stacks[objType].empty());
-	f._stacks[objType].pop();
-}
-
-extern "C" NodeId Walk_GetActive(const void* ctx, unsigned objType)
-{
-	auto& f = ShaderPatcher::GetFileContext(ctx);
-	if (f._stacks[objType].empty())
-		return ~0u;
-	return f._stacks[objType].top();
-}
-
 extern "C" void Import_Register(const void* ctx, const char alias[], const char import[])
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);
 	assert(f._imports.find(alias) == f._imports.end());
 	f._imports.insert(std::make_pair(alias, import));
+}
+
+extern "C" void Captures_Register(const void* ctx, GraphId gid, const char name[], GraphSignatureId params, const char attributeTableName[])
+{
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& sig = f._pendingSignatures[params];
+
+	// We construct 2 things: one is a node to represent these collection of parameters
+	// We must also add the parameters to the "captures" list in the graph signature
+	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
+	ng._graph.Add(ShaderPatcher::Node { name, nextId, ShaderPatcher::Node::Type::Captures, attributeTableName ? std::string(attributeTableName) : std::string() });
+	Node_Name(ctx, gid, nextId, name);
+
+	for (const auto& i:sig.GetParameters()) {
+		auto newParam = i;
+		newParam._name = std::string(name) + "." + i._name;
+		ng._signature.AddCapturedParameter(newParam);
+	}
 }
 
 extern "C" AttributeTableId AttributeTable_Register(const void* ctx, const char name[])

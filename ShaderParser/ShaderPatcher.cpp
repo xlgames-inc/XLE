@@ -1047,6 +1047,7 @@ namespace ShaderPatcher
 	static void GenerateGraphSyntaxInstantiation(
 		std::ostream& result,
 		const NodeGraph& graph,
+		const NodeGraphSignature& interf,
 		NodeId nodeId,
 		std::unordered_map<NodeId, std::string>& instantiatedNodes)
 	{
@@ -1057,28 +1058,47 @@ namespace ShaderPatcher
 		}
 
 		auto n = graph.GetNode(nodeId);
-        assert(n && n->GetType() == Node::Type::Procedure);
 
 		if (!n->AttributeTableName().empty())
 			result << "[[" << n->AttributeTableName() << "]]";
 
-		result << RemoveTemplateRestrictions(n->ArchiveName()) << "(";
-		bool atLeastOneParam = false;
+		if (n->GetType() == Node::Type::Procedure) {
+			result << RemoveTemplateRestrictions(n->ArchiveName()) << "(";
 
-		for (const auto&i:graph.GetConnections()) {
-			if (i.OutputNodeId() != nodeId) continue;
-			if (atLeastOneParam) result << ", ";
-			atLeastOneParam = true;
+			bool atLeastOneParam = false;
+			for (const auto&i:graph.GetConnections()) {
+				if (i.OutputNodeId() != nodeId) continue;
+				if (atLeastOneParam) result << ", ";
+				atLeastOneParam = true;
 
-			result << i.OutputParameterName() << ":";
+				result << i.OutputParameterName() << ":";
 
-			if (i.InputNodeId() == NodeId_Interface) {
-				result << i.InputParameterName();
-			} else if (i.InputNodeId() == NodeId_Constant) {
-				result << "\"" << i.InputParameterName() << "\"";
-			} else {
-				GenerateGraphSyntaxInstantiation(result, graph, i.InputNodeId(), instantiatedNodes);
-				result << "." << i.InputParameterName();
+				if (i.InputNodeId() == NodeId_Interface) {
+					result << i.InputParameterName();
+				} else if (i.InputNodeId() == NodeId_Constant) {
+					result << "\"" << i.InputParameterName() << "\"";
+				} else {
+					GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
+					result << "." << i.InputParameterName();
+				}
+			}
+		} else {
+			result << "(";
+			assert(n->GetType() == Node::Type::Captures);
+			// We must get the list of capture parameters from the graph signature itself. The names of the parameters & their default
+			// values should be there
+			bool atLeastOneParam = false;
+			for (const auto& p:interf.GetCapturedParameters()) {
+				auto firstDot = std::find(p._name.begin(), p._name.end(), '.');
+				if (firstDot == p._name.end()) continue;
+				if (!XlEqString(MakeStringSection(p._name.begin(), firstDot), MakeStringSection(n->ArchiveName()))) continue;
+
+				if (atLeastOneParam) result << ", ";
+				atLeastOneParam = true;
+
+				result << p._type << " " << std::string(firstDot+1, p._name.end());
+				if (!p._default.empty())
+					result << " = \"" << p._default << "\"";
 			}
 		}
 
@@ -1111,13 +1131,20 @@ namespace ShaderPatcher
 			if (outputCount == 1) continue;
 
 			auto i2 = std::find_if(graph.GetNodes().cbegin(), graph.GetNodes().cend(), [id](const Node& n) { return n.NodeId() == id; });
-            if (i2 == graph.GetNodes().cend() || i2->GetType() != Node::Type::Procedure) continue;
+            if (i2 == graph.GetNodes().cend()) continue;
 
 			assert(instantiatedNodes.find(id) == instantiatedNodes.end());
-			std::string nodeName = "node_" + std::to_string(n); ++n;
-
-			result << "\tnode " << nodeName << " = ";
-			GenerateGraphSyntaxInstantiation(result, graph, id, instantiatedNodes);
+			std::string nodeName;
+			if (i2->GetType() == Node::Type::Procedure) {
+				nodeName = "node_" + std::to_string(n); ++n;
+				result << "\tnode " << nodeName;
+			} else {
+				assert(i2->GetType() == Node::Type::Captures);
+				nodeName = i2->ArchiveName();
+				result << "\tcaptures " << nodeName;
+			}
+			result << " = ";
+			GenerateGraphSyntaxInstantiation(result, graph, interf, id, instantiatedNodes);
 			result << ";" << std::endl;
 
 			instantiatedNodes.insert(std::make_pair(id, nodeName));
@@ -1126,14 +1153,14 @@ namespace ShaderPatcher
 		for (const auto&i:graph.GetConnections()) {
 			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() == ShaderPatcher::s_resultName) continue;
 			result << "\t" << i.OutputParameterName() << " = ";
-			GenerateGraphSyntaxInstantiation(result, graph, i.InputNodeId(), instantiatedNodes);
+			GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
 			result << "." << i.InputParameterName() << ";" << std::endl;
 		}
 
 		for (const auto&i:graph.GetConnections()) {
 			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() != ShaderPatcher::s_resultName) continue;
 			result << "\treturn ";
-			GenerateGraphSyntaxInstantiation(result, graph, i.InputNodeId(), instantiatedNodes);
+			GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
 			result << "." << i.InputParameterName() << ";" << std::endl;
 		}
 

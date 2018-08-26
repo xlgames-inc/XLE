@@ -39,33 +39,29 @@ options
 		pANTLR3_COMMON_TOKEN _identifier;
 	};
 
-	NodeId Node_Register(const void*, IdentifierAndScope identifierAndScope, const char attributeTableName[]);
-	ConnectorId Connector_Register(const void*, NodeId node, const char connectorName[]);
-	ConnectorId LiteralConnector_Register(const void*, const char literal[]);
-	ConnectorId IdentifierConnector_Register(const void*, IdentifierAndScope identifierAndScope);
-	ConnectionId Connection_Register(const void*, ConnectorId left, ConnectorId right);
+	NodeId Node_Register(const void*, GraphId gid, IdentifierAndScope identifierAndScope, const char attributeTableName[]);
+	ConnectorId Connector_Register(const void*, GraphId gid, NodeId node, const char connectorName[]);
+	ConnectorId LiteralConnector_Register(const void*, GraphId gid, const char literal[]);
+	ConnectorId IdentifierConnector_Register(const void*, GraphId gid, IdentifierAndScope identifierAndScope);
+	ConnectionId Connection_Register(const void*, GraphId gid, ConnectorId left, ConnectorId right);
 
-	void Node_Name(const void*, GraphId, const char name[]);
-	NodeId Node_Find(const void*, const char name[]);
+	void Node_Name(const void*, GraphId, NodeId, const char name[]);
+	NodeId Node_Find(const void*, GraphId, const char name[]);
 
 	GraphId Graph_Register(const void*, const char name[], GraphSignatureId signature);
 
 	GraphSignatureId GraphSignature_Register(const void*);
 	void GraphSignature_ReturnType(const void*, GraphSignatureId, const char returnType[]);
-	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[], unsigned direction);
+	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[], unsigned direction, const char def[]);
 	void GraphSignature_AddGraphParameter(const void*, GraphSignatureId, const char name[], IdentifierAndScope prototype);
 	void GraphSignature_Implements(const void*, GraphSignatureId, IdentifierAndScope templ);
 
 	AttributeTableId AttributeTable_Register(const void*, const char name[]);
 	void AttributeTable_AddValue(const void*, AttributeTableId, const char key[], const char value[]);
 
-	typedef unsigned ObjTypeId;
-	static const unsigned ObjType_Graph = 0;
-
-	void Walk_Push(const void*, ObjTypeId objType, unsigned obj);
-	void Walk_Pop(const void*, ObjTypeId objType);
-
 	void Import_Register(const void*, const char alias[], const char import[]);
+
+	void Captures_Register(const void*, GraphId, const char name[], GraphSignatureId params, const char attributeTableName[]);
 
 	char* StripQuotesBrackets(const char* input)
 	{
@@ -91,6 +87,8 @@ options
 
 //------------------------------------------------------------------------------------------------
 
+// ------ B A S I C   C O M P O N E N T S ---------------------------------------------------------
+
 identifier returns [const char* str = NULL] : Identifier { str = (const char*)$Identifier.text->chars; };
 identifierToken returns [pANTLR3_COMMON_TOKEN str = NULL] : Identifier { str = (*$Identifier->getToken)($Identifier); };
 functionPath returns [IdentifierAndScope res = (IdentifierAndScope){NULL, NULL}] 
@@ -99,80 +97,13 @@ functionPath returns [IdentifierAndScope res = (IdentifierAndScope){NULL, NULL}]
 	;
 stringLiteral returns [const char* str = NULL] : StringLiteral { str = (const char*)$StringLiteral.text->chars; };
 
-rnode returns [NodeId node = ~0u]
-	: ^(FUNCTION_CALL f=functionPath { $node = Node_Register(ctx, f, NULL); } functionCallConnection[$node]*)
-	| ^(FUNCTION_CALL f=functionPath ^(ATTRIBUTE_TABLE_NAME atn=identifier) { $node = Node_Register(ctx, f, atn); } functionCallConnection[$node]*)
-	| nid=identifier { $node = Node_Find(ctx, nid); }
-	;
-
-lnode returns [NodeId node = ~0u]
-	: nid=identifier { $node = Node_Find(ctx, nid); }
-	;
-
-functionCallConnection[NodeId rnode] returns [ConnectionId connection = ~0u]
-	: ^(FUNCTION_CALL_CONNECTION l=identifier r=rconnection)
-		{
-			ConnectorId left = Connector_Register(ctx, $rnode, l);
-			$connection = Connection_Register(ctx, left, r);
-		}
-	;
-
-connection returns [ConnectionId connection = ~0u]
-	: ^(CONNECTION n=lnode l=identifier r=rconnection)
-		{
-			ConnectorId left = Connector_Register(ctx, n, l);
-			$connection = Connection_Register(ctx, left, r);
-		}
-	| ^(OUTPUT_CONNECTION out=identifier r=rconnection)
-		{
-			ConnectorId left = Connector_Register(ctx, ~0u, out);
-			$connection = Connection_Register(ctx, left, r);
-		}
-	| ^(RETURN_CONNECTION r=rconnection)
-		{
-			ConnectorId left = Connector_Register(ctx, ~0u, "result");
-			$connection = Connection_Register(ctx, left, r);
-		}
-	;
-
-rconnection returns [ConnectorId connector = ~0u]
-	: ^((RCONNECTION_INLINE_FUNCTION_CALL|RCONNECTION_REF) n0=rnode c0=identifier)
-		{
-			connector = Connector_Register(ctx, n0, c0);
-		}
-	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH importSrc=identifierToken ident0=identifierToken))
-		{
-			IdentifierAndScope i;
-			i._scope = importSrc;
-			i._identifier = ident0;
-			connector = IdentifierConnector_Register(ctx, i);
-		}
-	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH ident1=identifier))
-		{
-			connector = Connector_Register(ctx, ~0u, ident1);
-		}
-	| ^(LITERAL StringLiteral)
-		{
-			char* s = StripQuotesBrackets((const char*)$StringLiteral.text->chars);
-			connector = LiteralConnector_Register(ctx, s);
-			free(s);
-		}
-	;
-
-graphStatement[NodeId containingGraph]
-	: connection
-	| ^(NODE_DECL nid=identifier n=rnode)
-		{
-			Node_Name(ctx, n, nid);
-		}
-	;
-
-direction returns [unsigned dir = 0] : 'in' { dir = 0; } | 'out' { dir = 1; };
+// ------ S I G N A T U R E S ---------------------------------------------------------------------
 
 graphParameter[GraphSignatureId sigId]
-	: ^(PARAMETER_DECLARATION pname=identifier ptype=identifier) 						{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype, 0); }
-	| ^(PARAMETER_DECLARATION pname=identifier ptype=identifier dir=direction)			{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype, dir); }
-	| ^(PARAMETER_DECLARATION pname=identifier ^(GRAPH_TYPE prototype=functionPath))	{ GraphSignature_AddGraphParameter(ctx, $sigId, pname, prototype);  }
+	: ^(IN_PARAMETER_DECLARATION pname=identifier ptype=identifier) 						{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype, 0, NULL); }
+	| ^(IN_PARAMETER_DECLARATION pname=identifier ptype=identifier def=stringLiteral)		{ char* stripped = StripQuotesBrackets(def); GraphSignature_AddParameter(ctx, $sigId, pname, ptype, 0, stripped); free(stripped); }
+	| ^(OUT_PARAMETER_DECLARATION pname=identifier ptype=identifier)						{ GraphSignature_AddParameter(ctx, $sigId, pname, ptype, 1, NULL); }
+	| ^(IN_PARAMETER_DECLARATION pname=identifier ^(GRAPH_TYPE prototype=functionPath))		{ GraphSignature_AddGraphParameter(ctx, $sigId, pname, prototype);  }
 	;
 
 implementsQualifier[GraphSignatureId sigId]
@@ -197,17 +128,95 @@ graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName)
 		graphParameter[$graphSig._sigId]*
 	);
 
-graphDefinition returns [GraphId result = ~0u;]
+// ------ M A I N   B O D Y -----------------------------------------------------------------------
+
+optionalAttributeTableName returns [const char* res = NULL]
+	: ^(ATTRIBUTE_TABLE_NAME atn=identifier) { res = atn; }
+	| ;
+
+rnode returns [NodeId node = ~0u]
+	: ^(FUNCTION_CALL f=functionPath atn=optionalAttributeTableName { $node = Node_Register(ctx, $graphDefinition::graphId, f, atn); } functionCallConnection[$node]*)
+	| nid=identifier { $node = Node_Find(ctx, $graphDefinition::graphId, nid); }
+	;
+
+lnode returns [NodeId node = ~0u]
+	: nid=identifier { $node = Node_Find(ctx, $graphDefinition::graphId, nid); }
+	;
+
+functionCallConnection[NodeId rnode] returns [ConnectionId connection = ~0u]
+	: ^(FUNCTION_CALL_CONNECTION l=identifier r=rconnection)
+		{
+			ConnectorId left = Connector_Register(ctx, $graphDefinition::graphId, $rnode, l);
+			$connection = Connection_Register(ctx, $graphDefinition::graphId, left, r);
+		}
+	;
+
+connection returns [ConnectionId connection = ~0u]
+	: ^(CONNECTION n=lnode l=identifier r=rconnection)
+		{
+			ConnectorId left = Connector_Register(ctx, $graphDefinition::graphId, n, l);
+			$connection = Connection_Register(ctx, $graphDefinition::graphId, left, r);
+		}
+	| ^(OUTPUT_CONNECTION out=identifier r=rconnection)
+		{
+			ConnectorId left = Connector_Register(ctx, $graphDefinition::graphId, ~0u, out);
+			$connection = Connection_Register(ctx, $graphDefinition::graphId, left, r);
+		}
+	| ^(RETURN_CONNECTION r=rconnection)
+		{
+			ConnectorId left = Connector_Register(ctx, $graphDefinition::graphId, ~0u, "result");
+			$connection = Connection_Register(ctx, $graphDefinition::graphId, left, r);
+		}
+	;
+
+rconnection returns [ConnectorId connector = ~0u]
+	: ^((RCONNECTION_INLINE_FUNCTION_CALL|RCONNECTION_REF) n0=rnode c0=identifier)
+		{
+			connector = Connector_Register(ctx, $graphDefinition::graphId, n0, c0);
+		}
+	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH importSrc=identifierToken ident0=identifierToken))
+		{
+			IdentifierAndScope i;
+			i._scope = importSrc;
+			i._identifier = ident0;
+			connector = IdentifierConnector_Register(ctx, $graphDefinition::graphId, i);
+		}
+	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH ident1=identifier))
+		{
+			connector = Connector_Register(ctx, $graphDefinition::graphId, ~0u, ident1);
+		}
+	| ^(LITERAL StringLiteral)
+		{
+			char* s = StripQuotesBrackets((const char*)$StringLiteral.text->chars);
+			connector = LiteralConnector_Register(ctx, $graphDefinition::graphId, s);
+			free(s);
+		}
+	;
+
+capturesDeclaration scope { GraphSignatureId sigId; }
+	: ^(CAPTURES_DECL { $capturesDeclaration::sigId = GraphSignature_Register(ctx); }
+		cid=identifier
+		atn=optionalAttributeTableName
+		graphParameter[$capturesDeclaration::sigId]*)
+
+		{ Captures_Register(ctx, $graphDefinition::graphId, cid, $capturesDeclaration::sigId, atn); }
+	;
+
+graphStatement
+	: connection
+	| ^(NODE_DECL nid=identifier n=rnode) { Node_Name(ctx, $graphDefinition::graphId, n, nid); }
+	| capturesDeclaration
+	;
+
+graphDefinition returns [GraphId result = ~0u;] scope { GraphId graphId; }
 	: ^(GRAPH_DEFINITION
 		sig=graphSignature 
 		{ 
 			$result = Graph_Register(ctx, sig._name, sig._sigId); 
-			Walk_Push(ctx, ObjType_Graph, $result);
+			$graphDefinition::graphId = $result;
 		}
 
-		graphStatement[$result]*
-
-		{ Walk_Pop(ctx, ObjType_Graph); }
+		graphStatement*
 	);
 
 attributeDefinition [AttributeTableId tableId]

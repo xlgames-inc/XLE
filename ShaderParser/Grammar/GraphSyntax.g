@@ -11,11 +11,13 @@ tokens
 	TOPLEVEL;
 
 	NODE_DECL;
+	CAPTURES_DECL;
 
 	FUNCTION_PATH;
 	FUNCTION_CALL;
 
-	PARAMETER_DECLARATION;
+	IN_PARAMETER_DECLARATION;
+	OUT_PARAMETER_DECLARATION;
 	GRAPH_SIGNATURE;
 	GRAPH_DEFINITION;
 	IMPLEMENTS;
@@ -63,6 +65,9 @@ tokens
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+// ------ B A S I C   C O M P O N E N T S ---------------------------------------------------------
+
 functionPath 
 	: i=Identifier '::' f=Identifier -> ^(FUNCTION_PATH $i $f)
 	| f=Identifier -> ^(FUNCTION_PATH $f)
@@ -83,7 +88,38 @@ typeName
 	| 'graph' '<' functionPath '>' -> ^(GRAPH_TYPE functionPath)
 	;
 
-declaration
+numberLiteral : HexLiteral | DecimalLiteral | OctalLiteral | FloatingPointLiteral;
+
+valueLiteral
+	: StringLiteral
+	| numberLiteral
+	| '{' numberLiteral (',' numberLiteral)* '}'
+	;
+
+// ------ S I G N A T U R E S ---------------------------------------------------------------------
+
+signatureParameter
+	: ('in')? type=typeName name=Identifier ('=' StringLiteral)? -> ^(IN_PARAMETER_DECLARATION $name $type StringLiteral?)
+	| 'out' type=typeName name=Identifier -> ^(OUT_PARAMETER_DECLARATION $name $type)
+	;
+
+signatureParameters
+	: '(' parameters += signatureParameter (',' parameters += signatureParameter)* ')' -> $parameters*
+	| '(' ')'
+	;
+
+implementsQualifier
+	: 'implements' fn=functionPath -> ^(IMPLEMENTS $fn)
+	;
+
+graphSignature
+	: returnType=Identifier name=Identifier params=signatureParameters impl=implementsQualifier?
+		-> ^(GRAPH_SIGNATURE $name $returnType $impl $params)
+	;
+
+// ------ M A I N   B O D Y -----------------------------------------------------------------------
+
+nodeDeclaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
 	;
 
@@ -93,24 +129,14 @@ connection
 	| 'return' r=rconnection -> ^(RETURN_CONNECTION $r)
 	;
 
+capturesDeclaration
+	: 'captures' Identifier '=' ('[[' attributeTableTable=Identifier ']]')? signatureParameters -> ^(CAPTURES_DECL Identifier ^(ATTRIBUTE_TABLE_NAME $attributeTableTable)? signatureParameters)
+	;
+
 graphStatement
-	:	declaration ';'? -> declaration
+	:	nodeDeclaration ';'? -> nodeDeclaration
+	|	capturesDeclaration ';'? -> capturesDeclaration
 	|	connection ';'? -> connection
-	;
-
-implementsQualifier
-	: 'implements' fn=functionPath -> ^(IMPLEMENTS $fn)
-	;
-
-direction : 'in' | 'out';
-
-parameterDeclaration
-	: (dir=direction)? type=typeName name=Identifier -> ^(PARAMETER_DECLARATION $name $type $dir)
-	;
-
-graphSignature
-	: returnType=Identifier name=Identifier '(' (parameters += parameterDeclaration (',' parameters += parameterDeclaration)*)? ')' impl=implementsQualifier?
-		-> ^(GRAPH_SIGNATURE $name $returnType $impl $parameters*)
 	;
 
 attributeDeclaration
@@ -119,7 +145,8 @@ attributeDeclaration
 	;
 
 toplevel
-	:	'import' name=Identifier '=' source=StringLiteral -> ^(IMPORT $name $source)
+	:	'import' name=Identifier '=' source=StringLiteral 
+			-> ^(IMPORT $name $source)
 	|	sig=graphSignature '{' statements += graphStatement* '}'
 			-> ^(GRAPH_DEFINITION $sig $statements*)
 	|	'attributes' name=Identifier '(' (attributes += attributeDeclaration (',' attributes += attributeDeclaration)*)? ')'
@@ -134,11 +161,25 @@ entrypoint
 //						L E X E R 
 //------------------------------------------------------------------------------
 
+HexLiteral : '0' ('x'|'X') HexDigit+ IntegerTypeSuffix? ;
+
 DecimalLiteral : ('0' | '1'..'9' '0'..'9'*) IntegerTypeSuffix? ;
+
+OctalLiteral : '0' ('0'..'7')+ IntegerTypeSuffix? ;
 
 fragment HexDigit : ('0'..'9'|'a'..'f'|'A'..'F') ;
 
 fragment IntegerTypeSuffix : ('l'|'L'|'u'|'U'|'ul'|'UL') ;
+
+FloatingPointLiteral
+	:	('0'..'9')+ '.' ('0'..'9')* Exponent? FloatTypeSuffix?
+	|	'.' ('0'..'9')+ Exponent? FloatTypeSuffix?
+	|	('0'..'9')+ Exponent? FloatTypeSuffix?
+	;
+
+fragment Exponent : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
+
+fragment FloatTypeSuffix : ('f'|'F'|'d'|'D') ;
 
 fragment EscapeSequence
 	:	'\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\')

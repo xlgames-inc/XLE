@@ -26,7 +26,7 @@ namespace ShaderPatcher
     class Node
     {
     public:
-        enum class Type { Procedure, Uniforms };
+        enum class Type { Procedure, Captures };
 
 		std::string				_archiveName;
         ShaderPatcher::NodeId   _nodeId = 0;
