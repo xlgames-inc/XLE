@@ -151,6 +151,16 @@ namespace ShaderPatcherLayer
 		};
 		property List<TemplateParameter^>^	TemplateParameters { List<TemplateParameter^>^ get() { return _templateParameters; } }
 
+		property String^	Implements
+		{
+			String^ get() { return _implements; }
+			void set(String^ value)
+			{
+				_implements = value;
+				if (!_implements) _implements = String::Empty;
+			}
+		}
+
 		ShaderPatcher::NodeGraphSignature	ConvertToNative(ConversionContext& context);
 		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input, const ConversionContext& context);
 
@@ -158,6 +168,7 @@ namespace ShaderPatcherLayer
 		List<Parameter^>^				_parameters = gcnew List<Parameter^>();
         List<Parameter^>^				_capturedParameters = gcnew List<Parameter^>();
         List<TemplateParameter^>^		_templateParameters = gcnew List<TemplateParameter^>();
+		String^							_implements = String::Empty;
 	};
 
 	public ref class NodeGraphFile

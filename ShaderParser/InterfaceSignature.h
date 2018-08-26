@@ -45,6 +45,9 @@ namespace ShaderPatcher
         };
         auto GetTemplateParameters() const -> IteratorRange<const TemplateParameter*>   { return MakeIteratorRange(_templateParameters); }
         void AddTemplateParameter(const TemplateParameter& param);
+
+		const std::string& GetImplements() const { return _implements; }
+		void SetImplements(const std::string& value) { _implements = value; }
 		
         NodeGraphSignature();
         ~NodeGraphSignature();
@@ -52,6 +55,7 @@ namespace ShaderPatcher
         std::vector<Parameter> _functionParameters;
         std::vector<Parameter> _capturedParameters;
         std::vector<TemplateParameter> _templateParameters;
+		std::string _implements;
     };
 
     class ParameterStructSignature

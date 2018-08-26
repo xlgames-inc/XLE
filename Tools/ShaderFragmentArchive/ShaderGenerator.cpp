@@ -267,6 +267,7 @@ namespace ShaderPatcherLayer
 					CompressImportedName(clix::marshalString<clix::E_UTF8>(p->Restriction), context)});
 		}
 
+		result.SetImplements(CompressImportedName(clix::marshalString<clix::E_UTF8>(Implements), context));
 		return result;
 	}
 
@@ -300,6 +301,7 @@ namespace ShaderPatcherLayer
 			param->Restriction = clix::marshalString<clix::E_UTF8>(ExpandImportedName(p._restriction, context));
 			result->_templateParameters->Add(param);
 		}
+		result->Implements = clix::marshalString<clix::E_UTF8>(ExpandImportedName(input.GetImplements(), context));
 		return result;
 	}
 

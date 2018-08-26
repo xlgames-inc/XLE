@@ -91,6 +91,8 @@ namespace NodeEditorCore
                         signature.Parameters.Add(AsSignatureParameter(interfaceItem, ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out));
                 }
 
+                signature.Implements = (n.TopItems.ElementAt(2) as HyperGraph.Items.NodeTextBoxItem).Text;
+
                 result.SubGraphs.Add(
                     n.SubGraphTag as string,
                     new ShaderPatcherLayer.NodeGraphFile.SubGraph
@@ -324,7 +326,7 @@ namespace NodeEditorCore
             {
                     // --------< SubGraph >--------
                 var subGraphTag = inputSubGraph.Key;
-                Node subgraph = _nodeCreator.CreateSubGraph(subGraphTag);
+                Node subgraph = _nodeCreator.CreateSubGraph(subGraphTag, inputSubGraph.Value.Signature.Implements);
                 subgraph.SubGraphTag = subGraphTag;
                 graph.AddSubGraph(subgraph);
 

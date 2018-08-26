@@ -394,6 +394,13 @@ extern "C" void GraphSignature_AddGraphParameter(const void* ctx, GraphSignature
 	f._pendingSignatures[sigId].AddTemplateParameter({name, ShaderPatcher::MakeArchiveName(prototype)});
 }
 
+extern "C" void GraphSignature_Implements(const void* ctx, GraphSignatureId sigId, IdentifierAndScope templ)
+{
+	auto& f = ShaderPatcher::GetFileContext(ctx);
+	assert(templ._scope && templ._identifier);
+	f._pendingSignatures[sigId].SetImplements(ShaderPatcher::MakeArchiveName(templ));
+}
+
 extern "C" void Walk_Push(const void* ctx, unsigned objType, unsigned id)
 {
 	auto& f = ShaderPatcher::GetFileContext(ctx);

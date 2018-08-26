@@ -54,6 +54,7 @@ options
 	void GraphSignature_ReturnType(const void*, GraphSignatureId, const char returnType[]);
 	void GraphSignature_AddParameter(const void*, GraphSignatureId, const char name[], const char type[], unsigned direction);
 	void GraphSignature_AddGraphParameter(const void*, GraphSignatureId, const char name[], IdentifierAndScope prototype);
+	void GraphSignature_Implements(const void*, GraphSignatureId, IdentifierAndScope templ);
 
 	AttributeTableId AttributeTable_Register(const void*, const char name[]);
 	void AttributeTable_AddValue(const void*, AttributeTableId, const char key[], const char value[]);
@@ -174,17 +175,24 @@ graphParameter[GraphSignatureId sigId]
 	| ^(PARAMETER_DECLARATION pname=identifier ^(GRAPH_TYPE prototype=functionPath))	{ GraphSignature_AddGraphParameter(ctx, $sigId, pname, prototype);  }
 	;
 
+implementsQualifier[GraphSignatureId sigId]
+	:^(IMPLEMENTS fn=functionPath) { GraphSignature_Implements(ctx, $sigId, fn); }
+	;
+
 graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName){~0u, NULL}]
 	: ^(GRAPH_SIGNATURE 
 		{
 			$graphSig._sigId = GraphSignature_Register(ctx);
 		}
+
 		n=identifier returnType=identifier 
 		{
 			$graphSig._name = n;
 			if (strcmp(returnType, "void") != 0)
 				GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType); 
 		}
+
+		implementsQualifier[$graphSig._sigId]?
 		
 		graphParameter[$graphSig._sigId]*
 	);

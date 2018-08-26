@@ -18,6 +18,7 @@ tokens
 	PARAMETER_DECLARATION;
 	GRAPH_SIGNATURE;
 	GRAPH_DEFINITION;
+	IMPLEMENTS;
 
 	CONNECTION;
 	FUNCTION_CALL_CONNECTION;			// this is a connection expressed in function call syntax; eg -- graph(lhs:rhs)
@@ -98,7 +99,7 @@ graphStatement
 	;
 
 implementsQualifier
-	: 'implements' functionPath
+	: 'implements' fn=functionPath -> ^(IMPLEMENTS $fn)
 	;
 
 direction : 'in' | 'out';
@@ -108,8 +109,8 @@ parameterDeclaration
 	;
 
 graphSignature
-	: returnType=Identifier name=Identifier '(' (parameters += parameterDeclaration (',' parameters += parameterDeclaration)*)? ')' implementsQualifier?
-		-> ^(GRAPH_SIGNATURE $name $returnType $parameters*)
+	: returnType=Identifier name=Identifier '(' (parameters += parameterDeclaration (',' parameters += parameterDeclaration)*)? ')' impl=implementsQualifier?
+		-> ^(GRAPH_SIGNATURE $name $returnType $impl $parameters*)
 	;
 
 attributeDeclaration

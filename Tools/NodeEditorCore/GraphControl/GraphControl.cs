@@ -406,7 +406,7 @@ namespace NodeEditorCore
                 {
                     if (!HasSubGraphNamed(dialog.InputText))
                     {
-                        var n = NodeFactory.CreateSubGraph(dialog.InputText);
+                        var n = NodeFactory.CreateSubGraph(dialog.InputText, string.Empty);
                         var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
                         if (tag is System.Drawing.PointF)
                             n.Location = (System.Drawing.PointF)tag;

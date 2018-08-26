@@ -854,6 +854,10 @@ namespace ShaderPatcher
         result << name << "(" << mainFunctionDeclParameters.str() << ")";
 		if (!returnSemantic.empty())
 			result << " : " << returnSemantic;
+
+		if (includeTemplateParameters && !sig.GetImplements().empty())
+			result << " implements " << sig.GetImplements();
+
 		return result.str();
 	}
 

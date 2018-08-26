@@ -25,7 +25,7 @@ namespace NodeEditorCore
         Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
-        Node CreateSubGraph(String name);
+        Node CreateSubGraph(String name, String implements);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
@@ -629,11 +629,14 @@ namespace NodeEditorCore
             return node;
         }
 
-        public Node CreateSubGraph(String name)
+        public Node CreateSubGraph(String name, String implements)
         {
-            var node = new Node { Title = name };
+            var node = new Node {};
             node.Tag = new ShaderSubGraphNodeTag();
             node.SubGraphTag = name;
+            node.AddItem(new HyperGraph.Items.NodeTextBoxItem(name), Node.Dock.Top);
+            node.AddItem(new HyperGraph.Items.NodeTitleItem { Title = " implements " }, Node.Dock.Top);
+            node.AddItem(new HyperGraph.Items.NodeTextBoxItem(implements), Node.Dock.Top);
             return node;
         }
 
