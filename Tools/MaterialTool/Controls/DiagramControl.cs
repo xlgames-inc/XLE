@@ -96,7 +96,7 @@ namespace MaterialTool.Controls
                         var i = args.Object as HyperGraph.NodeItem;
                         if (i != null) n = i.Node;
                     }
-                    if (n != null)
+                    if (n != null && n.Title != null && n.Title.Length > 0)
                     {
                         _hover = new HoverLabel(n.Title)
                         {

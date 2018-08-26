@@ -29,7 +29,7 @@ using System.Drawing;
 
 namespace HyperGraph.Items
 {
-	internal sealed class NodeTitleItem : NodeItem
+	public sealed class NodeTitleItem : NodeItem
 	{
 		public string	Title { get; set; }
 

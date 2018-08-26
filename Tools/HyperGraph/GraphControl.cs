@@ -558,8 +558,15 @@ namespace HyperGraph
 			}
             foreach (var subGraph in model.SubGraphs)
             {
-                if (subGraph.bounds.Contains(location) && (acceptElement == null || acceptElement(subGraph)))
+                if (subGraph.bounds.Contains(location))
+                {
+                    var item = FindNodeItemAt(subGraph, location);
+                    if (item != null && (acceptElement == null || acceptElement(item)))
+                        return item;
+
+                    if (acceptElement == null || acceptElement(subGraph))
                     return subGraph;
+                }
             }
 
             return null;
@@ -1491,9 +1498,12 @@ namespace HyperGraph
 					goto case ElementType.Node;
 				case ElementType.Node:
 					var node = element as Node;
-					node.Collapsed = !node.Collapsed;
-					if (Selection!=null)
-                        Selection.SelectSingle(node);
+                    if (!_model.SubGraphs.Contains(node))
+                    {
+                        node.Collapsed = !node.Collapsed;
+                        if (Selection != null)
+                            Selection.SelectSingle(node);
+                    }
                     ctrl.Invalidate();
 					break;
 
