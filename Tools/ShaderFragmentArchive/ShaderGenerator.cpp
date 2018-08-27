@@ -44,7 +44,7 @@ namespace ShaderPatcherLayer
         switch (e) {
         default:
         case Node::Type::Procedure:					return ShaderPatcher::Node::Type::Procedure;
-        case Node::Type::Uniforms:                  return ShaderPatcher::Node::Type::Uniforms;
+        case Node::Type::Captures:                  return ShaderPatcher::Node::Type::Captures;
         }
     }
 
@@ -181,7 +181,7 @@ namespace ShaderPatcherLayer
         switch (e) {
         default:
 		case ShaderPatcher::Node::Type::Procedure : return Node::Type::Procedure;
-		case ShaderPatcher::Node::Type::Uniforms: return Node::Type::Uniforms;
+		case ShaderPatcher::Node::Type::Captures: return Node::Type::Captures;
         }
     }
 

@@ -419,6 +419,7 @@ extern "C" void Captures_Register(const void* ctx, GraphId gid, const char name[
 	for (const auto& i:sig.GetParameters()) {
 		auto newParam = i;
 		newParam._name = std::string(name) + "." + i._name;
+		newParam._direction = ShaderPatcher::ParameterDirection::Out;
 		ng._signature.AddCapturedParameter(newParam);
 	}
 }

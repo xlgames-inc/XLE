@@ -31,9 +31,9 @@ namespace NodeEditorCore
         {
             switch (input)
             {
-                case ShaderFragmentArchive.Parameter.SourceType.Material:                   return ShaderPatcherLayer.Node.Type.Uniforms;
-                case ShaderFragmentArchive.Parameter.SourceType.System:                     return ShaderPatcherLayer.Node.Type.Uniforms;
-                case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return ShaderPatcherLayer.Node.Type.Uniforms;
+                case ShaderFragmentArchive.Parameter.SourceType.Material:                   return ShaderPatcherLayer.Node.Type.Captures;
+                case ShaderFragmentArchive.Parameter.SourceType.System:                     return ShaderPatcherLayer.Node.Type.Captures;
+                case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return ShaderPatcherLayer.Node.Type.Captures;
                 default:                                                                    return ShaderPatcherLayer.Node.Type.Procedure;
             }
         }
@@ -44,7 +44,7 @@ namespace NodeEditorCore
             {
                 default:
                 case ShaderPatcherLayer.Node.Type.Procedure:            return ShaderFragmentArchive.Parameter.SourceType.Material;
-                case ShaderPatcherLayer.Node.Type.Uniforms:             return ShaderFragmentArchive.Parameter.SourceType.Material;
+                case ShaderPatcherLayer.Node.Type.Captures:             return ShaderFragmentArchive.Parameter.SourceType.Material;
             }
         }
 
@@ -126,34 +126,67 @@ namespace NodeEditorCore
                     result.SubGraphs.Add(UnplacedSubGraphTag, resultSubGraph);
                 }
 
-                // Potentially build a "node" in the patcher layer. This is only required
-                // if we're referencing some object in the shader fragments archive
-                if (!string.IsNullOrEmpty(nTag.ArchiveName))
                 {
                     string attributeTableName = "visualNode" + visualNodeId; ++visualNodeId;
 
                     ShaderPatcherLayer.Node resultNode = new ShaderPatcherLayer.Node() {
                         FragmentArchiveName = nTag.ArchiveName, NodeId = nTag.Id,
                         AttributeTableName = attributeTableName };
-                    resultNode.NodeType = ShaderPatcherLayer.Node.Type.Procedure;
-                    resultSubGraph.Graph.Nodes.Add(resultNode);
 
-                    var templatedName = System.Text.RegularExpressions.Regex.Match(resultNode.FragmentArchiveName, "(.*)<(.+)>");
-                    if (templatedName.Success)
+                    if (nTag is ShaderProcedureNodeTag)
                     {
-                        var templateParam = new ShaderPatcherLayer.NodeGraphSignature.TemplateParameter
+                        resultNode.NodeType = ShaderPatcherLayer.Node.Type.Procedure;
+
+                        var templatedName = System.Text.RegularExpressions.Regex.Match(resultNode.FragmentArchiveName, "(.*)<(.+)>");
+                        if (templatedName.Success)
                         {
-                            Name = templatedName.Groups[1].Value,
-                            Restriction = templatedName.Groups[2].Value
-                        };
-                        var existing = resultSubGraph.Signature.TemplateParameters.Where(x => String.Compare(x.Name, templateParam.Name) == 0).FirstOrDefault();
-                        if (existing == null)
-                        {
-                            resultSubGraph.Signature.TemplateParameters.Add(templateParam);
+                            var templateParam = new ShaderPatcherLayer.NodeGraphSignature.TemplateParameter
+                            {
+                                Name = templatedName.Groups[1].Value,
+                                Restriction = templatedName.Groups[2].Value
+                            };
+                            var existing = resultSubGraph.Signature.TemplateParameters.Where(x => String.Compare(x.Name, templateParam.Name) == 0).FirstOrDefault();
+                            if (existing == null)
+                            {
+                                resultSubGraph.Signature.TemplateParameters.Add(templateParam);
+                            }
+                            else if (String.Compare(existing.Restriction, templateParam.Restriction) != 0)
+                                throw new InvalidOperationException("Cannot create program because two template parameters with the same name disagree on restriction (parameter: " + templateParam.Name + " is restricted to both " + templateParam.Restriction + " and " + existing.Restriction);
                         }
-                        else if (String.Compare(existing.Restriction, templateParam.Restriction) != 0)
-                            throw new InvalidOperationException("Cannot create program because two template parameters with the same name disagree on restriction (parameter: " + templateParam.Name + " is restricted to both " + templateParam.Restriction + " and " + existing.Restriction);
                     }
+                    else
+                    {
+                        System.Diagnostics.Debug.Assert(nTag is ShaderCapturesNodeTag);
+
+                        resultNode.NodeType = ShaderPatcherLayer.Node.Type.Captures;
+
+                        // for each output parameter on this node, we must ensure there is a capture parameter in the signature
+                        foreach(var i in n.OutputItems)
+                        {
+                            var item = i as ShaderFragmentCaptureParameterItem;
+                            if (item == null) continue;
+
+                            var param = new ShaderPatcherLayer.NodeGraphSignature.Parameter
+                            {
+                                Name = nTag.ArchiveName + "." + item.Name,
+                                Type = item.Type,
+                                Direction = ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out,
+                                Default = item.Default,
+                                Semantic = item.Semantic
+                            };
+
+                            var existing = resultSubGraph.Signature.CapturedParameters.Where(x => String.Compare(x.Name, param.Name) == 0).FirstOrDefault();
+                            if (existing != null)
+                            {
+                                if (String.Compare(existing.Type, param.Type) != 0)
+                                    throw new InvalidOperationException("Cannot create program because two capture parameters with the same name disagree on type (parameter: " + param.Name + " as type " + param.Type + " and " + existing.Type);
+                            }
+                            else
+                                resultSubGraph.Signature.CapturedParameters.Add(param);
+                        }
+                    }
+
+                    resultSubGraph.Graph.Nodes.Add(resultNode);
 
                     var attributeTable = new Dictionary<string, string>();
                     attributeTable.Add("X", n.Location.X.ToString());
@@ -332,14 +365,11 @@ namespace NodeEditorCore
 
                 foreach (var param in inputSubGraph.Value.Signature.Parameters)
                 {
-                    var item = new ShaderFragmentInterfaceParameterItem(
-                        param.Name, param.Type,
-                        (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? InterfaceDirection.In : InterfaceDirection.Out)
+                    var item = new ShaderFragmentInterfaceParameterItem(param.Name, param.Type)
                     {
-                        Type = param.Type,
-                        Name = param.Name,
                         Semantic = param.Semantic,
-                        Default = param.Default
+                        Default = param.Default,
+                        Direction = (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? InterfaceDirection.In : InterfaceDirection.Out
                     };
                     // Note that OutputItems/InputItems are flipped for the subgraph nodes (because of how connectors interface with them)
                     subgraph.AddItem(item, (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? Node.Dock.Output : Node.Dock.Input);
@@ -352,19 +382,48 @@ namespace NodeEditorCore
                 {
                     if (!nodeIdToControlNode.ContainsKey(n.NodeId))
                     {
-                        System.Diagnostics.Debug.Assert(n.NodeType == ShaderPatcherLayer.Node.Type.Procedure);
-
                         Dictionary<string, string> attributeTable = null;
                         if (n.AttributeTableName != null && n.AttributeTableName.Length > 0)
                             graphFile.AttributeTables.TryGetValue(n.AttributeTableName, out attributeTable);
-                        
-                        var finalFnName = n.FragmentArchiveName;
-                        var templatedName = System.Text.RegularExpressions.Regex.Match(n.FragmentArchiveName, "(.*)<(.+)>");
-                        if (templatedName.Success)
-                            finalFnName = templatedName.Groups[2].Value;
 
-                        var fn = _shaderFragments.GetFunction(finalFnName, graphFile.GetSearchRules());
-                        var newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, MakePreviewSettingsFromAttributeTable(attributeTable));
+                        Node newNode;
+
+                        if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
+                        {
+                            var finalFnName = n.FragmentArchiveName;
+                            var templatedName = System.Text.RegularExpressions.Regex.Match(n.FragmentArchiveName, "(.*)<(.+)>");
+                            if (templatedName.Success)
+                                finalFnName = templatedName.Groups[2].Value;
+
+                            var fn = _shaderFragments.GetFunction(finalFnName, graphFile.GetSearchRules());
+                            newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, MakePreviewSettingsFromAttributeTable(attributeTable));
+                        }
+                        else
+                        {
+                            System.Diagnostics.Debug.Assert(n.NodeType == ShaderPatcherLayer.Node.Type.Captures);
+
+                            var captureGroupName = n.FragmentArchiveName;
+                            var ps = new List<ShaderPatcherLayer.NodeGraphSignature.Parameter>();
+                            foreach (var p in inputSubGraph.Value.Signature.CapturedParameters)
+                            {
+                                if (p.Direction != ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out) continue;
+
+                                int firstDot = p.Name.IndexOf('.');
+                                if (firstDot != -1 && string.Compare(p.Name.Substring(0, firstDot), captureGroupName) == 0)
+                                {
+                                    ps.Add(new ShaderPatcherLayer.NodeGraphSignature.Parameter
+                                    {
+                                        Type = p.Type,
+                                        Name = p.Name.Substring(firstDot + 1),
+                                        Direction = ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In,
+                                        Default = p.Default,
+                                        Semantic = p.Semantic
+                                    });
+                                }
+                            }
+
+                            newNode = _nodeCreator.CreateCapturesNode(captureGroupName, ps);
+                        }
 
                         if (newNode != null)
                         {
@@ -444,7 +503,7 @@ namespace NodeEditorCore
                                     if (i == null) return false;
                                     return i.Name.Equals(c.InputParameterName);
                                 },
-                                () => new ShaderFragmentInterfaceParameterItem(c.InputParameterName, defaultTypeName, InterfaceDirection.In));
+                                () => new ShaderFragmentInterfaceParameterItem(c.InputParameterName, defaultTypeName) { Direction = InterfaceDirection.In });
 
                             graph.Connect(srcItem, dstItem);
                         }
@@ -467,7 +526,7 @@ namespace NodeEditorCore
                                 if (i == null) return false;
                                 return i.Name.Equals(c.OutputParameterName);
                             },
-                            () => new ShaderFragmentInterfaceParameterItem(c.OutputParameterName, defaultTypeName, InterfaceDirection.Out));
+                            () => new ShaderFragmentInterfaceParameterItem(c.OutputParameterName, defaultTypeName) { Direction = InterfaceDirection.Out });
 
                         graph.Connect(srcItem, dstItem);
                     }

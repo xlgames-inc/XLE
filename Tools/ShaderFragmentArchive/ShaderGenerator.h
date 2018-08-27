@@ -28,7 +28,7 @@ namespace ShaderPatcherLayer
         enum class Type 
         {
             Procedure,
-			Uniforms
+			Captures
         };
         [DataMember] String^       FragmentArchiveName;
         [DataMember] UInt32        NodeId;

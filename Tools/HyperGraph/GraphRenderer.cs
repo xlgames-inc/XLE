@@ -126,7 +126,17 @@ namespace HyperGraph
         static void RenderItem(Graphics graphics, NodeItem item, object context)
 		{
             if (item.bounds != RectangleF.Empty)
-			    item.Render(graphics, item.bounds, context);
+            {
+                var connector = item as NodeConnector;
+                if (connector != null)
+                {
+                    RenderConnector(graphics, connector.bounds, connector.state, IsInputConnector(connector) ? ConnectorType.Input : ConnectorType.Output, connector, connector.Node.Collapsed);
+                }
+                else
+                {
+                    item.Render(graphics, item.bounds, context);
+                }
+            }
 		}
 
 		internal static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
@@ -545,29 +555,32 @@ namespace HyperGraph
             {
                 if (node.TitleItem != null)
                     RenderItem(graphics, node.TitleItem, context);
+
+                foreach (var item in node.InputItems)
+                {
+                    var connector = item as NodeConnector;
+                    if (connector != null)
+                        RenderConnector(graphics, connector.bounds, connector.state, ConnectorType.Input, connector, true);
+                }
+
+                foreach (var item in node.OutputItems)
+                {
+                    var connector = item as NodeConnector;
+                    if (connector != null)
+                        RenderConnector(graphics, connector.bounds, connector.state, ConnectorType.Output, connector, true);
+                }
             }
             else
             {
                 foreach (var item in node.CenterItems.Concat(node.TopItems).Concat(node.BottomItems))
                     RenderItem(graphics, item, context);
-            }
 
-            foreach (var item in node.ItemsForDock(Node.Dock.Input))    // (don't use EnumerateItems because we want to show collapsed nodes)
-            {
-                // note --  the "connected" state is not stored in the retained state member
-                //          ... so if we want to colour the connectors based on if they are connected,
-                //          we need to look for connections now.
-                var inputConnector = item as NodeConnector;
-                if (inputConnector != null && !inputConnector.bounds.IsEmpty)
-                    RenderConnector(graphics, inputConnector.bounds, inputConnector.state, ConnectorType.Input, inputConnector, node.Collapsed);
-            }
+                foreach (var item in node.InputItems)    // (don't use EnumerateItems because we want to show collapsed nodes)
+                    RenderItem(graphics, item, context);
 
-            foreach (var item in node.ItemsForDock(Node.Dock.Output))
-            {
-                var outputConnector = item as NodeConnector;
-				if (outputConnector != null && !outputConnector.bounds.IsEmpty)
-                    RenderConnector(graphics, outputConnector.bounds, outputConnector.state, ConnectorType.Output, outputConnector, node.Collapsed);
-			}
+                foreach (var item in node.OutputItems)
+                    RenderItem(graphics, item, context);
+            }
 		}
 
         static void RenderSubGraph(Graphics graphics, Node node, object context)
@@ -594,18 +607,10 @@ namespace HyperGraph
             }
 
             foreach (var item in node.ItemsForDock(Node.Dock.Input))
-            {
-                var inputConnector = item as NodeConnector;
-                if (inputConnector != null && !inputConnector.bounds.IsEmpty)
-                    RenderConnector(graphics, inputConnector.bounds, inputConnector.state, ConnectorType.Input, inputConnector, node.Collapsed);
-            }
+                RenderItem(graphics, item, context);
 
             foreach (var item in node.ItemsForDock(Node.Dock.Output))
-            {
-                var outputConnector = item as NodeConnector;
-                if (outputConnector != null && !outputConnector.bounds.IsEmpty)
-                    RenderConnector(graphics, outputConnector.bounds, outputConnector.state, ConnectorType.Output, outputConnector, node.Collapsed);
-            }
+                RenderItem(graphics, item, context);
 
             foreach (var item in node.ItemsForDock(Node.Dock.Top).Concat(node.ItemsForDock(Node.Dock.Bottom)))
                 RenderItem(graphics, item, context);

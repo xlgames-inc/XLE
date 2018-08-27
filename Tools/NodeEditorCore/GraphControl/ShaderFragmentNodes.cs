@@ -25,6 +25,7 @@ namespace NodeEditorCore
         Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
+        Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
         Node CreateSubGraph(String name, String implements);
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
@@ -347,22 +348,30 @@ namespace NodeEditorCore
             return HyperGraph.Compatibility.ConnectionType.Incompatible;
         }
     }
-    internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentNodeConnector
+    internal class ShaderFragmentAdaptableParameterConnector : ShaderFragmentNodeConnector
     {
-        public ShaderFragmentInterfaceParameterItem(string name, string type, InterfaceDirection direction) :
-            base(name, type)
-        {
-            Direction = direction;
-        }
-
+        public ShaderFragmentAdaptableParameterConnector(string name, string type) : base(name, type) { }
         public string Semantic { get; set; }
         public string Default { get; set; }
         public InterfaceDirection Direction { get; set; }
         internal override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
     }
+
+    internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentAdaptableParameterConnector
+    {
+        public ShaderFragmentInterfaceParameterItem(string name, string type) : base(name, type) { }
+    }
+
+    internal class ShaderFragmentCaptureParameterItem : ShaderFragmentAdaptableParameterConnector
+    {
+        public ShaderFragmentCaptureParameterItem(string name, string type) : base(name, type) { }
+    }
     
     internal class ShaderFragmentAddParameterItem : NodeItem
     {
+        public delegate ShaderFragmentAdaptableParameterConnector ConnectorCreatorDelegate(string name, string type);
+        public ConnectorCreatorDelegate ConnectorCreator;
+
         public override bool OnClick(System.Windows.Forms.Control container, System.Windows.Forms.MouseEventArgs evnt, System.Drawing.Drawing2D.Matrix viewTransform)
         {
             using (var fm = new InterfaceParameterForm(false) { Name = "Color", Type = "auto", Semantic = "", Default = "" })
@@ -370,9 +379,17 @@ namespace NodeEditorCore
                 var result = fm.ShowDialog();
                 if (result == System.Windows.Forms.DialogResult.OK)
                 {
-                    Node.AddItem(
-                        new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, Direction) { Semantic = fm.Semantic, Default = fm.Default }, 
-                        ShaderFragmentNodeConnector.GetDirectionalColumn(Direction));
+                    // Remove and re-add "this to ensure it gets placed at the end
+                    var node = Node;
+                    node.RemoveItem(this);
+                    var connector = ConnectorCreator(fm.Name, fm.Type);
+                    connector.Semantic = fm.Semantic;
+                    connector.Default = fm.Default;
+                    node.AddItem(
+                        // new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type) { Semantic = fm.Semantic, Default = fm.Default, Direction = Direction }, 
+                        connector,
+                        ShaderFragmentNodeConnector.GetDirectionalColumn(connector.Direction));
+                    node.AddItem(this, ShaderFragmentNodeConnector.GetDirectionalColumn(connector.Direction));
                 }
             }
             return true;
@@ -396,8 +413,6 @@ namespace NodeEditorCore
                     GraphConstants.CenterTextStringFormat);
             }
         }
-
-        public InterfaceDirection Direction = InterfaceDirection.In;
     }
     #endregion
 
@@ -425,6 +440,11 @@ namespace NodeEditorCore
     internal class ShaderParameterNodeTag : ShaderFragmentNodeTag
     {
         public ShaderParameterNodeTag(string archiveName) : base(archiveName) {}
+    }
+
+    internal class ShaderCapturesNodeTag : ShaderFragmentNodeTag
+    {
+        public ShaderCapturesNodeTag(string captureGroupName) : base(captureGroupName) { }
     }
 
     internal class ShaderInterfaceParameterNodeTag : ShaderFragmentNodeTag
@@ -621,11 +641,32 @@ namespace NodeEditorCore
             return node;
         }
 
+        public Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters)
+        {
+            var node = new Node { Title = name };
+            node.Tag = new ShaderCapturesNodeTag(name);
+
+            foreach (var param in parameters)
+            {
+                node.AddItem(
+                    new ShaderFragmentCaptureParameterItem(param.Name, param.Type) { Semantic = param.Semantic, Default = param.Default, Direction = InterfaceDirection.Out },
+                    Node.Dock.Output);
+            }
+
+            node.AddItem(
+                new ShaderFragmentAddParameterItem { ConnectorCreator = (n, t) => new ShaderFragmentCaptureParameterItem(n, t) { Direction = InterfaceDirection.Out } }, 
+                Node.Dock.Output);
+
+            return node;
+        }
+
         public Node CreateInterfaceNode(String title, InterfaceDirection direction)
         {
             var node = new Node { Title = title };
             node.Tag = new ShaderInterfaceParameterNodeTag { Direction = direction };
-            node.AddItem(new ShaderFragmentAddParameterItem { Direction = direction }, Node.Dock.Center);
+            node.AddItem(
+                new ShaderFragmentAddParameterItem { ConnectorCreator = (n, t) => new ShaderFragmentInterfaceParameterItem(n, t) { Direction = direction } }, 
+                Node.Dock.Center);
             return node;
         }
 

@@ -495,7 +495,6 @@ namespace HyperGraph
 				if (outputConnector != null && (acceptElement== null || acceptElement(outputConnector)))
 					return outputConnector;
 
-				if (node.bounds.Contains(location))
 				{
                     if (!node.Collapsed)
                     {
@@ -503,8 +502,9 @@ namespace HyperGraph
                         if (item != null && (acceptElement == null || acceptElement(item)))
                             return item;
                     }
-					if (acceptElement == null || acceptElement(node))
-						return node;
+                    if (node.bounds.Contains(location))
+                        if (acceptElement == null || acceptElement(node))
+						    return node;
 				}
 			}
 

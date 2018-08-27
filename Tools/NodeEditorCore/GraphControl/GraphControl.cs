@@ -60,9 +60,12 @@ namespace NodeEditorCore
             var item1 = new ToolStripMenuItem() { Text = "Create Output" };
             item1.Click += new EventHandler(this.OnCreateOutputParameterNode);
 
+            var item2 = new ToolStripMenuItem() { Text = "Create Captures Group" };
+            item2.Click += new EventHandler(this.OnCreateCapturesGroup);
+
             return new ContextMenuStrip(this._components)
             {
-                Items = { item0, item1 }
+                Items = { item0, item1, item2 }
             };
         }
 
@@ -126,7 +129,7 @@ namespace NodeEditorCore
                     GetGraphModel().Disconnect(i);
         }
 
-        private void EditInterfaceParameter(ShaderFragmentInterfaceParameterItem interfItem)
+        private void EditInterfaceParameter(ShaderFragmentAdaptableParameterConnector interfItem)
         {
             using (var fm = new InterfaceParameterForm() { Name = interfItem.Name, Type = interfItem.Type, Semantic = interfItem.Semantic, Default = interfItem.Default })
             {
@@ -161,7 +164,7 @@ namespace NodeEditorCore
 
         private void OnConnectorDoubleClick(object sender, HyperGraph.GraphControl.NodeConnectorEventArgs e)
         {
-            var interfItem = e.Connector as ShaderFragmentInterfaceParameterItem;
+            var interfItem = e.Connector as ShaderFragmentAdaptableParameterConnector;
             if (interfItem != null)
             {
                 EditInterfaceParameter(interfItem);
@@ -225,7 +228,7 @@ namespace NodeEditorCore
                     // pop up a context menu for this connector
                     var menu = new ContextMenuStrip();
 
-                    var param = conn as ShaderFragmentInterfaceParameterItem;
+                    var param = conn as ShaderFragmentAdaptableParameterConnector;
                     if (param != null)
                     {
                         var editItem = new ToolStripMenuItem() { Text = "Edit parameter" };
@@ -361,7 +364,7 @@ namespace NodeEditorCore
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.In) { Semantic = fm.Semantic, Default = fm.Default }, Node.Dock.Output);
+                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type) { Semantic = fm.Semantic, Default = fm.Default, Direction = InterfaceDirection.In }, Node.Dock.Output);
                 }
             }
         }
@@ -377,7 +380,25 @@ namespace NodeEditorCore
                 var result = fm.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type, InterfaceDirection.Out) { Semantic = fm.Semantic, Default = fm.Default }, Node.Dock.Input);
+                    subgraph.AddItem(new ShaderFragmentInterfaceParameterItem(fm.Name, fm.Type) { Semantic = fm.Semantic, Default = fm.Default, Direction = InterfaceDirection.Out }, Node.Dock.Input);
+                }
+            }
+        }
+
+        private void OnCreateCapturesGroup(object sender, EventArgs e)
+        {
+            object subgraphTag = AttachedSubGraphTag(sender);
+            var subgraph = GetGraphModel().SubGraphs.Where(x => x.SubGraphTag == subgraphTag).FirstOrDefault();
+            if (subgraph == null) return;
+
+            using (var dialog = new HyperGraph.TextEditForm { InputText = "Uniforms" })
+            {
+                var result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    var node = NodeFactory.CreateCapturesNode(dialog.InputText, Enumerable.Empty<ShaderPatcherLayer.NodeGraphSignature.Parameter>());
+                    node.SubGraphTag = subgraph.SubGraphTag;
+                    GetGraphModel().AddNode(node);
                 }
             }
         }
