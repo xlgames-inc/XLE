@@ -539,7 +539,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         struct UniformSet { int _location; unsigned _index, _value; GLenum _type; int _elementCount; };
         std::vector<UniformSet> uniformSets;
 
-        #if defined(STORE_UNIFORM_NAMES)
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             std::set<uint64_t> boundGlobalUniforms;
             std::set<uint64_t> boundUniformStructs;
         #endif
@@ -558,7 +558,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (binding._hashName != 0) {
                     if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
 
-                    #if defined(STORE_UNIFORM_NAMES)
+                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                         assert(boundUniformStructs.find(binding._hashName) == boundUniformStructs.end());
                         boundUniformStructs.insert(binding._hashName);
                     #endif
@@ -567,7 +567,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
                     _cbs.emplace_back(CB{s, slot, std::move(cmdGroup)
-                        #if defined(STORE_UNIFORM_NAMES)
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , cmdGroup._name
                         #endif
                         });
