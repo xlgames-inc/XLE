@@ -14,7 +14,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     class ShaderProgram;
 
     #if defined(_DEBUG)
-        #define STORE_UNIFORM_NAMES
+        #define EXTRA_INPUT_LAYOUT_PROPERTIES
         //#define EXTRA_INPUT_LAYOUT_LOGGING
     #endif
 
@@ -29,7 +29,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         struct SetCommand { int _location; GLenum _type; unsigned _count; size_t _dataOffset; };
         std::vector<SetCommand> _commands;
-        #if defined(STORE_UNIFORM_NAMES)
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             std::string _name;
         #endif
 
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             int         _elementCount;
             unsigned    _activeUniformIndex;
 
-            #if defined(STORE_UNIFORM_NAMES)
+            #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                 std::string _name;
             #endif
         };
@@ -62,7 +62,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         public:
             std::vector<Uniform> _uniforms;
 
-            #if defined(STORE_UNIFORM_NAMES)
+            #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                 std::string _name;
             #endif
         };

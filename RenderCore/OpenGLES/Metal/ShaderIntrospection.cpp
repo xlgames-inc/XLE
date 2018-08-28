@@ -48,18 +48,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (basicType == inputBasicType) {
                     result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, b->_offset });
                 } else {
-                    #if defined(STORE_UNIFORM_NAMES)
+                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                         Log(Warning) << "In MakeBinding, binding shader struct to predefined layout failed because of type mismatch on uniform (" << i._name << ") in struct (" << s->second._name << ")" << std::endl;
                     #endif
                 }
             } else {
-                #if defined(STORE_UNIFORM_NAMES) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
+                #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
                     Log(Warning) << "In MakeBinding, uniform in shader (" << i._name << ") in struct (" << s->second._name << ") was not matched to binding" << std::endl;
                 #endif
             }
         }
 
-        #if defined(STORE_UNIFORM_NAMES)
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             result._name = s->second._name;
         #endif
 
@@ -90,7 +90,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     std::string ShaderIntrospection::GetName(const ShaderProgram& program, const Uniform& uniform)
     {
-        #if defined(STORE_UNIFORM_NAMES)
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             return uniform._name;
         #else
             auto glProgram = program.GetUnderlying()->AsRawGLHandle();
@@ -181,7 +181,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         HashVariableName(separatedNames.second),
                         location, type, size, c
 
-                        #if defined(STORE_UNIFORM_NAMES)
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , fullName.AsString()
                         #endif
                     });
@@ -190,7 +190,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto i = LowerBound(_structs, HashType(0));
                 if (i==_structs.end() || i->first != 0)
                     i = _structs.insert(i, std::make_pair(0, Struct{{}
-                        #if defined(STORE_UNIFORM_NAMES)
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , "global"
                         #endif
                         }));
