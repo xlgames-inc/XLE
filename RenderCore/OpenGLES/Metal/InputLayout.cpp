@@ -24,9 +24,12 @@
 #include "../../../Utility/ArithmeticUtils.h"
 #include "IncludeGLES.h"
 #include <set>
+#include <unordered_set>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    std::unordered_set<std::string> g_whitelistedAttributesForBinding;
+
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
     {
             //
@@ -198,6 +201,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     bool BoundInputLayout::CalculateAllAttributesBound(const ShaderProgram& program)
     {
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+            _unboundAttributesNames = std::vector<std::string>();
+        #endif
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 
         int activeAttributeCount = 0, activeAttributeMaxLength = 0;
@@ -212,6 +218,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             // ignore "gl" system attributes
             if (!strncmp(buffer, "gl_", 3)) continue;
+            // ignore whitelisted attributes
+            if (g_whitelistedAttributesForBinding.find(std::string(buffer)) != g_whitelistedAttributesForBinding.end()) {
+                continue;
+            }
 
             auto location = glGetAttribLocation(programHandle, buffer);
 
@@ -225,11 +235,20 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             if (!hasBoundAttribute) {
                 Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding." << std::endl;
-                return false;
+                #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                    _unboundAttributesNames.emplace_back(std::string(buffer));
+                #else
+                    // return early if not keeping track of unbound attributes
+                    return false;
+                #endif
             }
         }
-
-        return true;
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+            return _unboundAttributesNames.empty();
+        #else
+            // since it didn't return early, no attributes are missing
+            return true;
+        #endif
     }
 
     void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
