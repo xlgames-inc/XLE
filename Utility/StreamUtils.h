@@ -31,5 +31,21 @@ namespace Utility
             return stream;
         }
     };
+
+    template<typename T>
+    std::ostream& operator<<(std::ostream& oss, IteratorRange<const T*> v)
+    {
+        oss << "[";
+        bool first = true;
+        for (auto& item : v) {
+            if (!first) {
+                oss << ", ";
+            }
+            oss << item;
+            first = false;
+        }
+        oss << "]";
+        return oss;
+    }
 }
 using namespace Utility;
