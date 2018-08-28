@@ -230,7 +230,28 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto attachmentIdx = s._rtvs[rtv];
                 auto load = s._rtvLoad[rtv];
                 if (load == LoadStore::Clear) {
-                    glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                    auto formatComponentType = FormatComponentType::Float;
+                    if (s._rtvs[rtv].GetResource() && s._rtvs[rtv].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
+                        formatComponentType = GetComponentType(s._rtvs[rtv].GetResource()->GetDesc()._textureDesc._format);
+                    }
+                    switch (formatComponentType) {
+                    case FormatComponentType::UInt:
+                        glClearBufferuiv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._uint);
+                        break;
+                    case FormatComponentType::SInt:
+                        glClearBufferiv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._int);
+                        break;
+                    case FormatComponentType::UNorm:
+                    case FormatComponentType::SNorm:
+                    case FormatComponentType::UNorm_SRGB:
+                    case FormatComponentType::Typeless:
+                    case FormatComponentType::Float:
+                    case FormatComponentType::Exponential:
+                    case FormatComponentType::UnsignedFloat16:
+                    case FormatComponentType::SignedFloat16:
+                        glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                        break;
+                    }
                 }
             }
 

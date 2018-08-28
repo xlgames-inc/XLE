@@ -646,7 +646,7 @@ namespace RenderCore { namespace Techniques
                 // Look through the load/store values in the subpasses to find the "direction" for
                 // this attachment. When deciding on the load flags, we must look for the first
                 // subpass that references the attachment; for the store flags we look for the last
-                // subpass
+                // subpass that writes to it
                 for (auto p=f->_subpasses.begin(); p!=f->_subpasses.end(); ++p) {
                     auto subpassDirectionFlags = GetLoadDirectionFlags(*p, interf.first);
                     if (subpassDirectionFlags != 0) {
