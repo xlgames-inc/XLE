@@ -119,6 +119,21 @@ namespace RenderCore { namespace Metal_OpenGLES
         case CompareOp::Never:          return GL_NEVER;
         }
     }
+    
+    CompareOp AsCompareOp(GLenum comparison)
+    {
+        switch (comparison) {
+            case GL_LESS:           return CompareOp::Less;
+            case GL_EQUAL:          return CompareOp::Equal;
+            case GL_LEQUAL:         return CompareOp::LessEqual;
+            case GL_GREATER:        return CompareOp::Greater;
+            case GL_NOTEQUAL:       return CompareOp::NotEqual;
+            case GL_GEQUAL:         return CompareOp::GreaterEqual;
+            case GL_ALWAYS:         return CompareOp::Always;
+            default:
+            case GL_NEVER:          return CompareOp::Never;
+        }
+    }
 
     static unsigned s_nextSamplerStateGUID = 1;
 
