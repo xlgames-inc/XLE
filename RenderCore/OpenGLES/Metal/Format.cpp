@@ -584,6 +584,21 @@ namespace RenderCore { namespace Metal_OpenGLES
         default: return GL_KEEP;
         }
     }
+    
+    StencilOp AsStencilOp(GLenum stencilOp)
+    {
+        switch (stencilOp) {
+        case GL_KEEP: return StencilOp::Keep;
+        case GL_ZERO: return StencilOp::Zero;
+        case GL_REPLACE: return StencilOp::Replace;
+        case GL_INCR: return StencilOp::IncreaseSat;
+        case GL_DECR: return StencilOp::DecreaseSat;
+        case GL_INVERT: return StencilOp::Invert;
+        case GL_INCR_WRAP: return StencilOp::Increase;
+        case GL_DECR_WRAP: return StencilOp::Decrease;
+        default: return StencilOp::Keep;
+        }
+    }
 
     const char* GLenumAsString(GLenum value)
     {
