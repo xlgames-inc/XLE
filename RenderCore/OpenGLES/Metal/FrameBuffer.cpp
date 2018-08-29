@@ -62,6 +62,15 @@ namespace RenderCore { namespace Metal_OpenGLES
             assert(0);
         }
     }
+    
+    static bool HasClear(LoadStore loadStoreFlags)
+    {
+        return loadStoreFlags == LoadStore::Clear
+            || loadStoreFlags == LoadStore::DontCare_ClearStencil
+            || loadStoreFlags == LoadStore::Retain_ClearStencil
+            || loadStoreFlags == LoadStore::Clear_ClearStencil
+            ;
+    }
 
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
@@ -89,7 +98,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
 				sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
-				sp._rtvClearValue[r] = clearValueIterator++;
+                sp._rtvClearValue[r] = HasClear(sp._rtvLoad[r]) ? (clearValueIterator++) : ~0u;
 			}
 
             sp._dsvHasDepth = sp._dsvHasStencil = false;
@@ -100,7 +109,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
 				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
-				sp._dsvClearValue = clearValueIterator++;
+				sp._dsvClearValue = HasClear(sp._dsvLoad) ? (clearValueIterator++) : ~0u;
                 auto resolvedFormat = ResolveFormat(sp._dsv.GetResource()->GetDesc()._textureDesc._format, sp._dsv._window._format, FormatUsage::DSV);
                 auto components = GetComponents(resolvedFormat);
                 sp._dsvHasDepth = (components == FormatComponents::Depth) || (components == FormatComponents::DepthStencil);
