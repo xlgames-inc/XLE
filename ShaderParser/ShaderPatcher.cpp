@@ -536,38 +536,36 @@ namespace ShaderPatcher
                     return p.OutputNodeId() == node.NodeId()
                         && p.OutputParameterName() == tp._name;
                 });
-            if (connection!=nodeGraph.GetConnections().end()) {
-				if (XlEqString(MakeStringSection(connection->InputParameterName()), ParameterName_NodeInstantiation)) {
-					// this connection must be used as a template parameter
-					// The connected node is called an "instantiation" node -- it represents an instantiation of some function
-					// There can be values attached as inputs to the instantiation node; they act like curried parameters.
-					auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
-					assert(instantiationNode);
-					auto param = InstantiationParameters::Dependency { instantiationNode->ArchiveName(), {} };
+            if (connection!=nodeGraph.GetConnections().end() && XlEqString(MakeStringSection(connection->InputParameterName()), ParameterName_NodeInstantiation)) {
+				// this connection must be used as a template parameter
+				// The connected node is called an "instantiation" node -- it represents an instantiation of some function
+				// There can be values attached as inputs to the instantiation node; they act like curried parameters.
+				auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
+				assert(instantiationNode);
+				auto param = InstantiationParameters::Dependency { instantiationNode->ArchiveName(), {} };
 
-					// Any input parameters to this node that aren't part of the restriction signature should become curried
-					auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
-					for (const auto&c:nodeGraph.GetConnections()) {
-						if (c.OutputNodeId() == instantiationNode->NodeId()) {
-							auto paramName = c.OutputParameterName();
-							bool isPartOfRestriction = false;
-							if (restrictionSignature) {
-								auto i = std::find_if(
-									restrictionSignature.value()._signature.GetParameters().begin(),
-									restrictionSignature.value()._signature.GetParameters().end(),
-									[paramName](const NodeGraphSignature::Parameter&param) {
-										return XlEqString(MakeStringSection(param._semantic), paramName);
-									});
-								isPartOfRestriction = i != restrictionSignature.value()._signature.GetParameters().end();
-							}
-							if (!isPartOfRestriction) {
-								param._parametersToCurry.push_back(paramName);
-							}
+				// Any input parameters to this node that aren't part of the restriction signature should become curried
+				auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
+				for (const auto&c:nodeGraph.GetConnections()) {
+					if (c.OutputNodeId() == instantiationNode->NodeId()) {
+						auto paramName = c.OutputParameterName();
+						bool isPartOfRestriction = false;
+						if (restrictionSignature) {
+							auto i = std::find_if(
+								restrictionSignature.value()._signature.GetParameters().begin(),
+								restrictionSignature.value()._signature.GetParameters().end(),
+								[paramName](const NodeGraphSignature::Parameter&param) {
+									return XlEqString(MakeStringSection(param._semantic), paramName);
+								});
+							isPartOfRestriction = i != restrictionSignature.value()._signature.GetParameters().end();
+						}
+						if (!isPartOfRestriction) {
+							param._parametersToCurry.push_back(paramName);
 						}
 					}
-
-					callInstantiation._parameterBindings.insert({tp._name, param});
 				}
+
+				callInstantiation._parameterBindings.insert({tp._name, param});
             }
         }
 
@@ -642,6 +640,34 @@ namespace ShaderPatcher
 
             result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._generateDanglingInputs, sigProvider)._expression;
         }
+
+		// If the call instantiation itself has curried parameters, they won't appear in the 
+		// signature returned from ResolveFunction. We must append their values here
+		for (const auto& tp:callInstantiation._parameterBindings) {
+			if (tp.second._parametersToCurry.empty()) continue;
+
+			// First, find the instantiation node
+			auto connection = std::find_if(
+				nodeGraph.GetConnections().begin(),
+				nodeGraph.GetConnections().end(),
+				[&tp, &node](const Connection& p) {
+					return p.OutputNodeId() == node.NodeId()
+						&& p.OutputParameterName() == tp.first;
+				});
+			if (connection!=nodeGraph.GetConnections().end() && XlEqString(MakeStringSection(connection->InputParameterName()), ParameterName_NodeInstantiation)) {
+				auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
+				assert(instantiationNode);
+
+				// Now generate the syntax as if we're passing the parameter into the instantiation node
+				for (const auto& c:tp.second._parametersToCurry) {
+					if (pendingComma) result << ", ";
+					pendingComma = true;
+
+					NodeGraphSignature::Parameter param{"auto", c};
+					result << ParameterExpression(nodeGraph, instantiationNode->NodeId(), param, interfContext, instantiationParameters._generateDanglingInputs, sigProvider)._expression;
+				}
+			}
+		}
 
         result << " );" << std::endl;
         if (warnings.tellp()) {

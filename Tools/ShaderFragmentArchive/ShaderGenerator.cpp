@@ -509,6 +509,7 @@ namespace ShaderPatcherLayer
 			
 			ShaderPatcher::InstantiationParameters instantiationParams {};
 			instantiationParams._generateDanglingOutputs = previewNodeId;
+			instantiationParams._generateDanglingInputs = true;
 
 			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());
 			auto mainInstantiation = ShaderPatcher::InstantiateShader(

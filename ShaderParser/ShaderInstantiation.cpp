@@ -52,8 +52,21 @@ namespace ShaderPatcher
 				inst._graph._graph, implementationName, 
 				inst._instantiationParams, *inst._graph._subProvider);
 
-			if (inst._useScaffoldFunction)
-				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(inst._graph._signature, instFn._signature, scaffoldName, implementationName));
+			if (inst._useScaffoldFunction) {
+				auto scaffoldSignature = inst._graph._signature;
+				for (const auto&tp:inst._instantiationParams._parameterBindings) {
+					for (const auto&c:tp.second._parametersToCurry) {
+						auto name = "curried_" + tp.first + "_" + c;
+						auto instP = std::find_if(
+							instFn._signature.GetParameters().begin(), instFn._signature.GetParameters().end(),
+							[name](const NodeGraphSignature::Parameter& p) { return XlEqString(MakeStringSection(name), p._name); });
+						if (instP != instFn._signature.GetParameters().end())
+							scaffoldSignature.AddParameter(*instP);
+					}
+				}
+
+				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(scaffoldSignature, instFn._signature, scaffoldName, implementationName));
+			}
 			result._sourceFragments.push_back(instFn._text);
 
 			if (entryPointInstantiation)
