@@ -72,7 +72,7 @@ namespace PlatformRig { namespace Overlays
             _rightColor = ColorB(255, 255, 255);
             _dividingLineColor = ColorB(0, 0, 0);
 
-            _leftPartWidth = 400;
+            _leftPartWidth = 700;
             _middlePartWidth = 120;
             _precision = 1;
 
@@ -277,7 +277,7 @@ namespace PlatformRig { namespace Overlays
         IOverlayContext& context, Layout& layout,
         Interactables&interactables, InterfaceState& interfaceState)
     {
-        if (false) {
+        if (true) {
             std::vector<IHierarchicalProfiler::ResolvedEvent> resolvedEvents;
             {
                 ScopedLock(_pimpl->_resolvedEventsLock);
@@ -292,17 +292,17 @@ namespace PlatformRig { namespace Overlays
 	    {
 		    TextStyle fpsStyle{64};
 		    context.DrawText(
-			    std::make_tuple(AsPixelCoords(Coord2(10, // layout.GetMaximumSize()._bottomRight[0] - 100,
+			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1])),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
 			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
 			    StringMeld<64>() << std::setprecision(3) << g_fpsDisplay);
 	    }
 
-	    {
+	    if (g_loadDisplay != 0.f) {
 		    TextStyle fpsStyle{32};
 		    context.DrawText(
-			    std::make_tuple(AsPixelCoords(Coord2(10, // layout.GetMaximumSize()._bottomRight[0] - 100,
+			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1] + 64)),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
 			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
