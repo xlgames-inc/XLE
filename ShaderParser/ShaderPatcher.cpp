@@ -490,11 +490,6 @@ namespace ShaderPatcher
         return result;
     }
 
-	static InstantiationParameters::Dependency AsInstantiationDependency(const std::string& str)
-	{
-		return { str };
-	}
-
     static std::pair<std::stringstream, ResolvedFunction> GenerateFunctionCall(
         GraphInterfaceContext& interfContext,
         DependencyTable& workingDependencyTable,    // this is the dependency table into which we'll append this function call
@@ -542,9 +537,7 @@ namespace ShaderPatcher
                         && p.OutputParameterName() == tp._name;
                 });
             if (connection!=nodeGraph.GetConnections().end()) {
-				if (connection->InputNodeId() == NodeId_Constant) {
-					callInstantiation._parameterBindings.insert({tp._name, AsInstantiationDependency(connection->InputParameterName())});
-				} else if (XlEqString(MakeStringSection(connection->InputParameterName()), ParameterName_NodeInstantiation)) {
+				if (XlEqString(MakeStringSection(connection->InputParameterName()), ParameterName_NodeInstantiation)) {
 					// this connection must be used as a template parameter
 					// The connected node is called an "instantiation" node -- it represents an instantiation of some function
 					// There can be values attached as inputs to the instantiation node; they act like curried parameters.
@@ -568,7 +561,7 @@ namespace ShaderPatcher
 								isPartOfRestriction = i != restrictionSignature.value()._signature.GetParameters().end();
 							}
 							if (!isPartOfRestriction) {
-								param._parameters._parametersToCurry.push_back(paramName);
+								param._parametersToCurry.push_back(paramName);
 							}
 						}
 					}
@@ -582,8 +575,11 @@ namespace ShaderPatcher
 
         auto callInstHash = callInstantiation.CalculateHash();
         if (!callInstantiation._parameterBindings.empty()) {
-            for (const auto& c:callInstantiation._parameterBindings)
-                result << "\t// Instantiating " << c.first << " with " << c.second._archiveName << " in call to " << functionName << std::endl;
+            for (const auto& c:callInstantiation._parameterBindings) {
+                result << "\t// Instantiating " << functionName << " with " << c.first << " set to " << c.second._archiveName << std::endl;
+				for (const auto& p:c.second._parametersToCurry)
+					result << "\t//     Curried parameter: " << p << std::endl;
+			}
             functionName += "_" + std::to_string(callInstHash);
         }
 
@@ -607,6 +603,13 @@ namespace ShaderPatcher
             result << "\t" << functionName << "( ";
         }
 
+		auto n = RemoveTemplateRestrictions(node.ArchiveName());
+		auto parameterBindingsForThisNode = std::find_if(
+			instantiationParameters._parameterBindings.begin(), instantiationParameters._parameterBindings.end(),
+			[n](const std::pair<std::string, InstantiationParameters::Dependency>&p) {
+				return XlEqString(MakeStringSection(p.first), n);
+			});
+
         bool pendingComma = false;
         for (auto p=sig.GetParameters().cbegin(); p!=sig.GetParameters().cend(); ++p) {
             if (p->_direction == ParameterDirection::Out && p->_name == s_resultName)
@@ -624,15 +627,16 @@ namespace ShaderPatcher
 			if (p->_direction == ParameterDirection::In) {
 				// Check if this parameter is marked to be "curried" by a template instantiation
 				// When this happens, the value must be passed through the interface from the caller
-				auto i = std::find_if(
-					sigRes._instantiationParameters._parametersToCurry.begin(),
-					sigRes._instantiationParameters._parametersToCurry.end(),
-					[p](const std::string& str) { return XlEqString(MakeStringSection(str), p->_name);});
-				if (i != sigRes._instantiationParameters._parametersToCurry.end()) {
-					auto n = RemoveTemplateRestrictions(node.ArchiveName());
-					interfContext._curriedParameters.push_back({n, *p});
-					result << "curried_" << n << "_" << p->_name;
-					continue;
+				if (parameterBindingsForThisNode != instantiationParameters._parameterBindings.end()) {
+					auto i = std::find_if(
+						parameterBindingsForThisNode->second._parametersToCurry.begin(),
+						parameterBindingsForThisNode->second._parametersToCurry.end(),
+						[p](const std::string& str) { return XlEqString(MakeStringSection(str), p->_name);});
+					if (i != parameterBindingsForThisNode->second._parametersToCurry.end()) {
+						interfContext._curriedParameters.push_back({n, *p});
+						result << "curried_" << n << "_" << p->_name;
+						continue;
+					}
 				}
 			}
 
@@ -1246,10 +1250,11 @@ namespace ShaderPatcher
         if (_parameterBindings.empty()) return 0;
         uint64 result = DefaultSeed64;
 		// todo -- ordering of parameters matters to the hash here
-        for (const auto&p:_parameterBindings)
+        for (const auto&p:_parameterBindings) {
             result = Hash64(p.first, ShaderPatcher::CalculateHash(p.second, result));
-		for (const auto&p:_parametersToCurry)
-			result = Hash64(p, result);
+			for (const auto&pc:p.second._parametersToCurry)
+				result = Hash64(pc, result);
+		}
         return result;
     }
 }
