@@ -193,20 +193,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         #if PLATFORMOS_TARGET == PLATFORMOS_OSX
             // hack for version string for OSX
             const GLchar* versionDecl = isFragmentShader
-                ? "#version 120\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
-                : "#version 120\n#define NEW_UNIFORM_API 1\n"
-                ;
+                ? "#version 120\n#define FRAGMENT_SHADER 1\n"
+                : "#version 120\n";
             (void)supportsGLES300;
         #else
             const GLchar* versionDecl;
             if (supportsGLES300) {
                 versionDecl = isFragmentShader
-                    ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
-                    : "#version 300 es\n#define NEW_UNIFORM_API 1\n";
+                    ? "#version 300 es\n#define FRAGMENT_SHADER 1\n"
+                    : "#version 300 es\n";
             } else {
                 versionDecl = isFragmentShader
-                    ? "#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
-                    : "#define NEW_UNIFORM_API 1\n";
+                    ? "#define FRAGMENT_SHADER 1\n"
+                    : "";
             }
         #endif
 
