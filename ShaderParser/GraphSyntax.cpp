@@ -134,7 +134,7 @@ namespace ShaderPatcher
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class GraphNodeGraphProvider : public BasicNodeGraphProvider, std::enable_shared_from_this<GraphNodeGraphProvider>
+	class GraphNodeGraphProvider : public BasicNodeGraphProvider, public std::enable_shared_from_this<INodeGraphProvider>
     {
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
@@ -320,6 +320,15 @@ extern "C" ConnectorId IdentifierConnector_Register(const void* ctx, GraphId gid
 
 	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
 	ng._literalConnectors.push_back(ShaderPatcher::MakeArchiveName(identifierAndScope));
+	return nextId;
+}
+
+extern "C" ConnectorId PartialInstantiationConnector_Register(const void* ctx, GraphId gid, NodeId node)
+{
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+
+	ConnectorId nextId = (ConnectorId)ng._connectors.size();
+	ng._connectors.push_back({node, ShaderPatcher::ParameterName_NodeInstantiation});
 	return nextId;
 }
 

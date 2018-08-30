@@ -43,6 +43,7 @@ options
 	ConnectorId Connector_Register(const void*, GraphId gid, NodeId node, const char connectorName[]);
 	ConnectorId LiteralConnector_Register(const void*, GraphId gid, const char literal[]);
 	ConnectorId IdentifierConnector_Register(const void*, GraphId gid, IdentifierAndScope identifierAndScope);
+	ConnectorId PartialInstantiationConnector_Register(const void* ctx, GraphId gid, NodeId node);
 	ConnectionId Connection_Register(const void*, GraphId gid, ConnectorId left, ConnectorId right);
 
 	void Node_Name(const void*, GraphId, NodeId, const char name[]);
@@ -174,16 +175,20 @@ rconnection returns [ConnectorId connector = ~0u]
 		{
 			connector = Connector_Register(ctx, $graphDefinition::graphId, n0, c0);
 		}
-	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH importSrc=identifierToken ident0=identifierToken))
+	| ^(RCONNECTION_FUNCTION_PATH ^(FUNCTION_PATH importSrc=identifierToken ident0=identifierToken))
 		{
 			IdentifierAndScope i;
 			i._scope = importSrc;
 			i._identifier = ident0;
 			connector = IdentifierConnector_Register(ctx, $graphDefinition::graphId, i);
 		}
-	| ^((RCONNECTION_FUNCTION_PATH) ^(FUNCTION_PATH ident1=identifier))
+	| ^(RCONNECTION_IDENTIFIER ident1=identifier)
 		{
 			connector = Connector_Register(ctx, $graphDefinition::graphId, ~0u, ident1);
+		}
+	| ^(RCONNECTION_PARTIAL_INSTANTIATION n1=rnode)
+		{
+			connector = PartialInstantiationConnector_Register(ctx, $graphDefinition::graphId, n1);
 		}
 	| ^(LITERAL StringLiteral)
 		{

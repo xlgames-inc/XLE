@@ -26,7 +26,8 @@ tokens
 	FUNCTION_CALL_CONNECTION;			// this is a connection expressed in function call syntax; eg -- graph(lhs:rhs)
 	RCONNECTION_INLINE_FUNCTION_CALL;	// this is a rconnection which involves an inline function call; eg -- graph(lhs:graph2().result)
 	RCONNECTION_REF;					// this is a reference to a node and connector
-	RCONNECTION_FUNCTION_PATH;
+	RCONNECTION_IDENTIFIER;
+	RCONNECTION_PARTIAL_INSTANTIATION;
 	RETURN_CONNECTION;
 	OUTPUT_CONNECTION;
 
@@ -74,15 +75,6 @@ functionPath
 	;
 functionCall : ('[[' attributeTableTable=Identifier ']]')? f=functionPath '(' (functionCallConnection (',' functionCallConnection)*)? ')' -> ^(FUNCTION_CALL $f ^(ATTRIBUTE_TABLE_NAME $attributeTableTable)? functionCallConnection*);
 
-lconnection : n=Identifier -> $n;
-rconnection
-	: f=functionCall '.' n0=Identifier -> ^(RCONNECTION_INLINE_FUNCTION_CALL $f $n0)
-	| frag=Identifier '.' n1=Identifier -> ^(RCONNECTION_REF $frag $n1)
-	| c=StringLiteral -> ^(LITERAL $c)
-	| ident=functionPath -> ^(RCONNECTION_FUNCTION_PATH $ident)
-	;
-functionCallConnection : l=lconnection ':' r=rconnection -> ^(FUNCTION_CALL_CONNECTION $l $r);
-
 typeName
 	: Identifier
 	| 'graph' '<' functionPath '>' -> ^(GRAPH_TYPE functionPath)
@@ -119,11 +111,25 @@ graphSignature
 
 // ------ M A I N   B O D Y -----------------------------------------------------------------------
 
+lconnection : n=Identifier -> $n;
+rconnection
+	: f=functionCall 
+		(
+			'.' n0=Identifier		-> ^(RCONNECTION_INLINE_FUNCTION_CALL $f $n0)
+			|						-> ^(RCONNECTION_PARTIAL_INSTANTIATION $f)
+		)
+	
+	| frag=Identifier '.' n1=Identifier		-> ^(RCONNECTION_REF $frag $n1)
+	| c=StringLiteral						-> ^(LITERAL $c)
+	| ident=Identifier						-> ^(RCONNECTION_IDENTIFIER $ident)
+	;
+functionCallConnection : l=lconnection ':' r=rconnection -> ^(FUNCTION_CALL_CONNECTION $l $r);
+
 nodeDeclaration
 	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
 	;
 
-connection 
+connection
 	: n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r)
 	| out=Identifier '=' r=rconnection -> ^(OUTPUT_CONNECTION $out $r)
 	| 'return' r=rconnection -> ^(RETURN_CONNECTION $r)

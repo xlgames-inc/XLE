@@ -20,6 +20,7 @@ namespace ShaderPatcher
 
 	static NodeId NodeId_Interface = (NodeId)-1;
 	static NodeId NodeId_Constant = (NodeId)-2;
+	extern std::string ParameterName_NodeInstantiation;
 
         ///////////////////////////////////////////////////////////////
 

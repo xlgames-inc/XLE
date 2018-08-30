@@ -29,6 +29,7 @@ namespace ShaderPatcher
 {
 
     const std::string s_resultName = "result";
+	std::string ParameterName_NodeInstantiation = "<instantiation>";
     static const NodeId s_nodeId_Invalid = ~0u;
 
         ///////////////////////////////////////////////////////////////
@@ -1079,7 +1080,8 @@ namespace ShaderPatcher
 					result << "\"" << i.InputParameterName() << "\"";
 				} else {
 					GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
-					result << "." << i.InputParameterName();
+					if (!XlEqString(MakeStringSection(i.InputParameterName()), MakeStringSection(ParameterName_NodeInstantiation)))
+						result << "." << i.InputParameterName();
 				}
 			}
 		} else {
