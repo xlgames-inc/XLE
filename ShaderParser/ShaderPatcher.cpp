@@ -264,6 +264,8 @@ namespace ShaderPatcher
 		IteratorRange<const NodeGraphSignature::Parameter*>		_predefinedParameters;
 		std::vector<NodeGraphSignature::Parameter>				_dangingParameters;		// these are input/outputs from nodes in the graph that aren't connected to anything
 		std::vector<NodeGraphSignature::Parameter>				_additionalParameters;	// these are interface parameters referenced in the graph that don't match anything in the fixed interface
+
+		std::vector<std::pair<std::string, NodeGraphSignature::Parameter>>	_curriedParameters;
 	};
 
 	static bool HasParameterWithName(const std::string& name, IteratorRange<const NodeGraphSignature::Parameter*> params)
@@ -288,6 +290,15 @@ namespace ShaderPatcher
 			}
 		}
     }
+
+	static std::string RemoveTemplateRestrictions(const std::string& input)
+	{
+		static std::regex filter(R"--((\w*)<.*>)--");
+		std::smatch matchResult;
+        if (std::regex_match(input, matchResult, filter) && matchResult.size() > 1)
+			return matchResult[1];
+		return input;
+	}
 
 	static std::string TypeOfConstant(StringSection<> constantValue)
 	{
@@ -351,6 +362,7 @@ namespace ShaderPatcher
     static ExpressionString ParameterExpression(
 		const NodeGraph& nodeGraph, NodeId nodeId, const NodeGraphSignature::Parameter& signatureParam,
 		GraphInterfaceContext& interfContext, 
+		bool generateDanglingInputs,
 		INodeGraphProvider& sigProvider)
     {
 		auto expectedType = signatureParam._type;
@@ -360,9 +372,14 @@ namespace ShaderPatcher
 		}
 
 		// We must add this request as some kind of input to the function (ie, a parameter input or a global input)
-		auto uniqueName = UniquifyName(signatureParam._name, interfContext);
-		interfContext._dangingParameters.push_back({expectedType, uniqueName, ParameterDirection::In, signatureParam._semantic});
-		return {uniqueName, expectedType};
+		// auto uniqueName = UniquifyName(signatureParam._name, interfContext);
+		if (generateDanglingInputs) {
+			auto uniqueName = "in_" + std::to_string(nodeId) + "_" + signatureParam._name;
+			interfContext._dangingParameters.push_back({expectedType, uniqueName, ParameterDirection::In, signatureParam._semantic});
+			return {uniqueName, expectedType};
+		} else {
+			return {"DefaultValue_" + expectedType + "()", expectedType};
+		}
     }
 
     template<typename Connection>
@@ -436,11 +453,6 @@ namespace ShaderPatcher
             auto parameterName = MakeStringSection(archiveName.begin(), marker);
             auto restriction = MakeStringSection(marker+1, std::find(archiveName.begin(), archiveName.end(), '>'));
 
-            auto sigProviderResult = sigProvider.FindSignature(restriction);
-            if (!sigProviderResult)
-                Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", restriction.AsString().c_str()));
-			result._signature = sigProviderResult.value()._signature;
-
             auto i = instantiationParameters._parameterBindings.find(parameterName.AsString());
             if (i!=instantiationParameters._parameterBindings.end()) {
 				result._finalArchiveName = i->second._archiveName;
@@ -448,6 +460,13 @@ namespace ShaderPatcher
             } else {
 				result._finalArchiveName = restriction.AsString();
             }
+
+			auto sigProviderResult = sigProvider.FindSignature(result._finalArchiveName);
+			if (!sigProviderResult)
+				sigProviderResult = sigProvider.FindSignature(restriction);
+            if (!sigProviderResult)
+                Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", restriction.AsString().c_str()));
+			result._signature = sigProviderResult.value()._signature;
 
 			auto p = result._finalArchiveName.find_last_of(':');
 			if (p != std::string::npos) {
@@ -520,11 +539,42 @@ namespace ShaderPatcher
                 nodeGraph.GetConnections().end(),
                 [tp, &node](const Connection& p) {
                     return p.OutputNodeId() == node.NodeId()
-                        && p.OutputParameterName() == tp._name
-						&& p.InputNodeId() == NodeId_Constant;
+                        && p.OutputParameterName() == tp._name;
                 });
             if (connection!=nodeGraph.GetConnections().end()) {
-				callInstantiation._parameterBindings.insert({tp._name, AsInstantiationDependency(connection->InputParameterName())});
+				if (connection->InputNodeId() == NodeId_Constant) {
+					callInstantiation._parameterBindings.insert({tp._name, AsInstantiationDependency(connection->InputParameterName())});
+				} else if (XlEqString(MakeStringSection(connection->InputParameterName()), ParameterName_NodeInstantiation)) {
+					// this connection must be used as a template parameter
+					// The connected node is called an "instantiation" node -- it represents an instantiation of some function
+					// There can be values attached as inputs to the instantiation node; they act like curried parameters.
+					auto* instantiationNode = nodeGraph.GetNode(connection->InputNodeId());
+					assert(instantiationNode);
+					auto param = InstantiationParameters::Dependency { instantiationNode->ArchiveName(), {} };
+
+					// Any input parameters to this node that aren't part of the restriction signature should become curried
+					auto restrictionSignature = sigProvider.FindSignature(tp._restriction);
+					for (const auto&c:nodeGraph.GetConnections()) {
+						if (c.OutputNodeId() == instantiationNode->NodeId()) {
+							auto paramName = c.OutputParameterName();
+							bool isPartOfRestriction = false;
+							if (restrictionSignature) {
+								auto i = std::find_if(
+									restrictionSignature.value()._signature.GetParameters().begin(),
+									restrictionSignature.value()._signature.GetParameters().end(),
+									[paramName](const NodeGraphSignature::Parameter&param) {
+										return XlEqString(MakeStringSection(param._semantic), paramName);
+									});
+								isPartOfRestriction = i != restrictionSignature.value()._signature.GetParameters().end();
+							}
+							if (!isPartOfRestriction) {
+								param._parameters._parametersToCurry.push_back(paramName);
+							}
+						}
+					}
+
+					callInstantiation._parameterBindings.insert({tp._name, param});
+				}
             }
         }
 
@@ -571,7 +621,22 @@ namespace ShaderPatcher
                 continue;
             }
 
-            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, sigProvider)._expression;
+			if (p->_direction == ParameterDirection::In) {
+				// Check if this parameter is marked to be "curried" by a template instantiation
+				// When this happens, the value must be passed through the interface from the caller
+				auto i = std::find_if(
+					sigRes._instantiationParameters._parametersToCurry.begin(),
+					sigRes._instantiationParameters._parametersToCurry.end(),
+					[p](const std::string& str) { return XlEqString(MakeStringSection(str), p->_name);});
+				if (i != sigRes._instantiationParameters._parametersToCurry.end()) {
+					auto n = RemoveTemplateRestrictions(node.ArchiveName());
+					interfContext._curriedParameters.push_back({n, *p});
+					result << "curried_" << n << "_" << p->_name;
+					continue;
+				}
+			}
+
+            result << ParameterExpression(nodeGraph, node.NodeId(), *p, interfContext, instantiationParameters._generateDanglingInputs, sigProvider)._expression;
         }
 
         result << " );" << std::endl;
@@ -733,6 +798,11 @@ namespace ShaderPatcher
 		NodeGraphSignature finalInterface;
 		for (auto& p:interfContext._additionalParameters) finalInterface.AddParameter(p);
 		for (auto& p:interfContext._dangingParameters) finalInterface.AddParameter(p);
+		for (auto& p:interfContext._curriedParameters) {
+			auto param = p.second;
+			param._name = "curried_" + p.first + "_" + p.second._name;
+			finalInterface.AddParameter(param);
+		}
 
         return std::make_tuple(result.str(), std::move(finalInterface), std::move(depTable));
     }
@@ -1036,15 +1106,6 @@ namespace ShaderPatcher
 		}
 	}
 
-	static std::string RemoveTemplateRestrictions(const std::string& input)
-	{
-		static std::regex filter(R"--((\w*)<.*>)--");
-		std::smatch matchResult;
-        if (std::regex_match(input, matchResult, filter) && matchResult.size() > 1)
-			return matchResult[1];
-		return input;
-	}
-
 	static void GenerateGraphSyntaxInstantiation(
 		std::ostream& result,
 		const NodeGraph& graph,
@@ -1187,6 +1248,8 @@ namespace ShaderPatcher
 		// todo -- ordering of parameters matters to the hash here
         for (const auto&p:_parameterBindings)
             result = Hash64(p.first, ShaderPatcher::CalculateHash(p.second, result));
+		for (const auto&p:_parametersToCurry)
+			result = Hash64(p, result);
         return result;
     }
 }

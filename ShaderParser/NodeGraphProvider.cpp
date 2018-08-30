@@ -96,22 +96,23 @@ namespace ShaderPatcher
 
     auto BasicNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
     {
-        auto splitName = SplitArchiveName(name);
-
         auto hash = Hash64(name.begin(), name.end());
         auto existing = _cache.find(hash);
         if (existing == _cache.end()) {
-			char resolvedFile[MaxPath];
-			_searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
-			if (resolvedFile[0]) {
-				TRY {
-					auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
-					auto* fn = frag.GetFunction(std::get<1>(splitName));
-					if (fn != nullptr) {
-						existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile), frag._isGraphSyntaxFile}}).first;
-					}
-				} CATCH (const ::Assets::Exceptions::RetrievalError&) {
-				} CATCH_END
+			auto splitName = SplitArchiveName(name);
+			if (!std::get<0>(splitName).IsEmpty()) {
+				char resolvedFile[MaxPath];
+				_searchRules.ResolveFile(resolvedFile, std::get<0>(splitName));
+				if (resolvedFile[0]) {
+					TRY {
+						auto& frag = ::Assets::GetAssetDep<ShaderFragment>(resolvedFile);
+						auto* fn = frag.GetFunction(std::get<1>(splitName));
+						if (fn != nullptr) {
+							existing = _cache.insert({hash, Entry{std::get<1>(splitName).AsString(), *fn, std::string(resolvedFile), frag._isGraphSyntaxFile}}).first;
+						}
+					} CATCH (const ::Assets::Exceptions::RetrievalError&) {
+					} CATCH_END
+				}
 			}
         }
 

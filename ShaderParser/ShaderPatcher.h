@@ -101,6 +101,8 @@ namespace ShaderPatcher
     public:
 		struct Dependency;
         std::unordered_map<std::string, Dependency> _parameterBindings;
+		std::vector<std::string> _parametersToCurry;
+		bool _generateDanglingInputs = false;
 		NodeId _generateDanglingOutputs = NodeId_Interface;
         uint64_t CalculateHash() const;
 
@@ -109,9 +111,9 @@ namespace ShaderPatcher
 		InstantiationParameters() {}
     };
 
-	struct InstantiationParameters::Dependency 
-	{ 
-		std::string _archiveName; 
+	struct InstantiationParameters::Dependency
+	{
+		std::string _archiveName;
 		InstantiationParameters _parameters = {};
 	};
 
