@@ -112,6 +112,7 @@
     <Link />
     <Link>
       <SubSystem>Console</SubSystem>
+      <AdditionalDependencies>dxguid.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
     <ClCompile>
       <AdditionalIncludeDirectories>$(ProjectDir)../../../;%(AdditionalIncludeDirectories)</AdditionalIncludeDirectories>

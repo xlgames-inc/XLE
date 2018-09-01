@@ -145,8 +145,10 @@ namespace RenderCore { namespace Techniques
         // look for old FBs, and evict; then just increase the tick id
         const unsigned evictionRange = 10;
         for (auto&e:_entries)
-            if ((e._tickId + evictionRange) < _currentTickId)
+            if ((e._tickId + evictionRange) < _currentTickId) {
                 e._fb.reset();
+				e._hash = 0;
+			}
         ++_currentTickId;
     }
 

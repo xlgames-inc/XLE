@@ -532,11 +532,15 @@ namespace NodeEditorCore
         {
             var node = new Node { Title = (fn != null) ? fn.Name : VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName);
-            node.Layout = previewSettings.Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
+            node.Layout = Node.LayoutType.Rectangular;
 
             var previewItem = new ShaderFragmentPreviewItem();
             if (previewSettings != null)
+            {
                 previewItem.PreviewSettings = previewSettings;
+                if (previewSettings.Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere)
+                    node.Layout = Node.LayoutType.Circular;
+            }
 
             // use composition to access some exported types --
             {

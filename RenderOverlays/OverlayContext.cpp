@@ -515,7 +515,10 @@ namespace RenderOverlays
                     // and create a binding for the class interfaces we want.
                 assetName << "xleres/" << desc._pixelShaderName.substr(0, comma) << ":!ps_*";
 
-                _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource?geometryShaderSource:"", assetName.get(), "");
+				if (geometryShaderSource) {
+					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
+				} else
+					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, assetName.get(), "");
                 _boundClassInterfaces = Metal::BoundClassInterfaces(*_shaderProgram);
 
                 auto i = desc._pixelShaderName.cbegin() + comma + 1;

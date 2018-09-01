@@ -34,7 +34,7 @@ namespace HyperGraph
 		public const int MinimumItemWidth		= 64+8;
 		public const int MinimumItemHeight		= 12;
 		public const int TitleHeight			= 20;
-		public const int ItemSpacing			= 3;
+		public const int ItemSpacing			= 2;
 		public const int TopHeight				= 2;
         public const int BottomHeight           = 2;
         public const int TopHeightCollapsed     = 6;

@@ -307,7 +307,7 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class GraphNodeGraphProvider : public ShaderPatcher::BasicNodeGraphProvider, std::enable_shared_from_this<GraphNodeGraphProvider>
+	class GraphNodeGraphProvider : public ShaderPatcher::BasicNodeGraphProvider, public std::enable_shared_from_this<GraphNodeGraphProvider>
     {
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
@@ -320,8 +320,16 @@ namespace ShaderPatcherLayer
         ~GraphNodeGraphProvider();
     protected:
 		gcroot<NodeGraphFile^> _parsedGraphFile;
-		const std::unordered_map<std::string, std::string>* _imports;
+		std::unordered_map<std::string, std::string> _imports;
     };
+
+	std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeGraphSyntaxProvider(
+		NodeGraphFile^ parsedGraphFile,
+		const std::unordered_map<std::string, std::string>& imports,
+		const ::Assets::DirectorySearchRules& searchRules)
+	{
+		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules);
+	}
 
 	auto GraphNodeGraphProvider::FindSignature(StringSection<> name) -> std::optional<Signature>
 	{
@@ -337,8 +345,8 @@ namespace ShaderPatcherLayer
 			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
 			auto functionName = MakeStringSection(scopingOperator+1, name.end());
 
-			auto importedName = _imports->find(import);
-			if (importedName != _imports->end())
+			auto importedName = _imports.find(import);
+			if (importedName != _imports.end())
 				return BasicNodeGraphProvider::FindSignature(importedName->second + ":" + functionName.AsString());
 			return BasicNodeGraphProvider::FindSignature(import + ":" + functionName.AsString());
 		}
@@ -348,7 +356,7 @@ namespace ShaderPatcherLayer
 		System::String^ str = clix::marshalString<clix::E_UTF8>(name);
 		if (_parsedGraphFile->SubGraphs->TryGetValue(str, subGraph)) {
 			ConversionContext convContext;
-			return Signature{ name.AsString(), subGraph->Signature->ConvertToNative(convContext) };
+			return Signature{ name.AsString(), subGraph->Signature->ConvertToNative(convContext), std::string(), true };
 		}
 
 		// Just fallback to default behaviour
@@ -367,8 +375,8 @@ namespace ShaderPatcherLayer
 			auto import = MakeStringSection(name.begin(), scopingOperator-1).AsString();
 			auto functionName = MakeStringSection(scopingOperator+1, name.end());
 
-			auto importedName = _imports->find(import);
-			if (importedName != _imports->end())
+			auto importedName = _imports.find(import);
+			if (importedName != _imports.end())
 				return BasicNodeGraphProvider::FindGraph(importedName->second + ":" + functionName.AsString());
 			return BasicNodeGraphProvider::FindGraph(import + ":" + functionName.AsString());
 		}
@@ -378,7 +386,10 @@ namespace ShaderPatcherLayer
 		System::String^ str = clix::marshalString<clix::E_UTF8>(name);
 		if (_parsedGraphFile->SubGraphs->TryGetValue(str, subGraph)) {
 			ConversionContext convContext;
-			return NodeGraph{ name.AsString(), subGraph->Graph->ConvertToNative(convContext), subGraph->Signature->ConvertToNative(convContext), shared_from_this() };
+			NodeGraph result { name.AsString(), subGraph->Graph->ConvertToNative(convContext), subGraph->Signature->ConvertToNative(convContext), nullptr };
+			convContext._importTable.insert(_imports.begin(), _imports.end());
+			result._subProvider = MakeGraphSyntaxProvider(_parsedGraphFile, convContext._importTable, _parsedGraphFile->GetSearchRules()->GetNative());
+			return result;
 		}
 
 		// Just fallback to default behaviour
@@ -391,19 +402,11 @@ namespace ShaderPatcherLayer
 		const ::Assets::DirectorySearchRules& searchRules)
 	: BasicNodeGraphProvider(searchRules)
 	, _parsedGraphFile(parsedGraphFile)
-	, _imports(&imports)
+	, _imports(imports)
 	{}
 
 	GraphNodeGraphProvider::~GraphNodeGraphProvider()
 	{}
-
-	std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeGraphSyntaxProvider(
-		NodeGraphFile^ parsedGraphFile,
-		const std::unordered_map<std::string, std::string>& imports,
-		const ::Assets::DirectorySearchRules& searchRules)
-	{
-		return std::make_shared<GraphNodeGraphProvider>(parsedGraphFile, imports, searchRules);
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -455,12 +458,11 @@ namespace ShaderPatcherLayer
 			subGraph->Signature = NodeGraphSignature::ConvertFromNative(p.second._signature, context);
 			subGraph->Graph = NodeGraph::ConvertFromNative(p.second._graph, context);
 			result->SubGraphs->Add(clix::marshalString<clix::E_UTF8>(p.first), subGraph);
-
-			for (const auto&at:input._attributeTables) {
-				result->AttributeTables->Add(
-					marshalString<E_UTF8>(at.first),
-					ShaderPatcherLayer::ConvertFromNative(at.second));
-			}
+		}
+		for (const auto&at:input._attributeTables) {
+			result->AttributeTables->Add(
+				marshalString<E_UTF8>(at.first),
+				ShaderPatcherLayer::ConvertFromNative(at.second));
 		}
 		result->_searchRules = gcnew GUILayer::DirectorySearchRules(searchRules);
 		return result;
@@ -506,6 +508,12 @@ namespace ShaderPatcherLayer
 			ConversionContext context;
             auto nativeGraph = ConvertToNative(context);
 			nativeGraph.Trim(previewNodeId);
+
+			// We're going to need the import keys for the template restrictions on the signature for this graph.
+			// Let's just collect up all of the imports for all signatures in the node graph file
+			for each(auto sg in nodeGraphFile->SubGraphs)
+				for each(auto sig in sg.Value->Signature->TemplateParameters)
+					CompressImportedName(clix::marshalString<clix::E_UTF8>(sig->Restriction), context);
 			
 			ShaderPatcher::InstantiationParameters instantiationParams {};
 			instantiationParams._generateDanglingOutputs = previewNodeId;

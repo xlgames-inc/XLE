@@ -38,6 +38,8 @@ namespace ShaderPatcher
 		std::stack<PendingInstantiation> instantiations;
 		instantiations.emplace(PendingInstantiation{initialGraph, useScaffoldFunction, instantiationParameters});
 
+		std::set<std::pair<std::string, uint64_t>> previousInstantiation;
+
 		bool entryPointInstantiation = true;
         while (!instantiations.empty()) {
             auto inst = std::move(instantiations.top());
@@ -84,13 +86,17 @@ namespace ShaderPatcher
 				}
 
 				// if it's a graph file, then we must create a specific instantiation
+				auto instHash = dep._parameters.CalculateHash();
 				if (dep._isGraphSyntaxFile) {
-					instantiations.emplace(
-						PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
+					if (previousInstantiation.find({dep._archiveName, instHash}) == previousInstantiation.end()) {
+						instantiations.emplace(
+							PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
+						previousInstantiation.insert({dep._archiveName, instHash});
+					}
 				} else {
 					// This is just an include of a normal shader header
-					if (!inst._instantiationParams._parameterBindings.empty()) {
-						includes.insert(std::string(StringMeld<MaxPath>() << filename + "_" << inst._instantiationParams.CalculateHash()));
+					if (instHash!=0) {
+						includes.insert(std::string(StringMeld<MaxPath>() << filename + "_" << instHash));
 					} else {
 						auto sig = inst._graph._subProvider->FindSignature(dep._archiveName);
 						includes.insert(sig.value()._sourceFile);

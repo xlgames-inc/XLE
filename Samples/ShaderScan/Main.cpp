@@ -68,6 +68,7 @@ namespace ShaderScan
 		auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
 		auto perPixel = ShaderPatcher::InstantiationParameters::Dependency { 
 			"xleres/Techniques/Object_Default.graph::Default_PerPixel",
+			{},
 			{
 				{ "materialSampler", { "xleres/Techniques/Object_Default.sh::MaterialSampler_RMS" } }
 			}
@@ -80,7 +81,7 @@ namespace ShaderScan
 		auto fragments = ShaderPatcher::InstantiateShader("xleres/Techniques/Pass_Deferred.graph", "main", instParams);
 
         Log(Verbose) << "--- Output ---" << std::endl;
-        for (auto frag=fragments.rbegin(); frag!=fragments.rend(); ++frag)
+        for (auto frag=fragments._sourceFragments.rbegin(); frag!=fragments._sourceFragments.rend(); ++frag)
             Log(Verbose) << *frag << std::endl;
 	}
 }
