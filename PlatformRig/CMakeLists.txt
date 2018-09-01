@@ -1,6 +1,9 @@
 file(GLOB Src "*.cpp")
 file(GLOB Headers "*.h")
 
+list(FILTER Src EXCLUDE REGEX ".*MeshNode.cpp$")
+list(FILTER Src EXCLUDE REGEX ".*StatePropagation.cpp$")
+
 if (WIN32)
     file(GLOB WinSrc "WinAPI/*.cpp")
 endif()
