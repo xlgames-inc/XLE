@@ -350,12 +350,11 @@ namespace Assets { namespace IntermediateAssets
 
                         // Opening without sharing to prevent other instances of XLE apps from using
                         // the same directory.
-                    auto stream = OpenFileOutput(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
-                    OutputStreamFormatter formatter(*stream);
-                    formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);
-                    formatter.Flush();
-
                     _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
+					
+					auto outStr = std::string("VersionString=") + versionString + "\n";
+					_markerFile->Write(outStr.data(), 1, outStr.size());
+                    
 					break;
 				}
 			}
