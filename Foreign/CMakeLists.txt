@@ -4,9 +4,11 @@ file(GLOB AntlrSrc "Antlr-3.4/libantlr3c-3.4/src/*.c")
 file(GLOB FmtSrc "fmt/*.cc")
 file(GLOB StackWalkerSrc "StackWalker/*.cpp")
 file(GLOB PlustacheSrc "plustache/*.cpp")
-BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${AntlrSrc};${FmtSrc};${StackWalkerSrc};${PlustacheSrc}")
+set(StamSimpleFluidSrc StamSimpleFluid/solver.c)
+BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${AntlrSrc};${FmtSrc};${StackWalkerSrc};${PlustacheSrc};${StamSimpleFluidSrc}")
 
 add_subdirectory("FreeType")
+add_subdirectory("tinyxml2-master")
 
 include_directories(Antlr-3.4/libantlr3c-3.4 Antlr-3.4/libantlr3c-3.4/include)
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")

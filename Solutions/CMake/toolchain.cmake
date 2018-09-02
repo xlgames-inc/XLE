@@ -1,4 +1,7 @@
 
+get_filename_component(MAIN_CMAKE_DIR "${CMAKE_CURRENT_LIST_DIR}" ABSOLUTE)
+get_filename_component(XLE_DIR "${CMAKE_CURRENT_LIST_DIR}/../../" ABSOLUTE)
+get_filename_component(FOREIGN_DIR "${XLE_DIR}/Foreign/" ABSOLUTE)
 
 ####################################################################################################
 set(CLANG_BASE_FLAGS "")

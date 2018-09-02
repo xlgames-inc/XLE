@@ -11,6 +11,10 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
 
+#if defined(WIN32) || defined(WIN64)
+	#include "../Core/WinAPI/IncludeWindows.h"
+#endif
+
 #pragma warning(disable:4127) // conditional expression is constant
 
 namespace BufferUploads

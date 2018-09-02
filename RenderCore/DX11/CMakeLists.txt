@@ -5,6 +5,7 @@ set(Src
     "Metal/Buffer.cpp"
     "Metal/CompiledShaderByteCode.cpp"
     "Metal/DeviceContext.cpp"
+    "Metal/DX11Utils.cpp"
     "Metal/Format.cpp"
     "Metal/FrameBuffer.cpp"
     "Metal/InputLayout.cpp"
