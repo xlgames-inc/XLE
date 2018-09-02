@@ -42,18 +42,20 @@ namespace Assets { namespace IntermediateAssets
 
     void    Store::MakeIntermediateName(ResChar buffer[], unsigned bufferMaxCount, StringSection<ResChar> firstInitializer) const
     {
+		ResolveBaseDirectory();
+
             // calculate the intermediate file for this request name (normally just a file with the 
             //  same name in our branch directory
         if (buffer == firstInitializer.begin()) {
-            assert(bufferMaxCount >= (_baseDirectory.size()+1));
+            assert(bufferMaxCount >= (_resolvedBaseDirectory.size()+1));
             auto length = firstInitializer.Length();
-            auto moveSize = std::min(unsigned(length), unsigned(bufferMaxCount-1-(_baseDirectory.size()+1)));
-            XlMoveMemory(&buffer[_baseDirectory.size()+1], buffer, moveSize);
-            buffer[_baseDirectory.size()+1+moveSize] = ResChar('\0');
-            std::copy(_baseDirectory.begin(), _baseDirectory.end(), buffer);
-            buffer[_baseDirectory.size()] = ResChar('/');
+            auto moveSize = std::min(unsigned(length), unsigned(bufferMaxCount-1-(_resolvedBaseDirectory.size()+1)));
+            XlMoveMemory(&buffer[_resolvedBaseDirectory.size()+1], buffer, moveSize);
+            buffer[_resolvedBaseDirectory.size()+1+moveSize] = ResChar('\0');
+            std::copy(_resolvedBaseDirectory.begin(), _resolvedBaseDirectory.end(), buffer);
+            buffer[_resolvedBaseDirectory.size()] = ResChar('/');
         } else {
-            XlCopyString(buffer, bufferMaxCount, _baseDirectory.c_str());
+            XlCopyString(buffer, bufferMaxCount, _resolvedBaseDirectory.c_str());
             XlCatString(buffer, bufferMaxCount, "/");
             XlCatString(buffer, bufferMaxCount, firstInitializer);
         }
@@ -169,8 +171,10 @@ namespace Assets { namespace IntermediateAssets
             //  the .deps file, then we can assume that it is out of date and
             //  must be recompiled.
 
+		ResolveBaseDirectory();
+
         ResChar buffer[MaxPath];
-        MakeDepFileName(buffer, MakeStringSection(_baseDirectory), intermediateFileName);
+        MakeDepFileName(buffer, MakeStringSection(_resolvedBaseDirectory), intermediateFileName);
         if (MainFileSystem::TryGetDesc(buffer)._state != FileDesc::State::Normal) return nullptr;
 
         Data data;
@@ -258,7 +262,8 @@ namespace Assets { namespace IntermediateAssets
         }
         data.Add(dependenciesBlock.release());
 
-        MakeDepFileName(buffer, _baseDirectory.c_str(), intermediateFileName);
+		ResolveBaseDirectory();
+        MakeDepFileName(buffer, _resolvedBaseDirectory.c_str(), intermediateFileName);
 
             // first, create the directory if we need to
         char dirName[MaxPath];
@@ -275,101 +280,111 @@ namespace Assets { namespace IntermediateAssets
         return result;
     }
 
-    Store::Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal)
-    {
+	void Store::ResolveBaseDirectory() const
+	{
+		if (!_resolvedBaseDirectory.empty()) return;
+
             //  First, we need to find an output directory to use.
             //  We want a directory that isn't currently being used, and
             //  that matches the version string.
 
         ResChar buffer[MaxPath];
 
-		if (!universal) {
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-			_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", baseDirectory, configString);
+		_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str());
 
-			std::string goodBranchDir;
+		std::string goodBranchDir;
 
-				//  Look for existing directories that could match the version
-				//  string we have. 
-			WIN32_FIND_DATAA findData;
-			XlZeroMemory(findData);
-			HANDLE findHandle = FindFirstFileA(buffer, &findData);
-			if (findHandle != INVALID_HANDLE_VALUE) {
-				do {
-					if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
-						_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", baseDirectory, findData.cFileName);
-							// Note --  Ideally we want to prevent two different instances of the
-							//          same app from using the same intermediate assets store.
-							//          We can do this by use a "non-shareable" file mode when
-							//          we load these files. 
-						BasicFile markerFile;
-						auto ioReason = MainFileSystem::TryOpen(markerFile, buffer, "rb", 0);
-						if (ioReason != IFileSystem::IOReason::Success)
-							continue;
+			//  Look for existing directories that could match the version
+			//  string we have. 
+		WIN32_FIND_DATAA findData;
+		XlZeroMemory(findData);
+		HANDLE findHandle = FindFirstFileA(buffer, &findData);
+		if (findHandle != INVALID_HANDLE_VALUE) {
+			do {
+				if (findData.dwFileAttributes & FILE_ATTRIBUTE_DIRECTORY) {
+					_snprintf_s(buffer, _TRUNCATE, "%s/%s/.store", _constructorOptions._baseDir.c_str(), findData.cFileName);
+						// Note --  Ideally we want to prevent two different instances of the
+						//          same app from using the same intermediate assets store.
+						//          We can do this by use a "non-shareable" file mode when
+						//          we load these files. 
+					BasicFile markerFile;
+					auto ioReason = MainFileSystem::TryOpen(markerFile, buffer, "rb", 0);
+					if (ioReason != IFileSystem::IOReason::Success)
+						continue;
 
-						auto fileSize = markerFile.GetSize();
-						if (fileSize != 0) {
-							auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
-							markerFile.Read(rawData.get(), 1, size_t(fileSize));
+					auto fileSize = markerFile.GetSize();
+					if (fileSize != 0) {
+						auto rawData = std::unique_ptr<uint8[]>(new uint8[int(fileSize)]);
+						markerFile.Read(rawData.get(), 1, size_t(fileSize));
 
-                            InputStreamFormatter<utf8> formatter(
-                                MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
-                            Document<InputStreamFormatter<utf8>> doc(formatter);
+                        InputStreamFormatter<utf8> formatter(
+                            MemoryMappedInputStream(rawData.get(), PtrAdd(rawData.get(), (ptrdiff_t)fileSize)));
+                        Document<InputStreamFormatter<utf8>> doc(formatter);
 
-							auto compareVersion = doc.Attribute(u("VersionString")).Value();
-							if (XlEqString(compareVersion, (const utf8*)versionString)) {
-								// this branch is already present, and is good... so use it
-								goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-                                _markerFile = std::make_unique<BasicFile>(std::move(markerFile));
-								break;
-							}
-
-							// it's a store for some other version of the executable. Try the next one
-							continue;
+						auto compareVersion = doc.Attribute(u("VersionString")).Value();
+						if (XlEqString(compareVersion, (const utf8*)_constructorOptions._versionString.c_str())) {
+							// this branch is already present, and is good... so use it
+							goodBranchDir = _constructorOptions._baseDir + "/" + findData.cFileName;
+                            _markerFile = std::make_unique<BasicFile>(std::move(markerFile));
+							break;
 						}
-					}
-				} while (FindNextFileA(findHandle, &findData));
 
-				FindClose(findHandle);
-			}
-
-			if (goodBranchDir.empty()) {
-					// if we didn't find an existing folder we can use, we need to create a new one
-					// search through to find the first unused directory
-				for (unsigned d=0;;++d) {
-					_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i", baseDirectory, configString, d);
-					DWORD dwAttrib = GetFileAttributesA(buffer);
-					if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
+						// it's a store for some other version of the executable. Try the next one
 						continue;
 					}
-
-					RawFS::CreateDirectoryRecursive(buffer);
-					goodBranchDir = buffer;
-
-					_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i/.store", baseDirectory, configString, d);
-
-                        // Opening without sharing to prevent other instances of XLE apps from using
-                        // the same directory.
-                    _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
-					
-					auto outStr = std::string("VersionString=") + versionString + "\n";
-					_markerFile->Write(outStr.data(), 1, outStr.size());
-                    
-					break;
 				}
+			} while (FindNextFileA(findHandle, &findData));
+
+			FindClose(findHandle);
+		}
+
+		if (goodBranchDir.empty()) {
+				// if we didn't find an existing folder we can use, we need to create a new one
+				// search through to find the first unused directory
+			for (unsigned d=0;;++d) {
+				_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str(), d);
+				DWORD dwAttrib = GetFileAttributesA(buffer);
+				if (dwAttrib != INVALID_FILE_ATTRIBUTES) {
+					continue;
+				}
+
+				RawFS::CreateDirectoryRecursive(buffer);
+				goodBranchDir = buffer;
+
+				_snprintf_s(buffer, _TRUNCATE, "%s/%s_%i/.store", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str(), d);
+
+                    // Opening without sharing to prevent other instances of XLE apps from using
+                    // the same directory.
+                _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
+					
+				auto outStr = std::string("VersionString=") + _constructorOptions._versionString + "\n";
+				_markerFile->Write(outStr.data(), 1, outStr.size());
+                    
+				break;
 			}
+		}
 #else
-            auto goodBranchDir = baseDirectory;
+        auto goodBranchDir = baseDirectory;
 #endif
 
-			_baseDirectory = goodBranchDir;
-		} else {
+		_resolvedBaseDirectory = goodBranchDir;
+    }
+
+	Store::Store(const ResChar baseDirectory[], const ResChar versionString[], const ResChar configString[], bool universal)
+    {
+		if (universal) {
 			// This is the "universal" store directory. A single directory is used by all
 			// versions of the game.
+			ResChar buffer[MaxPath];
 			snprintf(buffer, dimof(buffer), "%s/u", baseDirectory);
-			_baseDirectory = buffer;
+			_resolvedBaseDirectory = buffer;
+		} else {
+			_constructorOptions._baseDir = baseDirectory;
+			_constructorOptions._versionString = versionString;
+			_constructorOptions._configString = configString;
 		}
-    }
+	}
 
     Store::~Store() 
     {

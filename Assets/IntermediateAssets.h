@@ -87,8 +87,18 @@ namespace Assets { namespace IntermediateAssets
 		Store& operator=(const Store&) = delete;
 
 	protected:
-		std::string _baseDirectory;
-		std::unique_ptr<BasicFile> _markerFile;
+		mutable std::string _resolvedBaseDirectory;
+		mutable std::unique_ptr<BasicFile> _markerFile;
+
+		struct ConstructorOptions
+		{
+			::Assets::rstring _baseDir;
+			::Assets::rstring _versionString;
+			::Assets::rstring _configString;
+		};
+		ConstructorOptions _constructorOptions;
+
+		void ResolveBaseDirectory() const;
 	};
 }}
 
