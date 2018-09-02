@@ -14,6 +14,26 @@
 
 namespace Utility
 {
+    /** <summary>Temporarily yield execution of this thread to whatever pool manages it</summary>
+     * 
+     * Operations running on a thread pool thread should normally not use busy loops or
+     * long locks waiting for mutexes. When a thread pool operation is stalled for some
+     * synchronization primitive, the entire worker thread becomes stalled. Since there
+     * are a finite number of worker threads, this can result in a deadlock were all
+     * worker threads are stalled waiting on some pool operation that can never execute.
+     * 
+     * Rather than stalling or yielding worker thread time, we should instead attempt to 
+     * find some other operation that can take over this worker thread temporarily.
+     * 
+     * When run on a thread pool worker thread, YieldToPool does exactly that. It does not
+     * stall, but it will attempt pop another operation from the pending queue. It will
+     * return execution back to the caller after this operation has completed, so that the
+     * original operation can resume from where it left off.
+     * 
+     * When run on some other thread, it will just yield back to the OS.
+    */
+    void YieldToPool();
+
     class CompletionThreadPool
     {
     public:
