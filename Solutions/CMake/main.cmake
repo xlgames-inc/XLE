@@ -1,7 +1,6 @@
 message("Build type: ${CMAKE_BUILD_TYPE}")
 
 macro(BasicLibrary LibName Src)
-    project (LibName)
 	source_group("" FILES ${Src})       # Push all files into the root folder
     add_library(${LibName} STATIC ${Src})
     if (MSVC)
@@ -12,7 +11,6 @@ macro(BasicLibrary LibName Src)
 endmacro()
 
 macro(BasicExecutable ExeName Src)
-    project (ExeName)
     source_group("" FILES ${Src})       # Push all files into the root folder
     add_executable(${ExeName} ${Src})
 

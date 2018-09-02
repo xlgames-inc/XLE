@@ -63,9 +63,9 @@ namespace Assets
         class PendingCommit
         {
         public:
-            uint64          _id;
+            uint64          _id = 0;
             BlockAndSize    _data;
-            unsigned        _pendingCommitPtr;      // (only used during FlushToDisk)
+            unsigned        _pendingCommitPtr = 0;      // (only used during FlushToDisk)
             std::function<void()> _onFlush;
 
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)

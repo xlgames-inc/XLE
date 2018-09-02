@@ -454,7 +454,7 @@ namespace Assets
 		auto splitter = MakeFileNameSplitter(_filename);
 		auto file = ::Assets::MainFileSystem::OpenFileInterface(splitter.AllExceptParameters(), "rb");
 		auto size = file->GetDesc()._size;
-		auto result = std::make_shared<std::vector<uint8>>(size);
+		auto result = std::make_shared<std::vector<uint8>>((size_t)size);
 		file->Read(AsPointer(result->begin()), result->size());
 		return result;
 	}

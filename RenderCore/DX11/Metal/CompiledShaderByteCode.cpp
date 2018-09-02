@@ -206,7 +206,7 @@ namespace RenderCore { namespace Metal_DX11
 				auto ioResult = ::Assets::MainFileSystem::TryOpen(fileInterface, path, "rb", FileShareMode::Read | FileShareMode::Write);
 				if (ioResult == ::Assets::IFileSystem::IOReason::Success && fileInterface) {
 					auto desc = fileInterface->GetDesc();
-                    size = desc._size;
+                    size = (size_t)desc._size;
                     timeMarker._timeMarker = desc._modificationTime;
 
                     file = std::make_unique<uint8[]>(size);
