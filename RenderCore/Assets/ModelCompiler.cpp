@@ -69,6 +69,7 @@ namespace RenderCore { namespace Assets
 		ConsoleRig::AttachableLibrary _library;
 		bool _isAttached;
 		bool _attemptedAttach;
+		std::string _attachErrorMsg;
 	};
 
     class ModelCompiler::Pimpl
@@ -148,15 +149,15 @@ namespace RenderCore { namespace Assets
 		::Assets::CompileFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
-        AttachLibrary();
-
-        ConsoleRig::LibVersionDesc libVersionDesc;
-        _library.TryGetVersion(libVersionDesc);
-
 		std::vector<::Assets::DependentFileState> deps;
 
 		TRY
 		{
+			AttachLibrary();
+
+			ConsoleRig::LibVersionDesc libVersionDesc;
+			_library.TryGetVersion(libVersionDesc);
+
 			bool requiresMerge = (typeCode == ModelCompiler::Type_AnimationSet) && XlFindChar(initializer, '*');
 			if (!requiresMerge) {
 
@@ -189,7 +190,7 @@ namespace RenderCore { namespace Assets
 					}
 
 				if (!foundTarget)
-					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer));
+					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer.AsString().c_str()));
 
 				{
 					auto dst = ::Assets::MainFileSystem::OpenFileInterface(destinationFile, "wb");
@@ -272,9 +273,9 @@ namespace RenderCore { namespace Assets
 		if (!_attemptedAttach && !_isAttached) {
 			_attemptedAttach = true;
 
-			_isAttached = _library.TryAttach();
+			_isAttached = _library.TryAttach(_attachErrorMsg);
 			if (_isAttached) {
-				_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
+				_createCompileOpFunction = _library.GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
 
 				auto compilerDescFn = _library.GetFunction<GetCompilerDescFn*>("GetCompilerDesc");
 				if (compilerDescFn) {
@@ -289,7 +290,7 @@ namespace RenderCore { namespace Assets
 
 		// check for problems (missing functions or bad version number)
 		if (!_isAttached)
-			Throw(::Exceptions::BasicLabel("Error while linking asset conversion DLL. Could not find DLL (%s)", _libraryName.c_str()));
+			Throw(::Exceptions::BasicLabel("Error while attaching asset conversion DLL. %s", _attachErrorMsg.c_str()));
 
 		if (!_createCompileOpFunction)
 			Throw(::Exceptions::BasicLabel("Error while linking asset conversion DLL. Some interface functions are missing"));
@@ -452,6 +453,7 @@ namespace RenderCore { namespace Assets
 		XlGetProcessPath((utf8*)processPath, dimof(processPath));
 		_pimpl->_librarySearchRules.AddSearchDirectory(
 			MakeFileNameSplitter(processPath).DriveAndPath());
+		_pimpl->_librarySearchRules.AddSearchDirectory("c:/XLEExt/Working/");
 	}
     ModelCompiler::~ModelCompiler() {}
 
@@ -462,8 +464,11 @@ namespace RenderCore { namespace Assets
 		// Look for attachable libraries that can compile raw assets
 		// We're expecting to find them in the same directory as the executable with the form "*Conversion.dll" 
 		auto candidateCompilers = _librarySearchRules.FindFiles(MakeStringSection("*Conversion.dll"));
-		for (auto& c:candidateCompilers)
-			_compilers.emplace_back(CompilerLibrary(c));
+		for (auto& c:candidateCompilers) {
+			char buffer[MaxPath];
+			MakeSplitPath(c).Rebuild(buffer, FilenameRules('\\', false));
+			_compilers.emplace_back(CompilerLibrary(buffer));
+		}
 
 		_discoveryDone = true;
 	}

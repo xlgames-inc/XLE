@@ -22,7 +22,7 @@ namespace ConsoleRig
     class AttachableLibrary
     {
     public:
-        bool TryAttach();
+        bool TryAttach(std::string& errorMsg);
         void Detach();
 
         bool TryGetVersion(LibVersionDesc&);

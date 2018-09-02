@@ -167,6 +167,7 @@ namespace Assets
 					future->SetState(::Assets::AssetState::Invalid);
 				}
 				CATCH_END
+				assert(future->GetAssetState() != ::Assets::AssetState::Pending);	// if it is still marked "pending" at this stage, it will never change state
 		});
 	}
 

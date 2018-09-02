@@ -100,12 +100,9 @@ namespace RenderCore { namespace Assets
 			auto modelMatFuture = ::Assets::MakeAsset<RawMatConfigurations>(sourceModel);
 			auto modelMatState = modelMatFuture->StallWhilePending();
 			if (modelMatState == ::Assets::AssetState::Invalid) {
-				// auto depVal = std::make_shared<::Assets::DependencyValidation>();
-				// ::Assets::RegisterFileDependency(depVal, sourceModel);
 				Throw(::Assets::Exceptions::ConstructionError(
 					::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood,
 					modelMatFuture->GetDependencyValidation(),
-					// depVal,
 					"Failed while loading material information from source model (%s)", sourceModel.AsString().c_str()));
 			}
 
