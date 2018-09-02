@@ -8,9 +8,12 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Core/Exceptions.h"
+#include <functional>
 
 namespace Utility
 {
+    static thread_local std::function<void()> s_threadPoolYieldFunction;
+
     void CompletionThreadPool::EnqueueBasic(PendingTask&& task)
     {
         assert(IsGood());
@@ -33,6 +36,50 @@ namespace Utility
             _workerThreads.emplace_back(
                 [this]
                 {
+                    s_threadPoolYieldFunction = [this]() {
+                        bool gotTask = false;
+                        std::function<void()> task;
+
+                        {
+                            ScopedLock(this->_pendingsTaskLock);
+                            std::function<void()>* t = nullptr;
+                            if (_pendingTasks.try_front(t)) {
+                                task = std::move(*t);
+                                _pendingTasks.pop();
+                                gotTask = true;
+                            }
+                        }
+
+                        // Attempt a short wait if we didn't get a task
+                        if (!gotTask) {
+                            XlWaitForMultipleSyncObjects(
+                                2, this->_events,
+                                false, 1, true);
+
+                            {
+                               ScopedLock(this->_pendingsTaskLock);
+                                std::function<void()>* t = nullptr;
+                                if (_pendingTasks.try_front(t)) {
+                                    task = std::move(*t);
+                                    _pendingTasks.pop();
+                                    gotTask = true;
+                                }
+                            }
+                        }
+
+                        if (gotTask) {
+                            TRY
+                            {
+                                task();
+                            } CATCH(const std::exception& e) {
+                                Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
+								(void)e;
+                            } CATCH(...) {
+                                Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
+                            } CATCH_END
+                        }
+                    };
+
                     while (!this->_workerQuit) {
                         bool gotTask = false;
                         std::function<void()> task;
@@ -82,6 +129,8 @@ namespace Utility
                             2, this->_events,
                             false, XL_INFINITE, true);
                     }
+
+                    s_threadPoolYieldFunction = nullptr;
                 }
             );
     }
@@ -113,6 +162,35 @@ namespace Utility
             _workerThreads.emplace_back(
                 [this]
                 {
+                    s_threadPoolYieldFunction = [this]() {
+                        std::function<void()> task;
+                        {
+                            std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
+                            if (this->_workerQuit) return;
+
+                            std::function<void()>*t = nullptr;
+                            if (!_pendingTasks.try_front(t)) {
+                                this->_pendingTaskVariable.wait(autoLock);
+                                if (this->_workerQuit) return;
+                                if (!_pendingTasks.try_front(t))
+                                    return;
+                            }
+
+                            task = std::move(*t);
+                            _pendingTasks.pop();
+                        }
+
+                        TRY
+                        {
+                            task();
+                        } CATCH(const std::exception& e) {
+                            Log(Error) << "Suppressing exception in thread pool thread: " << e.what() << std::endl;
+                            (void)e;
+                        } CATCH(...) {
+                            Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
+                        } CATCH_END
+                    };
+
                     for (;;) {
                         std::function<void()> task;
 
@@ -146,6 +224,8 @@ namespace Utility
                             Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
                         } CATCH_END
                     }
+
+                    s_threadPoolYieldFunction = nullptr;
                 }
             );
     }
@@ -155,6 +235,17 @@ namespace Utility
         _workerQuit = true;
         _pendingTaskVariable.notify_all();
         for (auto&t : _workerThreads) t.join();
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void YieldToPool()
+    {
+        if (s_threadPoolYieldFunction) {
+            s_threadPoolYieldFunction();
+        } else {
+            Threading::YieldTimeSlice();
+        }
     }
 }
 

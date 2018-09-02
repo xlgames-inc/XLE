@@ -4,7 +4,7 @@
 #include "DepVal.h"
 #include "GenericFuture.h"
 #include "../Utility/Threading/Mutex.h"
-#include "../Utility/Threading/ThreadingUtils.h"		// (for Threading::YieldTimeSlice() below)
+#include "../Utility/Threading/CompletionThreadPool.h"
 #include <memory>
 #include <string>
 #include <functional>
@@ -184,7 +184,13 @@ namespace Assets
 			for (;;) {
 				bool pollingResult = pollingFunction(*that);
 				if (!pollingResult) break;
-				Threading::YieldTimeSlice();
+
+				// Note that we often get here during thread pool operations. We should always
+				// yield to the pool, rather that just sleeping this thread, because otherwise we
+				// can easily get into a deadlock situation where all threadpool worker threads 
+				// can end up here, waiting on some other operation to execute on the same pool,
+				// but it can never happen because all workers are stuck yielding.
+				YieldToPool();
 			}
 			
 			lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
