@@ -205,10 +205,10 @@ namespace RenderCore { namespace Assets
 
             // (FindVariation can throw pending/invalid resource)
         auto variation = shaderType.FindVariation(context._techniqueIndex, state, techniqueInterfaceObj);
-        if (variation._shaderProgram && variation._boundLayout) {
-            context._context->Bind(*variation._shaderProgram);
-        }
+        if (!variation._shaderProgram || !variation._boundLayout)
+            return {};
 
+        context._context->Bind(*variation._shaderProgram);
         _currentShaderName = shaderName;
         _currentTechniqueInterface = techniqueInterface;
         _currentMaterialParamBox = materialParamBox;

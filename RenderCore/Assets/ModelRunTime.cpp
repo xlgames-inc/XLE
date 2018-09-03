@@ -1124,23 +1124,21 @@ namespace RenderCore { namespace Assets
                 }
 
                 auto boundVariation = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
-                const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
+				if (!boundVariation._inputLayout || !boundVariation._uniforms) continue;
 
+                const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
                 if (    boundVariation._uniforms != currUniforms 
                     ||  drawCallRes._textureSet != currTextureSet 
                     ||  drawCallRes._constantBuffer != currCB) {
 
-                    if (boundVariation._uniforms) {
-                        _pimpl->ApplyBoundUnforms(
-                            context, *boundVariation._uniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
-                    }
+                    _pimpl->ApplyBoundUnforms(
+                        context, *boundVariation._uniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
 
                     currTextureSet = drawCallRes._textureSet; currCB = drawCallRes._constantBuffer;
                     currUniforms = boundVariation._uniforms;
                 }
 
 				if (boundVariation._inputLayout != currInputLayout) {
-					assert(boundVariation._inputLayout);
 					_pimpl->ApplyBoundInputLayout(context, *boundVariation._inputLayout, currGeoCall);
 					currInputLayout = boundVariation._inputLayout;
 				} 
@@ -1173,23 +1171,21 @@ namespace RenderCore { namespace Assets
                 }
 
                 auto boundVariation = _pimpl->BeginVariation(context, sharedStateSet, drawCallIndex, currTechniqueInterface);
-                const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
+                if (!boundVariation._inputLayout || !boundVariation._uniforms) continue;
 
+                const auto& drawCallRes = _pimpl->_drawCallRes[drawCallIndex];
                 if (    boundVariation._uniforms != currUniforms 
                     ||  drawCallRes._textureSet != currTextureSet 
                     ||  drawCallRes._constantBuffer != currCB) {
 
-                    if (boundVariation._uniforms) {
-                        _pimpl->ApplyBoundUnforms(
-                            context, *boundVariation._uniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
-                    }
+                    _pimpl->ApplyBoundUnforms(
+                        context, *boundVariation._uniforms, drawCallRes._textureSet, drawCallRes._constantBuffer, pkts);
 
                     currTextureSet = drawCallRes._textureSet; currCB = drawCallRes._constantBuffer;
                     currUniforms = boundVariation._uniforms;
                 }
 
 				if (boundVariation._inputLayout != currInputLayout) {
-					assert(boundVariation._inputLayout);
 					_pimpl->ApplyBoundInputLayout(context, *boundVariation._inputLayout, currGeoCall);
 					currInputLayout = boundVariation._inputLayout;
 				} 
@@ -1424,7 +1420,7 @@ namespace RenderCore { namespace Assets
                 currentTextureSet = ~unsigned(0x0);
             }
 
-            if (!boundVariation._uniforms) continue;
+            if (!boundVariation._uniforms || !boundVariation._inputLayout) continue;
 
             sharedStateSet.BeginRenderState(context, drawCallRes._renderStateSet);
 
@@ -1455,7 +1451,6 @@ namespace RenderCore { namespace Assets
                 currentConstantBufferIndex = constantBufferIndex;
             }
 
-			assert(boundVariation._inputLayout);
 			if (boundVariation._inputLayout != currInputLayout) {
 
 				VertexBufferView vbv[] = {
