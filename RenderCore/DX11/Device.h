@@ -62,6 +62,9 @@ namespace RenderCore { namespace ImplDX11
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         unsigned                _frameId;
 		std::unique_ptr<IAnnotator> _annotator;
+
+		intrusive_ptr<ID3D::Texture2D> _lastBackBuffer;
+		std::shared_ptr<RenderCore::IResource> _lastBackBufferResource;
     };
 
     class ThreadContextDX11 : public ThreadContext, public IThreadContextDX11

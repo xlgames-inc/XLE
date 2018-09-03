@@ -59,7 +59,13 @@ namespace SceneEngine { namespace MetalStubs
 		void BindSO(RenderCore::Metal::DeviceContext& devContext, const RenderCore::ResourceList<Type, Count>& res) {}
 
 	template<typename Type> void UnbindVS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
-	template<typename Type> void UnbindPS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
+	template<typename Type> void UnbindPS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) 
+	{
+		for (unsigned slot=0; slot<slotCount; ++slot) {
+			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Pixel).Bind(
+				RenderCore::MakeResourceList(slotStart+slot, RenderCore::Metal::ShaderResourceView{}));
+		}
+	}
 	template<typename Type> void UnbindGS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
 	template<typename Type> void UnbindCS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
 	template<typename Type> void UnbindHS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}

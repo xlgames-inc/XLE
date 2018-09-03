@@ -241,13 +241,6 @@ namespace RenderCore { namespace Assets
     const Metal::ShaderResourceView&       DeferredShaderResource::GetShaderResource() const
     {
         if (!_pimpl->_srv.IsGood()) {
-            if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
-				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));
-
-            auto& bu = Services::GetBufferUploads();
-            if (!bu.IsCompleted(_pimpl->_transaction))
-                Throw(::Assets::Exceptions::PendingAsset(Initializer()));
-
             auto state = TryResolve();
             if (state == ::Assets::AssetState::Invalid) {
 				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));

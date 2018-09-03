@@ -341,12 +341,21 @@ namespace SceneEngine
         if (!IsGood()) return ~0u;
 
         if (_projectionType==1) {
+			if (_faces12->TryResolve() != ::Assets::AssetState::Ready
+				|| _faces34->TryResolve() != ::Assets::AssetState::Ready
+				|| _face5->TryResolve() != ::Assets::AssetState::Ready)
+				return ~0u;
+
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
-        } else
+        } else {
+			if (_face5->TryResolve() != ::Assets::AssetState::Ready)
+				return ~0u;
+
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot,
                 _face5->GetShaderResource()));
+		}
 
         return _projectionType;
     }
@@ -358,12 +367,21 @@ namespace SceneEngine
         if (!IsGood()) return ~0u;
 
         if (_projectionType==1) {
+			if (_faces12->TryResolve() != ::Assets::AssetState::Ready
+				|| _faces34->TryResolve() != ::Assets::AssetState::Ready
+				|| _face5->TryResolve() != ::Assets::AssetState::Ready)
+				return ~0u;
+
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
-        } else
+        } else {
+			if (_face5->TryResolve() != ::Assets::AssetState::Ready)
+				return ~0u;
+
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot,
                 _face5->GetShaderResource()));
+		}
 
         return _projectionType;
     }

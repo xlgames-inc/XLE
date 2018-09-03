@@ -391,6 +391,12 @@ namespace SceneEngine
 				parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
 			}
 
+			TextureViewDesc justStencilWindow {
+				TextureViewDesc::Aspect::Stencil,
+				TextureViewDesc::All, TextureViewDesc::All,
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::JustStencil};
+
 			SubpassDesc subpasses[] {
 				SubpassDesc{
 					{AttachmentViewDesc{lightResolveTarget, LoadStore::DontCare, LoadStore::Retain}}, 
@@ -399,7 +405,7 @@ namespace SceneEngine
 				// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
 				SubpassDesc{
 					{AttachmentViewDesc{lightResolveTarget, LoadStore::Retain, LoadStore::Retain}}, 
-					{IMainTargets::MultisampledDepth, LoadStore::Retain_RetainStencil, LoadStore::DontCare, TextureViewDesc::Aspect::Stencil}},
+					{IMainTargets::MultisampledDepth, LoadStore::Retain_RetainStencil, LoadStore::DontCare, justStencilWindow}},
             };
 
             FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));

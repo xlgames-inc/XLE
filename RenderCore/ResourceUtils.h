@@ -71,7 +71,7 @@ namespace RenderCore
 
 	inline uint64_t CalculateHash(const TextureViewDesc& viewDesc)
 	{
-		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(viewDesc)));
+		return Hash64(&viewDesc, PtrAdd(&viewDesc, sizeof(TextureViewDesc)));
 	}
 
 	template<typename ViewType, typename ViewDescType>

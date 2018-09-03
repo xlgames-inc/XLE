@@ -259,7 +259,6 @@ const char* XlGetCommandLine()
 std::string SystemErrorCodeAsString(int errorCode)
 {
     LPVOID lpMsgBuf;
-    DWORD dw = GetLastError(); 
     FormatMessageA(
         FORMAT_MESSAGE_ALLOCATE_BUFFER | 
         FORMAT_MESSAGE_FROM_SYSTEM |

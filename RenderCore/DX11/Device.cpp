@@ -486,8 +486,13 @@ namespace RenderCore { namespace ImplDX11
         ID3D::Texture2D* backBuffer0Temp = nullptr;
         HRESULT hresult = swapChain->GetUnderlying()->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
         intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
-        if (SUCCEEDED(hresult))
-            return Metal_DX11::AsResourcePtr((ID3D::Resource*)backBuffer0.get());
+        if (SUCCEEDED(hresult)) {
+			if (_lastBackBuffer != backBuffer0) {
+				_lastBackBuffer = std::move(backBuffer0);
+				_lastBackBufferResource = Metal_DX11::AsResourcePtr((ID3D::Resource*)_lastBackBuffer.get());
+			}
+            return _lastBackBufferResource;
+		}
         
         return nullptr;
     }
