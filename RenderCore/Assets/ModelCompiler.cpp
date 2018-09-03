@@ -453,7 +453,10 @@ namespace RenderCore { namespace Assets
 		XlGetProcessPath((utf8*)processPath, dimof(processPath));
 		_pimpl->_librarySearchRules.AddSearchDirectory(
 			MakeFileNameSplitter(processPath).DriveAndPath());
-		_pimpl->_librarySearchRules.AddSearchDirectory("c:/XLEExt/Working/");
+		
+		char appDir[MaxPath];
+    	XlGetCurrentDirectory(dimof(appDir), appDir);
+		_pimpl->_librarySearchRules.AddSearchDirectory(appDir);
 	}
     ModelCompiler::~ModelCompiler() {}
 
@@ -464,11 +467,8 @@ namespace RenderCore { namespace Assets
 		// Look for attachable libraries that can compile raw assets
 		// We're expecting to find them in the same directory as the executable with the form "*Conversion.dll" 
 		auto candidateCompilers = _librarySearchRules.FindFiles(MakeStringSection("*Conversion.dll"));
-		for (auto& c:candidateCompilers) {
-			char buffer[MaxPath];
-			MakeSplitPath(c).Rebuild(buffer, FilenameRules('\\', false));
-			_compilers.emplace_back(CompilerLibrary(buffer));
-		}
+		for (auto& c:candidateCompilers)
+			_compilers.emplace_back(CompilerLibrary(c));
 
 		_discoveryDone = true;
 	}
