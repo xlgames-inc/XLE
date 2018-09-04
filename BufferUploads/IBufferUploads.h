@@ -250,7 +250,7 @@ namespace BufferUploads
         virtual void                    FramePriority_Barrier   () = 0;
             /// @}
 
-        ~IManager();
+        virtual ~IManager();
     };
 
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice& renderDevice);
