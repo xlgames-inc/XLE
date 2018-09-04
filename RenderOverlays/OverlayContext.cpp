@@ -501,7 +501,10 @@ namespace RenderOverlays
         }
 
         if (desc._pixelShaderName.empty()) {
-            _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource?geometryShaderSource:"", pixelShaderDefault, "");
+			if (geometryShaderSource) {
+				_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, pixelShaderDefault, "");
+			} else 
+				_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, pixelShaderDefault, "");
         } else {
             StringMeld<MaxPath, ::Assets::ResChar> assetName;
             auto paramStart = desc._pixelShaderName.find_first_of(':');
@@ -542,7 +545,10 @@ namespace RenderOverlays
                 }
             } else {
                 assetName << "xleres/" << desc._pixelShaderName << ":ps_*";
-                _shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource?geometryShaderSource:"", assetName.get(), "");
+				if (geometryShaderSource) {
+					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, geometryShaderSource, assetName.get(), "");
+				} else
+					_shaderProgram = &::Assets::GetAssetDep<Metal::ShaderProgram>(vertexShaderSource, assetName.get(), "");
             }
         }
 

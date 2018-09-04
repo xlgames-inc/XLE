@@ -5,32 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Font.h"
-
-namespace RenderOverlays
-{
-	TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options) : _font(font), _options(options) {}
-	TextStyle::TextStyle(unsigned pointSize, const DrawTextOptions& options) : _options(options) {}
-	TextStyle::~TextStyle() {}
-
-	float TextStyle::Draw(RenderCore::IThreadContext& threadContext,
-		float x, float y, const ucs4 text[], int maxLen,
-		float spaceExtra, float scale, float mx, float depth,
-		unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const 
-	{
-		return 0.f;
-	}
-
-	Float2		TextStyle::AlignText(const Quad& q, UiAlign align, const ucs4* text, int maxLen) { return Zero<Float2>(); }
-	Float2		TextStyle::AlignText(const Quad& q, UiAlign align, float width, float indent) { return Zero<Float2>(); }
-	float       TextStyle::StringWidth(const ucs4* text, int maxlen) { return 0.f; }
-	int         TextStyle::CharCountFromWidth(const ucs4* text, float width) { return 0; }
-	float       TextStyle::SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width) { return 0.f; }
-	float       TextStyle::CharWidth(ucs4 ch, ucs4 prev) { return 0.f; }
-}
-
-#if 0
-
-#include "Font.h"
 #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
@@ -54,6 +28,7 @@ namespace RenderOverlays
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/BufferView.h"
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -78,7 +53,7 @@ public:
     bool                PushQuad(const Quad& positions, unsigned color, const Quad& textureCoords, float depth, bool snap=true);
     void                Reset();
     size_t              VertexCount() const;
-    RenderCore::Metal::VertexBuffer    CreateBuffer() const;
+    RenderCore::Metal::Buffer    CreateBuffer(RenderCore::Metal::ObjectFactory&) const;
 
     WorkingVertexSetPCT();
 
@@ -128,9 +103,10 @@ bool            WorkingVertexSetPCT::PushQuad(const Quad& positions, unsigned co
     return true;
 }
 
-RenderCore::Metal::VertexBuffer    WorkingVertexSetPCT::CreateBuffer() const
+RenderCore::Metal::Buffer    WorkingVertexSetPCT::CreateBuffer(RenderCore::Metal::ObjectFactory& objectFactory) const
 {
-    return RenderCore::Metal::VertexBuffer(_vertices, size_t(_currentIterator) - size_t(_vertices));
+	unsigned size = unsigned(size_t(_currentIterator) - size_t(_vertices));
+	return MakeVertexBuffer(objectFactory, MakeIteratorRange(_vertices, PtrAdd(_vertices, size)));
 }
 
 size_t          WorkingVertexSetPCT::VertexCount() const
@@ -148,12 +124,13 @@ WorkingVertexSetPCT::WorkingVertexSetPCT()
     _currentIterator = _vertices;
 }
 
-static void Flush(RenderCore::Metal::DeviceContext& renderer, WorkingVertexSetPCT& vertices)
+static void Flush(RenderCore::Metal::DeviceContext& renderer, RenderCore::Metal::BoundInputLayout& inputLayout, WorkingVertexSetPCT& vertices)
 {
     using namespace RenderCore;
     if (vertices.VertexCount()) {
-        auto vertexBuffer = vertices.CreateBuffer();
-        renderer.Bind(MakeResourceList(vertexBuffer), WorkingVertexSetPCT::VertexSize, 0);
+        auto vertexBuffer = vertices.CreateBuffer(renderer.GetFactory());
+		VertexBufferView vbvs[] = { &vertexBuffer };
+		inputLayout.Apply(renderer, MakeIteratorRange(vbvs));
         renderer.Draw((unsigned)vertices.VertexCount(), 0);
         vertices.Reset();
     }
@@ -235,11 +212,15 @@ TextStyleResources::TextStyleResources(const Desc& desc)
         { Hash64("ReciprocalViewportDimensions"), RenderCore::Format::R32G32_FLOAT, offsetof(ReciprocalViewportDimensions, _reciprocalWidth) }
     };
 
-	Metal::BoundUniforms boundUniforms(shaderProgram);
-	boundUniforms.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1, elements, dimof(elements));
-	// ***********************
-	// ****** todo -- we just switch this back to "InputTexture" and bind it to the "draw" sequencer ****
-    boundUniforms.BindShaderResource(Hash64("BoundInputTexture"), 0, 1);
+	UniformsStreamInterface usi;
+	usi.BindConstantBuffer(0, {Hash64("ReciprocalViewportDimensionsCB"), MakeIteratorRange(elements)});
+	usi.BindShaderResource(0, Hash64("InputTexture"));
+
+	Metal::BoundUniforms boundUniforms(
+		shaderProgram,
+		Metal::PipelineLayoutConfig{},
+		UniformsStreamInterface{},
+		usi);
 
     auto validationCallback = std::make_shared<Assets::DependencyValidation>();
     Assets::RegisterAssetDependency(validationCallback, shaderProgram.GetDependencyValidation());
@@ -316,7 +297,6 @@ float   TextStyle::Draw(
         // PixelShader& pshader     = GetResource<PixelShader>(pixelShaderSource);
 
         auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
-        renderer->Bind(res._boundInputLayout);     // have to bind a standard P2CT input layout
         renderer->Bind(*res._shaderProgram);
         renderer->Bind(Topology::TriangleList);
 
@@ -373,17 +353,23 @@ float   TextStyle::Draw(
 
                 // Set the new texture if needed (changing state requires flushing completed work)
             if (tex != currentBoundTexture) {
-                Flush(*renderer, workingVertices);
+                Flush(*renderer, res._boundInputLayout, workingVertices);
 
 				auto sourceTexture = tex->ShareUnderlying();
                 if (!sourceTexture) {
-                    throw ::Assets::Exceptions::PendingAsset("", "Pending background upload of font texture");
+                    Throw(std::runtime_error("Pending background upload of font texture"));
                 }
 
 				Metal::ShaderResourceView shadRes(sourceTexture);
                 const Metal::ShaderResourceView* srvs[] = { &shadRes };
+				ConstantBufferView cbvs[] = { packet };
                 // renderer->BindPS(RenderCore::MakeResourceList(shadRes));
-                res._boundUniforms.Apply(*renderer, Metal::UniformsStream(), Metal::UniformsStream(&packet, nullptr, 1, srvs, dimof(srvs)));
+                res._boundUniforms.Apply(
+					*renderer, 1, 
+					UniformsStream{
+						MakeIteratorRange(cbvs),
+						UniformsStream::MakeResources(MakeIteratorRange(srvs))
+					});
                 currentBoundTexture = tex;
             }
 
@@ -409,7 +395,7 @@ float   TextStyle::Draw(
                 shadowPos.min[1] -= yScale;
                 shadowPos.max[1] -= yScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -417,7 +403,7 @@ float   TextStyle::Draw(
                 shadowPos.min[1] -= yScale;
                 shadowPos.max[1] -= yScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -427,7 +413,7 @@ float   TextStyle::Draw(
                 shadowPos.min[1] -= yScale;
                 shadowPos.max[1] -= yScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -435,7 +421,7 @@ float   TextStyle::Draw(
                 shadowPos.min[0] -= xScale;
                 shadowPos.max[0] -= xScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -443,7 +429,7 @@ float   TextStyle::Draw(
                 shadowPos.min[0] += xScale;
                 shadowPos.max[0] += xScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -453,7 +439,7 @@ float   TextStyle::Draw(
                 shadowPos.min[1] += yScale;
                 shadowPos.max[1] += yScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -461,7 +447,7 @@ float   TextStyle::Draw(
                 shadowPos.min[1] += yScale;
                 shadowPos.max[1] += yScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
 
@@ -471,7 +457,7 @@ float   TextStyle::Draw(
                 shadowPos.min[1] += yScale;
                 shadowPos.max[1] += yScale;
                 if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
                 }
             }
@@ -483,13 +469,13 @@ float   TextStyle::Draw(
                 shadowPos.min[1] += yScale;
                 shadowPos.max[1] += yScale;
                 if (!workingVertices.PushQuad(shadowPos, RGBA8(Color4::Create(0,0,0,opacity)), tc, depth)) {
-                    Flush(*renderer, workingVertices);
+                    Flush(*renderer, res._boundInputLayout, workingVertices);
                     workingVertices.PushQuad(shadowPos, RGBA8(Color4::Create(0,0,0,opacity)), tc, depth);
                 }
             }
 
             if (!workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth)) {
-                Flush(*renderer, workingVertices);
+                Flush(*renderer, res._boundInputLayout, workingVertices);
                 workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
             }
 
@@ -522,7 +508,7 @@ float   TextStyle::Draw(
             }
         }
 
-        Flush(*renderer, workingVertices);
+        Flush(*renderer, res._boundInputLayout, workingVertices);
 
     } CATCH(...) {
         // OutputDebugString("Suppressed exception while drawing text");
@@ -634,12 +620,12 @@ TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& o
 : _font(font), _options(options)
 {
 }
+
+TextStyle::TextStyle(unsigned pointSize, const DrawTextOptions& options)
+{}
     
 TextStyle::~TextStyle()
 {
 }
 
 }
-
-#endif
-
