@@ -43,14 +43,10 @@
 #include "../../Assets/ChunkFile.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 
 #include <queue>
-
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
 
 // #define GEN_AO_DEBUG
 #if defined(GEN_AO_DEBUG)
@@ -666,9 +662,10 @@ namespace ToolsRig
     
         {
             using namespace Serialization::ChunkFile;
+			auto libVersion = ConsoleRig::GetLibVersionDesc();
             SimpleChunkFileWriter file(
 				::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", 0),
-                2, RenderCore::VersionString, RenderCore::BuildDateString);
+                2, libVersion._versionString, libVersion._buildDateString);
 
             file.BeginChunk(
                 RenderCore::Assets::ChunkType_ModelScaffold, 

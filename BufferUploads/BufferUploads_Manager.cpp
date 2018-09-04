@@ -15,6 +15,7 @@
 #include "../RenderCore/ResourceUtils.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/AttachableInternal.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -2570,7 +2571,7 @@ namespace BufferUploads
         bool multithreadingOk = true; // CRenderer::CV_r_BufferUpload_Enable!=2;
         bool doBatchingUploadInForeground = !PlatformInterface::CanDoNooverwriteMapInBackground;
 
-        const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
+        const auto nsightMode = ConsoleRig::CrossModule::GetInstance()._services.CallDefault(Hash64("nsight"), false);
         if (nsightMode)
             multithreadingOk = false;
 
@@ -2651,20 +2652,24 @@ namespace BufferUploads
     }
 
     #if OUTPUT_DLL
-        static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
-        void AttachLibrary(ConsoleRig::GlobalServices& globalServices)
+        static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> s_attachRef;
+        void AttachLibrary(ConsoleRig::CrossModule& globalServices)
         {
-            s_attachRef = globalServices.Attach();
+			ConsoleRig::CrossModule::SetInstance(crossModule);
+            s_attachRef = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
+			auto versionDesc = ConsoleRig::GetLibVersionDesc();
+			Log(Verbose) << "Attached Buffer Uploads DLL: {" << versionDesc._versionString << "} -- {" << versionDesc._buildDateString << "}" << std::endl;
         }
 
         void DetachLibrary()
         {
-            s_attachRef.Detach();
+            s_attachRef.reset();
+			ConsoleRig::CrossModule::ReleaseInstance();
         }
     #else
-        void AttachLibrary(ConsoleRig::GlobalServices& globalServices)
+        void AttachLibrary(ConsoleRig::CrossModule& globalServices)
         {
-            assert(&globalServices == &ConsoleRig::GlobalServices::GetInstance());
+            assert(&globalServices == &ConsoleRig::CrossModule::GetInstance());
         }
         void DetachLibrary() {}
     #endif

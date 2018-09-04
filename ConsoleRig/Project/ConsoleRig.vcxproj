@@ -54,6 +54,7 @@
     <ClCompile Include="..\GlobalServices.cpp" />
     <ClCompile Include="..\Log.cpp" />
     <ClCompile Include="..\OutputStream.cpp" />
+    <ClCompile Include="..\Version.in.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AttachableInternal.h" />

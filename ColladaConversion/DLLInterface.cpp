@@ -638,36 +638,28 @@ namespace ColladaConversion
 
 }
 
-namespace ColladaConversion
+extern "C" 
 {
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
 
-extern "C" {
+	dll_export ConsoleRig::LibVersionDesc GetVersionInformation()
+	{
+		return ConsoleRig::GetLibVersionDesc();
+	}
 
-dll_export ConsoleRig::LibVersionDesc GetVersionInformation()
-{
-    ConsoleRig::LibVersionDesc result;
-    result._versionString = ColladaConversion::VersionString;
-    result._buildDateString = ColladaConversion::BuildDateString;
-    return result;
-}
+	static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> s_attachRef;
 
-// static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
+	dll_export void AttachLibrary(ConsoleRig::CrossModule& crossModule)
+	{
+		ConsoleRig::CrossModule::SetInstance(crossModule);
+		s_attachRef = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
+		auto versionDesc = ConsoleRig::GetLibVersionDesc();
+		Log(Verbose) << "Attached Collada Compiler DLL: {" << versionDesc._versionString << "} -- {" << versionDesc._buildDateString << "}" << std::endl;
+	}
 
-dll_export void AttachLibrary(ConsoleRig::GlobalServices& services)
-{
-    // s_attachRef = services.GetCrossModule().Attach<ConsoleRig::GlobalServices>();
-	services.AttachCurrentModule();
-    Log(Verbose) << "Attached Collada Compiler DLL: {" << ColladaConversion::VersionString << "} -- {" << ColladaConversion::BuildDateString << "}" << std::endl;
-}
-
-dll_export void DetachLibrary()
-{
-    // s_attachRef.Detach();
-	ConsoleRig::GlobalServices::GetInstance().DetachCurrentModule();
-    TerminateFileSystemMonitoring();
-}
+	dll_export void DetachLibrary()
+	{
+		s_attachRef.reset();
+		ConsoleRig::CrossModule::ReleaseInstance();
+	}
 
 }

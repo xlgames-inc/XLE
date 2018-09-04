@@ -14,6 +14,7 @@
 #include "IAnnotator.h"
 
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/AttachableInternal.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
 
@@ -79,7 +80,7 @@ namespace RenderCore
                 // initialize our global from the global services
                 // this will ensure that the same object will be used across multiple DLLs
             static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
-            auto& services = ConsoleRig::GlobalServices::GetCrossModule()._services;
+            auto& services = ConsoleRig::CrossModule::GetInstance()._services;
             if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
                 auto newMiniHeap = std::make_shared<MiniHeap>();
                 services.Add(Fn_GetStorage,

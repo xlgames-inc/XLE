@@ -176,7 +176,7 @@ namespace BufferUploads
         auto* o = &_overlappedStatus;
             // this should be a very quick operation -- it might be best to put it in a
             // separate thread pool from the long operations
-        ConsoleRig::GlobalServices::GetShortTaskThreadPool().Enqueue(
+        ConsoleRig::GlobalServices::GetInstance().GetShortTaskThreadPool().Enqueue(
             [o]()
             {
                 auto* pkt = o->_returnPointer.get();
@@ -346,7 +346,7 @@ namespace BufferUploads
         _marker = std::make_shared<Marker>();
         _returnPointer = this;      // hold a reference while the background operation is occurring
 
-        ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
+        ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().Enqueue(
             [this]()
             {
                 using namespace DirectX;

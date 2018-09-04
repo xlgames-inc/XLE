@@ -188,7 +188,7 @@ namespace RenderCore { namespace Assets
             RegisterFileDependency(_validationCallback, filename);
 
             _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>();
-			MetadataLoadMarker::Enqueue(_pimpl->_metadataMarker, filename, ConsoleRig::GlobalServices::GetShortTaskThreadPool());
+			MetadataLoadMarker::Enqueue(_pimpl->_metadataMarker, filename, ConsoleRig::GlobalServices::GetInstance().GetShortTaskThreadPool());
         }
 
         using namespace BufferUploads;

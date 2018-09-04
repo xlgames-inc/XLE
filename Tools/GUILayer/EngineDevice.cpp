@@ -86,18 +86,16 @@ namespace GUILayer
     {
         ConsoleRig::StartupConfig cfg;
         cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        _services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
+        _services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
+		_crossModule = &ConsoleRig::CrossModule::GetInstance();
 
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
         _renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
 
-        _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-		_assetServices->AttachCurrentModule();
-		ConsoleRig::GlobalServices::GetCrossModule().Publish(*_assetServices);
-        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice);
-		_renderAssetsServices->AttachCurrentModule();
+        _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
     }
@@ -106,7 +104,6 @@ namespace GUILayer
     {
 		_divAssets.reset();
         _renderAssetsServices.reset();
-		_assetServices->DetachCurrentModule();
         _assetServices.reset();
         _immediateContext.reset();
         _renderDevice.reset();

@@ -15,13 +15,11 @@
 #include "../../Assets/NascentChunk.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/MemoryFile.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/StringFormat.h"
-
-
-namespace RenderCore { extern char VersionString[]; extern char BuildDateString[]; }
 
 namespace RenderCore { namespace Assets
 {
@@ -193,7 +191,7 @@ namespace RenderCore { namespace Assets
 
 			::Assets::BuildChunkFile(
 				*mainFile, MakeIteratorRange(chunks),
-				{ RenderCore::VersionString, RenderCore::BuildDateString });
+				ConsoleRig::GetLibVersionDesc());
 
 			{
 				auto dst = ::Assets::MainFileSystem::OpenFileInterface(destinationFile, "wb");

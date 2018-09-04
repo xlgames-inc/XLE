@@ -138,13 +138,13 @@ namespace Assets
 		const std::shared_ptr<::Assets::CompileFuture>& future,
 		std::function<void(::Assets::CompileFuture&)>&& operation)
 	{
-        if (!ConsoleRig::GlobalServices::GetLongTaskThreadPool().IsGood()) {
+        if (!ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().IsGood()) {
             operation(*future);
             return;
         }
 
 		auto fn = std::move(operation);
-		ConsoleRig::GlobalServices::GetLongTaskThreadPool().EnqueueBasic(
+		ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().EnqueueBasic(
 			[future, fn]() {
 				TRY
 				{

@@ -12,12 +12,7 @@
 
 namespace ConsoleRig
 {
-    class LibVersionDesc
-    {
-    public:
-        const char* _versionString;
-        const char* _buildDateString;
-    };
+	class LibVersionDesc;
 
     class AttachableLibrary
     {

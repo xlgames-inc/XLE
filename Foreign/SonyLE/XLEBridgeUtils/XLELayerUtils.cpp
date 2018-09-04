@@ -215,14 +215,18 @@ namespace XLEBridgeUtils
     LoggingRedirect::!LoggingRedirect() {}
 
 
+	ConsoleRig::AttachablePtr<::ConsoleRig::GlobalServices> s_attachRef;
+
     void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
     {
-        device->GetNative().GetGlobalServices()->AttachCurrentModule();
+		ConsoleRig::CrossModule::SetInstance(*device->GetNative().GetCrossModule());
+		s_attachRef = ConsoleRig::GetAttachablePtr<::ConsoleRig::GlobalServices>();
     }
 
     void Utils::DetachLibrary(GUILayer::EngineDevice^ device)
     {
-		device->GetNative().GetGlobalServices()->DetachCurrentModule();
+		s_attachRef.reset();
+		ConsoleRig::CrossModule::ReleaseInstance();
     }
 
 }

@@ -152,11 +152,8 @@ namespace Sample
                 window.GetUnderlyingHandle(), 
 				RenderCore::PresentationChainDesc{unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1])});
 
-        auto assetServices = std::make_unique<::Assets::Services>(0);
-		assetServices->AttachCurrentModule();
-		ConsoleRig::GlobalServices::GetCrossModule().Publish(*assetServices);
-        auto renderAssetServices = std::make_unique<RenderCore::Assets::Services>(renderDevice);
-		renderAssetServices->AttachCurrentModule();
+        auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+        auto renderAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(renderDevice);
 
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
@@ -287,9 +284,7 @@ namespace Sample
         RenderOverlays::CleanupFontSystem();
 
 		renderAssetServices.reset();
-		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*assetServices);
         assetServices.reset();
-        TerminateFileSystemMonitoring();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

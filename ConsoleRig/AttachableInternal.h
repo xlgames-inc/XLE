@@ -7,30 +7,63 @@
 #pragma once
 
 #include "GlobalServices.h"
+#include <memory>
 
 namespace ConsoleRig
 {
-    template<typename Obj>
-        AttachRef<Obj>::AttachRef(AttachRef&& moveFrom)
-    {
-        _attachedService = moveFrom._attachedService;
-        moveFrom._attachedService = nullptr;
-    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Obj>
-        auto AttachRef<Obj>::operator=(AttachRef&& moveFrom)
-            -> AttachRef&
+        class AttachablePtr : std::shared_ptr<Obj>
     {
-        _attachedService = moveFrom._attachedService;
-        moveFrom._attachedService = nullptr;
-        return *this;
-    }
+    public:
+        Obj* get() { return std::shared_ptr<Obj>::get(); }
+		Obj* operator->() { return std::shared_ptr<Obj>::operator->(); }
+        operator bool() { return std::shared_ptr<Obj>::operator bool(); }
+		Obj& operator*() { assert(get()); return *get(); }
+		void reset();
+
+        AttachablePtr();
+        AttachablePtr(AttachablePtr&& moveFrom);
+        AttachablePtr& operator=(AttachablePtr&& moveFrom);
+		AttachablePtr(std::shared_ptr<Obj>&& moveFrom);
+        AttachablePtr& operator=(std::shared_ptr<Obj>&& moveFrom);
+        ~AttachablePtr();
+
+        AttachablePtr(const AttachablePtr&) = delete;
+        AttachablePtr& operator=(const AttachablePtr&) = delete;
+    };
+
+    template<typename Obj, typename... Args>
+        AttachablePtr<Obj> MakeAttachablePtr(Args... a);
 
     template<typename Obj>
-        AttachRef<Obj>::AttachRef()
+        AttachablePtr<Obj> GetAttachablePtr();
+
+    class CrossModule
     {
-        _attachedService = nullptr;
-    }
+    public:
+        VariantFunctions _services;
+
+        static CrossModule& GetInstance();
+		static void SetInstance(CrossModule& crossModule);
+		static void ReleaseInstance();
+    private:
+        static CrossModule* s_instance;
+
+		template<typename Obj, typename... Args>
+			friend AttachablePtr<Obj> MakeAttachablePtr(Args... a);
+
+		template<typename Obj>
+			friend AttachablePtr<Obj> GetAttachablePtr();
+
+		template<typename Object> auto Get() -> std::shared_ptr<Object>;
+        template<typename Object> void Publish(const std::shared_ptr<Object>& obj);
+        template<typename Object> void Withhold(Object& obj);
+    };
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     namespace Internal
     {
@@ -60,79 +93,109 @@ namespace ConsoleRig
         template<typename Obj, typename std::enable_if<!HasAttachCurrentModule<Obj>::Result>::type* = nullptr>
             static void TryDetachCurrentModule(Obj& obj) {}
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    template<typename Obj>
-        AttachRef<Obj>::AttachRef(Obj& obj)
-    : _attachedService(&obj)
+	template<typename Obj>
+        AttachablePtr<Obj>::AttachablePtr(AttachablePtr&& moveFrom)
+	: std::shared_ptr<Obj>(std::move(moveFrom))
     {
-        Internal::TryAttachCurrentModule(*_attachedService);
-    }
-    
-    template<typename Obj>
-        void AttachRef<Obj>::Detach()
-    {
-        if (_attachedService) {
-            Internal::TryDetachCurrentModule(*_attachedService);
-            _attachedService = nullptr;
-        }
     }
 
     template<typename Obj>
-        Obj& AttachRef<Obj>::Get()
+        auto AttachablePtr<Obj>::operator=(AttachablePtr&& moveFrom)
+            -> AttachablePtr&
     {
-        if (!_attachedService)
-            Throw(::Exceptions::BasicLabel("Attempting to get unattached object (of type %s) from AttachRef", typeid(Obj).name()));
-        return *_attachedService->_object;
+		if (moveFrom.get() != get()) {
+			reset();
+			std::shared_ptr<Obj>::operator=(std::move(moveFrom));
+		}
+        return *this;
     }
 
+	template<typename Obj>
+		AttachablePtr<Obj>::AttachablePtr(std::shared_ptr<Obj>&& moveFrom)
+	: std::shared_ptr<Obj>(std::move(moveFrom))
+	{
+		if (get())
+			Internal::TryAttachCurrentModule(*get());
+	}
+
     template<typename Obj>
-        AttachRef<Obj>::~AttachRef()
+		AttachablePtr<Obj>& AttachablePtr<Obj>::operator=(std::shared_ptr<Obj>&& moveFrom)
+	{
+		// Note that if Internal::TryAttachCurrentModule throws an exception, this
+		// pointer remains attached to whatever it was previously attached to
+        operator=(AttachablePtr<Object>(std::move(moveFrom)));
+        return *this;
+	}
+
+    template<typename Obj>
+        AttachablePtr<Obj>::AttachablePtr()
     {
-        Detach();
+	}
+
+	template<typename Obj>
+		void AttachablePtr<Obj>::reset()
+	{
+		if (get())
+			Internal::TryDetachCurrentModule(*get());
+		std::shared_ptr<Obj>::reset();
+	}
+    
+    template<typename Obj>
+        AttachablePtr<Obj>::~AttachablePtr()
+    {
+		reset();
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<typename Object>
-        auto CrossModule::Attach() -> AttachRef<Object>
+        auto CrossModule::Get() -> std::shared_ptr<Object>
     {
-        return AttachRef<Object>(*_services.Call<Object*>(typeid(Object).hash_code()));
+		std::weak_ptr<Object> res;
+        if (_services.TryCall<std::weak_ptr<Object>>(res, typeid(Object).hash_code()))
+			return res.lock();
+		return nullptr;
     }
 
     template<typename Object>
-        void CrossModule::Publish(Object& obj)
+        void CrossModule::Publish(const std::shared_ptr<Object>& obj)
     {
-        auto* attachable = &obj;
+		std::weak_ptr<Object> weakPtr = obj;
         _services.Add(
             typeid(Object).hash_code(),
-            [attachable]() -> Object* { return attachable; });
+            [weakPtr]() { return weakPtr; });
     }
 
     template<typename Object>
         void CrossModule::Withhold(Object& obj)
     {
-        Internal::TryDetachCurrentModule(obj);
         _services.Remove(typeid(Object).hash_code());
     }
 
     template<typename Object, typename... Args>
-        std::shared_ptr<Object> CrossModule::CreateAndPublish(Args... a)
+        AttachablePtr<Object> MakeAttachablePtr(Args... a)
     {
-        std::weak_ptr<CrossModule> weakPtrToThis = shared_from_this();
-        auto result = std::shared_ptr<Object>(
-            new Object(a...),
-            [weakPtrToThis](Object* obj) {
+        auto asSharedPtr = std::shared_ptr<Object>(
+            new Object(std::forward<Args>(a)...),
+            [](Object* obj) {
                 // Withhold from the cross module list before we destroy
-                auto that = weakPtrToThis.lock();
-                if (that) {
-                    that->Withhold(*obj);
-                }
+                CrossModule::GetInstance().Withhold(*obj);
                 // Now just invoke the default deletor
                 std::default_delete<Object>()(obj);
             });
-        Publish(*result);
-        Internal::TryAttachCurrentModule(*result);
-        return result;
+
+		AttachablePtr<Object> result = std::shared_ptr<Object>(asSharedPtr);
+        CrossModule::GetInstance().Publish(asSharedPtr);
+        return std::move(result);
+    }
+
+    template<typename Obj>
+        AttachablePtr<Obj> GetAttachablePtr()
+    {
+        return CrossModule::GetInstance().Get<Obj>();
     }
 
 }

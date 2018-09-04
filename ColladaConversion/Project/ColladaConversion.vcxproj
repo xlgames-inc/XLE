@@ -106,7 +106,6 @@
     <ClCompile Include="..\SEffect.cpp" />
     <ClCompile Include="..\SRawGeometry.cpp" />
     <ClCompile Include="..\STransformationMachine.cpp" />
-    <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h" />

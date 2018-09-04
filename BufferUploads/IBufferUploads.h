@@ -23,7 +23,7 @@
     #define buffer_upload_dll_export
 #endif
 
-namespace ConsoleRig { class GlobalServices; }
+namespace ConsoleRig { class CrossModule; }
 
 namespace BufferUploads
 {
@@ -255,7 +255,7 @@ namespace BufferUploads
 
     buffer_upload_dll_export std::unique_ptr<IManager>      CreateManager(RenderCore::IDevice& renderDevice);
 
-    buffer_upload_dll_export void AttachLibrary(ConsoleRig::GlobalServices&);
+    buffer_upload_dll_export void AttachLibrary(ConsoleRig::CrossModule&);
     buffer_upload_dll_export void DetachLibrary();
 
 }

@@ -40,7 +40,7 @@ namespace RenderCore { namespace Assets
             CompiledShaderByteCode::CompileProcessType, shaderSource);
 
         if (device) {
-            BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
+            BufferUploads::AttachLibrary(ConsoleRig::CrossModule::GetInstance());
             _bufferUploads = BufferUploads::CreateManager(*device);
         }
 
@@ -57,8 +57,6 @@ namespace RenderCore { namespace Assets
         compilers.AddCompiler(
             RenderCore::Assets::MaterialScaffold::CompileProcessType,
             std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
-
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);
     }
 
     Services::~Services()
@@ -71,8 +69,6 @@ namespace RenderCore { namespace Assets
             _bufferUploads.reset();
             BufferUploads::DetachLibrary();
         }
-
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
     }
 
     void Services::InitModelCompilers()

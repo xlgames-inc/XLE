@@ -10,6 +10,7 @@
 #include "../IThreadContext.h"
 #include "IDeviceDX11.h"
 #include "Metal/DX11.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11 { class DeviceContext; class ObjectFactory; } }
@@ -109,7 +110,7 @@ namespace RenderCore { namespace ImplDX11
         std::shared_ptr<ThreadContextDX11>  _immediateThreadContext;
 
         intrusive_ptr<IDXGI::Factory>       GetDXGIFactory();
-        std::unique_ptr<Metal_DX11::ObjectFactory> _mainFactory;
+        ConsoleRig::AttachablePtr<Metal_DX11::ObjectFactory> _mainFactory;
     };
 
     class DeviceDX11 : public Device, public IDeviceDX11

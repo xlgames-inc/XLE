@@ -65,7 +65,6 @@
     <ClCompile Include="..\ConversionConfig.cpp">
       <Filter>ObjectConversion</Filter>
     </ClCompile>
-    <ClCompile Include="..\Version.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\GeoProcUtil.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>

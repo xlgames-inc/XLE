@@ -94,7 +94,6 @@
     <ClCompile Include="..\ShaderLangUtil.cpp" />
     <ClCompile Include="..\ShaderService.cpp" />
     <ClCompile Include="..\UniformsStream.cpp" />
-    <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

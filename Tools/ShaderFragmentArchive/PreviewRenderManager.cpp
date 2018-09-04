@@ -378,20 +378,21 @@ namespace ShaderPatcherLayer
 	class AttachPimpl
     {
     public:
-        ConsoleRig::AttachRef<::Assets::Services> _attachRef1;
-        ConsoleRig::AttachRef<RenderCore::Assets::Services> _attachRef2;
-        ConsoleRig::AttachRef<RenderCore::Metal::ObjectFactory> _attachRef3;
+        ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _attachRef0;
+		ConsoleRig::AttachablePtr<::Assets::Services> _attachRef1;
+        ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _attachRef2;
+        ConsoleRig::AttachablePtr<RenderCore::Metal::ObjectFactory> _attachRef3;
     };
 
 	LibraryAttachMarker::LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice)
 	{
 		_pimpl = new AttachPimpl();
 
-        engineDevice->GetNative().GetGlobalServices()->AttachCurrentModule();
-        auto& crossModule = ConsoleRig::GlobalServices::GetCrossModule();
-        _pimpl->_attachRef1 = crossModule.Attach<::Assets::Services>();
-        _pimpl->_attachRef2 = crossModule.Attach<RenderCore::Assets::Services>();
-        _pimpl->_attachRef3 = crossModule.Attach<RenderCore::Metal::ObjectFactory>();
+		ConsoleRig::CrossModule::SetInstance(*engineDevice->GetNative().GetCrossModule());
+		_pimpl->_attachRef0 = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
+        _pimpl->_attachRef1 = ConsoleRig::GetAttachablePtr<::Assets::Services>();
+        _pimpl->_attachRef2 = ConsoleRig::GetAttachablePtr<RenderCore::Assets::Services>();
+        _pimpl->_attachRef3 = ConsoleRig::GetAttachablePtr<RenderCore::Metal::ObjectFactory>();
 	}
 
 	LibraryAttachMarker::~LibraryAttachMarker()
@@ -404,13 +405,12 @@ namespace ShaderPatcherLayer
             ConsoleRig::ResourceBoxes_Shutdown();
             Assets::Dependencies_Shutdown();    //  (can't do this properly here!)
 
-			_pimpl->_attachRef3.Detach();
-			_pimpl->_attachRef2.Detach();
-			_pimpl->_attachRef1.Detach();
-			ConsoleRig::GlobalServices::GetInstance().DetachCurrentModule();
+			_pimpl->_attachRef3.reset();
+			_pimpl->_attachRef2.reset();
+			_pimpl->_attachRef1.reset();
+			_pimpl->_attachRef0.reset();
+			ConsoleRig::CrossModule::ReleaseInstance();
 			delete _pimpl; _pimpl = nullptr;
-
-            TerminateFileSystemMonitoring();
 		}
 	}
 

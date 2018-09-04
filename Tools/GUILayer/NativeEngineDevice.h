@@ -8,10 +8,12 @@
 
 #include "EngineForward.h"
 #include "../../ConsoleRig/GlobalServices.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets { class Services; } }
 namespace ToolsRig { class DivergentAssetManager; }
+namespace ConsoleRig { class CrossModule; }
 
 namespace GUILayer
 {
@@ -27,6 +29,7 @@ namespace GUILayer
         void                        AttachDefaultCompilers();
         RenderCore::IThreadContext* GetImmediateContext();
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }
+		ConsoleRig::CrossModule*	GetCrossModule() { return _crossModule; }
         int                         GetCreationThreadId() { return _creationThreadId; }
         RenderCore::Assets::Services* GetRenderAssetServices() { return _renderAssetsServices.get(); }
 
@@ -36,11 +39,12 @@ namespace GUILayer
     protected:
         std::shared_ptr<RenderCore::IDevice> _renderDevice;
         std::shared_ptr<RenderCore::IThreadContext> _immediateContext;
-        std::unique_ptr<::Assets::Services> _assetServices;
+        ConsoleRig::AttachablePtr<::Assets::Services> _assetServices;
         std::unique_ptr<ConsoleRig::Console> _console;
-        std::unique_ptr<RenderCore::Assets::Services> _renderAssetsServices;
-        std::unique_ptr<ConsoleRig::GlobalServices> _services;
+        ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _renderAssetsServices;
+        ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _services;
 		std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;
+		ConsoleRig::CrossModule* _crossModule;
         int _creationThreadId;
     };
 }

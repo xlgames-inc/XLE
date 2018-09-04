@@ -14,43 +14,6 @@ namespace Utility { class CompletionThreadPool; }
 
 namespace ConsoleRig
 {
-    template<typename Obj>
-        class AttachRef
-    {
-    public:
-        void Detach();
-        Obj& Get();
-        operator bool() { return _attachedService != nullptr; }
-
-        AttachRef(Obj&);
-        AttachRef();
-        AttachRef(AttachRef&& moveFrom);
-        AttachRef& operator=(AttachRef&& moveFrom);
-        ~AttachRef();
-
-        AttachRef(const AttachRef&) = delete;
-        AttachRef& operator=(const AttachRef&) = delete;
-    protected:
-        Obj* _attachedService;
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class CrossModule : public std::enable_shared_from_this<CrossModule>
-    {
-    public:
-        VariantFunctions _services;
-
-        template<typename Object> auto Attach() -> AttachRef<Object>;
-        template<typename Object> void Publish(Object& obj);
-        template<typename Object> void Withhold(Object& obj);
-
-        template<typename Object, typename... Args>
-            std::shared_ptr<Object> CreateAndPublish(Args... a);
-    };
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     class StartupConfig
     {
     public:
@@ -70,10 +33,10 @@ namespace ConsoleRig
     class GlobalServices
     {
     public:
-        static CrossModule& GetCrossModule() { return *s_instance->_crossModule; }
-        static CompletionThreadPool& GetShortTaskThreadPool() { return *s_instance->_shortTaskPool; }
-        static CompletionThreadPool& GetLongTaskThreadPool() { return *s_instance->_longTaskPool; }
-        static GlobalServices& GetInstance() { return *s_instance; }
+        CompletionThreadPool& GetShortTaskThreadPool();
+        CompletionThreadPool& GetLongTaskThreadPool();
+
+        static GlobalServices& GetInstance() { assert(s_instance); return *s_instance; }
 
         GlobalServices(const StartupConfig& cfg = StartupConfig());
         ~GlobalServices();
@@ -85,12 +48,17 @@ namespace ConsoleRig
         void DetachCurrentModule();
     protected:
         static GlobalServices* s_instance;
-        std::shared_ptr<CrossModule> _crossModule;
-        std::shared_ptr<LogCentralConfiguration> _logCfg;
 
-        std::unique_ptr<CompletionThreadPool> _shortTaskPool;
-        std::unique_ptr<CompletionThreadPool> _longTaskPool;
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
     };
 
-}
+	class LibVersionDesc
+    {
+    public:
+        const char* _versionString;
+        const char* _buildDateString;
+    };
 
+	LibVersionDesc GetLibVersionDesc();
+}

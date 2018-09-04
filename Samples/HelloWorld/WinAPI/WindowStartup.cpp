@@ -7,6 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
+#include "../../../ConsoleRig/AttachableInternal.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
@@ -41,7 +42,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //  startup allocation counts.
     PlatformRig::AccumulatedAllocations accumulatedAllocations;
 
-    ConsoleRig::GlobalServices services;
+    auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>();
     Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
 
     // TestParser3();

@@ -5,6 +5,7 @@
 #include "NascentChunk.h"
 #include "BlockSerializer.h"
 #include "IFileSystem.h"
+#include "../ConsoleRig/GlobalServices.h"
 
 namespace Assets
 {

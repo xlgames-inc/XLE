@@ -5,6 +5,7 @@
 #include "Log.h"
 #include "OutputStream.h"
 #include "GlobalServices.h"
+#include "AttachableInternal.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/Streams/Stream.h"
@@ -105,7 +106,7 @@ namespace ConsoleRig
         #if defined(REDIRECT_COUT)
 
             auto currentModule = GetCurrentModuleId();
-            auto& serv = GlobalServices::GetCrossModule()._services;
+            auto& serv = CrossModule::GetInstance()._services;
             
             bool doRedirect = serv.Call<bool>(Fn_RedirectCout);
             if (doRedirect && !serv.Has<ModuleId()>(Fn_CoutRedirectModule)) {
@@ -138,7 +139,7 @@ namespace ConsoleRig
     void DebugUtil_Shutdown()
     {
         #if defined(REDIRECT_COUT)
-            auto& serv = GlobalServices::GetCrossModule()._services;
+            auto& serv = CrossModule::GetInstance()._services;
             auto currentModule = GetCurrentModuleId();
 
             ModuleId testModule = 0;

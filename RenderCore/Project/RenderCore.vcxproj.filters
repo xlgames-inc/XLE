@@ -98,7 +98,6 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClCompile Include="..\Version.cpp" />
     <ClCompile Include="..\RenderUtils.cpp">
       <Filter>Util</Filter>
     </ClCompile>

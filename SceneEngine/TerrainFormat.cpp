@@ -11,6 +11,7 @@
 #include "../Assets/ChunkFile.h"
 #include "../Assets/Assets.h"
 #include "../Assets/IFileSystem.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Core/Types.h"
@@ -19,11 +20,6 @@
 #include <assert.h>
 
 #include "../Core/WinAPI/IncludeWindows.h"
-
-namespace RenderCore {
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
 
 namespace SceneEngine
 {
@@ -645,42 +641,44 @@ namespace SceneEngine
         const char destinationFile[], TerrainUberSurfaceGeneric& surface, 
         UInt2 cellMins, UInt2 cellMaxs, unsigned treeDepth, unsigned overlapElements) const
     {
+		auto libVersion = ConsoleRig::GetLibVersionDesc();
+		auto ver = std::make_pair(libVersion._versionString, libVersion._buildDateString);
         if (surface.Format() == ImpliedTyping::TypeOf<float>()) {
             MainTerrainFormat::WriteCellFromUberSurface<float>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::QuantRange, 
-                std::make_pair(VersionString, BuildDateString));
+                ver);
         } else if (surface.Format() == ImpliedTyping::TypeOf<ShadowSample>()) {
             MainTerrainFormat::WriteCellFromUberSurface<ShadowSample>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::None, 
-                std::make_pair(VersionString, BuildDateString));
+                ver);
         } else if (surface.Format() == ImpliedTyping::TypeOf<uint8>()) {
             MainTerrainFormat::WriteCellFromUberSurface<uint8>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::None, 
-                std::make_pair(VersionString, BuildDateString));
+                ver);
         } else if (surface.Format() == ImpliedTyping::TypeOf<uint16>()) {
             MainTerrainFormat::WriteCellFromUberSurface<uint16>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::None, 
-                std::make_pair(VersionString, BuildDateString));
+                ver);
         } else if (surface.Format() == ImpliedTyping::TypeOf<int8>()) {
             MainTerrainFormat::WriteCellFromUberSurface<int8>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::None, 
-                std::make_pair(VersionString, BuildDateString));
+                ver);
         } else if (surface.Format() == ImpliedTyping::TypeOf<int16>()) {
             MainTerrainFormat::WriteCellFromUberSurface<int16>(
                 destinationFile, surface, 
                 cellMins, cellMaxs, treeDepth, overlapElements, _gradFlagsSettings,
                 MainTerrainFormat::Compression::None, 
-                std::make_pair(VersionString, BuildDateString));
+                ver);
         }
     }
 

@@ -16,6 +16,7 @@
 #include "Metal/PipelineLayout.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
@@ -28,11 +29,6 @@
 
 // #define HACK_FORCE_SYNC
 
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
-
 namespace RenderCore { namespace ImplVulkan
 {
     using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
@@ -41,7 +37,7 @@ namespace RenderCore { namespace ImplVulkan
 
 	static std::string GetApplicationName()
 	{
-		return ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault<std::string>(
+		return ConsoleRig::CrossModule::GetInstance()._services.CallDefault<std::string>(
 			ConstHash64<'appn', 'ame'>::Value, std::string("<<unnamed>>"));
 	}
 
@@ -784,7 +780,8 @@ namespace RenderCore { namespace ImplVulkan
         
     DeviceDesc Device::GetDesc()
     {
-        return DeviceDesc{s_underlyingApi, VersionString, BuildDateString};
+		auto libVersion = ConsoleRig::GetLibVersionDesc();
+        return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

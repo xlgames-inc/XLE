@@ -34,11 +34,6 @@
 #include <dxgi.h>
 #include <dxgidebug.h>
 
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
-
 namespace RenderCore { namespace ImplDX11
 {
     static void DumpAllDXGIObjects();
@@ -103,7 +98,7 @@ namespace RenderCore { namespace ImplDX11
         auto adapter = SelectAdapter();
 
         #if defined(_DEBUG)
-            const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
+            const auto nsightMode = ConsoleRig::CrossModule::GetInstance()._services.CallDefault(Hash64("nsight"), false);
             unsigned deviceCreationFlags = nsightMode?0:D3D11_CREATE_DEVICE_DEBUG;
         #else
             unsigned deviceCreationFlags = 0;
@@ -147,9 +142,7 @@ namespace RenderCore { namespace ImplDX11
         }
 
         // Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
-        _mainFactory = std::make_unique<Metal_DX11::ObjectFactory>(*underlying);
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*_mainFactory);
-		_mainFactory->AttachCurrentModule();
+        _mainFactory = ConsoleRig::MakeAttachablePtr<Metal_DX11::ObjectFactory>(std::ref(*underlying));
 
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
@@ -159,7 +152,6 @@ namespace RenderCore { namespace ImplDX11
 
     Device::~Device()
     {
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*_mainFactory);
         _mainFactory.reset();
         Metal_DX11::ObjectFactory::ReleaseDevice(*_underlying);
 
@@ -352,7 +344,8 @@ namespace RenderCore { namespace ImplDX11
         
     DeviceDesc Device::GetDesc()
     {
-        return DeviceDesc{s_underlyingApi, VersionString, BuildDateString};
+		auto libVersion = ConsoleRig::GetLibVersionDesc();
+        return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////

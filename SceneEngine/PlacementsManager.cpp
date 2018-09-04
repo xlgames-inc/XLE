@@ -25,6 +25,7 @@
 
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/GlobalServices.h"
 #include "../Math/Matrix.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
@@ -42,11 +43,6 @@
 #include "../Core/Types.h"
 
 #include <random>
-
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
 
 namespace SceneEngine
 {
@@ -126,9 +122,10 @@ namespace SceneEngine
     void Placements::Write(const Assets::ResChar destinationFile[]) const
     {
         using namespace Serialization::ChunkFile;
+		auto libVersion = ConsoleRig::GetLibVersionDesc();
         SimpleChunkFileWriter fileWriter(
 			::Assets::MainFileSystem::OpenBasicFile(destinationFile, "wb", 0),
-            1, RenderCore::VersionString, RenderCore::BuildDateString);
+            1, libVersion._versionString, libVersion._buildDateString);
         fileWriter.BeginChunk(ChunkType_Placements, 0, "Placements");
 
         PlacementsHeader hdr;

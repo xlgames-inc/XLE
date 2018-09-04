@@ -16,6 +16,7 @@
 #include "../../Assets/DepVal.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "../../Utility/Threading/ThreadObject.h"
 #include "../../Utility/Streams/PathUtils.h"

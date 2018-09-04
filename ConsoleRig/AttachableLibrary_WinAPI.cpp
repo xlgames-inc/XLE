@@ -6,6 +6,7 @@
 
 #include "AttachableLibrary.h"
 #include "GlobalServices.h"
+#include "AttachableInternal.h"
 #include "../Utility/SystemUtils.h"
 #include "../Core/WinAPI/IncludeWindows.h"
 #include <string>
@@ -64,10 +65,10 @@ namespace ConsoleRig
                 // If either is missing, we still succeed. The AttachLibrary
                 // function is only required for dlls that want to use our
                 // global services (like logging, console, etc)
-            auto attachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_library, "AttachLibrary");
+            auto attachFn = (void (*)(ConsoleRig::CrossModule&))(*Windows::Fn_GetProcAddress)(_pimpl->_library, "AttachLibrary");
             auto getVersionInfoFn = (LibVersionDesc (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_library, "GetVersionInformation");
             if (attachFn) {
-				(*attachFn)(ConsoleRig::GlobalServices::GetInstance());
+				(*attachFn)(ConsoleRig::CrossModule::GetInstance());
 			}
 
             if (getVersionInfoFn) {
