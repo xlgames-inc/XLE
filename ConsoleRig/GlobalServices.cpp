@@ -10,6 +10,7 @@
 #include "Console.h"
 #include "ResourceBox.h"
 #include "IProgress.h"
+#include "Plugins.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/OSFileSystem.h"
 #include "../Assets/MountingTree.h"
@@ -157,6 +158,7 @@ namespace ConsoleRig
         std::unique_ptr<CompletionThreadPool> _shortTaskPool;
         std::unique_ptr<CompletionThreadPool> _longTaskPool;
 		StartupConfig _cfg;
+		std::unique_ptr<PluginSet> _pluginSet;
 	};
 
     GlobalServices* GlobalServices::s_instance = nullptr;
@@ -182,6 +184,12 @@ namespace ConsoleRig
     {
         assert(s_instance == nullptr);  // (should already have been detached in the Withhold() call)
     }
+
+	void GlobalServices::LoadDefaultPlugins()
+	{
+		if (!_pimpl->_pluginSet)
+			_pimpl->_pluginSet = std::make_unique<PluginSet>();
+	}
 
     void GlobalServices::AttachCurrentModule()
     {

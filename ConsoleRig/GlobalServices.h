@@ -38,6 +38,8 @@ namespace ConsoleRig
 
         static GlobalServices& GetInstance() { assert(s_instance); return *s_instance; }
 
+		void LoadDefaultPlugins();
+
         GlobalServices(const StartupConfig& cfg = StartupConfig());
         ~GlobalServices();
 

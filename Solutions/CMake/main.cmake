@@ -33,7 +33,31 @@ macro(BasicExecutable ExeName Src)
     else ()
         target_link_libraries(${ExeName} wsock32.lib)
     endif ()
+endmacro()
 
+macro(BasicDLL DllName Src)
+    source_group("" FILES ${Src})       # Push all files into the root folder
+    add_library(${DllName} SHARED ${Src})
+
+    if (MSVC)
+        # The CMake Visual Studio generator has a hack that disables the LinkLibraryDependencies setting in
+        # the output project (see cmGlobalVisualStudio8Generator::NeedLinkLibraryDependencies) unless there are
+        # external project dependencies. It's frustrating because we absolutely need that on. To get around the
+        # problem, we'll link in a dummy external project that just contains nothing. This causes cmake to
+        # enable the LinkLibraryDependencies flag, and hopefully has no other side effects.
+        include_external_msproject(generator_dummy ${MAIN_CMAKE_DIR}/generator_dummy.vcxproj)
+        add_dependencies(${DllName} generator_dummy)
+        set_target_properties(${DllName} PROPERTIES VS_USER_PROPS "${MAIN_CMAKE_DIR}/Main.props")
+    endif (MSVC)
+
+    include_directories(${XLE_DIR})
+    include_directories(${FOREIGN_DIR} ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4/include ${FOREIGN_DIR}/Antlr-3.4/libantlr3c-3.4 ${FOREIGN_DIR}/cml-1_0_2)
+
+    if (NOT WIN32)
+        target_link_libraries(${DllName} pthread)
+    else ()
+        target_link_libraries(${DllName} wsock32.lib)
+    endif ()
 endmacro()
 
 macro (FindProjectFiles retVal)

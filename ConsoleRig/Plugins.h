@@ -4,6 +4,8 @@
 
 #pragma once
 
+#include <memory>
+
 namespace ConsoleRig
 {
     class IStartupShutdownPlugin
@@ -13,6 +15,17 @@ namespace ConsoleRig
 		virtual void Deinitialize() = 0;
 
 		virtual ~IStartupShutdownPlugin();
+	};
+
+
+	class PluginSet
+	{
+	public:
+		PluginSet();
+		~PluginSet();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
 	};
 }
 

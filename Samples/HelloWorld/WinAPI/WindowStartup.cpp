@@ -44,6 +44,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>();
     Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
+	services->LoadDefaultPlugins();
 
     // TestParser3();
     // TestParser2();
