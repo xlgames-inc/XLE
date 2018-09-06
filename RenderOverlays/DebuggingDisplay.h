@@ -330,6 +330,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);
         void        Unregister(const char name[]);
+        void        Unregister(IWidget& widget);
 
         void        SwitchToScreen(unsigned panelIndex, const char name[]);
         bool        SwitchToScreen(unsigned panelIndex, uint64 hashCode);
@@ -343,6 +344,10 @@ namespace RenderOverlays { namespace DebuggingDisplay
             uint64                      _hashCode;
         };
         const std::vector<WidgetAndName>& GetWidgets() const { return _widgets; }
+        
+        using WidgetChangeCallback = std::function<void()>;
+        unsigned AddWidgetChangeCallback(WidgetChangeCallback&& callback);
+        void RemoveWidgetChangeCallback(unsigned callbackid);
 
         bool    ConsumedInputEvent()       { return _consumedInputEvent; }
         void    ResetConsumedInputEvent()  { _consumedInputEvent = false; }
@@ -356,6 +361,11 @@ namespace RenderOverlays { namespace DebuggingDisplay
         
         std::vector<WidgetAndName> _widgets;
         std::vector<WidgetAndName> _systemWidgets;
+        
+        unsigned _nextWidgetChangeCallbackIndex;
+        std::vector<std::pair<unsigned, WidgetChangeCallback>> _widgetChangeCallbacks;
+        
+        void TriggerWidgetChangeCallbacks();
 
         struct Panel
         {
