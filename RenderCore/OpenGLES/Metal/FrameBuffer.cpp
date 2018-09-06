@@ -71,6 +71,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             || loadStoreFlags == LoadStore::DontCare_ClearStencil
             || loadStoreFlags == LoadStore::Retain_ClearStencil
             || loadStoreFlags == LoadStore::Clear_ClearStencil
+            || loadStoreFlags == LoadStore::Clear_RetainStencil
             ;
     }
 
