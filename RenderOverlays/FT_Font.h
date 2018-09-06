@@ -8,15 +8,20 @@
 
 #include "Font.h"
 #include "FontPrimitives.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/StringUtils.h"
 #include <map>
 #include <vector>
 #include <memory>
 
+typedef struct FT_FaceRec_ FT_FaceRec;
+typedef struct FT_FaceRec_* FT_Face;
+
 namespace RenderOverlays
 {
 
-struct FTFontRange {
+struct FTFontRange 
+{
     uint16 from;
     uint16 to;
 
@@ -36,22 +41,23 @@ class FTFontGroup;
 typedef std::vector<FTFontRange> FTFontRanges;
 typedef std::map<std::shared_ptr<FTFont>, FTFontRanges> SubFTFontInfoMap;
 
-struct FontDef {
+struct FontDef 
+{
     std::string path;
     int size;
 };
 
 // freetype font
-class FTFont : public Font {
+class FTFont : public Font 
+{
 public:
-    FTFont(FontTexKind kind = FTK_GENERAL);
+    FTFont();
     virtual ~FTFont();
 
     std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
-    FontTexKind GetTexKind() { return _texKind; }
 
-    virtual FT_Face GetFace() { return _face; }
-    virtual FT_Face GetFace(ucs4 /*ch*/) { return _face; }
+    virtual FT_Face GetFace() { return _face.get(); }
+    virtual FT_Face GetFace(ucs4 /*ch*/) { return _face.get(); }
 
     virtual bool Init(const FontDef& fontDef);
     virtual float Descent() const;
@@ -67,26 +73,27 @@ protected:
     virtual float       GetKerning(ucs4 prev, ucs4 ch) const;
 
     int _ascend;
-    FT_Face _face;
-    unsigned char* _pBuffer;
-
-    FontTexKind _texKind;
+    std::shared_ptr<FT_FaceRec_> _face;
+    ::Assets::Blob _pBuffer;
 
     friend class FTFontGroup;
 };
 
 typedef std::map<std::string, FTFontRanges> FTFontInfoMap;
 
-struct FTFontNameInfo {
+struct FTFontNameInfo
+{
     std::string defaultFTFontPath;
     FTFontRanges defaultFTFontRange;
     FTFontInfoMap subFTFontInfo;
 };
+
 typedef std::map<std::string, FTFontNameInfo> FTFontNameMap;
 
-class FTFontGroup : public FTFont {
+class FTFontGroup : public FTFont
+{
 public:
-    FTFontGroup(FontTexKind kind = FTK_GENERAL);
+    FTFontGroup();
     virtual ~FTFontGroup();
 
     bool CheckMyFace(FT_Face face);
@@ -119,18 +126,18 @@ private:
     FTFontRanges _defaultFTFontRanges;
     SubFTFontInfoMap _subFTFontInfoMap;
 
-    friend void GarbageCollectFTFontSystem();
-    friend void CheckResetFTFontSystem();
+    // friend void GarbageCollectFTFontSystem();
+    // friend void CheckResetFTFontSystem();
 };
 
 bool    InitFTFontSystem();
 bool    LoadFontConfigFile();
 void    CleanupFTFontSystem();
-void    CheckResetFTFontSystem();
-int     GetFTFontCount(FontTexKind kind);
-int     GetFTFontFileCount();
+// void    CheckResetFTFontSystem();
+// int     GetFTFontCount(FontTexKind kind);
+// int     GetFTFontFileCount();
 
-std::shared_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind = FTK_GENERAL);
+std::shared_ptr<FTFont> GetX2FTFont(StringSection<> path, int size);
 
 }
 

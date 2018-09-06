@@ -25,7 +25,6 @@ class FT_FontTextureMgr
 {
 public:
     bool            Init(int texWidth, int texHeight);
-    void            CheckTextureValidate(FT_Face face, int size, FontChar *fc);
 
     bool            IsNeedReset() const;
     void            RequestReset();
@@ -44,8 +43,8 @@ public:
     class FontFace
     {
     public:
-        const FontChar*     GetChar(int ch, FontTexKind kind);
-        FontCharID          CreateChar(int ch, FontTexKind kind);
+        const FontChar*     GetChar(int ch);
+        FontCharID          CreateChar(int ch);
         void                DeleteChar(FontCharID fc);
         const FontTexture2D*    GetTexture() const { return _texture; }
 
@@ -62,7 +61,7 @@ public:
         TextureHeap *       _texHeap;
         FontTexture2D *     _texture;
 
-        FontCharID          FindEmptyCharSlot(const FontChar& fc, int *x, int *y, FontTexKind kind);
+        FontCharID          FindEmptyCharSlot(const FontChar& fc, int *x, int *y);
     };
 
     FontFace*       FindFontFace(FT_Face face, int size);
@@ -75,7 +74,7 @@ public:
 private:
     typedef std::vector<std::unique_ptr<FontFace>> FontFaceList;
 
-    CharSlotArray*      OverwriteLRUChar(FontFace* face, FontTexKind kind);
+    CharSlotArray*      OverwriteLRUChar(FontFace* face);
     void                ClearFontTextureRegion(int height, int heightEnd);
 
     int                             _texWidth, _texHeight;

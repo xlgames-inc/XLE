@@ -6,29 +6,30 @@
 
 #pragma once
 
-#include "FontPrimitives.h"
-#include "../RenderCore/IDevice.h"
-#include "../BufferUploads/IBufferUploads.h"
-#include "../Utility/Mixins.h"
+#include "../RenderCore/Format.h"
+#include "../Utility/IntrusivePtr.h"
+#include <memory>
+
+namespace RenderCore { class IResource; class Box2D; }
+namespace BufferUploads { class IManager; class ResourceLocator; class DataPacket; using TransactionID = uint64_t; }
 
 namespace RenderOverlays
 {
+	class FontTexture2D
+	{
+	public:
+		void UpdateToTexture(BufferUploads::DataPacket& packet, const RenderCore::Box2D& destBox);
+		const std::shared_ptr<RenderCore::Resource>& GetUnderlying() const;
 
-class FontTexture2D : noncopyable
-{
-public:
-    FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
-    ~FontTexture2D();
+		FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
+		~FontTexture2D();
 
-    RenderCore::Resource*   GetUnderlying() const;
-	RenderCore::ResourcePtr	ShareUnderlying() const;
-    void    UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height);
-    void    UpdateToTexture(BufferUploads::DataPacket* packet, int offX, int offY, int width, int height);
+		FontTexture2D(FontTexture2D&&) = default;
+		FontTexture2D& operator=(FontTexture2D&&) = default;
 
-private:
-    mutable BufferUploads::TransactionID    _transaction;
-    mutable intrusive_ptr<BufferUploads::ResourceLocator>  _locator;
-};
-
+	private:
+		mutable BufferUploads::TransactionID					_transaction;
+		mutable intrusive_ptr<BufferUploads::ResourceLocator>	_locator;
+	};
 }
 

@@ -215,38 +215,9 @@ float Font::CharWidth(ucs4 ch, ucs4 prev) const
     return x;
 }
 
-FontChar::FontChar(int ich)
+std::shared_ptr<Font> GetX2Font(StringSection<> path, int size)
 {
-    ch = ich;
-    u0 = 0.0f;
-    v0 = 0.0f;
-    u1 = 1.0f;
-    v1 = 1.0f;
-    left = 0.0f;
-    top = 0.0f;
-    width = 0.0f;
-    height = 0.0f;
-    xAdvance = 0.0f;
-
-    offsetX = 0;
-    offsetY = 0;
-
-    usedTime = 0; // desktop.time;
-    needTexUpdate = false;
-}
-
-std::shared_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind)
-{
-    switch (kind) {
-    case FTK_DAMAGEDISPLAY: 
-    case FTK_GENERAL: 
-        return GetX2FTFont(path, size, kind);
-
-//    case FTK_IMAGETEXT: 
-//        return GetX2ImageTextFont(path, size);
-    }
-
-    return nullptr;
+    return GetX2FTFont(path, size);
 }
 
 static float                garbageCollectTime = 0.0f;
@@ -276,30 +247,6 @@ void CleanupFontSystem()
     // CleanupImageTextFontSystem();
     gBufferUploads = nullptr;
     gRenderDevice = nullptr;
-}
-
-void CheckResetFontSystem()
-{
-    CheckResetFTFontSystem();
-}
-
-int GetFontCount(FontTexKind kind)
-{
-    switch (kind) {
-    case FTK_DAMAGEDISPLAY:
-    case FTK_GENERAL:
-        return GetFTFontCount(kind);
-
-    // case FTK_IMAGETEXT:
-    //     return GetImageTextFontCount();
-    }
-
-    return 0;
-}
-
-int GetFontFileCount()
-{
-    return GetFTFontFileCount(); // + GetImageTextFontFileCount();
 }
 
 }

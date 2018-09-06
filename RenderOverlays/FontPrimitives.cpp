@@ -125,6 +125,7 @@ bool Color4::operator < (const Color4& c) const
     return a < c.a;
 }
 
+#if 0
 void Color4::ExtractHSV(float& h, float& s, float& v) const
 {
     float minValue = Min(r, g, b);
@@ -211,6 +212,7 @@ Color4 Color4::HSV(float h, float s, float v, float a)
     }
     return Color4::Create(r,g,b,a);
 }
+#endif
 
 // --------------------------------------------------------------------------
 // Quad

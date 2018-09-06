@@ -370,11 +370,8 @@ namespace RenderCore
     class Box2D
     {
     public:
-        signed _left, _top, _right, _bottom;
-
-        Box2D() : _left(0), _top(0), _right(0), _bottom(0) {}
-        Box2D(signed left, signed top, signed right, signed bottom) 
-            : _left(left), _top(top), _right(right), _bottom(bottom) {}
+        signed _left = 0, _top = 0;
+		signed _right = 0, _bottom = 0;
     };
 
     bool operator==(const Box2D& lhs, const Box2D& rhs);

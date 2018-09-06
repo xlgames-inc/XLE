@@ -53,7 +53,7 @@ namespace BufferUploads
 
         /////////////////////////////////////////////////
 
-    typedef uint64 TransactionID;
+    using TransactionID = uint64_t;
     class Event_ResourceReposition;
 
     struct BatchedHeapMetrics;

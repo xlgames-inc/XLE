@@ -8,6 +8,7 @@
 #include "FT_FontTexture.h"
 #include "FontRendering.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/Assets/Services.h"
 #include "../Core/Types.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
@@ -362,7 +363,10 @@ static int NextPower2(int n)
     return result;
 }
 
-extern BufferUploads::IManager* gBufferUploads;
+static BufferUploads::IManager& GetBufferUploads()
+{
+	return RenderCore::Assets::Services::GetBufferUploads();
+}
 
 FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat)
 {
@@ -375,76 +379,66 @@ FontTexture2D::FontTexture2D(unsigned width, unsigned height, RenderCore::Format
     desc._allocationRules = 0;
     desc._textureDesc = TextureDesc::Plain2D(width, height, pixelFormat, 1);
     XlCopyString(desc._name, "Font");
-    _transaction = gBufferUploads->Transaction_Begin(
+    _transaction = GetBufferUploads().Transaction_Begin(
         desc, (BufferUploads::DataPacket*)nullptr, BufferUploads::TransactionOptions::ForceCreate|BufferUploads::TransactionOptions::LongTerm);
 }
 
 FontTexture2D::~FontTexture2D()
 {
     if (_transaction != ~BufferUploads::TransactionID(0x0)) {
-        gBufferUploads->Transaction_End(_transaction); 
+        GetBufferUploads().Transaction_End(_transaction); 
         _transaction = ~BufferUploads::TransactionID(0x0);
     }
 }
 
-void FontTexture2D::UpdateGlyphToTexture(FT_GlyphSlot glyph, int offX, int offY, int width, int height)
+static intrusive_ptr<BufferUploads::DataPacket> GlyphAsDataPacket(FT_GlyphSlot glyph, int offX, int offY, int width, int height)
 {
     auto packet = BufferUploads::CreateBasicPacket(
         width*height, nullptr, RenderCore::TexturePitches{unsigned(width), unsigned(width*height)});
     uint8* data = (uint8*)packet->GetData();
 
-    int widthCursor = 0;
-    for (int j = 0; j < height; ++j) {
-        for (int i = 0; i < width; ++i) {
-            if (glyph->bitmap.pixel_mode == FT_PIXEL_MODE_GRAY) {
-                uint8 pixel = 0;
-                if (i < int(glyph->bitmap.width) && j < int(glyph->bitmap.rows))
-                    pixel = glyph->bitmap.buffer[i + glyph->bitmap.width * j];
+	int glyphWidth = glyph->bitmap.width;
+	int glyphHeight = glyph->bitmap.rows;
+	if (glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY)
+		glyphWidth = glyphHeight = 0;
 
-                data[i + widthCursor] = pixel;
-            }
-        }
-        widthCursor += width;
+	int j = 0;
+    for (; j < std::min(height, glyphHeight); ++j) {
+        int i = 0;
+		for (; i < std::min(width, glyphWidth); ++i)
+            data[i + j*width] = glyph->bitmap.buffer[i + glyph->bitmap.width * j];
+		for (; i < width; ++i)
+			data[i + j*width] = 0;
     }
+	for (; j < height; ++j)
+		for (int i=0; i < width; ++i)
+			data[i + j*width] = 0;
 
-    UpdateToTexture(packet.get(), offX, offY, width, height);
+    return packet;
 }
 
-void FontTexture2D::UpdateToTexture(BufferUploads::DataPacket* packet, int offX, int offY, int width, int height)
+void FontTexture2D::UpdateToTexture(BufferUploads::DataPacket& packet, const RenderCore::Box2D& destBox)
 {
     if (_transaction == ~BufferUploads::TransactionID(0x0)) {
-        _transaction = gBufferUploads->Transaction_Begin(_locator);
+        _transaction = GetBufferUploads().Transaction_Begin(_locator);
     }
 
-    gBufferUploads->UpdateData(_transaction, packet, RenderCore::Box2D(offX, offY, offX+width, offY+height));
+    GetBufferUploads().UpdateData(_transaction, &packet, destBox);
 }
 
-RenderCore::Resource* FontTexture2D::GetUnderlying() const
+const RenderCore::ResourcePtr& FontTexture2D::GetUnderlying() const
 {
     if ((!_locator || _locator->IsEmpty()) && _transaction) {
-        if (gBufferUploads->IsCompleted(_transaction)) {
-            _locator = gBufferUploads->GetResource(_transaction);
+        if (GetBufferUploads().IsCompleted(_transaction)) {
+            _locator = GetBufferUploads().GetResource(_transaction);
             if (_locator && !_locator->IsEmpty()) {
-                gBufferUploads->Transaction_End(_transaction);
+                GetBufferUploads().Transaction_End(_transaction);
                 _transaction = ~BufferUploads::TransactionID(0x0);
             }
         }
     }
-    return _locator ? _locator->GetUnderlying().get() : nullptr;
-}
-
-RenderCore::ResourcePtr FontTexture2D::ShareUnderlying() const
-{
-	if ((!_locator || _locator->IsEmpty()) && _transaction) {
-		if (gBufferUploads->IsCompleted(_transaction)) {
-			_locator = gBufferUploads->GetResource(_transaction);
-			if (_locator && !_locator->IsEmpty()) {
-				gBufferUploads->Transaction_End(_transaction);
-				_transaction = ~BufferUploads::TransactionID(0x0);
-			}
-		}
-	}
-	return _locator ? _locator->GetUnderlying() : nullptr;
+	static RenderCore::ResourcePtr nullResPtr;
+    return _locator ? _locator->GetUnderlying() : nullResPtr;
 }
 
 bool FT_FontTextureMgr::Init(int texWidth, int texHeight)
@@ -454,33 +448,6 @@ bool FT_FontTextureMgr::Init(int texWidth, int texHeight)
     _texture = std::make_unique<FontTexture2D>(_texWidth, _texHeight, RenderCore::Format::R8_UNORM);
     _texHeap = std::make_unique<TextureHeap>(_texHeight);
     return true;
-}
-
-void FT_FontTextureMgr::CheckTextureValidate(FT_Face face, int size, FontChar *fc)
-{
-    if(!fc->needTexUpdate /*|| fc->tex*/) {
-        return;
-    }
-
-    FT_Error error = FT_Load_Char(face, fc->ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
-    if (error)  return;
-
-    FT_GlyphSlot glyph = face->glyph;
-
-    int updateWidth = 0;
-    int updateHeight = 0;
-
-    if(0/*fc->tex == _tex*/) {
-        updateWidth = face->size->metrics.max_advance / 64;
-        updateHeight = size;
-    } else {
-        updateWidth = NextPower2(glyph->bitmap.width);
-        updateHeight = NextPower2(glyph->bitmap.rows);
-    }
-
-    // UpdateGlyphToTexture(glyph, fc->tex->GetTextureID(), fc->offsetX, fc->offsetY, updateWidth, updateHeight);
-
-    fc->needTexUpdate = false;
 }
 
 void FT_FontTextureMgr::RequestReset()
@@ -510,36 +477,24 @@ void FT_FontTextureMgr::Reset()
     _needReset = false;
 }
 
-FontCharID FT_FontTextureMgr::FontFace::CreateChar(int ch, FontTexKind kind)
+FontCharID FT_FontTextureMgr::FontFace::CreateChar(int ch)
 {
-    // if (!_tex) {
-    //     // GameWarning("FT_FontTextureMgr::CreateChar - not initialized");
-    //     return 0;
-    // }
-
     FT_Error error = FT_Load_Char(_face, ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
-    if (error) {
+    if (error)
+		return FontCharID_Invalid;
+	/*{
         if(ch != ' ') {
-            // GameWarning("Failed to load character \'%d\'", ch);
-
-            // FontChar* fc = CreateEmptyFontChar(ch);
-            // fc->xAdvance = size * 0.5f;
-            // return fc;
             return FontCharID_Invalid;
         } else {
             error = FT_Load_Char(_face, ch, FT_LOAD_RENDER);
-            if (error) {
-                // FontChar* fc = CreateEmptyFontChar(ch);
-                // fc->xAdvance = size * 0.5f;
-                // return fc;
+            if (error)
                 return FontCharID_Invalid;
-            }
         }
-    }
+    }*/
 
     FT_GlyphSlot glyph = _face->glyph;
 
-    FontChar fc(ch);
+	FontChar fc{ch};
     fc.left     = (float)glyph->bitmap_left;
     fc.top      = (float)glyph->bitmap_top;
     fc.width    = (float)glyph->bitmap.width;
@@ -549,30 +504,15 @@ FontCharID FT_FontTextureMgr::FontFace::CreateChar(int ch, FontTexKind kind)
     // assert((face->size->metrics.max_advance / 64) < glyph->bitmap.width);
 
     int offsetX, offsetY;
-    FontCharID charID = FindEmptyCharSlot(fc, &offsetX, &offsetY, kind);
-    if (charID != FontCharID_Invalid) {
-        if (_texture) {
-            _texture->UpdateGlyphToTexture( glyph, offsetX, offsetY,
-                                            _face->size->metrics.max_advance / 64, _size);
-        }
-        return charID;
-    } else {
-        return FontCharID_Invalid;
-        // RequestReset();
-        // 
-        // int texWidth = NextPower2(glyph->bitmap.width);
-        // int texHeight = NextPower2(glyph->bitmap.rows);
-        // // ITexture *newTex = CreateTempTexture(glyph, texWidth, texHeight);
-        // // fc->tex = newTex;
-        // 
-        // fc.u0 = 0.0f;
-        // fc.v0 = 0.0f;
-        // fc.u1 = (float)glyph->bitmap.width / texWidth;
-        // fc.v1 = (float)glyph->bitmap.rows / texHeight;
-        // 
-        // fc.offsetX = 0;
-        // fc.offsetY = 0;
+    FontCharID charID = FindEmptyCharSlot(fc, &offsetX, &offsetY);
+    if (charID == FontCharID_Invalid)
+		return FontCharID_Invalid;
+
+    if (_texture) {
+        auto pkt = GlyphAsDataPacket(glyph, offsetX, offsetY, glyph->bitmap.width, glyph->bitmap.rows);
+		_texture->UpdateToTexture(*pkt, RenderCore::Box2D{offsetX, offsetY, (signed)glyph->bitmap.width, (signed)glyph->bitmap.rows});
     }
+    return charID;
 }
 
 FT_FontTextureMgr::FontFace* FT_FontTextureMgr::FindFontFace(FT_Face face, int size)
@@ -608,7 +548,7 @@ auto FT_FontTextureMgr::CreateFontFace(FT_Face face, int size) -> FontFace*
     }
 }
 
-FontCharID FT_FontTextureMgr::FontFace::FindEmptyCharSlot(const FontChar& fc, int *x, int *y, FontTexKind kind)
+FontCharID FT_FontTextureMgr::FontFace::FindEmptyCharSlot(const FontChar& fc, int *x, int *y)
 {
     CharSlotArray *slot = NULL;
     unsigned slotIndex = ~unsigned(0x0);
@@ -669,7 +609,7 @@ FT_FontTextureMgr::FontFace::FontFace(TextureHeap* texHeap, FontTexture2D* textu
 {
 }
 
-CharSlotArray* FT_FontTextureMgr::OverwriteLRUChar(FontFace* face, FontTexKind kind)
+CharSlotArray* FT_FontTextureMgr::OverwriteLRUChar(FontFace* face)
 {
     CharSlotArrayList::iterator it = face->_slotList.begin();
 
@@ -722,7 +662,7 @@ void FT_FontTextureMgr::ClearFontTextureRegion(int height, int heightEnd)
 
     auto blankBuf = BufferUploads::CreateBasicPacket(_texWidth * texHeight, nullptr, RenderCore::TexturePitches{unsigned(_texWidth), unsigned(_texWidth*texHeight)});
     XlSetMemory(const_cast<void*>(blankBuf->GetData()), 0, _texWidth * texHeight);
-    _texture->UpdateToTexture(blankBuf.get(), 0, height, _texWidth, texHeight);
+	_texture->UpdateToTexture(*blankBuf, RenderCore::Box2D{0, height, _texWidth, texHeight});
 }
 
 void FT_FontTextureMgr::FontFace::DeleteChar(FontCharID fc)
@@ -734,11 +674,11 @@ void FT_FontTextureMgr::FontFace::DeleteChar(FontCharID fc)
     }
 }
 
-const FontChar* FT_FontTextureMgr::FontFace::GetChar(int ch, FontTexKind kind)
+const FontChar* FT_FontTextureMgr::FontFace::GetChar(int ch)
 {
     FontCharID& id = _table[ch];
     if (id == FontCharID_Invalid) {
-        id = CreateChar(ch, kind);
+        id = CreateChar(ch);
     }
 
     unsigned slotIndex = id >> 16;

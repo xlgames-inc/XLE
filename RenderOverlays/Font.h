@@ -11,33 +11,29 @@
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
 #include "../Utility/UTFUtils.h"
+#include "../Utility/StringUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
 
 namespace RenderOverlays
 {
-
-    struct FontChar {
+    struct FontChar 
+	{
         int ch;
-        float u0, v0;
-        float u1, v1;
-        float left, top;
-        float width, height;
-        float xAdvance;
+        float u0 = 0.f, v0 = 0.f;
+        float u1 = 1.f, v1 = 1.f;
+        float left = 0.f, top = 0.f;
+        float width = 0.f, height = 0.f;
+        float xAdvance = 0.f;
 
-        int offsetX, offsetY;
+        int offsetX = 0, offsetY = 0;
 
-        float usedTime;
-        bool needTexUpdate;
-
-        FontChar(int ich=0);
+        float usedTime = 0.f;
+        bool needTexUpdate = false;
     };
 
     class FontTexture2D;
-
-    // font
-    #define FONT_IMAGE_TABLE_SIZE 16
 
     class Font : public std::enable_shared_from_this<Font>
     {
@@ -66,14 +62,13 @@ namespace RenderOverlays
                                 bool outline         = false);
         float CharWidth(ucs4 ch, ucs4 prev) const;
 
-        virtual FT_Face     GetFace()                   { return nullptr; }
-        virtual FT_Face     GetFace(ucs4 /*ch*/)     { return nullptr; }
-        virtual void        TouchFontChar(const FontChar*)       {}
+        // virtual FT_Face     GetFace()                   { return nullptr; }
+        // virtual FT_Face     GetFace(ucs4 /*ch*/)     { return nullptr; }
+        // virtual void        TouchFontChar(const FontChar*)       {}
 
         virtual float       Descent() const = 0;
         virtual float       Ascent(bool includeAccent) const = 0;
         virtual float       LineHeight() const = 0;
-        virtual FontTexKind GetTexKind() = 0;
         virtual Float2     GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
 
         virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
@@ -90,11 +85,8 @@ namespace RenderOverlays
 
     bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads);
     void CleanupFontSystem();
-    void CheckResetFontSystem();
-    int GetFontCount(FontTexKind kind);
-    int GetFontFileCount();
 
-    std::shared_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind = FTK_GENERAL);
+    std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
 
     struct DrawTextOptions 
     {
@@ -143,7 +135,6 @@ namespace RenderOverlays
     {
     public:
         DrawTextOptions			_options;
-        std::shared_ptr<Font>	_font;
         unsigned                _pointSize;
 
         TextStyle(const std::shared_ptr<Font>&, const DrawTextOptions& options = DrawTextOptions());
