@@ -13,6 +13,7 @@
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringUtils.h"     // for StringSection
 #include "../Core/Types.h"
+#include <functional>
 #include <vector>
 #include <map>
 
