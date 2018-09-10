@@ -15,24 +15,10 @@
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
 #include <memory>
+#include <utility>
 
 namespace RenderOverlays
 {
-    struct FontChar 
-	{
-        int ch;
-        float u0 = 0.f, v0 = 0.f;
-        float u1 = 1.f, v1 = 1.f;
-        float left = 0.f, top = 0.f;
-        float width = 0.f, height = 0.f;
-        float xAdvance = 0.f;
-
-        int offsetX = 0, offsetY = 0;
-
-        float usedTime = 0.f;
-        bool needTexUpdate = false;
-    };
-
     class FontTexture2D;
 
     class Font : public std::enable_shared_from_this<Font>
@@ -44,7 +30,7 @@ namespace RenderOverlays
         int GetSize()           { return _size; }
         const char* GetPath()   { return _path; }
 
-        virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const = 0;
+        // virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const = 0;
         float StringWidth(      const ucs4* text,
                                 int maxLen           = -1,
                                 float spaceExtra     = 0.0f,
@@ -75,8 +61,8 @@ namespace RenderOverlays
         virtual bool        IsMultiFontAdapter() const;
 
     protected:
-        virtual FontCharID  CreateFontChar(ucs4 ch) const = 0;
-        virtual void        DeleteFontChar(FontCharID fc) = 0;
+        virtual FontGlyphID  CreateFontChar(ucs4 ch) const = 0;
+        virtual void        DeleteFontChar(FontGlyphID fc) = 0;
         virtual float       GetKerning(ucs4 prev, ucs4 ch) const = 0;
     
         char    _path[MaxPath];

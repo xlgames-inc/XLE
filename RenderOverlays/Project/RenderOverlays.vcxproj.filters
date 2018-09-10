@@ -29,13 +29,13 @@
     </ClCompile>
     <ClCompile Include="..\OverlayUtils.cpp" />
     <ClCompile Include="..\HighlightEffects.cpp" />
+    <ClCompile Include="..\FontRectanglePacking.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DebuggingDisplay.h" />
     <ClInclude Include="..\IOverlayContext.h" />
     <ClInclude Include="..\Font.h" />
     <ClInclude Include="..\FontPrimitives.h" />
-    <ClInclude Include="..\FontRendering.h" />
     <ClInclude Include="..\FT_Font.h" />
     <ClInclude Include="..\FT_FontTexture.h" />
     <ClInclude Include="..\IOverlayContext_Forward.h" />
@@ -61,6 +61,7 @@
     </ClInclude>
     <ClInclude Include="..\OverlayUtils.h" />
     <ClInclude Include="..\HighlightEffects.h" />
+    <ClInclude Include="..\FontRectanglePacking.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Overlays">

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "FT_FontTexture.h"
 #include "Font.h"
 #include "FontPrimitives.h"
 #include "../Assets/IFileSystem.h"
@@ -54,7 +55,7 @@ public:
     FTFont();
     virtual ~FTFont();
 
-    std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
+    //std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
 
     virtual FT_Face GetFace() { return _face.get(); }
     virtual FT_Face GetFace(ucs4 /*ch*/) { return _face.get(); }
@@ -64,17 +65,19 @@ public:
     virtual float Ascent(bool includeAccent) const;
     virtual float LineHeight() const;
     // virtual bool SacrificeChar(int ch);
-    virtual void TouchFontChar(const FontChar *fc);
+    // virtual void TouchFontChar(const FontChar *fc);
     virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
 
 protected:
-    virtual FontCharID  CreateFontChar(ucs4 ch) const;
-    virtual void        DeleteFontChar(FontCharID fc);
+    virtual FontGlyphID  CreateFontChar(ucs4 ch) const;
+    virtual void        DeleteFontChar(FontGlyphID fc);
     virtual float       GetKerning(ucs4 prev, ucs4 ch) const;
 
     int _ascend;
     std::shared_ptr<FT_FaceRec_> _face;
     ::Assets::Blob _pBuffer;
+
+	std::shared_ptr<FT_FontTextureMgr::FontFace> _textureFace;
 
     friend class FTFontGroup;
 };
@@ -90,6 +93,7 @@ struct FTFontNameInfo
 
 typedef std::map<std::string, FTFontNameInfo> FTFontNameMap;
 
+#if 0
 class FTFontGroup : public FTFont
 {
 public:
@@ -102,7 +106,7 @@ public:
     bool LoadDefaultFTFont(FTFontNameInfo &info, int size);
     void LoadSubFTFont(FTFontNameInfo &info, int size);
 
-    virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
+    // virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
 
     virtual FT_Face GetFace();
     virtual FT_Face GetFace(ucs4 ch);
@@ -119,7 +123,7 @@ public:
     virtual bool IsMultiFontAdapter() const;
 
 private:
-    virtual FontCharID CreateFontChar(ucs4 ch);
+    virtual FontGlyphID CreateFontChar(ucs4 ch);
     virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
 	std::shared_ptr<FTFont> _defaultFTFont;
@@ -133,6 +137,8 @@ private:
 bool    InitFTFontSystem();
 bool    LoadFontConfigFile();
 void    CleanupFTFontSystem();
+#endif
+
 // void    CheckResetFTFontSystem();
 // int     GetFTFontCount(FontTexKind kind);
 // int     GetFTFontFileCount();

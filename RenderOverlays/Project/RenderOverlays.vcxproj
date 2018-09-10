@@ -86,6 +86,7 @@
     <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\Font.cpp" />
     <ClCompile Include="..\FontPrimitives.cpp" />
+    <ClCompile Include="..\FontRectanglePacking.cpp" />
     <ClCompile Include="..\FT_Font.cpp" />
     <ClCompile Include="..\FT_FontTexture.cpp" />
     <ClCompile Include="..\HighlightEffects.cpp" />
@@ -102,11 +103,11 @@
   <ItemGroup>
     <ClInclude Include="..\DebuggingDisplay.h" />
     <ClInclude Include="..\DebugHotKeys.h" />
+    <ClInclude Include="..\FontRectanglePacking.h" />
     <ClInclude Include="..\HighlightEffects.h" />
     <ClInclude Include="..\IOverlayContext.h" />
     <ClInclude Include="..\Font.h" />
     <ClInclude Include="..\FontPrimitives.h" />
-    <ClInclude Include="..\FontRendering.h" />
     <ClInclude Include="..\FT_Font.h" />
     <ClInclude Include="..\FT_FontTexture.h" />
     <ClInclude Include="..\IOverlayContext_Forward.h" />
