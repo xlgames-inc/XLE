@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Font.h"
-#include "FontRendering.h"
+// #include "FontRendering.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"

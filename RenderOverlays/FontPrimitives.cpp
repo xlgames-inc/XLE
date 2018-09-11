@@ -16,6 +16,7 @@ inline float FloatBits(uint32 i) { return *(float*)&i; }
 static const float FP_INFINITY = FloatBits(0x7F800000);
 static const float FP_NEG_INFINITY = FloatBits(0xFF800000);
 
+#if 0
 static float Min(float x, float y, float z)
 {
     if (x <= y && x <= z) {
@@ -37,6 +38,7 @@ static float Max(float x, float y, float z)
     }
     return z;
 }
+#endif
 
 // --------------------------------------------------------------------------
 // Color4

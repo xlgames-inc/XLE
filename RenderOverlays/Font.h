@@ -57,8 +57,18 @@ namespace RenderOverlays
         virtual float       LineHeight() const = 0;
         virtual Float2     GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
 
-        virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
-        virtual bool        IsMultiFontAdapter() const;
+        // virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
+        // virtual bool        IsMultiFontAdapter() const;
+
+		virtual FontGlyphID GetTextureGlyph(ucs4 ch) const = 0;
+
+		struct GlyphProperties
+		{
+			float _left, _top;
+			float _xAdvance;
+		};
+
+		virtual GlyphProperties GetGlyphProperties(ucs4 ch) const = 0;
 
     protected:
         virtual FontGlyphID  CreateFontChar(ucs4 ch) const = 0;

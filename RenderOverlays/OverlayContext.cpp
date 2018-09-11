@@ -304,8 +304,8 @@ namespace RenderOverlays
 		ucs4 unicharBuffer[4096];
         utf8_2_ucs4((const utf8*)text.begin(), text.size(), unicharBuffer, dimof(unicharBuffer));
 
-        if (!textStyle)
-            textStyle = &_defaultTextStyle;
+        //if (!textStyle)
+        //    textStyle = &_defaultTextStyle;
 
         Quad q;
         q.min = Float2(std::get<0>(quad)[0], std::get<0>(quad)[1]);
@@ -325,17 +325,15 @@ namespace RenderOverlays
         ucs4 unicharBuffer[4096];
         utf8_2_ucs4((const utf8*)text.begin(), text.size(), unicharBuffer, dimof(unicharBuffer));
 
-        if (!textStyle)
-            textStyle = &_defaultTextStyle;
+        //if (!textStyle)
+        //    textStyle = &_defaultTextStyle;
 
         return scale * textStyle->StringWidth(unicharBuffer);
     }
 
     float ImmediateOverlayContext::TextHeight(TextStyle* textStyle) 
     {
-        if (!textStyle)
-            textStyle = &_defaultTextStyle;
-        return textStyle->_font->LineHeight();
+        return _defaultFont->LineHeight();
     }
 
     void ImmediateOverlayContext::CaptureState() 
@@ -630,7 +628,7 @@ namespace RenderOverlays
         IThreadContext& threadContext, 
         RenderCore::Techniques::AttachmentPool* namedRes,
         const Techniques::ProjectionDesc& projDesc)
-    : _defaultTextStyle(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
+    : _defaultFont(ConsoleRig::FindCachedBox2<DefaultFontBox>()._font)
     , _projDesc(projDesc)
     , _deviceContext(&threadContext)
     , _namedResources(namedRes)

@@ -9,6 +9,7 @@
 #include "FT_FontTexture.h"
 #include "Font.h"
 #include "FontPrimitives.h"
+#include "../Math/Vector.h"
 #include "../Assets/IFileSystem.h"
 #include "../Utility/StringUtils.h"
 #include <map>
@@ -20,27 +21,6 @@ typedef struct FT_FaceRec_* FT_Face;
 
 namespace RenderOverlays
 {
-
-struct FTFontRange 
-{
-    uint16 from;
-    uint16 to;
-
-    static FTFontRange Create(uint16 f, uint16 t)
-    {
-        FTFontRange range;
-        range.from = f;
-        range.to = t;
-
-        return range;
-    }
-};
-
-class FTFont;
-class FTFontGroup;
-
-typedef std::vector<FTFontRange> FTFontRanges;
-typedef std::map<std::shared_ptr<FTFont>, FTFontRanges> SubFTFontInfoMap;
 
 struct FontDef 
 {
@@ -57,8 +37,8 @@ public:
 
     //std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
 
-    virtual FT_Face GetFace() { return _face.get(); }
-    virtual FT_Face GetFace(ucs4 /*ch*/) { return _face.get(); }
+    // virtual FT_Face GetFace() { return _face.get(); }
+    // virtual FT_Face GetFace(ucs4 /*ch*/) { return _face.get(); }
 
     virtual bool Init(const FontDef& fontDef);
     virtual float Descent() const;
@@ -68,30 +48,30 @@ public:
     // virtual void TouchFontChar(const FontChar *fc);
     virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
 
+	virtual FontGlyphID GetTextureGlyph(ucs4 ch) const;
+	virtual GlyphProperties GetGlyphProperties(ucs4 ch) const;
+
 protected:
-    virtual FontGlyphID  CreateFontChar(ucs4 ch) const;
-    virtual void        DeleteFontChar(FontGlyphID fc);
-    virtual float       GetKerning(ucs4 prev, ucs4 ch) const;
 
     int _ascend;
     std::shared_ptr<FT_FaceRec_> _face;
     ::Assets::Blob _pBuffer;
 
-	std::shared_ptr<FT_FontTextureMgr::FontFace> _textureFace;
+	std::shared_ptr<FT_FontTextureMgr> _textureManager;
 
-    friend class FTFontGroup;
+	class GlyphEntry
+	{
+	public:
+		Float2 _topLeft, _bottomRight;
+		GlyphProperties _props;
+		FontGlyphID _textureGlyph;		
+	};
+	mutable std::vector<GlyphEntry> _glyphs;
+
+	mutable FontCharTable _lookupTable;
+
+	FontGlyphID InitializeGlyph(ucs4 ch) const;
 };
-
-typedef std::map<std::string, FTFontRanges> FTFontInfoMap;
-
-struct FTFontNameInfo
-{
-    std::string defaultFTFontPath;
-    FTFontRanges defaultFTFontRange;
-    FTFontInfoMap subFTFontInfo;
-};
-
-typedef std::map<std::string, FTFontNameInfo> FTFontNameMap;
 
 #if 0
 class FTFontGroup : public FTFont

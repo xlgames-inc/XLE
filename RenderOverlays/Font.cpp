@@ -21,68 +21,31 @@ Font::~Font()
 {
 }
 
-    // DavidJ -- hack! subvert massive virtual call overload by putting in some quick overloads
-std::shared_ptr<const Font> Font::GetSubFont(ucs4) const { return shared_from_this(); }
-bool Font::IsMultiFontAdapter() const { return false; }
-
 float Font::StringWidth(const ucs4* text, int maxLen, float spaceExtra, bool outline)
 {
     if (!text)
         return 0.0f;
 
     int prevGlyph = 0;
-
     float x = 0.0f;
+    for (uint32 i = 0; i < (uint32)maxLen; ++i) {
+        int ch = text[i];
+        if (!ch) break;
+        if( ch == '\n') continue;
 
-        // DavidJ -- Hack -- this function is resulting in virtual call overload. But we
-        //                  can simplify by specialising for "FTFontGroup" type implementations
-    if (IsMultiFontAdapter()) {
-        for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-            int ch = text[i];
-            if (!ch) break;
-            if( ch == '\n') continue;
+        int curGlyph;
+        x += GetKerning(prevGlyph, ch, &curGlyph)[0];
 
-            int curGlyph;
-            auto subFont = GetSubFont(ch);
-            if (subFont) {
-                x += subFont->GetKerning(prevGlyph, ch, &curGlyph)[0];
+        auto chr = GetGlyphProperties(ch);
+        x += chr._xAdvance;
 
-                const FontChar* chr = subFont->GetChar(ch).first;
-                if(chr) {
-                    x += chr->xAdvance;
-
-                    if(outline) {
-                        x += 2.0f;
-                    }
-                    if(ch == ' ') {
-                        x += spaceExtra;
-                    }
-                }
-                prevGlyph = curGlyph;
-            }
+        if(outline) {
+            x += 2.0f;
         }
-    } else {
-        for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-            int ch = text[i];
-            if (!ch) break;
-            if( ch == '\n') continue;
-
-            int curGlyph;
-            x += GetKerning(prevGlyph, ch, &curGlyph)[0];
-
-            const FontChar* chr = GetChar(ch).first;
-            if(chr) {
-                x += chr->xAdvance;
-
-                if(outline) {
-                    x += 2.0f;
-                }
-                if(ch == ' ') {
-                    x += spaceExtra;
-                }
-            }
-            prevGlyph = curGlyph;
+        if(ch == ' ') {
+            x += spaceExtra;
         }
+        prevGlyph = curGlyph;
     }
 
     return x;
@@ -107,17 +70,14 @@ int Font::CharCountFromWidth(const ucs4* text, float width, int maxLen, float sp
         x += GetKerning(prevGlyph, ch, &curGlyph)[0];
         prevGlyph = curGlyph;
 
-        const FontChar* fc = GetChar(ch).first;
-        if(fc) {
+        auto chr = GetGlyphProperties(ch);
+        x += chr._xAdvance;
 
-            x += fc->xAdvance;
-
-            if(outline) {
-                x += 2.0f;
-            }
-            if(ch == ' ') {
-                x += spaceExtra;
-            }
+        if(outline) {
+            x += 2.0f;
+        }
+        if(ch == ' ') {
+            x += spaceExtra;
         }
 
         if (width < x) {
@@ -169,17 +129,14 @@ float Font::StringEllipsis(const ucs4* inText, ucs4* outText, size_t outTextSize
         x += GetKerning(prevGlyph, ch, &curGlyph)[0];
         prevGlyph = curGlyph;
 
-        const FontChar* fc = GetChar(ch).first;
-        if(fc) {
+        auto chr = GetGlyphProperties(ch);
+        x += chr._xAdvance;
 
-            x += fc->xAdvance;
-
-            if(outline) {
-                x += 2.0f;
-            }
-            if(ch == ' ') {
-                x += spaceExtra;
-            }
+        if(outline) {
+            x += 2.0f;
+        }
+        if(ch == ' ') {
+            x += spaceExtra;
         }
 
         if (x > width) {
@@ -207,10 +164,7 @@ float Font::CharWidth(ucs4 ch, ucs4 prev) const
         x += GetKerning(prev, ch);
     }
 
-    const FontChar* fc = GetChar(ch).first;
-    if(fc) {
-        x += fc->xAdvance;
-    }
+    x += GetGlyphProperties(ch)._xAdvance;
 
     return x;
 }
@@ -220,19 +174,19 @@ std::shared_ptr<Font> GetX2Font(StringSection<> path, int size)
     return GetX2FTFont(path, size);
 }
 
-static float                garbageCollectTime = 0.0f;
-BufferUploads::IManager*    gBufferUploads = nullptr;
-RenderCore::IDevice*        gRenderDevice = nullptr;
+// static float                garbageCollectTime = 0.0f;
+// BufferUploads::IManager*    gBufferUploads = nullptr;
+// RenderCore::IDevice*        gRenderDevice = nullptr;
 
 bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads)
 {
-    garbageCollectTime = 0.0f;
-    gRenderDevice = device;
-    gBufferUploads = bufferUploads;
+    // garbageCollectTime = 0.0f;
+    // gRenderDevice = device;
+    // gBufferUploads = bufferUploads;
 
-    if(!InitFTFontSystem()) {
+    /*if(!InitFTFontSystem()) {
         return false;
-    }
+    }*/
 
     // if(!InitImageTextFontSystem()) {
     //     return false;
@@ -243,10 +197,10 @@ bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* buffer
 
 void CleanupFontSystem()
 {
-    CleanupFTFontSystem();
+    // CleanupFTFontSystem();
     // CleanupImageTextFontSystem();
-    gBufferUploads = nullptr;
-    gRenderDevice = nullptr;
+    // gBufferUploads = nullptr;
+    // gRenderDevice = nullptr;
 }
 
 }

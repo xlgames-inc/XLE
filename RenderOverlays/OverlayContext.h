@@ -86,7 +86,7 @@ namespace RenderOverlays
 		unsigned					_workingBufferSize;
 		unsigned					_writePointer;
 
-        TextStyle               _defaultTextStyle;
+        std::shared_ptr<Font>		_defaultFont;
 
         RenderCore::SharedPkt _viewportConstantBuffer;
         RenderCore::SharedPkt _globalTransformConstantBuffer;

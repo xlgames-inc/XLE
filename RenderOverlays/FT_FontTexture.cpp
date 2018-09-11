@@ -34,12 +34,9 @@ namespace RenderOverlays
 	class FT_FontTextureMgr::Pimpl
 	{
 	public:
-		RectanglePacker_FontCharArray _rectanglePacker;
-
-		std::vector<FontFace>			_faceList;
+		RectanglePacker_FontCharArray	_rectanglePacker;
 		std::unique_ptr<FontTexture2D>  _texture;
-
-		std::vector<FontFace::Glyph>	_glyphs;
+		std::vector<Glyph>				_glyphs;
 
 		unsigned _texWidth, _texHeight;
 
@@ -85,22 +82,20 @@ namespace RenderOverlays
 		}
 	}
 
-	static intrusive_ptr<BufferUploads::DataPacket> GlyphAsDataPacket(FT_GlyphSlot glyph, int offX, int offY, int width, int height)
+	static intrusive_ptr<BufferUploads::DataPacket> GlyphAsDataPacket(
+		unsigned srcWidth, unsigned srcHeight,
+		IteratorRange<const void*> srcData,
+		int offX, int offY, int width, int height)
 	{
 		auto packet = BufferUploads::CreateBasicPacket(
 			width*height, nullptr, RenderCore::TexturePitches{unsigned(width), unsigned(width*height)});
 		uint8* data = (uint8*)packet->GetData();
 
-		int glyphWidth = glyph->bitmap.width;
-		int glyphHeight = glyph->bitmap.rows;
-		if (glyph->bitmap.pixel_mode != FT_PIXEL_MODE_GRAY)
-			glyphWidth = glyphHeight = 0;
-
 		int j = 0;
-		for (; j < std::min(height, glyphHeight); ++j) {
+		for (; j < std::min(height, (int)srcHeight); ++j) {
 			int i = 0;
-			for (; i < std::min(width, glyphWidth); ++i)
-				data[i + j*width] = glyph->bitmap.buffer[i + glyph->bitmap.width * j];
+			for (; i < std::min(width, (int)srcWidth); ++i)
+				data[i + j*width] = ((const uint8_t*)srcData.begin())[i + srcWidth * j];
 			for (; i < width; ++i)
 				data[i + j*width] = 0;
 		}
@@ -137,27 +132,16 @@ namespace RenderOverlays
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	FontGlyphID FT_FontTextureMgr::FontFace::CreateChar(int ch)
+	auto FT_FontTextureMgr::CreateChar(
+		unsigned width, unsigned height,
+		IteratorRange<const void*> data) -> Glyph
 	{
-		FT_Error error = FT_Load_Char(_face, ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
-		if (error)
-			return FontGlyphID_Invalid;
-
-		FT_GlyphSlot glyph = _face->glyph;
-
-		Glyph fc{ch};
-		fc.left     = (float)glyph->bitmap_left;
-		fc.top      = (float)glyph->bitmap_top;
-		fc.width    = (float)glyph->bitmap.width;
-		fc.height   = (float)glyph->bitmap.rows;
-		fc.xAdvance = (float)glyph->advance.x / 64.0f;
-
-		auto rect = _pimpl->_rectanglePacker.Allocate({glyph->bitmap.width, glyph->bitmap.rows});
+		auto rect = _pimpl->_rectanglePacker.Allocate({width, height});
 		if (rect.second[0] <= rect.first[0] || rect.second[1] <= rect.first[1])
-			return FontGlyphID_Invalid;
+			return {};
 
 		if (_pimpl->_texture) {
-			auto pkt = GlyphAsDataPacket(glyph, rect.first[0], rect.first[1], glyph->bitmap.width, glyph->bitmap.rows);
+			auto pkt = GlyphAsDataPacket(width, height, data, rect.first[0], rect.first[1], rect.second[0]-rect.first[0], rect.second[1]-rect.first[1]);
 			_pimpl->_texture->UpdateToTexture(
 				*pkt, 
 				RenderCore::Box2D{
@@ -165,81 +149,33 @@ namespace RenderOverlays
 					(int)(rect.second[0] - rect.first[0]), (int)(rect.second[1] - rect.first[1])});
 		}
 
-		fc.u0 = (float)rect.first[0] / _pimpl->_texWidth;
-		fc.v0 = (float)rect.first[1] / _pimpl->_texHeight;
-		fc.u1 = (float)rect.second[0] / _pimpl->_texWidth;
-		fc.v1 = (float)rect.second[1] / _pimpl->_texHeight;
+		Glyph result;
+		result._glyphId = FontGlyphID(_pimpl->_glyphs.size()-1);
+		result._topLeft[0] = (float)rect.first[0] / _pimpl->_texWidth;
+		result._topLeft[1] = (float)rect.first[1] / _pimpl->_texHeight;
+		result._bottomRight[0] = (float)rect.second[0] / _pimpl->_texWidth;
+		result._bottomRight[1] = (float)rect.second[1] / _pimpl->_texHeight;
 
-		_pimpl->_glyphs.push_back(fc);
+		_pimpl->_glyphs.push_back(result);
 
-		return FontGlyphID(_pimpl->_glyphs.size()-1);
-	}
-
-	auto FT_FontTextureMgr::FindFontFace(FT_Face face, int size) -> std::shared_ptr<FontFace>
-	{
-		auto i = std::find_if(
-			_faces.begin(), _faces.end(),
-			[face, size](const Entry& e) { return e._ftFace == face && e._faceSize == size; });
-		if (i != _faces.end())
-			return i->_face.lock();
-		return nullptr;
-	}
-
-	auto FT_FontTextureMgr::CreateFontFace(FT_Face face, int size) -> std::shared_ptr<FontFace>
-	{
-		auto i = std::find_if(
-			_faces.begin(), _faces.end(),
-			[face, size](const Entry& e) { return e._ftFace == face && e._faceSize == size; });
-
-		if (i != _faces.end()) {
-			auto res = i->_face.lock();
-			if (res)
-				return res;
-		} else {
-			i = _faces.insert(_faces.end(), Entry{ face, size });
-		}
-
-
-		auto fontFace = std::make_shared<FontFace>(face, size, _pimpl);
-		i->_face = fontFace;
-		return fontFace;
-	}
-
-	FT_FontTextureMgr::FontFace::FontFace(FT_Face face, int faceSize, const std::shared_ptr<Pimpl>& pimpl)
-	: _face(face), _faceSize(faceSize), _pimpl(pimpl)
-	{}
-
-	FT_FontTextureMgr::FontFace::~FontFace()
-	{
-	}
-
-	auto FT_FontTextureMgr::FontFace::GetChar(int ch) -> const Glyph*
-	{
-		FontGlyphID& id = _table[ch];
-		if (id == FontGlyphID_Invalid)
-			id = CreateChar(ch);
-
-		if (id < _pimpl->_glyphs.size())
-			return &_pimpl->_glyphs[id];
-
-		return nullptr;
+		return result;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	#define FONT_TABLE_SIZE (256+1024)
 
-	FT_FontTextureMgr::FontCharTable::FontCharTable()
+	FontCharTable::FontCharTable()
 	{
 		_table.resize(FONT_TABLE_SIZE);
 	}
 
-	FT_FontTextureMgr::FontCharTable::~FontCharTable()
+	FontCharTable::~FontCharTable()
 	{
 
 	}
 
-	void FT_FontTextureMgr::FontCharTable::ClearTable()
+	void FontCharTable::ClearTable()
 	{
 		_table.clear();
 	}
@@ -253,7 +189,7 @@ namespace RenderOverlays
 		return entry;
 	}
 
-	FontGlyphID& FT_FontTextureMgr::FontCharTable::operator[](ucs4 ch)
+	FontGlyphID& FontCharTable::operator[](ucs4 ch)
 	{
 			//
 			//      DavidJ --   Simple hashing method optimised for when the input is

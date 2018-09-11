@@ -102,7 +102,7 @@ class FTFontResources
 public:
 	FontFileBufferManager _bufferManager;
 	FT_Library _ftLib;
-	std::unique_ptr<FT_FontTextureMgr> _fontTexMgr;
+	std::shared_ptr<FT_FontTextureMgr> _fontTexMgr;
 
 	FTFontResources();
 	~FTFontResources();
@@ -110,7 +110,7 @@ public:
 
 static FTFontResources s_res;
 
-FTFont::FTFont()
+FTFont::FTFont() : _textureManager(s_res._fontTexMgr)
 {
     _ascend = 0;
     _face = 0;
@@ -145,10 +145,10 @@ bool FTFont::Init(const FontDef& fontDef)
         // GameWarning("Failed to set pixel size");
     }
 
-    error = FT_Load_Char(_face.get(), ' ', FT_LOAD_RENDER);
+    /*error = FT_Load_Char(_face.get(), ' ', FT_LOAD_RENDER);
     if (error) {
         // GameWarning("There is no blank character(%s)", _path);
-    }
+    }*/
 
     error = FT_Load_Char(_face.get(), 'X', FT_LOAD_RENDER);
     if (error) {
@@ -172,17 +172,6 @@ bool FTFont::Init(const FontDef& fontDef)
     _ascend = slot->bitmap_top;
 
     return true;
-}
-
-FontGlyphID FTFont::CreateFontChar(ucs4 ch) const
-{
-	// return _textureFace->GetChar(ch);
-	return FontGlyphID_Invalid;
-}
-
-void FTFont::DeleteFontChar(FontGlyphID fc)
-{
-	assert(0);
 }
 
 float FTFont::Descent() const
@@ -230,20 +219,47 @@ Float2 FTFont::GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const
     return Float2(0.0f, 0.0f);
 }
 
-float FTFont::GetKerning(ucs4 prev, ucs4 ch) const
+FontGlyphID FTFont::InitializeGlyph(ucs4 ch) const
 {
-    if (prev) {
-        int prevGlyph = FT_Get_Char_Index(_face.get(), prev);
-        int curGlyph = FT_Get_Char_Index(_face.get(), ch); 
+	if (!_textureManager)
+		return FontGlyphID_Invalid;
 
-        FT_Vector kerning;
-        FT_Get_Kerning(_face.get(), prevGlyph, curGlyph, FT_KERNING_DEFAULT, &kerning);
-        return (float)kerning.x / 64;
-    }
+	FontGlyphID& id = _lookupTable[ch];
+	if (id != FontGlyphID_Invalid)
+		return id;
 
-    return 0.0f;
+	FT_Error error = FT_Load_Char(_face.get(), ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
+	if (error)
+		return FontGlyphID_Invalid;
+
+	FT_GlyphSlot glyph = _face->glyph;
+
+	auto textureGlyph = _textureManager->CreateChar(
+		glyph->bitmap.width, glyph->bitmap.rows,
+		MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
+
+	id = (FontGlyphID)_glyphs.size();
+
+	GlyphEntry glyphEntry;
+	glyphEntry._props = { (float)glyph->bitmap_left, (float)glyph->bitmap_top, (float)glyph->advance.x / 64.0f };
+	glyphEntry._topLeft = textureGlyph._topLeft;
+	glyphEntry._bottomRight = textureGlyph._bottomRight;
+	glyphEntry._textureGlyph = textureGlyph._glyphId;
+	_glyphs.push_back(glyphEntry);
+
+	return id;
 }
 
+FontGlyphID FTFont::GetTextureGlyph(ucs4 ch) const
+{
+	auto internalTable = InitializeGlyph(ch);
+	return _glyphs[internalTable]._textureGlyph;
+}
+
+auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
+{
+	return {};
+}
 
 
 #if 0
@@ -552,6 +568,44 @@ static bool LoadDataFromPak(const char* path, Data* out)
 	return out->Load((const char*)str.get(), (int)size);
 }
 
+////////////////////////////////////////////////////////////////////////////////////
+
+struct FTFontRange 
+{
+    uint16 from;
+    uint16 to;
+
+    static FTFontRange Create(uint16 f, uint16 t)
+    {
+        FTFontRange range;
+        range.from = f;
+        range.to = t;
+
+        return range;
+    }
+};
+
+class FTFont;
+class FTFontGroup;
+
+typedef std::vector<FTFontRange> FTFontRanges;
+typedef std::map<std::shared_ptr<FTFont>, FTFontRanges> SubFTFontInfoMap;
+
+////////////////////////////////////////////////////////////////////////////////////
+
+typedef std::map<std::string, FTFontRanges> FTFontInfoMap;
+
+struct FTFontNameInfo
+{
+    std::string defaultFTFontPath;
+    FTFontRanges defaultFTFontRange;
+    FTFontInfoMap subFTFontInfo;
+};
+
+typedef std::map<std::string, FTFontNameInfo> FTFontNameMap;
+
+////////////////////////////////////////////////////////////////////////////////////
+
 bool LoadFontConfigFile()
 {
 	FTFontNameMap fontNameInfo;		// NOTE <-- previously this was filescope static
@@ -654,7 +708,7 @@ FTFontResources::FTFontResources()
         Throw(::Exceptions::BasicLabel("Freetype font library failed to initialize (error code: %i)", error));
 
     LoadFontConfigFile();
-    _fontTexMgr = std::make_unique<FT_FontTextureMgr>();
+    _fontTexMgr = std::make_shared<FT_FontTextureMgr>();
 }
 
 FTFontResources::~FTFontResources()
