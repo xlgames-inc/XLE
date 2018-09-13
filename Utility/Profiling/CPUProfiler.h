@@ -127,7 +127,7 @@ namespace Utility
         void        EndEvent(EventId eventId);
         void        EndFrame();
 
-        uint64_t    GetAverageFrameInterval();
+        uint64_t    GetAverageFrameInterval(unsigned windowFrameCount = ~0u);
 
         HierarchicalCPUProfiler();
         ~HierarchicalCPUProfiler();
