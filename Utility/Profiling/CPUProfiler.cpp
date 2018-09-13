@@ -308,22 +308,28 @@ namespace Utility
         Publish(MakeIteratorRange(_events[1]));
     }
 
-    uint64_t HierarchicalCPUProfiler::GetAverageFrameInterval()
+    uint64_t HierarchicalCPUProfiler::GetAverageFrameInterval(unsigned windowFrameCount)
     {
-        if (_frameMarkerCount < 2) return 0.f;
         const auto limit = (unsigned)dimof(_frameMarkers);
-        unsigned iterator = (_frameMarkerNext + limit - _frameMarkerCount) % limit;
+        unsigned markerCount = std::min(windowFrameCount+1, _frameMarkerCount);
+        if (markerCount < 2) return 0;
+        
+        unsigned iterator = (_frameMarkerNext + limit - markerCount) % limit;
+        assert(iterator < dimof(_frameMarkers));
         auto prev = _frameMarkers[iterator];
         iterator = (iterator+1) % limit;
-        uint64 accumulator = 0;
-        for (unsigned c=0; c<(_frameMarkerCount-1); ++c) {
+        
+        uint64_t accumulator = 0;
+        for (unsigned c=0; c<(markerCount-1); ++c) {
+            assert(iterator < dimof(_frameMarkers));
             auto t = _frameMarkers[iterator];
             accumulator += t - prev;
             prev = t;
             iterator = (iterator+1) % limit;
         }
+        
         assert(iterator == _frameMarkerNext);
-        return accumulator / (_frameMarkerCount-1);
+        return accumulator / (markerCount-1);
     }
 
     HierarchicalCPUProfiler::HierarchicalCPUProfiler()
