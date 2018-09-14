@@ -454,11 +454,17 @@ namespace RenderCore { namespace Metal_OpenGLES
             const auto& sampler = *(SamplerState*)stream._samplers[srv._slot];
 
             if (res.GetResource()) {
-                glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
-                glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+                
                 if (capture) {
+                    if (capture->_activeTextureIndex != srv._textureUnit) {
+                        glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
+                        capture->_activeTextureIndex = srv._textureUnit;
+                    }
+                    glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
                     sampler.Apply(*capture, srv._textureUnit, srv._dimensionality, res.GetResource().get(), res.HasMipMaps());
                 } else {
+                    glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
+                    glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
                     sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
                 }
             } else {

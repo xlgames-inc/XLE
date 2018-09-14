@@ -318,6 +318,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &activeVAO);
                 assert(_boundVAO == activeVAO);
             }
+            
+            if (_activeTextureIndex != ~0u) {
+                GLint activeTexture = ~0u;
+                glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+                assert(activeTexture == (GL_TEXTURE0 + _activeTextureIndex));
+            }
         }
     #endif
 

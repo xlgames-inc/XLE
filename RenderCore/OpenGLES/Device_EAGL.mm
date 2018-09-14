@@ -198,7 +198,8 @@ namespace RenderCore { namespace ImplOpenGLES
             _activeFrameContext = _sharedContext;
         }
 
-        [EAGLContext setCurrentContext:_activeFrameContext.get()];
+        if (EAGLContext.currentContext != _activeFrameContext.get())
+            [EAGLContext setCurrentContext:_activeFrameContext.get()];
         return _activeFrameRenderbuffer;
     }
 
@@ -215,7 +216,8 @@ namespace RenderCore { namespace ImplOpenGLES
         _activeFrameRenderbuffer.reset();
         _activeFrameBuffer.reset();
         _activeFrameContext = nullptr;
-        [EAGLContext setCurrentContext:_sharedContext.get()];
+        if (EAGLContext.currentContext != _sharedContext.get())
+            [EAGLContext setCurrentContext:_sharedContext.get()];
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
