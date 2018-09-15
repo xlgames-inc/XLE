@@ -36,6 +36,7 @@
 #include "../Core/Types.h"
 
 #include <tuple>
+#include <iomanip>
 
 #include "../ConsoleRig/IncludeLUA.h"
 
@@ -427,15 +428,17 @@ namespace PlatformRig
 
         auto f = _frameRate->GetPerformanceStats();
 
-        TextStyle bigStyle(res._frameRateFont);
-        DrawFormatText(
-            &context, innerLayout.Allocate(Coord2(80, bigLineHeight)),
-            &bigStyle, ColorB(0xffffffff), "%.1f", 1000.f / std::get<0>(f));
+		TextStyle bigStyle{};
+        context.DrawText(
+            AsPixelCoords(innerLayout.Allocate(Coord2(80, bigLineHeight))),
+            res._frameRateFont, bigStyle, ColorB(0xffffffff), TextAlignment::Left,
+			StringMeld<64>() << std::setprecision(1) << 1000.f / std::get<0>(f));
 
-        TextStyle smallStyle(res._smallFrameRateFont);
-        DrawFormatText(
-            &context, innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2)),
-            &smallStyle, ColorB(0xffffffff), "%.1f-%.1f", 1000.f / std::get<2>(f), 1000.f / std::get<1>(f));
+		TextStyle smallStyle{};
+        context.DrawText(
+            AsPixelCoords(innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2))),
+            res._smallFrameRateFont, smallStyle, ColorB(0xffffffff), TextAlignment::Left,
+			StringMeld<64>() << std::setprecision(1) << (1000.f / std::get<2>(f)) << "-" << (1000.f / std::get<1>(f)));
 
         auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
         auto frameAllocations = _prevFrameAllocationCount->_allocationCount;
@@ -447,7 +450,7 @@ namespace PlatformRig
 
         interactables.Register(Interactables::Widget(displayRect, Id_FrameRigDisplayMain));
 
-        TextStyle tabHeader(res._tabHeadingFont);
+		TextStyle tabHeader{};
         // tabHeader._options.shadow = 0;
         // tabHeader._options.outline = 1;
 
@@ -469,10 +472,10 @@ namespace PlatformRig
                     if ((_subMenuOpen-1) == unsigned(c) || highlight) {
 
                             //  Draw the text name for this icon under the icon
-                        Coord nameWidth = (Coord)context.StringWidth(1.f, &tabHeader, categories[c]);
+                        Coord nameWidth = (Coord)StringWidth(*res._tabHeadingFont, MakeStringSection(categories[c]));
                         rect = Rect(
                             pt - Coord2(std::max(iconSize[0], nameWidth), 0),
-                            pt + Coord2(0, Coord(iconSize[1] + tabHeader._font->LineHeight())));
+                            pt + Coord2(0, Coord(iconSize[1] + res._tabHeadingFont->LineHeight())));
 
                         auto iconLeft = Coord((rect._topLeft[0] + rect._bottomRight[0] - iconSize[0]) / 2.f);
                         Coord2 iconTopLeft(iconLeft, rect._topLeft[1]);
@@ -516,7 +519,7 @@ namespace PlatformRig
                 const auto screens = ds->GetWidgets();
                 for (auto i=screens.cbegin(); i!=screens.cend(); ++i) {
                     if (i->_name.find(categories[_subMenuOpen-1]) != std::string::npos) {
-                        unsigned width = (unsigned)context.StringWidth(1.f, &tabHeader, MakeStringSection(i->_name));
+                        unsigned width = (unsigned)StringWidth(*res._tabHeadingFont, MakeStringSection(i->_name));
                         auto rect = screenListLayout.AllocateFullWidth(lineHeight);
                         rect._topLeft[0] = rect._bottomRight[0] - width;
 

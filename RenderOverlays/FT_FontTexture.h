@@ -43,8 +43,8 @@ namespace RenderOverlays
 
 	struct FontCharTable
 	{
-		std::vector<std::vector<std::pair<ucs4, FontGlyphID>>>  _table;
-		FontGlyphID&         operator[](ucs4 ch);
+		std::vector<std::vector<std::pair<ucs4, FontBitmapId>>>  _table;
+		FontBitmapId&         operator[](ucs4 ch);
 		void                ClearTable();
 		FontCharTable();
 		~FontCharTable();
@@ -63,9 +63,9 @@ namespace RenderOverlays
 
 		struct Glyph
 		{
-			Float2 _topLeft = Float2{0.f, 0.f};
-			Float2 _bottomRight = Float2{0.f, 0.f};
-			FontGlyphID _glyphId = FontGlyphID_Invalid;
+			UInt2 _topLeft = UInt2{0, 0};
+			UInt2 _bottomRight = UInt2{0, 0};
+			FontBitmapId _glyphId = FontGlyphID_Invalid;
 		};
 
 		Glyph		CreateChar(
@@ -73,6 +73,7 @@ namespace RenderOverlays
 			IteratorRange<const void*> data);
 
 		const FontTexture2D& GetFontTexture();
+		UInt2 GetTextureDimensions();
     
 		FontCharTable       _table;
 			

@@ -17,6 +17,7 @@ namespace RenderCore { namespace Techniques { class ProjectionDesc; class Attach
 namespace RenderOverlays
 {
 	class TextStyle;
+	class Font;
 
     class ColorB
     {
@@ -129,10 +130,8 @@ namespace RenderOverlays
 
         virtual float   DrawText(
             const std::tuple<Float3, Float3>& quad,
-            TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char>text) = 0;
-
-        virtual float   StringWidth     (float scale, TextStyle* textStyle, StringSection<char> text) = 0;
-        virtual float   TextHeight      (TextStyle* textStyle = nullptr) = 0;
+            const std::shared_ptr<Font>& font, const TextStyle& textStyle, 
+			ColorB col, TextAlignment::Enum alignment, StringSection<char> text) = 0;
 
         virtual void    CaptureState    () = 0;
         virtual void    ReleaseState    () = 0;

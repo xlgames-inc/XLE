@@ -219,12 +219,12 @@ Float2 FTFont::GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const
     return Float2(0.0f, 0.0f);
 }
 
-FontGlyphID FTFont::InitializeGlyph(ucs4 ch) const
+FontBitmapId FTFont::InitializeBitmap(ucs4 ch) const
 {
 	if (!_textureManager)
 		return FontGlyphID_Invalid;
 
-	FontGlyphID& id = _lookupTable[ch];
+	FontBitmapId& id = _lookupTable[ch];
 	if (id != FontGlyphID_Invalid)
 		return id;
 
@@ -238,27 +238,32 @@ FontGlyphID FTFont::InitializeGlyph(ucs4 ch) const
 		glyph->bitmap.width, glyph->bitmap.rows,
 		MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
 
-	id = (FontGlyphID)_glyphs.size();
+	id = (FontBitmapId)_bitmaps.size();
 
-	GlyphEntry glyphEntry;
-	glyphEntry._props = { (float)glyph->bitmap_left, (float)glyph->bitmap_top, (float)glyph->advance.x / 64.0f };
+	Bitmap glyphEntry;
+	glyphEntry._glyph = { (float)glyph->advance.x / 64.0f };
+	glyphEntry._bitmapOffsetX = glyph->bitmap_left;
+	glyphEntry._bitmapOffsetY = -glyph->bitmap_top;
 	glyphEntry._topLeft = textureGlyph._topLeft;
 	glyphEntry._bottomRight = textureGlyph._bottomRight;
-	glyphEntry._textureGlyph = textureGlyph._glyphId;
-	_glyphs.push_back(glyphEntry);
+	glyphEntry._textureId = textureGlyph._glyphId;
+	_bitmaps.push_back(glyphEntry);
 
 	return id;
 }
 
-FontGlyphID FTFont::GetTextureGlyph(ucs4 ch) const
+auto FTFont::GetBitmap(ucs4 ch) const -> Bitmap
 {
-	auto internalTable = InitializeGlyph(ch);
-	return _glyphs[internalTable]._textureGlyph;
+	auto internalTable = InitializeBitmap(ch);
+	if (internalTable == FontGlyphID_Invalid) return {};
+	return _bitmaps[internalTable];
 }
 
 auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
 {
-	return {};
+	auto internalTable = InitializeBitmap(ch);
+	if (internalTable == FontGlyphID_Invalid) return {};
+	return _bitmaps[internalTable]._glyph;
 }
 
 
@@ -489,14 +494,14 @@ bool FTFontGroup::Init(const FontDef& def)
     return false;
 }
 
-FontGlyphID FTFontGroup::CreateFontChar(ucs4 ch)
+FontBitmapId FTFontGroup::CreateFontChar(ucs4 ch)
 {
 	auto font = FindFTFontByChar(ch);
     if (font) {
         return font->CreateFontChar(ch);
     }
 
-    return FontGlyphID(0);
+    return FontBitmapId(0);
 }
 
 float FTFontGroup::GetKerning(ucs4 prev, ucs4 ch) const

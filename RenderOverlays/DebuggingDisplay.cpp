@@ -396,24 +396,24 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, StringSection<> text)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
+		return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, TextAlignment::Left, text);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, StringSection<> text)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
+        return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, TextAlignment::Left, text);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, StringSection<> text)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text);
+        return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, alignment, text);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
     {
         char buffer[4096];
         vsnprintf(buffer, dimof(buffer), text, args);
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, buffer);
+        return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, alignment, buffer);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect & rect, TextStyle* textStyle, ColorB colour, const char text[], ...)
@@ -607,9 +607,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Float2(0.f, 0.f), Float2(0.f, 0.f),
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
-        TextStyle style{
-            // ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
-			DrawTextOptions(false, true)};
+        TextStyle style{DrawTextOptions(false, true)};
 
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
@@ -626,7 +624,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 r._topLeft[0] += 8;
 
                 const ColorB colour = HeaderTextColor;
-                context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, MakeStringSection(i->first));
+                context->DrawText(AsPixelCoords(r), ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont, style, colour, TextAlignment::Left, MakeStringSection(i->first));
 
                 if (interactables)
                     interactables->Register(Interactables::Widget(r, InteractableId_Make(MakeStringSection(i->first))));
@@ -651,9 +649,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Float2(0.f, 0.f), Float2(0.f, 0.f),
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
-        TextStyle style{
-            // ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
-			DrawTextOptions(true, false)};
+        TextStyle style{DrawTextOptions(true, false)};
 
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
@@ -673,7 +669,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
                     const ColorB colour = TextColor;
                     // DrawRectangle(context, r, s->second._bkColour);
-                    context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, MakeStringSection(s->second._label));
+                    context->DrawText(AsPixelCoords(r), ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont, style, colour, TextAlignment::Left, MakeStringSection(s->second._label));
                 }
             }
         }

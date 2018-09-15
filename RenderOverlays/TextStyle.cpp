@@ -308,7 +308,17 @@ float Draw(
             
 	auto& textureMgr = GetFontTextureMgr();
 	auto& texSRV = textureMgr.GetFontTexture().GetSRV();
+	auto texDims = textureMgr.GetTextureDimensions();
     WorkingVertexSetPCT     workingVertices;
+
+	const Metal::ShaderResourceView* srvs[] = { &texSRV };
+	ConstantBufferView cbvs[] = { packet };
+	res._boundUniforms.Apply(
+		renderer, 1, 
+		UniformsStream{
+			MakeIteratorRange(cbvs),
+			UniformsStream::MakeResources(MakeIteratorRange(srvs))
+		});
 
     // bool batchFont = _font->GetTexKind() == FTK_IMAGETEXT ? false : true;
     float descent = 0.0f;
@@ -340,17 +350,21 @@ float Draw(
         y += yScale * v[1];
         prevGlyph = curGlyph;
 
-		auto textureGlyph = font.GetTextureGlyph(ch);
+		auto bitmap = font.GetBitmap(ch);
 
-        float baseX = x + fc->left * xScale;
-        float baseY = y - (fc->top + descent) * yScale;
+        float baseX = x + bitmap._bitmapOffsetX * xScale;
+        float baseY = y + (bitmap._bitmapOffsetY - descent) * yScale;
         if (style._options.snap) {
             baseX = xScale * (int)(0.5f + baseX / xScale);
             baseY = yScale * (int)(0.5f + baseY / yScale);
         }
 
-        Quad pos    = Quad::MinMax(baseX, baseY, baseX + fc->width * xScale, baseY + fc->height * yScale);
-        Quad tc     = Quad::MinMax(fc->u0, fc->v0, fc->u1, fc->v1);
+        Quad pos    = Quad::MinMax(
+			baseX, baseY, 
+			baseX + (bitmap._bottomRight[0] - bitmap._topLeft[0]) * xScale, baseY + (bitmap._bottomRight[1] - bitmap._topLeft[1]) * yScale);
+        Quad tc     = Quad::MinMax(
+			bitmap._topLeft[0] / float(texDims[0]), bitmap._topLeft[1] / float(texDims[1]), 
+			bitmap._bottomRight[0] / float(texDims[0]), bitmap._bottomRight[1] / float(texDims[1]));
 
         if (style._options.outline) {
             Quad shadowPos;
@@ -446,7 +460,7 @@ float Draw(
             workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
         }
 
-        x += fc->xAdvance * xScale;
+        x += bitmap._glyph._xAdvance * xScale;
         if (style._options.outline) {
             x += 2 * xScale;
         }

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "OverlayUtils.h"
+#include "Font.h"
 
 namespace RenderOverlays { namespace DebuggingDisplay
 {
@@ -20,7 +21,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            nullptr, formatting._foreground, TextAlignment::Center, label);
+			GetDefaultFont(), TextStyle{}, formatting._foreground, TextAlignment::Center, label);
     }
 
 }}

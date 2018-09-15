@@ -7,6 +7,7 @@
 #define _SILENCE_CXX17_NEGATORS_DEPRECATION_WARNING
 
 #include "TestDisplays.h"
+#include "../../RenderOverlays/Font.h"
 #include "../../RenderCore/Format.h"
 #include "../../Math/Geometry.h"
 #include "../../Math/Vector.h"
@@ -645,7 +646,7 @@ namespace PlatformRig { namespace Overlays
         DrawRectangleOutline(context, rect, 0.f, formatting._foreground);
         context->DrawText(
             std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-            nullptr, formatting._foreground, TextAlignment::Center, label);
+			GetDefaultFont(), TextStyle{}, formatting._foreground, TextAlignment::Center, label);
     }
 
     template<typename T> inline const T& FormatButton(InterfaceState& interfaceState, InteractableId id, const T& normalState, const T& mouseOverState, const T& pressedState)

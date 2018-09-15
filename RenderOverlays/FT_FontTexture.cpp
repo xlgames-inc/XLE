@@ -164,11 +164,11 @@ namespace RenderOverlays
 		}
 
 		Glyph result;
-		result._glyphId = FontGlyphID(_pimpl->_glyphs.size()-1);
-		result._topLeft[0] = (float)rect.first[0] / _pimpl->_texWidth;
-		result._topLeft[1] = (float)rect.first[1] / _pimpl->_texHeight;
-		result._bottomRight[0] = (float)rect.second[0] / _pimpl->_texWidth;
-		result._bottomRight[1] = (float)rect.second[1] / _pimpl->_texHeight;
+		result._glyphId = FontBitmapId(_pimpl->_glyphs.size()-1);
+		result._topLeft[0] = rect.first[0];
+		result._topLeft[1] = rect.first[1];
+		result._bottomRight[0] = rect.second[0];
+		result._bottomRight[1] = rect.second[1];
 
 		_pimpl->_glyphs.push_back(result);
 
@@ -178,6 +178,11 @@ namespace RenderOverlays
 	const FontTexture2D& FT_FontTextureMgr::GetFontTexture()
 	{
 		return *_pimpl->_texture;
+	}
+
+	UInt2 FT_FontTextureMgr::GetTextureDimensions()
+	{
+		return UInt2{_pimpl->_texWidth, _pimpl->_texHeight};
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -208,7 +213,7 @@ namespace RenderOverlays
 		return entry;
 	}
 
-	FontGlyphID& FontCharTable::operator[](ucs4 ch)
+	FontBitmapId& FontCharTable::operator[](ucs4 ch)
 	{
 			//
 			//      DavidJ --   Simple hashing method optimised for when the input is
@@ -222,7 +227,7 @@ namespace RenderOverlays
 		entry = entry%unsigned(_table.size());
     
 		auto& list = _table[entry];
-		auto i = std::lower_bound(list.begin(), list.end(), ch, CompareFirst<ucs4, FontGlyphID>());
+		auto i = std::lower_bound(list.begin(), list.end(), ch, CompareFirst<ucs4, FontBitmapId>());
 		if (i == list.end() || i->first != ch) {
 			auto i2 = list.insert(i, std::make_pair(ch, FontGlyphID_Invalid));
 			return i2->second;

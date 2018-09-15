@@ -10,6 +10,7 @@
 #include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
+#include "../Math/Vector.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Core/Prefix.h"
@@ -43,49 +44,60 @@ namespace RenderOverlays
         // virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
         // virtual bool        IsMultiFontAdapter() const;
 
-		virtual FontGlyphID GetTextureGlyph(ucs4 ch) const = 0;
-
 		struct GlyphProperties
 		{
-			float _left, _top;
-			float _width, _height;
-			float _xAdvance;
-			FontGlyphID _
+			float _xAdvance = 0.f;
+		};
+
+		struct Bitmap
+		{
+			GlyphProperties _glyph;
+			signed _bitmapOffsetX = 0, _bitmapOffsetY = 0;
+			UInt2 _topLeft = UInt2{0u,0u};				// coordinates in the texture manager
+			UInt2 _bottomRight = UInt2{0u,0u};			// coordinates in the texture manager
+			FontBitmapId _textureId = ~FontBitmapId(0);
 		};
 
 		virtual GlyphProperties GetGlyphProperties(ucs4 ch) const = 0;
+		virtual Bitmap GetBitmap(ucs4 ch) const = 0;
 
     protected:
-        // virtual FontGlyphID  CreateFontChar(ucs4 ch) const = 0;
-        // virtual void        DeleteFontChar(FontGlyphID fc) = 0;
+        // virtual FontBitmapId  CreateFontChar(ucs4 ch) const = 0;
+        // virtual void        DeleteFontChar(FontBitmapId fc) = 0;
     
         char    _path[MaxPath];
         int     _size;
     };
 
-	float CharWidth(		const Font& font, 
-							ucs4 ch, ucs4 prev);
-	float StringWidth(      const Font& font,
-							StringSection<ucs4> text,
-                            float spaceExtra     = 0.0f,
-                            bool outline         = false);
-    int CharCountFromWidth( const Font& font,
-							StringSection<ucs4> text, 
-                            float width, 
-                            float spaceExtra     = 0.0f,
-                            bool outline         = false);
-    float StringEllipsis(   const Font& font,
-							StringSection<ucs4> inText,
-                            ucs4* outText, 
-                            size_t outTextSize,
-                            float width,
-                            float spaceExtra     = 0.0f,
-                            bool outline         = false);
+	float CharWidth(		const Font& font, ucs4 ch, ucs4 prev);
+
+	template<typename CharType>
+		float StringWidth(      const Font& font,
+								StringSection<CharType> text,
+								float spaceExtra     = 0.0f,
+								bool outline         = false);
+
+    template<typename CharType>
+		int CharCountFromWidth( const Font& font,
+								StringSection<CharType> text, 
+								float width, 
+								float spaceExtra     = 0.0f,
+								bool outline         = false);
+
+    template<typename CharType>
+		float StringEllipsis(   const Font& font,
+								StringSection<CharType> inText,
+								CharType* outText, 
+								size_t outTextSize,
+								float width,
+								float spaceExtra     = 0.0f,
+								bool outline         = false);
 
     /*bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads);
-    void CleanupFontSystem();
+    void CleanupFontSystem();*/
 
-    std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);*/
+    std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
+	std::shared_ptr<Font> GetDefaultFont(unsigned points=32);
 
     struct DrawTextOptions 
     {

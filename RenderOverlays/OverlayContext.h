@@ -58,9 +58,7 @@ namespace RenderOverlays
             const std::string& texture,
             ColorB color, const Float2& minTex0, const Float2& maxTex0);
 
-        float   DrawText       (const std::tuple<Float3, Float3>& quad, TextStyle* textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char> text);
-        float   StringWidth    (float scale, TextStyle* textStyle, StringSection<char> text);
-        float   TextHeight     (TextStyle* textStyle);
+        float   DrawText       (const std::tuple<Float3, Float3>& quad, const std::shared_ptr<Font>& font, const TextStyle& textStyle, ColorB col, TextAlignment::Enum alignment, StringSection<char> text);
 
         void CaptureState();
         void ReleaseState();

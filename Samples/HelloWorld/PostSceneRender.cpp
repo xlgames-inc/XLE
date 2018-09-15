@@ -84,7 +84,7 @@ namespace Sample
 
         using namespace RenderOverlays;
         auto& res = ConsoleRig::FindCachedBox<RenderPostSceneResources>(RenderPostSceneResources::Desc(64));
-        TextStyle style(res._font);
+		TextStyle style{};
         ColorB col(0xffffffff);
 
         auto contextStateDesc = context.GetStateDesc();
@@ -97,7 +97,7 @@ namespace Sample
                 std::make_tuple(
                     Float3(0.f, 0.f, 0.f), 
                     Float3(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1]), 0.f)),
-                &style, col, TextAlignment::Center, text);
+                res._font, style, col, TextAlignment::Center, text);
 
         } else {
 
@@ -118,10 +118,10 @@ namespace Sample
             utf8_2_ucs4((const utf8*)text, XlStringLen(text), buffer, dimof(buffer));
             Quad quad = Quad::MinMax(Float2(0.f, 0.f), Float2(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1])));
 
-            auto alignment = style.AlignText(quad, UIALIGN_CENTER, buffer, -1);
-            style.Draw(
-                context, alignment[0], alignment[1],
-                buffer, -1, 
+            auto alignment = AlignText(*res._font, quad, UIALIGN_CENTER, buffer);
+            Draw(
+                context, *res._font, style, alignment[0], alignment[1],
+                buffer,
                 0.f, 1.f, 0.f, 0.f,
                 col.AsUInt32(), UI_TEXT_STATE_NORMAL, 0.f, &quad);
 

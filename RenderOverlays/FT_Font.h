@@ -48,29 +48,20 @@ public:
     // virtual void TouchFontChar(const FontChar *fc);
     virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
 
-	virtual FontGlyphID GetTextureGlyph(ucs4 ch) const;
+	virtual Bitmap GetBitmap(ucs4 ch) const;
 	virtual GlyphProperties GetGlyphProperties(ucs4 ch) const;
 
 protected:
-
     int _ascend;
     std::shared_ptr<FT_FaceRec_> _face;
     ::Assets::Blob _pBuffer;
 
 	std::shared_ptr<FT_FontTextureMgr> _textureManager;
-
-	class GlyphEntry
-	{
-	public:
-		Float2 _topLeft, _bottomRight;
-		GlyphProperties _props;
-		FontGlyphID _textureGlyph;		
-	};
-	mutable std::vector<GlyphEntry> _glyphs;
+	mutable std::vector<Bitmap> _bitmaps;
 
 	mutable FontCharTable _lookupTable;
 
-	FontGlyphID InitializeGlyph(ucs4 ch) const;
+	FontBitmapId InitializeBitmap(ucs4 ch) const;
 };
 
 #if 0
@@ -103,7 +94,7 @@ public:
     virtual bool IsMultiFontAdapter() const;
 
 private:
-    virtual FontGlyphID CreateFontChar(ucs4 ch);
+    virtual FontBitmapId CreateFontChar(ucs4 ch);
     virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
 	std::shared_ptr<FTFont> _defaultFTFont;

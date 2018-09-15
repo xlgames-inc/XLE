@@ -17,8 +17,8 @@ typedef struct FT_GlyphSlotRec_* FT_GlyphSlot;*/
 namespace RenderOverlays
 {
 
-	using FontGlyphID = unsigned;
-	static const FontGlyphID FontGlyphID_Invalid = ~FontGlyphID(0x0);
+	using FontBitmapId = unsigned;
+	static const FontBitmapId FontGlyphID_Invalid = ~FontBitmapId(0x0);
 
 	class Color4 
 	{
