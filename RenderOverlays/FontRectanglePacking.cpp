@@ -31,7 +31,7 @@ namespace RenderOverlays
 	{
 		// Find the empty slot that will best fit a character of this width
 		auto x = _heap.Allocate(width);
-		if (x != ~0u) return {0,0};
+		if (x == ~0u) return {0,0};
 		return {x, x+width};
 	}
 

@@ -432,13 +432,13 @@ namespace PlatformRig
         context.DrawText(
             AsPixelCoords(innerLayout.Allocate(Coord2(80, bigLineHeight))),
             res._frameRateFont, bigStyle, ColorB(0xffffffff), TextAlignment::Left,
-			StringMeld<64>() << std::setprecision(1) << 1000.f / std::get<0>(f));
+			StringMeld<64>() << std::setprecision(1) << std::fixed << 1000.f / std::get<0>(f));
 
 		TextStyle smallStyle{};
         context.DrawText(
             AsPixelCoords(innerLayout.Allocate(Coord2(rectWidth - 80 - innerLayout._paddingInternalBorder*2 - innerLayout._paddingBetweenAllocations, smallLineHeight * 2))),
             res._smallFrameRateFont, smallStyle, ColorB(0xffffffff), TextAlignment::Left,
-			StringMeld<64>() << std::setprecision(1) << (1000.f / std::get<2>(f)) << "-" << (1000.f / std::get<1>(f)));
+			StringMeld<64>() << std::setprecision(1) << std::fixed << (1000.f / std::get<2>(f)) << "-" << (1000.f / std::get<1>(f)));
 
         auto heapMetrics = AccumulatedAllocations::GetCurrentHeapMetrics();
         auto frameAllocations = _prevFrameAllocationCount->_allocationCount;

@@ -97,7 +97,7 @@ namespace RenderOverlays
     void CleanupFontSystem();*/
 
     std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
-	std::shared_ptr<Font> GetDefaultFont(unsigned points=32);
+	std::shared_ptr<Font> GetDefaultFont(unsigned points=16);
 
     struct DrawTextOptions 
     {

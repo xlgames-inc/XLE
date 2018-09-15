@@ -47,6 +47,7 @@ public:
     // virtual bool SacrificeChar(int ch);
     // virtual void TouchFontChar(const FontChar *fc);
     virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
+	virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
 	virtual Bitmap GetBitmap(ucs4 ch) const;
 	virtual GlyphProperties GetGlyphProperties(ucs4 ch) const;

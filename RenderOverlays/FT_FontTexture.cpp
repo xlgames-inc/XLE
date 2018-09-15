@@ -160,7 +160,7 @@ namespace RenderOverlays
 				*pkt, 
 				RenderCore::Box2D{
 					(int)rect.first[0], (int)rect.first[1], 
-					(int)(rect.second[0] - rect.first[0]), (int)(rect.second[1] - rect.first[1])});
+					(int)rect.second[0], (int)rect.second[1]});
 		}
 
 		Glyph result;
