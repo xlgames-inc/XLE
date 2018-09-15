@@ -115,19 +115,33 @@ namespace RenderOverlays
 		GetBufferUploads().UpdateData(_transaction, &packet, destBox);
 	}
 
-	const RenderCore::ResourcePtr& FontTexture2D::GetUnderlying() const
+	void FontTexture2D::Resolve() const
 	{
-		if ((!_locator || _locator->IsEmpty()) && _transaction) {
+		if (_transaction != ~BufferUploads::TransactionID(0x0)) {
 			if (GetBufferUploads().IsCompleted(_transaction)) {
 				_locator = GetBufferUploads().GetResource(_transaction);
-				if (_locator && !_locator->IsEmpty()) {
-					GetBufferUploads().Transaction_End(_transaction);
-					_transaction = ~BufferUploads::TransactionID(0x0);
+				GetBufferUploads().Transaction_End(_transaction);
+				_transaction = ~BufferUploads::TransactionID(0x0);
+				if (_locator) {
+					_srv = RenderCore::Metal::ShaderResourceView(_locator->GetUnderlying());
+				} else {
+					_srv = RenderCore::Metal::ShaderResourceView{};
 				}
 			}
 		}
+	}
+
+	const RenderCore::ResourcePtr& FontTexture2D::GetUnderlying() const
+	{
+		Resolve();
 		static RenderCore::ResourcePtr nullResPtr;
 		return _locator ? _locator->GetUnderlying() : nullResPtr;
+	}
+
+	const RenderCore::Metal::ShaderResourceView& FontTexture2D::GetSRV() const
+	{
+		Resolve();
+		return _srv;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -159,6 +173,11 @@ namespace RenderOverlays
 		_pimpl->_glyphs.push_back(result);
 
 		return result;
+	}
+
+	const FontTexture2D& FT_FontTextureMgr::GetFontTexture()
+	{
+		return *_pimpl->_texture;
 	}
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////

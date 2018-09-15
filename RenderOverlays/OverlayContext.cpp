@@ -303,6 +303,7 @@ namespace RenderOverlays
 
 		ucs4 unicharBuffer[4096];
         utf8_2_ucs4((const utf8*)text.begin(), text.size(), unicharBuffer, dimof(unicharBuffer));
+		StringSection<ucs4> convertedText = unicharBuffer;
 
         //if (!textStyle)
         //    textStyle = &_defaultTextStyle;
@@ -310,11 +311,12 @@ namespace RenderOverlays
         Quad q;
         q.min = Float2(std::get<0>(quad)[0], std::get<0>(quad)[1]);
         q.max = Float2(std::get<1>(quad)[0], std::get<1>(quad)[1]);
-        Float2 alignedPosition = textStyle->AlignText(q, AsUiAlign(alignment), unicharBuffer);
-        return textStyle->Draw(
+        Float2 alignedPosition = AlignText(*_defaultFont, q, AsUiAlign(alignment), convertedText);
+        return Draw(
             *_deviceContext, 
+			*_defaultFont, *textStyle,
             alignedPosition[0], alignedPosition[1],
-            unicharBuffer, dimof(unicharBuffer),
+            convertedText,
             0.f, 1.f, 0.f, 
             LinearInterpolate(std::get<0>(quad)[2], std::get<1>(quad)[2], 0.5f),
             col.AsUInt32(), UI_TEXT_STATE_NORMAL, true, nullptr); // &q);
@@ -328,7 +330,7 @@ namespace RenderOverlays
         //if (!textStyle)
         //    textStyle = &_defaultTextStyle;
 
-        return scale * textStyle->StringWidth(unicharBuffer);
+        return scale * RenderOverlays::StringWidth(*_defaultFont, unicharBuffer);
     }
 
     float ImmediateOverlayContext::TextHeight(TextStyle* textStyle) 

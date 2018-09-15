@@ -8,6 +8,7 @@
 
 #include "FontPrimitives.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/Metal/TextureView.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/IntrusivePtr.h"
@@ -24,6 +25,7 @@ namespace RenderOverlays
 	public:
 		void UpdateToTexture(BufferUploads::DataPacket& packet, const RenderCore::Box2D& destBox);
 		const std::shared_ptr<RenderCore::IResource>& GetUnderlying() const;
+		const RenderCore::Metal::ShaderResourceView& GetSRV() const;
 
 		FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
 		~FontTexture2D();
@@ -34,6 +36,9 @@ namespace RenderOverlays
 	private:
 		mutable BufferUploads::TransactionID					_transaction;
 		mutable intrusive_ptr<BufferUploads::ResourceLocator>	_locator;
+		mutable RenderCore::Metal::ShaderResourceView			_srv;
+
+		void Resolve() const;
 	};
 
 	struct FontCharTable
@@ -66,6 +71,8 @@ namespace RenderOverlays
 		Glyph		CreateChar(
 			unsigned width, unsigned height,
 			IteratorRange<const void*> data);
+
+		const FontTexture2D& GetFontTexture();
     
 		FontCharTable       _table;
 			
@@ -79,6 +86,8 @@ namespace RenderOverlays
 		class Pimpl;
 		std::shared_ptr<Pimpl> _pimpl;
 	};
+
+	FT_FontTextureMgr& GetFontTextureMgr();
 
 }
 

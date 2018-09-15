@@ -19,9 +19,7 @@
 
 namespace RenderOverlays
 {
-    class FontTexture2D;
-
-    class Font : public std::enable_shared_from_this<Font>
+    class Font
     {
     public:
         Font();
@@ -31,22 +29,6 @@ namespace RenderOverlays
         const char* GetPath()   { return _path; }
 
         // virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const = 0;
-        float StringWidth(      const ucs4* text,
-                                int maxLen           = -1,
-                                float spaceExtra     = 0.0f,
-                                bool outline         = false);
-        int CharCountFromWidth( const ucs4* text, 
-                                float width, 
-                                int maxLen           = -1,
-                                float spaceExtra     = 0.0f,
-                                bool outline         = false);
-        float StringEllipsis(   const ucs4* inText,
-                                ucs4* outText, 
-                                size_t outTextSize,
-                                float width,
-                                float spaceExtra     = 0.0f,
-                                bool outline         = false);
-        float CharWidth(ucs4 ch, ucs4 prev) const;
 
         // virtual FT_Face     GetFace()                   { return nullptr; }
         // virtual FT_Face     GetFace(ucs4 /*ch*/)     { return nullptr; }
@@ -55,7 +37,8 @@ namespace RenderOverlays
         virtual float       Descent() const = 0;
         virtual float       Ascent(bool includeAccent) const = 0;
         virtual float       LineHeight() const = 0;
-        virtual Float2     GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
+        virtual Float2		GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const = 0;
+		virtual float       GetKerning(ucs4 prev, ucs4 ch) const = 0;
 
         // virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
         // virtual bool        IsMultiFontAdapter() const;
@@ -65,24 +48,44 @@ namespace RenderOverlays
 		struct GlyphProperties
 		{
 			float _left, _top;
+			float _width, _height;
 			float _xAdvance;
+			FontGlyphID _
 		};
 
 		virtual GlyphProperties GetGlyphProperties(ucs4 ch) const = 0;
 
     protected:
-        virtual FontGlyphID  CreateFontChar(ucs4 ch) const = 0;
-        virtual void        DeleteFontChar(FontGlyphID fc) = 0;
-        virtual float       GetKerning(ucs4 prev, ucs4 ch) const = 0;
+        // virtual FontGlyphID  CreateFontChar(ucs4 ch) const = 0;
+        // virtual void        DeleteFontChar(FontGlyphID fc) = 0;
     
         char    _path[MaxPath];
         int     _size;
     };
 
-    bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads);
+	float CharWidth(		const Font& font, 
+							ucs4 ch, ucs4 prev);
+	float StringWidth(      const Font& font,
+							StringSection<ucs4> text,
+                            float spaceExtra     = 0.0f,
+                            bool outline         = false);
+    int CharCountFromWidth( const Font& font,
+							StringSection<ucs4> text, 
+                            float width, 
+                            float spaceExtra     = 0.0f,
+                            bool outline         = false);
+    float StringEllipsis(   const Font& font,
+							StringSection<ucs4> inText,
+                            ucs4* outText, 
+                            size_t outTextSize,
+                            float width,
+                            float spaceExtra     = 0.0f,
+                            bool outline         = false);
+
+    /*bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads);
     void CleanupFontSystem();
 
-    std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);
+    std::shared_ptr<Font> GetX2Font(StringSection<> path, int size);*/
 
     struct DrawTextOptions 
     {
@@ -121,7 +124,8 @@ namespace RenderOverlays
         UIALIGN_BOTTOM_RIGHT = 8,
     };
 
-    enum UI_TEXT_STATE {
+    enum UI_TEXT_STATE 
+	{
         UI_TEXT_STATE_NORMAL = 0, 
         UI_TEXT_STATE_REVERSE, 
         UI_TEXT_STATE_INACTIVE_REVERSE, 
@@ -130,25 +134,17 @@ namespace RenderOverlays
     class TextStyle
     {
     public:
-        DrawTextOptions			_options;
-        unsigned                _pointSize;
+		DrawTextOptions			_options;
+	};
+        
+    float       Draw(   RenderCore::IThreadContext& threadContext,
+						const Font& font, const TextStyle& style,
+                        float x, float y, StringSection<ucs4> text,
+                        float spaceExtra, float scale, float mx, float depth,
+                        unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q);
 
-        TextStyle(const std::shared_ptr<Font>&, const DrawTextOptions& options = DrawTextOptions());
-        TextStyle(unsigned pointSize, const DrawTextOptions& options = DrawTextOptions());
-        ~TextStyle();
-
-        float       Draw(   RenderCore::IThreadContext& threadContext, 
-                            float x, float y, const ucs4 text[], int maxLen,
-                            float spaceExtra, float scale, float mx, float depth,
-                            unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const;
-
-        Float2     AlignText(const Quad& q, UiAlign align, const ucs4* text, int maxLen = -1);
-        Float2     AlignText(const Quad& q, UiAlign align, float width, float indent);
-        float       StringWidth(const ucs4* text, int maxlen = -1);
-        int         CharCountFromWidth(const ucs4* text, float width);
-        float       SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width);
-        float       CharWidth(ucs4 ch, ucs4 prev);
-    };
+    Float2		AlignText(const Font& font, const Quad& q, UiAlign align, StringSection<ucs4> text);
+    Float2		AlignText(const Font& font, const Quad& q, UiAlign align, float width, float indent);
 
 }
 

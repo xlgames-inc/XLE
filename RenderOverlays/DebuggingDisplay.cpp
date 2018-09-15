@@ -607,9 +607,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Float2(0.f, 0.f), Float2(0.f, 0.f),
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
-        TextStyle style(
-            ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
-            DrawTextOptions(false, true));
+        TextStyle style{
+            // ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
+			DrawTextOptions(false, true)};
 
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
@@ -651,9 +651,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Float2(0.f, 0.f), Float2(0.f, 0.f),
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
-        TextStyle style(
-            ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
-            DrawTextOptions(true, false));
+        TextStyle style{
+            // ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
+			DrawTextOptions(true, false)};
 
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;

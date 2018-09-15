@@ -716,6 +716,11 @@ FTFontResources::~FTFontResources()
     FT_Done_FreeType(_ftLib);
 }
 
+FT_FontTextureMgr& GetFontTextureMgr()
+{
+	return *s_res._fontTexMgr;
+}
+
 
 /*void CleanupFTFontSystem()
 {

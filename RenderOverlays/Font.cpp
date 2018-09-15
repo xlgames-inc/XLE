@@ -21,22 +21,22 @@ Font::~Font()
 {
 }
 
-float Font::StringWidth(const ucs4* text, int maxLen, float spaceExtra, bool outline)
+float StringWidth(const Font& font, StringSection<ucs4> text, float spaceExtra, bool outline)
 {
-    if (!text)
-        return 0.0f;
-
     int prevGlyph = 0;
-    float x = 0.0f;
-    for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-        int ch = text[i];
-        if (!ch) break;
-        if( ch == '\n') continue;
+    float x = 0.0f, prevMaxX = 0.0f;
+    for (int ch:text) {
+        if (ch == '\n') {
+			prevMaxX = std::max(x, prevMaxX);
+			prevGlyph = 0;
+			x = 0;
+			continue;
+		}
 
         int curGlyph;
-        x += GetKerning(prevGlyph, ch, &curGlyph)[0];
+        x += font.GetKerning(prevGlyph, ch, &curGlyph)[0];
 
-        auto chr = GetGlyphProperties(ch);
+        auto chr = font.GetGlyphProperties(ch);
         x += chr._xAdvance;
 
         if(outline) {
@@ -48,29 +48,27 @@ float Font::StringWidth(const ucs4* text, int maxLen, float spaceExtra, bool out
         prevGlyph = curGlyph;
     }
 
-    return x;
+    return std::max(x, prevMaxX);
 }
 
-int Font::CharCountFromWidth(const ucs4* text, float width, int maxLen, float spaceExtra, bool outline)
+int CharCountFromWidth(const Font& font, StringSection<ucs4> text, float width, float spaceExtra, bool outline)
 {
-    if (!text)
-        return 0;
-
     int prevGlyph = 0;
     int charCount = 0;
 
     float x = 0.0f;
-
-    for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-        int ch = text[i];
-        if (!ch) break;
-        if( ch == '\n') continue;
+    for (int ch:text) {
+        if (ch == '\n') {
+			prevGlyph = 0;
+			x = 0;
+			continue;
+		}
 
         int curGlyph;
-        x += GetKerning(prevGlyph, ch, &curGlyph)[0];
+        x += font.GetKerning(prevGlyph, ch, &curGlyph)[0];
         prevGlyph = curGlyph;
 
-        auto chr = GetGlyphProperties(ch);
+        auto chr = font.GetGlyphProperties(ch);
         x += chr._xAdvance;
 
         if(outline) {
@@ -107,29 +105,26 @@ static void CopyString(ucs4* dst, int count, const ucs4* src)
     *dst = 0;
 }
 
-float Font::StringEllipsis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width, float spaceExtra, bool outline)
+float StringEllipsis(const Font& font, StringSection<ucs4> inText, ucs4* outText, size_t outTextSize, float width, float spaceExtra, bool outline)
 {
-    if (!inText || !outText)
+    if (width <= 0.0f)
         return 0.0f;
-
-    if (width <= 0.0f) {
-        return 0.0f;
-    }
 
     int prevGlyph = 0;
-
     float x = 0.0f;
-
-    for (uint32 i = 0 ; i < (uint32)-1 ; ++i) {
-        int ch = inText[i];
-        if (!ch) break;
-        if( ch == '\n') continue;
+    for (auto i=inText.begin(); i!=inText.end(); ++i) {
+        int ch = *i;
+        if (ch == '\n') {
+			prevGlyph = 0;
+			x = 0.0f;
+			continue;
+		}
 
         int curGlyph;
-        x += GetKerning(prevGlyph, ch, &curGlyph)[0];
+        x += font.GetKerning(prevGlyph, ch, &curGlyph)[0];
         prevGlyph = curGlyph;
 
-        auto chr = GetGlyphProperties(ch);
+        auto chr = font.GetGlyphProperties(ch);
         x += chr._xAdvance;
 
         if(outline) {
@@ -140,31 +135,31 @@ float Font::StringEllipsis(const ucs4* inText, ucs4* outText, size_t outTextSize
         }
 
         if (x > width) {
-            size_t count = size_t(i);
+            size_t count = size_t(i - inText.begin());
             if (count > outTextSize - 2) {
                 return x;
             }
 
-            CopyString(outText, (int)count, inText);
+            CopyString(outText, (int)count, inText.begin());
             outText[count - 1] = '.';
             outText[count] = '.';
             outText[count + 1] = 0;
 
-            return StringWidth(outText, -1, spaceExtra, outline);
+            return StringWidth(font, MakeStringSection(outText, &outText[count + 1]), spaceExtra, outline);
         }
     }
 
     return x;
 }
 
-float Font::CharWidth(ucs4 ch, ucs4 prev) const
+float CharWidth(const Font& font, ucs4 ch, ucs4 prev)
 {
     float x = 0.0f;
     if (prev) {
-        x += GetKerning(prev, ch);
+        x += font.GetKerning(prev, ch);
     }
 
-    x += GetGlyphProperties(ch)._xAdvance;
+    x += font.GetGlyphProperties(ch)._xAdvance;
 
     return x;
 }

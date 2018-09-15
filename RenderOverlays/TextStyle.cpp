@@ -6,6 +6,7 @@
 
 #include "Font.h"
 // #include "FontRendering.h"
+#include "FT_FontTexture.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"
@@ -234,285 +235,247 @@ TextStyleResources::TextStyleResources(const Desc& desc)
 TextStyleResources::~TextStyleResources()
 {}
 
-float   TextStyle::Draw(    
+float Draw(    
     RenderCore::IThreadContext& threadContext, 
-    float x, float y, const ucs4 text[], int maxLen,
+	const Font& font, const TextStyle& style,
+    float x, float y, StringSection<ucs4> text,
     float spaceExtra, float scale, float mx, float depth,
-    unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q) const
+    unsigned colorARGB, UI_TEXT_STATE textState, bool applyDescender, Quad* q)
 {
 	using namespace RenderCore;
-    if (!_font) {
-        return 0.f;
+    auto& renderer = *Metal::DeviceContext::Get(threadContext);
+
+    int prevGlyph = 0;
+    float xScale = scale;
+    float yScale = scale;
+
+    if (style._options.snap) {
+        x = xScale * (int)(0.5f + x / xScale);
+        y = yScale * (int)(0.5f + y / yScale);
     }
 
-    TRY {
+    float width     = StringWidth(font, text, spaceExtra, style._options.outline);
+    float height    = font.LineHeight() * yScale;
 
-        auto renderer = Metal::DeviceContext::Get(threadContext);
+    if (textState != UI_TEXT_STATE_NORMAL) {
+        const float magicGap = 3.0f;
 
-        int prevGlyph = 0;
-        float xScale = scale;
-        float yScale = scale;
+        Quad reverseBox;
+        reverseBox.min[0] = x;
+        reverseBox.min[1] = y - height + magicGap * yScale;
+        reverseBox.max[0] = x + width;
+        reverseBox.max[1] = y + magicGap * xScale;
 
-        if (_options.snap) {
-            x = xScale * (int)(0.5f + x / xScale);
-            y = yScale * (int)(0.5f + y / yScale);
+        if(style._options.outline) {
+            reverseBox.min[0] -= xScale;
+            reverseBox.min[1] -= yScale; 
+            reverseBox.max[0] -= xScale;
+            reverseBox.max[1] -= yScale;
         }
 
-        float width     = _font->StringWidth(text, maxLen, spaceExtra, _options.outline);
-        float height    = _font->LineHeight() * yScale;
-
-        if (textState != UI_TEXT_STATE_NORMAL) {
-            const float magicGap = 3.0f;
-
-            Quad reverseBox;
-            reverseBox.min[0] = x;
-            reverseBox.min[1] = y - height + magicGap * yScale;
-            reverseBox.max[0] = x + width;
-            reverseBox.max[1] = y + magicGap * xScale;
-
-            if(_options.outline) {
-                reverseBox.min[0] -= xScale;
-                reverseBox.min[1] -= yScale; 
-                reverseBox.max[0] -= xScale;
-                reverseBox.max[1] -= yScale;
-            }
-
-            if(mx > 0.0f) {
-                reverseBox.max[0] = std::min(reverseBox.max[0], mx);
-            }
-
-            // ITexture* backTex = NULL;
-            // if (textState == UI_TEXT_STATE_REVERSE) {
-            //     backTex = desktop.greyTex;
-            // }
-            // else if( textState == UI_TEXT_STATE_INACTIVE_REVERSE) {
-            //     backTex = desktop.greyTex;
-            // }
-            // if (backTex) {
-            //     DrawQuad(list, reverseBox, Quad::MinMax(0,0,1,1), Color4::Create(1,1,1,1), backTex, true, false);
-            // }
+        if(mx > 0.0f) {
+            reverseBox.max[0] = std::min(reverseBox.max[0], mx);
         }
 
-        // VertexShader& vshader    = GetResource<VertexShader>(vertexShaderSource);
-        // PixelShader& pshader     = GetResource<PixelShader>(pixelShaderSource);
+        // ITexture* backTex = NULL;
+        // if (textState == UI_TEXT_STATE_REVERSE) {
+        //     backTex = desktop.greyTex;
+        // }
+        // else if( textState == UI_TEXT_STATE_INACTIVE_REVERSE) {
+        //     backTex = desktop.greyTex;
+        // }
+        // if (backTex) {
+        //     DrawQuad(list, reverseBox, Quad::MinMax(0,0,1,1), Color4::Create(1,1,1,1), backTex, true, false);
+        // }
+    }
 
-        auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
-        renderer->Bind(*res._shaderProgram);
-        renderer->Bind(Topology::TriangleList);
+    // VertexShader& vshader    = GetResource<VertexShader>(vertexShaderSource);
+    // PixelShader& pshader     = GetResource<PixelShader>(pixelShaderSource);
 
-        renderer->Bind(Techniques::CommonResources()._dssDisable);
-        renderer->Bind(Techniques::CommonResources()._cullDisable);
+    auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
+    renderer.Bind(*res._shaderProgram);
+    renderer.Bind(Topology::TriangleList);
 
-        Metal::ViewportDesc viewportDesc(*renderer);
-        ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
+    renderer.Bind(Techniques::CommonResources()._dssDisable);
+    renderer.Bind(Techniques::CommonResources()._cullDisable);
+
+    Metal::ViewportDesc viewportDesc(renderer);
+    ReciprocalViewportDimensions reciprocalViewportDimensions = { 1.f / float(viewportDesc.Width), 1.f / float(viewportDesc.Height), 0.f, 0.f };
             
-        auto packet = RenderCore::MakeSharedPkt(
-            (const uint8*)&reciprocalViewportDimensions, 
-            (const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
-        // res._boundUniforms.Apply(*renderer, Metal::UniformsStream(), Metal::UniformsStream(&packet, nullptr, 1));
+    auto packet = RenderCore::MakeSharedPkt(
+        (const uint8*)&reciprocalViewportDimensions, 
+        (const uint8*)PtrAdd(&reciprocalViewportDimensions, sizeof(reciprocalViewportDimensions)));
             
-        const FontTexture2D *   currentBoundTexture = nullptr;
-        WorkingVertexSetPCT     workingVertices;
+	auto& textureMgr = GetFontTextureMgr();
+	auto& texSRV = textureMgr.GetFontTexture().GetSRV();
+    WorkingVertexSetPCT     workingVertices;
 
-        // bool batchFont = _font->GetTexKind() == FTK_IMAGETEXT ? false : true;
-        float descent = 0.0f;
-        if (applyDescender) {
-            descent = _font->Descent();
+    // bool batchFont = _font->GetTexKind() == FTK_IMAGETEXT ? false : true;
+    float descent = 0.0f;
+    if (applyDescender) {
+        descent = font.Descent();
+    }
+    float opacity = (colorARGB >> 24) / float(0xff);
+    unsigned colorOverride = 0x0;
+    for (auto i=text.begin(); i!=text.end(); ++i) {
+		auto ch = *i;
+        if (mx > 0.0f && x > mx) {
+            return x;
         }
-        float opacity = (colorARGB >> 24) / float(0xff);
-        unsigned colorOverride = 0x0;
-        for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-            ucs4 ch = text[i];
-            if (!ch) break;
-            if (ch == '\n' || ch == '\r' || ch == '\0') continue;
-            if (mx > 0.0f && x > mx) {
-                return x;
-            }
 
-            if (!XlComparePrefixI((ucs4*)"{\0\0\0C\0\0\0o\0\0\0l\0\0\0o\0\0\0r\0\0\0:\0\0\0", &text[i], 7)) {
-                unsigned newColorOverride = 0;
-                unsigned parseLength = ParseColorValue(&text[i+7], &newColorOverride);
-                if (parseLength) {
-                    colorOverride = newColorOverride;
-                    i += 7 + parseLength;
-                    while (i<(uint32)maxLen && text[i] && text[i] != '}') ++i;
-                    continue;
-                }
-            }
-
-            int curGlyph;
-            Float2 v = _font->GetKerning(prevGlyph, ch, &curGlyph);
-            x += xScale * v[0];
-            y += yScale * v[1];
-            prevGlyph = curGlyph;
-
-            std::pair<const FontChar*, const FontTexture2D*> charAndTexture = _font->GetChar(ch);
-            const FontChar* fc       = charAndTexture.first;
-            const FontTexture2D* tex = charAndTexture.second;
-            if(!fc) continue;
-
-                // Set the new texture if needed (changing state requires flushing completed work)
-            if (tex != currentBoundTexture) {
-                Flush(*renderer, res._boundInputLayout, workingVertices);
-
-				auto sourceTexture = tex->ShareUnderlying();
-                if (!sourceTexture) {
-                    Throw(std::runtime_error("Pending background upload of font texture"));
-                }
-
-				Metal::ShaderResourceView shadRes(sourceTexture);
-                const Metal::ShaderResourceView* srvs[] = { &shadRes };
-				ConstantBufferView cbvs[] = { packet };
-                // renderer->BindPS(RenderCore::MakeResourceList(shadRes));
-                res._boundUniforms.Apply(
-					*renderer, 1, 
-					UniformsStream{
-						MakeIteratorRange(cbvs),
-						UniformsStream::MakeResources(MakeIteratorRange(srvs))
-					});
-                currentBoundTexture = tex;
-            }
-
-            _font->TouchFontChar(fc);
-
-            float baseX = x + fc->left * xScale;
-            float baseY = y - (fc->top + descent) * yScale;
-            if (_options.snap) {
-                baseX = xScale * (int)(0.5f + baseX / xScale);
-                baseY = yScale * (int)(0.5f + baseY / yScale);
-            }
-
-            Quad pos    = Quad::MinMax(baseX, baseY, baseX + fc->width * xScale, baseY + fc->height * yScale);
-            Quad tc     = Quad::MinMax(fc->u0, fc->v0, fc->u1, fc->v1);
-
-            if (_options.outline) {
-                Quad shadowPos;
-                unsigned shadowColor = RGBA8(Color4::Create(0, 0, 0, opacity));
-
-                shadowPos = pos;
-                shadowPos.min[0] -= xScale;
-                shadowPos.max[0] -= xScale;
-                shadowPos.min[1] -= yScale;
-                shadowPos.max[1] -= yScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[1] -= yScale;
-                shadowPos.max[1] -= yScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[0] += xScale;
-                shadowPos.max[0] += xScale;
-                shadowPos.min[1] -= yScale;
-                shadowPos.max[1] -= yScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[0] -= xScale;
-                shadowPos.max[0] -= xScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[0] += xScale;
-                shadowPos.max[0] += xScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[0] -= xScale;
-                shadowPos.max[0] -= xScale;
-                shadowPos.min[1] += yScale;
-                shadowPos.max[1] += yScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[1] += yScale;
-                shadowPos.max[1] += yScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-
-                shadowPos = pos;
-                shadowPos.min[0] += xScale;
-                shadowPos.max[0] += xScale;
-                shadowPos.min[1] += yScale;
-                shadowPos.max[1] += yScale;
-                if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
-                }
-            }
-
-            if (_options.shadow) {
-                Quad shadowPos = pos;
-                shadowPos.min[0] += xScale;
-                shadowPos.max[0] += xScale;
-                shadowPos.min[1] += yScale;
-                shadowPos.max[1] += yScale;
-                if (!workingVertices.PushQuad(shadowPos, RGBA8(Color4::Create(0,0,0,opacity)), tc, depth)) {
-                    Flush(*renderer, res._boundInputLayout, workingVertices);
-                    workingVertices.PushQuad(shadowPos, RGBA8(Color4::Create(0,0,0,opacity)), tc, depth);
-                }
-            }
-
-            if (!workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth)) {
-                Flush(*renderer, res._boundInputLayout, workingVertices);
-                workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
-            }
-
-            x += fc->xAdvance * xScale;
-            if (_options.outline) {
-                x += 2 * xScale;
-            }
-            if (ch == ' ') {
-                x += spaceExtra;
-            }
-
-            if (q) {
-                if (i == 0) {
-                    *q = pos;
-                } else {
-                    if (q->min[0] > pos.min[0]) {
-                        q->min[0] = pos.min[0];
-                    }
-                    if (q->min[1] > pos.min[1]) {
-                        q->min[1] = pos.min[1];
-                    }
-
-                    if (q->max[0] < pos.max[0]) {
-                        q->max[0] = pos.max[0];
-                    }
-                    if (q->max[1] < pos.max[1]) {
-                        q->max[1] = pos.max[1];
-                    }
-                }
+        if (!XlComparePrefixI((ucs4*)"{\0\0\0C\0\0\0o\0\0\0l\0\0\0o\0\0\0r\0\0\0:\0\0\0", i, 7)) {
+            unsigned newColorOverride = 0;
+            unsigned parseLength = ParseColorValue(i+7, &newColorOverride);
+            if (parseLength) {
+                colorOverride = newColorOverride;
+                i += 7 + parseLength;
+                while (i<text.end() && *i != '}') ++i;
+                continue;
             }
         }
 
-        Flush(*renderer, res._boundInputLayout, workingVertices);
+        int curGlyph;
+        Float2 v = font.GetKerning(prevGlyph, ch, &curGlyph);
+        x += xScale * v[0];
+        y += yScale * v[1];
+        prevGlyph = curGlyph;
 
-    } CATCH(...) {
-        // OutputDebugString("Suppressed exception while drawing text");
-    } CATCH_END
+		auto textureGlyph = font.GetTextureGlyph(ch);
+
+        float baseX = x + fc->left * xScale;
+        float baseY = y - (fc->top + descent) * yScale;
+        if (style._options.snap) {
+            baseX = xScale * (int)(0.5f + baseX / xScale);
+            baseY = yScale * (int)(0.5f + baseY / yScale);
+        }
+
+        Quad pos    = Quad::MinMax(baseX, baseY, baseX + fc->width * xScale, baseY + fc->height * yScale);
+        Quad tc     = Quad::MinMax(fc->u0, fc->v0, fc->u1, fc->v1);
+
+        if (style._options.outline) {
+            Quad shadowPos;
+            unsigned shadowColor = RGBA8(Color4::Create(0, 0, 0, opacity));
+
+            shadowPos = pos;
+            shadowPos.min[0] -= xScale;
+            shadowPos.max[0] -= xScale;
+            shadowPos.min[1] -= yScale;
+            shadowPos.max[1] -= yScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[1] -= yScale;
+            shadowPos.max[1] -= yScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[0] += xScale;
+            shadowPos.max[0] += xScale;
+            shadowPos.min[1] -= yScale;
+            shadowPos.max[1] -= yScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[0] -= xScale;
+            shadowPos.max[0] -= xScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[0] += xScale;
+            shadowPos.max[0] += xScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[0] -= xScale;
+            shadowPos.max[0] -= xScale;
+            shadowPos.min[1] += yScale;
+            shadowPos.max[1] += yScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[1] += yScale;
+            shadowPos.max[1] += yScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+
+            shadowPos = pos;
+            shadowPos.min[0] += xScale;
+            shadowPos.max[0] += xScale;
+            shadowPos.min[1] += yScale;
+            shadowPos.max[1] += yScale;
+            if (!workingVertices.PushQuad(shadowPos, shadowColor, tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, shadowColor, tc, depth);
+            }
+        }
+
+        if (style._options.shadow) {
+            Quad shadowPos = pos;
+            shadowPos.min[0] += xScale;
+            shadowPos.max[0] += xScale;
+            shadowPos.min[1] += yScale;
+            shadowPos.max[1] += yScale;
+            if (!workingVertices.PushQuad(shadowPos, RGBA8(Color4::Create(0,0,0,opacity)), tc, depth)) {
+                Flush(renderer, res._boundInputLayout, workingVertices);
+                workingVertices.PushQuad(shadowPos, RGBA8(Color4::Create(0,0,0,opacity)), tc, depth);
+            }
+        }
+
+        if (!workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth)) {
+            Flush(renderer, res._boundInputLayout, workingVertices);
+            workingVertices.PushQuad(pos, RenderCore::ARGBtoABGR(colorOverride?colorOverride:colorARGB), tc, depth);
+        }
+
+        x += fc->xAdvance * xScale;
+        if (style._options.outline) {
+            x += 2 * xScale;
+        }
+        if (ch == ' ') {
+            x += spaceExtra;
+        }
+
+        if (q) {
+            if (i == 0) {
+                *q = pos;
+            } else {
+                if (q->min[0] > pos.min[0]) {
+                    q->min[0] = pos.min[0];
+                }
+                if (q->min[1] > pos.min[1]) {
+                    q->min[1] = pos.min[1];
+                }
+
+                if (q->max[0] < pos.max[0]) {
+                    q->max[0] = pos.max[0];
+                }
+                if (q->max[1] < pos.max[1]) {
+                    q->max[1] = pos.max[1];
+                }
+            }
+        }
+    }
+
+    Flush(renderer, res._boundInputLayout, workingVertices);
 
     return x;
 }
@@ -563,9 +526,9 @@ static Float2 GetAlignPos(const Quad& q, const Float2& extent, UiAlign align)
     return pos;
 }
 
-static Float2 AlignText(const Quad& q, Font* font, float stringWidth, float indent, UiAlign align)
+static Float2 AlignText(const Quad& q, const Font& font, float stringWidth, float indent, UiAlign align)
 {
-    Float2 extent = Float2(stringWidth, font->Ascent(false));
+    Float2 extent = Float2(stringWidth, font.Ascent(false));
     Float2 pos = GetAlignPos(q, extent, align);
     pos[0] += indent;
     pos[1] += extent[1];
@@ -573,59 +536,25 @@ static Float2 AlignText(const Quad& q, Font* font, float stringWidth, float inde
     case UIALIGN_TOP_LEFT:
     case UIALIGN_TOP:
     case UIALIGN_TOP_RIGHT:
-        pos[1] += font->Ascent(true) - extent[1];
+        pos[1] += font.Ascent(true) - extent[1];
         break;
     case UIALIGN_BOTTOM_LEFT:
     case UIALIGN_BOTTOM:
     case UIALIGN_BOTTOM_RIGHT:
-        pos[1] -= font->Descent();
+        pos[1] -= font.Descent();
         break;
     }
     return pos;
 }
 
-Float2 TextStyle::AlignText(const Quad& q, UiAlign align, const ucs4* text, int maxLen /*= -1*/)
+Float2 AlignText(const Font& font, const Quad& q, UiAlign align, StringSection<ucs4> text)
 {
-    assert(_font);
-    return RenderOverlays::AlignText(q, _font.get(), _font->StringWidth(text, maxLen), 0, align);
+    return AlignText(q, font, StringWidth(font, text), 0, align);
 }
 
-Float2 TextStyle::AlignText(const Quad& q, UiAlign align, float width, float indent)
+Float2 AlignText(const Font& font, const Quad& q, UiAlign align, float width, float indent)
 {
-    assert(_font);
-    return RenderOverlays::AlignText(q, _font.get(), width, indent, align);
-}
-
-float TextStyle::StringWidth(const ucs4* text, int maxlen)
-{
-    return _font->StringWidth(text, maxlen);
-}
-
-int TextStyle::CharCountFromWidth(const ucs4* text, float width)
-{
-    return _font->CharCountFromWidth(text, width);
-}
-
-float TextStyle::SetStringEllipis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width)
-{
-    return _font->StringEllipsis(inText, outText, outTextSize, width);
-}
-
-float TextStyle::CharWidth(ucs4 ch, ucs4 prev)
-{
-    return _font->CharWidth(ch, prev);
-}
-
-TextStyle::TextStyle(const std::shared_ptr<Font>& font, const DrawTextOptions& options)
-: _font(font), _options(options)
-{
-}
-
-TextStyle::TextStyle(unsigned pointSize, const DrawTextOptions& options)
-{}
-    
-TextStyle::~TextStyle()
-{
+    return AlignText(q, font, width, indent, align);
 }
 
 }
