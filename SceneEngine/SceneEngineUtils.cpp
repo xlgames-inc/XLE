@@ -196,15 +196,15 @@ namespace SceneEngine
             return;
 
         {
-            auto metalContext = Metal::DeviceContext::Get(context);
-            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            auto& metalContext = *Metal::DeviceContext::Get(context);
+            metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
         }
 
         using namespace RenderOverlays;
         TextStyle style; 
         Float2 textPosition(16.f, 16.f);
-        float lineHeight = font->LineHeight();
-        const UiAlign alignment = UIALIGN_TOP_LEFT;
+        float lineHeight = font->GetFontProperties()._lineHeight;
+        const auto alignment = TextAlignment::TopLeft;
         const unsigned colour = 0xff7f7f7fu;
 
         if (parserContext._stringHelpers->_pendingAssets[0]) {
@@ -213,7 +213,7 @@ namespace SceneEngine
             Draw(
                 context, *font, style,
 				alignedPosition2[0], alignedPosition2[1], text.get(),
-                0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
+                0.f, 1.f, 0.f, 0.f, 0xffff7f7f, true, nullptr);
             textPosition[1] += lineHeight;
 
             auto i = parserContext._stringHelpers->_pendingAssets;
@@ -228,7 +228,7 @@ namespace SceneEngine
                 Draw(
                     context, *font, style, 
 					alignedPosition[0], alignedPosition[1], text2.get(),
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
@@ -239,7 +239,7 @@ namespace SceneEngine
             Draw(
                 context, *font, style,
 				alignedPosition2[0], alignedPosition2[1], text.get(),
-                0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
             textPosition[1] += lineHeight;
 
             auto i = parserContext._stringHelpers->_invalidAssets;
@@ -254,7 +254,7 @@ namespace SceneEngine
                 Draw(
                     context, *font, style,
 					alignedPosition[0], alignedPosition[1], text2.get(),
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
@@ -272,7 +272,7 @@ namespace SceneEngine
                 Draw(
                     context, *font, style,
 					alignedPosition[0], alignedPosition[1], text2.get(),
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
@@ -290,8 +290,8 @@ namespace SceneEngine
             using namespace RenderOverlays;
             TextStyle style;
             Float2 textPosition(16.f, 150.f);
-            float lineHeight = font->LineHeight();
-            const UiAlign alignment = UIALIGN_TOP_LEFT;
+            float lineHeight = font->GetFontProperties()._lineHeight;
+            const auto alignment = TextAlignment::TopLeft;
             const unsigned colour = 0xffcfcfcfu;
 
             auto i = parserContext._stringHelpers->_quickMetrics;
@@ -306,7 +306,7 @@ namespace SceneEngine
                 Draw(
                     context, *font, style,
 					alignedPosition[0], alignedPosition[1], text2.get(),
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }

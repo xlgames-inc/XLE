@@ -404,12 +404,12 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, TextAlignment::Left, text);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, StringSection<> text)
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment alignment, StringSection<> text)
     {
         return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, alignment, text);
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
+    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment alignment, const char text[], va_list args)
     {
         char buffer[4096];
         vsnprintf(buffer, dimof(buffer), text, args);
@@ -434,7 +434,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return result;
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...)
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment alignment, const char text[], ...)
     {
         va_list args;
         va_start(args, text);

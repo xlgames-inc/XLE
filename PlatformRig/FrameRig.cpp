@@ -403,9 +403,9 @@ namespace PlatformRig
         static Coord rectWidth = 175;
         static Coord padding = 12;
         static Coord margin = 8;
-        const auto bigLineHeight = Coord(res._frameRateFont->LineHeight());
-        const auto smallLineHeight = Coord(res._smallFrameRateFont->LineHeight());
-        const auto tabHeadingLineHeight = Coord(res._tabHeadingFont->LineHeight());
+        const auto bigLineHeight = Coord(res._frameRateFont->GetFontProperties()._lineHeight);
+        const auto smallLineHeight = Coord(res._smallFrameRateFont->GetFontProperties()._lineHeight);
+        const auto tabHeadingLineHeight = Coord(res._tabHeadingFont->GetFontProperties()._lineHeight);
         const Coord rectHeight = bigLineHeight + 3 * margin + smallLineHeight;
         Rect displayRect(
             Coord2(outerRect._bottomRight[0] - rectWidth - padding, outerRect._topLeft[1] + padding),
@@ -475,7 +475,7 @@ namespace PlatformRig
                         Coord nameWidth = (Coord)StringWidth(*res._tabHeadingFont, MakeStringSection(categories[c]));
                         rect = Rect(
                             pt - Coord2(std::max(iconSize[0], nameWidth), 0),
-                            pt + Coord2(0, Coord(iconSize[1] + res._tabHeadingFont->LineHeight())));
+                            pt + Coord2(0, Coord(iconSize[1] + res._tabHeadingFont->GetFontProperties()._lineHeight)));
 
                         auto iconLeft = Coord((rect._topLeft[0] + rect._bottomRight[0] - iconSize[0]) / 2.f);
                         Coord2 iconTopLeft(iconLeft, rect._topLeft[1]);

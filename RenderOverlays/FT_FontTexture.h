@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "FontPrimitives.h"
+#include "OverlayPrimitives.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../Utility/UTFUtils.h"
@@ -41,31 +41,14 @@ namespace RenderOverlays
 		void Resolve() const;
 	};
 
-	struct FontCharTable
-	{
-		std::vector<std::vector<std::pair<ucs4, FontBitmapId>>>  _table;
-		FontBitmapId&         operator[](ucs4 ch);
-		void                ClearTable();
-		FontCharTable();
-		~FontCharTable();
-	};
-
 	class FT_FontTextureMgr
 	{
 	public:
-		// bool            Init(int texWidth, int texHeight);
-
-		// bool            IsNeedReset() const;
-		// void            RequestReset();
-		// void            Reset();
-
-		// typedef std::vector<std::unique_ptr<CharSlotArray>> CharSlotArrayList;
-
 		struct Glyph
 		{
 			UInt2 _topLeft = UInt2{0, 0};
 			UInt2 _bottomRight = UInt2{0, 0};
-			FontBitmapId _glyphId = FontGlyphID_Invalid;
+			FontBitmapId _glyphId = FontBitmapId_Invalid;
 		};
 
 		Glyph		CreateChar(
@@ -75,15 +58,10 @@ namespace RenderOverlays
 		const FontTexture2D& GetFontTexture();
 		UInt2 GetTextureDimensions();
     
-		FontCharTable       _table;
-			
 		FT_FontTextureMgr();
 		~FT_FontTextureMgr();
 
 	private:
-		// CharSlotArray*      OverwriteLRUChar(FontFace* face);
-		// void                ClearFontTextureRegion(int height, int heightEnd);
-
 		class Pimpl;
 		std::shared_ptr<Pimpl> _pimpl;
 	};

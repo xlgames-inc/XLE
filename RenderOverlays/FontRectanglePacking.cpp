@@ -45,7 +45,7 @@ namespace RenderOverlays
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static unsigned AlignSlotHeight(unsigned h) { return (h + 3) & ~0x3; }
+	static unsigned AlignSlotHeight(unsigned h) { return (h + 7) & ~0x7; }
 
 	auto RectanglePacker_FontCharArray::Allocate(UInt2 dims) -> Rectangle
 	{

@@ -118,12 +118,12 @@ namespace Sample
             utf8_2_ucs4((const utf8*)text, XlStringLen(text), buffer, dimof(buffer));
             Quad quad = Quad::MinMax(Float2(0.f, 0.f), Float2(float(contextStateDesc._viewportDimensions[0]), float(contextStateDesc._viewportDimensions[1])));
 
-            auto alignment = AlignText(*res._font, quad, UIALIGN_CENTER, buffer);
+            auto alignment = AlignText(*res._font, quad, TextAlignment::Center, buffer);
             Draw(
                 context, *res._font, style, alignment[0], alignment[1],
                 buffer,
                 0.f, 1.f, 0.f, 0.f,
-                col.AsUInt32(), UI_TEXT_STATE_NORMAL, 0.f, &quad);
+                col.AsUInt32(), 0.f, &quad);
 
         }
     }

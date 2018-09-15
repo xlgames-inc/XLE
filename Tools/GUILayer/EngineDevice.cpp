@@ -152,7 +152,6 @@ namespace GUILayer
         DelayedDeleteQueue::FlushQueue();
         
         ConsoleRig::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
         //if (_pimpl->GetAssetServices())
         //    _pimpl->GetAssetServices()->GetAssetSets().Clear();
     }
@@ -169,7 +168,6 @@ namespace GUILayer
         assert(s_instance == nullptr);
         _shutdownCallbacks = gcnew System::Collections::Generic::List<System::WeakReference^>();
         _pimpl = new NativeEngineDevice;
-        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice().get(), _pimpl->GetBufferUploads());
         s_instance = this;
     }
 

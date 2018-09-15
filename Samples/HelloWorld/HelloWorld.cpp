@@ -171,7 +171,6 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitModelCompilers();
-        RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
 
             //  We need a ISceneParser object to define the scene we want to 
@@ -281,7 +280,6 @@ namespace Sample
 
         assetServices->GetAssetSets().Clear();
 		ConsoleRig::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
 
 		renderAssetServices.reset();
         assetServices.reset();

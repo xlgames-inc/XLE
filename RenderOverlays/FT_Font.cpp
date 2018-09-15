@@ -7,11 +7,13 @@
 #include "FT_Font.h"
 #include "FT_FontTexture.h"
 #include "../Assets/IFileSystem.h"
+#include "../Assets/Assets.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/Streams/FileUtils.h"
-#include "../Utility/Streams/Data.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Conversion.h"
 #include <set>
 #include <algorithm>
 #include <assert.h>
@@ -22,756 +24,377 @@
 namespace RenderOverlays
 {
 
-struct FontDefLessPred
-{
-    bool operator() (const FontDef& x, const FontDef& y) const
-    {
-        if (x.size < y.size) {
-            return true;
-        }
-
-        if (x.size > y.size) {
-            return false;
-        }
-
-        if (x.path < y.path) {
-            return true;
-        }
-
-        return false;
-    }
-};
-
-
-//---------------------------------------------------------------------------------------
-//  Font File Buffer Manager
-//      : managing font file chunk buffers
-//---------------------------------------------------------------------------------------
-class FontFileBufferManager
-{
-public:
-    ::Assets::Blob GetBuffer(const std::string& path)
-    {
-        auto it = _buffers.find(path);
-        if (it != _buffers.end()) {
-            auto result = it->second.lock();
-            if (result)
-				return result;
-        }
-
-		auto blob = ::Assets::TryLoadFileAsBlob(path);
-        if (blob)
-			_buffers.insert(std::make_pair(path, blob));
-        return blob;
-    }
-
-	FontFileBufferManager() {}
-    ~FontFileBufferManager() 
-    { 
-        for (auto it = _buffers.begin(); it != _buffers.end(); ++it)
-            assert(it->second.expired());
-    }
-
-private:
-    struct FontFileBuffer
+	//---------------------------------------------------------------------------------------
+	//  Font File Buffer Manager
+	//      : managing font file chunk buffers
+	//---------------------------------------------------------------------------------------
+	class FontFileBufferManager
 	{
-        std::unique_ptr<uint8[]> _buffer;
-        size_t _bufferSize = 0;
-    };
+	public:
+		::Assets::Blob GetBuffer(const std::string& path)
+		{
+			auto it = _buffers.find(path);
+			if (it != _buffers.end()) {
+				auto result = it->second.lock();
+				if (result)
+					return result;
+			}
 
-    using FontBufferMap = std::unordered_map<std::string, std::weak_ptr<std::vector<uint8_t>>>;
-    FontBufferMap _buffers;
-};
+			auto blob = ::Assets::TryLoadFileAsBlob(path);
+			if (blob)
+				_buffers.insert(std::make_pair(path, blob));
+			return blob;
+		}
 
+		FontFileBufferManager() {}
+		~FontFileBufferManager() 
+		{ 
+			for (auto it = _buffers.begin(); it != _buffers.end(); ++it)
+				assert(it->second.expired());
+		}
 
-// using UiFontGroupMap = std::unordered_map<FontDef, std::shared_ptr<FTFontGroup>, FontDefLessPred>;     // awkwardly, these can't use smart ptrs... because these objects are removed from the maps in their destructors
-// using UiFontMap = std::unordered_map<FontDef, std::shared_ptr<FTFont>, FontDefLessPred>;
+	private:
+		struct FontFileBuffer
+		{
+			std::unique_ptr<uint8[]> _buffer;
+			size_t _bufferSize = 0;
+		};
 
-// static UiFontGroupMap   fontGroupMap;
-// static UiFontGroupMap   damageDisplayFontGroupMap;
-// static UiFontMap        fontMap;
-
-// FT_Library ftLib = 0;
-
-// static std::unique_ptr<FT_FontTextureMgr>       fontTexMgr = NULL;
-// static std::unique_ptr<FT_FontTextureMgr>       damageDisplayFontTexMgr = NULL;
-// static std::unique_ptr<FontFileBufferManager>   fontFileBufferManager = NULL;
-
-struct FTFontRange 
-{
-    uint16 from = 0;
-    uint16 to = 0xffff;
-};
-
-struct FTFontNameInfo
-{
-	struct SubFont 
-	{
-		std::string _ftFontPath;
-		std::vector<FTFontRange> _chRange;
+		using FontBufferMap = std::unordered_map<std::string, std::weak_ptr<std::vector<uint8_t>>>;
+		FontBufferMap _buffers;
 	};
-	SubFont _defaultSubFont;
-    std::vector<SubFont> _subFTFontInfo;
-};
 
-typedef std::map<std::string, FTFontNameInfo> FTFontNameMap;
+	class FTFontResources
+	{
+	public:
+		FontFileBufferManager _bufferManager;
+		FT_Library _ftLib;
+		std::shared_ptr<FT_FontTextureMgr> _fontTexMgr;
+		std::unordered_map<std::string, std::string> _nameMap;
+		::Assets::DepValPtr _nameMapDepVal;
 
-class FTFontResources
-{
-public:
-	FontFileBufferManager _bufferManager;
-	FT_Library _ftLib;
-	std::shared_ptr<FT_FontTextureMgr> _fontTexMgr;
-	FTFontNameMap _nameMap;
+		FTFontResources();
+		~FTFontResources();
+	};
 
-	FTFontResources();
-	~FTFontResources();
-};
-
-static FTFontResources& GetRes()
-{
-	static FTFontResources s_result;
-	return s_result;
-}
-
-FTFont::FTFont() : _textureManager(GetRes()._fontTexMgr)
-{
-    _ascend = 0;
-    _face = 0;
-    _pBuffer = 0;
-}
-
-FTFont::~FTFont()
-{
-}
-
-bool FTFont::Init(const FontDef& fontDef)
-{
-    FT_Error error;
-
-	auto i = GetRes()._nameMap.find(fontDef.path);
-	if (i != GetRes()._nameMap.end()) {
-		XlCopyString(_path, i->second._defaultSubFont._ftFontPath);
-	} else
-	    XlCopyString(_path, fontDef.path.c_str());
-
-    _size = fontDef.size;
-
-    _pBuffer = GetRes()._bufferManager.GetBuffer(_path);
-
-    if (!_pBuffer)
-        Throw(::Exceptions::BasicLabel("Failed to load font (%s)", fontDef.path.c_str()));
-
-	FT_Face face;
-    FT_New_Memory_Face(GetRes()._ftLib, _pBuffer->data(), (FT_Long)_pBuffer->size(), 0, &face);
-	_face = std::shared_ptr<FT_FaceRec_>{
-		face,
-		[](FT_Face f) { FT_Done_Face(f); } };
-
-    error = FT_Set_Pixel_Sizes(_face.get(), 0, _size);
-    if (error) {
-        // GameWarning("Failed to set pixel size");
-    }
-
-    /*error = FT_Load_Char(_face.get(), ' ', FT_LOAD_RENDER);
-    if (error) {
-        // GameWarning("There is no blank character(%s)", _path);
-    }*/
-
-    error = FT_Load_Char(_face.get(), 'X', FT_LOAD_RENDER);
-    if (error) {
-        // GameWarning("Failed to load character '%d'", 'X');
-        return false;
-    }
-
-    //bool italic = true;
-    //if (italic) {
-    //    FT_Matrix matrix;
-    //    const float angle = (-gf_PI * 30.0f) / 180.0f;
-    //    matrix.xx = (FT_Fixed)0x10000;
-    //    matrix.xy = (FT_Fixed)(-sin( angle ) * 0x10000L );
-    //    matrix.yx = (FT_Fixed)0;
-    //    matrix.yy = (FT_Fixed)0x10000;        
-    //    FT_Set_Transform(_face,&matrix,0);
-    //}
-
-
-    FT_GlyphSlot slot = _face->glyph;
-    _ascend = slot->bitmap_top;
-
-    return true;
-}
-
-float FTFont::Descent() const
-{
-    if (!_face) return 1.0f;
-    //float yScale = desktop.heightScale; //
-    float yScale = 1;
-    return -yScale * _face->size->metrics.descender / 64.0f;
-}
-
-float FTFont::Ascent(bool includeAccent) const
-{
-    if (!_face) return 1.0f;
-    //float yScale = desktop.heightScale;
-    float yScale = 1;
-    if (includeAccent) {
-        return yScale * _face->size->metrics.ascender / 64.0f;
-    } else {
-        return yScale * _ascend;
-    }
-}
-
-float FTFont::LineHeight() const
-{
-    if (!_face) return 1.0f;
-
-    //float yScale = desktop.heightScale;
-    float yScale = 1;
-    return yScale * _face->size->metrics.height / 64.0f;
-}
-
-Float2 FTFont::GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const
-{
-    int currentGlyph = FT_Get_Char_Index(_face.get(), ch); 
-    if(*curGlyph)
-        *curGlyph = currentGlyph;
-
-    if (prevGlyph) {
-        FT_Vector kerning;
-        FT_Get_Kerning(_face.get(), prevGlyph, currentGlyph, FT_KERNING_DEFAULT, &kerning);
-
-        return Float2((float)kerning.x / 64, (float)kerning.y / 64);
-    }
-
-    return Float2(0.0f, 0.0f);
-}
-
-float FTFont::GetKerning(ucs4 prev, ucs4 ch) const
-{
-    if (prev) {
-        int prevGlyph = FT_Get_Char_Index(_face.get(), prev);
-        int curGlyph = FT_Get_Char_Index(_face.get(), ch); 
-
-        FT_Vector kerning;
-        FT_Get_Kerning(_face.get(), prevGlyph, curGlyph, FT_KERNING_DEFAULT, &kerning);
-        return (float)kerning.x / 64;
-    }
-
-    return 0.0f;
-}
-
-
-FontBitmapId FTFont::InitializeBitmap(ucs4 ch) const
-{
-	if (!_textureManager)
-		return FontGlyphID_Invalid;
-
-	FontBitmapId& id = _lookupTable[ch];
-	if (id != FontGlyphID_Invalid)
-		return id;
-
-	FT_Error error = FT_Load_Char(_face.get(), ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
-	if (error)
-		return FontGlyphID_Invalid;
-
-	FT_GlyphSlot glyph = _face->glyph;
-
-	Bitmap glyphEntry;
-	glyphEntry._glyph = { (float)glyph->advance.x / 64.0f };
-	glyphEntry._bitmapOffsetX = glyph->bitmap_left;
-	glyphEntry._bitmapOffsetY = -glyph->bitmap_top;
-
-	if (glyph->bitmap.width!=0 && glyph->bitmap.rows!=0) {
-		auto textureGlyph = _textureManager->CreateChar(
-			glyph->bitmap.width, glyph->bitmap.rows,
-			MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
-
-		glyphEntry._topLeft = textureGlyph._topLeft;
-		glyphEntry._bottomRight = textureGlyph._bottomRight;
-		glyphEntry._textureId = textureGlyph._glyphId;
+	static FTFontResources& GetRes()
+	{
+		static FTFontResources s_result;
+		return s_result;
 	}
 
-	id = (FontBitmapId)_bitmaps.size();
-	_bitmaps.push_back(glyphEntry);
+	FTFont::FTFont(StringSection<::Assets::ResChar> faceName, int faceSize)
+	{
+		std::string finalPath = faceName.AsString();
+		auto i = GetRes()._nameMap.find(finalPath);
+		if (i != GetRes()._nameMap.end())
+			finalPath = i->second;
 
-	return id;
-}
+		_pBuffer = GetRes()._bufferManager.GetBuffer(finalPath);
 
-auto FTFont::GetBitmap(ucs4 ch) const -> Bitmap
-{
-	auto internalTable = InitializeBitmap(ch);
-	if (internalTable == FontGlyphID_Invalid) return {};
-	return _bitmaps[internalTable];
-}
+		_depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_depVal, finalPath);
+		::Assets::RegisterAssetDependency(_depVal, GetRes()._nameMapDepVal);
 
-auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
-{
-	auto internalTable = InitializeBitmap(ch);
-	if (internalTable == FontGlyphID_Invalid) return {};
-	return _bitmaps[internalTable]._glyph;
-}
+		if (!_pBuffer)
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::MissingFile,
+				_depVal,
+				"Failed to load font (%s)", finalPath.c_str()));
 
+		FT_Face face;
+		FT_New_Memory_Face(GetRes()._ftLib, _pBuffer->data(), (FT_Long)_pBuffer->size(), 0, &face);
+		_face = std::shared_ptr<FT_FaceRec_>{
+			face,
+			[](FT_Face f) { FT_Done_Face(f); } };
 
-#if 0
-// static FTFontNameMap fontNameInfo;
+		FT_Error error = FT_Set_Pixel_Sizes(_face.get(), 0, faceSize);
+		if (error)
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::FormatNotUnderstood,
+				_depVal,
+				"Failed to set pixel size while initializing font (%s)", finalPath.c_str()));
 
-FTFontGroup::FTFontGroup(FontTexKind kind)
-{
-    _ascend = 0;
-    _face = 0;
-    _pBuffer = 0;
-    _texKind = kind;
-    _defaultFTFont = nullptr;
-}
+		_fontProperties._descender = _face->size->metrics.descender / 64.0f;
+		_fontProperties._ascender = _face->size->metrics.ascender / 64.0f;
+		_fontProperties._lineHeight = _face->size->metrics.height / 64.0f;
+		_fontProperties._maxAdvance = _face->size->metrics.max_advance / 64.0f;
+		_fontProperties._ascenderExcludingAccent = _fontProperties._ascender;
 
-FTFontGroup::~FTFontGroup()
-{
-}
+		error = FT_Load_Char(_face.get(), 'X', FT_LOAD_RENDER);
+		if (!error)
+			_fontProperties._ascenderExcludingAccent = (float)_face->glyph->bitmap_top;
+	}
 
-bool FTFontGroup::CheckMyFace(FT_Face face)
-{
-    if (_defaultFTFont && _defaultFTFont->GetFace() == face) {
-        return true;
-    } else {
-        SubFTFontInfoMap::iterator it_begin = _subFTFontInfoMap.begin();
-        SubFTFontInfoMap::iterator it_end = _subFTFontInfoMap.end();
-        for (; it_begin != it_end; ++it_begin) {
-            const auto& subFTFont = it_begin->first;
-            if (subFTFont && subFTFont->GetFace() == face)
-                return true;
-        }
-    }
+	FTFont::~FTFont()
+	{
+	}
 
-    return false;
-}
+	auto FTFont::GetFontProperties() const -> FontProperties { return _fontProperties; }
 
-std::shared_ptr<FTFont> FTFontGroup::FindFTFontByChar(ucs4 ch) const
-{
-    size_t size = 0;
-    FTFontRange range;
-    if (_defaultFTFont) {
-        size = _defaultFTFontRanges.size();
-        for (int i = 0; i < (int)size; ++i) {
-            range = _defaultFTFontRanges[i];
-            if (range.from <= ch && range.to >= ch) {
-                return _defaultFTFont;
-            }
-        }
-    }
+	Float2 FTFont::GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const
+	{
+		int currentGlyph = FT_Get_Char_Index(_face.get(), ch); 
+		if(*curGlyph)
+			*curGlyph = currentGlyph;
 
-    SubFTFontInfoMap::const_iterator it_begin = _subFTFontInfoMap.begin();
-    SubFTFontInfoMap::const_iterator it_end = _subFTFontInfoMap.end();
-    FTFontRanges ranges;
-    for (; it_begin != it_end; ++it_begin) {
-        const auto& subFTFont = it_begin->first;
-        ranges = (FTFontRanges)(it_begin->second);
-        if (subFTFont) {
-            size = ranges.size();
-            for (int i = 0; i < (int)size; ++i) {
-                range = ranges[i];
-                if (range.from <= ch && range.to >= ch) {
-                    return subFTFont;
-                }
-            }
-        }
-    }
+		if (prevGlyph) {
+			FT_Vector kerning;
+			FT_Get_Kerning(_face.get(), prevGlyph, currentGlyph, FT_KERNING_DEFAULT, &kerning);
 
-    return nullptr;
-}
+			return Float2((float)kerning.x / 64, (float)kerning.y / 64);
+		}
 
-int FTFontGroup::GetFTFontCount()
-{
-    int count = 0;
-    if (_defaultFTFont) {
-        ++count;
-    }
+		return Float2(0.0f, 0.0f);
+	}
 
-    count += (int)_subFTFontInfoMap.size();
+	float FTFont::GetKerning(ucs4 prev, ucs4 ch) const
+	{
+		if (prev) {
+			int prevGlyph = FT_Get_Char_Index(_face.get(), prev);
+			int curGlyph = FT_Get_Char_Index(_face.get(), ch); 
 
-    return count;
-}
+			FT_Vector kerning;
+			FT_Get_Kerning(_face.get(), prevGlyph, curGlyph, FT_KERNING_DEFAULT, &kerning);
+			return (float)kerning.x / 64;
+		}
 
-bool FTFontGroup::LoadDefaultFTFont(FTFontNameInfo &info, int size)
-{
-    FontDef fd = {info.defaultFTFontPath.c_str(), size};
+		return 0.0f;
+	}
 
-    UiFontMap::iterator it = fontMap.find(fd);
-    if (it != fontMap.end()) {
-        _defaultFTFont = it->second;
-    } else {
-        _defaultFTFont = std::make_shared<FTFont>(_texKind);
+	FontBitmapId FTFont::InitializeBitmap(ucs4 ch) const
+	{
+		FontBitmapId& id = _lookupTable[ch];
+		if (id != FontBitmapId_Invalid)
+			return id;
 
-        if (!_defaultFTFont->Init(fd)) {
-            _defaultFTFont.reset();
-            // GameWarning("Failed to create freetype font '%s'", fd.path.c_str());
-            return false;
-        }
+		FT_Error error = FT_Load_Char(_face.get(), ch, FT_LOAD_RENDER | FT_LOAD_NO_AUTOHINT);
+		if (error)
+			return FontBitmapId_Invalid;
 
-		fontMap.insert(std::make_pair(fd, _defaultFTFont));
-    }
+		FT_GlyphSlot glyph = _face->glyph;
 
-    if (_defaultFTFont) {
-        _defaultFTFontRanges = info.defaultFTFontRange;
-    }
+		Bitmap glyphEntry;
+		glyphEntry._glyph = { (float)glyph->advance.x / 64.0f };
+		glyphEntry._bitmapOffsetX = glyph->bitmap_left;
+		glyphEntry._bitmapOffsetY = -glyph->bitmap_top;
 
-    return true;
-}
+		if (glyph->bitmap.width!=0 && glyph->bitmap.rows!=0) {
+			auto textureGlyph = GetRes()._fontTexMgr->CreateChar(
+				glyph->bitmap.width, glyph->bitmap.rows,
+				MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
 
-void FTFontGroup::LoadSubFTFont(FTFontNameInfo &info, int size)
-{
-    FontDef fd;
-    std::shared_ptr<FTFont> font;
-    FTFontInfoMap::iterator it_begin = info.subFTFontInfo.begin();
-    FTFontInfoMap::iterator it_end = info.subFTFontInfo.end();
-    for (; it_begin != it_end; ++it_begin) {
-        font = nullptr;
-        fd.path = ((std::string)(it_begin->first)).c_str();
-        fd.size = size;
+			glyphEntry._topLeft = textureGlyph._topLeft;
+			glyphEntry._bottomRight = textureGlyph._bottomRight;
+			glyphEntry._textureId = textureGlyph._glyphId;
+		}
 
-        UiFontMap::iterator it = fontMap.find(fd);
-        if (it != fontMap.end()) {
-            font = it->second;
-        } else {
-            font = std::make_shared<FTFont>(_texKind);
-            if (!font->Init(fd)) {
-                font = nullptr;
-                // GameWarning("Failed to create freetype font '%s'", fd.path.c_str());
-			} else {
-				fontMap.insert(std::make_pair(fd, font));
+		id = (FontBitmapId)_bitmaps.size();
+		_bitmaps.push_back(glyphEntry);
+
+		return id;
+	}
+
+	auto FTFont::GetBitmap(ucs4 ch) const -> Bitmap
+	{
+		auto internalTable = InitializeBitmap(ch);
+		if (internalTable == FontBitmapId_Invalid) return {};
+		return _bitmaps[internalTable];
+	}
+
+	auto FTFont::GetGlyphProperties(ucs4 ch) const -> GlyphProperties
+	{
+		auto internalTable = InitializeBitmap(ch);
+		if (internalTable == FontBitmapId_Invalid) return {};
+		return _bitmaps[internalTable]._glyph;
+	}
+
+	struct FontDef { std::string path; int size; };
+	struct FontDefLessPred
+	{
+		bool operator() (const FontDef& x, const FontDef& y) const
+		{
+			if (x.size < y.size) {
+				return true;
 			}
+
+			if (x.size > y.size) {
+				return false;
+			}
+
+			if (x.path < y.path) {
+				return true;
+			}
+
+			return false;
+		}
+	};
+
+	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size)
+	{
+		auto future = ::Assets::MakeAsset<FTFont>(path, size);
+		future->StallWhilePending();
+		return future->Actualize();
+	}
+
+	std::shared_ptr<Font> GetDefaultFont(unsigned size)
+	{
+		return GetX2Font("Raleway", size);
+	}
+
+	////////////////////////////////////////////////////////////////////////////////////
+
+	static void LoadFontNameMapping(InputStreamFormatter<utf8>& formatter, std::unordered_map<std::string, std::string>& result)
+	{
+		for (;;) {
+            using Blob = InputStreamFormatter<utf8>::Blob;
+            switch (formatter.PeekNext()) {
+            case Blob::AttributeName:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection name, value;
+                    formatter.TryAttribute(name, value);
+					result.insert({Conversion::Convert<std::string>(name.AsString()), Conversion::Convert<std::string>(value.AsString())});
+                    break;
+                }
+
+			case Blob::BeginElement:
+				{
+					InputStreamFormatter<utf8>::InteriorSection eleName;
+					formatter.TryBeginElement(eleName);
+					formatter.SkipElement();
+					formatter.TryEndElement();
+				}
+				break;
+
+			case Blob::AttributeValue:
+            case Blob::CharacterData:
+			default:
+                Throw(FormatException("Unexpected element", formatter.GetLocation()));
+                break;
+
+            case Blob::EndElement:
+            case Blob::None:
+                return;
+            }
         }
-        
-        if (font) {
-            _subFTFontInfoMap.insert(SubFTFontInfoMap::value_type(font.get(), (FTFontRanges)it_begin->second));
+	}
+
+	static std::unordered_map<std::string, std::string> LoadFontConfigFile(StringSection<> cfgFile)
+	{
+		std::unordered_map<std::string, std::string> result;
+
+		size_t blobSize = 0;
+		auto blob = ::Assets::TryLoadFileAsMemoryBlock(cfgFile, &blobSize);
+
+		InputStreamFormatter<utf8> formatter(MemoryMappedInputStream{blob.get(), PtrAdd(blob.get(), blobSize)});
+
+		const char* locale = XlGetLocaleString(XlGetLocale());
+
+		for (;;) {
+            using Blob = InputStreamFormatter<utf8>::Blob;
+            switch (formatter.PeekNext()) {
+            case Blob::BeginElement:
+                {
+                    InputStreamFormatter<utf8>::InteriorSection eleName;
+                    formatter.TryBeginElement(eleName);
+					if (XlEqStringI(eleName, (const utf8*)"*")) {
+						LoadFontNameMapping(formatter, result);
+					} else if (XlEqStringI(eleName, (const utf8*)locale)) {
+						LoadFontNameMapping(formatter, result);
+					} else {
+						formatter.SkipElement();
+					}
+					formatter.TryEndElement();
+                    break;
+                }
+
+            case Blob::AttributeName:
+			case Blob::AttributeValue:
+            case Blob::CharacterData:
+			default:
+                Throw(FormatException("Unexpected element", formatter.GetLocation()));
+                break;
+
+            case Blob::EndElement:
+            case Blob::None:
+                return result;
+            }
         }
-    }
-}
+	}
 
-std::pair<const FontChar*, const FontTexture2D*> FTFontGroup::GetChar(ucs4 ch) const
-{
-    auto font = FindFTFontByChar(ch);
-    if (font) {
-        return font->GetChar(ch);
-    }
+	FTFontResources::FTFontResources()
+	{
+		FT_Error error = FT_Init_FreeType(&_ftLib);
+		if (error)
+			Throw(::Exceptions::BasicLabel("Freetype font library failed to initialize (error code: %i)", error));
 
-    return std::pair<const FontChar*, const FontTexture2D*>(nullptr, nullptr);
-}
+		const char* fontCfg = "xleres/DefaultResources/fonts/fonts.dat";
+		_nameMap = LoadFontConfigFile(fontCfg);
+		_nameMapDepVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(_nameMapDepVal, fontCfg);
 
-FT_Face FTFontGroup::GetFace()
-{
-    if (_defaultFTFont) {
-        return _defaultFTFont->GetFace();
-    }
+		_fontTexMgr = std::make_shared<FT_FontTextureMgr>();
+	}
 
-    return NULL;
-}
+	FTFontResources::~FTFontResources()
+	{
+		FT_Done_FreeType(_ftLib);
+	}
 
-FT_Face FTFontGroup::GetFace(ucs4 ch)
-{
-    auto font = FindFTFontByChar(ch);
-    if (font) {
-        return font->GetFace();
-    }
+	FT_FontTextureMgr& GetFontTextureMgr()
+	{
+		return *GetRes()._fontTexMgr;
+	}
 
-    return NULL;
-}
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-float FTFontGroup::Descent()
-{
-    if (_defaultFTFont) {
-        return _defaultFTFont->Descent();
-    }
+	#define FONT_TABLE_SIZE (256+1024)
 
-    return 1.0f;
-}
+	FontCharTable::FontCharTable()
+	{
+		_table.resize(FONT_TABLE_SIZE);
+	}
 
-float FTFontGroup::Ascent(bool includeAccent) const
-{
-    if (_defaultFTFont) {
-        return _defaultFTFont->Ascent(includeAccent);
-    }
+	FontCharTable::~FontCharTable()
+	{
 
-    return 1.0f;
-}
+	}
 
-float FTFontGroup::LineHeight() const
-{
-    if (_defaultFTFont) {
-        return _defaultFTFont->LineHeight();
-    }
+	void FontCharTable::ClearTable()
+	{
+		_table.clear();
+	}
 
-    return 1.0f;
-}
+	static inline unsigned TableEntryForChar(ucs4 ch)
+	{
+		unsigned a =  ch &  (1024-1);
+		unsigned b = (ch & ~(1024-1))/683;
+		unsigned entry = (a^b)&(1024-1);
+		entry += (b!=0)*256;
+		return entry;
+	}
 
-Float2 FTFontGroup::GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const
-{
-    auto font = FindFTFontByChar(ch);
-    if (font) {
-        return font->GetKerning(prevGlyph, ch, curGlyph);
-    }
-
-    return Float2(0.f, 0.f);
-}
-
-bool FTFontGroup::Init(const FontDef& def)
-{
-    XlCopyString(_path, def.path.c_str());
-    _size = def.size;
-
-    FTFontNameMap::iterator it = fontNameInfo.find(_path);
-    if (it != fontNameInfo.end()) {
-        FTFontNameInfo info = (FTFontNameInfo)it->second;
-        if (LoadDefaultFTFont(info, _size)) {
-            LoadSubFTFont(info, _size);
-            return true;
-        }
-    } else {
-        FTFontNameInfo info;
-        info.defaultFTFontPath = _path;
-        info.defaultFTFontRange.push_back(FTFontRange::Create(0, 0xffff));
-        fontNameInfo.insert(FTFontNameMap::value_type(_path, info));
-        if (LoadDefaultFTFont(info, _size)) {
-            LoadSubFTFont(info, _size);
-            return true;
-        }
-    }
-
-    return false;
-}
-
-FontBitmapId FTFontGroup::CreateFontChar(ucs4 ch)
-{
-	auto font = FindFTFontByChar(ch);
-    if (font) {
-        return font->CreateFontChar(ch);
-    }
-
-    return FontBitmapId(0);
-}
-
-float FTFontGroup::GetKerning(ucs4 prev, ucs4 ch) const
-{
-	auto font = FindFTFontByChar(ch);
-    if (font) {
-        return font->GetKerning(prev, ch);
-    }
-
-    return 0.0f;
-}
-
-    // DavidJ -- hack! subvert massive virtual call overload by putting in some quick overloads
-std::shared_ptr<const Font> FTFontGroup::GetSubFont(ucs4 ch) const
-{
-    return FindFTFontByChar(ch);      // DavidJ -- warning -- lots of redundant AddRef/Releases involved with this call
-}
-
-bool FTFontGroup::IsMultiFontAdapter() const { return true; }
-
-#endif 
-
-/*
-static std::shared_ptr<FTFontGroup> LoadFTFont(const FontDef& def)
-{
-    auto fontGroup = std::make_shared<FTFontGroup>();
-    if (!fontGroup->Init(def)) {
-        fontGroup = nullptr;
-        // GameWarning("Failed to create freetype font '%s'", path);
-    }
-
-    return fontGroup;
-}
-
-std::shared_ptr<FTFont> GetX2FTFont(StringSection<> path, int size)
-{
-    FontDef fd;
-    fd.path = path;
-    fd.size = size;
-
-    UiFontGroupMap* curFontGroupMap = NULL;
-    switch (kind) {
-    case FTK_DAMAGEDISPLAY: 
-        curFontGroupMap = &damageDisplayFontGroupMap; 
-        break;
-
-    case FTK_GENERAL: 
-    default:
-        curFontGroupMap = &fontGroupMap;
-        break;
-    }
-
-    UiFontGroupMap::iterator it = curFontGroupMap->find(fd);
-    if (it != curFontGroupMap->end()) {
-        return it->second;
-    }
-
-	auto result = LoadFTFont(fd, kind);
-	curFontGroupMap->insert(std::make_pair(fd, result));
-	return result;
-}*/
-
-std::shared_ptr<FTFont> GetX2FTFont(StringSection<> path, int size)
-{
-	static std::map<FontDef, std::shared_ptr<FTFont>, FontDefLessPred> fonts;
-	FontDef fontDef{path.AsString(), size};
-	auto i = fonts.find(fontDef);
-	if (i != fonts.end())
-		return i->second;
-
-	auto newFont = std::make_shared<FTFont>();
-	newFont->Init(fontDef);
-	fonts.insert({fontDef, newFont});
-	return newFont;
-}
-
-std::shared_ptr<Font> GetDefaultFont(unsigned size)
-{
-	return GetX2FTFont("Raleway", size);
-}
-
-static bool LoadDataFromPak(const char* path, Data* out)
-{
-	size_t size = 0;
-    auto str = ::Assets::TryLoadFileAsMemoryBlock(path, &size);
-	if (!size) return false;
-
-	return out->Load((const char*)str.get(), (int)size);
-}
-
-////////////////////////////////////////////////////////////////////////////////////
-
-FTFontNameMap LoadFontConfigFile()
-{
-	FTFontNameMap result;
-
-    Data config;    
-    if (!LoadDataFromPak("xleres/DefaultResources/fonts/fonts.g", &config)) {
-        return result;
-    }
+	FontBitmapId& FontCharTable::operator[](ucs4 ch)
+	{
+			//
+			//      DavidJ --   Simple hashing method optimised for when the input is
+			//                  largely ASCII characters and Korean characters.
+			//                  It should work fine for other unicode character
+			//                  sets as well (so long as the character values are
+			//                  generally 16 bits long).
+			//                  Maps 16 bit unicode value onto a value between 0 and (1024+256)
+			//                  
+		unsigned entry = TableEntryForChar(ch);
+		entry = entry%unsigned(_table.size());
     
-    const char* locale = XlGetLocaleString(XlGetLocale());
-    Data * localData = config.ChildWithValue(locale);
-    if (!localData) {
-        return result;
-    }
-
-    typedef unsigned short WORD;
-
-    // [temp], [final] is used to check same value;
-    std::set<WORD> temp;
-    std::pair<std::set<WORD>::iterator, bool> resultTo;
-    std::map<WORD, WORD> final;
-    std::pair<std::map<WORD, WORD>::iterator, bool> resultFrom;
-
-    int fontGroupCount = localData->Size();
-    for (int i = 0; i < fontGroupCount; ++i) {
-        Data * fontGroup = localData->ChildAt(i);
-        if (fontGroup) {
-            FTFontNameInfo info;
-            char* fontGroupName = fontGroup->value;
-            info._defaultSubFont._ftFontPath = fontGroup->ValueAt(0);
-
-            int fontCount = fontGroup->Size();
-            for (int j = 1; j < fontCount; ++j) {
-                Data * subFontData = fontGroup->ChildAt(j);
-                if (subFontData) {
-                    char* subFTFontPath = subFontData->value;
-
-                    int rangeCount = subFontData->Size();
-                    if (rangeCount % 2 == 0) {
-                        std::vector<FTFontRange> ranges;
-                        for (int k = 0; k < rangeCount; ++k) {
-							int from, to;
-                            XlSafeAtoi(subFontData->ValueAt(k), &from);
-                            ++k;
-                            XlSafeAtoi(subFontData->ValueAt(k), &to);
-
-                            // check that [from] is larger than [to]
-                            if (from <= to) {
-                                resultTo = temp.insert((WORD)to);
-                                // if [resultTo.second] is false, exist equal [to]
-                                if ((bool)(resultTo.second) != false) {
-                                    resultFrom = final.insert(std::map<WORD, WORD>::value_type((WORD)from, (WORD)to));
-                                    // if [resultFrom.second] is false, exist equal [from]
-                                    if ((bool)(resultFrom.second) != false) {
-										ranges.push_back(FTFontRange{(WORD)from, (WORD)to});
-                                    }
-                                }
-                            }
-                        }
-
-                        if (ranges.size() != 0) {
-							info._subFTFontInfo.emplace_back(FTFontNameInfo::SubFont{subFTFontPath, std::move(ranges)});
-                        }
-                    }
-                }
-            }
-            temp.clear();
-
-            // find range of default FTFont
-			int from, to;
-            int prevTo = -1;
-            std::map<WORD, WORD>::iterator it_begin = final.begin();
-            std::map<WORD, WORD>::iterator it_end = final.end();
-            for (; it_begin != it_end; ++it_begin) {
-                to = (it_begin->first) - 1;
-                from = prevTo + 1;
-                prevTo = it_begin->second;
-
-                if (from <= to) {
-					info._defaultSubFont._chRange.push_back(FTFontRange{(WORD)from, (WORD)to});
-                }
-            }
-
-            to = 0xffff;
-            from = prevTo + 1;
-            if (from <= to) {
-				info._defaultSubFont._chRange.push_back(FTFontRange{(WORD)from, (WORD)to});
-            }
-            final.clear();
-            result.insert(FTFontNameMap::value_type(fontGroupName, info));
-        }
-    }
-
-    return result;
-}
-
-FTFontResources::FTFontResources()
-{
-    FT_Error error = FT_Init_FreeType(&_ftLib);
-    if (error)
-        Throw(::Exceptions::BasicLabel("Freetype font library failed to initialize (error code: %i)", error));
-
-    _nameMap = LoadFontConfigFile();
-    _fontTexMgr = std::make_shared<FT_FontTextureMgr>();
-}
-
-FTFontResources::~FTFontResources()
-{
-    FT_Done_FreeType(_ftLib);
-}
-
-FT_FontTextureMgr& GetFontTextureMgr()
-{
-	return *GetRes()._fontTexMgr;
-}
-
-
-/*void CleanupFTFontSystem()
-{
-	fontGroupMap.clear();
-	damageDisplayFontGroupMap.clear();
-	fontMap.clear();
-
-    fontTexMgr = nullptr;
-    damageDisplayFontTexMgr = nullptr;
-    fontFileBufferManager = nullptr;
-
-    if (ftLib) {
-        FT_Done_FreeType(ftLib);
-		ftLib = 0;
-    }
-}*/
+		auto& list = _table[entry];
+		auto i = std::lower_bound(list.begin(), list.end(), ch, CompareFirst<ucs4, FontBitmapId>());
+		if (i == list.end() || i->first != ch) {
+			auto i2 = list.insert(i, std::make_pair(ch, FontBitmapId_Invalid));
+			return i2->second;
+		}
+		return i->second;
+	}
 
 }
 

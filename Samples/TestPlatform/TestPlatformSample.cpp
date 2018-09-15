@@ -125,9 +125,6 @@ namespace Sample
 
             // Some secondary initalisation:
         primMan._renderAssetServices->InitModelCompilers();
-        RenderOverlays::InitFontSystem(
-            primMan._rDevice.get(), 
-            &RenderCore::Assets::Services::GetBufferUploads());
 
             // main scene
         Log(Verbose) << "Creating main scene";
@@ -194,7 +191,6 @@ namespace Sample
 
         primMan._assetServices->GetAssetSets().Clear();
         ConsoleRig::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
         
         primMan._renderAssetServices.reset();
 		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*primMan._assetServices);

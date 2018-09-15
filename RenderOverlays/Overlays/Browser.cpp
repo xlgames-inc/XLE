@@ -268,7 +268,7 @@ namespace Overlays
         }
 
             //  Write the current directory name
-        unsigned textHeight = 8 + (unsigned)GetDefaultFont()->LineHeight();
+        unsigned textHeight = 8 + (unsigned)GetDefaultFont()->GetFontProperties()._lineHeight;
         auto curDirRect = toolBoxLayout.AllocateFullWidth(textHeight);
         context.DrawText(
             std::make_tuple(Float3(float(curDirRect._topLeft[0]), float(curDirRect._topLeft[1]), 0.f), Float3(float(curDirRect._bottomRight[0]), float(curDirRect._bottomRight[1]), 0.f)),

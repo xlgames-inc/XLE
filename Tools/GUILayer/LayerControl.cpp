@@ -198,7 +198,7 @@ namespace GUILayer
     {
         using namespace RenderOverlays::DebuggingDisplay;
 
-        auto textHeight = (int)context.TextHeight(nullptr);
+        auto textHeight = (int)RenderOverlays::GetDefaultFont()->GetFontProperties()._lineHeight;
         String^ matName = VisMouseOver::DescriptiveMaterialName(
             VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));
         DrawText(

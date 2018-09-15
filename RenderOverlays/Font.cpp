@@ -12,15 +12,7 @@
 namespace RenderOverlays
 {
 
-	Font::Font()
-	{
-		_path[0] = 0;
-		_size = 0;
-	}
-
-	Font::~Font()
-	{
-	}
+	Font::~Font() {}
 
 	template<typename CharType>
 		static ucs4 NextCharacter(StringSection<CharType>& text)
@@ -168,38 +160,82 @@ namespace RenderOverlays
 		return x;
 	}
 
-	std::shared_ptr<Font> GetX2Font(StringSection<> path, int size)
+	static Float2 GetAlignPos(const Quad& q, const Float2& extent, TextAlignment align)
 	{
-		return GetX2FTFont(path, size);
+		Float2 pos;
+		pos[0] = q.min[0];
+		pos[1] = q.min[1];
+		switch (align) {
+		case TextAlignment::TopLeft:
+			pos[0] = q.min[0];
+			pos[1] = q.min[1];
+			break;
+		case TextAlignment::Top:
+			pos[0] = 0.5f * (q.min[0] + q.max[0] - extent[0]);
+			pos[1] = q.min[1];
+			break;
+		case TextAlignment::TopRight:
+			pos[0] = q.max[0] - extent[0];
+			pos[1] = q.min[1];
+			break;
+		case TextAlignment::Left:
+			pos[0] = q.min[0];
+			pos[1] = 0.5f * (q.min[1] + q.max[1] - extent[1]);
+			break;
+		case TextAlignment::Center:
+			pos[0] = 0.5f * (q.min[0] + q.max[0] - extent[0]);
+			pos[1] = 0.5f * (q.min[1] + q.max[1] - extent[1]);
+			break;
+		case TextAlignment::Right:
+			pos[0] = q.max[0] - extent[0];
+			pos[1] = 0.5f * (q.min[1] + q.max[1] - extent[1]);
+			break;
+		case TextAlignment::BottomLeft:
+			pos[0] = q.min[0];
+			pos[1] = q.max[1] - extent[1];
+			break;
+		case TextAlignment::Bottom:
+			pos[0] = 0.5f * (q.min[0] + q.max[0] - extent[0]);
+			pos[1] = q.max[1] - extent[1];
+			break;
+		case TextAlignment::BottomRight:
+			pos[0] = q.max[0] - extent[0];
+			pos[1] = q.max[1] - extent[1];
+			break;
+		}
+		return pos;
 	}
 
-	// static float                garbageCollectTime = 0.0f;
-	// BufferUploads::IManager*    gBufferUploads = nullptr;
-	// RenderCore::IDevice*        gRenderDevice = nullptr;
-
-	bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads)
+	static Float2 AlignText(const Quad& q, const Font& font, float stringWidth, float indent, TextAlignment align)
 	{
-		// garbageCollectTime = 0.0f;
-		// gRenderDevice = device;
-		// gBufferUploads = bufferUploads;
-
-		/*if(!InitFTFontSystem()) {
-			return false;
-		}*/
-
-		// if(!InitImageTextFontSystem()) {
-		//     return false;
-		// }
-
-		return true;
+		auto fontProps = font.GetFontProperties();
+		Float2 extent = Float2(stringWidth, fontProps._ascenderExcludingAccent);
+		Float2 pos = GetAlignPos(q, extent, align);
+		pos[0] += indent;
+		pos[1] += extent[1];
+		switch (align) {
+		case TextAlignment::TopLeft:
+		case TextAlignment::Top:
+		case TextAlignment::TopRight:
+			pos[1] += fontProps._ascender - extent[1];
+			break;
+		case TextAlignment::BottomLeft:
+		case TextAlignment::Bottom:
+		case TextAlignment::BottomRight:
+			pos[1] -= fontProps._descender;
+			break;
+		}
+		return pos;
 	}
 
-	void CleanupFontSystem()
+	Float2 AlignText(const Font& font, const Quad& q, TextAlignment align, StringSection<ucs4> text)
 	{
-		// CleanupFTFontSystem();
-		// CleanupImageTextFontSystem();
-		// gBufferUploads = nullptr;
-		// gRenderDevice = nullptr;
+		return AlignText(q, font, StringWidth(font, text), 0, align);
+	}
+
+	Float2 AlignText(const Font& font, const Quad& q, TextAlignment align, float width, float indent)
+	{
+		return AlignText(q, font, width, indent, align);
 	}
 
 	template float StringWidth(const Font&, StringSection<utf8>, float, bool);

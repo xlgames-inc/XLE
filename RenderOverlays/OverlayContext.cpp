@@ -78,7 +78,7 @@ namespace RenderOverlays
     template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PCT>() const -> VertexFormat     { return PCT; }
     template<> auto ImmediateOverlayContext::AsVertexFormat<Vertex_PCCTT>() const -> VertexFormat   { return PCCTT; }
     
-    void ImmediateOverlayContext::DrawPoint      (ProjectionMode::Enum proj, const Float3& v,     const ColorB& col,      uint8 size)
+    void ImmediateOverlayContext::DrawPoint      (ProjectionMode proj, const Float3& v,     const ColorB& col,      uint8 size)
     {
         typedef Vertex_PCR Vertex;
         if ((_writePointer + sizeof(Vertex)) > _workingBufferSize) {
@@ -90,7 +90,7 @@ namespace RenderOverlays
         _writePointer += sizeof(Vertex);
     }
 
-    void ImmediateOverlayContext::DrawPoints     (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size)
+    void ImmediateOverlayContext::DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    uint8 size)
     {
         typedef Vertex_PCR Vertex;
         if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
@@ -104,7 +104,7 @@ namespace RenderOverlays
         }
     }
 
-    void ImmediateOverlayContext::DrawPoints     (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size)
+    void ImmediateOverlayContext::DrawPoints     (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   uint8 size)
     {
         typedef Vertex_PCR Vertex;
         if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
@@ -118,7 +118,7 @@ namespace RenderOverlays
         }
     }
 
-    void ImmediateOverlayContext::DrawLine       (ProjectionMode::Enum proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     const ColorB& colV1, float thickness)
+    void ImmediateOverlayContext::DrawLine       (ProjectionMode proj, const Float3& v0,    const ColorB& colV0,    const Float3& v1,     const ColorB& colV1, float thickness)
     {
         typedef Vertex_PC Vertex;
         if ((_writePointer + 2 * sizeof(Vertex)) > _workingBufferSize) {
@@ -130,7 +130,7 @@ namespace RenderOverlays
 		*(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(v1, HardwareColor(colV1)); _writePointer += sizeof(Vertex);
     }
 
-    void ImmediateOverlayContext::DrawLines      (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    float thickness)
+    void ImmediateOverlayContext::DrawLines      (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col,    float thickness)
     {
         typedef Vertex_PC Vertex;
         if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
@@ -144,7 +144,7 @@ namespace RenderOverlays
         }
     }
 
-    void ImmediateOverlayContext::DrawLines      (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   float thickness)
+    void ImmediateOverlayContext::DrawLines      (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[],   float thickness)
     {
         typedef Vertex_PC Vertex;
         unsigned maxPointsPerBatch = (_workingBufferSize / sizeof(Vertex)) & ~0x1;
@@ -167,7 +167,7 @@ namespace RenderOverlays
         }
     }
 
-    void ImmediateOverlayContext::DrawTriangles  (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB& col)
+    void ImmediateOverlayContext::DrawTriangles  (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB& col)
     {
         typedef Vertex_PC Vertex;
         if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
@@ -181,7 +181,7 @@ namespace RenderOverlays
         }
     }
 
-    void ImmediateOverlayContext::DrawTriangles  (ProjectionMode::Enum proj, const Float3 v[],    uint32 numPoints,       const ColorB col[])
+    void ImmediateOverlayContext::DrawTriangles  (ProjectionMode proj, const Float3 v[],    uint32 numPoints,       const ColorB col[])
     {
         typedef Vertex_PC Vertex;
         if ((_writePointer + numPoints * sizeof(Vertex)) > _workingBufferSize) {
@@ -195,7 +195,7 @@ namespace RenderOverlays
         }
     }
 
-    void ImmediateOverlayContext::DrawTriangle   (  ProjectionMode::Enum proj,
+    void ImmediateOverlayContext::DrawTriangle   (  ProjectionMode proj,
                                                     const Float3& v0,    const ColorB& colV0,    const Float3& v1,     
                                                     const ColorB& colV1, const Float3& v2,       const ColorB& colV2)
     {
@@ -211,7 +211,7 @@ namespace RenderOverlays
     }
 
     void    ImmediateOverlayContext::DrawQuad(
-        ProjectionMode::Enum proj,
+        ProjectionMode proj,
         const Float3& mins, const Float3& maxs, 
         ColorB color0, ColorB color1,
         const Float2& minTex0, const Float2& maxTex0, 
@@ -235,7 +235,7 @@ namespace RenderOverlays
     }
 
     void    ImmediateOverlayContext::DrawQuad(
-            ProjectionMode::Enum proj, 
+            ProjectionMode proj, 
             const Float3& mins, const Float3& maxs, 
             ColorB color,
             StringSection<char> pixelShader)
@@ -256,7 +256,7 @@ namespace RenderOverlays
     }
 
     void ImmediateOverlayContext::DrawTexturedQuad(
-        ProjectionMode::Enum proj, 
+        ProjectionMode proj, 
         const Float3& mins, const Float3& maxs, 
         const std::string& texture,
         ColorB color, const Float2& minTex0, const Float2& maxTex0)
@@ -276,26 +276,10 @@ namespace RenderOverlays
         *(Vertex*)&_workingBuffer.get()[_writePointer] = Vertex(Float3(maxs[0], maxs[1], mins[2]), col, col, Float2(maxTex0[0], maxTex0[1]), Float2(0.f, 0.f)); _writePointer += sizeof(Vertex);
     }
 
-    static UiAlign AsUiAlign(TextAlignment::Enum alignment)
-    {
-        switch (alignment) {
-        case TextAlignment::TopLeft:       return UIALIGN_TOP_LEFT;
-        case TextAlignment::Top:           return UIALIGN_TOP;
-        case TextAlignment::TopRight:      return UIALIGN_TOP_RIGHT;
-        case TextAlignment::Left:          return UIALIGN_LEFT;
-        default:
-        case TextAlignment::Center:        return UIALIGN_CENTER;
-        case TextAlignment::Right:         return UIALIGN_RIGHT;
-        case TextAlignment::BottomLeft:    return UIALIGN_BOTTOM_LEFT;
-        case TextAlignment::Bottom:        return UIALIGN_BOTTOM;
-        case TextAlignment::BottomRight:   return UIALIGN_BOTTOM_RIGHT;
-        }
-    }
-
     float ImmediateOverlayContext::DrawText      (  const std::tuple<Float3, Float3>& quad, 
 													const std::shared_ptr<Font>& font, const TextStyle& textStyle, 
 													ColorB col, 
-                                                    TextAlignment::Enum alignment, StringSection<char> text)
+                                                    TextAlignment alignment, StringSection<char> text)
     {
             //
             //      Because _textStyle.Draw() will draw immediately, we need to flush out
@@ -310,7 +294,7 @@ namespace RenderOverlays
         Quad q;
         q.min = Float2(std::get<0>(quad)[0], std::get<0>(quad)[1]);
         q.max = Float2(std::get<1>(quad)[0], std::get<1>(quad)[1]);
-        Float2 alignedPosition = AlignText(*_defaultFont, q, AsUiAlign(alignment), convertedText);
+        Float2 alignedPosition = AlignText(*_defaultFont, q, alignment, convertedText);
         return Draw(
             *_deviceContext, 
 			font ? *font : *_defaultFont, textStyle,
@@ -318,7 +302,7 @@ namespace RenderOverlays
             convertedText,
             0.f, 1.f, 0.f, 
             LinearInterpolate(std::get<0>(quad)[2], std::get<1>(quad)[2], 0.5f),
-            col.AsUInt32(), UI_TEXT_STATE_NORMAL, true, nullptr); // &q);
+            col.AsUInt32(), true, nullptr); // &q);
     }
 
     void ImmediateOverlayContext::CaptureState() 
@@ -425,10 +409,10 @@ namespace RenderOverlays
         public:
             Topology _topology;
             VertexFormat _format;
-            ProjectionMode::Enum _projMode;
+            ProjectionMode _projMode;
             std::string _pixelShaderName;
 
-            Desc(Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName)
+            Desc(Topology topology, VertexFormat format, ProjectionMode projMode, const std::string& pixelShaderName)
                 : _topology(topology), _format(format), _projMode(projMode), _pixelShaderName(pixelShaderName) {}
         };
 
@@ -555,7 +539,7 @@ namespace RenderOverlays
     }
 
     void            ImmediateOverlayContext::SetShader(
-		Topology topology, VertexFormat format, ProjectionMode::Enum projMode, const std::string& pixelShaderName, 
+		Topology topology, VertexFormat format, ProjectionMode projMode, const std::string& pixelShaderName, 
 		IteratorRange<const VertexBufferView*> vertexBuffers)
     {
                 // \todo --     we should cache the input layout result
@@ -656,15 +640,6 @@ namespace RenderOverlays
 	}
 
     IOverlayContext::~IOverlayContext() {}
-
-
-
-    const ColorB ColorB::White(0xff, 0xff, 0xff, 0xff);
-    const ColorB ColorB::Black(0x0, 0x0, 0x0, 0xff);
-    const ColorB ColorB::Red(0xff, 0x0, 0x0, 0xff);
-    const ColorB ColorB::Green(0x0, 0xff, 0x0, 0xff);
-    const ColorB ColorB::Blue(0x0, 0x0, 0xff, 0xff);
-    const ColorB ColorB::Zero(0x0, 0x0, 0x0, 0x0);
 }
 
 namespace ConsoleRig

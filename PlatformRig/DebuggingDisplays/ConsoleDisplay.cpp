@@ -23,7 +23,7 @@ namespace PlatformRig { namespace Overlays
         const unsigned height               = std::min(consoleMaxSize.Height() / 2, 512);
         consoleMaxSize._bottomRight[1]       = consoleMaxSize._topLeft[1] + height;
 
-        const float         textHeight      = GetDefaultFont()->LineHeight();
+        const float         textHeight      = GetDefaultFont()->GetFontProperties()._lineHeight;
         const Coord         entryBoxHeight  = Coord(textHeight) + 2 * layout._paddingBetweenAllocations;
 
         const Rect          historyArea     = layout.AllocateFullWidth(consoleMaxSize.Height() - 2 * layout._paddingInternalBorder - layout._paddingBetweenAllocations - entryBoxHeight);

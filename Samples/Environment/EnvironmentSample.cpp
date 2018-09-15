@@ -191,9 +191,6 @@ namespace Sample
 
             // Some secondary initalisation:
         SetupCompilers(primMan);
-        RenderOverlays::InitFontSystem(
-            primMan._rDevice.get(), 
-            &RenderCore::Assets::Services::GetBufferUploads());
 
             // main scene
         Log(Verbose) << "Creating main scene" << std::endl;
@@ -336,7 +333,6 @@ namespace Sample
 
         // primMan._assetServices->GetAssetSets().Clear();
         ConsoleRig::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
         
         primMan._renderAssetServices.reset();
         primMan._assetServices.reset();

@@ -185,55 +185,5 @@ namespace RenderOverlays
 		return UInt2{_pimpl->_texWidth, _pimpl->_texHeight};
 	}
 
-	///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	#define FONT_TABLE_SIZE (256+1024)
-
-	FontCharTable::FontCharTable()
-	{
-		_table.resize(FONT_TABLE_SIZE);
-	}
-
-	FontCharTable::~FontCharTable()
-	{
-
-	}
-
-	void FontCharTable::ClearTable()
-	{
-		_table.clear();
-	}
-
-	static inline unsigned TableEntryForChar(ucs4 ch)
-	{
-		unsigned a =  ch &  (1024-1);
-		unsigned b = (ch & ~(1024-1))/683;
-		unsigned entry = (a^b)&(1024-1);
-		entry += (b!=0)*256;
-		return entry;
-	}
-
-	FontBitmapId& FontCharTable::operator[](ucs4 ch)
-	{
-			//
-			//      DavidJ --   Simple hashing method optimised for when the input is
-			//                  largely ASCII characters and Korean characters.
-			//                  It should work fine for other unicode character
-			//                  sets as well (so long as the character values are
-			//                  generally 16 bits long).
-			//                  Maps 16 bit unicode value onto a value between 0 and (1024+256)
-			//                  
-		unsigned entry = TableEntryForChar(ch);
-		entry = entry%unsigned(_table.size());
-    
-		auto& list = _table[entry];
-		auto i = std::lower_bound(list.begin(), list.end(), ch, CompareFirst<ucs4, FontBitmapId>());
-		if (i == list.end() || i->first != ch) {
-			auto i2 = list.insert(i, std::make_pair(ch, FontGlyphID_Invalid));
-			return i2->second;
-		}
-		return i->second;
-	}
-
 }
 

@@ -85,7 +85,7 @@
     <ClCompile Include="..\DebuggingDisplay.cpp" />
     <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\Font.cpp" />
-    <ClCompile Include="..\FontPrimitives.cpp" />
+    <ClCompile Include="..\OverlayPrimitives.cpp" />
     <ClCompile Include="..\FontRectanglePacking.cpp" />
     <ClCompile Include="..\FT_Font.cpp" />
     <ClCompile Include="..\FT_FontTexture.cpp" />
@@ -98,7 +98,7 @@
     <ClCompile Include="..\Overlays\ToneMapSettings.cpp" />
     <ClCompile Include="..\Overlays\VolFogSettings.cpp" />
     <ClCompile Include="..\OverlayUtils.cpp" />
-    <ClCompile Include="..\TextStyle.cpp" />
+    <ClCompile Include="..\FontRendering.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DebuggingDisplay.h" />
@@ -107,7 +107,7 @@
     <ClInclude Include="..\HighlightEffects.h" />
     <ClInclude Include="..\IOverlayContext.h" />
     <ClInclude Include="..\Font.h" />
-    <ClInclude Include="..\FontPrimitives.h" />
+    <ClInclude Include="..\OverlayPrimitives.h" />
     <ClInclude Include="..\FT_Font.h" />
     <ClInclude Include="..\FT_FontTexture.h" />
     <ClInclude Include="..\IOverlayContext_Forward.h" />
