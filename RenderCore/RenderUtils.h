@@ -89,6 +89,8 @@ namespace RenderCore
 
         friend SharedPkt MakeSharedPktSize(size_t size);
         friend SharedPkt MakeSharedPkt(const void* begin, const void* end);
+        friend SharedPkt MakeSubFramePktSize(size_t size);
+        friend SharedPkt MakeSubFramePkt(const void* begin, const void* end);
 
         void swap(SharedPkt& other) never_throws;
     private:
@@ -99,13 +101,25 @@ namespace RenderCore
 
     SharedPkt MakeSharedPktSize(size_t size);
     SharedPkt MakeSharedPkt(const void* begin, const void* end);
-
+    
     template<typename T,
         typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
         SharedPkt MakeSharedPkt(const T& input)
     {
         return MakeSharedPkt(&input, PtrAdd(&input, sizeof(T)));
     }
+    
+    SharedPkt MakeSubFramePktSize(size_t size);
+    SharedPkt MakeSubFramePkt(const void* begin, const void* end);
+    
+    template<typename T,
+        typename std::enable_if<!std::is_integral<T>::value>::type* = nullptr>
+        SharedPkt MakeSubFramePkt(const T& input)
+    {
+        return MakeSubFramePkt(&input, PtrAdd(&input, sizeof(T)));
+    }
+    
+    void ResetSubFrameHeap();
 
     inline SharedPkt::SharedPkt(SharedPkt&& moveFrom) never_throws
     {
