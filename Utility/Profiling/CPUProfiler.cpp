@@ -311,7 +311,7 @@ namespace Utility
     uint64_t HierarchicalCPUProfiler::GetAverageFrameInterval(unsigned windowFrameCount)
     {
         const auto limit = (unsigned)dimof(_frameMarkers);
-        unsigned markerCount = std::min(windowFrameCount+1, _frameMarkerCount);
+        unsigned markerCount = (windowFrameCount == ~0u) ? _frameMarkerCount : std::min(windowFrameCount+1, _frameMarkerCount);
         if (markerCount < 2) return 0;
         
         unsigned iterator = (_frameMarkerNext + limit - markerCount) % limit;
