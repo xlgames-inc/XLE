@@ -67,6 +67,10 @@ namespace Utility
         bool empty() const { return _entries.empty(); }
         void reserve(size_t byteCount);
         void reserve_entries(size_t count) { _entries.reserve(count); }
+        size_t capacity() const { return _dataStoreAllocated; }
+        size_t capacity_entries() const { return _entries.capacity(); }
+        size_t size() const { return _dataStoreSize; }
+        size_t size_entries() const { return _entries.size(); }
         void clear();
 
         VariantArray();
