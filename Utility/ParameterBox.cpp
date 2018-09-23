@@ -411,8 +411,31 @@ namespace Utility
             
             return isWidening ? CastType::Widening : CastType::Narrowing;
         }
-
-
+        
+        template<typename CharType>
+            class ParsingRegex
+        {
+        public:
+            std::basic_regex<CharType> s_booleanTrue;
+            std::basic_regex<CharType> s_booleanFalse;
+            std::basic_regex<CharType> s_unsignedPattern;
+            std::basic_regex<CharType> s_signedPattern;
+            std::basic_regex<CharType> s_floatPattern;
+            std::basic_regex<CharType> s_arrayPattern;
+        
+            ParsingRegex()
+            : s_booleanTrue((const CharType*)R"(^(true)|(True)|(y)|(Y)|(yes)|(Yes)|(TRUE)|(Y)|(YES)$)")
+            , s_booleanFalse((const CharType*)R"(^(false)|(False)|(n)|(N)|(no)|(No)|(FALSE)|(N)|(NO)$)")
+            , s_unsignedPattern((const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))(u|U|(u8)|(u16)|(u32)|(u64)|(U8)|(U16)|(U32)|(U64))?$)")
+            , s_signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(i64)|(I8)|(I16)|(I32)|(I64))?$)")
+            , s_floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32)|(f64)|(F64))?$)")
+            , s_arrayPattern((const CharType*)R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))")
+            {}
+            ~ParsingRegex() {}
+        };
+        
+        static ParsingRegex<char> s_parsingChar;
+        
         template<typename CharType>
             TypeDesc Parse(
                 const CharType expressionBegin[], 
@@ -421,24 +444,18 @@ namespace Utility
         {
                 // parse string expression into native types.
                 // We'll write the native object into the buffer and return a type desc
-            static std::basic_regex<CharType> booleanTrue((const CharType*)R"(^(true)|(True)|(y)|(Y)|(yes)|(Yes)|(TRUE)|(Y)|(YES)$)");
-            static std::basic_regex<CharType> booleanFalse((const CharType*)R"(^(false)|(False)|(n)|(N)|(no)|(No)|(FALSE)|(N)|(NO)$)");
-
-            if (std::regex_match(expressionBegin, expressionEnd, booleanTrue)) {
+            if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar.s_booleanTrue)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = true;
                 return TypeDesc(TypeCat::Bool);
-            } else if (std::regex_match(expressionBegin, expressionEnd, booleanFalse)) {
+            } else if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar.s_booleanFalse)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = false;
                 return TypeDesc(TypeCat::Bool);
             }
 
             std::match_results<const CharType*> cm; 
-
-            static std::basic_regex<CharType> unsignedPattern(
-                (const CharType*)R"(^\+?(([\d]+)|(0x[\da-fA-F]+))(u|U|(u8)|(u16)|(u32)|(u64)|(U8)|(U16)|(U32)|(U64))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, unsignedPattern)) {
+            if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar.s_unsignedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
@@ -473,8 +490,7 @@ namespace Utility
                 assert(0);
             }
 
-            static std::basic_regex<CharType> signedPattern((const CharType*)R"(^[-\+]?(([\d]+)|(0x[\da-fA-F]+))(i|I|(i8)|(i16)|(i32)|(i64)|(I8)|(I16)|(I32)|(I64))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, cm, signedPattern)) {
+            if (std::regex_match(expressionBegin, expressionEnd, cm, s_parsingChar.s_signedPattern)) {
                 unsigned precision = 32;
                 if (cm.size() >= 4 && cm[4].length() > 1)
                     precision = XlAtoUI32(&cm[2].str()[1]);
@@ -509,8 +525,7 @@ namespace Utility
                 assert(0);
             }
 
-            static std::basic_regex<CharType> floatPattern((const CharType*)R"(^[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?(f|F|(f32)|(F32)|(f64)|(F64))?$)");
-            if (std::regex_match(expressionBegin, expressionEnd, floatPattern)) {
+            if (std::regex_match(expressionBegin, expressionEnd, s_parsingChar.s_floatPattern)) {
                 bool doublePrecision = false;
                 if (cm.size() >= 4 && cm[4].length() > 1) {
                     auto precision = XlAtoUI32(&cm[2].str()[1]);
@@ -532,9 +547,8 @@ namespace Utility
                     // match for float array:
                 // R"(^\{\s*[-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]\s*(\s*,\s*([-\+]?(([\d]*\.?[\d]+)|([\d]+\.))([eE][-\+]?[\d]+)?[fF]))*\s*\}[vc]?$)"
 
-                static std::basic_regex<CharType> arrayPattern((const CharType*)R"(\{\s*([^,\s]+(?:\s*,\s*[^,\s]+)*)\s*\}([vcVC]?))");
-                // std::match_results<typename std::basic_string<CharType>::const_iterator> cm; 
-                if (std::regex_match(expressionBegin, expressionEnd, cm, arrayPattern)) {
+                // std::match_results<typename std::basic_string<CharType>::const_iterator> cm;
+                if (std::regex_match(expressionBegin, expressionEnd, cm, s_parsingChar.s_arrayPattern)) {
                     static std::basic_regex<CharType> arrayElementPattern((const CharType*)R"(\s*([^,\s]+)\s*(?:,|$))");
 
                     const auto& subMatch = cm[1];
