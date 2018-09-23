@@ -8,6 +8,7 @@
 
 #include "IteratorUtils.h"
 #include "PtrUtils.h"
+#include "Threading/Mutex.h"
 #include "../Core/Exceptions.h"
 #include <functional>
 #include <utility>
@@ -425,6 +426,145 @@ namespace Utility
             return AutoCleanup(MakeFunction(fn));
         }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    using SignalDelegateId = unsigned;
+    enum class SignalDelegateResult { Continue, Unbind };
+
+    /// <summary>Bind multiple callbacks to an event</summary>
+    ///
+    /// This is a common concept exposed by many libraries and languages. It's simply a way to expose
+    /// an event, and allow users to bind mutliple callbacks to that event. Think signals & slots from
+    /// QT, or events from C#.
+    ///
+    /// A "signal" is an event (such as onClick, etc), and a "delegate" is a callback function bound
+    /// to it. To raise the event, use operator() -- in other words, call the signal like a function. To
+    /// bind a delegate, use the Bind() function.
+    ///
+    /// Signals can have arbitrary arguments, or no arguments. The arguments passed to operator() are
+    /// passed to the delegates as expected. But note that since we can have multiple delegates attached,
+    /// we can't use perfect forwarding (in other words, arguments passed by value are copied, not moved).
+    ///
+    /// There are two types of delegates:
+    /// <list type="number">
+    ///     <item>Delegates that return "void"</item>
+    ///     <item>Delegates that return "SignalDelegateResult"</item>
+    /// </list>
+    ///
+    /// With the first type, the caller must unbind the delegate manually. The Bind() method will return
+    /// a SignalDelegateId; this can be used to unbind the delegate from the signal.
+    ///
+    /// With the second type, the delegate itself must decide whether it should be bound or unbound
+    /// every time it is called. If it returns SignalDelegateResult::Continue, the delegate will remain
+    /// bound to the signal; but if it returns SignalDelegateResult::Unbind, the delegate will be unbound.
+    ///
+    /// This second type are called "independent delegates", and in typical usage patterns the unbind
+    /// operation will result in the destruction of the std::function<> object.
+    ///
+    /// The order in which multiple attached delegates are called is undefined.
+    ///
+    /// <seealso cref="SignalDelegateResult"/>
+    template<typename... Args>
+        class Signal
+        {
+        public:
+            void operator()(Args... args) const;
+            void Invoke(Args... args) const { operator()(std::forward<Args>(args)...); }
+
+            SignalDelegateId Bind(std::function<void(Args...)>&& fn);
+            std::function<void(Args...)> Unbind(SignalDelegateId);
+
+            void BindIndependent(std::function<SignalDelegateResult(Args...)>&& fn);
+
+            Signal() {}
+            ~Signal() {}
+            Signal& operator=(const Signal&) = delete;
+            Signal(const Signal&) = delete;
+
+        private:
+            struct AttachedDelegate
+            {
+                std::function<void(Args...)> _function;
+                SignalDelegateId _id;
+            };
+            std::vector<AttachedDelegate> _delegates;
+            mutable std::vector<std::function<SignalDelegateResult(Args...)>> _independentDelegates;
+            SignalDelegateId _nextDelegateId = 0;
+            mutable Threading::RecursiveMutex _delegatesLock;
+            mutable bool _preventChangesToDelegates = false;
+        };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    template<typename... Args>
+        void Signal<Args...>::operator()(Args... args) const
+        {
+            ScopedLock(_delegatesLock);
+            _preventChangesToDelegates = true;
+            try
+            {
+                for (const auto&d:_delegates) {
+                    (d._function)(args...);
+                }
+                // Call each delegate in _independentDelegates, but erase them when they return
+                // SignalDelegateResult::Unbind. Note that we can't call std::remove_if, because
+                // we want to maintain a stable order (it will be confusing if the relative order of
+                // two delegates changes because a third delegate was removed!). Note that this stable
+                // version of remove_if can result in more "move" operations than the typical std::remove_if
+                auto i = _independentDelegates.begin();
+                auto targetSpot = _independentDelegates.begin();
+                while (i!=_independentDelegates.end()) {
+                    auto result = (*i)(args...);
+                    if (result == SignalDelegateResult::Continue) {
+                        if (i != targetSpot)
+                            *targetSpot = std::move(*i);    // shift down into it's new location
+                        ++targetSpot;
+                    }
+                    ++i;
+                }
+                _independentDelegates.erase(targetSpot, _independentDelegates.end());
+            }
+            catch (...)
+            {
+                _preventChangesToDelegates = false;
+                throw;
+            }
+            _preventChangesToDelegates = false;
+        }
+
+    template<typename... Args>
+        SignalDelegateId Signal<Args...>::Bind(std::function<void(Args...)>&& fn)
+        {
+            ScopedLock(_delegatesLock);
+            assert(!_preventChangesToDelegates);
+            auto delegateId = _nextDelegateId++;
+            _delegates.emplace_back(AttachedDelegate{std::move(fn), delegateId});
+            return delegateId;
+        }
+
+    template<typename... Args>
+        void Signal<Args...>::BindIndependent(std::function<SignalDelegateResult(Args...)>&& fn)
+        {
+            ScopedLock(_delegatesLock);
+            assert(!_preventChangesToDelegates);
+            _independentDelegates.emplace_back(std::move(fn));
+        }
+
+    template<typename... Args>
+        std::function<void(Args...)> Signal<Args...>::Unbind(SignalDelegateId delegateId)
+        {
+            ScopedLock(_delegatesLock);
+            assert(!_preventChangesToDelegates);
+            if (_delegates.empty()) {
+                return nullptr;
+            }
+            auto i = std::find_if(_delegates.begin(), _delegates.end(),
+                [delegateId](const AttachedDelegate& ad) { return ad._id == delegateId; });
+            assert(i!=_delegates.end());
+            auto result = std::move(i->_function);
+            _delegates.erase(i);
+            return result;
+        }
 }
 
 using namespace Utility;
