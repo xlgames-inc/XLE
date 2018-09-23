@@ -560,8 +560,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DestroyGLESCachedShaders()
     {
-        ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
-        decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
+        try {
+            ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
+            decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
+        } catch (const std::system_error&) {
+            // suppress a system error here, which can sometimes happen due to shutdown order issues
+            // (if the mutex has been destroyed before this is called)
+        }
     }
 
 }}
