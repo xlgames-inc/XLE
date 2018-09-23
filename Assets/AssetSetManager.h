@@ -45,6 +45,7 @@ namespace Assets
     };
 
 	AssetSetManager& GetAssetSetManager();
+    bool HasAssetSetManager();
 
     template<typename Type>
 		DefaultAssetHeap<Type>& AssetSetManager::GetSetForType()

@@ -20,6 +20,7 @@ namespace Assets
     {
     public:
         static Type& GetInstance() { assert(s_instance); return *s_instance; }
+        static bool HasInstance() { return s_instance != nullptr; }
 
         void AttachCurrentModule();
         void DetachCurrentModule();
