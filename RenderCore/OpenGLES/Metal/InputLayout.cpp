@@ -571,13 +571,18 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2, &interface3 };
         auto streamCount = (unsigned)dimof(inputInterface);
-        for (unsigned s=0; s<streamCount; ++s) {
+        // We bind the 4 streams with reversed order, so that material textures can be bound before global textures
+        // (ex. shadowmap). This can help avoid the situation where shadowmap end up being bound at texture unit 0,
+        // which is prone to GL errors caused by shader bugs (one example is when a shader mistakenly sample from
+        // unbound texture samplers, which has default binding 0, and shadowmap happens to be bound at texture unit 0
+        // but with a comparison sampler).
+        for (int s=streamCount-1; s>=0; --s) {
             const auto& interf = *inputInterface[s];
             for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
                 const auto& binding = interf._cbBindings[slot];
                 if (binding._elements.empty()) continue;
 
-                // Ensure it's not shadowed by a future binding
+                // Ensure it's not shadowed by bindings from streams with higher index
                 // Note that we don't enforce this for bindings to global uniforms. This allows the client to
                 // provide multiple bindings for global, wherein each only binds a subset of all of the global uniforms
                 if (binding._hashName != 0) {
@@ -591,7 +596,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup)
+                    _cbs.emplace_back(CB{(unsigned)s, slot, std::move(cmdGroup)
                         #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , cmdGroup._name
                         #endif
@@ -604,7 +609,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto binding = interf._srvBindings[slot];
                 if (!binding) continue;
 
-                // ensure it's not shadowed by a future binding
+                // ensure it's not shadowed by bindings from streams with higher index
                 if (HasSRVBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding)) continue;
 
                 auto uniform = introspection.FindUniform(binding);
@@ -621,7 +626,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     auto dim = DimensionalityForUniformType(uniform._type);
                     auto elementIndex = unsigned(binding - uniform._bindingName);
                     assert(dim != GL_NONE);
-                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim
+                    _srvs.emplace_back(SRV{(unsigned)s, slot, textureUnit, dim
                         #if defined(_DEBUG)
                             , AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount)
                         #endif
