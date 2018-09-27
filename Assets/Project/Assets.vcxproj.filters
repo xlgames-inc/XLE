@@ -31,6 +31,9 @@
     <ClInclude Include="..\AssetTraits.h">
       <Filter>AssetHeaps</Filter>
     </ClInclude>
+    <ClInclude Include="..\AsyncMarkerGroup.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
     <ClInclude Include="..\CompileAndAsyncManager.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
@@ -85,6 +88,9 @@
     </ClCompile>
     <ClCompile Include="..\AssetTraits.cpp">
       <Filter>AssetHeaps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\AsyncMarkerGroup.cpp">
+      <Filter>CompileAndAsync</Filter>
     </ClCompile>
     <ClCompile Include="..\CompileAndAsyncManager.cpp">
       <Filter>CompileAndAsync</Filter>

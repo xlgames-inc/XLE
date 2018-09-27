@@ -4,6 +4,7 @@
 
 #include "AsyncMarkerGroup.h"
 #include <memory>
+#include <algorithm>
 
 namespace Assets
 {
