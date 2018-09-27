@@ -200,11 +200,25 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
-            if (factory.GetFeatureSet() & FeatureSet::GLES300)
+            if (factory.GetFeatureSet() & FeatureSet::GLES300) {
                 glDrawBuffers(sp._rtvCount, drawBuffers);
+            } else {
+                #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+                    // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
+                    if (sp._rtvCount == 0) {
+                        glDrawBuffer(GL_NONE);
+                        glReadBuffer(GL_NONE);
+                    } else {
+                        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+                        glReadBuffer(GL_COLOR_ATTACHMENT0);
+                    }
+                #endif
+            }
 
-            // auto validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-            // assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+            #if defined(_DEBUG)
+                GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+                assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+            #endif
         }
     }
 
