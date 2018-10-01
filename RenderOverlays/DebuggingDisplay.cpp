@@ -1104,6 +1104,16 @@ namespace RenderOverlays { namespace DebuggingDisplay
         //      Redo the current interface state, in case any of the interactables have moved during the render...
         _currentInterfaceState = _currentInteractables.BuildInterfaceState(_currentMouse, _currentMouseHeld);
     }
+    
+    bool DebugScreensSystem::IsAnythingVisible()
+    {
+        if (!_systemWidgets.empty())
+            return true;
+        for (const auto& i:_panels)
+            if (i._widgetIndex < _widgets.size())
+                return true;
+        return false;
+    }
 
     void DebugScreensSystem::Register(std::shared_ptr<IWidget> widget, const char name[], Type type)
     {
