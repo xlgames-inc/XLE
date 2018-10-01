@@ -327,6 +327,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     public:
         bool        OnInputEvent(const InputSnapshot& evnt);
         void        Render(IOverlayContext& overlayContext, const Rect& viewport);
+        bool        IsAnythingVisible();
         
         enum Type { InPanel, SystemDisplay };
         void        Register(std::shared_ptr<IWidget> widget, const char name[], Type type = InPanel);
