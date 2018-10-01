@@ -29,6 +29,7 @@ namespace Assets { namespace IntermediateAssets
 	{
 	public:
 		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
+        void RemoveCompiler(uint64_t typeCode);
 		std::shared_ptr<ICompileMarker> PrepareAsset(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
 			Store& store);
