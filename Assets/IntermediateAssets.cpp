@@ -392,6 +392,14 @@ namespace Assets { namespace IntermediateAssets
 			_pimpl->_compilers.insert(i, std::make_pair(typeCode, processor));
 		}
 	}
+ 
+    void CompilerSet::RemoveCompiler(uint64_t typeCode)
+    {
+        auto i = LowerBound(_pimpl->_compilers, typeCode);
+        if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+            _pimpl->_compilers.erase(i);
+        }
+    }
 
 	std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
 		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
