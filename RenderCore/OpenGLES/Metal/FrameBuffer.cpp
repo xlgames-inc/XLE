@@ -189,7 +189,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             if (factory.GetFeatureSet() & FeatureSet::GLES300)
-                glDrawBuffers(sp._rtvCount, drawBuffers);
+                glDrawBuffers(sp._rtvCount, drawBuffers);       // glDrawBuffers enters the API in GLES3.0
 
             // auto validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
             // assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);

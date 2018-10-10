@@ -49,13 +49,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         OGLESShaderCompiler();
         ~OGLESShaderCompiler();
-
-        static Threading::Mutex s_compiledShadersLock;
-        static std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> s_compiledShaders;
     };
-
-    Threading::Mutex OGLESShaderCompiler::s_compiledShadersLock;
-    std::unordered_map<uint64_t, intrusive_ptr<OpenGL::Shader>> OGLESShaderCompiler::s_compiledShaders;
 
     void OGLESShaderCompiler::AdaptShaderModel(
         ResChar destination[],
@@ -189,6 +183,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         bool isFragmentShader = shaderPath._shaderModel[0] == 'p';
 
         bool supportsGLES300 = strstr((const char*)sourceCode, "SUPPORT_GLSL300");
+        bool objectFactorySupportsGLES300 = !!(objectFactory.GetFeatureSet() & FeatureSet::GLES300);
 
         #if PLATFORMOS_TARGET == PLATFORMOS_OSX
             // hack for version string for OSX
@@ -197,9 +192,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                 : "#version 120\n#define NEW_UNIFORM_API 1\n"
                 ;
             (void)supportsGLES300;
+            (void)objectFactorySupportsGLES300;
         #else
             const GLchar* versionDecl;
-            if (supportsGLES300) {
+            if (supportsGLES300 && objectFactorySupportsGLES300) {
                 versionDecl = isFragmentShader
                     ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
                     : "#version 300 es\n#define NEW_UNIFORM_API 1\n";
@@ -303,8 +299,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (unsigned c=0; c<dimof(shaderSourcePointers); ++c)
             hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
         {
-            ScopedLock(s_compiledShadersLock);
-            s_compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
+            ScopedLock(objectFactory._compiledShadersLock);
+            objectFactory._compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
         }
 
         struct OutputBlob
@@ -358,9 +354,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         assert(vsByteCode.size() == sizeof(uint64_t) && fsByteCode.size() == sizeof(uint64_t));
         intrusive_ptr<OpenGL::Shader> vs, fs;
         {
-            ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
-            vs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)vsByteCode.first];
-            fs = OGLESShaderCompiler::s_compiledShaders[*(uint64_t*)fsByteCode.first];
+            ScopedLock(factory._compiledShadersLock);
+            vs = factory._compiledShaders[*(uint64_t*)vsByteCode.first];
+            fs = factory._compiledShaders[*(uint64_t*)fsByteCode.first];
         }
 
         _depVal = std::make_shared<Assets::DependencyValidation>();
@@ -556,12 +552,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         return stream;
-    }
-
-    void DestroyGLESCachedShaders()
-    {
-        ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
-        decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
     }
 
 }}
