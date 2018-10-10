@@ -55,6 +55,9 @@
 		8F88060A1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */; };
 		8F88060B1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */; };
 		8F88060C1FA3F62200AB9E4F /* HistoricalProfilerDisplay.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */; };
+		8F8B15EB216D28F600515269 /* HierarchicalSpikesDisplay.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F8B15E9216D28F600515269 /* HierarchicalSpikesDisplay.h */; };
+		8F8B15EC216D28F600515269 /* HierarchicalSpikesDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8B15EA216D28F600515269 /* HierarchicalSpikesDisplay.cpp */; };
+		8F8B15ED216D28F600515269 /* HierarchicalSpikesDisplay.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F8B15EA216D28F600515269 /* HierarchicalSpikesDisplay.cpp */; };
 		8F9417F91FDA01DC00DADA27 /* ltm.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417BC1FDA01D900DADA27 /* ltm.c */; };
 		8F9417FA1FDA01DC00DADA27 /* ltm.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417BC1FDA01D900DADA27 /* ltm.c */; };
 		8F9417FB1FDA01DC00DADA27 /* lbitlib.c in Sources */ = {isa = PBXBuildFile; fileRef = 8F9417BD1FDA01D900DADA27 /* lbitlib.c */; };
@@ -228,6 +231,8 @@
 		8F707C6C1EA6D25700DEC600 /* MeshDatabase.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = MeshDatabase.h; sourceTree = "<group>"; };
 		8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HistoricalProfilerDisplay.cpp; path = ../../PlatformRig/DebuggingDisplays/HistoricalProfilerDisplay.cpp; sourceTree = "<group>"; };
 		8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HistoricalProfilerDisplay.h; path = ../../PlatformRig/DebuggingDisplays/HistoricalProfilerDisplay.h; sourceTree = "<group>"; };
+		8F8B15E9216D28F600515269 /* HierarchicalSpikesDisplay.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = HierarchicalSpikesDisplay.h; path = ../../PlatformRig/DebuggingDisplays/HierarchicalSpikesDisplay.h; sourceTree = "<group>"; };
+		8F8B15EA216D28F600515269 /* HierarchicalSpikesDisplay.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = HierarchicalSpikesDisplay.cpp; path = ../../PlatformRig/DebuggingDisplays/HierarchicalSpikesDisplay.cpp; sourceTree = "<group>"; };
 		8F9417BC1FDA01D900DADA27 /* ltm.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = ltm.c; path = ../../../Foreign/Lua/src/ltm.c; sourceTree = "<group>"; };
 		8F9417BD1FDA01D900DADA27 /* lbitlib.c */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.c; name = lbitlib.c; path = ../../../Foreign/Lua/src/lbitlib.c; sourceTree = "<group>"; };
 		8F9417BE1FDA01D900DADA27 /* llimits.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = llimits.h; path = ../../../Foreign/Lua/src/llimits.h; sourceTree = "<group>"; };
@@ -369,10 +374,12 @@
 		8F707B681EA6C4AF00DEC600 /* DebuggingDisplays */ = {
 			isa = PBXGroup;
 			children = (
-				8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */,
-				8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */,
 				8F707B691EA6C4BE00DEC600 /* CPUProfileDisplay.cpp */,
 				8F707B6A1EA6C4BE00DEC600 /* CPUProfileDisplay.h */,
+				8F8B15EA216D28F600515269 /* HierarchicalSpikesDisplay.cpp */,
+				8F8B15E9216D28F600515269 /* HierarchicalSpikesDisplay.h */,
+				8F8806081FA3F62100AB9E4F /* HistoricalProfilerDisplay.cpp */,
+				8F8806091FA3F62200AB9E4F /* HistoricalProfilerDisplay.h */,
 			);
 			name = DebuggingDisplays;
 			sourceTree = "<group>";
@@ -581,6 +588,7 @@
 				8F707C821EA6D25700DEC600 /* MeshDatabase.h in Headers */,
 				8F707BE61EA6CB0A00DEC600 /* MurmurHash2.h in Headers */,
 				8F9418331FDA01DC00DADA27 /* lauxlib.h in Headers */,
+				8F8B15EB216D28F600515269 /* HierarchicalSpikesDisplay.h in Headers */,
 				8F707B751EA6C59100DEC600 /* IOverlayContext_Forward.h in Headers */,
 				8F94182B1FDA01DC00DADA27 /* lctype.h in Headers */,
 				8F94183C1FDA01DC00DADA27 /* lopcodes.h in Headers */,
@@ -744,6 +752,7 @@
 				8F2DB6162017F1DF009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418441FDA01DC00DADA27 /* ldump.c in Sources */,
 				8F9418311FDA01DC00DADA27 /* lparser.c in Sources */,
+				8F8B15EC216D28F600515269 /* HierarchicalSpikesDisplay.cpp in Sources */,
 				8F707B761EA6C59100DEC600 /* IOverlayContext.cpp in Sources */,
 				8F94182D1FDA01DC00DADA27 /* lcode.c in Sources */,
 				8F9418141FDA01DC00DADA27 /* ltablib.c in Sources */,
@@ -804,6 +813,7 @@
 				8F2DB61B2017F403009F52AB /* TechniqueMaterial.cpp in Sources */,
 				8F9418321FDA01DC00DADA27 /* lparser.c in Sources */,
 				8FA3F75B1EDD157B003EF623 /* DebuggingDisplay.cpp in Sources */,
+				8F8B15ED216D28F600515269 /* HierarchicalSpikesDisplay.cpp in Sources */,
 				8F94182E1FDA01DC00DADA27 /* lcode.c in Sources */,
 				8F9418151FDA01DC00DADA27 /* ltablib.c in Sources */,
 				8FA3F75E1EDD157B003EF623 /* IOverlayContext.cpp in Sources */,
