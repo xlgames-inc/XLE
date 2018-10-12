@@ -744,6 +744,7 @@ namespace Utility
         }
 
         template std::pair<bool, bool> Parse(const char[]);
+        template std::pair<bool, bool> Parse(const char[], const char[]);
         template std::pair<bool, unsigned> Parse(const char[]);
         template std::pair<bool, signed> Parse(const char[]);
         template std::pair<bool, uint64> Parse(const char[]);
