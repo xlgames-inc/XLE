@@ -17,15 +17,22 @@ namespace ConsoleRig
             const std::string& fmtTemplate,
             const SourceLocation& sourceLocation)
     {
+        auto outputFn = _externalMessageHandler;
+        if (outputFn == nullptr) {
+            outputFn = [](const CharType* s, std::streamsize count) -> std::streamsize {
+                return std::cout.rdbuf()->sputn(s, count);
+            };
+        }
+
 		if (!fmtTemplate.empty()) {
             auto fmt = fmt::format(
                 fmtTemplate,
                 fmt::arg("file", sourceLocation._file),
                 fmt::arg("line", sourceLocation._line));
-            std::cout.rdbuf()->sputn(fmt.data(), fmt.size());
-            std::cout.rdbuf()->sputn(" ", 1); // always append one extra space since the format string can't
+            outputFn(fmt.data(), fmt.size());
+            outputFn(" ", 1); // always append one extra space since the format string can't
         }
-        return std::cout.rdbuf()->sputn(msg.begin(), msg.size());       // (note; don't include the length of the formatted section; because it will confuse the caller when it is a basic_ostream
+        return outputFn(msg.begin(), msg.size());       // (note; don't include the length of the formatted section; because it will confuse the caller when it is a basic_ostream
     }
 
     template<typename CharType, typename CharTraits>
