@@ -1,4 +1,6 @@
-file(GLOB LuaSrc "Lua/src/*.c" "Lua/src/*.h")
+if(NOT CLIENT_HAS_LUA)
+    file(GLOB LuaSrc "Lua/src/*.c" "Lua/src/*.h")
+endif()
 file(GLOB HashSrc "Hash/*.cpp" "Hash/*.h")
 file(GLOB AntlrSrc "Antlr-3.4/libantlr3c-3.4/src/*.c")
 file(GLOB FmtSrc "fmt/*.cc")
