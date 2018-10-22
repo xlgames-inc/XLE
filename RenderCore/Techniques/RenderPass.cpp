@@ -204,9 +204,9 @@ namespace RenderCore { namespace Techniques
 
         // Can't find it; we're just going to overwrite the oldest entry with a new one
         assert(earliestEntry < dimof(_pimpl->_entries));
-        if (_pimpl->_entries[earliestEntry]._fb) {
-            Log(Warning) << "Overwriting tail in FrameBufferPool(). There may be too many different framebuffers required from the same pool" << std::endl;
-        }
+//        if (_pimpl->_entries[earliestEntry]._fb) {
+//            Log(Warning) << "Overwriting tail in FrameBufferPool(). There may be too many different framebuffers required from the same pool" << std::endl;
+//        }
 
         auto namedAttachments = MakeNamedAttachmentsWrapper(attachmentPool);
         _pimpl->_entries[earliestEntry]._fb = std::make_shared<Metal::FrameBuffer>(
