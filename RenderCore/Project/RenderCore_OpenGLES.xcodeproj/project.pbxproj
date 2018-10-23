@@ -371,6 +371,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8F2D1B541FD628830028A531 /* CoreDebug.xcconfig */;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"GL_SILENCE_DEPRECATION=1",
+				);
 			};
 			name = Debug;
 		};
@@ -378,6 +382,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8F2D1B521FD628830028A531 /* CoreRelease.xcconfig */;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"GL_SILENCE_DEPRECATION=1",
+				);
 			};
 			name = Release;
 		};

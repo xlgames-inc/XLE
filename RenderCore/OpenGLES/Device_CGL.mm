@@ -199,7 +199,10 @@ namespace RenderCore { namespace ImplOpenGLES
             _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
             CGLReleaseContext(context);
 
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             _nsContext.get().view = (NSView*)_platformValue;
+            #pragma clang diagnostic pop
         }
 
         const bool useFakeBackbuffer = false;
