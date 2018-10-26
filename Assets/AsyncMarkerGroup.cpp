@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AsyncMarkerGroup.h"
+#include "GenericFuture.h"
 #include <memory>
 #include <algorithm>
 
@@ -41,10 +42,20 @@ namespace Assets
         return AssetState::Ready;
     }
     
-    AssetState AsyncMarkerGroup::StallWhilePending() const
+    std::optional<AssetState>   AsyncMarkerGroup::StallWhilePending(std::chrono::milliseconds timeout) const
     {
+        auto timeToCancel = std::chrono::steady_clock::now() + timeout;
+
         for (const auto&e:_entries) {
-            auto state = e._marker->StallWhilePending();
+            std::optional<AssetState> state;
+            if (timeout.count() != 0) {
+                auto now = std::chrono::steady_clock::now();
+                if (now >= timeToCancel) return {};
+                state = e._marker->StallWhilePending(std::chrono::duration_cast<std::chrono::milliseconds>(timeToCancel - now));
+            } else {
+                state = e._marker->StallWhilePending(std::chrono::milliseconds(0));
+            }
+            if (!state) return {};
             if (state == AssetState::Invalid)
                 return AssetState::Invalid;     // as soon as we hit an invalid; we will no longer stall for any remaining assets
         }

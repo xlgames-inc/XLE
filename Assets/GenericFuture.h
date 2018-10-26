@@ -7,14 +7,22 @@
 #include "AssetsCore.h"
 #include "../Core/Prefix.h"     // (for DEBUG_ONLY)
 
+#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
+    #include <optional>
+#else
+     #include <experimental/optional>
+     namespace std { template <typename T> using optional = experimental::optional<T>; }
+#endif
+#include <chrono>
+
 namespace Assets
 {
 	/// <summary>Records the status of asynchronous operation, very much like a std::promise<AssetState></summary>
 	class IAsyncMarker
 	{
 	public:
-		virtual AssetState		GetAssetState() const = 0;
-		virtual AssetState		StallWhilePending() const = 0;
+		virtual AssetState		            GetAssetState() const = 0;
+		virtual std::optional<AssetState>   StallWhilePending(std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const = 0;
 		virtual ~IAsyncMarker();
 	};
 
@@ -22,7 +30,7 @@ namespace Assets
     {
     public:
         AssetState		GetAssetState() const { return _state; }
-        AssetState		StallWhilePending() const;
+        std::optional<AssetState>   StallWhilePending(std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
         const char*     Initializer() const;  // "initializer" interface only provided in debug builds, and only intended for debugging
 
         GenericFuture(AssetState state = AssetState::Pending);

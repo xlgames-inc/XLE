@@ -583,8 +583,10 @@ namespace Assets
         _state = newState;
     }
 
-    AssetState GenericFuture::StallWhilePending() const
+    std::optional<AssetState>   GenericFuture::StallWhilePending(std::chrono::milliseconds timeout) const
     {
+        auto timeToCancel = std::chrono::steady_clock::now() + timeout;
+
             // Stall until the _state variable changes
             // in another thread.
             // there is no semaphore, so we must poll
@@ -596,10 +598,11 @@ namespace Assets
 			sleepValue -= 64.f;
 			sleepValue /= 16.f;
             ++waitCount;
+            if (timeout.count() != 0 && std::chrono::steady_clock::now() >= timeToCancel) return {};
 			Threading::Sleep(uint32(std::min(100.0f, std::max(0.0f, sleepValue))));
 		}
 
-        return *state;
+        return (AssetState)*state;
     }
 
 	IAsyncMarker::~IAsyncMarker() {}
