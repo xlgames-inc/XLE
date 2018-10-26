@@ -29,12 +29,12 @@ namespace Assets
 		bool			IsOutOfDate() const;
 		void			SimulateChange();
 		
-		AssetState		GetAssetState() const;
-		AssetState		StallWhilePending() const;
+		AssetState		            GetAssetState() const;
+        std::optional<AssetState>   StallWhilePending(std::chrono::milliseconds timeout = std::chrono::milliseconds(0)) const;
 
-		const std::string&		Initializer() const { return _initializer; }
-		const DepValPtr&		GetDependencyValidation() const { return _actualizedDepVal; }
-		const Blob&				GetActualizationLog() const { return _actualizationLog; }
+		const std::string&		    Initializer() const { return _initializer; }
+		const DepValPtr&		    GetDependencyValidation() const { return _actualizedDepVal; }
+		const Blob&				    GetActualizationLog() const { return _actualizationLog; }
 
 		explicit AssetFuture(const std::string& initializer);
 		~AssetFuture();
@@ -163,8 +163,10 @@ namespace Assets
 	}
 
 	template<typename AssetType>
-		AssetState		AssetFuture<AssetType>::StallWhilePending() const
+        std::optional<AssetState>   AssetFuture<AssetType>::StallWhilePending(std::chrono::milliseconds timeout) const
 	{
+        auto timeToCancel = std::chrono::steady_clock::now() + timeout;
+
 		auto* that = const_cast<AssetFuture<AssetType>*>(this);	// hack to defeat the "const" on this method
 		std::unique_lock<decltype(that->_lock)> lock(that->_lock);
 
@@ -184,6 +186,13 @@ namespace Assets
 			for (;;) {
 				bool pollingResult = pollingFunction(*that);
 				if (!pollingResult) break;
+                if (timeout.count() != 0 && std::chrono::steady_clock::now() >= timeToCancel) {
+                    // return the polling function to the future
+                    lock = std::unique_lock<decltype(that->_lock)>(that->_lock);
+                    assert(!that->_pollingFunction);
+                    that->_pollingFunction = std::move(pollingFunction);
+                    return {};
+                }
 				Threading::YieldTimeSlice();
 			}
 			
@@ -191,7 +200,7 @@ namespace Assets
 		}
 
 		for (;;) {
-			if (that->_state != AssetState::Pending) return that->_state;
+			if (that->_state != AssetState::Pending) return (AssetState)that->_state;
 			if (that->_pendingState != AssetState::Pending) {
 				// Force the background version into the foreground (see OnFrameBarrier)
 				// This is required because we can be woken up by SetAsset, which only set the
@@ -204,9 +213,15 @@ namespace Assets
 				that->_actualizationLog = std::move(that->_pendingActualizationLog);
 				that->_actualizedDepVal = std::move(that->_pendingDepVal);
 				that->_state = that->_pendingState;
-				return that->_state;
+				return (AssetState)that->_state;
 			}
-			that->_conditional.wait(lock);
+            if (timeout.count() != 0) {
+                auto waitResult = that->_conditional.wait_until(lock, timeToCancel);
+                // If we timed out during wait, we should cancel and return
+                if (waitResult == std::cv_status::timeout) return {};
+            } else {
+                that->_conditional.wait(lock);
+            }
 		}
 	}
 
