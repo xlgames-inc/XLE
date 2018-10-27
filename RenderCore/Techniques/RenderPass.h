@@ -189,7 +189,9 @@ namespace RenderCore { namespace Techniques
     std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>>
         MergeFragments(
             IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
-            IteratorRange<const FrameBufferDescFragment*> fragments);
+            IteratorRange<const FrameBufferDescFragment*> fragments,
+            char *logBuffer = nullptr,
+            size_t bufferLength = 0u);
 
     /// <summary>Like RenderPassInstance, but works with a single fragment</summary>
     /// RenderPasses are often generated from many "fragments" -- which are merged together into a
