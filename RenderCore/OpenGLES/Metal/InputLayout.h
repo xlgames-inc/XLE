@@ -29,6 +29,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             IteratorRange<const std::string *> UnboundAttributesNames() const { return Utility::MakeIteratorRange(_unboundAttributesNames); }
         #endif
 
+        static void SetWarnOnMissingVertexAttribute(bool warn) { _warnOnMissingVertexAttribute = warn; }
+
         BoundInputLayout() : _attributeState(0), _maxVertexAttributes(0), _vaoBindingHash(0), _allAttributesBound(true) {}
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program);
 
@@ -69,6 +71,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             std::vector<std::string> _unboundAttributesNames;
         #endif
+
+        static bool _warnOnMissingVertexAttribute;
 
         void UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws;
         bool CalculateAllAttributesBound(const ShaderProgram& program);

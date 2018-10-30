@@ -30,6 +30,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 {
     std::unordered_set<std::string> g_whitelistedAttributesForBinding;
 
+    bool BoundInputLayout::_warnOnMissingVertexAttribute = true;
+
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
     {
             //
@@ -234,7 +236,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             if (!hasBoundAttribute) {
-                Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding." << std::endl;
+                if (_warnOnMissingVertexAttribute) {
+                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding." << std::endl;
+                }
                 #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                     _unboundAttributesNames.emplace_back(std::string(buffer));
                 #else
