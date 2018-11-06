@@ -119,7 +119,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 GL_FRONT,
                 AsGLenum(desc._frontFaceStencil._comparisonOp),
                 desc._stencilReference,
-                desc._stencilWriteMask);
+                desc._stencilReadMask);
             glStencilOpSeparate(
                 GL_FRONT,
                 AsGLenum(desc._frontFaceStencil._failOp),
@@ -129,13 +129,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                 GL_BACK,
                 AsGLenum(desc._backFaceStencil._comparisonOp),
                 desc._stencilReference,
-                desc._stencilWriteMask);
+                desc._stencilReadMask);
             glStencilOpSeparate(
                 GL_BACK,
                 AsGLenum(desc._backFaceStencil._failOp),
                 AsGLenum(desc._backFaceStencil._depthFailOp),
                 AsGLenum(desc._backFaceStencil._passOp));
-            glStencilMaskSeparate(GL_FRONT_AND_BACK, desc._stencilReadMask);
+            glStencilMaskSeparate(GL_FRONT_AND_BACK, desc._stencilWriteMask);
             glEnable(GL_STENCIL_TEST);
         } else {
             glDisable(GL_STENCIL_TEST);
@@ -168,8 +168,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             glGetIntegerv(GL_STENCIL_WRITEMASK, &stencilWriteMask);
             
             depthStencil._stencilReference = stencilRef;
-            depthStencil._stencilWriteMask = stencilValueMask;
-            depthStencil._stencilReadMask = stencilWriteMask;       // odd naming intentional
+            depthStencil._stencilReadMask = stencilValueMask;
+            depthStencil._stencilWriteMask = stencilWriteMask;
             
             GLint passDepthFail = 0, passDepthPass = 0, fail = 0, stencilFunc = 0;
             glGetIntegerv(GL_STENCIL_PASS_DEPTH_FAIL, &passDepthFail);

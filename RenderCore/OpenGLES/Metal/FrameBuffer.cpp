@@ -387,8 +387,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (clearStencil) {
                 GLint stencilWriteMask;
                 glGetIntegerv(GL_STENCIL_WRITEMASK, &stencilWriteMask);
-                if (!(stencilWriteMask & 0xFF)) {
-                    Throw(::Exceptions::BasicLabel("Attempting to clear stencil with stencil mask %u in subpass %d", stencilWriteMask, (int)subpassIndex));
+                // We expect the entire stencil to be cleared
+                if ((stencilWriteMask & 0xFF) != 0xFF) {
+                    glStencilMask(0xFF);
                 }
             }
         #endif
