@@ -167,6 +167,12 @@ namespace RenderCore { namespace Techniques
         return MakeSharedPkt(MakeLocalTransform(localToWorld, worldSpaceCameraPosition));
     }
 
+    bool HasHandinessFlip(const ProjectionDesc& projDesc)
+    {
+        float det = Determinant(Truncate3x3(projDesc._worldToProjection));
+        return det > 0.0f;
+    }
+
 
 }}
 

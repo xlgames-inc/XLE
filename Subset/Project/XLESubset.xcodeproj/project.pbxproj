@@ -167,6 +167,9 @@
 		8FA3F7621EDD157B003EF623 /* FiniteResourceHeap.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7B1EA6C5D500DEC600 /* FiniteResourceHeap.cpp */; };
 		8FA3F7641EDD157B003EF623 /* GenericGridPartitioning.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7D1EA6C5D500DEC600 /* GenericGridPartitioning.cpp */; };
 		8FA3F7661EDD157B003EF623 /* GenericQuadTree.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F707B7F1EA6C5D500DEC600 /* GenericQuadTree.cpp */; };
+		8FABD39C2191207000835E06 /* TechniqueUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FABD39A2191207000835E06 /* TechniqueUtils.cpp */; };
+		8FABD39D2191207000835E06 /* TechniqueUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FABD39B2191207000835E06 /* TechniqueUtils.h */; };
+		8FABD39E2191207400835E06 /* TechniqueUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FABD39A2191207000835E06 /* TechniqueUtils.cpp */; };
 		AF7478AF200ED2B700F891DB /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = AF7478AE200ED2B700F891DB /* IncludeGLES.h */; };
 /* End PBXBuildFile section */
 
@@ -297,6 +300,8 @@
 		8F9418591FDA01FE00DADA27 /* LocalCompiledShaderSource.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; name = LocalCompiledShaderSource.cpp; path = ../../RenderCore/Assets/LocalCompiledShaderSource.cpp; sourceTree = "<group>"; };
 		8F94185A1FDA01FE00DADA27 /* LocalCompiledShaderSource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = LocalCompiledShaderSource.h; path = ../../RenderCore/Assets/LocalCompiledShaderSource.h; sourceTree = "<group>"; };
 		8FA3F7321EDD14E4003EF623 /* libXLESubsetIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libXLESubsetIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		8FABD39A2191207000835E06 /* TechniqueUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = TechniqueUtils.cpp; path = ../../RenderCore/Techniques/TechniqueUtils.cpp; sourceTree = "<group>"; };
+		8FABD39B2191207000835E06 /* TechniqueUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TechniqueUtils.h; path = ../../RenderCore/Techniques/TechniqueUtils.h; sourceTree = "<group>"; };
 		AF7478AE200ED2B700F891DB /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../../RenderCore/OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -455,6 +460,8 @@
 		8F707B8D1EA6C72D00DEC600 /* Techniques */ = {
 			isa = PBXGroup;
 			children = (
+				8FABD39A2191207000835E06 /* TechniqueUtils.cpp */,
+				8FABD39B2191207000835E06 /* TechniqueUtils.h */,
 				8F707BB01EA6C78400DEC600 /* PredefinedCBLayout.cpp */,
 				8F707BB11EA6C78400DEC600 /* PredefinedCBLayout.h */,
 				8F5DCB882023E5920022BA7E /* RenderPass.cpp */,
@@ -600,6 +607,7 @@
 				8F9418511FDA01DC00DADA27 /* ldo.h in Headers */,
 				8F94181A1FDA01DC00DADA27 /* lparser.h in Headers */,
 				8F707B821EA6C5D500DEC600 /* DualContour.h in Headers */,
+				8FABD39D2191207000835E06 /* TechniqueUtils.h in Headers */,
 				8F9418041FDA01DC00DADA27 /* lobject.h in Headers */,
 				8F94181D1FDA01DC00DADA27 /* luaconf.h in Headers */,
 				8F2DB6262017F894009F52AB /* LogUtil.h in Headers */,
@@ -734,6 +742,7 @@
 				8F2DB62A2017F9D1009F52AB /* Font_Dummy.cpp in Sources */,
 				8F88060A1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */,
 				8F94180A1FDA01DC00DADA27 /* lobject.c in Sources */,
+				8FABD39C2191207000835E06 /* TechniqueUtils.cpp in Sources */,
 				8F94180C1FDA01DC00DADA27 /* lcorolib.c in Sources */,
 				8F707BB31EA6C78400DEC600 /* PredefinedCBLayout.cpp in Sources */,
 				8F9418161FDA01DC00DADA27 /* lundump.c in Sources */,
@@ -795,6 +804,7 @@
 				8F2DB62B2017F9D1009F52AB /* Font_Dummy.cpp in Sources */,
 				8F88060B1FA3F62200AB9E4F /* HistoricalProfilerDisplay.cpp in Sources */,
 				8F94180B1FDA01DC00DADA27 /* lobject.c in Sources */,
+				8FABD39E2191207400835E06 /* TechniqueUtils.cpp in Sources */,
 				8F94180D1FDA01DC00DADA27 /* lcorolib.c in Sources */,
 				8FA3F7451EDD157B003EF623 /* MeshDatabase.cpp in Sources */,
 				8F9418171FDA01DC00DADA27 /* lundump.c in Sources */,
