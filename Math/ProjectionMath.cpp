@@ -539,7 +539,7 @@ namespace XLEMath
         } else {
                 //  This is the OpenGL view of clip space
                 //      -1<z/w<1
-            result(2,2) =        (f+n) / (f-n);
+            result(2,2) =       -(f+n) / (f-n);
             result(2,3) =  -(-2.f*f*n) / (f-n);
         }
 
@@ -631,17 +631,17 @@ namespace XLEMath
             //        = B / (A+1)
             //
             // For ClipSpaceType::StraddlingZero
-            //      miniProj[2] = A = (f+n) / (f-n)
-            //      miniProj[3] = B = (2fn) / (f-n)
-            //      n = B / (A + 1)
-            //      f = B / (A - 1)
+            //      miniProj[2] = A = -(f+n) / (f-n)
+            //      miniProj[3] = B = -(2fn) / (f-n)
+            //      n = B / (A - 1)
+            //      f = B / (A + 1)
 
         const float A = minimalProjection[2];
         const float B = minimalProjection[3];
         if (clipSpaceType == ClipSpaceType::Positive || clipSpaceType == ClipSpaceType::PositiveRightHanded) {
             return std::make_pair(B / A, B / (A + 1.f));
         } else {
-            return std::make_pair(B / (A + 1.f), B / (A - 1.f));
+            return std::make_pair(B / (A - 1.f), B / (A + 1.f));
         }
     }
 
