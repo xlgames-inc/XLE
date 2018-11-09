@@ -33,7 +33,7 @@ namespace RenderCore { namespace Techniques
         CameraDesc();
     };
 
-    __declspec(align(16)) class ProjectionDesc
+    class alignas(16) ProjectionDesc
     {
     public:
         Float4x4        _worldToProjection;
@@ -83,6 +83,8 @@ namespace RenderCore { namespace Techniques
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const CameraDesc& camera);
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
     LocalTransformConstants MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
+
+    bool HasHandinessFlip(const ProjectionDesc& projDesc);
 
 }}
 
