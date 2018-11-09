@@ -71,8 +71,8 @@ namespace XLEMath
 
     Float3x3        Inverse(const Float3x3& input);
     Float4x4        Inverse(const Float4x4& input);
-    Float3x3        Determinant(const Float3x3& input);
-    Float4x4        Determinant(const Float4x4& input);
+    float           Determinant(const Float3x3& input);
+    float           Determinant(const Float4x4& input);
     Float3x3        Transpose(const Float3x3& input);
     Float4x4        Transpose(const Float4x4& input);
 
