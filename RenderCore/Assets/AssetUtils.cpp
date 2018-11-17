@@ -25,7 +25,7 @@ namespace RenderCore { namespace Assets
             // (and what are missing). We need to set these parameters according to our
             // binding list
         ParameterBox result = inputMatParameters;
-        for (auto param=resBindings.Begin(); !param.IsEnd(); ++param) {
+        for (const auto& param:resBindings) {
             result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
             if (param.HashName() == DefaultNormalsTextureBindingHash) {
                 auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);

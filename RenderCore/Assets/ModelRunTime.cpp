@@ -275,7 +275,7 @@ namespace RenderCore { namespace Assets
                     materialParamBox = matData->_matParams;
                     stateSet = matData->_stateSet;
                 
-                    for (auto param = matData->_bindings.Begin(); !param.IsEnd(); ++param) {
+                    for (const auto& param:matData->_bindings) {
                         if (param.Type().GetSize() == 0) continue;
 
                         materialParamBox.SetParameter(
@@ -348,7 +348,7 @@ namespace RenderCore { namespace Assets
                 auto* matData = matScaffold.GetMaterial(mi->first);
                 if (!matData) { continue; }
 
-                for (auto param=matData->_bindings.Begin(); !param.IsEnd(); ++param) {
+                for (const auto& param:matData->_bindings) {
                     if (param.Type().GetSize() == 0) continue;
 
                     auto bindNameHash = Hash64((const char*)param.Name());

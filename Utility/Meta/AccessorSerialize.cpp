@@ -40,7 +40,7 @@ namespace Utility
                     if (arrayBracket == name._end) {
                         if (!props.TryOpaqueSet(
                             obj,
-                            Hash64(name._start, name._end), value._start, 
+                            Hash64(name._start, name._end), MakeIteratorRange(value.begin(), value.end()), 
                             ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
 
                             Log(Warning) << "Failure while assigning property during deserialization -- " <<
@@ -49,7 +49,7 @@ namespace Utility
                     } else {
                         auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
                         if (!props.TryOpaqueSet(
-                            obj, Hash64(name._start, arrayBracket), arrayIndex, value._start, 
+                            obj, Hash64(name._start, arrayBracket), arrayIndex, MakeIteratorRange(value.begin(), value.end()), 
                             ImpliedTyping::TypeDesc(charTypeCat, uint16(value._end - value._start)), true)) {
 
                             Log(Warning) << "Failure while assigning array property during deserialization -- " <<
@@ -157,7 +157,7 @@ namespace Utility
         // values in.
         // We have to consider array cases -- perhaps it easier to go through the
         // parameters in the parameter box
-        for (auto i=paramBox.Begin(); !i.IsEnd(); ++i) {
+        for (const auto&i:paramBox) {
             const auto nameStart = i.Name();
             const auto nameEnd = XlStringEnd(nameStart);
             auto arrayBracket = std::find(nameStart, nameEnd, '[');

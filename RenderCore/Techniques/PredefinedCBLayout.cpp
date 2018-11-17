@@ -128,12 +128,12 @@ namespace RenderCore { namespace Techniques
                             buffer1, dimof(buffer1), e._type,
                             buffer0, defaultType);
                         if (castSuccess) {
-                            _defaults.SetParameter(name.c_str(), buffer1, e._type);
+							_defaults.SetParameter(MakeStringSection(name), {buffer1, PtrAdd(buffer1, std::min(sizeof(buffer1), (size_t)e._type.GetSize()))}, e._type);
                         } else {
                             Log(Warning) << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
                         }
                     } else {
-                        _defaults.SetParameter(name.c_str(), buffer0, defaultType);
+                        _defaults.SetParameter(MakeStringSection(name), {buffer0, PtrAdd(buffer0, std::min(sizeof(buffer0), (size_t)defaultType.GetSize()))}, defaultType);
                     }
                 }
             } else {

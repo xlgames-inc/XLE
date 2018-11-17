@@ -122,7 +122,7 @@ namespace RenderCore { namespace Techniques
                         // This works well with the C preprocessor; it just means
                         // things will generally default to off
                     unsigned zero = 0u;
-                    dst[q].MergeIn(ParameterBox(source, &zero, ImpliedTyping::TypeOf<unsigned>()));
+                    dst[q].MergeIn(ParameterBox(source, AsOpaqueIteratorRange(zero), ImpliedTyping::TypeOf<unsigned>()));
                     matched = true;
                 }
 
@@ -245,7 +245,7 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
             const auto& s = source._baseSelectors._selectors[c];
             auto& d = _baseSelectors._selectors[c];
-            for (auto i = s.Begin(); !i.IsEnd(); ++i)
+            for (const auto& i:s)
                 d.SetParameter(i.Name(), i.RawValue(), i.Type());
         }
     }
