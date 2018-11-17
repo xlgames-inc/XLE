@@ -110,4 +110,23 @@
     <DisplayString Condition="_type == 3">Param = {_reference}</DisplayString>
   </Type>
 
+  <Type Name="Utility::ParameterBox">
+    <Expand>
+      <IndexListItems>
+        <Size>_offsets._end-_offsets._begin</Size>
+        <ValueNode>_names._begin+_offsets._begin[$i]._nameBegin</ValueNode>
+      </IndexListItems>
+      <IndexListItems>
+        <Size>_offsets._end-_offsets._begin</Size>
+        <ValueNode>_types._begin+$i</ValueNode>
+      </IndexListItems>
+      <IndexListItems>
+        <Size>_offsets._end-_offsets._begin</Size>
+        <ValueNode Condition="(_types._begin+$i)->_type == 1">*(bool*)_values._begin+_offsets._begin[$i]._valueBegin</ValueNode>
+        <ValueNode Condition="(_types._begin+$i)->_type == 7">*(unsigned int*)_values._begin+_offsets._begin[$i]._valueBegin</ValueNode>
+        <ValueNode Condition="(_types._begin+$i)->_type == 10">*(float*)_values._begin+_offsets._begin[$i]._valueBegin</ValueNode>
+      </IndexListItems>
+    </Expand>
+  </Type>
+
 </AutoVisualizer>
