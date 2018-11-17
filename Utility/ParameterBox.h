@@ -166,7 +166,7 @@ namespace Utility
 			class Value
 			{
 			public:
-				const utf8*					Name() const;
+				StringSection<utf8>			Name() const;
 				IteratorRange<const void*>	RawValue() const;
 				const TypeDesc&				Type() const;
 				ParameterNameHash			HashName() const;
@@ -317,9 +317,11 @@ namespace Utility
         return Iterator(*this, index);
     }
 
-    inline const utf8* ParameterBox::Iterator::Value::Name() const
+    inline StringSection<utf8> ParameterBox::Iterator::Value::Name() const
     {
-        return &_box->_names[_box->_offsets[_index]._nameBegin];
+        return MakeStringSection(
+			&_box->_names[_box->_offsets[_index]._nameBegin], 
+			&_box->_names[_box->_offsets[_index]._nameBegin + _box->_offsets[_index]._nameSize]);
     }
 
     inline auto        ParameterBox::Iterator::Value::Type() const -> const TypeDesc&

@@ -281,7 +281,7 @@ namespace RenderCore { namespace Assets
                         materialParamBox.SetParameter(
                             (const utf8*)(StringMeld<64, utf8>() << "RES_HAS_" << param.Name()), 1);
                 
-                        auto bindNameHash = Hash64((const char*)param.Name());
+                        auto bindNameHash = Hash64(param.Name().begin(), param.Name().end());
                         auto q = std::lower_bound(textureBindPoints.begin(), textureBindPoints.end(), bindNameHash);
                         if (q != textureBindPoints.end() && *q == bindNameHash) { continue; }
                         textureBindPoints.insert(q, bindNameHash);
@@ -351,7 +351,7 @@ namespace RenderCore { namespace Assets
                 for (const auto& param:matData->_bindings) {
                     if (param.Type().GetSize() == 0) continue;
 
-                    auto bindNameHash = Hash64((const char*)param.Name());
+                    auto bindNameHash = Hash64(param.Name().begin(), param.Name().end());
 
                     auto i = std::find(textureBindPoints.cbegin(), textureBindPoints.cend(), bindNameHash);
                     assert(i!=textureBindPoints.cend() && *i == bindNameHash);

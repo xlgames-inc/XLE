@@ -852,12 +852,11 @@ namespace Utility
             
             _values.insert(_values.end(), (const uint8*)value.begin(), (const uint8*)value.end());
 
-			unsigned nameLength = (unsigned)name.size()+1;
             if (!name.IsEmpty())
                 _names.insert(_names.end(), name.begin(), name.end());
             _names.push_back(0);
 
-			_offsets.push_back(OffsetsEntry{unsigned(nameOffset), unsigned(valueOffset), nameLength, unsigned(value.size())});
+			_offsets.push_back(OffsetsEntry{unsigned(nameOffset), unsigned(valueOffset), unsigned(name.size()), unsigned(value.size())});
             _types.push_back(insertType);
 
             _cachedHash = 0;
@@ -872,7 +871,7 @@ namespace Utility
 
             const auto nameLength = name.size()+1;
             auto dstOffsets = _offsets[index];
-			dstOffsets._nameSize = (unsigned)nameLength;
+			dstOffsets._nameSize = (unsigned)name.size();
 			dstOffsets._valueSize = (unsigned)value.size();
 
             _offsets.insert(_offsets.begin()+index, dstOffsets);
@@ -1456,18 +1455,18 @@ namespace Utility
     void BuildStringTable(StringTable& defines, const ParameterBox& box)
     {
         for (const auto&i:box) {
-            const auto* name = i.Name();
+            const auto name = i.Name();
             auto value = i.RawValue();
             const auto& type = i.Type();
             auto stringFormat = ImpliedTyping::AsString(
                 value.begin(), value.size(), type);
 
             auto insertPosition = std::lower_bound(
-                defines.begin(), defines.end(), name, StringTableComparison());
+                defines.begin(), defines.end(), name.begin(), StringTableComparison());
             if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
                 insertPosition->second = stringFormat;
             } else {
-                defines.insert(insertPosition, std::make_pair(name, stringFormat));
+                defines.insert(insertPosition, std::make_pair(name.begin(), stringFormat));
             }
         }
     }
@@ -1475,12 +1474,12 @@ namespace Utility
     void OverrideStringTable(StringTable& defines, const ParameterBox& box)
     {
         for (const auto&i:box) {
-            const auto* name = i.Name();
+            const auto name = i.Name();
             auto value = i.RawValue();
             const auto& type = i.Type();
 
             auto insertPosition = std::lower_bound(
-                defines.begin(), defines.end(), name, StringTableComparison());
+                defines.begin(), defines.end(), name.begin(), StringTableComparison());
 
             if (insertPosition!=defines.cend() && !XlCompareString(insertPosition->first, name)) {
                 insertPosition->second = ImpliedTyping::AsString(

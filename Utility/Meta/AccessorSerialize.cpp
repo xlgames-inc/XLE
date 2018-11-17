@@ -158,18 +158,17 @@ namespace Utility
         // We have to consider array cases -- perhaps it easier to go through the
         // parameters in the parameter box
         for (const auto&i:paramBox) {
-            const auto nameStart = i.Name();
-            const auto nameEnd = XlStringEnd(nameStart);
-            auto arrayBracket = std::find(nameStart, nameEnd, '[');
-            if (arrayBracket == nameEnd) {
+            auto name = i.Name();
+            auto arrayBracket = std::find(name.begin(), name.end(), '[');
+            if (arrayBracket == name.end()) {
                 accessors.TryOpaqueSet(
                     obj,
-                    Hash64(nameStart, nameEnd), i.RawValue(), 
+                    Hash64(name.begin(), name.end()), i.RawValue(), 
                     i.Type(), false);
             } else {
                 auto arrayIndex = XlAtoUI32((const char*)(arrayBracket+1));
                 accessors.TryOpaqueSet(
-                    obj, Hash64(nameStart, arrayBracket), arrayIndex, i.RawValue(), 
+                    obj, Hash64(name.begin(), arrayBracket), arrayIndex, i.RawValue(), 
                     i.Type(), false);
             }
         }
