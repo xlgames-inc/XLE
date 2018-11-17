@@ -82,6 +82,7 @@
     </ClCompile>
     <Link>
       <AdditionalLibraryDirectories>$(VCInstallDir)UnitTest\lib;%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">dxguid.lib;$(ForeignDir)\DirectXTex\DirectXTex\Bin\$(DXTexDir)\$(Platform)\$(RawConfiguration)\DirectXTex.lib;kernel32.lib;user32.lib;gdi32.lib;winspool.lib;comdlg32.lib;advapi32.lib;shell32.lib;ole32.lib;oleaut32.lib;uuid.lib;odbc32.lib;odbccp32.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -119,9 +120,6 @@
     </ProjectReference>
     <ProjectReference Include="..\..\RenderCore\Project\RenderCore_DX11.vcxproj">
       <Project>{e43e10b8-7cd4-a5d0-6270-17c50cb74adf}</Project>
-    </ProjectReference>
-    <ProjectReference Include="..\..\RenderCore\Project\RenderCore_Vulkan.vcxproj">
-      <Project>{b7525b97-9195-416a-8019-ed7f239cf3e8}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\SceneEngine\Project\SceneEngine.vcxproj">
       <Project>{0a40e6ed-47cc-a08e-71c5-8a3515d81eaf}</Project>

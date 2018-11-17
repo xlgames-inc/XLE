@@ -15,10 +15,12 @@ namespace UnitTests
     {
     public:
     protected:
-        virtual ::Assets::AssetState Complete(const void* buffer, size_t bufferSize)
+        virtual void Complete(const void* buffer, size_t bufferSize) override
         {
-            (void)buffer; (void)bufferSize;
-            return ::Assets::AssetState::Ready;
+        }
+
+		virtual void OnFailure() override
+        {
         }
     };
 
@@ -46,7 +48,7 @@ namespace UnitTests
                 std::vector<std::shared_ptr<AsyncLoadTest>> tests;
                 for (unsigned c=0; c<128; ++c) {
                     auto t = std::make_shared<AsyncLoadTest>();
-                    t->Enqueue("log.cfg", pool);
+                    ::Assets::AsyncLoadOperation::Enqueue(t, "log.cfg", pool);
                     tests.push_back(t);
                 }
             }

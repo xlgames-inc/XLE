@@ -13,6 +13,7 @@
 #include "../Assets/AssetServices.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/AttachableInternal.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"
@@ -43,12 +44,12 @@ namespace UnitTests
 
 				{
 					auto renderDevice = RenderCore::CreateDevice(RenderCore::UnderlyingAPI::DX11);
-                    auto asyncMan = std::make_shared<::Assets::Services>(0);
-                    auto renderAssetsServices = std::make_shared<RenderCore::Assets::Services>(renderDevice);
+                    auto asyncMan = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
+                    auto renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(renderDevice);
 
 					auto renderVersion = renderDevice->GetDesc()._buildVersion;
 					auto renderDate = renderDevice->GetDesc()._buildDate;
-					LogInfo << "RenderCore version (" << renderVersion << ") and date (" << renderDate << ")";
+					Log(Verbose) << "RenderCore version (" << renderVersion << ") and date (" << renderDate << ")" << std::endl;
 				}
 			}
 		}

@@ -7,6 +7,7 @@
 #include "CppUnitTest.h"
 #include "UnitTestHelper.h"
 #include "../SceneEngine/TerrainMaterial.h"
+#include "../Assets/DepVal.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../Utility/Streams/StreamFormatter.h"
@@ -18,7 +19,7 @@ using namespace Microsoft::VisualStudio::CppUnitTestFramework;
 
 namespace UnitTests
 {
-    const std::string testString = R"--(~~!Format=1; Tab=4
+    const std::string testString2 = R"--(~~!Format=1; Tab=4
 
 ~EnvSettings
 	Name=environment
@@ -58,7 +59,7 @@ namespace UnitTests
     template<typename CharType>
         void RunBasicTest()
     {
-        auto converted = Conversion::Convert<std::basic_string<CharType>>(testString);
+        auto converted = Conversion::Convert<std::basic_string<CharType>>(testString2);
         MemoryMappedInputStream stream(AsPointer(converted.cbegin()), AsPointer(converted.cend()));
         InputStreamFormatter<CharType> formatter(stream);
 
@@ -74,7 +75,7 @@ namespace UnitTests
         for (unsigned c=0; c<iterationCount; ++c) {
             MemoryMappedInputStream stream(AsPointer(testString.cbegin()), AsPointer(testString.cend()));
             InputStreamFormatter<utf8> formatter(stream);
-            SceneEngine::TerrainMaterialConfig matConfig(formatter, ::Assets::DirectorySearchRules());
+            SceneEngine::TerrainMaterialConfig matConfig(formatter, ::Assets::DirectorySearchRules(), std::make_shared<::Assets::DependencyValidation>());
             (void)matConfig;
         }
     }
@@ -132,8 +133,8 @@ DiffuseDims={512u, 512u}v; NormalDims={512u, 512u}v; ParamDims={512u, 512u}v
             RunPerformanceTest2(testString, iterationCount);
             auto end = __rdtsc();
 
-            LogAlwaysWarning << "Properties based serialization: " << (middle-start) / iterationCount << " cycles per iteration.";
-            LogAlwaysWarning << "Old style serialization: " << (end-middle) / iterationCount << " cycles per iteration.";
+            Log(Warning) << "Properties based serialization: " << (middle-start) / iterationCount << " cycles per iteration." << std::endl;
+            Log(Warning) << "Old style serialization: " << (end-middle) / iterationCount << " cycles per iteration." << std::endl;
         }
 
 	};

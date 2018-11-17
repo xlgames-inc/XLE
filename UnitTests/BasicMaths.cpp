@@ -98,7 +98,7 @@ namespace UnitTests
             std::mt19937 rng(std::random_device().operator()());
             const unsigned tests = 500;
             const float tolerance = 1e-4f;
-            for (unsigned c=0; c<tests; ++c) {
+            for (unsigned c2=0; c2<tests; ++c2) {
                 auto rotationAxis = RandomUnitVector(rng);
                 auto rotationAngle = Deg2Rad((float)std::uniform_real_distribution<>(-180.f, 180.f)(rng));
                 auto scale = RandomScaleVector(rng);

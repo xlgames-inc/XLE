@@ -130,8 +130,7 @@ namespace UnitTests
         TraceTransformationMachine(stream, orig, nullptr, nullptr);
         stream << " O P T I M I Z E S   T O : " << std::endl;
         TraceTransformationMachine(stream, opt, nullptr, nullptr);
-        LogInfo << stream.str();
-        el::Loggers::flushAll();
+        Log(Verbose) << stream.str() << std::endl;
     }
 
     class Optimizer : public RenderCore::Assets::ITransformationMachineOptimizer

@@ -9,12 +9,12 @@
 #include "../RenderCore/Assets/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelImmutableData.h"
 #include "../RenderCore/Assets/Services.h"
-#include "../ColladaConversion/DLLInterface.h"
-#include "../ColladaConversion/NascentModel.h"
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AssetServices.h"
+#include "../Assets/CompilerLibrary.h"
 #include "../Assets/CompileAndAsyncManager.h"
+#include "../Assets/IFileSystem.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
@@ -132,8 +132,9 @@ namespace UnitTests
                 #else
                     ConsoleRig::AttachableLibrary lib("../Finals_Release32/ColladaConversion.dll");
                 #endif
-                lib.TryAttach();
-                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateCompileOperationFn*>(
+                std::string attachError;
+				lib.TryAttach(attachError);
+                auto createScaffold = lib.GetFunction<Assets::CreateCompileOperationFn*>(
                     "?CreateCompileOperation@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ColladaConversion@RenderCore@@@std@@QEBD@Z");
 
                 const char sampleAsset[] = "game/testmodels/ironman/ironman.dae";
@@ -154,8 +155,8 @@ namespace UnitTests
                 }
                 auto end = __rdtsc();
 
-                LogAlwaysWarning << "New path: " << (end-start) / iterationCount << " cycles per collada file.";
-                LogAlwaysWarning << "That's about " << (end-start) / (uint64(bytes)*iterationCount) << " cycles per byte in the input file.";
+                Log(Warning) << "New path: " << (end-start) / iterationCount << " cycles per collada file." << std::endl;
+                Log(Warning) << "That's about " << (end-start) / (uint64(bytes)*iterationCount) << " cycles per byte in the input file." << std::endl;
             }
         }
 
@@ -171,7 +172,7 @@ namespace UnitTests
 
                     // (automatically appends null terminator)
                 size_t size = 0;
-                auto chars = LoadFileAsMemoryBlock(sampleAsset, &size);
+                auto chars = ::Assets::TryLoadFileAsMemoryBlock(sampleAsset, &size);
 
                 const uint64 iterationCount = (uint64)std::max(100ull, 10000000000ull / uint64(size));
                 
@@ -183,10 +184,10 @@ namespace UnitTests
                 XlStrLenPerformanceTest(chars.get(), iterationCount);
                 auto endStrLen = __rdtsc();
 
-                LogAlwaysWarning << "Ran " << iterationCount << " iterations.";
-                LogAlwaysWarning << "XML parser: " << (middleSample-startXML) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample-startXML) << ") total";
-                LogAlwaysWarning << "std::strlen: " << (middleSample2-middleSample) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample2-middleSample) << ") total";
-                LogAlwaysWarning << "XlStringLen: " << (endStrLen-middleSample2) / (iterationCount*uint64(size)) << " cycles per byte. (" << (endStrLen-middleSample2) << ") total";
+                Log(Warning) << "Ran " << iterationCount << " iterations." << std::endl;
+                Log(Warning) << "XML parser: " << (middleSample-startXML) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample-startXML) << ") total" << std::endl;
+                Log(Warning) << "std::strlen: " << (middleSample2-middleSample) / (iterationCount*uint64(size)) << " cycles per byte. (" << (middleSample2-middleSample) << ") total" << std::endl;
+                Log(Warning) << "XlStringLen: " << (endStrLen-middleSample2) / (iterationCount*uint64(size)) << " cycles per byte. (" << (endStrLen-middleSample2) << ") total" << std::endl;
             }
         }
 
@@ -198,7 +199,7 @@ namespace UnitTests
             // Load all of the .dae files from a hierarchy of folders, look for errors
             // and exceptions from the scaffold parsing. This is intended to be used with
             // large test suites of .dae files (like the collada implementor's test kit)
-            auto inputFiles = FindFilesHierarchical("../../work/ColladaImplementors/StandardDataSets", "*.dae", FindFilesFilter::File);
+            auto inputFiles = RawFS::FindFilesHierarchical("../../work/ColladaImplementors/StandardDataSets", "*.dae", RawFS::FindFilesFilter::File);
 
             {
                 #if defined(_DEBUG)
@@ -206,8 +207,9 @@ namespace UnitTests
                 #else
                     ConsoleRig::AttachableLibrary lib("../Finals_Profile32/ColladaConversion.dll");
                 #endif
-                lib.TryAttach();
-                auto createScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateCompileOperationFn*>(
+                std::string attachError;
+				lib.TryAttach(attachError);
+                auto createScaffold = lib.GetFunction<Assets::CreateCompileOperationFn*>(
 					"?CreateCompileOperation@ColladaConversion@RenderCore@@YA?AV?$shared_ptr@VICompileOperation@ColladaConversion@RenderCore@@@std@@QEBD@Z");
                 
                 std::vector<std::string> filesWithErrors;
@@ -222,7 +224,7 @@ namespace UnitTests
                 }
 
                 for (const auto&f:filesWithErrors)
-                    LogAlwaysError << "Failure in file: " << f << std::endl;
+                    Log(Error) << "Failure in file: " << f << std::endl;
             }
             
         }
@@ -241,7 +243,8 @@ namespace UnitTests
                 #else
                     ConsoleRig::AttachableLibrary lib("../Finals_Profile32/ColladaConversion.dll");
                 #endif
-                lib.TryAttach();
+				std::string attachError;
+                lib.TryAttach(attachError);
 
                 #if !TARGET_64BIT
                     auto newCreateScaffold = lib.GetFunction<RenderCore::ColladaConversion::CreateColladaScaffoldFn*>(
