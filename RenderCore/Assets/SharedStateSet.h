@@ -16,7 +16,7 @@
 namespace RenderCore { namespace Techniques 
 { 
     class TechniqueContext; class ParsingContext; 
-    class IStateSetResolver;
+    class IRenderStateDelegate;
     class RenderStateSet;
     class PredefinedCBLayout;
 }}
@@ -120,11 +120,11 @@ namespace RenderCore { namespace Assets
         
         CaptureMarker CaptureState(
             IThreadContext& context,
-            std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+            std::shared_ptr<Techniques::IRenderStateDelegate> stateResolver,
             std::shared_ptr<Utility::ParameterBox> environment);
         CaptureMarker CaptureState(
             Metal::DeviceContext& context,
-            std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+            std::shared_ptr<Techniques::IRenderStateDelegate> stateResolver,
             std::shared_ptr<Utility::ParameterBox> environment);
 
         SharedStateSet(const ::Assets::DirectorySearchRules& shaderSearchDir);

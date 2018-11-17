@@ -129,7 +129,7 @@ namespace SceneEngine
             desc._singleSidedBias._depthBiasClamp, 
             desc._singleSidedBias._slopeScaledBias);
 
-        _stateResolver = Techniques::CreateStateSetResolver_DepthOnly(
+        _stateResolver = Techniques::CreateRenderStateDelegate_DepthOnly(
             desc._singleSidedBias, desc._doubleSidedBias, cullMode);
     }
 

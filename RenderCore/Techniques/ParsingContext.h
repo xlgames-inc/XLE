@@ -22,7 +22,7 @@ namespace RenderCore { class IResource; }
 namespace RenderCore { namespace Techniques 
 {
     class TechniqueContext;
-    class IStateSetResolver;
+    class IRenderStateDelegate;
     class AttachmentPool;
 	class FrameBufferPool;
     
@@ -53,9 +53,9 @@ namespace RenderCore { namespace Techniques
             Metal::DeviceContext& context, unsigned index, 
             const void* newData, size_t dataSize);
 		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);
-        std::shared_ptr<IStateSetResolver> SetStateSetResolver(
-            std::shared_ptr<IStateSetResolver> stateSetResolver);
-        const std::shared_ptr<IStateSetResolver>& GetStateSetResolver()            { return _stateSetResolver; }
+        std::shared_ptr<IRenderStateDelegate> SetStateSetResolver(
+            std::shared_ptr<IRenderStateDelegate> stateSetResolver);
+        const std::shared_ptr<IRenderStateDelegate>& GetStateSetResolver()            { return _stateSetResolver; }
         const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
@@ -93,7 +93,7 @@ namespace RenderCore { namespace Techniques
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
         AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
-        std::shared_ptr<IStateSetResolver>          _stateSetResolver;
+        std::shared_ptr<IRenderStateDelegate>          _stateSetResolver;
 
         AttachmentPool*     _namedResources;
 		FrameBufferPool*	_frameBufferPool;

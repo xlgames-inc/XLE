@@ -85,10 +85,10 @@ namespace RenderCore { namespace Techniques
             StringMeldAppend(bufferStart, bufferStart + dimof(_stringHelpers->_pendingAssets)) << "," << id;
     }
 
-    std::shared_ptr<IStateSetResolver> ParsingContext::SetStateSetResolver(
-        std::shared_ptr<IStateSetResolver> stateSetResolver)
+    std::shared_ptr<IRenderStateDelegate> ParsingContext::SetStateSetResolver(
+        std::shared_ptr<IRenderStateDelegate> stateSetResolver)
     {
-        std::shared_ptr<IStateSetResolver> oldResolver = std::move(_stateSetResolver);
+        std::shared_ptr<IRenderStateDelegate> oldResolver = std::move(_stateSetResolver);
         _stateSetResolver = std::move(stateSetResolver);
         return std::move(oldResolver);
     }

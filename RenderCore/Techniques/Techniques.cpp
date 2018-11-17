@@ -559,7 +559,7 @@ namespace RenderCore { namespace Techniques
 
     TechniqueContext::TechniqueContext()
     {
-        _defaultStateSetResolver = CreateStateSetResolver_Default();
+        _defaultStateSetResolver = CreateRenderStateDelegate_Default();
     }
 
 

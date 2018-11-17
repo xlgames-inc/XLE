@@ -91,14 +91,14 @@ namespace SceneEngine
     public:
         class Desc {};
 
-        using Resolver = std::shared_ptr<Techniques::IStateSetResolver>;
+        using Resolver = std::shared_ptr<Techniques::IRenderStateDelegate>;
         Resolver _forward, _deferred, _depthOnly;
 
         StateSetResolvers(const Desc&)
         {
-            _forward = Techniques::CreateStateSetResolver_Forward();
-            _deferred = Techniques::CreateStateSetResolver_Deferred();
-            _depthOnly = Techniques::CreateStateSetResolver_DepthOnly();
+            _forward = Techniques::CreateRenderStateDelegate_Forward();
+            _deferred = Techniques::CreateRenderStateDelegate_Deferred();
+            _depthOnly = Techniques::CreateRenderStateDelegate_DepthOnly();
         }
     };
 
@@ -109,7 +109,7 @@ namespace SceneEngine
     public:
         StateSetChangeMarker(
             Techniques::ParsingContext& parsingContext,
-            std::shared_ptr<Techniques::IStateSetResolver> newResolver)
+            std::shared_ptr<Techniques::IRenderStateDelegate> newResolver)
         {
             _parsingContext = &parsingContext;
             _oldResolver = parsingContext.SetStateSetResolver(std::move(newResolver));
@@ -122,7 +122,7 @@ namespace SceneEngine
         StateSetChangeMarker(const StateSetChangeMarker&);
         StateSetChangeMarker& operator=(const StateSetChangeMarker&);
     private:
-        std::shared_ptr<Techniques::IStateSetResolver> _oldResolver;
+        std::shared_ptr<Techniques::IRenderStateDelegate> _oldResolver;
         Techniques::ParsingContext* _parsingContext;
     };
 

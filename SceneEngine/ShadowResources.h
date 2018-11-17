@@ -14,7 +14,7 @@
 #include <vector>
 
 namespace BufferUploads { class ResourceLocator; }
-namespace RenderCore { namespace Techniques { class IStateSetResolver; }}
+namespace RenderCore { namespace Techniques { class IRenderStateDelegate; }}
 
 namespace SceneEngine
 {
@@ -75,7 +75,7 @@ namespace SceneEngine
         };
 
         RenderCore::Metal::RasterizerState _rasterizerState;
-        std::shared_ptr<RenderCore::Techniques::IStateSetResolver> _stateResolver;
+        std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _stateResolver;
 
         ShadowWriteResources(const Desc& desc);
         ~ShadowWriteResources();

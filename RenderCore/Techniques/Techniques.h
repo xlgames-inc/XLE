@@ -16,7 +16,7 @@ namespace RenderCore { class UniformsStreamInterface; }
 
 namespace RenderCore { namespace Techniques
 {
-    class IStateSetResolver;
+    class IRenderStateDelegate;
 
     class ShaderSelectors
     {
@@ -92,7 +92,7 @@ namespace RenderCore { namespace Techniques
         ParameterBox   _runtimeState;
 
         std::shared_ptr<ParameterBox> _stateSetEnvironment;
-        std::shared_ptr<IStateSetResolver> _defaultStateSetResolver;
+        std::shared_ptr<IRenderStateDelegate> _defaultStateSetResolver;
 
         TechniqueContext();
 		static const UniformsStreamInterface& GetGlobalUniformsStreamInterface();

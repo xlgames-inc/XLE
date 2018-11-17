@@ -46,7 +46,7 @@ namespace RenderCore { namespace Assets
 
         Metal::DeviceContext* _capturedContext;
         uint64 _currentGlobalRenderState;
-        std::shared_ptr<Techniques::IStateSetResolver> _currentStateResolver;
+        std::shared_ptr<Techniques::IRenderStateDelegate> _currentStateResolver;
         std::shared_ptr<ParameterBox> _environment;
 
         ::Assets::DirectorySearchRules _shaderSearchDirs;
@@ -260,7 +260,7 @@ namespace RenderCore { namespace Assets
 
     auto SharedStateSet::CaptureState(
         IThreadContext& context,
-        std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+        std::shared_ptr<Techniques::IRenderStateDelegate> stateResolver,
         std::shared_ptr<Utility::ParameterBox> environment) -> CaptureMarker
     {
         return CaptureState(*Metal::DeviceContext::Get(context), stateResolver, environment);
@@ -268,7 +268,7 @@ namespace RenderCore { namespace Assets
 
     auto SharedStateSet::CaptureState(
         Metal::DeviceContext& metalContext,
-        std::shared_ptr<Techniques::IStateSetResolver> stateResolver,
+        std::shared_ptr<Techniques::IRenderStateDelegate> stateResolver,
         std::shared_ptr<Utility::ParameterBox> environment) -> CaptureMarker
     {
         assert(!_pimpl->_capturedContext);

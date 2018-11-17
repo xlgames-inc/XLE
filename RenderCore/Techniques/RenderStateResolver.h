@@ -124,7 +124,7 @@ namespace RenderCore { namespace Techniques
 
     class CompiledRenderStateSet;
 
-    class IStateSetResolver
+    class IRenderStateDelegate
     {
     public:
         /// <summary>Given the current global state settings and a technique, build the low-level states for draw call<summary>
@@ -140,12 +140,12 @@ namespace RenderCore { namespace Techniques
             const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) = 0;
         virtual uint64 GetHash() = 0;
-        virtual ~IStateSetResolver();
+        virtual ~IRenderStateDelegate();
     };
 
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Default();
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Forward();
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_Deferred();
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Default();
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Forward();
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_Deferred();
 
     struct RSDepthBias
     {
@@ -154,7 +154,7 @@ namespace RenderCore { namespace Techniques
         RSDepthBias(int depthBias=0, float depthBiasClamp=0, float slopeScaledBias=0.f)
             : _depthBias(depthBias), _depthBiasClamp(depthBiasClamp), _slopeScaledBias(slopeScaledBias) {}
     };
-    std::shared_ptr<IStateSetResolver> CreateStateSetResolver_DepthOnly(
+    std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_DepthOnly(
         const RSDepthBias& singleSidedBias = RSDepthBias(),
         const RSDepthBias& doubleSidedBias = RSDepthBias(),
         CullMode cullMode = CullMode(3));

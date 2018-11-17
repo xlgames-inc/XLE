@@ -218,7 +218,7 @@ namespace SceneEngine
         RenderCore::Assets::ShaderVariationSet   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
-        std::shared_ptr<Techniques::IStateSetResolver> _stateRes;
+        std::shared_ptr<Techniques::IRenderStateDelegate> _stateRes;
 
             //// //// //// //// Metrics //// //// //// ////
         unsigned    _overflowCounter;
@@ -724,7 +724,7 @@ namespace SceneEngine
         }
     }
 
-    class CustomStateResolver : public Techniques::IStateSetResolver
+    class CustomStateResolver : public Techniques::IRenderStateDelegate
     {
     public:
         auto Resolve(
