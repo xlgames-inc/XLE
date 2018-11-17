@@ -23,6 +23,8 @@ namespace RenderCore { namespace Techniques
 	class IShaderResourceDelegate;
 	class IMaterialDelegate;
 	class ITechniqueDelegate;
+	class IRenderStateDelegate;
+	class Material;
 
 	class SequencerTechnique
 	{
@@ -30,14 +32,9 @@ namespace RenderCore { namespace Techniques
 		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _sequencerUniforms;
 		std::vector<std::shared_ptr<IShaderResourceDelegate>> _sequencerResources;
 
-		std::shared_ptr<IMaterialDelegate> _materialDelegate;
-		std::shared_ptr<ITechniqueDelegate> _techniqueDelegate;
-	};
-
-	class IMaterialContext
-	{
-	public:
-		virtual ~IMaterialContext();
+		std::shared_ptr<IMaterialDelegate>			_materialDelegate;
+		std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
+		std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
 	};
 
 	class DrawableGeo
@@ -73,9 +70,8 @@ namespace RenderCore { namespace Techniques
 	class Drawable
 	{
 	public:
-		std::string							_techniqueConfig;
-        std::shared_ptr<IMaterialContext>	_material;
-        std::shared_ptr<DrawableGeo>        _geo;
+        const Material*					_material;
+        std::shared_ptr<DrawableGeo>	_geo;
 
         typedef void (ExecuteDrawFn)(
             Metal::DeviceContext&,

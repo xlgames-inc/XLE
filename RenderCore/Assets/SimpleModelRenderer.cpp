@@ -57,8 +57,6 @@ namespace RenderCore { namespace Assets
 	{
 		VariantArray result;
 
-		std::string techniqueConfig = "xleres/techniques/illum.tech";
-
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();
         for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
@@ -67,16 +65,16 @@ namespace RenderCore { namespace Assets
             auto& rawGeo = immData._geos[geoCall._geoId];
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
+				auto materialGuids = geoCall._materialGuids[drawCall._subMaterialIndex];
 
                     // reject geometry that doesn't match the material
                     // binding that we want
-                if (materialFilter != 0
-                    && geoCall._materialGuids[drawCall._subMaterialIndex] != materialFilter)
+                if (materialFilter != 0 && materialGuids != materialFilter)
                     continue;
 
 				auto& drawable = *result.Allocate<SimpleModelDrawable>(1);
-				drawable._techniqueConfig = techniqueConfig;
 				drawable._geo = _geos[geoCall._geoId];
+				drawable._material = _materialScaffold->GetMaterial(materialGuids);
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -96,11 +94,11 @@ namespace RenderCore { namespace Assets
             auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
             for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
                 const auto& drawCall = rawGeo._drawCalls[d];
+				auto materialGuids = geoCall._materialGuids[drawCall._subMaterialIndex];
 
                     // reject geometry that doesn't match the material
                     // binding that we want
-                if (materialFilter != 0
-                    && geoCall._materialGuids[drawCall._subMaterialIndex] != materialFilter)
+                if (materialFilter != 0 && materialGuids != materialFilter)
                     continue;
 
                     // now we have at least once piece of geometry
@@ -109,8 +107,8 @@ namespace RenderCore { namespace Assets
                     // then we just execute the draw command
 
 				auto& drawable = *result.Allocate<SimpleModelDrawable>(1);
-				drawable._techniqueConfig = techniqueConfig;
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
+				drawable._material = _materialScaffold->GetMaterial(materialGuids);
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;

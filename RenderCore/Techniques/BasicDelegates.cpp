@@ -5,6 +5,8 @@
 #include "BasicDelegates.h"
 #include "ResolvedTechniqueShaders.h"
 #include "ParsingContext.h"
+#include "TechniqueMaterial.h"
+#include "../Assets/DeferredShaderResource.h"
 #include "../Metal/InputLayout.h"
 #include "../BufferView.h"
 #include "../../Assets/Assets.h"
@@ -15,19 +17,30 @@ namespace RenderCore { namespace Techniques
 
 	RenderCore::UniformsStreamInterface MaterialDelegate_Basic::GetInterface(const void* objectContext) const
 	{
+		Material& mat = *(Material*)objectContext;
 		RenderCore::UniformsStreamInterface result;
 		result.BindConstantBuffer(0, {ObjectCB::BasicMaterialConstants});
+		unsigned c=0;
+		for (const auto& i:mat._bindings)
+			result.BindShaderResource(c++, i.HashName());
 		return result;
 	}
 
     uint64_t MaterialDelegate_Basic::GetInterfaceHash(const void* objectContext) const
 	{
-		return 0;
+		Material& mat = *(Material*)objectContext;
+		return HashCombine(
+			mat._bindings.GetParameterNamesHash(),
+			Hash64(mat._techniqueConfig));
 	}
 
 	const ParameterBox* MaterialDelegate_Basic::GetShaderSelectors(const void* objectContext) const
 	{
+		Material& mat = *(Material*)objectContext;
 		static ParameterBox dummy;
+		dummy = ParameterBox();
+		for (const auto& i:mat._bindings)
+			dummy.SetParameter(MakeStringSection(std::basic_string<utf8>(u("RES_HAS_")) + i.Name().begin()), 1);
 		return &dummy;
 	}
 
@@ -38,17 +51,28 @@ namespace RenderCore { namespace Techniques
         unsigned streamIdx,
         const void* objectContext) const
 	{
-		ConstantBufferView cbvs[] = { _cbLayout.BuildCBDataAsPkt({}) };
+		Material& mat = *(Material*)objectContext;
+		const RenderCore::Metal::ShaderResourceView* srvs[32];
+		unsigned c=0;
+		for (const auto&i:mat._bindings) {
+			auto future = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(
+				MakeStringSection((char*)i.RawValue().begin(), (char*)i.RawValue().end()));
+			srvs[c++] = &future->Actualize()->GetShaderResource();
+		}
+		auto techniqueFuture = ::Assets::MakeAsset<Technique>(mat._techniqueConfig);
+		const auto& cbLayout = techniqueFuture->Actualize()->TechniqueCBLayout();
+		ConstantBufferView cbvs[] = { cbLayout.BuildCBDataAsPkt(mat._constants) };
 		boundUniforms.Apply(
 			devContext, streamIdx, 
 			UniformsStream {
-				MakeIteratorRange(cbvs)
+				MakeIteratorRange(cbvs),
+				IteratorRange<const void*const*>{(const void*const*)srvs, (const void*const*)&srvs[c]}
 			});
 	}
 
     MaterialDelegate_Basic::MaterialDelegate_Basic()
 	{
-		const char cbLayout[] = R"--(
+		/*const char cbLayout[] = R"--(
 			float3  MaterialDiffuse = {1.f,1.f,1.f}c;
 			float   Opacity = 1;
 			float3  MaterialSpecular = {1.f,1.f,1.f}c;
@@ -60,7 +84,7 @@ namespace RenderCore { namespace Techniques
 			float   MetalMin = 0.f;
 			float   MetalMax = 1.f;)--";
 
-		_cbLayout = PredefinedCBLayout(cbLayout, true);
+		_cbLayout = PredefinedCBLayout(cbLayout, true);*/
 	}
 
 	MaterialDelegate_Basic::~MaterialDelegate_Basic() 

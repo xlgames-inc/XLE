@@ -7,6 +7,9 @@
 #include "Techniques.h"
 #include "TechniqueUtils.h"
 #include "ParsingContext.h"
+#include "RenderStateResolver.h"
+#include "TechniqueMaterial.h"
+#include "CompiledRenderStateSet.h"
 #include "../UniformsStream.h"
 #include "../BufferView.h"
 #include "../Metal/DeviceContext.h"
@@ -32,6 +35,8 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox* shaderSelectors[Techniques::ShaderSelectors::Source::Max] = {nullptr, nullptr, nullptr, nullptr};
 		shaderSelectors[Techniques::ShaderSelectors::Source::Runtime] = seqShaderSelectors;
 		shaderSelectors[Techniques::ShaderSelectors::Source::GlobalEnvironment] = &parserContext.GetTechniqueContext()._globalEnvironmentState;
+
+		ParameterBox globalRenderStates;
 
 		UniformsStreamInterface sequencerInterface;
 		std::vector<ConstantBufferView> sequencerCbvs;
@@ -62,8 +67,9 @@ namespace RenderCore { namespace Techniques
 
 		// this part would normally be a loop -- 
 		{
+			auto& material = *drawable._material;
 			shaderSelectors[Techniques::ShaderSelectors::Source::Material] = 
-				sequencerTechnique._materialDelegate->GetShaderSelectors(drawable._material.get());
+				sequencerTechnique._materialDelegate->GetShaderSelectors(&material);
 
 			ParameterBox geoSelectors;
 			for (unsigned v=0; v<drawable._geo->_vertexStreamCount; ++v)
@@ -73,13 +79,19 @@ namespace RenderCore { namespace Techniques
 
 			auto* shaderProgram = sequencerTechnique._techniqueDelegate->GetShader(
 				parserContext,
-				MakeStringSection(drawable._techniqueConfig),
+				MakeStringSection(material._techniqueConfig),
 				shaderSelectors,
 				techniqueIndex);
 			if (!shaderProgram)
 				return;
 
 			shaderProgram->Apply(metalContext);
+
+			//////////////////////////////////////////////////////////////////////////////
+
+			auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._stateSet, globalRenderStates, techniqueIndex);
+			metalContext.Bind(resolvedStates._blendState);
+			metalContext.Bind(resolvedStates._rasterizerState);
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -107,7 +119,7 @@ namespace RenderCore { namespace Techniques
 				*shaderProgram,
 				Metal::PipelineLayoutConfig{},
 				sequencerInterface,
-				sequencerTechnique._materialDelegate->GetInterface(drawable._material.get()),
+				sequencerTechnique._materialDelegate->GetInterface(&material),
 				UniformsStreamInterface{},	// geo stream,
 				drawable._uniformsInterface ? *drawable._uniformsInterface : UniformsStreamInterface{}};
 
@@ -119,7 +131,7 @@ namespace RenderCore { namespace Techniques
 					UniformsStream::MakeResources(MakeIteratorRange(sequencerSamplerStates))});
 			sequencerTechnique._materialDelegate->ApplyUniforms(
 				parserContext, metalContext, 
-				boundUniforms, 1, drawable._material.get());
+				boundUniforms, 1, &material);
 
 			//////////////////////////////////////////////////////////////////////////////
 
@@ -128,7 +140,5 @@ namespace RenderCore { namespace Techniques
 				drawable, boundUniforms, *shaderProgram);
 		}
 	}
-
-	IMaterialContext::~IMaterialContext() {}
 
 }}
