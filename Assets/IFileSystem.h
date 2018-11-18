@@ -77,6 +77,15 @@ namespace Assets
 		virtual				~IFileSystem();
 	};
 
+	class ISearchableFileSystem
+	{
+	public:
+		virtual std::vector<IFileSystem::Marker> FindFiles(
+			StringSection<utf8> baseDirectory,
+			StringSection<utf8> regexMatchPattern) = 0;
+		virtual ~ISearchableFileSystem();
+	};
+
 	/// <summary>Description of a file object within a filesystem</summary>
 	/// Typically files have a few basic properties that can be queried.
 	/// But note the "files" in this sense can mean more than just files on disk.

@@ -345,4 +345,5 @@ namespace Assets
 
 	IFileInterface::~IFileInterface() {}
 	IFileSystem::~IFileSystem() {}
+	ISearchableFileSystem::~ISearchableFileSystem() {}
 }

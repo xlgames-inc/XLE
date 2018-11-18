@@ -8,6 +8,7 @@
 #include "AssetUtils.h"     // (for DirectorySearchRules)
 #include "ConfigFileContainer.h"
 #include "ChunkFileContainer.h"
+#include "IFileSystem.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include <assert.h>
@@ -56,6 +57,7 @@ namespace Assets
 
 			static const bool Constructor_Formatter = std::is_constructible<AssetType, InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&>::value;
 			static const bool Constructor_ChunkFileContainer = std::is_constructible<AssetType, const ChunkFileContainer&>::value;
+			static const bool Constructor_FileSystem = std::is_constructible<AssetType, IFileInterface&, const DirectorySearchRules&, const DepValPtr&>::value;
 
 			static const bool HasCompileProcessType = HasCompileProcessTypeHelper::value;
 			static const bool HasChunkRequests = decltype(HasChunkRequestsHelper<AssetType>(0))::value;
@@ -73,6 +75,10 @@ namespace Assets
 
 	#define ENABLE_IF(X) typename std::enable_if<X>::type* = nullptr
 
+	//
+	//		Auto construct to:
+	//			(InputStreamFormatter<utf8>&, const DirectorySearchRules&, const DepValPtr&)
+	//
 	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_Formatter)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
@@ -126,6 +132,10 @@ namespace Assets
 		} CATCH_END
 	}
 	
+	//
+	//		Auto construct to:
+	//			(const ChunkFileContainer&)
+	//
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_ChunkFileContainer)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
@@ -151,6 +161,10 @@ namespace Assets
 		} CATCH_END
 	}
 
+	//
+	//		Auto construct to:
+	//			(IteratorRange<AssetChunkResult>, const DepValPtr&)
+	//
 	template<typename AssetType, typename... Params, ENABLE_IF(Internal::AssetTraits<AssetType>::HasChunkRequests)>
 		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
 	{
@@ -178,6 +192,31 @@ namespace Assets
 		} CATCH_END
 	}
 
+	//
+	//		Auto construct to:
+	//			(IFileInterface&, const DirectorySearchRules&, const DepValPtr&)
+	//
+	template<typename AssetType, ENABLE_IF(Internal::AssetTraits<AssetType>::Constructor_FileSystem)>
+		std::unique_ptr<AssetType> AutoConstructAsset(StringSection<ResChar> initializer)
+	{
+		auto depVal = std::make_shared<DependencyValidation>();
+		RegisterFileDependency(depVal, initializer);
+		TRY { 
+			auto file = MainFileSystem::OpenFileInterface(initializer, "rb");
+			return std::make_unique<AssetType>(
+				*file,
+				DefaultDirectorySearchRules(initializer),
+				depVal);
+		} CATCH (const Exceptions::ConstructionError& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH (const std::exception& e) {
+			Throw(Exceptions::ConstructionError(e, depVal));
+		} CATCH_END
+	}
+
+	//
+	//		Auto construct entry point
+	//
 	template<typename AssetType, typename... Params, typename std::enable_if<std::is_constructible<AssetType, Params...>::value>::type* = nullptr>
 		static std::unique_ptr<AssetType> AutoConstructAsset(Params... initialisers)
 	{
