@@ -31,5 +31,21 @@ namespace Utility
             return stream;
         }
     };
+
+    class StreamIndent
+    {
+    public:
+        explicit StreamIndent(unsigned spaceCount) : _spaceCount(spaceCount) {}
+        unsigned _spaceCount;
+
+        friend inline std::ostream& operator<<(std::ostream& stream, const StreamIndent& indent)
+        {
+            char buffer[32];
+            unsigned cnt = std::min((unsigned)dimof(buffer), indent._spaceCount);
+            for (unsigned c=0; c<cnt; ++c) buffer[c] = ' ';
+            stream.write(buffer, cnt);
+            return stream;
+        }
+    };
 }
 using namespace Utility;

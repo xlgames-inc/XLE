@@ -80,8 +80,10 @@ namespace RenderCore { namespace Metal_DX11
 				// because CreateInputLayout requires the full semantic name
 				const auto& ele = layouts[slot]._elements[e];
 				auto i = LowerBound(inputParameters, ele._semanticHash);
-				if (i == inputParameters.end() || i->first != ele._semanticHash)
+				if (i == inputParameters.end() || i->first != ele._semanticHash) {
+					accumulatingOffset += BitsPerPixel(ele._nativeFormat) / 8;
 					continue;
+				}
 
 				nativeLayout[c].SemanticName = i->second.first;
 				nativeLayout[c].SemanticIndex = i->second.second;
