@@ -25,6 +25,9 @@ namespace RenderCore { namespace Metal_DX11
 
 		void    Update(DeviceContext& context, const void* data, size_t byteCount);
 
+		IteratorRange<const void*>	Map(DeviceContext& context);
+		void						Unmap(DeviceContext& context);
+
         Buffer(const Buffer& cloneFrom) = default;
         Buffer(Buffer&& moveFrom) never_throws = default;
         Buffer& operator=(const Buffer& cloneFrom) = default;

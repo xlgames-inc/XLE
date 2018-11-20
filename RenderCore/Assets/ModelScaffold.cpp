@@ -44,8 +44,6 @@ namespace RenderCore { namespace Assets
         DestroyArray(_boundSkinnedControllers, &_boundSkinnedControllers[_boundSkinnedControllerCount]);
     }
 
-        ////////////////////////////////////////////////////////////
-
     uint64 GeoInputAssembly::BuildHash() const
     {
             //  Build a hash for this object.
@@ -57,36 +55,6 @@ namespace RenderCore { namespace Assets
         elementsHash ^= uint64(_vertexStride);
         return elementsHash;
     }
-
-    GeoInputAssembly::GeoInputAssembly() { _vertexStride = 0; }
-    GeoInputAssembly::GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws
-    :   _elements(std::move(moveFrom._elements))
-    ,   _vertexStride(moveFrom._vertexStride)
-    {}
-    GeoInputAssembly& GeoInputAssembly::operator=(GeoInputAssembly&& moveFrom) never_throws
-    {
-        _elements = std::move(moveFrom._elements);
-        _vertexStride = moveFrom._vertexStride;
-        return *this;
-    }
-    GeoInputAssembly::~GeoInputAssembly() {}
-
-    RawGeometry::RawGeometry() {}
-    RawGeometry::RawGeometry(RawGeometry&& geo) never_throws
-    : _vb(std::move(geo._vb))
-    , _ib(std::move(geo._ib))
-    , _drawCalls(std::move(geo._drawCalls))
-    {}
-
-    RawGeometry& RawGeometry::operator=(RawGeometry&& geo) never_throws
-    {
-        _vb = std::move(geo._vb);
-        _ib = std::move(geo._ib);
-        _drawCalls = std::move(geo._drawCalls);
-        return *this;
-    }
-
-    RawGeometry::~RawGeometry() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

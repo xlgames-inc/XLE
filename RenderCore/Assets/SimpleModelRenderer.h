@@ -6,33 +6,40 @@
 
 #include "ModelImmutableData.h"		// for SkeletonBinding
 #include "../../Assets/AssetsCore.h"
-#include "../../Math/Matrix.h"
+#include "../../Utility/StringUtils.h"
 #include <vector>
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; }}
-namespace RenderCore { class UniformsStreamInterface; }
+namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
 
 namespace RenderCore { namespace Assets 
 {
 	class ModelScaffold;
 	class MaterialScaffold;
+	class DeformOperationInstantiation;
+	class IDeformOperation;
 
 	class SimpleModelRenderer
 	{
 	public:
 		VariantArray BuildDrawables(uint64_t materialFilter = 0);
+		void GenerateDeformBuffer(IThreadContext& context);
+		unsigned DeformOperationCount() const { return (unsigned)_deformOps.size(); }
+		IDeformOperation& DeformOperation(unsigned idx) { return *_deformOps[idx]._deformOp; } 
+		const ::Assets::DepValPtr& GetDependencyValidation();
 
 		SimpleModelRenderer(
 			const std::shared_ptr<ModelScaffold>& modelScaffold,
-			const std::shared_ptr<MaterialScaffold>& materialScaffold);
-
-		const ::Assets::DepValPtr& GetDependencyValidation();
+			const std::shared_ptr<MaterialScaffold>& materialScaffold,
+			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {});
+		
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
 			StringSection<::Assets::ResChar> modelScaffoldName,
-			StringSection<::Assets::ResChar> materialScaffoldName);
+			StringSection<::Assets::ResChar> materialScaffoldName,
+			StringSection<::Assets::ResChar> deformOperations = {});
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
@@ -51,5 +58,16 @@ namespace RenderCore { namespace Assets
 		SkeletonBinding _skeletonBinding;
 
 		std::shared_ptr<UniformsStreamInterface> _usi;
+
+		struct DeformOp
+		{
+			std::shared_ptr<IDeformOperation> _deformOp;
+			unsigned _dynVBBegin, _dynVBEnd;
+			unsigned _stride;
+			std::vector<MiniInputElementDesc> _elements;
+		};
+		std::vector<DeformOp> _deformOps;
+
+		std::shared_ptr<IResource> _dynVB;
 	};
 }}

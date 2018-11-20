@@ -78,6 +78,7 @@
     <ClInclude Include="..\Types.h" />
     <ClInclude Include="..\Types_Forward.h" />
     <ClInclude Include="..\UniformsStream.h" />
+    <ClInclude Include="..\VertexUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Utility\Project\Utility.vcxproj">

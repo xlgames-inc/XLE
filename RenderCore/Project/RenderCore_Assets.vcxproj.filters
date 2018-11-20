@@ -94,6 +94,9 @@
     <ClCompile Include="..\Assets\SimpleModelRenderer.cpp">
       <Filter>Assets\Model</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\SimpleModelDeform.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\SharedStateSet.h" />
@@ -182,6 +185,9 @@
     </ClInclude>
     <ClInclude Include="..\Assets\ShaderVariationSet.h" />
     <ClInclude Include="..\Assets\SimpleModelRenderer.h">
+      <Filter>Assets\Model</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\SimpleModelDeform.h">
       <Filter>Assets\Model</Filter>
     </ClInclude>
   </ItemGroup>

@@ -85,6 +85,9 @@
     <ClInclude Include="..\UniformsStream.h">
       <Filter>Util</Filter>
     </ClInclude>
+    <ClInclude Include="..\VertexUtil.h">
+      <Filter>Util</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Util">

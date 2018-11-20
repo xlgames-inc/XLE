@@ -49,6 +49,22 @@ namespace RenderCore { namespace Metal_DX11
 		}
     }
 
+	IteratorRange<const void*>	Buffer::Map(DeviceContext& context)
+	{
+		D3D11_MAPPED_SUBRESOURCE result;
+        ID3D::DeviceContext* devContext = context.GetUnderlying();
+        HRESULT hresult = devContext->Map(_underlying.get(), 0, D3D11_MAP_WRITE_DISCARD, 0, &result);
+		if (!SUCCEEDED(hresult) || !result.pData)
+			return {};
+		return MakeIteratorRange(result.pData, PtrAdd(result.pData, GetDesc()._linearBufferDesc._sizeInBytes));
+	}
+
+	void						Buffer::Unmap(DeviceContext& context)
+	{
+		ID3D::DeviceContext* devContext = context.GetUnderlying();
+		devContext->Unmap(_underlying.get(), 0);
+	}
+
 	void* Buffer::QueryInterface(size_t guid)
 	{
 		if (guid == typeid(Buffer).hash_code())

@@ -7,6 +7,7 @@
 #include "MeshDatabase.h"
 #include "../Format.h"
 #include "../Types.h"
+#include "../VertexUtil.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
 #include "../../Math/XLEMath.h"
@@ -14,35 +15,18 @@
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/BitUtils.h"
-#include "../../Foreign/half-1.9.2/include/half.hpp"
 #include <iterator>
 #include <queue>
 #include <cfloat>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    enum class ComponentType { Float32, Float16, UNorm8, UNorm16, SNorm8, SNorm16 };
-    static std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt);
-    static unsigned short AsFloat16(float input);
-    static float AsFloat32(unsigned short f16input);
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static inline void GetVertDataF32(
+	inline void GetVertDataF32(
         float* dst, 
         const float* src, unsigned srcComponentCount,
         ProcessingFlags::BitField processingFlags)
     {
-            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-        dst[0] = (srcComponentCount > 0) ? src[0] : 0.f;
-        dst[1] = (srcComponentCount > 1) ? src[1] : 0.f;
-        dst[2] = (srcComponentCount > 2) ? src[2] : 0.f;
-        dst[3] = (srcComponentCount > 3) ? src[3] : 1.f;
-        if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale = 1.0f;
-            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-        }
+		RenderCore::GetVertDataF32(dst, src, srcComponentCount);
 
         if (processingFlags & ProcessingFlags::TexCoordFlip) {
             dst[1] = 1.0f - dst[1];
@@ -55,21 +39,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
     }
 
-    static inline void GetVertDataF16(
+	inline void GetVertDataF16(
         float* dst, 
         const uint16* src, unsigned srcComponentCount,
         ProcessingFlags::BitField processingFlags)
     {
-            // In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-        dst[0] = (srcComponentCount > 0) ? AsFloat32(src[0]) : 0.f;
-        dst[1] = (srcComponentCount > 1) ? AsFloat32(src[1]) : 0.f;
-        dst[2] = (srcComponentCount > 2) ? AsFloat32(src[2]) : 0.f;
-        dst[3] = (srcComponentCount > 3) ? AsFloat32(src[3]) : 1.f;
-        if (processingFlags & ProcessingFlags::Renormalize) {
-            float scale = 1.0f;
-            if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
-                dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
-        }
+		RenderCore::GetVertDataF16(dst, src, srcComponentCount);
+		if (processingFlags & ProcessingFlags::Renormalize) {
+			float scale = 1.0f;
+			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
+				dst[0] *= scale; dst[1] *= scale; dst[2] *= scale;
+		}
 
         if (processingFlags & ProcessingFlags::TexCoordFlip) {
             dst[1] = 1.0f - dst[1];
@@ -82,19 +62,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
     }
 
-	static inline float UNorm16AsFloat32(uint16 value)	{ return value / float(0xffff); }
-	static inline float SNorm16AsFloat32(int16 value)	{ return value / float(0x7fff); }
-
-	static inline void GetVertDataUNorm16(
+	inline void GetVertDataUNorm16(
 		float* dst,
 		const uint16* src, unsigned srcComponentCount,
 		ProcessingFlags::BitField processingFlags)
 	{
-		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-		dst[0] = (srcComponentCount > 0) ? UNorm16AsFloat32(src[0]) : 0.f;
-		dst[1] = (srcComponentCount > 1) ? UNorm16AsFloat32(src[1]) : 0.f;
-		dst[2] = (srcComponentCount > 2) ? UNorm16AsFloat32(src[2]) : 0.f;
-		dst[3] = (srcComponentCount > 3) ? UNorm16AsFloat32(src[3]) : 1.f;
+		RenderCore::GetVertDataUNorm16(dst, src, srcComponentCount);
 		if (processingFlags & ProcessingFlags::Renormalize) {
 			float scale = 1.0f;
 			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
@@ -114,16 +87,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
 	}
 
-	static inline void GetVertDataSNorm16(
+	inline void GetVertDataSNorm16(
 		float* dst,
 		const int16* src, unsigned srcComponentCount,
 		ProcessingFlags::BitField processingFlags)
 	{
-		// In Collada, the default for values not set is 0.f (or 1. for components 3 or greater)
-		dst[0] = (srcComponentCount > 0) ? SNorm16AsFloat32(src[0]) : 0.f;
-		dst[1] = (srcComponentCount > 1) ? SNorm16AsFloat32(src[1]) : 0.f;
-		dst[2] = (srcComponentCount > 2) ? SNorm16AsFloat32(src[2]) : 0.f;
-		dst[3] = (srcComponentCount > 3) ? SNorm16AsFloat32(src[3]) : 1.f;
+		RenderCore::GetVertDataSNorm16(dst, src, srcComponentCount);
 		if (processingFlags & ProcessingFlags::Renormalize) {
 			float scale = 1.0f;
 			if (XlRSqrt_Checked(&scale, dst[0] * dst[0] + dst[1] * dst[1] + dst[2] * dst[2]))
@@ -143,22 +112,22 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
 	}
 
-    static inline void GetVertData(
+	inline void GetVertData(
         float* dst, 
-        const void* src, std::pair<ComponentType, unsigned> fmt,
+        const void* src, std::pair<VertexUtilComponentType, unsigned> fmt,
         ProcessingFlags::BitField processingFlags)
     {
         switch (fmt.first) {
-        case ComponentType::Float32:
+        case VertexUtilComponentType::Float32:
             GetVertDataF32(dst, (const float*)src, fmt.second, processingFlags);
             break;
-        case ComponentType::Float16:
+        case VertexUtilComponentType::Float16:
             GetVertDataF16(dst, (const uint16*)src, fmt.second, processingFlags);
             break;
-		case ComponentType::UNorm16:
+		case VertexUtilComponentType::UNorm16:
 			GetVertDataUNorm16(dst, (const uint16*)src, fmt.second, processingFlags);
 			break;
-		case ComponentType::SNorm16:
+		case VertexUtilComponentType::SNorm16:
 			GetVertDataSNorm16(dst, (const int16*)src, fmt.second, processingFlags);
 			break;
         default:
@@ -166,6 +135,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             break;
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<> Float3 GetVertex(const IVertexSourceData& sourceData, size_t index)
     {
@@ -221,9 +192,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		(void)srcFormatSize;
 
             //      This could be be made more efficient with a smarter loop..
-        if (srcFormat.first == ComponentType::Float32) {
+        if (srcFormat.first == VertexUtilComponentType::Float32) {
 
-            if (dstFormat.first == ComponentType::Float32) {  ////////////////////////////////////////////////
+            if (dstFormat.first == VertexUtilComponentType::Float32) {  ////////////////////////////////////////////////
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
@@ -239,7 +210,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     }
                 }
 
-            } else if (dstFormat.first == ComponentType::Float16) {  ////////////////////////////////////////////////
+            } else if (dstFormat.first == VertexUtilComponentType::Float16) {  ////////////////////////////////////////////////
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
@@ -255,7 +226,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                     }
                 }
 
-            } else if (dstFormat.first == ComponentType::UNorm8) {  ////////////////////////////////////////////////
+            } else if (dstFormat.first == VertexUtilComponentType::UNorm8) {  ////////////////////////////////////////////////
 
                 for (unsigned v = 0; v<count; ++v, dst = PtrAdd(dst, dstStride)) {
                     auto srcIndex = (v < mapping.size()) ? mapping[v] : v;
@@ -517,20 +488,20 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             else                            return Format::R8G8B8A8_UNORM;
         }
 
-        if (brkdn.first == ComponentType::UNorm8) {
+        if (brkdn.first == VertexUtilComponentType::UNorm8) {
                 // consider also Metal::FindFormat
             if (brkdn.second == 1)				return Format::R8_UNORM;
             else if (brkdn.second == 2)			return Format::R8G8_UNORM;
             else								return Format::R8G8B8A8_UNORM;
-		} else if (brkdn.first == ComponentType::UNorm16) {
+		} else if (brkdn.first == VertexUtilComponentType::UNorm16) {
 			if (brkdn.second == 1)				return Format::R16_UNORM;
 			else if (brkdn.second == 2)			return Format::R16G16_UNORM;
 			else								return Format::R16G16B16A16_UNORM;
-		} else if (brkdn.first == ComponentType::SNorm8) {
+		} else if (brkdn.first == VertexUtilComponentType::SNorm8) {
 			if (brkdn.second == 1)				return Format::R8_SNORM;
 			else if (brkdn.second == 2)			return Format::R8G8_SNORM;
 			else								return Format::R8G8B8A8_SNORM;
-		} else if (brkdn.first == ComponentType::SNorm16) {
+		} else if (brkdn.first == VertexUtilComponentType::SNorm16) {
 			if (brkdn.second == 1)				return Format::R16_SNORM;
 			else if (brkdn.second == 2)			return Format::R16G16_SNORM;
 			else								return Format::R16G16B16A16_SNORM;
@@ -1017,87 +988,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
         return outputIterator/3;
     }
-
-    std::pair<ComponentType, unsigned> BreakdownFormat(Format fmt)
-    {
-        if (fmt == Format::Unknown) return std::make_pair(ComponentType::Float32, 0);
-
-        auto componentType = ComponentType::Float32;
-        unsigned componentCount = GetComponentCount(GetComponents(fmt));
-
-        auto type = GetComponentType(fmt);
-        unsigned prec = GetComponentPrecision(fmt);
-
-        switch (type) {
-        case FormatComponentType::Float:
-            assert(prec == 16 || prec == 32);
-            componentType = (prec > 16) ? ComponentType::Float32 : ComponentType::Float16; 
-            break;
-
-        case FormatComponentType::UnsignedFloat16:
-        case FormatComponentType::SignedFloat16:
-            componentType = ComponentType::Float16;
-            break;
-
-		case FormatComponentType::SNorm:
-			componentType = (prec == 16) ? ComponentType::SNorm16 : ComponentType::SNorm8;
-			break;
-
-		case FormatComponentType::UNorm: 
-        case FormatComponentType::UNorm_SRGB:
-            assert(prec==8 || prec==16);
-            componentType = (prec == 16) ? ComponentType::UNorm16 : ComponentType::UNorm8;
-            break;
-        default:
-            assert(0);
-        }
-
-        return std::make_pair(componentType, componentCount);
-    }
-
-    unsigned short AsFloat16(float input)
-    {
-        //
-        //      Using "half" library
-        //          http://sourceforge.net/projects/half/
-        //
-        //      It doesn't have vectorized conversions,
-        //      and it looks like it doesn't support denormalized
-        //      or overflowed numbers. But it has lots of rounding
-        //      modes!
-        //
-
-        auto result = half_float::detail::float2half<std::round_to_nearest>(input);
-        // assert(!isinf(half_float::detail::half2float(result)));
-        return result;
-    }
-
-    float AsFloat32(unsigned short input)
-    {
-        return half_float::detail::half2float(input);
-    }
-
-    // static unsigned short AsFloat16_Fast(float input)
-    // {
-    //         //
-    //         //      See stack overflow article:
-    //         //          http://stackoverflow.com/questions/3026441/float32-to-float16
-    //         //
-    //         //      He suggests either using a table lookup or vectorising
-    //         //      this code for further optimisation.
-    //         //
-    //     unsigned int fltInt32 = FloatBits(input);
-    // 
-    //     unsigned short fltInt16 = (fltInt32 >> 31) << 5;
-    // 
-    //     unsigned short tmp = (fltInt32 >> 23) & 0xff;
-    //     tmp = (tmp - 0x70) & ((unsigned int)((int)(0x70 - tmp) >> 4) >> 27);
-    // 
-    //     fltInt16 = (fltInt16 | tmp) << 10;
-    //     fltInt16 |= (fltInt32 >> 13) & 0x3ff;
-    // 
-    //     return fltInt16;
-    // }
 
 }}}
 

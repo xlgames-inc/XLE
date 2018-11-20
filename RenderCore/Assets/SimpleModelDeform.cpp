@@ -1,0 +1,51 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
+
+#include "SimpleModelDeform.h"
+#include "../../Utility/MemoryUtils.h"
+
+namespace RenderCore { namespace Assets
+{
+	auto DeformOperationFactory::CreateDeformOperations(
+		StringSection<> initializer,
+		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold) -> InstantiationSet
+	{
+		auto* colon = XlFindChar(initializer, ':');
+		if (!colon) return {};
+
+		auto hash = Hash64(initializer.begin(), colon);
+		auto i = LowerBound(_instantiationFunctions, hash);
+		if (i==_instantiationFunctions.end() || i->first != hash)
+			return {};
+
+		return (i->second)(MakeStringSection(colon+1, initializer.end()), modelScaffold);
+	}
+
+	void DeformOperationFactory::RegisterDeformOperation(StringSection<> name, InitiationFunction&& fn)
+	{
+		auto hash = Hash64(name.begin(), name.end());
+		auto i = LowerBound(_instantiationFunctions, hash);
+		if (i!=_instantiationFunctions.end() && i->first == hash) {
+			i->second = std::move(fn);
+		} else {
+			_instantiationFunctions.insert(i, std::make_pair(hash, std::move(fn)));
+		}
+	}
+
+	DeformOperationFactory* DeformOperationFactory::s_instance = nullptr;
+		
+	DeformOperationFactory::DeformOperationFactory()
+	{
+		assert(!s_instance);
+		s_instance = this;
+	}
+
+	DeformOperationFactory::~DeformOperationFactory()
+	{
+		assert(s_instance == this);
+		s_instance = nullptr;
+	}
+
+	IDeformOperation::~IDeformOperation() {}
+}}

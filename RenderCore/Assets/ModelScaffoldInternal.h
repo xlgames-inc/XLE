@@ -103,19 +103,9 @@ namespace RenderCore { namespace Assets
     {
     public:
         SerializableVector<VertexElement>   _elements;
-        unsigned                            _vertexStride;
+        unsigned                            _vertexStride = 0;
 
         uint64 BuildHash() const;
-
-        GeoInputAssembly();
-        GeoInputAssembly(GeoInputAssembly&& moveFrom) never_throws;
-        GeoInputAssembly& operator=(GeoInputAssembly&& moveFrom) never_throws;
-        ~GeoInputAssembly();
-
-		#if defined(COMPILER_DEFAULT_IMPLICIT_OPERATORS)
-			GeoInputAssembly(const GeoInputAssembly&) = default;
-			GeoInputAssembly& operator=(const GeoInputAssembly&) = default;
-		#endif
     };
 
     class VertexData
@@ -140,11 +130,6 @@ namespace RenderCore { namespace Assets
         VertexData  _vb;
         IndexData   _ib;
         SerializableVector<DrawCallDesc>   _drawCalls;
-
-        RawGeometry();
-        RawGeometry(RawGeometry&&) never_throws;
-        RawGeometry& operator=(RawGeometry&&) never_throws;
-        ~RawGeometry();
     };
 
     class BoundSkinnedGeometry : public RawGeometry
