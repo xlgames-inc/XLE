@@ -10,6 +10,8 @@
 #include "../../Utility/ParameterBox.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
+#include <vector>
+#include <string>
 
 namespace Assets 
 { 
@@ -65,6 +67,23 @@ namespace RenderCore { namespace Assets
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;
 		::Assets::DirectorySearchRules _searchRules;
+    };
+
+	class RawMatConfigurations
+    {
+    public:
+        std::vector<std::basic_string<utf8>> _configurations;
+
+		RawMatConfigurations(
+			const ::Assets::Blob& locator,
+			const ::Assets::DepValPtr& depVal,
+			StringSection<::Assets::ResChar> requestParameters);
+
+        static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
+
+        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
+    protected:
+        std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
     };
 
     void ResolveMaterialFilename(

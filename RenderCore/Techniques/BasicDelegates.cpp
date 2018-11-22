@@ -41,6 +41,8 @@ namespace RenderCore { namespace Techniques
 		dummy = ParameterBox();
 		for (const auto& i:mat._bindings)
 			dummy.SetParameter(MakeStringSection(std::basic_string<utf8>(u("RES_HAS_")) + i.Name().begin()), 1);
+		for (const auto& i:mat._matParams)
+			dummy.SetParameter(i.Name(), i.RawValue(), i.Type());
 		return &dummy;
 	}
 

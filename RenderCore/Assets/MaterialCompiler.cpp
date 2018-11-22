@@ -25,47 +25,6 @@ namespace RenderCore { namespace Assets
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class RawMatConfigurations
-    {
-    public:
-        std::vector<std::basic_string<utf8>> _configurations;
-
-		RawMatConfigurations(
-			const ::Assets::Blob& locator,
-			const ::Assets::DepValPtr& depVal,
-			StringSection<::Assets::ResChar> requestParameters);
-
-        static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
-
-        auto GetDependencyValidation() const -> const std::shared_ptr<::Assets::DependencyValidation>& { return _validationCallback; }
-    protected:
-        std::shared_ptr<::Assets::DependencyValidation> _validationCallback;
-    };
-
-    RawMatConfigurations::RawMatConfigurations(
-		const ::Assets::Blob& blob,
-		const ::Assets::DepValPtr& depVal,
-		StringSection<::Assets::ResChar>)
-    {
-            //  Get associated "raw" material information. This is should contain the material information attached
-            //  to the geometry export (eg, .dae file).
-
-        if (!blob || blob->size() == 0)
-            Throw(::Exceptions::BasicLabel("Missing or empty file"));
-
-        InputStreamFormatter<utf8> formatter(
-            MemoryMappedInputStream(MakeIteratorRange(*blob)));
-        Document<decltype(formatter)> doc(formatter);
-            
-        for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
-            auto name = config.Name();
-            if (name.IsEmpty()) continue;
-            _configurations.push_back(name.AsString());
-        }
-
-        _validationCallback = depVal;
-    }
-
 	static void AddDep(
         std::vector<::Assets::DependentFileState>& deps,
         StringSection<::Assets::ResChar> newDep)
