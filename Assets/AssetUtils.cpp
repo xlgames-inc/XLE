@@ -678,7 +678,7 @@ namespace Assets
 
 	namespace Internal
 	{
-		std::shared_ptr<IArtifactPrepareMarker> BeginCompileOperation(
+		std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(
 			uint64_t typeCode, const StringSection<ResChar> initializers[],
 			unsigned initializerCount)
 		{

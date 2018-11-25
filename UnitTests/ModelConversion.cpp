@@ -94,7 +94,7 @@ namespace UnitTests
 				{
 					using ::Assets::ResChar;
 					ResChar intermediateFile[MaxPath];
-					asyncMan.GetIntermediateStore().MakeIntermediateName(
+					asyncMan.GetIntermediateStore()->MakeIntermediateName(
 						intermediateFile,
 						(StringMeld<MaxPath, ResChar>() << sampleAsset << "-skin").AsStringSection());
 					XlDeleteFile((utf8*)intermediateFile);

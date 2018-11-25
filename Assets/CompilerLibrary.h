@@ -6,6 +6,8 @@
 
 #include "AssetsCore.h"
 #include "../Core/Types.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 #include <memory>
 
@@ -23,8 +25,9 @@ namespace Assets
 		class FileKind
 		{
 		public:
-			const ::Assets::ResChar*	_extension;
-			const char*					_name;
+			IteratorRange<const uint64_t*>	_assetTypes;
+			const ::Assets::ResChar*		_extension;
+			const char*						_name;
 		};
 		virtual unsigned			FileKindCount() const = 0;
 		virtual FileKind			GetFileKind(unsigned index) const = 0;

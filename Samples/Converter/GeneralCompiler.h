@@ -14,16 +14,16 @@
 #include <memory>
 #include <functional>
 #include <regex>
+#include <vector>
 
-namespace Assets { class ICompileOperation; }
-
-namespace Converter 
+namespace Assets
 {
+	class ICompileOperation;
 
     class GeneralCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<GeneralCompiler>
     {
     public:
-        std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
+        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
             uint64 typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
@@ -32,21 +32,16 @@ namespace Converter
 
 		struct ExtensionAndDelegate
 		{
+			std::vector<uint64_t> _assetTypes;
 			std::regex _extensionFilter;
 			std::string _name;
 			ConsoleRig::LibVersionDesc _srcVersion;
 			CompileOperationDelegate _delegate;
 		};
 		
-		enum class ArtifactType
-		{
-			ArchivedFile,
-			Blob
-		};
-
 		GeneralCompiler(
 			IteratorRange<const ExtensionAndDelegate*> delegates,
-			ArtifactType artifactType);
+			const std::shared_ptr<IntermediateAssets::Store>& store);
         ~GeneralCompiler();
     protected:
         class Pimpl;

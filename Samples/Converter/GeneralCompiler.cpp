@@ -26,7 +26,7 @@
 #include "../../Utility/SystemUtils.h"
 #include <regex>
 
-namespace Converter 
+namespace Assets 
 {
     class GeneralCompiler::Pimpl
     {
@@ -36,7 +36,7 @@ namespace Converter
         Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
         std::unique_ptr<::Assets::CompilationThread>	_thread;
 
-		ArtifactType						_artifactType;
+		std::shared_ptr<IntermediateAssets::Store> _store;
 
 		::Assets::CompilationThread& GetThread()
 		{
@@ -46,7 +46,7 @@ namespace Converter
 			return *_thread;
 		}
 
-		Pimpl() : _artifactType(ArtifactType::Blob) {}
+		Pimpl() {}
 		Pimpl(const Pimpl&) = delete;
 		Pimpl& operator=(const Pimpl&) = delete;
     };
@@ -121,7 +121,7 @@ namespace Converter
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class GeneralCompiler::Marker : public ::Assets::IArtifactPrepareMarker
+    class GeneralCompiler::Marker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
@@ -130,21 +130,18 @@ namespace Converter
 
         Marker(
             StringSection<::Assets::ResChar> requestName, uint64 typeCode,
-            const ::Assets::IntermediateAssets::Store& store,
             std::shared_ptr<GeneralCompiler> compiler);
         ~Marker();
     private:
         std::weak_ptr<GeneralCompiler> _compiler;
         ::Assets::rstring _requestName;
         uint64 _typeCode;
-        const ::Assets::IntermediateAssets::Store* _store;
 
 		static void PerformCompile(
-			ArtifactType artifactType,
 			const GeneralCompiler::ExtensionAndDelegate& delegate,
 			uint64_t typeCode, StringSection<::Assets::ResChar> initializer, 
 			::Assets::ArtifactFuture& compileMarker,
-			const ::Assets::IntermediateAssets::Store& destinationStore);
+			const ::Assets::IntermediateAssets::Store* destinationStore);
     };
 
     std::shared_ptr<::Assets::IArtifact> GeneralCompiler::Marker::GetExistingAsset() const
@@ -156,11 +153,10 @@ namespace Converter
     }
 
 	void GeneralCompiler::Marker::PerformCompile(
-		ArtifactType artifactType,
 		const GeneralCompiler::ExtensionAndDelegate& delegate,
 		uint64_t typeCode, StringSection<::Assets::ResChar> initializer, 
 		::Assets::ArtifactFuture& compileMarker,
-		const ::Assets::IntermediateAssets::Store& destinationStore)
+		const ::Assets::IntermediateAssets::Store* destinationStore)
     {
 		std::vector<::Assets::DependentFileState> deps;
 
@@ -180,9 +176,9 @@ namespace Converter
 				if (target._type == typeCode) {
 					auto chunks = model->SerializeTarget(t);
 
-					if (artifactType == GeneralCompiler::ArtifactType::ArchivedFile) {
+					if (destinationStore) {
 						::Assets::ResChar baseIntermediateName[MaxPath];
-						destinationStore.MakeIntermediateName(baseIntermediateName, (unsigned)dimof(baseIntermediateName), initializer);
+						destinationStore->MakeIntermediateName(baseIntermediateName, (unsigned)dimof(baseIntermediateName), initializer);
 
 						::Assets::ResChar destinationFile[MaxPath];
 						XlFormatString(destinationFile, dimof(destinationFile), "%s-res-%s", baseIntermediateName, target._name);
@@ -190,19 +186,17 @@ namespace Converter
 
 							// write new dependencies
 						auto splitName = MakeFileNameSplitter(initializer);
-						auto artifactDepVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
+						auto artifactDepVal = destinationStore->WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
 
 						auto artifact = std::make_shared<::Assets::FileArtifact>(destinationFile, artifactDepVal);
 						compileMarker.AddArtifact(target._name, artifact);
-					} else if (artifactType == GeneralCompiler::ArtifactType::Blob) {
+					} else {
 						auto artifactDepVal = std::make_shared<::Assets::DependencyValidation>();
 						::Assets::RegisterFileDependency(artifactDepVal, initializer);
 
 						auto blob = SerializeToBlob(MakeIteratorRange(*chunks), delegate._srcVersion);
 						auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, artifactDepVal);
 						compileMarker.AddArtifact(target._name, artifact);
-					} else {
-						Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));
 					}
 
 					foundTarget = true;
@@ -250,11 +244,10 @@ namespace Converter
 		auto& thread = c->_pimpl->GetThread();
 		auto requestName = _requestName;
 		auto typeCode = _typeCode;
-		auto* store = _store;
 		auto compiler = _compiler;
 		thread.Push(
 			backgroundOp,
-			[compilerIndex, compiler, typeCode, requestName, store](::Assets::ArtifactFuture& op) {
+			[compilerIndex, compiler, typeCode, requestName](::Assets::ArtifactFuture& op) {
 			auto c = compiler.lock();
 			if (!c) {
 				op.SetState(::Assets::AssetState::Invalid);
@@ -262,7 +255,7 @@ namespace Converter
 			}
 
 			assert(compilerIndex < c->_pimpl->_delegates.size());
-			PerformCompile(c->_pimpl->_artifactType, c->_pimpl->_delegates[compilerIndex], typeCode, MakeStringSection(requestName), op, *store);
+			PerformCompile(c->_pimpl->_delegates[compilerIndex], typeCode, MakeStringSection(requestName), op, c->_pimpl->_store.get());
 		});
         
         return std::move(backgroundOp);
@@ -275,18 +268,17 @@ namespace Converter
 
 	GeneralCompiler::Marker::Marker(
         StringSection<::Assets::ResChar> requestName, uint64 typeCode,
-        const ::Assets::IntermediateAssets::Store& store,
         std::shared_ptr<GeneralCompiler> compiler)
-    : _compiler(std::move(compiler)), _requestName(requestName.AsString()), _typeCode(typeCode), _store(&store)
+    : _compiler(std::move(compiler)), _requestName(requestName.AsString()), _typeCode(typeCode)
     {}
 
 	GeneralCompiler::Marker::~Marker() {}
 
-    std::shared_ptr<::Assets::IArtifactPrepareMarker> GeneralCompiler::Prepare(
+    std::shared_ptr<::Assets::IArtifactCompileMarker> GeneralCompiler::Prepare(
         uint64 typeCode, 
         const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
-        return std::make_shared<Marker>(initializers[0], typeCode, ::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
+        return std::make_shared<Marker>(initializers[0], typeCode, shared_from_this());
     }
 
     void GeneralCompiler::StallOnPendingOperations(bool cancelAll)
@@ -300,10 +292,10 @@ namespace Converter
 
 	GeneralCompiler::GeneralCompiler(
 		IteratorRange<const ExtensionAndDelegate*> delegates,
-		ArtifactType artifactType)
+		const std::shared_ptr<IntermediateAssets::Store>& store)
 	{ 
 		_pimpl = std::make_shared<Pimpl>(); 
-		_pimpl->_artifactType = artifactType;
+		_pimpl->_store = store;
 		for (const auto&d:delegates)
 			_pimpl->_delegates.emplace_back(d);
 	}
@@ -315,8 +307,10 @@ namespace Converter
 	{
 	public:
 		::Assets::CreateCompileOperationFn* _createCompileOpFunction;
-		std::vector<std::string> _knownExtensions;
 		std::shared_ptr<ConsoleRig::AttachableLibrary> _library;
+
+		struct Kind { std::vector<uint64_t> _assetTypes; std::string _identifierFilter; };
+		std::vector<Kind> _kinds;
 
 		CompilerLibrary(StringSection<> libraryName);
 	};
@@ -334,7 +328,10 @@ namespace Converter
 				auto compilerDesc = (*compilerDescFn)();
 				auto targetCount = compilerDesc->FileKindCount();
 				for (unsigned c=0; c<targetCount; ++c) {
-					_knownExtensions.push_back(compilerDesc->GetFileKind(c)._extension);
+					auto kind = compilerDesc->GetFileKind(c);
+					_kinds.push_back({
+						std::vector<uint64_t>{kind._assetTypes.begin(), kind._assetTypes.end()},
+						std::string{kind._extension}});
 				}
 			}
 		}
@@ -378,20 +375,24 @@ namespace Converter
 				if (!library._library->TryGetVersion(srcVersion))
 					Throw(std::runtime_error("Querying version returned an error"));
 
+				std::vector<GeneralCompiler::ExtensionAndDelegate> opsFromThisLibrary;
 				auto lib = library._library;
 				auto fn = library._createCompileOpFunction;
-				for (const auto&ext:library._knownExtensions) {
-					result.emplace_back(
+				for (const auto&kind:library._kinds) {
+					opsFromThisLibrary.emplace_back(
 						GeneralCompiler::ExtensionAndDelegate {
-							std::regex{ext}, 
+							kind._assetTypes,
+							std::regex{kind._identifierFilter}, 
 							c,
 							srcVersion,
 							[lib, fn](StringSection<> identifier) {
-								(void)lib; // hold strong reference to the library
+								(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded
 								return (*fn)(identifier);
 							}
 						});
 				}
+
+				result.insert(result.end(), opsFromThisLibrary.begin(), opsFromThisLibrary.end());
 			} CATCH (const std::exception& e) {
 				Log(Warning) << "Failed while attempt to attach library: " << e.what() << std::endl;
 			} CATCH_END

@@ -15,6 +15,7 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Assets/IArtifact.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
@@ -68,10 +69,10 @@ namespace Converter
        
 		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-		auto discoveredOperations = DiscoverCompileOperations();
-		auto generalCompiler = std::make_shared<GeneralCompiler>(
+		auto discoveredOperations = ::Assets::DiscoverCompileOperations();
+		auto generalCompiler = std::make_shared<::Assets::GeneralCompiler>(
 			MakeIteratorRange(discoveredOperations),
-			GeneralCompiler::ArtifactType::Blob);
+			nullptr);
 		compilers.AddCompiler(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, generalCompiler);
 
 		const StringSection<char> inits[] = { inputFile };

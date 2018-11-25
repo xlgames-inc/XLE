@@ -39,7 +39,7 @@ namespace RenderCore { namespace Assets
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
-        std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
+        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
             uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
         std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(

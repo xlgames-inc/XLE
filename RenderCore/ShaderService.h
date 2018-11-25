@@ -21,7 +21,7 @@
 namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
-	class ArtifactFuture; class IArtifactPrepareMarker; 
+	class ArtifactFuture; class IArtifactCompileMarker; 
 	class IArtifact;
 }
 

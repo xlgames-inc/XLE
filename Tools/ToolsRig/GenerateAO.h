@@ -81,7 +81,7 @@ namespace ToolsRig
     class AOSupplementCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
     {
     public:
-        std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
+        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
             uint64 typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);

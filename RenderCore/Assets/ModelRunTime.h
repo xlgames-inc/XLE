@@ -21,7 +21,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
-namespace Assets { class DirectorySearchRules; class IArtifactPrepareMarker; class DependencyValidation; class ChunkFileContainer; class IFileInterface; }
+namespace Assets { class DirectorySearchRules; class IArtifactCompileMarker; class DependencyValidation; class ChunkFileContainer; class IFileInterface; }
 
 namespace RenderCore { namespace Assets
 {

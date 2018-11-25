@@ -15,7 +15,7 @@ namespace Assets
 	class DependentFileState;
 	class DependencyValidation;
 	class IAssetCompiler;
-	class IArtifactPrepareMarker;
+	class IArtifactCompileMarker;
 	class IFileInterface;
 }
 

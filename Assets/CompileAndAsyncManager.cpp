@@ -26,8 +26,8 @@ namespace Assets
 	class CompileAndAsyncManager::Pimpl
 	{
 	public:
-		std::unique_ptr<IntermediateAssets::Store> _intStore;
-		std::unique_ptr<IntermediateAssets::Store> _shadowingStore;
+		std::shared_ptr<IntermediateAssets::Store> _intStore;
+		std::shared_ptr<IntermediateAssets::Store> _shadowingStore;
         std::unique_ptr<CompilerSet> _intMan;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
 
@@ -70,19 +70,19 @@ namespace Assets
 		_pimpl->_pollingProcesses.push_back(pollingProcess);
     }
 
-    IntermediateAssets::Store& CompileAndAsyncManager::GetIntermediateStore() 
-    { 
-		return *_pimpl->_intStore.get();
-    }
-    
     CompilerSet& CompileAndAsyncManager::GetIntermediateCompilers() 
     { 
 		return *_pimpl->_intMan.get();
     }
 
-	IntermediateAssets::Store& CompileAndAsyncManager::GetShadowingStore()
+	const std::shared_ptr<IntermediateAssets::Store>&	CompileAndAsyncManager::GetIntermediateStore() 
+    { 
+		return _pimpl->_intStore;
+    }
+
+	const std::shared_ptr<IntermediateAssets::Store>&	CompileAndAsyncManager::GetShadowingStore()
 	{
-		return *_pimpl->_shadowingStore.get();
+		return _pimpl->_shadowingStore;
 	}
 
     CompileAndAsyncManager::CompileAndAsyncManager()
@@ -113,8 +113,8 @@ namespace Assets
         #endif
 
 		_pimpl = std::make_unique<Pimpl>();
-		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("int", storeVersionString, storeConfigString);
-		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("int", storeVersionString, storeConfigString, true);
+		_pimpl->_intStore = std::make_shared<IntermediateAssets::Store>("int", storeVersionString, storeConfigString);
+		_pimpl->_shadowingStore = std::make_shared<IntermediateAssets::Store>("int", storeVersionString, storeConfigString, true);
 
 		_pimpl->_intMan = std::make_unique<CompilerSet>();
     }
@@ -147,7 +147,7 @@ namespace Assets
 		}
 	}
 
-	std::shared_ptr<IArtifactPrepareMarker> CompilerSet::Prepare(
+	std::shared_ptr<IArtifactCompileMarker> CompilerSet::Prepare(
 		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
 	{
 		// look for a "processor" object with the given type code, and rebuild the file

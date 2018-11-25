@@ -57,13 +57,13 @@ namespace Assets
 	/// <summary>Returned from a IAssetCompiler on response to a compile request</summary>
 	/// After receiving a compile marker, the caller can choose to either retrieve an existing
 	/// artifact from a previous compile, or begin a new asynchronous compile operation.
-	class IArtifactPrepareMarker
+	class IArtifactCompileMarker
 	{
 	public:
 		virtual std::shared_ptr<IArtifact> GetExistingAsset() const = 0;
 		virtual std::shared_ptr<ArtifactFuture> InvokeCompile() const = 0;
 		virtual StringSection<ResChar> Initializer() const = 0;
-		virtual ~IArtifactPrepareMarker();
+		virtual ~IArtifactCompileMarker();
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

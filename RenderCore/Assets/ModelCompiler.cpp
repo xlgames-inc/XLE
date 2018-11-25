@@ -301,7 +301,7 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ModelCompiler::Marker : public ::Assets::IArtifactPrepareMarker
+    class ModelCompiler::Marker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
@@ -427,11 +427,11 @@ namespace RenderCore { namespace Assets
 
     ModelCompiler::Marker::~Marker() {}
 
-    std::shared_ptr<::Assets::IArtifactPrepareMarker> ModelCompiler::Prepare(
+    std::shared_ptr<::Assets::IArtifactCompileMarker> ModelCompiler::Prepare(
         uint64 typeCode, 
         const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
-        return std::make_shared<Marker>(initializers[0], typeCode, ::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
+        return std::make_shared<Marker>(initializers[0], typeCode, *::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
     void ModelCompiler::StallOnPendingOperations(bool cancelAll)

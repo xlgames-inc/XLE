@@ -397,7 +397,7 @@ namespace Assets { namespace IntermediateAssets
 namespace Assets
 {
 	IArtifact::~IArtifact() {}
-	IArtifactPrepareMarker::~IArtifactPrepareMarker() {}
+	IArtifactCompileMarker::~IArtifactCompileMarker() {}
 
 	void ArtifactFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
 	{

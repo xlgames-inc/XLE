@@ -181,7 +181,7 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MatCompilerMarker : public ::Assets::IArtifactPrepareMarker
+    class MatCompilerMarker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
@@ -253,7 +253,7 @@ namespace RenderCore { namespace Assets
     : _materialFilename(materialFilename), _modelFilename(modelFilename), _store(&store) {}
     MatCompilerMarker::~MatCompilerMarker() {}
 
-    std::shared_ptr<::Assets::IArtifactPrepareMarker> MaterialScaffoldCompiler::Prepare(
+    std::shared_ptr<::Assets::IArtifactCompileMarker> MaterialScaffoldCompiler::Prepare(
         uint64 typeCode, 
         const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
@@ -261,7 +261,7 @@ namespace RenderCore { namespace Assets
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
         const auto materialFilename = initializers[0], modelFilename = initializers[1];
-        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), ::Assets::Services::GetAsyncMan().GetIntermediateStore());
+        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), *::Assets::Services::GetAsyncMan().GetIntermediateStore());
     }
 
 	void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) {}

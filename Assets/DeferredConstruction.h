@@ -15,7 +15,7 @@ namespace Assets
 {
 	namespace Internal 
 	{
-		std::shared_ptr<IArtifactPrepareMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 	}
 
 	namespace Internal

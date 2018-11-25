@@ -252,7 +252,7 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class LocalCompiledShaderSource::Marker : public ::Assets::IArtifactPrepareMarker
+    class LocalCompiledShaderSource::Marker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
@@ -472,7 +472,7 @@ namespace RenderCore { namespace Assets
 
     LocalCompiledShaderSource::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::IArtifactPrepareMarker> LocalCompiledShaderSource::Prepare(
+    std::shared_ptr<::Assets::IArtifactCompileMarker> LocalCompiledShaderSource::Prepare(
         uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
             //  Execute an offline compile. This should happen in the background
@@ -504,7 +504,7 @@ namespace RenderCore { namespace Assets
 
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
-        return std::make_shared<Marker>(initializers[0], shaderId, definesTable, ::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
+        return std::make_shared<Marker>(initializers[0], shaderId, definesTable, *::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
     auto LocalCompiledShaderSource::CompileFromFile(

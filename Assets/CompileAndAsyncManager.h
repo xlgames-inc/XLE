@@ -32,12 +32,12 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class IArtifactPrepareMarker;
+	class IArtifactCompileMarker;
 
 	class IAssetCompiler
 	{
 	public:
-		virtual std::shared_ptr<IArtifactPrepareMarker> Prepare(
+		virtual std::shared_ptr<IArtifactCompileMarker> Prepare(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
 		virtual void StallOnPendingOperations(bool cancelAll) = 0;
 		virtual ~IAssetCompiler();
@@ -47,7 +47,7 @@ namespace Assets
 	{
 	public:
 		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
-		std::shared_ptr<IArtifactPrepareMarker> Prepare(
+		std::shared_ptr<IArtifactCompileMarker> Prepare(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 		void StallOnPendingOperations(bool cancelAll);
 
@@ -67,9 +67,10 @@ namespace Assets
 
         void Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess);
 
-		CompilerSet&				GetIntermediateCompilers();
-        IntermediateAssets::Store&	GetIntermediateStore();
-		IntermediateAssets::Store&	GetShadowingStore();
+		CompilerSet& GetIntermediateCompilers();
+
+        const std::shared_ptr<IntermediateAssets::Store>&	GetIntermediateStore();
+		const std::shared_ptr<IntermediateAssets::Store>&	GetShadowingStore();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();
