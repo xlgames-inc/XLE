@@ -730,9 +730,9 @@ namespace SceneEngine
 			SubpassDesc subpasses[] = {
 				SubpassDesc {
 					std::vector<AttachmentViewDesc> {
-						{ IMainTargets::GBufferDiffuse, LoadStore::DontCare, LoadStore::Retain },
-						{ IMainTargets::GBufferNormals, LoadStore::DontCare, LoadStore::Retain },
-						{ IMainTargets::GBufferParameters, LoadStore::DontCare, LoadStore::Retain }
+						{ IMainTargets::GBufferDiffuse, LoadStore::Clear, LoadStore::Retain },
+						{ IMainTargets::GBufferNormals, LoadStore::Clear, LoadStore::Retain },
+						{ IMainTargets::GBufferParameters, LoadStore::Clear, LoadStore::Retain }
 					},
 					{IMainTargets::MultisampledDepth, LoadStore::Clear_ClearStencil, LoadStore::Retain}
 				}
@@ -887,7 +887,11 @@ namespace SceneEngine
 
             CATCH_ASSETS_BEGIN {
 				auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDescBox._createGBuffer, parserContext.GetNamedResources());
-				ClearValue clearValues[] = {RenderCore::MakeClearValue(1.f, 0)};
+				ClearValue clearValues[] = {
+					RenderCore::MakeClearValue(0.f, 0.f, 0.f),
+					RenderCore::MakeClearValue(0.f, 0.f, 0.f, 0.f),
+					RenderCore::MakeClearValue(0.f, 0.f, 0.f, 0.f),
+					RenderCore::MakeClearValue(1.f, 0)};
                 Techniques::RenderPassInstance rpi(
                     context, fb, fbDescBox._createGBuffer,
                     parserContext.GetNamedResources(),

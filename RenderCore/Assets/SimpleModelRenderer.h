@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ModelImmutableData.h"		// for SkeletonBinding
+#include "../../Math/Matrix.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/StringUtils.h"
 #include <vector>
@@ -24,7 +25,9 @@ namespace RenderCore { namespace Assets
 	class SimpleModelRenderer
 	{
 	public:
-		VariantArray BuildDrawables(uint64_t materialFilter = 0);
+		VariantArray BuildDrawables(
+			const Float4x4& localToWorld = Identity<Float4x4>(),
+			uint64_t materialFilter = 0);
 		void GenerateDeformBuffer(IThreadContext& context);
 		unsigned DeformOperationCount() const { return (unsigned)_deformOps.size(); }
 		IDeformOperation& DeformOperation(unsigned idx) { return *_deformOps[idx]._deformOp; } 

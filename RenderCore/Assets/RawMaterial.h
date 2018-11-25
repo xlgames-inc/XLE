@@ -48,6 +48,7 @@ namespace RenderCore { namespace Assets
         std::vector<AssetName> _inherit;
 
 		void					MergeInto(Techniques::Material& dest) const; 
+		void					MergeInto(RawMaterial& dest) const; 
 		std::vector<AssetName>	ResolveInherited(const ::Assets::DirectorySearchRules& searchRules) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>&	GetDependencyValidation() const { return _depVal; }

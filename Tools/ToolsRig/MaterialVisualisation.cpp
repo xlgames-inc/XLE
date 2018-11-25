@@ -169,7 +169,7 @@ namespace ToolsRig
                 };
 
 				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._techniqueConfig = "xleres/techniques/illum.tech";
+				// drawable._techniqueConfig = "xleres/techniques/illum.tech";
 				drawable._material = nullptr;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
@@ -198,7 +198,7 @@ namespace ToolsRig
                 } else return;
 
 				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
-				drawable._techniqueConfig = "xleres/techniques/illum.tech";
+				// drawable._techniqueConfig = "xleres/techniques/illum.tech";
 				drawable._material = nullptr;
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
@@ -279,7 +279,7 @@ namespace ToolsRig
 			return {};
 
 		auto& model = *modelFuture->Actualize();
-		return model.BuildDrawables(boundMaterial);
+		return model.BuildDrawables(Identity<Float4x4>(), boundMaterial);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

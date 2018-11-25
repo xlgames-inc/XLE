@@ -84,7 +84,9 @@ namespace RenderCore { namespace Assets
 		((Metal::Buffer*)_dynVB.get())->Unmap(metalContext);
 	}
 
-	VariantArray SimpleModelRenderer::BuildDrawables(uint64_t materialFilter)
+	VariantArray SimpleModelRenderer::BuildDrawables(
+		const Float4x4& localToWorld,
+		uint64_t materialFilter)
 	{
 		VariantArray result;
 
@@ -112,9 +114,9 @@ namespace RenderCore { namespace Assets
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 if (machineOutput < _baseTransformCount) {
-                    drawable._objectToWorld = _baseTransforms[machineOutput];
+                    drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
                 } else {
-                    drawable._objectToWorld = Identity<Float4x4>();
+                    drawable._objectToWorld = localToWorld;
                 }
             }
         }
@@ -144,8 +146,9 @@ namespace RenderCore { namespace Assets
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
 
-                drawable._objectToWorld = _baseTransforms[
-                    _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)];
+                drawable._objectToWorld = Combine(
+					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
+					localToWorld);
             }
         }
 

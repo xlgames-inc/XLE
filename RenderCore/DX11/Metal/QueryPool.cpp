@@ -128,7 +128,6 @@ namespace RenderCore { namespace Metal_DX11
 		auto& b = _buffers[_activeBuffer];
 		b._pendingReadback = true;
 		b._queryEnd = _nextAllocation;
-		assert(!_allocatedCount || b._queryEnd != b._queryStart);	// problems if we allocate all queries in a single frame currently
 		EndQuery(context, *b._disjointQuery);
 		// roll forward to the next buffer
 		_activeBuffer = (_activeBuffer + 1) % s_bufferCount;

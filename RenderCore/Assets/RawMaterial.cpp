@@ -406,6 +406,16 @@ namespace RenderCore { namespace Assets
         }
     }
 
+	void RawMaterial::MergeInto(RawMaterial& dest) const
+	{
+		dest._matParamBox.MergeIn(_matParamBox);
+        dest._stateSet = Merge(dest._stateSet, _stateSet);
+        dest._constants.MergeIn(_constants);
+        dest._resourceBindings.MergeIn(_resourceBindings);
+        if (!_techniqueConfig.empty())
+            dest._techniqueConfig = _techniqueConfig;
+	}
+
 	void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
