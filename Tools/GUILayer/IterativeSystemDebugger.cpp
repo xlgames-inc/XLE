@@ -166,17 +166,17 @@ namespace GUILayer
             auto v = *dynamic_cast<System::Single^>(value);
             return _accessors->TryOpaqueSet(
                 _type.get(), Hash64(nativeString.c_str()),
-                &v, ImpliedTyping::TypeOf<decltype(v)>());
+                AsOpaqueIteratorRange(v), ImpliedTyping::TypeOf<decltype(v)>());
         } else if (value->GetType() == System::UInt32::typeid) {
             auto v = *dynamic_cast<System::UInt32^>(value);
             return _accessors->TryOpaqueSet(
                 _type.get(), Hash64(nativeString.c_str()),
-                &v, ImpliedTyping::TypeOf<decltype(v)>());
+                AsOpaqueIteratorRange(v), ImpliedTyping::TypeOf<decltype(v)>());
         } else if (value->GetType() == System::Int32::typeid) {
             auto v = *dynamic_cast<System::Int32^>(value);
             return _accessors->TryOpaqueSet(
                 _type.get(), Hash64(nativeString.c_str()),
-                &v, ImpliedTyping::TypeOf<decltype(v)>());
+                AsOpaqueIteratorRange(v), ImpliedTyping::TypeOf<decltype(v)>());
         }
         return false;
     }

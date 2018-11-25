@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Assets/IArtifact.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 #include <memory>

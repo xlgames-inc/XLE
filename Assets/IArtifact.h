@@ -54,8 +54,6 @@ namespace Assets
 		std::vector<NameAndArtifact> _artifacts;
     };
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 	/// <summary>Returned from a IAssetCompiler on response to a compile request</summary>
 	/// After receiving a compile marker, the caller can choose to either retrieve an existing
 	/// artifact from a previous compile, or begin a new asynchronous compile operation.
@@ -65,17 +63,7 @@ namespace Assets
 		virtual std::shared_ptr<IArtifact> GetExistingAsset() const = 0;
 		virtual std::shared_ptr<ArtifactFuture> InvokeCompile() const = 0;
 		virtual StringSection<ResChar> Initializer() const = 0;
-	};
-
-	namespace IntermediateAssets { class Store; }
-
-	class IAssetCompiler
-	{
-	public:
-		virtual std::shared_ptr<IArtifactPrepareMarker> Prepare(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
-		virtual void StallOnPendingOperations(bool cancelAll) = 0;
-		virtual ~IAssetCompiler();
+		virtual ~IArtifactPrepareMarker();
 	};
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

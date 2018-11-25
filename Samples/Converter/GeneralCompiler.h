@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Assets/IArtifact.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/GlobalServices.h"	// (for LibVersionDesc)
 #include "../../Utility/MemoryUtils.h"

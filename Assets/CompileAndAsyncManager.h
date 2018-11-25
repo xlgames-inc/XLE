@@ -17,7 +17,7 @@
 namespace Assets
 {
     class DependencyValidation; class DependentFileState; 
-    namespace IntermediateAssets { class CompilerSet; class Store; }
+    namespace IntermediateAssets { class Store; }
     class ArchiveCache;
 
     class IPollingAsyncProcess
@@ -30,12 +30,35 @@ namespace Assets
         virtual ~IPollingAsyncProcess();
     };
 
-    class IThreadPump
-    {
-    public:
-        virtual void Update() = 0;
-        virtual ~IThreadPump();
-    };
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class IArtifactPrepareMarker;
+
+	class IAssetCompiler
+	{
+	public:
+		virtual std::shared_ptr<IArtifactPrepareMarker> Prepare(
+			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
+		virtual void StallOnPendingOperations(bool cancelAll) = 0;
+		virtual ~IAssetCompiler();
+	};
+
+	class CompilerSet
+	{
+	public:
+		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
+		std::shared_ptr<IArtifactPrepareMarker> Prepare(
+			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		void StallOnPendingOperations(bool cancelAll);
+
+		CompilerSet();
+		~CompilerSet();
+	protected:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class CompileAndAsyncManager
     {
@@ -43,11 +66,10 @@ namespace Assets
         void Update();
 
         void Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess);
-        void Add(std::unique_ptr<IThreadPump>&& threadPump);
 
-        IntermediateAssets::Store&			GetIntermediateStore();
-        IntermediateAssets::CompilerSet&	GetIntermediateCompilers();
-		IntermediateAssets::Store&			GetShadowingStore();
+		CompilerSet&				GetIntermediateCompilers();
+        IntermediateAssets::Store&	GetIntermediateStore();
+		IntermediateAssets::Store&	GetShadowingStore();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();

@@ -7,6 +7,7 @@
 #include "RetainedEntities.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 
 namespace EntityInterface
@@ -20,9 +21,10 @@ namespace EntityInterface
         auto typeHint = prop._isString ? ImpliedTyping::TypeHint::String : ImpliedTyping::TypeHint::None;
 
         const auto& propertyName = type._properties[prop._prop-1];
+		ImpliedTyping::TypeDesc typeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint);
         dest._properties.SetParameter(
-            propertyName.c_str(), prop._src, 
-            ImpliedTyping::TypeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint));
+            MakeStringSection(propertyName), MakeIteratorRange(prop._src, PtrAdd(prop._src, typeDesc.GetSize())), 
+            typeDesc);
         return true;
     }
 

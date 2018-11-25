@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ShaderService.h"
-#include "../../Assets/IArtifact.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include <vector>
 #include <memory>
 #include <mutex>

@@ -96,12 +96,12 @@ namespace ShaderPatcherLayer
 					finalMatDeps);
             }
         }
-        result._matParams.SetParameter(u("SHADER_NODE_EDITOR"), "1");
+        result._matParams.SetParameter(u("SHADER_NODE_EDITOR"), MakeStringSection("1"));
 
         for each(auto i in doc->ShaderParameters)
             result._matParams.SetParameter(
-                (const utf8*)clix::marshalString<clix::E_UTF8>(i.Key).c_str(),
-                clix::marshalString<clix::E_UTF8>(i.Value));
+                MakeStringSection(clix::marshalString<clix::E_UTF8>(i.Key)).Cast<utf8>(),
+                MakeStringSection(clix::marshalString<clix::E_UTF8>(i.Value)));
 
 		return result;
 	}

@@ -21,11 +21,6 @@ namespace Assets
     IPollingAsyncProcess::IPollingAsyncProcess() {}
     IPollingAsyncProcess::~IPollingAsyncProcess() {}
 
-    IThreadPump::~IThreadPump() {}
-
-        ////////////////////////////////////////////////////////////
-
-
         ////////////////////////////////////////////////////////////
 
 	class CompileAndAsyncManager::Pimpl
@@ -33,19 +28,14 @@ namespace Assets
 	public:
 		std::unique_ptr<IntermediateAssets::Store> _intStore;
 		std::unique_ptr<IntermediateAssets::Store> _shadowingStore;
-        std::unique_ptr<IntermediateAssets::CompilerSet> _intMan;
+        std::unique_ptr<CompilerSet> _intMan;
 		std::vector<std::shared_ptr<IPollingAsyncProcess>> _pollingProcesses;
-		std::unique_ptr<IThreadPump> _threadPump;
 
 		Utility::Threading::Mutex _pollingProcessesLock;
 	};
 
     void CompileAndAsyncManager::Update()
     {
-		if (_pimpl->_threadPump) {
-			_pimpl->_threadPump->Update();
-        }
-
         if (_pimpl->_pollingProcessesLock.try_lock()) {
             TRY
             {
@@ -85,7 +75,7 @@ namespace Assets
 		return *_pimpl->_intStore.get();
     }
     
-    IntermediateAssets::CompilerSet& CompileAndAsyncManager::GetIntermediateCompilers() 
+    CompilerSet& CompileAndAsyncManager::GetIntermediateCompilers() 
     { 
 		return *_pimpl->_intMan.get();
     }
@@ -94,12 +84,6 @@ namespace Assets
 	{
 		return *_pimpl->_shadowingStore.get();
 	}
-
-    void CompileAndAsyncManager::Add(std::unique_ptr<IThreadPump>&& threadPump)
-    {
-		assert(!_pimpl->_threadPump);
-		_pimpl->_threadPump = std::move(threadPump);
-    }
 
     CompileAndAsyncManager::CompileAndAsyncManager()
     {
@@ -132,7 +116,7 @@ namespace Assets
 		_pimpl->_intStore = std::make_unique<IntermediateAssets::Store>("int", storeVersionString, storeConfigString);
 		_pimpl->_shadowingStore = std::make_unique<IntermediateAssets::Store>("int", storeVersionString, storeConfigString, true);
 
-		_pimpl->_intMan = std::make_unique<IntermediateAssets::CompilerSet>();
+		_pimpl->_intMan = std::make_unique<CompilerSet>();
     }
 
     CompileAndAsyncManager::~CompileAndAsyncManager()
@@ -144,5 +128,63 @@ namespace Assets
         _pimpl->_intStore.reset();
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class CompilerSet::Pimpl
+	{
+	public:
+		std::vector<std::pair<uint64, std::shared_ptr<IAssetCompiler>>> _compilers;
+	};
+
+	void CompilerSet::AddCompiler(uint64 typeCode, const std::shared_ptr<IAssetCompiler>& processor)
+	{
+		auto i = LowerBound(_pimpl->_compilers, typeCode);
+		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+			i->second = processor;
+		}
+		else {
+			_pimpl->_compilers.insert(i, std::make_pair(typeCode, processor));
+		}
+	}
+
+	std::shared_ptr<IArtifactPrepareMarker> CompilerSet::Prepare(
+		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
+	{
+		// look for a "processor" object with the given type code, and rebuild the file
+		// write the .deps file containing dependencies information
+		//  Note that there's a slight race condition type problem here. We are querying
+		//  the dependency files for their state after the processing has completed. So
+		//  if the dependency file changes state during processing, we might not recognize
+		//  that change properly. It's probably ignorable, however.
+
+		// note that ideally we want to be able to schedule this in the background
+		auto i = LowerBound(_pimpl->_compilers, typeCode);
+		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
+			return i->second->Prepare(typeCode, initializers, initializerCount);
+		}
+		else {
+			assert(0);  // couldn't find a processor for this asset type
+		}
+
+		return nullptr;
+	}
+
+	void CompilerSet::StallOnPendingOperations(bool cancelAll)
+	{
+		for (auto i = _pimpl->_compilers.cbegin(); i != _pimpl->_compilers.cend(); ++i)
+			i->second->StallOnPendingOperations(cancelAll);
+	}
+
+	CompilerSet::CompilerSet()
+	{
+		auto pimpl = std::make_unique<Pimpl>();
+		_pimpl = std::move(pimpl);
+	}
+
+	CompilerSet::~CompilerSet()
+	{
+	}
+
+	IAssetCompiler::~IAssetCompiler() {}
 }
 

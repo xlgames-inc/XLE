@@ -23,23 +23,6 @@ namespace Utility { class BasicFile; }
 
 namespace Assets { namespace IntermediateAssets
 {
-	class Store;
-
-	class CompilerSet
-	{
-	public:
-		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
-		std::shared_ptr<IArtifactPrepareMarker> Prepare(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
-		void StallOnPendingOperations(bool cancelAll);
-
-		CompilerSet();
-		~CompilerSet();
-	protected:
-		class Pimpl;
-		std::unique_ptr<Pimpl> _pimpl;
-	};
-
 	/// <summary>Archive of compiled intermediate assets</summary>
 	/// When compile operations succeed, the resulting artifacts are cached in an IntermediateAssets::Store,
 	/// which is typically in permanent memory (ie, on disk).
