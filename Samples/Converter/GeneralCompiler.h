@@ -8,9 +8,14 @@
 
 #include "../../Assets/IArtifact.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../ConsoleRig/GlobalServices.h"	// (for LibVersionDesc)
 #include "../../Utility/MemoryUtils.h"
 #include "../../Core/Types.h"
 #include <memory>
+#include <functional>
+#include <regex>
+
+namespace Assets { class ICompileOperation; }
 
 namespace Converter 
 {
@@ -20,19 +25,28 @@ namespace Converter
     public:
         std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
             uint64 typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& destinationStore);
-
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
-		void AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules&);
+		
+		using CompileOperationDelegate = std::function<std::shared_ptr<::Assets::ICompileOperation>(StringSection<>)>;
 
+		struct ExtensionAndDelegate
+		{
+			std::regex _extensionFilter;
+			std::string _name;
+			ConsoleRig::LibVersionDesc _srcVersion;
+			CompileOperationDelegate _delegate;
+		};
+		
 		enum class ArtifactType
 		{
 			ArchivedFile,
 			Blob
 		};
 
-		GeneralCompiler(ArtifactType artifactType);
+		GeneralCompiler(
+			IteratorRange<const ExtensionAndDelegate*> delegates,
+			ArtifactType artifactType);
         ~GeneralCompiler();
     protected:
         class Pimpl;
@@ -41,5 +55,9 @@ namespace Converter
         class Marker;
     };
 
+	::Assets::DirectorySearchRules DefaultLibrarySearchDirectories();
+
+	std::vector<GeneralCompiler::ExtensionAndDelegate> DiscoverCompileOperations(
+		const ::Assets::DirectorySearchRules& searchRules = DefaultLibrarySearchDirectories());
 }
 

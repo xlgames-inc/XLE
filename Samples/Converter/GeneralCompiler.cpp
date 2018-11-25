@@ -13,74 +13,31 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MemoryFile.h"
 #include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/DepVal.h"
+#include "../../Assets/IntermediateAssets.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Threading/LockFree.h"
 #include "../../Utility/Threading/ThreadObject.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/SystemUtils.h"
+#include <regex>
 
 namespace Converter 
 {
-	typedef std::shared_ptr<::Assets::ICompilerDesc> GetCompilerDescFn();
-	typedef std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperationFn(StringSection<::Assets::ResChar> identifier);
-
-	class CompilerLibrary
-	{
-	public:
-		void PerformCompile(
-			GeneralCompiler::ArtifactType artifactType,
-			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-			::Assets::ArtifactFuture& compileMarker,
-			const ::Assets::IntermediateAssets::Store& destinationStore);
-		void AttachLibrary();
-
-		bool IsKnownExtension(StringSection<::Assets::ResChar> ext)
-		{
-			AttachLibrary();
-			for (const auto& e:_knownExtensions)
-				if (XlEqStringI(MakeStringSection(e), ext)) return true;
-			return false;
-		}
-
-		CompilerLibrary(StringSection<::Assets::ResChar> libraryName)
-			: _library(libraryName)
-		{
-			_createCompileOpFunction = nullptr;
-			_isAttached = _attemptedAttach = false;
-		}
-
-		CompilerLibrary(CompilerLibrary&&) never_throws = default;
-		CompilerLibrary& operator=(CompilerLibrary&&) never_throws = default;
-
-	private:
-		// ---------- interface to DLL functions ----------
-		CreateCompileOperationFn* _createCompileOpFunction;
-
-		std::vector<::Assets::rstring> _knownExtensions;
-
-		::Assets::rstring _libraryName;
-		ConsoleRig::AttachableLibrary _library;
-		bool _isAttached;
-		bool _attemptedAttach;
-	};
-
     class GeneralCompiler::Pimpl
     {
     public:
-		std::vector<CompilerLibrary>		_compilers;
-		bool								_discoveryDone;
-		::Assets::DirectorySearchRules		_librarySearchRules;
+		std::vector<ExtensionAndDelegate> _delegates;
 
         Threading::Mutex					_threadLock;   // (used while initialising _thread for the first time)
         std::unique_ptr<::Assets::CompilationThread>	_thread;
 
 		ArtifactType						_artifactType;
 
-		void DiscoverLibraries();
-		
 		::Assets::CompilationThread& GetThread()
 		{
 			ScopedLock(_threadLock);
@@ -89,7 +46,7 @@ namespace Converter
 			return *_thread;
 		}
 
-		Pimpl() : _discoveryDone(false), _artifactType(ArtifactType::Blob) {}
+		Pimpl() : _artifactType(ArtifactType::Blob) {}
 		Pimpl(const Pimpl&) = delete;
 		Pimpl& operator=(const Pimpl&) = delete;
     };
@@ -146,118 +103,20 @@ namespace Converter
 		}
 	}
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    void CompilerLibrary::PerformCompile(
-		GeneralCompiler::ArtifactType artifactType,
-		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-		::Assets::ArtifactFuture& compileMarker,
-		const ::Assets::IntermediateAssets::Store& destinationStore)
-    {
-        TRY
-        {
-            AttachLibrary();
-
-            ConsoleRig::LibVersionDesc libVersionDesc;
-            _library.TryGetVersion(libVersionDesc);
-
-			auto depVal = std::make_shared<::Assets::DependencyValidation>();
-			::Assets::RegisterFileDependency(depVal, initializer);
-
-            TRY 
-            {
-                // const auto* destinationFile = compileMarker.GetLocator()._sourceID0;
-
-                auto model = (*_createCompileOpFunction)(initializer);
-
-				::Assets::ResChar baseIntermediateName[MaxPath];
-				destinationStore.MakeIntermediateName(baseIntermediateName, (unsigned)dimof(baseIntermediateName), initializer);
-				XlCatString(baseIntermediateName, "-res");
-
-				// look for the first target of the correct type
-				auto targetCount = model->TargetCount();
-				bool foundTarget = false;
-				for (unsigned t=0; t<targetCount; ++t) {
-					auto target = model->GetTarget(t);
-					if (target._type == typeCode) {
-						auto chunks = model->SerializeTarget(t);
-
-						if (artifactType == GeneralCompiler::ArtifactType::ArchivedFile) {
-							::Assets::ResChar destinationFile[MaxPath];
-							XlFormatString(destinationFile, dimof(destinationFile), "%s-%s", baseIntermediateName, target._name);
-							SerializeToFile(MakeIteratorRange(*chunks), destinationFile, libVersionDesc);
-
-								// write new dependencies
-							std::vector<::Assets::DependentFileState> deps;
-							deps.push_back(destinationStore.GetDependentFileState(initializer));
-							auto splitName = MakeFileNameSplitter(initializer);
-							auto artifactDepVal = destinationStore.WriteDependencies(destinationFile, splitName.DriveAndPath(), MakeIteratorRange(deps));
-
-							auto artifact = std::make_shared<::Assets::FileArtifact>(destinationFile, depVal);
-							compileMarker.AddArtifact(target._name, artifact);
-						} else if (artifactType == GeneralCompiler::ArtifactType::Blob) {
-							auto blob = SerializeToBlob(MakeIteratorRange(*chunks), libVersionDesc);
-							auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, depVal);
-							compileMarker.AddArtifact(target._name, artifact);
-						} else {
-							Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));
-						}
-
-						foundTarget = true;
-					}
-				}
-
-				if (!foundTarget)
-					Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer.AsString().c_str()));
-        
-				compileMarker.SetState(::Assets::AssetState::Ready);
-
-            } CATCH(...) {
-				auto artifact = std::make_shared<::Assets::CompilerExceptionArtifact>(nullptr, depVal);
-				compileMarker.AddArtifact("exception", artifact);
-				compileMarker.SetState(::Assets::AssetState::Invalid);
-            } CATCH_END
-
-
-        } CATCH(const std::exception& e) {
-            LogAlwaysError << "Caught exception while performing general compiler conversion. Exception details as follows:";
-            LogAlwaysError << e.what();
-//            if (::Assets::Services::GetInvalidAssetMan())
-//                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, e.what());
-			compileMarker.SetState(::Assets::AssetState::Invalid);
-        } CATCH(...) {
-//            if (::Assets::Services::GetInvalidAssetMan())
-//                ::Assets::Services::GetInvalidAssetMan()->MarkInvalid(initializer, "Unknown error");
-			compileMarker.SetState(::Assets::AssetState::Invalid);
-        } CATCH_END
-    }
-
-	void CompilerLibrary::AttachLibrary()
+	static ::Assets::DepValPtr MakeDepVal(
+		IteratorRange<const ::Assets::DependentFileState*> deps,
+		StringSection<::Assets::ResChar> initializer,
+		StringSection<::Assets::ResChar> libraryName)
 	{
-		if (!_attemptedAttach && !_isAttached) {
-			_attemptedAttach = true;
-
-			_isAttached = _library.TryAttach();
-			if (_isAttached) {
-				_createCompileOpFunction    = _library.GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
-
-				auto compilerDescFn = _library.GetFunction<GetCompilerDescFn*>("GetCompilerDesc");
-				if (compilerDescFn) {
-					auto compilerDesc = (*compilerDescFn)();
-					auto targetCount = compilerDesc->FileKindCount();
-					for (unsigned c=0; c<targetCount; ++c) {
-						_knownExtensions.push_back(compilerDesc->GetFileKind(c)._extension);
-					}
-				}
-			}
+		::Assets::DepValPtr depVal;
+		if (!deps.empty()) {
+			depVal = ::Assets::AsDepVal(deps);
+		} else {
+			depVal = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterFileDependency(depVal, MakeFileNameSplitter(initializer).AllExceptParameters());
 		}
-
-		// check for problems (missing functions or bad version number)
-		if (!_isAttached)
-			Throw(::Exceptions::BasicLabel("Error while linking asset conversion DLL. Could not find DLL (%s)", _libraryName.c_str()));
-
-		if (!_createCompileOpFunction)
-			Throw(::Exceptions::BasicLabel("Error while linking asset conversion DLL. Some interface functions are missing"));
+		::Assets::RegisterFileDependency(depVal, libraryName);
+		return depVal;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -279,6 +138,13 @@ namespace Converter
         ::Assets::rstring _requestName;
         uint64 _typeCode;
         const ::Assets::IntermediateAssets::Store* _store;
+
+		static void PerformCompile(
+			ArtifactType artifactType,
+			const GeneralCompiler::ExtensionAndDelegate& delegate,
+			uint64_t typeCode, StringSection<::Assets::ResChar> initializer, 
+			::Assets::ArtifactFuture& compileMarker,
+			const ::Assets::IntermediateAssets::Store& destinationStore);
     };
 
     std::shared_ptr<::Assets::IArtifact> GeneralCompiler::Marker::GetExistingAsset() const
@@ -289,22 +155,93 @@ namespace Converter
         return nullptr;
     }
 
+	void GeneralCompiler::Marker::PerformCompile(
+		ArtifactType artifactType,
+		const GeneralCompiler::ExtensionAndDelegate& delegate,
+		uint64_t typeCode, StringSection<::Assets::ResChar> initializer, 
+		::Assets::ArtifactFuture& compileMarker,
+		const ::Assets::IntermediateAssets::Store& destinationStore)
+    {
+		std::vector<::Assets::DependentFileState> deps;
+
+        TRY
+        {
+            auto model = delegate._delegate(initializer);
+			if (!model)
+				Throw(::Exceptions::BasicLabel("Compiler library returned null to compile request on %s", initializer.AsString().c_str()));
+
+			deps = *model->GetDependencies();
+
+			// look for the first target of the correct type
+			auto targetCount = model->TargetCount();
+			bool foundTarget = false;
+			for (unsigned t=0; t<targetCount; ++t) {
+				auto target = model->GetTarget(t);
+				if (target._type == typeCode) {
+					auto chunks = model->SerializeTarget(t);
+
+					if (artifactType == GeneralCompiler::ArtifactType::ArchivedFile) {
+						::Assets::ResChar baseIntermediateName[MaxPath];
+						destinationStore.MakeIntermediateName(baseIntermediateName, (unsigned)dimof(baseIntermediateName), initializer);
+
+						::Assets::ResChar destinationFile[MaxPath];
+						XlFormatString(destinationFile, dimof(destinationFile), "%s-res-%s", baseIntermediateName, target._name);
+						SerializeToFile(MakeIteratorRange(*chunks), destinationFile, delegate._srcVersion);
+
+							// write new dependencies
+						auto splitName = MakeFileNameSplitter(initializer);
+						auto artifactDepVal = destinationStore.WriteDependencies(destinationFile, {}, MakeIteratorRange(deps));
+
+						auto artifact = std::make_shared<::Assets::FileArtifact>(destinationFile, artifactDepVal);
+						compileMarker.AddArtifact(target._name, artifact);
+					} else if (artifactType == GeneralCompiler::ArtifactType::Blob) {
+						auto artifactDepVal = std::make_shared<::Assets::DependencyValidation>();
+						::Assets::RegisterFileDependency(artifactDepVal, initializer);
+
+						auto blob = SerializeToBlob(MakeIteratorRange(*chunks), delegate._srcVersion);
+						auto artifact = std::make_shared<::Assets::BlobArtifact>(blob, artifactDepVal);
+						compileMarker.AddArtifact(target._name, artifact);
+					} else {
+						Throw(::Exceptions::BasicLabel("Unsupported artifact type (%i)", artifactType));
+					}
+
+					foundTarget = true;
+				}
+			}
+
+			if (!foundTarget)
+				Throw(::Exceptions::BasicLabel("Could not find target of the requested type in compile operation for (%s)", initializer.AsString().c_str()));
+        
+			compileMarker.SetState(::Assets::AssetState::Ready);
+
+        } CATCH(const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(delegate._name))));
+		} CATCH(const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(delegate._name))));
+		} CATCH(...) {
+			Throw(::Assets::Exceptions::ConstructionError(
+				::Assets::Exceptions::ConstructionError::Reason::Unknown,
+				MakeDepVal(MakeIteratorRange(deps), initializer, MakeStringSection(delegate._name)),
+				"%s", "unknown exception"));
+		} CATCH_END
+    }
+
     std::shared_ptr<::Assets::ArtifactFuture> GeneralCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
-		c->_pimpl->DiscoverLibraries();
-
 		auto splitRequest = MakeFileNameSplitter(_requestName);
 
 		unsigned compilerIndex = 0;
 			// Find the compiler that can handle this asset type (just by looking at the extension)
-		for (; compilerIndex < c->_pimpl->_compilers.size(); ++compilerIndex)
-			if (c->_pimpl->_compilers[compilerIndex].IsKnownExtension(splitRequest.Extension()))
+		for (; compilerIndex < c->_pimpl->_delegates.size(); ++compilerIndex) {
+			const auto& filter = c->_pimpl->_delegates[compilerIndex]._extensionFilter;
+			if (std::regex_match(splitRequest.Extension().begin(), splitRequest.Extension().end(), filter))
 				break;
+		}
 
-		if (compilerIndex >= c->_pimpl->_compilers.size())
+		if (compilerIndex >= c->_pimpl->_delegates.size())
 			Throw(::Exceptions::BasicLabel("Could not find compiler to handle request (%s)", _requestName.c_str()));
 
         auto backgroundOp = std::make_shared<::Assets::ArtifactFuture>();
@@ -324,8 +261,8 @@ namespace Converter
 				return;
 			}
 
-			assert(compilerIndex < c->_pimpl->_compilers.size());
-			c->_pimpl->_compilers[compilerIndex].PerformCompile(c->_pimpl->_artifactType, typeCode, MakeStringSection(requestName), op, *store);
+			assert(compilerIndex < c->_pimpl->_delegates.size());
+			PerformCompile(c->_pimpl->_artifactType, c->_pimpl->_delegates[compilerIndex], typeCode, MakeStringSection(requestName), op, *store);
 		});
         
         return std::move(backgroundOp);
@@ -361,45 +298,106 @@ namespace Converter
         _pimpl->_thread->StallOnPendingOperations(cancelAll);
     }
 
-	void GeneralCompiler::AddLibrarySearchDirectories(const ::Assets::DirectorySearchRules& directories)
-	{
-		assert(!_pimpl->_discoveryDone);
-		_pimpl->_librarySearchRules.Merge(directories);
-	}
-
-	GeneralCompiler::GeneralCompiler(ArtifactType artifactType)
+	GeneralCompiler::GeneralCompiler(
+		IteratorRange<const ExtensionAndDelegate*> delegates,
+		ArtifactType artifactType)
 	{ 
 		_pimpl = std::make_shared<Pimpl>(); 
 		_pimpl->_artifactType = artifactType;
+		for (const auto&d:delegates)
+			_pimpl->_delegates.emplace_back(d);
+	}
+	GeneralCompiler::~GeneralCompiler() {}
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class CompilerLibrary
+	{
+	public:
+		::Assets::CreateCompileOperationFn* _createCompileOpFunction;
+		std::vector<std::string> _knownExtensions;
+		std::shared_ptr<ConsoleRig::AttachableLibrary> _library;
+
+		CompilerLibrary(StringSection<> libraryName);
+	};
+
+	CompilerLibrary::CompilerLibrary(StringSection<> libraryName)
+	: _library(std::make_shared<ConsoleRig::AttachableLibrary>(libraryName))
+	{
+		std::string attachErrorMsg;
+		bool isAttached = _library->TryAttach(attachErrorMsg);
+		if (isAttached) {
+			_createCompileOpFunction = _library->GetFunction<decltype(_createCompileOpFunction)>("CreateCompileOperation");
+
+			auto compilerDescFn = _library->GetFunction<::Assets::GetCompilerDescFn*>("GetCompilerDesc");
+			if (compilerDescFn) {
+				auto compilerDesc = (*compilerDescFn)();
+				auto targetCount = compilerDesc->FileKindCount();
+				for (unsigned c=0; c<targetCount; ++c) {
+					_knownExtensions.push_back(compilerDesc->GetFileKind(c)._extension);
+				}
+			}
+		}
+
+		// check for problems (missing functions or bad version number)
+		if (!isAttached)
+			Throw(::Exceptions::BasicLabel("Error while attaching asset conversion DLL. Msg: (%s), from DLL: (%s)", attachErrorMsg.c_str(), libraryName.AsString().c_str()));
+
+		if (!_createCompileOpFunction)
+			Throw(::Exceptions::BasicLabel("Error while linking asset conversion DLL. Some interface functions are missing. From DLL: (%s)", libraryName.AsString().c_str()));
+	}
+
+	::Assets::DirectorySearchRules DefaultLibrarySearchDirectories()
+	{
+		::Assets::DirectorySearchRules result;
 		// Default search path for libraries is just the process path.
 		// In some cases (eg, for unit tests where the process path points to an internal visual studio path), 
 		// we have to include extra paths
 		char processPath[MaxPath];
 		XlGetProcessPath((utf8*)processPath, dimof(processPath));
-		_pimpl->_librarySearchRules.AddSearchDirectory(
+		result.AddSearchDirectory(
 			MakeFileNameSplitter(processPath).DriveAndPath());
+		
+		char appDir[MaxPath];
+    	XlGetCurrentDirectory(dimof(appDir), appDir);
+		result.AddSearchDirectory(appDir);
+		return result;
 	}
-	GeneralCompiler::~GeneralCompiler() {}
 
-	void GeneralCompiler::Pimpl::DiscoverLibraries()
+	std::vector<GeneralCompiler::ExtensionAndDelegate> DiscoverCompileOperations(
+		const ::Assets::DirectorySearchRules& searchRules)
 	{
-		if (_discoveryDone) return;
+		std::vector<GeneralCompiler::ExtensionAndDelegate> result;
 
-		// Look for attachable libraries that can compile raw assets
-		// We're expecting to find them in the same directory as the executable with the form "*Conversion.dll" 
-		auto candidateCompilers = _librarySearchRules.FindFiles(MakeStringSection("*Conversion.dll"));
+		auto candidateCompilers = searchRules.FindFiles(MakeStringSection("*Conversion.dll"));
 		for (auto& c : candidateCompilers) {
-			TRY{
-				CompilerLibrary library(c);
-				library.AttachLibrary();
-				_compilers.emplace_back(std::move(library));
+			TRY {
+				CompilerLibrary library{c};
+
+				ConsoleRig::LibVersionDesc srcVersion;
+				if (!library._library->TryGetVersion(srcVersion))
+					Throw(std::runtime_error("Querying version returned an error"));
+
+				auto lib = library._library;
+				auto fn = library._createCompileOpFunction;
+				for (const auto&ext:library._knownExtensions) {
+					result.emplace_back(
+						GeneralCompiler::ExtensionAndDelegate {
+							std::regex{ext}, 
+							c,
+							srcVersion,
+							[lib, fn](StringSection<> identifier) {
+								(void)lib; // hold strong reference to the library
+								return (*fn)(identifier);
+							}
+						});
+				}
 			} CATCH (const std::exception& e) {
-				LogWarning << "Failed while attempt to attach library: " << e.what();
+				Log(Warning) << "Failed while attempt to attach library: " << e.what() << std::endl;
 			} CATCH_END
 		}
 
-		_discoveryDone = true;
+		return result;
 	}
 
 }
