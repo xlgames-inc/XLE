@@ -501,6 +501,7 @@ namespace RenderCore { namespace Assets
             //  We just have to be careful about multiple threads or multiple processes accessing the
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
+		if (typeCode != CompiledShaderByteCode::CompileProcessType) return nullptr;
 
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();

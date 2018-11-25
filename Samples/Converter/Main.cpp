@@ -4,7 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "GeneralCompiler.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/AttachableInternal.h"
@@ -16,7 +15,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/IArtifact.h"
-#include "../../RenderCore/Assets/Services.h"
+#include "../../Assets/GeneralCompiler.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -69,11 +68,11 @@ namespace Converter
        
 		auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-		auto discoveredOperations = ::Assets::DiscoverCompileOperations();
+		auto discoveredOperations = ::Assets::DiscoverCompileOperations("*Conversion.dll");
 		auto generalCompiler = std::make_shared<::Assets::GeneralCompiler>(
 			MakeIteratorRange(discoveredOperations),
 			nullptr);
-		compilers.AddCompiler(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, generalCompiler);
+		compilers.AddCompiler(generalCompiler);
 
 		const StringSection<char> inits[] = { inputFile };
 		auto marker = compilers.Prepare(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, inits, dimof(inits));

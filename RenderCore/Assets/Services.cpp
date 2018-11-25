@@ -8,7 +8,6 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialCompiler.h"
 #include "MaterialScaffold.h"   // just for MaterialScaffold::CompileProcessType
-#include "ModelCompiler.h"
 #include "../Metal/Metal.h"
 #include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
 #include "../IDevice.h"
@@ -17,6 +16,7 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetServices.h"
+#include "../../Assets/GeneralCompiler.h"
 #include "../../ConsoleRig/AttachableInternal.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
@@ -36,8 +36,7 @@ namespace RenderCore { namespace Assets
         _shaderService->AddShaderSource(shaderSource);
 
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        asyncMan.GetIntermediateCompilers().AddCompiler(
-            CompiledShaderByteCode::CompileProcessType, shaderSource);
+        asyncMan.GetIntermediateCompilers().AddCompiler(shaderSource);
 
         if (device) {
             BufferUploads::AttachLibrary(ConsoleRig::CrossModule::GetInstance());
@@ -53,10 +52,7 @@ namespace RenderCore { namespace Assets
 
             // Setup required compilers.
             //  * material scaffold compiler
-        auto& compilers = asyncMan.GetIntermediateCompilers();
-        compilers.AddCompiler(
-            RenderCore::Assets::MaterialScaffold::CompileProcessType,
-            std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
+        asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
     }
 
     Services::~Services()
@@ -75,14 +71,13 @@ namespace RenderCore { namespace Assets
     {
             // attach the collada compilers to the assert services
             // this is optional -- not all applications will need these compilers
-        auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        auto& compilers = asyncMan.GetIntermediateCompilers();
+		auto compileOps = ::Assets::DiscoverCompileOperations("*Conversion.dll");
+		if (compileOps.empty()) return;
 
-        auto modelCompiler = std::make_shared<RenderCore::Assets::ModelCompiler>();
-        compilers.AddCompiler(ModelCompiler::Type_Model, modelCompiler);
-        compilers.AddCompiler(ModelCompiler::Type_AnimationSet, modelCompiler);
-        compilers.AddCompiler(ModelCompiler::Type_Skeleton, modelCompiler);
-        compilers.AddCompiler(ModelCompiler::Type_RawMat, modelCompiler);
+		auto compiler = std::make_shared<::Assets::GeneralCompiler>(
+			MakeIteratorRange(compileOps),
+			::Assets::Services::GetAsyncMan().GetIntermediateStore());
+		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(compiler);
     }
 
     void Services::AttachCurrentModule()

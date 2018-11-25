@@ -388,6 +388,7 @@ namespace Sample
 		RenderCore::Techniques::SequencerTechnique result;
 		result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
 		result._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+		result._renderStateDelegate = parserContext.GetStateSetResolver();
 
 		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)

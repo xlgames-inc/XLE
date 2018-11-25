@@ -19,6 +19,8 @@
 namespace RenderCore { namespace Assets
 {
 
+	static const auto s_MaterialCompileProcessType = ConstHash64<'RawM', 'at'>::Value;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static const std::pair<Blend, const utf8*> s_blendNames[] =
@@ -394,7 +396,13 @@ namespace RenderCore { namespace Assets
         dest._matParams.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
         dest._constants.MergeIn(_constants);
-        dest._bindings.MergeIn(_resourceBindings);
+
+		// Resolve all of the directory names here, as we write into the Techniques::Material
+		for (const auto&b:_resourceBindings) {
+			char resolvedName[MaxPath];
+			_searchRules.ResolveFile(resolvedName, b.ValueAsString());
+			dest._bindings.SetParameter(b.Name(), MakeStringSection(resolvedName));
+		}
 
         if (!_techniqueConfig.empty()) {
             // Shader names in "ResolvedMaterial" are kept very short. We
@@ -490,20 +498,54 @@ namespace RenderCore { namespace Assets
             deps.push_back(depState);
     }
 
-#if defined(HAS_XLE_FULLASSETS)
 	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
 
-    auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
-        -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
-    {
+	void RawMaterial::ConstructToFuture(
+		::Assets::AssetFuture<RawMaterial>& future,
+		StringSection<::Assets::ResChar> initializer)
+	{
+		// If we're loading from a .material file, then just go head and use the
+		// default asset construction
+		// Otherwise, we need to invoke a compile and load of a ConfigFileContainer
+		auto splitName = MakeFileNameSplitter(initializer);
+		if (IsMaterialFile(splitName.Extension())) {
+			AutoConstructToFutureDirect(future, initializer);
+			return;
+		}
 
-        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
-        } else {
-            return ::Assets::GetDivergentAsset<RawMaterial>(initializer);
-        }
-    }
-#endif
+		// 
+		auto containerInitializer = splitName.AllExceptParameters();
+		auto containerFuture = std::make_shared<::Assets::AssetFuture<::Assets::ConfigFileContainer<>>>(containerInitializer.AsString());
+		::Assets::DefaultCompilerConstruction(
+			*containerFuture, 
+			&containerInitializer, 1,
+			s_MaterialCompileProcessType);
+
+		std::string containerInitializerString = containerInitializer.AsString();
+		std::string section = splitName.Parameters().AsString();
+		future.SetPollingFunction(
+			[containerFuture, section, containerInitializerString](::Assets::AssetFuture<RawMaterial>& thatFuture) -> bool {
+
+			auto containerActual = containerFuture->TryActualize();
+			if (!containerActual) {
+				auto containerState = containerFuture->GetAssetState();
+				if (containerState == ::Assets::AssetState::Invalid) {
+					thatFuture.SetInvalidAsset(containerFuture->GetDependencyValidation(), nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto fmttr = containerActual->GetFormatter(MakeStringSection(section).Cast<utf8>());
+			auto newShader = std::make_shared<RawMaterial>(
+				fmttr, 
+				::Assets::DefaultDirectorySearchRules(containerInitializerString),
+				containerActual->GetDependencyValidation());
+			thatFuture.SetAsset(std::move(newShader), {});
+			return false;
+		});
+
+	}
 
 	void MergeIn_Stall(
 		Techniques::Material& result,

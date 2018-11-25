@@ -46,7 +46,7 @@ namespace Assets
 	class CompilerSet
 	{
 	public:
-		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
+		void AddCompiler(const std::shared_ptr<IAssetCompiler>& processor);
 		std::shared_ptr<IArtifactCompileMarker> Prepare(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 		void StallOnPendingOperations(bool cancelAll);

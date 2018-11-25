@@ -148,7 +148,7 @@ namespace RenderCore { namespace Assets
 			const FileNameSplitter<::Assets::ResChar>& splitter)
 	{
 		auto& store = ::Assets::Services::GetAsyncMan().GetShadowingStore();
-		store.MakeIntermediateName(
+		store->MakeIntermediateName(
 			buffer, Count, MakeStringSection(splitter.DriveAndPath().begin(), splitter.File().end()));
 		XlCatString(buffer, Count, ".dds;");
 		XlCatString(buffer, Count, splitter.AllExceptParameters());

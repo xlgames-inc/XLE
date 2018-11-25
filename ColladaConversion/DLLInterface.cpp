@@ -45,6 +45,8 @@
 namespace ColladaConversion
 {
 
+	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ColladaCompileOp : public ::Assets::ICompileOperation
@@ -461,7 +463,7 @@ namespace ColladaConversion
         auto finalSize = size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin());
 
         Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            RenderCore::Assets::ChunkType_RawMat, 0, 
+            ChunkType_Text, 0, 
             model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
 
         return ::Assets::MakeNascentChunkArray({
@@ -602,15 +604,17 @@ namespace ColladaConversion
 
 		result->_resolveContext = ::ColladaConversion::URIResolveContext(result->_doc);
 
-		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Skeleton, "Skeleton"});
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Model, "Model"});
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_RawMat, "RawMat"});
+		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_Skeleton, "Skeleton"});
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_AnimationSet, "Animations"});
 
 		return std::move(result);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static uint64_t s_knownAssetTypes[] = { Type_Model, Type_RawMat, Type_Skeleton, Type_AnimationSet };
 
 	class CompilerDesc : public ::Assets::ICompilerDesc
 	{
@@ -621,7 +625,7 @@ namespace ColladaConversion
 		virtual FileKind	GetFileKind(unsigned index) const
 		{
 			assert(index==0);
-			return FileKind { "dae", "Collada XML asset" };
+			return FileKind { MakeIteratorRange(s_knownAssetTypes), "dae", "Collada XML asset" };
 		}
 
 		CompilerDesc() {}

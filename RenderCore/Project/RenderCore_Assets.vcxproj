@@ -74,7 +74,6 @@
     <ClCompile Include="..\Assets\RawAnimationCurve.cpp" />
     <ClCompile Include="..\Assets\RawMaterial.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />
-    <ClCompile Include="..\Assets\ModelCompiler.cpp" />
     <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Assets\MaterialScaffold.cpp" />
     <ClCompile Include="..\Assets\MaterialCompiler.cpp" />
@@ -109,7 +108,6 @@
     <ClInclude Include="..\Assets\RawAnimationCurve.h" />
     <ClInclude Include="..\Assets\RawMaterial.h" />
     <ClInclude Include="..\Assets\Services.h" />
-    <ClInclude Include="..\Assets\ModelCompiler.h" />
     <ClInclude Include="..\Assets\DeferredShaderResource.h" />
     <ClInclude Include="..\Assets\MaterialScaffold.h" />
     <ClInclude Include="..\Assets\MaterialCompiler.h" />

@@ -257,6 +257,8 @@ namespace RenderCore { namespace Assets
         uint64 typeCode, 
         const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
+		if (typeCode != RenderCore::Assets::MaterialScaffold::CompileProcessType) return nullptr;
+
         if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 

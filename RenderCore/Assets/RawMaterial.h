@@ -63,7 +63,9 @@ namespace RenderCore { namespace Assets
 			const ::Assets::DepValPtr& depVal);
         ~RawMaterial();
 
-		static const auto CompileProcessType = ConstHash64<'RawM', 'at'>::Value;
+		static void ConstructToFuture(
+			::Assets::AssetFuture<RawMaterial>&,
+			StringSection<::Assets::ResChar> initializer);
 
     private:
         std::shared_ptr<::Assets::DependencyValidation> _depVal;

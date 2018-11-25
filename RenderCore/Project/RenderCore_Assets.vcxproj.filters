@@ -81,9 +81,6 @@
     <ClCompile Include="..\GeoProc\GeoProcUtil.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\Assets\ModelCompiler.cpp">
-      <Filter>Assets\Model</Filter>
-    </ClCompile>
     <ClCompile Include="..\Assets\RawMaterial.cpp">
       <Filter>Assets\Material</Filter>
     </ClCompile>
@@ -173,9 +170,6 @@
     </ClInclude>
     <ClInclude Include="..\GeoProc\GeoProcUtil.h">
       <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\Assets\ModelCompiler.h">
-      <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\Assets\RawMaterial.h">
       <Filter>Assets\Material</Filter>

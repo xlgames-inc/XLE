@@ -64,6 +64,7 @@
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\AssetServices.h" />
+    <ClInclude Include="..\GeneralCompiler.h" />
     <ClInclude Include="..\GenericFuture.h" />
     <ClInclude Include="..\IArtifact.h" />
     <ClInclude Include="..\IFileSystem.h" />
@@ -88,6 +89,7 @@
     <ClCompile Include="..\ConfigFileContainer.cpp" />
     <ClCompile Include="..\DeferredConstruction.cpp" />
     <ClCompile Include="..\AssetServices.cpp" />
+    <ClCompile Include="..\GeneralCompiler.cpp" />
     <ClCompile Include="..\IntermediateAssets.cpp" />
     <ClCompile Include="..\MainFileSystem.cpp" />
     <ClCompile Include="..\MountingTree.cpp" />

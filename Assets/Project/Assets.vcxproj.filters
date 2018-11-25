@@ -66,6 +66,9 @@
     <ClInclude Include="..\IArtifact.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
+    <ClInclude Include="..\GeneralCompiler.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AssetUtils.cpp" />
@@ -108,6 +111,9 @@
       <Filter>FileSystems</Filter>
     </ClCompile>
     <ClCompile Include="..\NascentChunk.cpp" />
+    <ClCompile Include="..\GeneralCompiler.cpp">
+      <Filter>CompileAndAsync</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="AssetHeaps">
