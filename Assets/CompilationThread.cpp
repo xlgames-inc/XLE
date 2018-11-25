@@ -21,8 +21,8 @@ namespace Assets
     }
     
     void CompilationThread::Push(
-		std::shared_ptr<::Assets::CompileFuture> future,
-		std::function<void(::Assets::CompileFuture&)> operation)
+		std::shared_ptr<::Assets::ArtifactFuture> future,
+		std::function<void(::Assets::ArtifactFuture&)> operation)
     {
         if (!_workerQuit) {
 			_queue.push_overflow(Element{future, std::move(operation)});
@@ -135,8 +135,8 @@ namespace Assets
     }
 
 	void QueueCompileOperation(
-		const std::shared_ptr<::Assets::CompileFuture>& future,
-		std::function<void(::Assets::CompileFuture&)>&& operation)
+		const std::shared_ptr<::Assets::ArtifactFuture>& future,
+		std::function<void(::Assets::ArtifactFuture&)>&& operation)
 	{
         if (!ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().IsGood()) {
             operation(*future);

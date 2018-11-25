@@ -12,6 +12,7 @@
 #include "../../Assets/CompilerLibrary.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MemoryFile.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Threading/LockFree.h"
@@ -32,7 +33,7 @@ namespace Converter
 		void PerformCompile(
 			GeneralCompiler::ArtifactType artifactType,
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-			::Assets::CompileFuture& compileMarker,
+			::Assets::ArtifactFuture& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
 
@@ -150,7 +151,7 @@ namespace Converter
     void CompilerLibrary::PerformCompile(
 		GeneralCompiler::ArtifactType artifactType,
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
-		::Assets::CompileFuture& compileMarker,
+		::Assets::ArtifactFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
         TRY
@@ -261,11 +262,11 @@ namespace Converter
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class GeneralCompiler::Marker : public ::Assets::ICompileMarker
+    class GeneralCompiler::Marker : public ::Assets::IArtifactPrepareMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -288,7 +289,7 @@ namespace Converter
         return nullptr;
     }
 
-    std::shared_ptr<::Assets::CompileFuture> GeneralCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> GeneralCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
@@ -306,7 +307,7 @@ namespace Converter
 		if (compilerIndex >= c->_pimpl->_compilers.size())
 			Throw(::Exceptions::BasicLabel("Could not find compiler to handle request (%s)", _requestName.c_str()));
 
-        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
+        auto backgroundOp = std::make_shared<::Assets::ArtifactFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
 
 		auto& thread = c->_pimpl->GetThread();
@@ -316,7 +317,7 @@ namespace Converter
 		auto compiler = _compiler;
 		thread.Push(
 			backgroundOp,
-			[compilerIndex, compiler, typeCode, requestName, store](::Assets::CompileFuture& op) {
+			[compilerIndex, compiler, typeCode, requestName, store](::Assets::ArtifactFuture& op) {
 			auto c = compiler.lock();
 			if (!c) {
 				op.SetState(::Assets::AssetState::Invalid);
@@ -344,12 +345,11 @@ namespace Converter
 
 	GeneralCompiler::Marker::~Marker() {}
 
-    std::shared_ptr<::Assets::ICompileMarker> GeneralCompiler::PrepareAsset(
+    std::shared_ptr<::Assets::IArtifactPrepareMarker> GeneralCompiler::Prepare(
         uint64 typeCode, 
-        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount, 
-        const ::Assets::IntermediateAssets::Store& destinationStore)
+        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
-        return std::make_shared<Marker>(initializers[0], typeCode, destinationStore, shared_from_this());
+        return std::make_shared<Marker>(initializers[0], typeCode, ::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
     void GeneralCompiler::StallOnPendingOperations(bool cancelAll)

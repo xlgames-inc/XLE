@@ -33,7 +33,7 @@
 #include "../../BufferUploads/ResourceLocator.h"
 
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/IArtifact.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../ConsoleRig/AttachableInternal.h"
 #include "../../Utility/PtrUtils.h"

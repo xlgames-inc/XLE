@@ -570,7 +570,7 @@ namespace Utility
 			const utf8 filename[], uint64 size, const char openMode[], 
 			FileShareMode::BitField shareMode) never_throws
 		{
-			assert(_begin == nullptr && _end == nullptr && !_closeFn);
+			assert(_data.empty() && !_closeFn);
 
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
@@ -602,12 +602,11 @@ namespace Utility
 				return AsExceptionReason(GetLastError());
 			}
 
-			_begin = mappingStart;
-			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
-			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
 				{
-					assert(begin != nullptr);
-					UnmapViewOfFile(begin);
+					assert(!data.empty());
+					UnmapViewOfFile(data.begin());
 					CloseHandle(mapping);
 					CloseHandle(fileHandle);
 				};
@@ -618,7 +617,7 @@ namespace Utility
 			const utf16 filename[], uint64 size, const char openMode[],
 			FileShareMode::BitField shareMode) never_throws
 		{
-			assert(_begin == nullptr && _end == nullptr && !_closeFn);
+			assert(_data.empty() && !_closeFn);
 
 			auto underlyingOpenMode = AsUnderlyingOpenMode(openMode);
 			auto underlyingShareMode = AsUnderlyingShareMode(shareMode);
@@ -650,12 +649,11 @@ namespace Utility
 				return AsExceptionReason(GetLastError());
 			}
 
-			_begin = mappingStart;
-			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
-			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
 				{
-					assert(begin != nullptr);
-					UnmapViewOfFile(begin);
+					assert(!data.empty());
+					UnmapViewOfFile(data.begin());
 					CloseHandle(mapping);
 					CloseHandle(fileHandle);
 				};
@@ -696,12 +694,11 @@ namespace Utility
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 			}
 
-			_begin = mappingStart;
-			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
-			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
 				{
-					assert(begin != nullptr);
-					UnmapViewOfFile(begin);
+					assert(!data.empty());
+					UnmapViewOfFile(data.begin());
 					CloseHandle(mapping);
 					CloseHandle(fileHandle);
 				};
@@ -741,12 +738,11 @@ namespace Utility
 				ThrowFileOpenException(MakeStringSection(filename), openMode);
 			}
 
-			_begin = mappingStart;
-			_end = PtrAdd(mappingStart, GetFileSize(fileHandle));
-			_closeFn = [fileHandle, mapping](const void* begin, const void* end)
+			_data = MakeIteratorRange(mappingStart, PtrAdd(mappingStart, GetFileSize(fileHandle)));
+			_closeFn = [fileHandle, mapping](IteratorRange<const void*> data)
 				{
-					assert(begin != nullptr);
-					UnmapViewOfFile(begin);
+					assert(!data.empty());
+					UnmapViewOfFile(data.begin());
 					CloseHandle(mapping);
 					CloseHandle(fileHandle);
 				};

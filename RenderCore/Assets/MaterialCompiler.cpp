@@ -15,6 +15,8 @@
 #include "../../Assets/NascentChunk.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/MemoryFile.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
@@ -42,7 +44,7 @@ namespace RenderCore { namespace Assets
     static void CompileMaterialScaffold(
         StringSection<::Assets::ResChar> sourceMaterial, StringSection<::Assets::ResChar> sourceModel,
         StringSection<::Assets::ResChar> destinationFile,
-		::Assets::CompileFuture& compileMarker,
+		::Assets::ArtifactFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
 		std::vector<::Assets::DependentFileState> deps;
@@ -179,11 +181,11 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MatCompilerMarker : public ::Assets::ICompileMarker
+    class MatCompilerMarker : public ::Assets::IArtifactPrepareMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         MatCompilerMarker(
@@ -213,13 +215,13 @@ namespace RenderCore { namespace Assets
         return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::CompileFuture> MatCompilerMarker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> MatCompilerMarker::InvokeCompile() const
     {
         using namespace ::Assets;
         StringMeld<256,ResChar> debugInitializer;
         debugInitializer<< _materialFilename << "(material scaffold)";
 
-        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
+        auto backgroundOp = std::make_shared<::Assets::ArtifactFuture>();
         backgroundOp->SetInitializer(debugInitializer);
 
 		::Assets::ResChar intermediateName[MaxPath];
@@ -231,7 +233,7 @@ namespace RenderCore { namespace Assets
 		auto* store = _store;
 		QueueCompileOperation(
 			backgroundOp,
-			[materialFilename, modelFilename, destinationFile, store](::Assets::CompileFuture& op) {
+			[materialFilename, modelFilename, destinationFile, store](::Assets::ArtifactFuture& op) {
 				CompileMaterialScaffold(
 					MakeStringSection(materialFilename), MakeStringSection(modelFilename), MakeStringSection(destinationFile),
 					op, *store);
@@ -251,16 +253,15 @@ namespace RenderCore { namespace Assets
     : _materialFilename(materialFilename), _modelFilename(modelFilename), _store(&store) {}
     MatCompilerMarker::~MatCompilerMarker() {}
 
-    std::shared_ptr<::Assets::ICompileMarker> MaterialScaffoldCompiler::PrepareAsset(
+    std::shared_ptr<::Assets::IArtifactPrepareMarker> MaterialScaffoldCompiler::Prepare(
         uint64 typeCode, 
-        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-        const ::Assets::IntermediateAssets::Store& store)
+        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
         if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
         const auto materialFilename = initializers[0], modelFilename = initializers[1];
-        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), store);
+        return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), ::Assets::Services::GetAsyncMan().GetIntermediateStore());
     }
 
 	void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) {}

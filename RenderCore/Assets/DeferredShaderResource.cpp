@@ -435,7 +435,7 @@ namespace RenderCore { namespace Assets
 			"r+", 0u);
 		if (ioResult != ::Assets::IFileSystem::IOReason::Success) {
 			_cache = ::Assets::MainFileSystem::OpenMemoryMappedFile(u("int/TextureFormatCache.dat"), size, "w", 0u);
-			XlClearMemory(_cache.GetData(), size);
+			XlClearMemory(_cache.GetData().begin(), size);
 		}
     }
 
@@ -456,7 +456,7 @@ namespace RenderCore { namespace Assets
 
         typedef CachedTextureFormats::Header Hdr;
         typedef CachedTextureFormats::Entry Entry;
-        auto* data = cache._cache.GetData();
+        auto* data = cache._cache.GetData().begin();
         if (!data) {
             static bool firstTime = true;
             if (firstTime) {

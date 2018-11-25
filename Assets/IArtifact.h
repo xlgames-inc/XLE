@@ -34,19 +34,19 @@ namespace Assets
     /// Other times, objects are stored in a "ArchiveCache" object. For example,
     /// shader compiles are typically combined together into archives of a few
     /// different configurations. So a pointer to an optional ArchiveCache is provided.
-    class CompileFuture : public GenericFuture
+    class ArtifactFuture : public GenericFuture
     {
     public:
 		using NameAndArtifact = std::pair<std::string, std::shared_ptr<IArtifact>>;
 		IteratorRange<const NameAndArtifact*> GetArtifacts() const { return MakeIteratorRange(_artifacts); }
 
-        CompileFuture();
-        ~CompileFuture();
+        ArtifactFuture();
+        ~ArtifactFuture();
 
-		CompileFuture(CompileFuture&&) = delete;
-		CompileFuture& operator=(CompileFuture&&) = delete;
-		CompileFuture(const CompileFuture&) = delete;
-		CompileFuture& operator=(const CompileFuture&) = delete;
+		ArtifactFuture(ArtifactFuture&&) = delete;
+		ArtifactFuture& operator=(ArtifactFuture&&) = delete;
+		ArtifactFuture(const ArtifactFuture&) = delete;
+		ArtifactFuture& operator=(const ArtifactFuture&) = delete;
 
 		void AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact);
 
@@ -59,11 +59,11 @@ namespace Assets
 	/// <summary>Returned from a IAssetCompiler on response to a compile request</summary>
 	/// After receiving a compile marker, the caller can choose to either retrieve an existing
 	/// artifact from a previous compile, or begin a new asynchronous compile operation.
-	class ICompileMarker
+	class IArtifactPrepareMarker
 	{
 	public:
 		virtual std::shared_ptr<IArtifact> GetExistingAsset() const = 0;
-		virtual std::shared_ptr<CompileFuture> InvokeCompile() const = 0;
+		virtual std::shared_ptr<ArtifactFuture> InvokeCompile() const = 0;
 		virtual StringSection<ResChar> Initializer() const = 0;
 	};
 
@@ -72,9 +72,8 @@ namespace Assets
 	class IAssetCompiler
 	{
 	public:
-		virtual std::shared_ptr<ICompileMarker> PrepareAsset(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-			const IntermediateAssets::Store& destinationStore) = 0;
+		virtual std::shared_ptr<IArtifactPrepareMarker> Prepare(
+			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
 		virtual void StallOnPendingOperations(bool cancelAll) = 0;
 		virtual ~IAssetCompiler();
 	};

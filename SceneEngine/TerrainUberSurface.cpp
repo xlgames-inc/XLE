@@ -66,14 +66,14 @@ namespace SceneEngine
             //  a huge 2D array of height values
         auto mappedFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(filename, 0, "r+", FileShareMode::Read);
         
-        auto& hdr = *(TerrainUberHeader*)mappedFile.GetData();
+        auto& hdr = *(TerrainUberHeader*)mappedFile.GetData().begin();
         if (hdr._magic != TerrainUberHeader::Magic)
             Throw(::Exceptions::BasicLabel(
                 "Uber surface file appears to be corrupt (%s)", filename.AsString().c_str()));
 
         _width = hdr._width;
         _height = hdr._height;
-        _dataStart = PtrAdd(mappedFile.GetData(), sizeof(TerrainUberHeader));
+        _dataStart = PtrAdd(mappedFile.GetData().begin(), sizeof(TerrainUberHeader));
         _format = ImpliedTyping::TypeDesc(
             ImpliedTyping::TypeCat(hdr._typeCat), 
             (uint16)hdr._typeArrayCount);

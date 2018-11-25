@@ -15,7 +15,7 @@ namespace Assets
 	class DependentFileState;
 	class DependencyValidation;
 	class IAssetCompiler;
-	class ICompileMarker;
+	class IArtifactPrepareMarker;
 	class IFileInterface;
 }
 
@@ -29,9 +29,8 @@ namespace Assets { namespace IntermediateAssets
 	{
 	public:
 		void AddCompiler(uint64_t typeCode, const std::shared_ptr<IAssetCompiler>& processor);
-		std::shared_ptr<ICompileMarker> PrepareAsset(
-			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-			Store& store);
+		std::shared_ptr<IArtifactPrepareMarker> Prepare(
+			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 		void StallOnPendingOperations(bool cancelAll);
 
 		CompilerSet();

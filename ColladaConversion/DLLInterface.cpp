@@ -592,9 +592,7 @@ namespace ColladaConversion
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
 		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
 		XmlInputStreamFormatter<utf8> formatter(
-			MemoryMappedInputStream(
-				result->_fileData.GetData(),
-				PtrAdd(result->_fileData.GetData(), result->_fileData.GetSize())));
+			MemoryMappedInputStream(result->_fileData.GetData()));
 		formatter._allowCharacterData = true;
 
 		result->_name = identifier.AsString();

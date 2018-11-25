@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MinimalShaderSource.h"
-#include "../Assets/IAssetCompiler.h"
+#include "../Assets/IArtifact.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/Streams/FileUtils.h"
@@ -18,7 +18,7 @@ namespace RenderCore
     auto MinimalShaderSource::Compile(
         const void* shaderInMemory, size_t size,
         const ShaderService::ResId& resId,
-		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         using Payload = ::Assets::Blob;
         Payload payload, errors;
@@ -28,7 +28,7 @@ namespace RenderCore
             payload, errors, deps,
             shaderInMemory, size, resId, definesTable);
 
-		auto result = std::make_shared<::Assets::CompileFuture>();
+		auto result = std::make_shared<::Assets::ArtifactFuture>();
         auto depVal = AsDepVal(MakeIteratorRange(deps));
 		result->AddArtifact("main", std::make_shared<Assets::BlobArtifact>(payload, std::move(depVal)));
 		result->AddArtifact("log", std::make_shared<Assets::BlobArtifact>(errors, std::move(depVal)));
@@ -39,7 +39,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromFile(
 		StringSection<::Assets::ResChar> resource, 
 		StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::CompileFuture>
+        -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
 
@@ -51,7 +51,7 @@ namespace RenderCore
     auto MinimalShaderSource::CompileFromMemory(
 		StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 		StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const
-        -> std::shared_ptr<::Assets::CompileFuture>
+        -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         return Compile(
             shaderInMemory.begin(), shaderInMemory.size(),

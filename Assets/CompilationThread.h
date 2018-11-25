@@ -7,7 +7,7 @@
 #pragma once
 
 #include "AssetsCore.h"
-#include "IAssetCompiler.h"
+#include "IArtifact.h"
 #include "../Utility/Threading/LockFree.h"
 #include <memory>
 #include <thread>
@@ -22,8 +22,8 @@ namespace Assets
     {
     public:
         void Push(
-			std::shared_ptr<::Assets::CompileFuture> future,
-			std::function<void(::Assets::CompileFuture&)> operation);
+			std::shared_ptr<::Assets::ArtifactFuture> future,
+			std::function<void(::Assets::ArtifactFuture&)> operation);
         void StallOnPendingOperations(bool cancelAll);
 
         CompilationThread();
@@ -34,8 +34,8 @@ namespace Assets
         volatile bool _workerQuit;
 		struct Element
 		{
-			std::weak_ptr<::Assets::CompileFuture> _future;
-			std::function<void(::Assets::CompileFuture&)> _operation;
+			std::weak_ptr<::Assets::ArtifactFuture> _future;
+			std::function<void(::Assets::ArtifactFuture&)> _operation;
 		};
         using Queue = LockFree::FixedSizeQueue<Element, 256>;
         Queue _queue;
@@ -45,8 +45,8 @@ namespace Assets
     };
 
 	void QueueCompileOperation(
-		const std::shared_ptr<::Assets::CompileFuture>& future,
-		std::function<void(::Assets::CompileFuture&)>&& operation);
+		const std::shared_ptr<::Assets::ArtifactFuture>& future,
+		std::function<void(::Assets::ArtifactFuture&)>&& operation);
 		
 }
 

@@ -10,7 +10,7 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/IArtifact.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
 
@@ -81,10 +81,9 @@ namespace ToolsRig
     class AOSupplementCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
     {
     public:
-        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
             uint64 typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& destinationStore);
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
 
             // When using with placements, this hash value is referenced by the

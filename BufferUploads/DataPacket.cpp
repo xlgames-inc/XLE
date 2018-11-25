@@ -383,11 +383,11 @@ namespace BufferUploads
 						auto ioResult = ::Assets::MainFileSystem::TryOpen(srcFile, (const utf16*)filename, 0ull, "r");
 						if (ioResult == ::Assets::IFileSystem::IOReason::Success) {
 							if (fmt == TexFmt::DDS) {
-								hresult = LoadFromDDSMemory(srcFile.GetData(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
+								hresult = LoadFromDDSMemory(srcFile.GetData().begin(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
 							} else if (fmt == TexFmt::TGA) {
-								hresult = LoadFromTGAMemory(srcFile.GetData(), srcFile.GetSize(), &_texMetadata, _image);
+								hresult = LoadFromTGAMemory(srcFile.GetData().begin(), srcFile.GetSize(), &_texMetadata, _image);
 							} else if (fmt == TexFmt::WIC) {
-								hresult = LoadFromWICMemory(srcFile.GetData(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
+								hresult = LoadFromWICMemory(srcFile.GetData().begin(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
 							} else {
 								Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
 							}

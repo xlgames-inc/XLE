@@ -21,7 +21,7 @@
 	#include "DivergentAsset.h"
 #endif
 
-namespace Assets { class ICompileMarker; }
+namespace Assets { class IArtifactPrepareMarker; }
 */
 
 #include "AssetsCore.h"		// (for ResChar)
@@ -103,7 +103,7 @@ namespace Assets { namespace Internal
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+	std::shared_ptr<IArtifactPrepareMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
     template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
     template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };

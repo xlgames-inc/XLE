@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../ShaderService.h"
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/IArtifact.h"
 #include <vector>
 #include <memory>
 #include <mutex>
@@ -39,15 +39,14 @@ namespace RenderCore { namespace Assets
         , public std::enable_shared_from_this<LocalCompiledShaderSource>
     {
     public:
-        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
-            uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& destinationStore);
+        std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
+            uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
-        std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
+        std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
             
-        std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
+        std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
             StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const;
 

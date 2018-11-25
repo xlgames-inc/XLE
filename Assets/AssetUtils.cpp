@@ -678,13 +678,12 @@ namespace Assets
 
 	namespace Internal
 	{
-		std::shared_ptr<ICompileMarker> BeginCompileOperation(
+		std::shared_ptr<IArtifactPrepareMarker> BeginCompileOperation(
 			uint64_t typeCode, const StringSection<ResChar> initializers[],
 			unsigned initializerCount)
 		{
 			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
-			auto& store = Services::GetAsyncMan().GetIntermediateStore();
-			return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
+			return compilers.Prepare(typeCode, initializers, initializerCount);
 		}
 	}
 

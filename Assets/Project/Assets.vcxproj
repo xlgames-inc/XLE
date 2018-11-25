@@ -65,7 +65,7 @@
     <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\AssetServices.h" />
     <ClInclude Include="..\GenericFuture.h" />
-    <ClInclude Include="..\IAssetCompiler.h" />
+    <ClInclude Include="..\IArtifact.h" />
     <ClInclude Include="..\IFileSystem.h" />
     <ClInclude Include="..\IntermediateAssets.h" />
     <ClInclude Include="..\MemoryFile.h" />

@@ -62,10 +62,10 @@
       <Filter>FileSystems</Filter>
     </ClInclude>
     <ClInclude Include="..\NascentChunk.h" />
-    <ClInclude Include="..\IAssetCompiler.h">
+    <ClInclude Include="..\GenericFuture.h" />
+    <ClInclude Include="..\IArtifact.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
-    <ClInclude Include="..\GenericFuture.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\AssetUtils.cpp" />

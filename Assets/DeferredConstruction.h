@@ -7,7 +7,7 @@
 #include "AssetsInternal.h"
 #include "AssetFuture.h"
 #include "AssetTraits.h"
-#include "IAssetCompiler.h"
+#include "IArtifact.h"
 #include "../ConsoleRig/Log.h"
 #include <memory>
 
@@ -15,7 +15,7 @@ namespace Assets
 {
 	namespace Internal 
 	{
-		std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::shared_ptr<IArtifactPrepareMarker> BeginCompileOperation(uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 	}
 
 	namespace Internal
@@ -62,6 +62,9 @@ namespace Assets
 			future.SetAsset(std::move(asset), {});
 		} CATCH (const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH (const Exceptions::InvalidAsset& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+			throw;	// Have to rethrow InvalidAsset, otherwise we loose our dependency validation. This can occur when the AutoConstructAsset function itself loads some other asset
 		} CATCH (const std::exception& e) {
 			Log(Warning) << "No dependency validation associated with asset after construction failure. Hot reloading will not function for this asset." << std::endl;
 			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
@@ -127,6 +130,9 @@ namespace Assets
 				});
 		} CATCH(const Exceptions::ConstructionError& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+		} CATCH (const Exceptions::InvalidAsset& e) {
+			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
+			throw;	// Have to rethrow InvalidAsset, otherwise we loose our dependency validation. This can occur when the AutoConstructAsset function itself loads some other asset
 		} CATCH(const std::exception& e) {
 			Log(Warning) << "No dependency validation associated with asset (" << (initializerCount ? initializers[0].AsString() : "<<empty initializers>>") << ") after construction failure. Hot reloading will not function for this asset." << std::endl;
 			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));

@@ -67,12 +67,11 @@ namespace Converter
        
 		auto aservices = std::make_shared<::Assets::Services>(0);
 		auto& compilers = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers();
-		auto& store = ::Assets::Services::GetAsyncMan().GetIntermediateStore();
 		auto generalCompiler = std::make_shared<GeneralCompiler>(GeneralCompiler::ArtifactType::Blob);
 		compilers.AddCompiler(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, generalCompiler);
 
 		const StringSection<char> inits[] = { inputFile };
-		auto marker = compilers.PrepareAsset(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, inits, dimof(inits), store);
+		auto marker = compilers.Prepare(ConstHash64<'Worl', 'dmap', 'Geo'>::Value, inits, dimof(inits));
 
 		auto pendingCompile = marker->InvokeCompile();
 		auto finalState = pendingCompile->StallWhilePending();

@@ -763,7 +763,7 @@ namespace ToolsRig
     {
     public:
         Result::Enum Update();
-        using Op = ::Assets::CompileFuture;
+        using Op = ::Assets::ArtifactFuture;
         PollingOp(
 			std::shared_ptr<Pimpl> pimpl, std::shared_ptr<Op> queuedOp, 
 			const std::string& modelFilename,
@@ -812,7 +812,7 @@ namespace ToolsRig
 
     AOSupplementCompiler::PollingOp::PollingOp(
         std::shared_ptr<Pimpl> pimpl,
-        std::shared_ptr<::Assets::CompileFuture> queuedOp,
+        std::shared_ptr<::Assets::ArtifactFuture> queuedOp,
 		const std::string& modelFilename,
 		const std::string& materialFilename,
 		const std::string& destinationFilename,
@@ -829,11 +829,11 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class AOSupplementCompiler::Marker : public ::Assets::ICompileMarker
+    class AOSupplementCompiler::Marker : public ::Assets::IArtifactPrepareMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -860,12 +860,12 @@ namespace ToolsRig
 		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::CompileFuture> AOSupplementCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> AOSupplementCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
-        using QueuedOp = ::Assets::CompileFuture;
+        using QueuedOp = ::Assets::ArtifactFuture;
 
             // Because the we're using the immediate context, we must run in a foreground
             // thread. We can't push into a background thread here...
@@ -908,16 +908,15 @@ namespace ToolsRig
     
     AOSupplementCompiler::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::ICompileMarker> 
-        AOSupplementCompiler::PrepareAsset(
+    std::shared_ptr<::Assets::IArtifactPrepareMarker> 
+        AOSupplementCompiler::Prepare(
             uint64 typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& store)
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
         if (initializerCount != 2 || initializers[0].IsEmpty() || initializers[1].IsEmpty()) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
         const auto modelFilename = initializers[0], materialFilename = initializers[1];
-        return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, store, shared_from_this());
+        return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, ::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
     void AOSupplementCompiler::StallOnPendingOperations(bool)

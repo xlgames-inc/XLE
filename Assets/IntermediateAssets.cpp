@@ -7,7 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "IntermediateAssets.h"
-#include "IAssetCompiler.h"
+#include "IArtifact.h"
 #include "IFileSystem.h"
 #include "DepVal.h"
 #include "AssetUtils.h"
@@ -407,9 +407,8 @@ namespace Assets { namespace IntermediateAssets
 		}
 	}
 
-	std::shared_ptr<ICompileMarker> CompilerSet::PrepareAsset(
-		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-		Store& store)
+	std::shared_ptr<IArtifactPrepareMarker> CompilerSet::Prepare(
+		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
 	{
 		// look for a "processor" object with the given type code, and rebuild the file
 		// write the .deps file containing dependencies information
@@ -421,7 +420,7 @@ namespace Assets { namespace IntermediateAssets
 		// note that ideally we want to be able to schedule this in the background
 		auto i = LowerBound(_pimpl->_compilers, typeCode);
 		if (i != _pimpl->_compilers.cend() && i->first == typeCode) {
-			return i->second->PrepareAsset(typeCode, initializers, initializerCount, store);
+			return i->second->Prepare(typeCode, initializers, initializerCount);
 		}
 		else {
 			assert(0);  // couldn't find a processor for this asset type
@@ -455,13 +454,13 @@ namespace Assets
 	IAssetCompiler::~IAssetCompiler() {}
 	IArtifact::~IArtifact() {}
 
-	void CompileFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
+	void ArtifactFuture::AddArtifact(const std::string& name, const std::shared_ptr<IArtifact>& artifact)
 	{
 		_artifacts.push_back(std::make_pair(name, artifact));
 	}
 
-	CompileFuture::CompileFuture() {}
-    CompileFuture::~CompileFuture()  {}
+	ArtifactFuture::ArtifactFuture() {}
+    ArtifactFuture::~ArtifactFuture()  {}
 
 
 	auto FileArtifact::GetBlob() const -> Blob

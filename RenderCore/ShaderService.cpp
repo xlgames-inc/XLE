@@ -154,7 +154,7 @@ namespace RenderCore
 
     auto ShaderService::CompileFromFile(
         StringSection<::Assets::ResChar> resId, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromFile(resId, definesTable);
@@ -166,7 +166,7 @@ namespace RenderCore
     auto ShaderService::CompileFromMemory(
         StringSection<char> shaderInMemory, 
         StringSection<char> entryPoint, StringSection<char> shaderModel, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);

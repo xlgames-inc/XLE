@@ -14,6 +14,8 @@
 #include "../../Assets/MemoryFile.h"
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/DepVal.h"
+#include "../../Assets/AssetServices.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/AttachableLibrary.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
@@ -37,7 +39,7 @@ namespace RenderCore { namespace Assets
 		void PerformCompile(
 			uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
 			StringSection<::Assets::ResChar> destinationFile,
-			::Assets::CompileFuture& compileMarker,
+			::Assets::ArtifactFuture& compileMarker,
 			const ::Assets::IntermediateAssets::Store& destinationStore);
 		void AttachLibrary();
 
@@ -147,7 +149,7 @@ namespace RenderCore { namespace Assets
     void CompilerLibrary::PerformCompile(
 		uint64 typeCode, StringSection<::Assets::ResChar> initializer, 
 		StringSection<::Assets::ResChar> destinationFile,
-		::Assets::CompileFuture& compileMarker,
+		::Assets::ArtifactFuture& compileMarker,
 		const ::Assets::IntermediateAssets::Store& destinationStore)
     {
 		std::vector<::Assets::DependentFileState> deps;
@@ -299,11 +301,11 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ModelCompiler::Marker : public ::Assets::ICompileMarker
+    class ModelCompiler::Marker : public ::Assets::IArtifactPrepareMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
@@ -359,7 +361,7 @@ namespace RenderCore { namespace Assets
 		return std::make_shared<::Assets::FileArtifact>(intermediateName, depVal);
     }
 
-    std::shared_ptr<::Assets::CompileFuture> ModelCompiler::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> ModelCompiler::Marker::InvokeCompile() const
     {
         auto c = _compiler.lock();
         if (!c) return nullptr;
@@ -384,7 +386,7 @@ namespace RenderCore { namespace Assets
             //
             // However, with the new implementation, we could use one of the global thread pools
             // and it should be ok to queue up multiple compilations at the same time.
-        auto backgroundOp = std::make_shared<::Assets::CompileFuture>();
+        auto backgroundOp = std::make_shared<::Assets::ArtifactFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
 
 		::Assets::ResChar intermediateName[MaxPath];
@@ -397,7 +399,7 @@ namespace RenderCore { namespace Assets
 		auto compiler = _compiler;
 		QueueCompileOperation(
 			backgroundOp,
-			[compilerIndex, compiler, typeCode, requestName, destinationFile, store](::Assets::CompileFuture& op) {
+			[compilerIndex, compiler, typeCode, requestName, destinationFile, store](::Assets::ArtifactFuture& op) {
 				auto c = compiler.lock();
 				if (!c) {
 					op.SetState(::Assets::AssetState::Invalid);
@@ -425,12 +427,11 @@ namespace RenderCore { namespace Assets
 
     ModelCompiler::Marker::~Marker() {}
 
-    std::shared_ptr<::Assets::ICompileMarker> ModelCompiler::PrepareAsset(
+    std::shared_ptr<::Assets::IArtifactPrepareMarker> ModelCompiler::Prepare(
         uint64 typeCode, 
-        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount, 
-        const ::Assets::IntermediateAssets::Store& destinationStore)
+        const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
-        return std::make_shared<Marker>(initializers[0], typeCode, destinationStore, shared_from_this());
+        return std::make_shared<Marker>(initializers[0], typeCode, ::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
     void ModelCompiler::StallOnPendingOperations(bool cancelAll)

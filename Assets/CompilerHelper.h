@@ -11,7 +11,7 @@
 
 namespace Assets
 {
-    class CompileFuture;
+    class ArtifactFuture;
 	class DependentFileState;
 
     /// <summary>Utilities helpful when implementing asset compilers</summary>

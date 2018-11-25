@@ -15,9 +15,9 @@
 
 namespace Assets
 {
-    class CompileFuture;
+    class ArtifactFuture;
     class DependencyValidation;
-    class ICompileMarker;
+    class IArtifactPrepareMarker;
 
 	using AssetChunkReopenFunction = std::function<std::shared_ptr<IFileInterface>()>;
 

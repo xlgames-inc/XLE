@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/IArtifact.h"
 #include "../../Utility/StringUtils.h"
 #include <memory>
 
@@ -15,10 +15,9 @@ namespace RenderCore { namespace Assets
     class MaterialScaffoldCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<MaterialScaffoldCompiler>
     {
     public:
-        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::IArtifactPrepareMarker> Prepare(
             uint64_t typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& destinationStore);
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 		
 		void StallOnPendingOperations(bool cancelAll);
 

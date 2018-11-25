@@ -22,25 +22,23 @@ namespace Utility
 		}
 	}
 
-	MemoryMappedFile::MemoryMappedFile(void* begin, void* end, CloseFn&& close)
-	: _begin(begin), _end(end), _closeFn(std::move(close)) {}
+	MemoryMappedFile::MemoryMappedFile(IteratorRange<void*> data, CloseFn&& close)
+	: _data(data), _closeFn(std::move(close)) {}
 
     MemoryMappedFile::~MemoryMappedFile()
     {
 		if (_closeFn)
-			_closeFn(_begin, _end);
+			_closeFn(_data);
     }
 
     MemoryMappedFile::MemoryMappedFile()
     {
-		_begin = _end = nullptr;
     }
 
     MemoryMappedFile::MemoryMappedFile(MemoryMappedFile&& moveFrom) never_throws
     {
-		_begin = moveFrom._begin;
-		_end = moveFrom._end;
-		moveFrom._begin = moveFrom._end = nullptr;
+		_data = moveFrom._data;
+		moveFrom._data = {};
 		_closeFn = std::move(moveFrom._closeFn);
 		moveFrom._closeFn = nullptr;
     }
@@ -48,11 +46,10 @@ namespace Utility
     MemoryMappedFile& MemoryMappedFile::operator=(MemoryMappedFile&& moveFrom) never_throws
     {
 		if (_closeFn)
-			_closeFn(_begin, _end);
+			_closeFn(_data);
 
-		_begin = moveFrom._begin;
-		_end = moveFrom._end;
-		moveFrom._begin = moveFrom._end = nullptr;
+		_data = moveFrom._data;
+		moveFrom._data = {};
 		_closeFn = std::move(moveFrom._closeFn);
 		moveFrom._closeFn = nullptr;
         return *this;
