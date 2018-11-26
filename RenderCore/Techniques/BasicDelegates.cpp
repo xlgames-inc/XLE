@@ -105,6 +105,7 @@ namespace RenderCore { namespace Techniques
 		auto tech = techFuture->TryActualize();
 		if (!tech) return nullptr;
 		auto shaderFuture = tech->FindVariation(techniqueIndex, shaderSelectors);
+		if (!shaderFuture) return nullptr;
 		return shaderFuture->TryActualize().get();
 	}
 

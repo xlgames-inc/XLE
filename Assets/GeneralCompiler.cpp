@@ -397,9 +397,13 @@ namespace Assets
 
 		std::shared_ptr<ExtensionAndDelegate> delegate;
 
+		std::string extension;
+		extension.reserve(splitRequest.Extension().size());
+		std::transform(splitRequest.Extension().begin(), splitRequest.Extension().end(), std::back_inserter(extension), tolower);
+
 			// Find the compiler that can handle this asset type (just by looking at the extension)
 		for (const auto&d:c->_pimpl->_delegates) {
-			if (std::regex_match(splitRequest.Extension().begin(), splitRequest.Extension().end(), d->_extensionFilter)) {
+			if (std::regex_match(extension, d->_extensionFilter)) {
 				delegate = d;
 				break;
 			}

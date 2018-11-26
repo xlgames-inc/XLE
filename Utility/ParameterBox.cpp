@@ -1356,8 +1356,8 @@ namespace Utility
             if (!success)
                 Throw(::Exceptions::BasicLabel("Parsing exception while reading attribute in parameter box deserialization"));
 
-            {
-                auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
+            auto nameLen = (size_t(name._end) - size_t(name._start)) / sizeof(CharType);
+			{
                 nameBuffer.resize(nameLen*2+1);
                 
                 auto nameConvResult = Conversion::Convert(
@@ -1367,7 +1367,8 @@ namespace Utility
                 if (nameConvResult <= 0)
                     Throw(::Exceptions::BasicLabel("Empty name or error converting string name in parameter box deserialization"));
 
-                nameBuffer[std::min(nameBuffer.size()-1, (size_t)nameConvResult)] = '\0';
+				nameLen = std::min(nameBuffer.size()-1, (size_t)nameConvResult);
+                nameBuffer[nameLen] = '\0';
             }
 
             if (!value._start || !value._end) {
@@ -1402,13 +1403,13 @@ namespace Utility
 
             if (nativeType._type != TypeCat::Void) {
                 SetParameter(
-					MakeStringSection(AsPointer(nameBuffer.cbegin()), AsPointer(nameBuffer.cend())), 
+					MakeStringSection(AsPointer(nameBuffer.cbegin()), PtrAdd(AsPointer(nameBuffer.cbegin()), nameLen)), 
 					MakeIteratorRange(nativeTypeBuffer, PtrAdd(nativeTypeBuffer, nativeType.GetSize())), 
 					nativeType);
             } else {
                     // this is just a string. We should store it as a string, in whatever character set it came in
                 SetParameter(
-                    MakeStringSection(AsPointer(nameBuffer.cbegin()), AsPointer(nameBuffer.cend())),
+                    MakeStringSection(AsPointer(nameBuffer.cbegin()), PtrAdd(AsPointer(nameBuffer.cbegin()), nameLen)),
                     MakeIteratorRange(value.begin(), value.end()), 
                     TypeDesc(TypeOf<CharType>()._type, uint16(value._end - value._start), TypeHint::String));
             }
