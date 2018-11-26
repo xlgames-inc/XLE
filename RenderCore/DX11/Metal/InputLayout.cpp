@@ -21,6 +21,7 @@
 #include "../../UniformsStream.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/MemoryUtils.h"
+#include "../../../Utility/ParameterBox.h"
 #include <D3D11Shader.h>
 
 namespace RenderCore { namespace Metal_DX11
@@ -365,7 +366,9 @@ namespace RenderCore { namespace Metal_DX11
 					D3D11_SHADER_INPUT_BIND_DESC bindingDesc;
 					hresult = reflections[s]->GetResourceBindingDesc(c, &bindingDesc);
 					if (SUCCEEDED(hresult)) {
-						const uint64 hash = Hash64(bindingDesc.Name, XlStringEnd(bindingDesc.Name));
+						// To bind correctly, we must use the same name hashing as the parameter box -- so we might as well just
+						// go ahead and call that here
+						const uint64 hash = ParameterBox::MakeParameterNameHash(MakeStringSection(bindingDesc.Name, XlStringEnd(bindingDesc.Name)));
 						if (hash == hashName) {
 							StageBinding::Binding newBinding = {bindingDesc.BindPoint, slot | (stream<<16)};
 							_stageBindings[s]._shaderResourceBindings.push_back(newBinding);

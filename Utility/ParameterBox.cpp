@@ -762,13 +762,33 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
+	ParameterBox::ParameterNameHash ParameterBox::MakeParameterNameHash(StringSection<utf8> name)
     {
-        return Hash64(name.begin(), name.end());
+        return MakeParameterNameHash(name.Cast<char>());
     }
 
     ParameterBox::ParameterNameHash    ParameterBox::MakeParameterNameHash(StringSection<char> name)
     {
+		// If the variable name has array indexor syntax, we strip off that syntax and use
+        // the indexor as a offset for the hash value. This makes it possible to store arrays,
+		// and has a couple of interesting side effects.
+		//		- array elements always get stored subsequentially
+		//		- only single dimensional arrays are supported, because this syntax has no hints for how to arrange multi dimensional arrays in the hash space
+		//		- "something[0]" and "something" evaluate to the same hash value
+		//		- only positive integer array indexors are supported, but octal or hex numbers can be used
+        if (name.size() >= 2 && *(name.end()-1) == ']') {
+            auto i = &name[name.size()-2];
+            while (i > name.begin() && ((*i >= '0' && *i <= '9') || *i == 'x' || *i == '+')) --i;
+			if (*i == '[') {
+				char* end = nullptr;
+				auto indexor = strtoul(i+1, &end, 0);
+				if (end == name.end()-1) {
+					// successful parse, we can use the array syntax interpretation
+					return MakeParameterNameHash(MakeStringSection(name.begin(), i)) + indexor;
+				}
+			}
+        }
+
         return Hash64(name.begin(), name.end());
     }
 
@@ -1127,11 +1147,9 @@ namespace Utility
     uint64      ParameterBox::CalculateParameterNamesHash() const
     {
             //  Note that the parameter names are always in the same order (unless 
-            //  two names resolve to the same 32 bit hash value). So, even though
-            //  though the xor operation here doesn't depend on order, it should be
-            //  ok -- because if the same parameter names appear in two different
-            //  parameter boxes, they should have the same order.
-        return Hash64(AsPointer(_names.cbegin()), AsPointer(_names.cend()));
+            //  two different names resolve to the same 32 hash value). So we should be
+			//	ok if the same parameter names are added in 2 different orders.
+        return Hash64(AsPointer(_hashNames.cbegin()), AsPointer(_hashNames.cend()));
     }
 
     uint64      ParameterBox::CalculateHash() const
