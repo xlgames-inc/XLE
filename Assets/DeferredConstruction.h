@@ -107,15 +107,22 @@ namespace Assets
 					if (state == AssetState::Invalid) {
 						auto artifacts = pendingCompile->GetArtifacts();
 						if (!artifacts.empty()) {
-							// try to find an artifact named "log". If it doesn't exist, just drop back to the first one
+							// Try to find an artifact named "log". Otherwise, look for one called "exception". If neither exists, just drop back to the first one
 							IArtifact* logArtifact = nullptr;
 							for (const auto& e:artifacts)
 								if (e.first == "log") {
 									logArtifact = e.second.get();
 									break;
 								}
-							if (!logArtifact)
-								logArtifact = artifacts[0].second.get();
+							if (!logArtifact) {
+								for (const auto& e:artifacts)
+									if (e.first == "exception") {
+										logArtifact = e.second.get();
+										break;
+									}
+								if (!logArtifact)
+									logArtifact = artifacts[0].second.get();
+							}
 							thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob());
 						} else {
 							thatFuture.SetInvalidAsset(nullptr, nullptr);

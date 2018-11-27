@@ -335,7 +335,11 @@ namespace RenderCore { namespace Assets
 			if (!scaffoldActual) {
 				auto state = scaffoldFuture->GetAssetState();
 				if (state == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(scaffoldFuture->GetDependencyValidation(), nullptr);
+					std::stringstream str;
+					str << "ModelScaffold failed to actualize: ";
+					const auto& actLog = scaffoldFuture->GetActualizationLog();
+					str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
+					thatFuture.SetInvalidAsset(scaffoldFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
 					return false;
 				}
 				return true;
@@ -351,7 +355,11 @@ namespace RenderCore { namespace Assets
 			if (!materialActual) {
 				auto state = materialFuture->GetAssetState();
 				if (state == ::Assets::AssetState::Invalid) {
-					thatFuture.SetInvalidAsset(materialFuture->GetDependencyValidation(), nullptr);
+					std::stringstream str;
+					str << "MaterialScaffold failed to actualize: ";
+					const auto& actLog = materialFuture->GetActualizationLog();
+					str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
+					thatFuture.SetInvalidAsset(materialFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
 					return false;
 				}
 				return true;
