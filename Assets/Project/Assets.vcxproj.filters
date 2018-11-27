@@ -37,9 +37,6 @@
     <ClInclude Include="..\CompilerHelper.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
-    <ClInclude Include="..\CompilerLibrary.h">
-      <Filter>CompileAndAsync</Filter>
-    </ClInclude>
     <ClInclude Include="..\CompilationThread.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
@@ -67,6 +64,9 @@
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
     <ClInclude Include="..\GeneralCompiler.h">
+      <Filter>CompileAndAsync</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ICompileOperation.h">
       <Filter>CompileAndAsync</Filter>
     </ClInclude>
   </ItemGroup>

@@ -60,7 +60,7 @@
     <ClInclude Include="..\CompilationThread.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
     <ClInclude Include="..\CompilerHelper.h" />
-    <ClInclude Include="..\CompilerLibrary.h" />
+    <ClInclude Include="..\ICompileOperation.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DeferredConstruction.h" />
     <ClInclude Include="..\AssetServices.h" />

@@ -7,7 +7,7 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/NascentChunk.h"
-#include "../../Assets/CompilerLibrary.h"
+#include "../../Assets/ICompileOperation.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MemoryFile.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -58,7 +58,7 @@ namespace Assets
 	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
     static void SerializeToFile(
-		IteratorRange<NascentChunk*> chunks,
+		IteratorRange<const ICompileOperation::OperationResult*> chunks,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
@@ -69,20 +69,20 @@ namespace Assets
             // the main output file from chunks that will be written to
             // a metrics file.
 
-		if (chunks.size() == 1 && chunks[0]._hdr._type == ChunkType_Text) {
+		if (chunks.size() == 1 && chunks[0]._type == ChunkType_Text) {
 			auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
 			outputFile->Write(AsPointer(chunks[0]._data->begin()), chunks[0]._data->size());
 		} else {
 			{
 				auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
 				BuildChunkFile(*outputFile, chunks, versionInfo, 
-					[](const NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+					[](const ICompileOperation::OperationResult& c) { return c._type != ChunkType_Metrics; });
 			}
 
 			for (const auto& c:chunks)
-				if (c._hdr._type == ChunkType_Metrics) {
+				if (c._type == ChunkType_Metrics) {
 					auto outputFile = MainFileSystem::OpenBasicFile(
-						StringMeld<MaxPath>() << destinationFilename << "-" << c._hdr._name,
+						StringMeld<MaxPath>() << destinationFilename << "-" << c._name,
 						"wb");
 					outputFile.Write((const void*)AsPointer(c._data->cbegin()), 1, c._data->size());
 				}
@@ -90,16 +90,16 @@ namespace Assets
     }
 
 	static Blob SerializeToBlob(
-		IteratorRange<NascentChunk*> chunks,
+		IteratorRange<const ICompileOperation::OperationResult*> chunks,
         const ConsoleRig::LibVersionDesc& versionInfo)
 	{
-		if (chunks.size() == 1 && chunks[0]._hdr._type == ChunkType_Text) {
-			return std::make_shared<std::vector<uint8>>(chunks[0]._data->begin(), chunks[0]._data->end());
+		if (chunks.size() == 1 && chunks[0]._type == ChunkType_Text) {
+			return chunks[0]._data;
 		} else {
 			auto result = std::make_shared<std::vector<uint8>>();
 			auto file = CreateMemoryFile(result);
 			BuildChunkFile(*file, chunks, versionInfo,
-				[](const NascentChunk& c) { return c._hdr._type != ChunkType_Metrics; });
+				[](const ICompileOperation::OperationResult& c) { return c._type != ChunkType_Metrics; });
 			return result;
 		}
 	}
@@ -280,7 +280,7 @@ namespace Assets
 
 	static std::pair<std::shared_ptr<DependencyValidation>, std::string> StoreCompileResults(
 		const IntermediateAssets::Store& store,
-		const NascentChunkArray& chunks,
+		IteratorRange<const ICompileOperation::OperationResult*> chunks,
 		StringSection<> initializer,
 		StringSection<> targetName,
 		ConsoleRig::LibVersionDesc srcVersion,
@@ -288,7 +288,7 @@ namespace Assets
 	{
 		ResChar intermediateName[MaxPath];
 		MakeIntermediateName(intermediateName, dimof(intermediateName), initializer, targetName, store);
-		SerializeToFile(MakeIteratorRange(*chunks), intermediateName, srcVersion);
+		SerializeToFile(chunks, intermediateName, srcVersion);
 
 		// write new dependencies
 		auto artifactDepVal = store.WriteDependencies(intermediateName, {}, deps);
@@ -309,14 +309,14 @@ namespace Assets
 			if (!model)
 				Throw(::Exceptions::BasicLabel("Compiler library returned null to compile request on %s", initializer.AsString().c_str()));
 
-			deps = *model->GetDependencies();
+			deps = model->GetDependencies();
 
 			CompileProductsFile compileProducts;
 
-			auto targetCount = model->TargetCount();
+			auto targets = model->GetTargets();
 			bool foundTarget = false;
-			for (unsigned t=0; t<targetCount; ++t) {
-				auto target = model->GetTarget(t);
+			for (unsigned t=0; t<targets.size(); ++t) {
+				const auto& target = targets[t];
 
 				// If we have a destination store, we're going to run every compile operation
 				// Otherwise, we only need to find the one with the correct asset type
@@ -330,7 +330,7 @@ namespace Assets
 					std::string intermediateName;
 					std::tie(intermediateDepVal, intermediateName) = StoreCompileResults(
 						*destinationStore,
-						chunks, initializer, target._name,
+						MakeIteratorRange(chunks), initializer, target._name,
 						delegate._srcVersion, MakeIteratorRange(deps));
 
 					compileProducts._compileProducts.push_back(
@@ -346,7 +346,7 @@ namespace Assets
 					auto artifactDepVal = std::make_shared<DependencyValidation>();
 					RegisterFileDependency(artifactDepVal, initializer);
 
-					auto blob = SerializeToBlob(MakeIteratorRange(*chunks), delegate._srcVersion);
+					auto blob = SerializeToBlob(MakeIteratorRange(chunks), delegate._srcVersion);
 					auto artifact = std::make_shared<BlobArtifact>(blob, artifactDepVal);
 					compileMarker.AddArtifact(target._name, artifact);
 					foundTarget = true;
@@ -399,7 +399,7 @@ namespace Assets
 
 		std::string extension;
 		extension.reserve(splitRequest.Extension().size());
-		std::transform(splitRequest.Extension().begin(), splitRequest.Extension().end(), std::back_inserter(extension), tolower);
+		std::transform(splitRequest.Extension().begin(), splitRequest.Extension().end(), std::back_inserter(extension), [](char c){ return (char)tolower(c); });
 
 			// Find the compiler that can handle this asset type (just by looking at the extension)
 		for (const auto&d:c->_pimpl->_delegates) {

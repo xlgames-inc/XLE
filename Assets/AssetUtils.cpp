@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AssetUtils.h"
-#include "CompilerLibrary.h"
+#include "ICompileOperation.h"
 #include "AssetFuture.h"
 #include "DepVal.h"
 #include "IFileSystem.h"

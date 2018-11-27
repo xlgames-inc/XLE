@@ -12,7 +12,7 @@
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/Assets.h"
 #include "../Assets/AssetServices.h"
-#include "../Assets/CompilerLibrary.h"
+#include "../Assets/ICompileOperation.h"
 #include "../Assets/CompileAndAsyncManager.h"
 #include "../Assets/IFileSystem.h"
 #include "../ConsoleRig/Console.h"

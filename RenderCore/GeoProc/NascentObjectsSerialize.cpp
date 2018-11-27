@@ -118,7 +118,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
 	}
 
-	::Assets::NascentChunkArray SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
 	{
 		Serialization::NascentBlockSerializer serializer;
 
@@ -149,19 +149,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto scaffoldBlock = ::Assets::AsBlob(serializer);
 		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
-		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-			RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, name, unsigned(scaffoldBlock->size()));
-		Serialization::ChunkFile::ChunkHeader largeBlockChunk(
-			RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, name, (unsigned)largeResourcesBlock->size());
-		Serialization::ChunkFile::ChunkHeader metricsChunk(
-			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock->size());
-
-		return ::Assets::MakeNascentChunkArray(
+		return
 			{
-				::Assets::NascentChunk{scaffoldChunk, std::move(scaffoldBlock)},
-				::Assets::NascentChunk{largeBlockChunk, std::move(largeResourcesBlock)},
-				::Assets::NascentChunk{metricsChunk, std::move(metricsBlock)}
-			});
+				::Assets::ICompileOperation::OperationResult{
+					RenderCore::Assets::ChunkType_ModelScaffold, ModelScaffoldVersion, name,
+					std::move(scaffoldBlock)},
+				::Assets::ICompileOperation::OperationResult{
+					RenderCore::Assets::ChunkType_ModelScaffoldLargeBlocks, ModelScaffoldLargeBlocksVersion, name,
+					std::move(largeResourcesBlock)},
+				::Assets::ICompileOperation::OperationResult{
+					RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
+					std::move(metricsBlock)}
+			};
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -171,7 +170,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
 	}
 
-	::Assets::NascentChunkArray SerializeSkeletonToChunks(
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
 		const char name[], 
 		const NascentSkeleton& skeleton)
 	{
@@ -181,18 +180,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		TraceMetrics(metricsStream, skeleton);
 		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
-		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-			RenderCore::Assets::ChunkType_Skeleton, 0, name, unsigned(block->size()));
-		Serialization::ChunkFile::ChunkHeader metricsChunk(
-			RenderCore::Assets::ChunkType_Metrics, 0, "metrics", (unsigned)metricsBlock->size());
-
-		return ::Assets::MakeNascentChunkArray({
-			::Assets::NascentChunk{scaffoldChunk, std::move(block)},
-			::Assets::NascentChunk{metricsChunk, std::move(metricsBlock)}
-		});
+		return {
+			::Assets::ICompileOperation::OperationResult{
+				RenderCore::Assets::ChunkType_Skeleton, 0, name, 
+				std::move(block)},
+			::Assets::ICompileOperation::OperationResult{
+				RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
+				std::move(metricsBlock)}
+		};
 	}
 
-	::Assets::NascentChunkArray SerializeAnimationsToChunks(
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
 		const char name[],
 		const NascentAnimationSet& animationSet,
 		IteratorRange<const RenderCore::Assets::RawAnimationCurve*> curves)
@@ -205,10 +203,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		auto block = ::Assets::AsBlob(serializer);
 
-		Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-			RenderCore::Assets::ChunkType_AnimationSet, 0, name, unsigned(block->size()));
-
-		return ::Assets::MakeNascentChunkArray({::Assets::NascentChunk{scaffoldChunk, std::move(block)}});
+		return {
+			::Assets::ICompileOperation::OperationResult{
+				RenderCore::Assets::ChunkType_AnimationSet, 0, name, 
+				std::move(block)}
+		};
 	}
 
 }}}

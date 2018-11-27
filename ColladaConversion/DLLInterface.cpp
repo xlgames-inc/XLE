@@ -23,8 +23,7 @@
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Assets/RawMaterial.h"
-#include "../Assets/CompilerLibrary.h"
-#include "../Assets/NascentChunk.h"
+#include "../Assets/ICompileOperation.h"
 #include "../Assets/IFileSystem.h"
 
 #include "../Utility/Streams/FileUtils.h"
@@ -59,12 +58,11 @@ namespace ColladaConversion
         std::shared_ptr<DocumentScaffold> _doc;
         ::ColladaConversion::URIResolveContext _resolveContext;
 		std::vector<TargetDesc> _targets;
-		std::shared_ptr<std::vector<::Assets::DependentFileState>> _dependencies;
+		std::vector<::Assets::DependentFileState> _dependencies;
 
-		unsigned	TargetCount() const;
-		TargetDesc	GetTarget(unsigned idx) const;
-		::Assets::NascentChunkArray	SerializeTarget(unsigned idx);
-		std::shared_ptr<std::vector<::Assets::DependentFileState>> GetDependencies() const;
+		std::vector<TargetDesc> GetTargets() const;
+		std::vector<OperationResult> SerializeTarget(unsigned idx);
+		std::vector<::Assets::DependentFileState> GetDependencies() const;
 
 		ColladaCompileOp();
 		~ColladaCompileOp();
@@ -364,7 +362,7 @@ namespace ColladaConversion
         RegisterNodeBindingNames(_cmdStream, jointRefs);
     }
 
-    ::Assets::NascentChunkArray SerializeSkin(const ColladaCompileOp& model, const char startingNode[])
+    std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkin(const ColladaCompileOp& model, const char startingNode[])
     {
         const auto* scene = model._doc->FindVisualScene(
             GuidReference(model._doc->_visualScene)._id);
@@ -405,7 +403,7 @@ namespace ColladaConversion
         _skeleton.GetSkeletonMachine().Optimize(optimizer);
     }
 
-    ::Assets::NascentChunkArray SerializeSkeleton(const ColladaCompileOp& model, const char[])
+    std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeleton(const ColladaCompileOp& model, const char[])
     {
         PreparedSkeletonFile skeleFile(model);
         return SerializeSkeletonToChunks(model._name.c_str(), skeleFile._skeleton);
@@ -444,7 +442,7 @@ namespace ColladaConversion
         }
     }
 
-    ::Assets::NascentChunkArray SerializeMaterials(const ColladaCompileOp& model, const char[])  
+    std::vector<::Assets::ICompileOperation::OperationResult> SerializeMaterials(const ColladaCompileOp& model, const char[])  
     { 
         // std::string matSettingsFile;
         // {
@@ -457,20 +455,11 @@ namespace ColladaConversion
 
         MemoryOutputStream<uint8> strm;
         SerializeMatTable(strm, model);
-
-            // convert into a chunk...
-
-        auto finalSize = size_t(strm.GetBuffer().End()) - size_t(strm.GetBuffer().Begin());
-
-        Serialization::ChunkFile::ChunkHeader scaffoldChunk(
-            ChunkType_Text, 0, 
-            model._name.c_str(), Serialization::ChunkFile::SizeType(finalSize));
-
-        return ::Assets::MakeNascentChunkArray({
-			::Assets::NascentChunk{
-				scaffoldChunk,
+        return {
+			::Assets::ICompileOperation::OperationResult{
+				ChunkType_Text, 0, model._name,
 				::Assets::AsBlob(MakeIteratorRange(strm.GetBuffer().Begin(), strm.GetBuffer().End()))}
-            });
+		};
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -505,7 +494,7 @@ namespace ColladaConversion
         }
     }
 
-	::Assets::NascentChunkArray SerializeAnimations(const ColladaCompileOp& model, const char[])  
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimations(const ColladaCompileOp& model, const char[])  
 	{
 		PreparedAnimationFile animFile(model);
 		return SerializeAnimationsToChunks(
@@ -551,11 +540,14 @@ namespace ColladaConversion
 	static const uint64 Type_Skeleton = ConstHash64<'Skel', 'eton'>::Value;
 	static const uint64 Type_RawMat = ConstHash64<'RawM', 'at'>::Value;
 
-	unsigned			ColladaCompileOp::TargetCount() const { return (unsigned)_targets.size(); }
-	auto				ColladaCompileOp::GetTarget(unsigned idx) const -> TargetDesc { if (idx < _targets.size()) { return _targets[idx]; } else return TargetDesc{0, ""}; }
-	::Assets::NascentChunkArray	ColladaCompileOp::SerializeTarget(unsigned idx)
+	auto ColladaCompileOp::GetTargets() const -> std::vector<TargetDesc> 
 	{
-		if (idx >= _targets.size()) return ::Assets::NascentChunkArray();
+		return _targets;
+	}
+
+	auto	ColladaCompileOp::SerializeTarget(unsigned idx) -> std::vector<OperationResult>
+	{
+		if (idx >= _targets.size()) return {};
 
 		switch (_targets[idx]._type) {
 		case Type_Model:			return SerializeSkin(*this, _rootNode.c_str());
@@ -567,7 +559,7 @@ namespace ColladaConversion
 		}
 	}
 
-	std::shared_ptr<std::vector<::Assets::DependentFileState>> ColladaCompileOp::GetDependencies() const
+	std::vector<::Assets::DependentFileState> ColladaCompileOp::GetDependencies() const
 	{
 		return _dependencies;
 	}
@@ -584,12 +576,8 @@ namespace ColladaConversion
 		auto split = MakeFileNameSplitter(identifier);
 		auto filePath = split.AllExceptParameters().AsString();
 
-		result->_dependencies = std::shared_ptr<std::vector<::Assets::DependentFileState>>(
-			new std::vector<::Assets::DependentFileState>,
-			[](const void* block) { delete (std::vector<::Assets::DependentFileState>*)block; });
-
-		result->_dependencies->push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
-		result->_dependencies->push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
+		result->_dependencies.push_back({ MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime });
+		result->_dependencies.push_back({ filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime });
 
 		result->_cfg = ImportConfiguration("colladaimport.cfg");
 		result->_fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);

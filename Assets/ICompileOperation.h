@@ -13,8 +13,6 @@
 
 namespace Assets
 {
-	class NascentChunk;
-	using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
 	class DependentFileState;
 
 	class ICompilerDesc
@@ -38,16 +36,21 @@ namespace Assets
 	class ICompileOperation
 	{
 	public:
-		class TargetDesc
+		struct TargetDesc
 		{
-		public:
-			uint64			_type;
+			uint64_t		_type;
 			const char*		_name;
 		};
-		virtual unsigned			TargetCount() const = 0;
-		virtual TargetDesc			GetTarget(unsigned idx) const = 0;
-		virtual NascentChunkArray	SerializeTarget(unsigned idx) = 0;
-		virtual std::shared_ptr<std::vector<DependentFileState>> GetDependencies() const = 0;
+		struct OperationResult
+		{
+			uint64_t		_type;
+			unsigned		_version;
+			std::string		_name;
+			::Assets::Blob	_data;
+		};
+		virtual std::vector<TargetDesc>			GetTargets() const = 0;
+		virtual std::vector<OperationResult>	SerializeTarget(unsigned idx) = 0;
+		virtual std::vector<DependentFileState> GetDependencies() const = 0;
 
 		virtual ~ICompileOperation();
 	};

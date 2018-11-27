@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../Assets/NascentChunk.h"
+#include "../Assets/ICompileOperation.h"
 #include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
@@ -16,17 +16,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	class NascentSkeleton;
 	class NascentAnimationSet;
 
-	::Assets::NascentChunkArray SerializeSkinToChunks(
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(
 		const char name[], 
 		NascentGeometryObjects& geoObjects, 
 		NascentModelCommandStream& cmdStream, 
 		NascentSkeleton& skeleton);
 
-	::Assets::NascentChunkArray SerializeSkeletonToChunks(
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
 		const char name[], 
 		const NascentSkeleton& skeleton);
 
-	::Assets::NascentChunkArray SerializeAnimationsToChunks(
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
 		const char name[],
 		const NascentAnimationSet& animationSet,
 		IteratorRange<const RawAnimationCurve*> curves);
