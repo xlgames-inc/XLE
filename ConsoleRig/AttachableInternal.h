@@ -126,7 +126,7 @@ namespace ConsoleRig
 	{
 		// Note that if Internal::TryAttachCurrentModule throws an exception, this
 		// pointer remains attached to whatever it was previously attached to
-        operator=(AttachablePtr<Object>(std::move(moveFrom)));
+        operator=(AttachablePtr<Obj>(std::move(moveFrom)));
         return *this;
 	}
 

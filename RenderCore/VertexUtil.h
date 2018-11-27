@@ -48,7 +48,7 @@ namespace RenderCore
 		RenderCore::Format _format = RenderCore::Format(0);
 
 		VertexElementIterator() {}
-		VertexElementIterator(nullptr_t) {}
+		VertexElementIterator(std::nullptr_t) {}
 		VertexElementIterator(IteratorRange<void*> data, size_t stride, RenderCore::Format fmt) : _data(data), _stride(stride), _format(fmt) {}
 	};
 

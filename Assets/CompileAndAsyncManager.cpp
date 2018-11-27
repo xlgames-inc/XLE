@@ -143,6 +143,16 @@ namespace Assets
 		_pimpl->_compilers.push_back(processor);
 	}
 
+    void CompilerSet::RemoveCompiler(const IAssetCompiler& compiler)
+    {
+        ScopedLock(_pimpl->_compilersLock);
+        for (auto i=_pimpl->_compilers.begin(); i!=_pimpl->_compilers.end(); ++i)
+            if (i->get() == &compiler) {
+                _pimpl->_compilers.erase(i);
+                return;
+            }
+    }
+
 	std::shared_ptr<IArtifactCompileMarker> CompilerSet::Prepare(
 		uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
 	{

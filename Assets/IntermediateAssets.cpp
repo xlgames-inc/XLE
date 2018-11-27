@@ -289,6 +289,7 @@ namespace Assets { namespace IntermediateAssets
             //  that matches the version string.
 
         ResChar buffer[MaxPath];
+        (void)buffer;
 
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 		_snprintf_s(buffer, _TRUNCATE, "%s/%s_*", _constructorOptions._baseDir.c_str(), _constructorOptions._configString.c_str());
@@ -365,7 +366,7 @@ namespace Assets { namespace IntermediateAssets
 			}
 		}
 #else
-        auto goodBranchDir = baseDirectory;
+        auto goodBranchDir = _constructorOptions._baseDir;
 #endif
 
 		_resolvedBaseDirectory = goodBranchDir;

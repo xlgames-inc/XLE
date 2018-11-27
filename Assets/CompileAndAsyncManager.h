@@ -47,6 +47,7 @@ namespace Assets
 	{
 	public:
 		void AddCompiler(const std::shared_ptr<IAssetCompiler>& processor);
+        void RemoveCompiler(const IAssetCompiler& compiler);
 		std::shared_ptr<IArtifactCompileMarker> Prepare(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 		void StallOnPendingOperations(bool cancelAll);

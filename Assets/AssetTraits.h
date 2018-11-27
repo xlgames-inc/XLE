@@ -8,6 +8,7 @@
 #include "AssetUtils.h"     // (for DirectorySearchRules)
 #include "ConfigFileContainer.h"
 #include "ChunkFileContainer.h"
+#include "DepVal.h"
 #include "IFileSystem.h"
 #include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
