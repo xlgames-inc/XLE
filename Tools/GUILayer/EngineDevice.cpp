@@ -65,11 +65,7 @@ namespace GUILayer
 
             // add compiler for precalculated internal AO
 		auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        auto& compilers = asyncMan.GetIntermediateCompilers();
-        auto aoGeoCompiler = std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext);
-        compilers.AddCompiler(
-            ToolsRig::AOSupplementCompiler::CompilerType,
-            std::move(aoGeoCompiler));
+        asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext));
     }
 
     BufferUploads::IManager*    NativeEngineDevice::GetBufferUploads()

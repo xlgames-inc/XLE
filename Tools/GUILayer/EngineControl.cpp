@@ -121,7 +121,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
 
-            _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), true);
+            _pimpl->_inputTranslator->OnMouseButtonChange(e->Location.X, e->Location.Y, AsIndex(e->Button), true);
             ctrl->Invalidate();
         }
     }
@@ -132,7 +132,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            _pimpl->_inputTranslator->OnMouseButtonChange(AsIndex(e->Button), false);
+            _pimpl->_inputTranslator->OnMouseButtonChange(e->Location.X, e->Location.Y, AsIndex(e->Button), false);
             ctrl->Invalidate();
         }
     }
@@ -154,7 +154,7 @@ namespace GUILayer
             auto ctrl = dynamic_cast<Control^>(sender);
             if (!ctrl) return;
             
-            _pimpl->_inputTranslator->OnMouseButtonDblClk(AsIndex(e->Button));
+            _pimpl->_inputTranslator->OnMouseButtonDblClk(e->Location.X, e->Location.Y, AsIndex(e->Button));
             ctrl->Invalidate();
         }
     }

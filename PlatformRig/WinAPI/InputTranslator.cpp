@@ -49,20 +49,26 @@ namespace PlatformRig
         Publish(snapShot);
     }
 
-    void    InputTranslator::OnMouseButtonChange (unsigned index,    bool newState)
+    void    InputTranslator::OnMouseButtonChange (signed newX, signed newY, unsigned index,    bool newState)
     {
         assert(index < 32);
         using namespace RenderOverlays::DebuggingDisplay;
-        InputSnapshot snapShot(GetMouseButtonState(), 1<<index, 0, _pimpl->_currentMousePosition, Int2(0,0));
+		auto oldPos = _pimpl->_currentMousePosition;
+        _pimpl->_currentMousePosition = Int2(newX, newY);
+
+        InputSnapshot snapShot(GetMouseButtonState(), 1<<index, 0, _pimpl->_currentMousePosition, _pimpl->_currentMousePosition - oldPos);
         snapShot._activeButtons = _pimpl->_passiveButtonState;
         Publish(snapShot);
     }
 
-    void    InputTranslator::OnMouseButtonDblClk (unsigned index)
+    void    InputTranslator::OnMouseButtonDblClk (signed newX, signed newY, unsigned index)
     {
         assert(index < 32);
         using namespace RenderOverlays::DebuggingDisplay;
-        InputSnapshot snapShot(GetMouseButtonState(), 0, 0, _pimpl->_currentMousePosition, Int2(0,0));
+		auto oldPos = _pimpl->_currentMousePosition;
+        _pimpl->_currentMousePosition = Int2(newX, newY);
+
+        InputSnapshot snapShot(GetMouseButtonState(), 0, 0, _pimpl->_currentMousePosition, _pimpl->_currentMousePosition - oldPos);
         snapShot._mouseButtonsDblClk |= (1<<index);
         Publish(snapShot);
     }
@@ -133,6 +139,11 @@ namespace PlatformRig
             // (otherwise clients will get key down, but not key up)
         using namespace RenderOverlays::DebuggingDisplay;
         _pimpl->_passiveButtonState.clear();
+
+		// send a snapshot that emulates releasing all held mouse buttons
+		auto emulateClickUp = GetMouseButtonState();
+		InputSnapshot snapShot(0, emulateClickUp, 0, _pimpl->_currentMousePosition, Int2(0,0));
+		Publish(snapShot);
     }
 
     const char*     InputTranslator::AsKeyName(unsigned keyCode)

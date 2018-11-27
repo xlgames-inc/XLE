@@ -12,7 +12,7 @@
 #include "../../Utility/Conversion.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Core/Exceptions.h"
-
+#include <windowsx.h>
 
 namespace PlatformRig
 {
@@ -102,28 +102,25 @@ namespace PlatformRig
                 switch (msg) {
                 case WM_ACTIVATE:
                     pimpl->_activated = wparam != WA_INACTIVE;
+					if (inputTrans) inputTrans->OnFocusChange();
                     break;
 
                 case WM_MOUSEMOVE:
-                    {
-                        if (pimpl->_activated) {
-                            signed x = ((int)(short)LOWORD(lparam)), y = ((int)(short)HIWORD(lparam));
-                            if (inputTrans) inputTrans->OnMouseMove(x, y);
-                        }
-                    }
+                    if (pimpl->_activated && inputTrans)
+                        inputTrans->OnMouseMove(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
                     break;
 
-                case WM_LBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(0, true); }    break;
-                case WM_RBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(1, true); }    break;
-                case WM_MBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(2, true); }    break;
+                case WM_LBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, true); }    break;
+                case WM_RBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, true); }    break;
+                case WM_MBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, true); }    break;
 
-                case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(0, false); }   break;
-                case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(1, false); }   break;
-                case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(2, false); }   break;
+                case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, false); }   break;
+                case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, false); }   break;
+                case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, false); }   break;
 
-                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(0); }   break;
-                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(1); }   break;
-                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(2); }   break;
+                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0); }   break;
+                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1); }   break;
+                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2); }   break;
 
                 case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
 

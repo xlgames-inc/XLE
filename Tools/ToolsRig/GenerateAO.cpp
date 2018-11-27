@@ -913,6 +913,7 @@ namespace ToolsRig
             uint64 typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
     {
+		if (typeCode != ToolsRig::AOSupplementCompiler::CompilerType) return nullptr;
         if (initializerCount != 2 || initializers[0].IsEmpty() || initializers[1].IsEmpty()) 
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in AOSupplementCompiler. Model filename first, then material filename"));
         const auto modelFilename = initializers[0], materialFilename = initializers[1];
