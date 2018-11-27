@@ -76,8 +76,7 @@ namespace ColladaConversion
         if (!fullSkeleton && !IsUseful(node, skeletonReferences)) return;
 
         auto nodeId = AsObjectGuid(node);
-		auto nodeDesc = skeletonReferences.GetNode(nodeId);
-        auto bindingName = nodeDesc._bindingName;
+        auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
         if (bindingName.empty()) bindingName = SkeletonBindingName(node);
 
         auto pushCount = 0u;
@@ -98,11 +97,11 @@ namespace ColladaConversion
                 // (prevent a reference if the transformation machine is completely empty)
             if (!skeleton.GetSkeletonMachine().IsEmpty()) {
 				uint32 outputMarker = ~0u;
-				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(nodeDesc._bindingName))) {
+				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(bindingName))) {
 					skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
 					skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
 				} else {
-					Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", nodeDesc._bindingName.c_str()));
+					Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", bindingName.c_str()));
 				}
             }
         }

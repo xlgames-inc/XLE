@@ -366,15 +366,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<char> name)
     {
-		auto nameAsString = name.AsString();
-        auto insertionPoint = std::lower_bound(
-            _jointTags.begin(), _jointTags.end(), 
-			nameAsString, CompareJointName());
-        if (insertionPoint != _jointTags.end() && insertionPoint->_name==nameAsString)
-            return false;
-
 		outputMarker = (uint32)_jointTags.size();
-        _jointTags.insert(insertionPoint, Joint{nameAsString});
+		_jointTags.push_back({name.AsString()});	// (note -- not checking for duplicates)
         return true;
     }
 
