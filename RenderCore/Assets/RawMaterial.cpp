@@ -428,11 +428,9 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
     {
-        if (baseMatName.begin() != resolvedFile)
-            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
-        if (!XlExtension(resolvedFile))
-            XlCatString(resolvedFile, resolvedFileCount, ".material");
-        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
+		auto splitName = MakeFileNameSplitter(baseMatName);
+        searchRules.ResolveFile(resolvedFile, resolvedFileCount, splitName.AllExceptParameters());
+		XlCatString(resolvedFile, resolvedFileCount, splitName.ParametersWithDivider());
     }
 
     auto RawMaterial::ResolveInherited(
