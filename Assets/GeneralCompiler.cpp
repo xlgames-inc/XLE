@@ -58,7 +58,7 @@ namespace Assets
 	static const auto ChunkType_Text = ConstHash64<'Text'>::Value;
 
     static void SerializeToFile(
-		IteratorRange<const ICompileOperation::OperationResult*> chunks,
+		IteratorRange<const ICompileOperation::OperationResult*> chunksInput,
         const char destinationFilename[],
         const ConsoleRig::LibVersionDesc& versionInfo)
     {
@@ -69,23 +69,24 @@ namespace Assets
             // the main output file from chunks that will be written to
             // a metrics file.
 
+		std::vector<ICompileOperation::OperationResult> chunks(chunksInput.begin(), chunksInput.end());
+
+		for (auto c=chunks.begin(); c!=chunks.end();)
+			if (c->_type == ChunkType_Metrics) {
+				auto outputFile = MainFileSystem::OpenBasicFile(
+					StringMeld<MaxPath>() << destinationFilename << "-" << c->_name,
+					"wb");
+				outputFile.Write((const void*)AsPointer(c->_data->cbegin()), 1, c->_data->size());
+				c = chunks.erase(c);
+			} else
+				++c;
+
 		if (chunks.size() == 1 && chunks[0]._type == ChunkType_Text) {
 			auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
 			outputFile->Write(AsPointer(chunks[0]._data->begin()), chunks[0]._data->size());
 		} else {
-			{
-				auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
-				BuildChunkFile(*outputFile, chunks, versionInfo, 
-					[](const ICompileOperation::OperationResult& c) { return c._type != ChunkType_Metrics; });
-			}
-
-			for (const auto& c:chunks)
-				if (c._type == ChunkType_Metrics) {
-					auto outputFile = MainFileSystem::OpenBasicFile(
-						StringMeld<MaxPath>() << destinationFilename << "-" << c._name,
-						"wb");
-					outputFile.Write((const void*)AsPointer(c._data->cbegin()), 1, c._data->size());
-				}
+			auto outputFile = MainFileSystem::OpenFileInterface(destinationFilename, "wb");
+			BuildChunkFile(*outputFile, MakeIteratorRange(chunks), versionInfo);
 		}
     }
 
@@ -131,10 +132,12 @@ namespace Assets
 
         Marker(
             StringSection<ResChar> requestName, uint64 typeCode,
-            std::shared_ptr<GeneralCompiler> compiler);
+            std::shared_ptr<ExtensionAndDelegate> delegate,
+			std::shared_ptr<GeneralCompiler> compiler);
         ~Marker();
     private:
-        std::weak_ptr<GeneralCompiler> _compiler;
+        std::weak_ptr<ExtensionAndDelegate> _delegate;
+		std::weak_ptr<GeneralCompiler> _compiler;
         rstring _requestName;
         uint64 _typeCode;
 
@@ -252,7 +255,7 @@ namespace Assets
     std::shared_ptr<IArtifact> GeneralCompiler::Marker::GetExistingAsset() const
     {
 		auto c = _compiler.lock();
-        if (!c || !c->_pimpl->_store) return nullptr;
+        if (!c) return nullptr;
 
 		// Look for a compile products file from a previous compilation operation
 		// todo -- we should store these compile product tables in an ArchiveCache
@@ -393,32 +396,12 @@ namespace Assets
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
-		auto splitRequest = MakeFileNameSplitter(_requestName);
-
-		std::shared_ptr<ExtensionAndDelegate> delegate;
-
-		std::string extension;
-		extension.reserve(splitRequest.Extension().size());
-		std::transform(splitRequest.Extension().begin(), splitRequest.Extension().end(), std::back_inserter(extension), [](char c){ return (char)tolower(c); });
-
-			// Find the compiler that can handle this asset type (just by looking at the extension)
-		for (const auto&d:c->_pimpl->_delegates) {
-			if (std::regex_match(extension, d->_extensionFilter)) {
-				delegate = d;
-				break;
-			}
-		}
-
-		if (!delegate)
-			Throw(::Exceptions::BasicLabel("Could not find compiler to handle request (%s)", _requestName.c_str()));
-
         auto backgroundOp = std::make_shared<ArtifactFuture>();
         backgroundOp->SetInitializer(_requestName.c_str());
 
 		auto requestName = _requestName;
 		auto typeCode = _typeCode;
-		auto compiler = _compiler;
-		std::weak_ptr<ExtensionAndDelegate> weakDelegate = delegate;
+		std::weak_ptr<ExtensionAndDelegate> weakDelegate = _delegate;
 		std::weak_ptr<IntermediateAssets::Store> weakStore = c->_pimpl->_store;
 		c->_pimpl->GetThread().Push(
 			backgroundOp,
@@ -443,8 +426,9 @@ namespace Assets
 
 	GeneralCompiler::Marker::Marker(
         StringSection<ResChar> requestName, uint64 typeCode,
-        std::shared_ptr<GeneralCompiler> compiler)
-    : _compiler(std::move(compiler)), _requestName(requestName.AsString()), _typeCode(typeCode)
+        std::shared_ptr<ExtensionAndDelegate> delegate,
+		std::shared_ptr<GeneralCompiler> compiler)
+    : _delegate(std::move(delegate)), _compiler(std::move(compiler)), _requestName(requestName.AsString()), _typeCode(typeCode)
     {}
 
 	GeneralCompiler::Marker::~Marker() {}
@@ -453,7 +437,20 @@ namespace Assets
         uint64 typeCode, 
         const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
-        return std::make_shared<Marker>(initializers[0], typeCode, shared_from_this());
+		std::shared_ptr<ExtensionAndDelegate> delegate;
+
+			// Find the compiler that can handle this asset type (just by looking at the extension)
+		for (const auto&d:_pimpl->_delegates) {
+			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_extensionFilter)) {
+				delegate = d;
+				break;
+			}
+		}
+
+		if (!delegate)
+			return nullptr;
+
+        return std::make_shared<Marker>(initializers[0], typeCode, delegate, shared_from_this());
     }
 
     void GeneralCompiler::StallOnPendingOperations(bool cancelAll)
