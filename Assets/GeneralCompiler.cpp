@@ -555,7 +555,7 @@ namespace Assets
 					opsFromThisLibrary.emplace_back(
 						GeneralCompiler::ExtensionAndDelegate {
 							kind._assetTypes,
-							std::regex{kind._identifierFilter}, 
+							std::regex{kind._identifierFilter, std::regex_constants::icase}, 
 							c,
 							srcVersion,
 							[lib, fn](StringSection<> identifier) {
