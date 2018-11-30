@@ -111,10 +111,12 @@ namespace Assets
 				if (r == LookupResult::NoCandidates)
 					break;
 
+				// We must call TryMonitor for each filesystem, because the filesystems return
+				// "success" even if the file doesn't exist. So if we stop early, on the first
+				// filesystem will be monitored
 				assert(candidateObject._fileSystem);
 				auto ioRes = candidateObject._fileSystem->TryMonitor(candidateObject._marker, evnt);
-				if (ioRes != IFileSystem::IOReason::FileNotFound && ioRes != IFileSystem::IOReason::Invalid)
-					return ioRes;
+				(void)ioRes;
 			}
 
 			if (s_defaultFileSystem) 

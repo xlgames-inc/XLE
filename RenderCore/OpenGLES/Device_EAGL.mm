@@ -128,7 +128,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, EAGLContext* eaglContext, const void* platformValue, const PresentationChainDesc& desc)
     {
-        if (desc._mainColorIsReadable) {
+        if (desc._bindFlags & BindFlag::ShaderResource) {
             Throw(std::runtime_error("Readable main color buffer is not supported on iOS; need to use fake backbuffer path"));
         }
 
@@ -198,15 +198,8 @@ namespace RenderCore { namespace ImplOpenGLES
             _activeFrameContext = _sharedContext;
         }
 
-        [EAGLContext setCurrentContext:_activeFrameContext.get()];
-
-        _activeFrameBuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
-        glBindFramebuffer(GL_FRAMEBUFFER, _activeFrameBuffer->AsRawGLHandle());
-        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeFrameRenderbuffer->GetRenderBuffer()->AsRawGLHandle());
-        if (glCheckFramebufferStatus(GL_FRAMEBUFFER) != GL_FRAMEBUFFER_COMPLETE) {
-            Throw(std::runtime_error("Framebuffer not complete in PresentationChain::PresentationChain"));
-        }
-
+        if (EAGLContext.currentContext != _activeFrameContext.get())
+            [EAGLContext setCurrentContext:_activeFrameContext.get()];
         return _activeFrameRenderbuffer;
     }
 
@@ -223,7 +216,8 @@ namespace RenderCore { namespace ImplOpenGLES
         _activeFrameRenderbuffer.reset();
         _activeFrameBuffer.reset();
         _activeFrameContext = nullptr;
-        [EAGLContext setCurrentContext:_sharedContext.get()];
+        if (EAGLContext.currentContext != _sharedContext.get())
+            [EAGLContext setCurrentContext:_sharedContext.get()];
     }
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const

@@ -73,6 +73,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (*i == '\n') ++result;
         return result;
     }
+    
+    static std::regex s_appleStyle(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--");
 
     struct ErrorMessage
     {
@@ -99,9 +101,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             auto line = MakeStringSection(i, nexti);
             if (line.IsEmpty()) break;
 
-            static std::regex appleStyle(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--");
             std::cmatch match;
-            bool a = std::regex_match(line.begin(), line.end(), match, appleStyle);
+            bool a = std::regex_match(line.begin(), line.end(), match, s_appleStyle);
             if (a && match.size() >= 5) {
                 std::stringstream str;
                 str << match[1].str() << ": " << match[4].str();
@@ -193,20 +194,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         #if PLATFORMOS_TARGET == PLATFORMOS_OSX
             // hack for version string for OSX
             const GLchar* versionDecl = isFragmentShader
-                ? "#version 120\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
-                : "#version 120\n#define NEW_UNIFORM_API 1\n"
-                ;
+                ? "#version 120\n#define FRAGMENT_SHADER 1\n"
+                : "#version 120\n";
             (void)supportsGLES300;
         #else
             const GLchar* versionDecl;
             if (supportsGLES300) {
                 versionDecl = isFragmentShader
-                    ? "#version 300 es\n#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
-                    : "#version 300 es\n#define NEW_UNIFORM_API 1\n";
+                    ? "#version 300 es\n#define FRAGMENT_SHADER 1\n"
+                    : "#version 300 es\n";
             } else {
                 versionDecl = isFragmentShader
-                    ? "#define FRAGMENT_SHADER 1\n#define NEW_UNIFORM_API 1\n"
-                    : "#define NEW_UNIFORM_API 1\n";
+                    ? "#define FRAGMENT_SHADER 1\n"
+                    : "";
             }
         #endif
 
@@ -560,8 +560,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     void DestroyGLESCachedShaders()
     {
-        ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
-        decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
+        try {
+            ScopedLock(OGLESShaderCompiler::s_compiledShadersLock);
+            decltype(OGLESShaderCompiler::s_compiledShaders)().swap(OGLESShaderCompiler::s_compiledShaders);
+        } catch (const std::system_error&) {
+            // suppress a system error here, which can sometimes happen due to shutdown order issues
+            // (if the mutex has been destroyed before this is called)
+        }
     }
 
 }}

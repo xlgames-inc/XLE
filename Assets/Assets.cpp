@@ -76,4 +76,9 @@ namespace Assets
 	{
 		return Services::GetAssetSets();
 	}
+ 
+     bool HasAssetSetManager()
+     {
+        return Services::HasInstance();
+     }
 }

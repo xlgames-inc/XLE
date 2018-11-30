@@ -48,18 +48,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (basicType == inputBasicType) {
                     result._commands.push_back({i._location, i._type, (unsigned)i._elementCount, b->_offset });
                 } else {
-                    #if defined(STORE_UNIFORM_NAMES)
+                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                         Log(Warning) << "In MakeBinding, binding shader struct to predefined layout failed because of type mismatch on uniform (" << i._name << ") in struct (" << s->second._name << ")" << std::endl;
                     #endif
                 }
             } else {
-                #if defined(STORE_UNIFORM_NAMES)
+                #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
                     Log(Warning) << "In MakeBinding, uniform in shader (" << i._name << ") in struct (" << s->second._name << ") was not matched to binding" << std::endl;
                 #endif
             }
         }
 
-        #if defined(STORE_UNIFORM_NAMES)
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             result._name = s->second._name;
         #endif
 
@@ -86,6 +86,26 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (str != _structs.end() && str->first == structName)
             return str->second;
         return {};
+    }
+
+    std::string ShaderIntrospection::GetName(const ShaderProgram& program, const Uniform& uniform)
+    {
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+            return uniform._name;
+        #else
+            auto glProgram = program.GetUnderlying()->AsRawGLHandle();
+
+            GLint uniformMaxNameLength;
+            glGetProgramiv(glProgram, GL_ACTIVE_UNIFORM_MAX_LENGTH, &uniformMaxNameLength);
+
+            char nameBuffer[uniformMaxNameLength];
+            std::memset(nameBuffer, 0, uniformMaxNameLength);
+
+            GLint size = 0;
+            GLenum type = 0;
+            glGetActiveUniform(glProgram, uniform._activeUniformIndex, uniformMaxNameLength, nullptr, &size, &type, nameBuffer);
+            return nameBuffer;
+        #endif
     }
 
     static uint64_t HashVariableName(StringSection<> name)
@@ -159,9 +179,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 i->second._uniforms.emplace_back(
                     Uniform {
                         HashVariableName(separatedNames.second),
-                        location, type, size
+                        location, type, size, c
 
-                        #if defined(STORE_UNIFORM_NAMES)
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , fullName.AsString()
                         #endif
                     });
@@ -170,7 +190,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto i = LowerBound(_structs, HashType(0));
                 if (i==_structs.end() || i->first != 0)
                     i = _structs.insert(i, std::make_pair(0, Struct{{}
-                        #if defined(STORE_UNIFORM_NAMES)
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , "global"
                         #endif
                         }));
@@ -178,7 +198,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 i->second._uniforms.emplace_back(
                     Uniform {
                         HashVariableName(fullName),
-                        location, type, size
+                        location, type, size, c
 
                         #if defined(_DEBUG)
                             , fullName.AsString()

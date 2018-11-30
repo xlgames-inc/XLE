@@ -48,6 +48,9 @@
 		8F2DB6182017F3F4009F52AB /* MemoryFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E252017F13400B76C43 /* MemoryFile.cpp */; };
 		8F2DB6192017F3F4009F52AB /* NascentChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E262017F13400B76C43 /* NascentChunk.cpp */; };
 		8F2DB61A2017F3F4009F52AB /* OSFileSystem.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E282017F13500B76C43 /* OSFileSystem.cpp */; };
+		8F4044272156EC8B009FE832 /* AsyncMarkerGroup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D371A2155ADB3001FD93E /* AsyncMarkerGroup.cpp */; };
+		8F4D371B2155ADB3001FD93E /* AsyncMarkerGroup.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F4D37192155ADB2001FD93E /* AsyncMarkerGroup.h */; };
+		8F4D371C2155ADB3001FD93E /* AsyncMarkerGroup.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F4D371A2155ADB3001FD93E /* AsyncMarkerGroup.cpp */; };
 		8F6A9E302017F13600B76C43 /* MemoryFile.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E252017F13400B76C43 /* MemoryFile.cpp */; };
 		8F6A9E312017F13600B76C43 /* NascentChunk.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F6A9E262017F13400B76C43 /* NascentChunk.cpp */; };
 		8F6A9E322017F13600B76C43 /* NascentChunk.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E272017F13500B76C43 /* NascentChunk.h */; };
@@ -133,6 +136,8 @@
 		8F044C7A1EA6B15A0074D6A4 /* CoreDebug.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreDebug.xcconfig; path = ../../Solutions/CoreDebug.xcconfig; sourceTree = "<group>"; };
 		8F044C7B1EA6B15A0074D6A4 /* CoreRelease.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreRelease.xcconfig; path = ../../Solutions/CoreRelease.xcconfig; sourceTree = "<group>"; };
 		8F044C7C1EA6B15A0074D6A4 /* CoreWarnings.xcconfig */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.xcconfig; name = CoreWarnings.xcconfig; path = ../../Solutions/CoreWarnings.xcconfig; sourceTree = "<group>"; };
+		8F4D37192155ADB2001FD93E /* AsyncMarkerGroup.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AsyncMarkerGroup.h; path = ../AsyncMarkerGroup.h; sourceTree = "<group>"; };
+		8F4D371A2155ADB3001FD93E /* AsyncMarkerGroup.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = AsyncMarkerGroup.cpp; path = ../AsyncMarkerGroup.cpp; sourceTree = "<group>"; };
 		8F6A9E252017F13400B76C43 /* MemoryFile.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = MemoryFile.cpp; path = ../MemoryFile.cpp; sourceTree = "<group>"; };
 		8F6A9E262017F13400B76C43 /* NascentChunk.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = NascentChunk.cpp; path = ../NascentChunk.cpp; sourceTree = "<group>"; };
 		8F6A9E272017F13500B76C43 /* NascentChunk.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = NascentChunk.h; path = ../NascentChunk.h; sourceTree = "<group>"; };
@@ -218,6 +223,8 @@
 				8F6A9E272017F13500B76C43 /* NascentChunk.h */,
 				8F6A9E282017F13500B76C43 /* OSFileSystem.cpp */,
 				8F044C491EA6B13E0074D6A4 /* OSFileSystem.h */,
+				8F4D371A2155ADB3001FD93E /* AsyncMarkerGroup.cpp */,
+				8F4D37192155ADB2001FD93E /* AsyncMarkerGroup.h */,
 				8F044BB21EA6B0890074D6A4 /* Products */,
 			);
 			sourceTree = "<group>";
@@ -260,6 +267,7 @@
 				8F6A9E352017F13600B76C43 /* AssetHeap.h in Headers */,
 				8F044C531EA6B13E0074D6A4 /* AssetSetManager.h in Headers */,
 				8F044C681EA6B13E0074D6A4 /* ConfigFileContainer.h in Headers */,
+				8F4D371B2155ADB3001FD93E /* AsyncMarkerGroup.h in Headers */,
 				8F044C621EA6B13E0074D6A4 /* CompilationThread.h in Headers */,
 				8F044C5E1EA6B13E0074D6A4 /* ChunkFile.h in Headers */,
 				8F044C541EA6B13E0074D6A4 /* AssetsInternal.h in Headers */,
@@ -362,6 +370,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				8F044C5D1EA6B13E0074D6A4 /* ChunkFile.cpp in Sources */,
+				8F4D371C2155ADB3001FD93E /* AsyncMarkerGroup.cpp in Sources */,
 				8F044C611EA6B13E0074D6A4 /* CompilationThread.cpp in Sources */,
 				8F044C571EA6B13E0074D6A4 /* AssetUtils.cpp in Sources */,
 				8F044C5B1EA6B13E0074D6A4 /* BlockSerializer.cpp in Sources */,
@@ -389,6 +398,7 @@
 			files = (
 				8FA3F77C1EDD171E003EF623 /* ArchiveCache.cpp in Sources */,
 				8FA3F77E1EDD171E003EF623 /* Assets.cpp in Sources */,
+				8F4044272156EC8B009FE832 /* AsyncMarkerGroup.cpp in Sources */,
 				8FA3F7811EDD171E003EF623 /* AssetServices.cpp in Sources */,
 				8FA3F7841EDD171E003EF623 /* AssetSetManager.cpp in Sources */,
 				8FA3F7871EDD171E003EF623 /* AssetTraits.cpp in Sources */,

@@ -471,8 +471,10 @@ namespace RenderCore { namespace ImplOpenGLES
     PresentationChain::~PresentationChain()
     {
         if (_surface != EGL_NO_SURFACE) {
-            if (_surface == eglGetCurrentSurface(EGL_READ) || _surface == eglGetCurrentSurface(EGL_DRAW))
-                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, EGL_NO_CONTEXT);
+            if (_surface == eglGetCurrentSurface(EGL_READ) || _surface == eglGetCurrentSurface(EGL_DRAW)) {
+                auto currentContext = eglGetCurrentContext();
+                eglMakeCurrent(_display, EGL_NO_SURFACE, EGL_NO_SURFACE, currentContext);
+            }
             EGLBoolean result = eglDestroySurface(_display, _surface);
             (void)result; assert(result);
         }
@@ -494,14 +496,16 @@ namespace RenderCore { namespace ImplOpenGLES
             ResourceDesc backBufferDesc;
             auto textureDesc = TextureDesc::Plain2D(_desc->_width, _desc->_height, _desc->_format, 1, 0, _desc->_samples);
 
-            if (_desc->_mainColorIsReadable) {
-                assert(s_useFakeBackBuffer); // has to use fake buffer mode if readable main color buffer is requested
+            bool useFakeBackBuffer = false;
+
+            if (_desc->_bindFlags & BindFlag::ShaderResource) {
                 backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
+                useFakeBackBuffer = true; // use fake buffer mode if ShaderResource bindable main color buffer is requested
             } else {
                 backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
             }
 
-            if (s_useFakeBackBuffer) {
+            if (useFakeBackBuffer) {
                 _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::GetObjectFactory(), backBufferDesc);
             } else {
                 _targetRenderbuffer = std::make_shared<Metal_OpenGLES::Resource>(Metal_OpenGLES::Resource::CreateBackBuffer(backBufferDesc));

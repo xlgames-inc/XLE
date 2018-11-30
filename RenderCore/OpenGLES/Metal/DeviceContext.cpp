@@ -142,6 +142,63 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
         CheckGLError("Bind DepthStencilState");
     }
+    
+    DepthStencilDesc GraphicsPipeline::ActiveDepthStencilDesc()
+    {
+        DepthStencilDesc depthStencil = {};
+        GLint depthTest = 0, depthMask = 0;
+        glGetIntegerv(GL_DEPTH_TEST, &depthTest);
+        if (depthTest) {
+            glGetIntegerv(GL_DEPTH_FUNC, &depthTest);
+            depthStencil._depthTest = AsCompareOp(depthTest);
+        } else
+            depthStencil._depthTest = CompareOp::Always;
+        
+        glGetIntegerv(GL_DEPTH_TEST, &depthMask);
+        depthStencil._depthWrite = depthMask != 0;
+        
+        GLint stencilEnable = 0;
+        glGetIntegerv(GL_STENCIL_TEST, &stencilEnable);
+        if (stencilEnable) {
+            depthStencil._stencilEnable = true;
+            
+            GLint stencilRef = 0, stencilValueMask = 0, stencilWriteMask = 0;
+            glGetIntegerv(GL_STENCIL_REF, &stencilRef);
+            glGetIntegerv(GL_STENCIL_VALUE_MASK, &stencilValueMask);
+            glGetIntegerv(GL_STENCIL_WRITEMASK, &stencilWriteMask);
+            
+            depthStencil._stencilReference = stencilRef;
+            depthStencil._stencilWriteMask = stencilValueMask;
+            depthStencil._stencilReadMask = stencilWriteMask;       // odd naming intentional
+            
+            GLint passDepthFail = 0, passDepthPass = 0, fail = 0, stencilFunc = 0;
+            glGetIntegerv(GL_STENCIL_PASS_DEPTH_FAIL, &passDepthFail);
+            glGetIntegerv(GL_STENCIL_PASS_DEPTH_PASS, &passDepthPass);
+            glGetIntegerv(GL_STENCIL_FAIL, &fail);
+            glGetIntegerv(GL_STENCIL_FUNC, &stencilFunc);
+            
+            depthStencil._frontFaceStencil._comparisonOp = AsCompareOp(stencilFunc);
+            depthStencil._frontFaceStencil._failOp = AsStencilOp(fail);
+            depthStencil._frontFaceStencil._passOp = AsStencilOp(passDepthPass);
+            depthStencil._frontFaceStencil._depthFailOp = AsStencilOp(passDepthFail);
+            
+            passDepthFail = passDepthPass = fail = stencilFunc = 0;
+            glGetIntegerv(GL_STENCIL_BACK_PASS_DEPTH_FAIL, &passDepthFail);
+            glGetIntegerv(GL_STENCIL_BACK_PASS_DEPTH_PASS, &passDepthPass);
+            glGetIntegerv(GL_STENCIL_BACK_FAIL, &fail);
+            glGetIntegerv(GL_STENCIL_BACK_FUNC, &stencilFunc);
+            
+            depthStencil._backFaceStencil._comparisonOp = AsCompareOp(stencilFunc);
+            depthStencil._backFaceStencil._failOp = AsStencilOp(fail);
+            depthStencil._backFaceStencil._passOp = AsStencilOp(passDepthPass);
+            depthStencil._backFaceStencil._depthFailOp = AsStencilOp(passDepthFail);
+            
+        } else {
+            depthStencil._stencilEnable = false;
+        }
+        
+        return depthStencil;
+    }
 
     void GraphicsPipeline::Bind(const ViewportDesc& viewport)
     {
@@ -260,6 +317,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                 GLint activeVAO = 0;
                 glGetIntegerv(GL_VERTEX_ARRAY_BINDING, &activeVAO);
                 assert(_boundVAO == activeVAO);
+            }
+            
+            if (_activeTextureIndex != ~0u) {
+                GLint activeTexture = ~0u;
+                glGetIntegerv(GL_ACTIVE_TEXTURE, &activeTexture);
+                assert(activeTexture == (GL_TEXTURE0 + _activeTextureIndex));
             }
         }
     #endif

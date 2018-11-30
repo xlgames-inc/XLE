@@ -149,8 +149,7 @@ namespace RenderCore { namespace ImplOpenGLES
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& desc)
     {
         auto textureDesc = TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 0, desc._samples);
-        if (desc._mainColorIsReadable) {
-            assert(s_useFakeBackbuffer); // has to use fake buffer mode if readable main color buffer is requested
+        if (desc._bindFlags & BindFlag::ShaderResource) {
             _backBufferDesc = CreateDesc(BindFlag::ShaderResource | BindFlag::RenderTarget, 0, GPUAccess::Read | GPUAccess::Write, textureDesc, "backbuffer");
         } else {
             _backBufferDesc = CreateDesc(BindFlag::RenderTarget, 0, GPUAccess::Write, textureDesc, "backbuffer");
@@ -202,14 +201,18 @@ namespace RenderCore { namespace ImplOpenGLES
             _nsContext = TBC::moveptr([[NSOpenGLContext alloc] initWithCGLContextObj:context]);
             CGLReleaseContext(context);
 
+            #pragma clang diagnostic push
+            #pragma clang diagnostic ignored "-Wdeprecated-declarations"
             _nsContext.get().view = (NSView*)_platformValue;
+            #pragma clang diagnostic pop
         }
 
-        if (s_useFakeBackbuffer) {
+        const bool useFakeBackbuffer = false;
+        if (useFakeBackbuffer || (_backBufferDesc._bindFlags & BindFlag::ShaderResource)) {
             _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
             const bool mainColorIsReadable = (_backBufferDesc._bindFlags & BindFlag::ShaderResource);
 
-            if (mainColorIsReadable) {
+            if (_backBufferDesc._bindFlags & BindFlag::ShaderResource) {
                 if (_backBufferDesc._textureDesc._samples._sampleCount > 1) {
                     Log(Error) << "Requested back buffer MSAA as well as readable main color buffer, MSAA samples is ignored" << std::endl;
                 }
@@ -321,18 +324,10 @@ namespace RenderCore { namespace ImplOpenGLES
                     glBlitFramebuffer(0, 0, (GLint)srcSize.width, (GLint)srcSize.height, 0, 0, (GLint)srcSize.width, (GLint)srcSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
                     srcFramebuffer = presChain._fakeBackBufferResolveFrameBuffer->AsRawGLHandle();
                 }
-
-                // The coordinates used with glBltFramebuffer with framebuffer 0 appear to be
-                // view coordinates (as opposed to "backing" coordinates). Backing coordinates are
-                // true pixel coordinates.
-                // Since we're using backing coordinates everywhere else, we need to convert here
-                NSSize correctedSize = [presChain.GetUnderlying().get().view convertSizeFromBacking:srcSize];
-                correctedSize.width *= 2.0f;
-                correctedSize.height *= 2.0f;
-
+                
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, srcFramebuffer);
                 glBindFramebuffer(GL_DRAW_FRAMEBUFFER, 0);
-                glBlitFramebuffer(0, 0, (GLint)srcSize.width, (GLint)srcSize.height, 0, 0, (GLint)correctedSize.width, (GLint)correctedSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
+                glBlitFramebuffer(0, 0, (GLint)srcSize.width, (GLint)srcSize.height, 0, 0, (GLint)srcSize.width, (GLint)srcSize.height, GL_COLOR_BUFFER_BIT, GL_NEAREST);
                 glBindFramebuffer(GL_READ_FRAMEBUFFER, 0);
             }
 

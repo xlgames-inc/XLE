@@ -177,6 +177,9 @@ namespace XLEMath
 
         Float3x3        Inverse(const Float3x3& input)          { return cml::inverse(input); }
         Float4x4        Inverse(const Float4x4& input)          { return cml::inverse(input); }
+
+        float           Determinant(const Float3x3& input)      { return cml::determinant(input); }
+        float           Determinant(const Float4x4& input)      { return cml::determinant(input); }
     #endif
     
 }

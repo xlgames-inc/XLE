@@ -15,6 +15,7 @@
 #include "../../FrameBufferDesc.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../ConsoleRig/Log.h"
+#include "../../../Core/Exceptions.h"
 
 #include "IncludeGLES.h"
 
@@ -63,6 +64,16 @@ namespace RenderCore { namespace Metal_OpenGLES
             assert(0);
         }
     }
+    
+    static bool HasClear(LoadStore loadStoreFlags)
+    {
+        return loadStoreFlags == LoadStore::Clear
+            || loadStoreFlags == LoadStore::DontCare_ClearStencil
+            || loadStoreFlags == LoadStore::Retain_ClearStencil
+            || loadStoreFlags == LoadStore::Clear_ClearStencil
+            || loadStoreFlags == LoadStore::Clear_RetainStencil
+            ;
+    }
 
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
@@ -90,7 +101,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
 				sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
-				sp._rtvClearValue[r] = clearValueIterator++;
+                sp._rtvClearValue[r] = HasClear(sp._rtvLoad[r]) ? (clearValueIterator++) : ~0u;
 			}
 
             sp._dsvHasDepth = sp._dsvHasStencil = false;
@@ -101,7 +112,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
 				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
-				sp._dsvClearValue = clearValueIterator++;
+				sp._dsvClearValue = HasClear(sp._dsvLoad) ? (clearValueIterator++) : ~0u;
                 auto resolvedFormat = ResolveFormat(sp._dsv.GetResource()->GetDesc()._textureDesc._format, sp._dsv._window._format, FormatUsage::DSV);
                 auto components = GetComponents(resolvedFormat);
                 sp._dsvHasDepth = (components == FormatComponents::Depth) || (components == FormatComponents::DepthStencil);
@@ -112,9 +123,11 @@ namespace RenderCore { namespace Metal_OpenGLES
             unsigned colorAttachmentIterator = 0;
 
             #if defined(_DEBUG)
-                int maxDrawBuffers = 0;
-                glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
-                assert(sp._rtvCount <= maxDrawBuffers);
+                if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                    int maxDrawBuffers = 0;
+                    glGetIntegerv(GL_MAX_DRAW_BUFFERS, &maxDrawBuffers);
+                    assert(sp._rtvCount <= maxDrawBuffers);
+                }
             #endif
 
             bool bindingToBackbuffer = false;
@@ -187,10 +200,25 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
-            glDrawBuffers(sp._rtvCount, drawBuffers);
+            if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                glDrawBuffers(sp._rtvCount, drawBuffers);
+            } else {
+                #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+                    // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
+                    if (sp._rtvCount == 0) {
+                        glDrawBuffer(GL_NONE);
+                        glReadBuffer(GL_NONE);
+                    } else {
+                        glDrawBuffer(GL_COLOR_ATTACHMENT0);
+                        glReadBuffer(GL_COLOR_ATTACHMENT0);
+                    }
+                #endif
+            }
 
-            // auto validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-            // assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+            #if defined(_DEBUG)
+                GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+                assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+            #endif
         }
     }
 
@@ -220,6 +248,25 @@ namespace RenderCore { namespace Metal_OpenGLES
                 &&  (s._dsvHasStencil);
         }
 
+        #if _DEBUG
+            // write masks affect glClear and glClearBuffer calls
+            // https://www.khronos.org/opengl/wiki/Write_Mask
+            if (clearDepth) {
+                GLboolean depthWriteMask;
+                glGetBooleanv(GL_DEPTH_WRITEMASK, &depthWriteMask);
+                if (!depthWriteMask) {
+                    Throw(::Exceptions::BasicLabel("Attempting to clear depth with depth mask off in subpass %d", (int)subpassIndex));
+                }
+            }
+            if (clearStencil) {
+                GLint stencilWriteMask;
+                glGetIntegerv(GL_STENCIL_WRITEMASK, &stencilWriteMask);
+                if (!(stencilWriteMask & 0xFF)) {
+                    Throw(::Exceptions::BasicLabel("Attempting to clear stencil with stencil mask %u in subpass %d", stencilWriteMask, (int)subpassIndex));
+                }
+            }
+        #endif
+
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
         // For ES2, we have to drop back to the older API
         bool useNewClearAPI = context.GetFeatureSet() & FeatureSet::GLES300;
@@ -228,7 +275,28 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto attachmentIdx = s._rtvs[rtv];
                 auto load = s._rtvLoad[rtv];
                 if (load == LoadStore::Clear) {
-                    glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                    auto formatComponentType = FormatComponentType::Float;
+                    if (s._rtvs[rtv].GetResource() && s._rtvs[rtv].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
+                        formatComponentType = GetComponentType(s._rtvs[rtv].GetResource()->GetDesc()._textureDesc._format);
+                    }
+                    switch (formatComponentType) {
+                    case FormatComponentType::UInt:
+                        glClearBufferuiv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._uint);
+                        break;
+                    case FormatComponentType::SInt:
+                        glClearBufferiv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._int);
+                        break;
+                    case FormatComponentType::UNorm:
+                    case FormatComponentType::SNorm:
+                    case FormatComponentType::UNorm_SRGB:
+                    case FormatComponentType::Typeless:
+                    case FormatComponentType::Float:
+                    case FormatComponentType::Exponential:
+                    case FormatComponentType::UnsignedFloat16:
+                    case FormatComponentType::SignedFloat16:
+                        glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                        break;
+                    }
                 }
             }
 
@@ -363,6 +431,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
+    }
+    
+    unsigned GetCurrentSubpassIndex(DeviceContext& context)
+    {
+        return s_nextSubpass-1;
     }
 
 }}

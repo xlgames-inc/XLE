@@ -102,6 +102,13 @@ namespace Conversion
     template<> int64 Convert(const std::basic_string<utf8>& input)      { return Convert<int64>((const char*)input.c_str()); }
     template<> uint64 Convert(const std::basic_string<utf8>& input)     { return Convert<uint64>((const char*)input.c_str()); }
     template<> bool Convert(const std::basic_string<utf8>& input)       { return Convert<bool>((const char*)input.c_str()); }
+    
+    template<> float Convert(const std::basic_string<char>& input)      { return Convert<float>(input.c_str()); }
+    template<> uint32 Convert(const std::basic_string<char>& input)     { return Convert<uint32>(input.c_str()); }
+    template<> int32 Convert(const std::basic_string<char>& input)      { return Convert<int32>(input.c_str()); }
+    template<> int64 Convert(const std::basic_string<char>& input)      { return Convert<int64>(input.c_str()); }
+    template<> uint64 Convert(const std::basic_string<char>& input)     { return Convert<uint64>(input.c_str()); }
+    template<> bool Convert(const std::basic_string<char>& input)       { return Convert<bool>(input.c_str()); }
 
     template<> float Convert(StringSection<utf8> input)      { return Convert<float>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
 	template<> double Convert(StringSection<utf8> input)	 { return Convert<double>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
@@ -132,7 +139,27 @@ namespace Conversion
             AsPointer(result.begin()), result.size());
         return result;
     }
-
+    
+    template<> std::basic_string<ucs2> Convert(const std::basic_string<char>& input)
+    {
+        std::basic_string<ucs2> result;
+        result.resize(input.size());
+        utf8_2_ucs2(
+            (const utf8*)AsPointer(input.begin()), input.size(),
+            AsPointer(result.begin()), result.size());
+        return result;
+    }
+    
+    template<> std::basic_string<ucs4> Convert(const std::basic_string<char>& input)
+    {
+        std::basic_string<ucs4> result;
+        result.resize(input.size());
+        utf8_2_ucs4(
+            (const utf8*)AsPointer(input.begin()), input.size(),
+            AsPointer(result.begin()), result.size());
+        return result;
+    }
+    
     template<> std::basic_string<utf8> Convert(const std::basic_string<ucs2>& input)
     {
         std::basic_string<utf8> result;
@@ -206,6 +233,11 @@ namespace Conversion
     template<> std::basic_string<char> Convert(const std::basic_string<utf8>& input)
     {
         return reinterpret_cast<const std::basic_string<char>&>(input);
+    }
+    
+    template<> std::basic_string<utf8> Convert(const std::basic_string<char>& input)
+    {
+        return reinterpret_cast<const std::basic_string<utf8>&>(input);
     }
 
     template<> std::basic_string<wchar_t> Convert(const std::basic_string<ucs2>& input)

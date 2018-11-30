@@ -24,11 +24,14 @@
 #include "../../../Utility/ArithmeticUtils.h"
 #include "IncludeGLES.h"
 #include <set>
-
-// #define EXTRA_INPUT_LAYOUT_LOGGING
+#include <unordered_set>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    std::unordered_set<std::string> g_whitelistedAttributesForBinding;
+
+    bool BoundInputLayout::_warnOnMissingVertexAttribute = true;
+
     BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
     {
             //
@@ -200,6 +203,9 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     bool BoundInputLayout::CalculateAllAttributesBound(const ShaderProgram& program)
     {
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+            _unboundAttributesNames = std::vector<std::string>();
+        #endif
         auto programHandle = program.GetUnderlying()->AsRawGLHandle();
 
         int activeAttributeCount = 0, activeAttributeMaxLength = 0;
@@ -214,6 +220,10 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             // ignore "gl" system attributes
             if (!strncmp(buffer, "gl_", 3)) continue;
+            // ignore whitelisted attributes
+            if (g_whitelistedAttributesForBinding.find(std::string(buffer)) != g_whitelistedAttributesForBinding.end()) {
+                continue;
+            }
 
             auto location = glGetAttribLocation(programHandle, buffer);
 
@@ -226,12 +236,23 @@ namespace RenderCore { namespace Metal_OpenGLES
             }
 
             if (!hasBoundAttribute) {
-                Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding." << std::endl;
-                return false;
+                if (_warnOnMissingVertexAttribute) {
+                    Log(Warning) << "Failure during vertex attribute binding. Attribute (" << (const char*)buffer << ") cannot be found in the input binding." << std::endl;
+                }
+                #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                    _unboundAttributesNames.emplace_back(std::string(buffer));
+                #else
+                    // return early if not keeping track of unbound attributes
+                    return false;
+                #endif
             }
         }
-
-        return true;
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+            return _unboundAttributesNames.empty();
+        #else
+            // since it didn't return early, no attributes are missing
+            return true;
+        #endif
     }
 
     void BoundInputLayout::UnderlyingApply(DeviceContext& devContext, IteratorRange<const VertexBufferView*> vertexBuffers) const never_throws
@@ -274,6 +295,20 @@ namespace RenderCore { namespace Metal_OpenGLES
                             glVertexAttribDivisor(c, instanceDataRate[c]);
                     capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
                 }
+            } else {
+                #if GL_ARB_instanced_arrays
+                    auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
+                    if (differences) {
+                        int firstActive = xl_ctz4(differences);
+                        int lastActive = 32u - xl_clz4(differences);
+                        for (int c=firstActive; c<lastActive; ++c)
+                            if (_attributeState & (1<<c))
+                                glVertexAttribDivisorARB(c, instanceDataRate[c]);
+                        capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                    }
+                #else
+                    assert(0);  // no hardware support for variable rate input attributes
+                #endif
             }
 
             // set enable/disable flags --
@@ -298,6 +333,14 @@ namespace RenderCore { namespace Metal_OpenGLES
                 for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                     if (_attributeState & (1<<c))
                         glVertexAttribDivisor(c, instanceDataRate[c]);
+            } else {
+                #if GL_ARB_instanced_arrays
+                    for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
+                        if (_attributeState & (1<<c))
+                            glVertexAttribDivisorARB(c, instanceDataRate[c]);
+                #else
+                    assert(0);  // no hardware support for variable rate input attributes
+                #endif
             }
             for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
                 if (_attributeState & (1<<c)) {
@@ -415,11 +458,17 @@ namespace RenderCore { namespace Metal_OpenGLES
             const auto& sampler = *(SamplerState*)stream._samplers[srv._slot];
 
             if (res.GetResource()) {
-                glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
-                glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
+                
                 if (capture) {
+                    if (capture->_activeTextureIndex != srv._textureUnit) {
+                        glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
+                        capture->_activeTextureIndex = srv._textureUnit;
+                    }
+                    glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
                     sampler.Apply(*capture, srv._textureUnit, srv._dimensionality, res.GetResource().get(), res.HasMipMaps());
                 } else {
+                    glActiveTexture(GL_TEXTURE0 + srv._textureUnit);
+                    glBindTexture(srv._dimensionality, res.GetUnderlying()->AsRawGLHandle());
                     sampler.Apply(srv._textureUnit, srv._dimensionality, res.HasMipMaps());
                 }
             } else {
@@ -519,31 +568,40 @@ namespace RenderCore { namespace Metal_OpenGLES
         struct UniformSet { int _location; unsigned _index, _value; GLenum _type; int _elementCount; };
         std::vector<UniformSet> uniformSets;
 
-        #if defined(STORE_UNIFORM_NAMES)
+        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
             std::set<uint64_t> boundGlobalUniforms;
             std::set<uint64_t> boundUniformStructs;
         #endif
 
         const UniformsStreamInterface* inputInterface[] = { &interface0, &interface1, &interface2, &interface3 };
         auto streamCount = (unsigned)dimof(inputInterface);
-        for (unsigned s=0; s<streamCount; ++s) {
+        // We bind the 4 streams with reversed order, so that material textures can be bound before global textures
+        // (ex. shadowmap). This can help avoid the situation where shadowmap end up being bound at texture unit 0,
+        // which is prone to GL errors caused by shader bugs (one example is when a shader mistakenly sample from
+        // unbound texture samplers, which has default binding 0, and shadowmap happens to be bound at texture unit 0
+        // but with a comparison sampler).
+        for (int s=streamCount-1; s>=0; --s) {
             const auto& interf = *inputInterface[s];
             for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
                 const auto& binding = interf._cbBindings[slot];
                 if (binding._elements.empty()) continue;
 
-                // ensure it's not shadowed by a future binding
-                if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
+                // Ensure it's not shadowed by bindings from streams with higher index
+                // Note that we don't enforce this for bindings to global uniforms. This allows the client to
+                // provide multiple bindings for global, wherein each only binds a subset of all of the global uniforms
+                if (binding._hashName != 0) {
+                    if (HasCBBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding._hashName)) continue;
 
-                #if defined(STORE_UNIFORM_NAMES)
-                    assert(boundUniformStructs.find(binding._hashName) == boundUniformStructs.end());
-                    boundUniformStructs.insert(binding._hashName);
-                #endif
+                    #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
+                        assert(boundUniformStructs.find(binding._hashName) == boundUniformStructs.end());
+                        boundUniformStructs.insert(binding._hashName);
+                    #endif
+                }
 
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{s, slot, std::move(cmdGroup)
-                        #if defined(STORE_UNIFORM_NAMES)
+                    _cbs.emplace_back(CB{(unsigned)s, slot, std::move(cmdGroup)
+                        #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , cmdGroup._name
                         #endif
                         });
@@ -555,7 +613,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 auto binding = interf._srvBindings[slot];
                 if (!binding) continue;
 
-                // ensure it's not shadowed by a future binding
+                // ensure it's not shadowed by bindings from streams with higher index
                 if (HasSRVBinding(MakeIteratorRange(&inputInterface[s+1], &inputInterface[dimof(inputInterface)]), binding)) continue;
 
                 auto uniform = introspection.FindUniform(binding);
@@ -572,13 +630,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                     auto dim = DimensionalityForUniformType(uniform._type);
                     auto elementIndex = unsigned(binding - uniform._bindingName);
                     assert(dim != GL_NONE);
-                    _srvs.emplace_back(SRV{s, slot, textureUnit, dim
+                    _srvs.emplace_back(SRV{(unsigned)s, slot, textureUnit, dim
                         #if defined(_DEBUG)
                             , AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount)
                         #endif
                         });
 
-                    #if defined(_DEBUG)
+                    #if defined(_DEBUG) && defined(EXTRA_INPUT_LAYOUT_LOGGING)
                         Log(Verbose) << "Selecting texunit (" << textureUnit << ") for uniform " << AdaptNameForIndex(uniform._name, elementIndex, uniform._elementCount) << " in stream " << s << ", slot " << slot << std::endl;
                     #endif
 

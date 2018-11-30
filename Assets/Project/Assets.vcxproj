@@ -53,6 +53,7 @@
     <ClInclude Include="..\AssetsInternal.h" />
     <ClInclude Include="..\AssetUtils.h" />
     <ClInclude Include="..\AsyncLoadOperation.h" />
+    <ClInclude Include="..\AsyncMarkerGroup.h" />
     <ClInclude Include="..\AssetTraits.h" />
     <ClInclude Include="..\BlockSerializer.h" />
     <ClInclude Include="..\ChunkFile.h" />
@@ -81,6 +82,7 @@
     <ClCompile Include="..\AssetTraits.cpp" />
     <ClCompile Include="..\AssetUtils.cpp" />
     <ClCompile Include="..\AsyncLoadOperation_WinAPI.cpp" />
+    <ClInclude Include="..\AsyncMarkerGroup.cpp" />
     <ClCompile Include="..\BlockSerializer.cpp" />
     <ClCompile Include="..\ChunkFile.cpp" />
     <ClCompile Include="..\ChunkFileContainer.cpp" />

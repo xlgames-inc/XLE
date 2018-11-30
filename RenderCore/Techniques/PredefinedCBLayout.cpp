@@ -7,6 +7,7 @@
 #include "PredefinedCBLayout.h"
 #include "../RenderUtils.h"
 #include "../ShaderLangUtil.h"
+#include "../Format.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/DepVal.h"
@@ -80,10 +81,9 @@ namespace RenderCore { namespace Techniques
             bool a = std::regex_match(lineStart, iterator, match, parseStatement);
             if (a && match.size() >= 4) {
                 Element e;
-                std::basic_string<utf8> name((const utf8*)match[2].first, (const utf8*)match[2].second);
-                e._name = Conversion::Convert<std::string>(name);
-                e._hash = ParameterBox::MakeParameterNameHash(name);
-                e._hash64 = Hash64(AsPointer(name.begin()), AsPointer(name.end()));
+                e._name = match[2].str();
+                e._hash = ParameterBox::MakeParameterNameHash(e._name);
+                e._hash64 = Hash64(AsPointer(e._name.begin()), AsPointer(e._name.end()));
                 e._type = ShaderLangTypeNameAsTypeDesc(MakeStringSection(match[1].str()));
 
                 auto size = e._type.GetSize();
@@ -177,6 +177,18 @@ namespace RenderCore { namespace Techniques
     uint64_t PredefinedCBLayout::CalculateHash() const
     {
         return HashCombine(Hash64(AsPointer(_elements.begin()), AsPointer(_elements.end())), _defaults.GetHash());
+    }
+    
+    auto PredefinedCBLayout::MakeConstantBufferElements() const -> std::vector<ConstantBufferElementDesc>
+    {
+        std::vector<ConstantBufferElementDesc> result;
+        result.reserve(_elements.size());
+        for (auto i=_elements.begin(); i!=_elements.end(); ++i) {
+            result.push_back(ConstantBufferElementDesc {
+                i->_hash64, AsFormat(i->_type),
+                i->_offset, i->_arrayElementCount });
+        }
+        return result;
     }
 
     PredefinedCBLayout::PredefinedCBLayout() 

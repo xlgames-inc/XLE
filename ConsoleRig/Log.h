@@ -5,8 +5,9 @@
 #include <string>
 #include <ostream>
 #include <memory>
+#include <functional>
 
-#if defined(_DEBUG)
+#if defined(_DEBUG) || PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
     #define CONSOLERIG_ENABLE_LOG
 #endif
 
@@ -39,6 +40,7 @@ namespace ConsoleRig
     public:
         void SetNextSourceLocation(const SourceLocation& sourceLocation) { _pendingSourceLocation = sourceLocation; _sourceLocationPrimed = true; }
         void SetConfiguration(const MessageTargetConfiguration& cfg) { _cfg = cfg; }
+        void SetExternalMessageHandler(std::function<std::streamsize(const CharType*, std::streamsize)> externalMessageHandler) { _externalMessageHandler = externalMessageHandler; }
 
         MessageTarget(StringSection<> id, std::basic_streambuf<CharType, CharTraits>& chain = DefaultChain());
         ~MessageTarget();
@@ -52,6 +54,7 @@ namespace ConsoleRig
         SourceLocation              _pendingSourceLocation;
         bool                        _sourceLocationPrimed;
         MessageTargetConfiguration _cfg;
+        std::function<std::streamsize(const CharType* s, std::streamsize count)> _externalMessageHandler;
 
         using int_type = typename std::basic_streambuf<CharType>::int_type;
         virtual std::streamsize xsputn(const CharType* s, std::streamsize count) override;

@@ -14,6 +14,7 @@
 #include "IAnnotator.h"
 
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/AttachableInternal.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
@@ -31,6 +32,55 @@ namespace RenderCore
         : GenericFailure(what) 
         {}
     }
+    
+    class SubFrameHeap
+    {
+    public:
+        void OnFrameBarrier()
+        {
+            _writeMarker = _data.data();
+            ++_resetId;
+            _logMsg = true;
+        }
+        
+        unsigned GetResetId() const { return _resetId; }
+        
+        void* Allocate(size_t size)
+        {
+            if (PtrAdd(_writeMarker, size) > AsPointer(_data.end())) {
+                if (_logMsg) {
+                    Log(Warning) << "Overran subframe heap with allocation of size (" << size << ")" << std::endl;
+                    _logMsg = false;
+                }
+                return nullptr;
+            }
+            
+            void* result = _writeMarker;
+            _writeMarker += size;
+            return result;
+        }
+        
+        SubFrameHeap()
+        : _data(256*1024, 0)
+        {
+            _writeMarker = _data.data();
+            _resetId = 0;
+            _logMsg = true;
+        }
+        
+        ~SubFrameHeap() {}
+    private:
+        std::vector<uint8_t> _data;
+        uint8_t* _writeMarker;
+        unsigned _resetId;
+        bool _logMsg;
+    };
+    
+    static SubFrameHeap& GetSubFrameHeap()
+    {
+        static SubFrameHeap s_instance;
+        return s_instance;
+    }
 
     SharedPkt::SharedPkt(MiniHeap::Allocation alloc, size_t size)
     : Allocation(alloc), _size(size)
@@ -43,16 +93,17 @@ namespace RenderCore
     SharedPkt::SharedPkt(const SharedPkt& cloneFrom)
     : Allocation(cloneFrom), _size(cloneFrom._size)
     {
-        if (_allocation != nullptr) {
+        if (_allocation != nullptr && _marker != ~0u) {
             GetHeap().AddRef(*this);
         }
     }
 
     SharedPkt::~SharedPkt()
     {
-        if (_allocation != nullptr) {
+        if (_marker == ~0u) {
+            // subframe allocation
+        } else if (_allocation != nullptr) {
             GetHeap().Release(*this);
-            _allocation = nullptr;      // getting a wierd case were the destructor for one object was called twice...? Unclear why
         }
     }
 
@@ -71,6 +122,32 @@ namespace RenderCore
             XlCopyMemory(pkt.begin(), begin, size);
         }
         return pkt;
+    }
+    
+    SharedPkt MakeSubFramePktSize(size_t size)
+    {
+        auto* allocation = GetSubFrameHeap().Allocate(size);
+        if (!allocation)
+            return MakeSharedPktSize(size);   // fall back to (slower) shared pkt
+        return SharedPkt({allocation, ~0u}, size);
+    }
+    
+    SharedPkt MakeSubFramePkt(const void* begin, const void* end)
+    {
+        auto size = size_t(ptrdiff_t(end) - ptrdiff_t(begin));
+        auto* allocation = GetSubFrameHeap().Allocate(size);
+        if (!allocation)
+            return MakeSharedPkt(begin, end);   // fall back to (slower) shared pkt
+        SharedPkt pkt({allocation, ~0u}, size);
+        if (pkt.begin()) {
+            XlCopyMemory(pkt.begin(), begin, size);
+        }
+        return pkt;
+    }
+    
+    void ResetSubFrameHeap()
+    {
+        GetSubFrameHeap().OnFrameBarrier();
     }
 
     MiniHeap& SharedPkt::GetHeap()
@@ -263,6 +340,24 @@ namespace RenderCore
         }
         return result / 8;
 	}
+
+    unsigned CalculatePrimitiveCount(Topology topology, unsigned vertexCount, unsigned drawCallCount)
+    {
+        switch (topology) {
+		case Topology::TriangleList:
+			return vertexCount / 3;
+		case Topology::TriangleStrip:
+			return vertexCount - 2 * drawCallCount;
+		case Topology::LineList:
+			return vertexCount / 2;
+		case Topology::LineStrip:
+			return vertexCount - 1 * drawCallCount;
+		case Topology::PointList:
+			return vertexCount;
+		default:
+			return 0;
+	    }
+    }
 
     IDevice::~IDevice() {}
     IThreadContext::~IThreadContext() {}

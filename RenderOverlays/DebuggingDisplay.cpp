@@ -1100,6 +1100,16 @@ namespace RenderOverlays { namespace DebuggingDisplay
         //      Redo the current interface state, in case any of the interactables have moved during the render...
         _currentInterfaceState = _currentInteractables.BuildInterfaceState(_currentMouse, _currentMouseHeld);
     }
+    
+    bool DebugScreensSystem::IsAnythingVisible()
+    {
+        if (!_systemWidgets.empty())
+            return true;
+        for (const auto& i:_panels)
+            if (i._widgetIndex < _widgets.size())
+                return true;
+        return false;
+    }
 
     void DebugScreensSystem::Register(std::shared_ptr<IWidget> widget, const char name[], Type type)
     {
@@ -1109,7 +1119,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
         wAndN._hashCode = Hash64(wAndN._name);
         
         if (type == InPanel) {
-            _widgets.push_back(wAndN); 
+            _widgets.push_back(wAndN);
+            TriggerWidgetChangeCallbacks();
         } else if (type == SystemDisplay) {
             _systemWidgets.push_back(wAndN);
         }
@@ -1125,6 +1136,21 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
         if (it != _widgets.end()) {
             _widgets.erase(it);
+            TriggerWidgetChangeCallbacks();
+        }
+    }
+    
+    void DebugScreensSystem::Unregister(IWidget& widget)
+    {
+        auto it = _widgets.begin();
+        for (; it != _widgets.end(); ++it) {
+            if (it->_widget.get() == &widget) {
+                break;
+            }
+        }
+        if (it != _widgets.end()) {
+            _widgets.erase(it);
+            TriggerWidgetChangeCallbacks();
         }
     }
 
@@ -1185,6 +1211,26 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
         return nullptr;
     }
+    
+    unsigned DebugScreensSystem::AddWidgetChangeCallback(WidgetChangeCallback&& callback)
+    {
+        auto id = _nextWidgetChangeCallbackIndex++;
+        _widgetChangeCallbacks.push_back(std::make_pair(id, std::move(callback)));
+        return id;
+    }
+    
+    void DebugScreensSystem::RemoveWidgetChangeCallback(unsigned callbackid)
+    {
+        _widgetChangeCallbacks.erase(
+            std::remove_if(_widgetChangeCallbacks.begin(), _widgetChangeCallbacks.end(),
+                           [callbackid](const std::pair<unsigned, WidgetChangeCallback>& p) { return p.first == callbackid; }));
+    }
+    
+    void DebugScreensSystem::TriggerWidgetChangeCallbacks()
+    {
+        for (const auto&c:_widgetChangeCallbacks)
+            c.second();
+    }
 
     // template<typename Type> void Delete(Type* type) { delete type; }
 
@@ -1194,6 +1240,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
         _currentMouse = Coord2(0,0);
         _currentMouseHeld = 0;
+        _nextWidgetChangeCallbackIndex = 0;
 
         Panel p;
         p._widgetIndex = size_t(-1);

@@ -29,6 +29,7 @@ extern uint8_t glIsVertexArray (uint32_t);
 extern void glClearBufferfv (uint32_t buffer, int32_t drawbuffer, const float *value);
 extern void glClearBufferfi (uint32_t buffer, int32_t drawbuffer, float depth, int32_t stencil);
 extern void glClearBufferiv (uint32_t buffer, int32_t drawbuffer, const int32_t *value);
+extern void glClearBufferuiv (uint32_t buffer, int32_t drawbuffer, const uint32_t *value);
 extern void glInvalidateFramebuffer (uint32_t target, int32_t numAttachments, const uint32_t* attachments);
 extern void glVertexAttribDivisor(uint32_t index, uint32_t divisor);
 extern void glBindVertexArray (uint32_t array);

@@ -1,4 +1,4 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
+<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <ItemGroup>
     <ClInclude Include="..\AssetUtils.h" />
@@ -30,6 +30,9 @@
     </ClInclude>
     <ClInclude Include="..\AssetTraits.h">
       <Filter>AssetHeaps</Filter>
+    </ClInclude>
+    <ClInclude Include="..\AsyncMarkerGroup.h">
+      <Filter>CompileAndAsync</Filter>
     </ClInclude>
     <ClInclude Include="..\CompileAndAsyncManager.h">
       <Filter>CompileAndAsync</Filter>
@@ -88,6 +91,9 @@
     </ClCompile>
     <ClCompile Include="..\AssetTraits.cpp">
       <Filter>AssetHeaps</Filter>
+    </ClCompile>
+    <ClCompile Include="..\AsyncMarkerGroup.cpp">
+      <Filter>CompileAndAsync</Filter>
     </ClCompile>
     <ClCompile Include="..\CompileAndAsyncManager.cpp">
       <Filter>CompileAndAsync</Filter>

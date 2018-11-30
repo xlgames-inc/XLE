@@ -7,6 +7,8 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		4A7DD1252126526900C527F9 /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A7DD1242126526900C527F9 /* IncludeGLES.h */; };
+		4A7DD1272126527A00C527F9 /* GLWrappers.h in Headers */ = {isa = PBXBuildFile; fileRef = 4A7DD1262126527900C527F9 /* GLWrappers.h */; };
 		8F20C86D20A9614000EBBE7E /* EGLUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F20C86B20A9613F00EBBE7E /* EGLUtils.h */; };
 		8F212B4A1FD75FBF00599B22 /* IDeviceOpenGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */; };
 		8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F212B481FD75FBF00599B22 /* Device_EGL.h */; };
@@ -38,7 +40,6 @@
 		8F2D1B8B1FD629380028A531 /* Shader.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B6E1FD629370028A531 /* Shader.h */; };
 		8F2D1B8C1FD629380028A531 /* ObjectFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6F1FD629380028A531 /* ObjectFactory.cpp */; };
 		8F2D1B8D1FD629380028A531 /* ObjectFactory.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F2D1B6F1FD629380028A531 /* ObjectFactory.cpp */; };
-		8F2D1B8E1FD629380028A531 /* IncludeGLES.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B701FD629380028A531 /* IncludeGLES.h */; };
 		8F2D1B8F1FD629380028A531 /* ObjectFactory.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B711FD629380028A531 /* ObjectFactory.h */; };
 		8F2D1B901FD629380028A531 /* TextureView.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F2D1B721FD629380028A531 /* TextureView.h */; };
 		8F3BAC73201953F900442BBB /* Device_CGL.mm in Sources */ = {isa = PBXBuildFile; fileRef = 8F3BAC71201953F900442BBB /* Device_CGL.mm */; };
@@ -71,6 +72,8 @@
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		4A7DD1242126526900C527F9 /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
+		4A7DD1262126527900C527F9 /* GLWrappers.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GLWrappers.h; path = ../OpenGLES/Metal/GLWrappers.h; sourceTree = "<group>"; };
 		8F20C86B20A9613F00EBBE7E /* EGLUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = EGLUtils.h; path = ../OpenGLES/EGLUtils.h; sourceTree = "<group>"; };
 		8F20C86C20A9614000EBBE7E /* EGLUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = EGLUtils.cpp; path = ../OpenGLES/EGLUtils.cpp; sourceTree = "<group>"; };
 		8F212B471FD75FBF00599B22 /* IDeviceOpenGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IDeviceOpenGLES.h; path = ../OpenGLES/IDeviceOpenGLES.h; sourceTree = "<group>"; };
@@ -101,7 +104,6 @@
 		8F2D1B6D1FD629370028A531 /* Format.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Format.h; path = ../OpenGLES/Metal/Format.h; sourceTree = "<group>"; };
 		8F2D1B6E1FD629370028A531 /* Shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Shader.h; path = ../OpenGLES/Metal/Shader.h; sourceTree = "<group>"; };
 		8F2D1B6F1FD629380028A531 /* ObjectFactory.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = ObjectFactory.cpp; path = ../OpenGLES/Metal/ObjectFactory.cpp; sourceTree = "<group>"; };
-		8F2D1B701FD629380028A531 /* IncludeGLES.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IncludeGLES.h; path = ../OpenGLES/Metal/IncludeGLES.h; sourceTree = "<group>"; };
 		8F2D1B711FD629380028A531 /* ObjectFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = ObjectFactory.h; path = ../OpenGLES/Metal/ObjectFactory.h; sourceTree = "<group>"; };
 		8F2D1B721FD629380028A531 /* TextureView.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = TextureView.h; path = ../OpenGLES/Metal/TextureView.h; sourceTree = "<group>"; };
 		8F3BAC71201953F900442BBB /* Device_CGL.mm */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.objcpp; name = Device_CGL.mm; path = ../OpenGLES/Device_CGL.mm; sourceTree = "<group>"; };
@@ -149,7 +151,8 @@
 				8F860C951FE8AAA700B77C9F /* Forward.h */,
 				8F5DCB8C2023E8FE0022BA7E /* FrameBuffer.cpp */,
 				8F5DCB8B2023E8FD0022BA7E /* FrameBuffer.h */,
-				8F2D1B701FD629380028A531 /* IncludeGLES.h */,
+				4A7DD1262126527900C527F9 /* GLWrappers.h */,
+				4A7DD1242126526900C527F9 /* IncludeGLES.h */,
 				8F2D1B661FD629370028A531 /* InputLayout.cpp */,
 				8F2D1B611FD629360028A531 /* InputLayout.h */,
 				8F2D1B6F1FD629380028A531 /* ObjectFactory.cpp */,
@@ -220,6 +223,7 @@
 			isa = PBXHeadersBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				4A7DD1272126527A00C527F9 /* GLWrappers.h in Headers */,
 				8F5DCB8D2023E8FE0022BA7E /* FrameBuffer.h in Headers */,
 				8F2D1B8B1FD629380028A531 /* Shader.h in Headers */,
 				8F860C961FE8AAA700B77C9F /* Forward.h in Headers */,
@@ -228,9 +232,9 @@
 				8F3BAC74201953F900442BBB /* Device_CGL.h in Headers */,
 				8F2D1B901FD629380028A531 /* TextureView.h in Headers */,
 				8F2D1B781FD629380028A531 /* Buffer.h in Headers */,
+				4A7DD1252126526900C527F9 /* IncludeGLES.h in Headers */,
 				8F2D1B8F1FD629380028A531 /* ObjectFactory.h in Headers */,
 				8F20C86D20A9614000EBBE7E /* EGLUtils.h in Headers */,
-				8F2D1B8E1FD629380028A531 /* IncludeGLES.h in Headers */,
 				8F2D1B741FD629380028A531 /* Types.h in Headers */,
 				8F2D1B801FD629380028A531 /* DeviceContext.h in Headers */,
 				8F212B4B1FD75FBF00599B22 /* Device_EGL.h in Headers */,
@@ -367,6 +371,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8F2D1B541FD628830028A531 /* CoreDebug.xcconfig */;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"GL_SILENCE_DEPRECATION=1",
+				);
 			};
 			name = Debug;
 		};
@@ -374,6 +382,10 @@
 			isa = XCBuildConfiguration;
 			baseConfigurationReference = 8F2D1B521FD628830028A531 /* CoreRelease.xcconfig */;
 			buildSettings = {
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"GL_SILENCE_DEPRECATION=1",
+				);
 			};
 			name = Release;
 		};

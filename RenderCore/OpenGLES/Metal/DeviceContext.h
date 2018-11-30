@@ -52,6 +52,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         unsigned        _activeVertexAttrib = 0;
         unsigned        _instancedVertexAttrib = 0;
         unsigned        _captureGUID = ~0u;
+        unsigned        _activeTextureIndex = ~0u;
 
         std::vector<unsigned> _samplerStateBindings;
         std::vector<std::pair<uint64_t, uint64_t>> _customBindings;
@@ -78,6 +79,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
         void Bind(const ViewportDesc& viewport);
+        
+        DepthStencilDesc ActiveDepthStencilDesc();
 
         void Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -135,6 +138,8 @@ namespace RenderCore { namespace Metal_OpenGLES
             glActiveTexture(GL_TEXTURE0 + c + shaderResources._startingPoint);
             glBindTexture(GL_TEXTURE_2D, shaderResources._buffers[c]->AsRawGLHandle());
         }
+        if (_capturedStates)
+            _capturedStates->_activeTextureIndex = Count + shaderResources._startingPoint;
     }
 
     template<int Count> void GraphicsPipeline::BindPS(const ResourceList<SamplerState, Count>& samplerStates)

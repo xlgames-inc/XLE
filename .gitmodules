@@ -1,0 +1,3 @@
+[submodule "Foreign/simpleopt"]
+	path = Foreign/simpleopt
+	url = git@github.com:brofield/simpleopt.git

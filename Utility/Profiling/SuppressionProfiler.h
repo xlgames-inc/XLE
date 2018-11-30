@@ -87,12 +87,14 @@ namespace Utility
     {
     public:
         SuppressionProfiler::EventId GetId() { return _id; }
-        bool IsActive() { return _id != ~0u; }
+        bool IsActive() { return !_profiler || (_id != ~0u); }
 
-        SuppressionProfileEvent(const char label[], SuppressionProfiler& profiler)
-        : _profiler(&profiler)
+        SuppressionProfileEvent(const char label[], SuppressionProfiler* profiler)
+        : _profiler(profiler)
+        , _id(~0u)
         {
-            _id = _profiler->BeginEvent(label);
+            if (_profiler)
+                _id = _profiler->BeginEvent(label);
         }
 
         SuppressionProfileEvent()
@@ -102,7 +104,7 @@ namespace Utility
 
         ~SuppressionProfileEvent()
         {
-            if (IsActive())
+            if (_profiler && (_id != ~0u))
                 _profiler->EndEvent(_id);
         }
 
@@ -116,7 +118,7 @@ namespace Utility
 
         SuppressionProfileEvent& operator=(SuppressionProfileEvent&& moveFrom) never_throws
         {
-            if (IsActive())
+            if (_profiler && (_id != ~0u))
                 _profiler->EndEvent(_id);
 
             _profiler = moveFrom._profiler;

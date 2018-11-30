@@ -72,7 +72,7 @@ namespace PlatformRig { namespace Overlays
             _rightColor = ColorB(255, 255, 255);
             _dividingLineColor = ColorB(0, 0, 0);
 
-            _leftPartWidth = 400;
+            _leftPartWidth = 700;
             _middlePartWidth = 120;
             _precision = 1;
 
@@ -262,6 +262,7 @@ namespace PlatformRig { namespace Overlays
         std::vector<uint64> _toggledItems;
         std::vector<IHierarchicalProfiler::ResolvedEvent> _resolvedEvents;
         Threading::Mutex _resolvedEventsLock;
+        int _rowOffset = 0;
 
         void IngestFrameData(IteratorRange<const void*> rawData);
     };
@@ -284,8 +285,9 @@ namespace PlatformRig { namespace Overlays
                 resolvedEvents = _pimpl->_resolvedEvents;
             }
             Layout tableView(layout.GetMaximumSize());
+            tableView._caretY -= _pimpl->_rowOffset * 200;
             static ProfilerTableSettings settings;
-            DrawProfilerTable(resolvedEvents, _pimpl->_toggledItems, settings, &context, layout,
+            DrawProfilerTable(resolvedEvents, _pimpl->_toggledItems, settings, &context, tableView,
                               interactables, interfaceState);
         }
 
@@ -298,7 +300,7 @@ namespace PlatformRig { namespace Overlays
 			    StringMeld<64>() << std::setprecision(3) << g_fpsDisplay);
 	    }
 
-	    {
+	    if (g_loadDisplay != 0.f) {
 		    context.DrawText(
 			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1] + 64)),
@@ -325,6 +327,13 @@ namespace PlatformRig { namespace Overlays
 
                 return true;
             }
+        }
+        using RenderOverlays::DebuggingDisplay::KeyId_Make;
+        for (const auto& b:input._activeButtons) {
+            if (b._name == KeyId_Make("up") && b._transition && b._state) {
+                _pimpl->_rowOffset = std::max(0, _pimpl->_rowOffset-1);
+            } else if (b._name == KeyId_Make("down") && b._transition && b._state)
+                ++_pimpl->_rowOffset;
         }
         return false;
     }

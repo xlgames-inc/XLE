@@ -37,7 +37,16 @@ namespace RenderCore { namespace Techniques
         CameraDesc();
     };
 
-    __declspec(align(16)) class ProjectionDesc
+    class
+#if defined(__clang_major__) && __clang_major__ < 4
+    // Do not align; it appears that clang 3.9 optimizes the alignment request incorrectly,
+    // leading to a segfault when constructing the ProjectionDesc object.
+#else
+    // Culling tests use an optimized implementation that takes advantage of
+    // the fact that this structure is aligned.
+    alignas(16)
+#endif
+    ProjectionDesc
     {
     public:
         Float4x4        _worldToProjection;
@@ -87,6 +96,8 @@ namespace RenderCore { namespace Techniques
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const CameraDesc& camera);
     SharedPkt MakeLocalTransformPacket(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
     LocalTransformConstants MakeLocalTransform(const Float4x4& localToWorld, const Float3& worldSpaceCameraPosition);
+
+    bool HasHandinessFlip(const ProjectionDesc& projDesc);
 
 	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const InputElementDesc*> ia);
 	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const MiniInputElementDesc*> ia);
