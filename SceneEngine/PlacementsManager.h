@@ -11,11 +11,10 @@
 #include "../Utility/UTFUtils.h"
 #include "../Math/Vector.h"
 #include "../Math/Matrix.h"
-#include "../Core/Types.h"
 #include <string>
 #include <functional>
 
-namespace RenderCore { namespace Assets { class ModelCache; class DelayedDrawCall; enum class DelayStep : unsigned; } }
+namespace FixedFunctionModel { class ModelCache; class DelayedDrawCall; enum class DelayStep : unsigned; }
 namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace Utility { class OutputStream; template<typename CharType> class InputStreamFormatter; }
 namespace Assets { class DirectorySearchRules; }
@@ -75,7 +74,7 @@ namespace SceneEngine
         const std::shared_ptr<PlacementsIntersections>& GetIntersections();
         std::shared_ptr<PlacementsEditor> CreateEditor(const std::shared_ptr<PlacementCellSet>& cellSet);
 
-        PlacementsManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+        PlacementsManager(std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~PlacementsManager();
     protected:
         class Pimpl;
@@ -87,7 +86,7 @@ namespace SceneEngine
     class PlacementCell;
     class PlacementsCache;
     class PreparedScene;
-    typedef std::pair<uint64, uint64> PlacementGUID;
+    typedef std::pair<uint64_t, uint64_t> PlacementGUID;
     
     class PlacementsRenderer
     {
@@ -107,8 +106,8 @@ namespace SceneEngine
         void CommitTransparent(
             RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
-            unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep);
-        bool HasPrepared(RenderCore::Assets::DelayStep delayStep);
+            unsigned techniqueIndex, FixedFunctionModel::DelayStep delayStep);
+        bool HasPrepared(FixedFunctionModel::DelayStep delayStep);
         
             // -------------- Cull --------------
         void CullToPreparedScene(
@@ -117,7 +116,7 @@ namespace SceneEngine
             const PlacementCellSet& cellSet);
 
             // -------------- Render filtered --------------
-        using DrawCallPredicate = std::function<bool(const RenderCore::Assets::DelayedDrawCall&)>;
+        using DrawCallPredicate = std::function<bool(const FixedFunctionModel::DelayedDrawCall&)>;
         void RenderFiltered(
             RenderCore::Metal::DeviceContext& context,
             RenderCore::Techniques::ParsingContext& parserContext,
@@ -138,7 +137,7 @@ namespace SceneEngine
 
         PlacementsRenderer(
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~PlacementsRenderer();
     protected:
         class Pimpl;
@@ -154,8 +153,8 @@ namespace SceneEngine
         public:
             Float3x4    _localToWorld;
             std::pair<Float3, Float3> _localSpaceBoundingBox;
-            uint64      _model;
-            uint64      _material;
+            uint64_t      _model;
+            uint64_t      _material;
         };
 
         std::vector<PlacementGUID> Find_BoxIntersection(
@@ -175,7 +174,7 @@ namespace SceneEngine
 
         PlacementsIntersections(
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~PlacementsIntersections();
     protected:
         class Pimpl;
@@ -214,7 +213,7 @@ namespace SceneEngine
             virtual unsigned            GetObjectCount() const = 0;
             virtual auto                GetLocalBoundingBox(unsigned index) const -> std::pair<Float3, Float3> = 0;
             virtual auto                GetWorldBoundingBox(unsigned index) const -> std::pair<Float3, Float3> = 0;
-            virtual std::string         GetMaterialName(unsigned objectIndex, uint64 materialGuid) const = 0;
+            virtual std::string         GetMaterialName(unsigned objectIndex, uint64_t materialGuid) const = 0;
 
             virtual void    SetObject(unsigned index, const ObjTransDef& newState) = 0;
             virtual bool    Create(const ObjTransDef& newState) = 0;
@@ -234,16 +233,16 @@ namespace SceneEngine
             const PlacementGUID* placementsBegin, const PlacementGUID* placementsEnd,
             TransactionFlags::BitField transactionFlags = 0);
 
-        uint64  CreateCell(const ::Assets::ResChar name[], const Float2& mins, const Float2& maxs);
-        bool    RemoveCell(uint64 id);
-        static uint64 GenerateObjectGUID();
+        uint64_t  CreateCell(const ::Assets::ResChar name[], const Float2& mins, const Float2& maxs);
+        bool    RemoveCell(uint64_t id);
+        static uint64_t GenerateObjectGUID();
         void    PerformGUIDFixup(PlacementGUID* begin, PlacementGUID* end) const;
 
-        std::pair<Float3, Float3> CalculateCellBoundary(uint64 cellId) const;
+        std::pair<Float3, Float3> CalculateCellBoundary(uint64_t cellId) const;
 
-        std::string GetMetricsString(uint64 cellId) const;
+        std::string GetMetricsString(uint64_t cellId) const;
         void WriteAllCells();
-        void WriteCell(uint64 cellId, const Assets::ResChar destinationFile[]) const;
+        void WriteCell(uint64_t cellId, const Assets::ResChar destinationFile[]) const;
 
         std::pair<Float3, Float3> GetModelBoundingBox(const Assets::ResChar modelName[]) const;
 
@@ -254,7 +253,7 @@ namespace SceneEngine
             std::shared_ptr<PlacementCellSet> cellSet,
             std::shared_ptr<PlacementsManager> manager,
             std::shared_ptr<PlacementsCache> placementsCache, 
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~PlacementsEditor();
     protected:
         class Pimpl;

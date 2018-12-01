@@ -14,11 +14,17 @@
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets 
+namespace FixedFunctionModel
 { 
     class ModelRenderer; class SharedStateSet; 
-    class MeshToModel; class ModelScaffold; class MaterialScaffold; 
+    class MeshToModel;
+}
+
+namespace RenderCore { namespace Assets
+{ 
+	class ModelScaffold; class MaterialScaffold;
 }}
+
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
 namespace ToolsRig

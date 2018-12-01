@@ -10,7 +10,8 @@
 #include "../Math/Matrix.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets { class SharedStateSet; class ModelRenderer; class ModelScaffold; }}
+namespace FixedFunctionModel { class SharedStateSet; class ModelRenderer; }
+namespace RenderCore { namespace Assets { class ModelScaffold; }}
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
@@ -23,8 +24,8 @@ namespace SceneEngine
     class DynamicImposters
     {
     public:
-        using SharedStateSet = RenderCore::Assets::SharedStateSet;
-        using ModelRenderer = RenderCore::Assets::ModelRenderer;
+        using SharedStateSet = FixedFunctionModel::SharedStateSet;
+        using ModelRenderer = FixedFunctionModel::ModelRenderer;
         using ModelScaffold = RenderCore::Assets::ModelScaffold;
 
         //////////////////////////////////////////////////////////////////////////////

@@ -18,10 +18,11 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
-#include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"
-#include "../RenderCore/Assets/SharedStateSet.h"
-#include "../RenderCore/Assets/ShaderVariationSet.h"
+#include "../RenderCore/Assets/ModelScaffold.h"
+#include "../FixedFunctionModel/ModelRunTime.h"
+#include "../FixedFunctionModel/DelayedDrawCall.h"
+#include "../FixedFunctionModel/SharedStateSet.h"
+#include "../FixedFunctionModel/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -215,7 +216,7 @@ namespace SceneEngine
         ImposterSpriteAtlas             _atlas;
 
             //// //// //// //// Rendering //// //// //// ////
-        RenderCore::Assets::ShaderVariationSet   _material;
+        FixedFunctionModel::ShaderVariationSet   _material;
         Metal::ConstantBuffer           _spriteTableCB;
         SharedStateSet*                 _sharedStateSet;
         std::shared_ptr<Techniques::IRenderStateDelegate> _stateRes;
@@ -833,16 +834,16 @@ namespace SceneEngine
             // Let's use a temporary DelayedDrawCallSet
             // todo -- it might be ideal to use an MSAA target for this step
 
-        RenderCore::Assets::DelayedDrawCallSet drawCalls(typeid(ModelRenderer).hash_code());
+        FixedFunctionModel::DelayedDrawCallSet drawCalls(typeid(FixedFunctionModel::ModelRenderer).hash_code());
         ob._renderer->Prepare(
             drawCalls, *_sharedStateSet,
-            modelToWorld, RenderCore::Assets::MeshToModel(*ob._scaffold));
-        ModelRenderer::Sort(drawCalls);
+            modelToWorld, FixedFunctionModel::MeshToModel(*ob._scaffold));
+        FixedFunctionModel::ModelRenderer::Sort(drawCalls);
 
         auto marker = _sharedStateSet->CaptureState(context, _stateRes, nullptr);
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
-            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::OpaqueRender);
+        FixedFunctionModel::ModelRenderer::RenderPrepared(
+            FixedFunctionModel::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, FixedFunctionModel::DelayStep::OpaqueRender);
 
             // We also have to render the rest of the geometry (using the same technique)
             // otherwise this geometry will never be rendered.
@@ -851,12 +852,12 @@ namespace SceneEngine
 
         context.Bind(Techniques::CommonResources()._dssReadOnly);
 
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
-            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::PostDeferred);
-        ModelRenderer::RenderPrepared(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
-            *_sharedStateSet, drawCalls, RenderCore::Assets::DelayStep::SortedBlending);
+        FixedFunctionModel::ModelRenderer::RenderPrepared(
+            FixedFunctionModel::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, FixedFunctionModel::DelayStep::PostDeferred);
+        FixedFunctionModel::ModelRenderer::RenderPrepared(
+            FixedFunctionModel::ModelRendererContext(context, parserContext, Techniques::TechniqueIndex::Deferred),
+            *_sharedStateSet, drawCalls, FixedFunctionModel::DelayStep::SortedBlending);
     }
 
     void DynamicImposters::Reset()
@@ -1003,7 +1004,7 @@ namespace SceneEngine
         _pimpl->_evictionCounter = 0;
         _pimpl->_frameCounter = 0;
 
-        _pimpl->_material = RenderCore::Assets::ShaderVariationSet(
+        _pimpl->_material = FixedFunctionModel::ShaderVariationSet(
             MakeIteratorRange(s_inputLayout),
             {Hash64("SpriteTable")}, ParameterBox());
         _pimpl->_stateRes = std::make_shared<CustomStateResolver>();

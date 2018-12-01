@@ -16,7 +16,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Assets/Services.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"
+#include "../FixedFunctionModel/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -339,12 +339,12 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
+    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(
         SceneParseSettings::BatchFilter filter)
     {
         using BF = SceneEngine::SceneParseSettings::BatchFilter;
-        using V = std::vector<RenderCore::Assets::DelayStep>;
-        using DelayStep = RenderCore::Assets::DelayStep;
+        using V = std::vector<FixedFunctionModel::DelayStep>;
+        using DelayStep = FixedFunctionModel::DelayStep;
 
         switch (filter) {
         case BF::General:
@@ -380,7 +380,7 @@ namespace SceneEngine
             }
         }
 
-        return IteratorRange<RenderCore::Assets::DelayStep*>();
+        return IteratorRange<FixedFunctionModel::DelayStep*>();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -9,8 +9,9 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Assets/SimpleModelRenderer.h"
@@ -49,8 +50,8 @@ namespace Sample
         Model();
         ~Model();
     protected:
-        std::unique_ptr<RenderCore::Assets::SharedStateSet> _sharedStateSet;
-        mutable std::unique_ptr<RenderCore::Assets::ModelRenderer> _modelRenderer;
+        std::unique_ptr<FixedFunctionModel::SharedStateSet> _sharedStateSet;
+        mutable std::unique_ptr<FixedFunctionModel::ModelRenderer> _modelRenderer;
 
 		::Assets::FuturePtr<RenderCore::Assets::SimpleModelRenderer> _simpleModelRenderer;
     };
@@ -266,7 +267,7 @@ namespace Sample
 
     BasicSceneParser::Model::Model()
     {
-        _sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
+        _sharedStateSet = std::make_unique<FixedFunctionModel::SharedStateSet>(
             RenderCore::Assets::Services::GetTechniqueConfigDirs());
 
 		_simpleModelRenderer = ::Assets::MakeAsset<RenderCore::Assets::SimpleModelRenderer>(
@@ -361,9 +362,9 @@ namespace Sample
                 //  low level resource (like a vertex buffer), it will throw an
                 //  exception.
             const unsigned levelOfDetail = 0;
-            _modelRenderer = std::unique_ptr<ModelRenderer>(
-                new ModelRenderer(
-                    scaffold, matScaffold, ModelRenderer::Supplements(),
+            _modelRenderer = std::unique_ptr<FixedFunctionModel::ModelRenderer>(
+                new FixedFunctionModel::ModelRenderer(
+                    scaffold, matScaffold, FixedFunctionModel::ModelRenderer::Supplements(),
                     *_sharedStateSet, &searchRules, levelOfDetail));
         }
 
@@ -378,7 +379,7 @@ namespace Sample
 
             //  Finally, we can render the object!
         _modelRenderer->Render(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+            FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, Identity<Float4x4>());
     }
 

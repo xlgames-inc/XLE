@@ -966,7 +966,7 @@ namespace FixedFunctionModel
 	void SkinPrepareMachine::PrepareAnimation(  
         IThreadContext& context, 
         PreparedAnimation& state,
-        const AnimationState& animState) const
+        const RenderCore::Assets::AnimationState& animState) const
 	{}
 
 	const RenderCore::Assets::SkeletonBinding& SkinPrepareMachine::GetSkeletonBinding() const 
@@ -982,7 +982,7 @@ namespace FixedFunctionModel
     void SkinPrepareMachine::RenderSkeleton(
         IThreadContext& context, 
         Techniques::ParsingContext& parserContext, 
-        const AnimationState& animState, const Float4x4& localToWorld)
+        const RenderCore::Assets::AnimationState& animState, const Float4x4& localToWorld)
 	{
 	}
         

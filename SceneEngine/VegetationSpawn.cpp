@@ -24,8 +24,6 @@
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IAnnotator.h"
 
-#include "../RenderCore/Assets/ModelCache.h"
-
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -37,9 +35,10 @@
 #include "../Utility/FunctionUtils.h"
 #include "../Math/Transformations.h"
 
-#include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"
-#include "../RenderCore/Assets/SharedStateSet.h"
+#include "../FixedFunctionModel/ModelCache.h"
+#include "../FixedFunctionModel/ModelRunTime.h"
+#include "../FixedFunctionModel/DelayedDrawCall.h"
+#include "../FixedFunctionModel/SharedStateSet.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 
@@ -538,13 +537,13 @@ namespace SceneEngine
     class VegetationSpawnManager::Pimpl
     {
     public:
-        std::shared_ptr<RenderCore::Assets::ModelCache>     _modelCache;
+        std::shared_ptr<FixedFunctionModel::ModelCache>     _modelCache;
         std::shared_ptr<VegetationSpawnPlugin>              _parserPlugin;
         std::unique_ptr<VegetationSpawnResources>           _resources;
         VegetationSpawnConfig _cfg;
 
         using DepVal = std::shared_ptr<::Assets::DependencyValidation>;
-        std::vector<RenderCore::Assets::DelayedDrawCallSet> _drawCallSets;
+        std::vector<FixedFunctionModel::DelayedDrawCallSet> _drawCallSets;
         std::vector<DepVal> _drawCallSetDepVals;
 
         uint32 _modelCacheReloadId;
@@ -605,8 +604,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using DelayedDrawCallSet = RenderCore::Assets::DelayedDrawCallSet;
-    using ModelRenderer = RenderCore::Assets::ModelRenderer;
+    using DelayedDrawCallSet = FixedFunctionModel::DelayedDrawCallSet;
+    using ModelRenderer = FixedFunctionModel::ModelRenderer;
 
     void VegetationSpawnManager::Pimpl::FillInDrawCallSets()
     {
@@ -639,7 +638,7 @@ namespace SceneEngine
 
                 model._renderer->Prepare(
                     _drawCallSets[b], sharedStates, Identity<Float4x4>(), 
-                    RenderCore::Assets::MeshToModel(*model._model));
+                    FixedFunctionModel::MeshToModel(*model._model));
                 ModelRenderer::Sort(_drawCallSets[b]);
                 _drawCallSetDepVals[b] = model._renderer->GetDependencyValidation();
             } CATCH(const ::Assets::Exceptions::RetrievalError&) {}
@@ -655,7 +654,7 @@ namespace SceneEngine
 
     void VegetationSpawnManager::Render(
         RenderCore::IThreadContext& threadContext, RenderCore::Techniques::ParsingContext& parserContext,
-        unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
+        unsigned techniqueIndex, FixedFunctionModel::DelayStep delayStep)
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
@@ -675,7 +674,7 @@ namespace SceneEngine
         auto& resources = *_pimpl->_resources;
         for (unsigned b=0; b<unsigned(_pimpl->_drawCallSets.size()); ++b)
             ModelRenderer::RenderPrepared(
-                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
                 sharedStates, _pimpl->_drawCallSets[b], delayStep,
                 [&context, b, &resources](ModelRenderer::DrawCallEvent evnt)
                 {
@@ -685,7 +684,7 @@ namespace SceneEngine
                 });
     }
 
-    bool VegetationSpawnManager::HasContent(RenderCore::Assets::DelayStep delayStep) const
+    bool VegetationSpawnManager::HasContent(FixedFunctionModel::DelayStep delayStep) const
     {
         if (_pimpl->_cfg._objectTypes.empty()) return false;
 
@@ -724,7 +723,7 @@ namespace SceneEngine
         return _pimpl->_parserPlugin;
     }
 
-    VegetationSpawnManager::VegetationSpawnManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache)
+    VegetationSpawnManager::VegetationSpawnManager(std::shared_ptr<FixedFunctionModel::ModelCache> modelCache)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_modelCache = std::move(modelCache);

@@ -19,7 +19,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/ShaderVariationSet.h"
+#include "../FixedFunctionModel/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
@@ -447,14 +447,14 @@ namespace SceneEngine
             _pimpl->_cfg._simGridDims);
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
         matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
-        RenderCore::Assets::ShaderVariationSet simMaterial(
+        FixedFunctionModel::ShaderVariationSet simMaterial(
             InputLayout(nullptr, 0),
             {   ObjectCB::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
-		RenderCore::Assets::ShaderVariationSet unsimMaterial(
+		FixedFunctionModel::ShaderVariationSet unsimMaterial(
             InputLayout(nullptr, 0),
             { ObjectCB::LocalTransform, Hash64("ShallowWaterLighting") },
             matParam);

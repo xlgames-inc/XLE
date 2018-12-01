@@ -8,12 +8,12 @@
 
 #include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"       // for DelayStep
+#include "../FixedFunctionModel/DelayedDrawCall.h"       // for DelayStep
 #include "../Assets/AssetsCore.h"
 #include "../Assets/AssetUtils.h"
 #include "../Utility/UTFUtils.h"
 
-namespace RenderCore { namespace Assets { class ModelCache; }}
+namespace FixedFunctionModel { class ModelCache; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace Utility
 {
@@ -102,8 +102,8 @@ namespace SceneEngine
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parsingContext,
             unsigned techniqueIndex,
-            RenderCore::Assets::DelayStep delayStep);
-        bool HasContent(RenderCore::Assets::DelayStep delayStep) const;
+            FixedFunctionModel::DelayStep delayStep);
+        bool HasContent(FixedFunctionModel::DelayStep delayStep) const;
 
         std::shared_ptr<ILightingParserPlugin> GetParserPlugin();
 
@@ -113,7 +113,7 @@ namespace SceneEngine
         const VegetationSpawnConfig& GetConfig() const;
 
         VegetationSpawnManager(
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~VegetationSpawnManager();
     protected:
         class Pimpl;

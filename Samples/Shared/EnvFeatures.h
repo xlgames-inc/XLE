@@ -25,7 +25,7 @@ namespace EntityInterface
 }
 
 namespace Assets { class DependencyValidation; }
-namespace RenderCore { namespace Assets { class ModelCache; } }
+namespace FixedFunctionModel { class ModelCache; }
 
 namespace Sample
 {
@@ -48,7 +48,7 @@ namespace Sample
         ScenePlugin_EnvironmentFeatures(
             const ::Assets::rstring& cfgDir,
             std::shared_ptr<EntityInterface::RetainedEntities> retainedEntities,
-            std::shared_ptr<RenderCore::Assets::ModelCache> modelCache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
         ~ScenePlugin_EnvironmentFeatures();
 
     protected:

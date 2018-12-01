@@ -11,7 +11,6 @@
 #include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets { class ModelRenderer; class SharedStateSet; } }
 namespace SceneEngine { class PreparedScene; }
 
 namespace Sample

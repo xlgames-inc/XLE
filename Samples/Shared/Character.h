@@ -10,13 +10,17 @@
 #include "../../PlatformRig/CameraManager.h"
 #include "../../Assets/AssetsCore.h"
 
-namespace RenderCore { namespace Assets 
+namespace FixedFunctionModel
 {
     class SharedStateSet;
     class AnimationImmutableData;
     class AnimationSet;
     class ModelRenderer;
     class SkinPrepareMachine;
+}
+
+namespace RenderCore { class Assets
+{
     class ModelScaffold;
     class SkeletonScaffold;
     class AnimationSetScaffold;

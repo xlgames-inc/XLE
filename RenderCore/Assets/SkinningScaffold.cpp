@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SkeletonScaffoldInternal.h"
-#include "ModelRunTime.h"
+#include "ModelScaffold.h"
 #include "ModelImmutableData.h"
 #include "RawAnimationCurve.h"
 #include "AssetUtils.h"

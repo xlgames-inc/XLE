@@ -11,7 +11,7 @@
 #include "../RenderCore/Types_Forward.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
+#include "../FixedFunctionModel/DelayedDrawCall.h"   // for DelayStep -- a forward declaration here confuses c++/cli
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
 	#include "../RenderCore/DX11/Metal/DX11.h"
@@ -210,7 +210,7 @@ namespace SceneEngine
         ;
     }
 
-    IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
+    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(
         SceneParseSettings::BatchFilter filter);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

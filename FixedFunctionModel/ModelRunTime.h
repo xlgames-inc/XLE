@@ -16,6 +16,7 @@ namespace RenderCore { namespace Assets
 	class MaterialScaffold;
 	class AnimationSetScaffold;
 	class SkeletonScaffold;
+	class AnimationState;
 }}
 
 namespace FixedFunctionModel
@@ -117,20 +118,6 @@ namespace FixedFunctionModel
                 const std::function<void(DrawCallEvent)>*);
     };
 
-	/// <summary>Represents the state of animation effects on an object<summary>
-    /// AnimationState is a placeholder for containing the states related to
-    /// animating vertices in a model.
-    class AnimationState
-    {
-    public:
-            // only a single animation supported currently //
-        float       _time;
-        uint64_t	_animation;
-        AnimationState(float time, uint64_t animation) : _time(time), _animation(animation) {}
-        AnimationState() {}
-    };
-
-
 	/// <summary>Bind together a model, animation set and skeleton for rendering</summary>
     /// Before we can apply animation to a model, we need to first bind together the
     /// model, animation set and skeleton.
@@ -184,14 +171,14 @@ namespace FixedFunctionModel
         void PrepareAnimation(  
             RenderCore::IThreadContext& context, 
             PreparedAnimation& state,
-            const AnimationState& animState) const;
+            const RenderCore::Assets::AnimationState& animState) const;
         const RenderCore::Assets::SkeletonBinding& GetSkeletonBinding() const;
         unsigned GetSkeletonOutputCount() const;
 
         void RenderSkeleton(
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext, 
-            const AnimationState& animState, const Float4x4& localToWorld);
+            const RenderCore::Assets::AnimationState& animState, const Float4x4& localToWorld);
         
         SkinPrepareMachine(const RenderCore::Assets::ModelScaffold&, const RenderCore::Assets::AnimationSetScaffold&, const RenderCore::Assets::SkeletonScaffold&);
         SkinPrepareMachine(const RenderCore::Assets::ModelScaffold& skinScaffold, const RenderCore::Assets::SkeletonMachine& skeletonScaffold);

@@ -171,7 +171,7 @@ namespace Assets
 			if (res) return res;
 		}
 
-		Throw(::Exceptions::BasicLabel("Could not find compiler to prepare asset with type (0x%x) and initializer (%s)", typeCode, (initializerCount > 0)?initializers[0]:"<<none>>"));
+		Throw(::Exceptions::BasicLabel("Could not find compiler to prepare asset with type (0x%llx) and initializer (%s)", typeCode, (initializerCount > 0)?initializers[0].AsString().c_str():"<<none>>"));
 	}
 
 	void CompilerSet::StallOnPendingOperations(bool cancelAll)

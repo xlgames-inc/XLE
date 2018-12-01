@@ -17,10 +17,10 @@
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
+#include "../../FixedFunctionModel/ModelCache.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Types.h"
@@ -481,8 +481,8 @@ namespace Overlays
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using RenderCore::Assets::ModelCache;
-	using RenderCore::Assets::ModelCacheModel;
+    using FixedFunctionModel::ModelCache;
+	using FixedFunctionModel::ModelCacheModel;
 
     class ModelBrowser::Pimpl
     {

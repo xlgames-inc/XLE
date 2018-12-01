@@ -10,14 +10,18 @@
 #include <functional>
 #include <memory>
 
-namespace RenderCore { namespace Assets 
+namespace FixedFunctionModel
 {
     class ModelRenderer;
     class SharedStateSet;
-    class ModelScaffold;
-    class MaterialScaffold;
 	class ModelCache;
 	class ModelCacheModel;
+}
+
+namespace RenderCore { namespace Assets
+{
+	class ModelScaffold;
+    class MaterialScaffold;
 }}
 
 namespace RenderCore { namespace Techniques 
@@ -110,7 +114,7 @@ namespace ToolsRig
 
         ModelVisLayer(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<RenderCore::Assets::ModelCache> cache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> cache);
         ~ModelVisLayer();
     protected:
         class Pimpl;
@@ -132,7 +136,7 @@ namespace ToolsRig
 
         VisualisationOverlay(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<RenderCore::Assets::ModelCache> cache,
+            std::shared_ptr<FixedFunctionModel::ModelCache> cache,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();
     protected:
@@ -170,8 +174,8 @@ namespace ToolsRig
         OverlayFn _overlayFn;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const RenderCore::Assets::ModelCacheModel& model);
+    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
-        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<RenderCore::Assets::ModelCache> cache);
+        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<FixedFunctionModel::ModelCache> cache);
 }
 
