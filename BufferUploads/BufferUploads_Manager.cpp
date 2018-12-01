@@ -1797,7 +1797,12 @@ namespace BufferUploads
                 if (!stallOnPending)
                     return false; // still waiting
 
-                currentState = step._marker->StallWhilePending();
+                auto res = step._marker->StallWhilePending();
+				if (!res.has_value()) {
+					ReleaseTransaction(transaction, context, true);
+					return false;
+				}
+				currentState = res.value();
             }
 
             if (currentState == Assets::AssetState::Ready) {

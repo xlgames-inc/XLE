@@ -152,6 +152,11 @@ namespace RenderCore { namespace Metal_DX11
         context.Unbind<RenderTargetView>();
     }
 
+	unsigned GetCurrentSubpassIndex(DeviceContext& context)
+	{
+		return s_nextSubpass-1;
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FrameBufferPool::Pimpl 

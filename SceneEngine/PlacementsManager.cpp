@@ -383,8 +383,11 @@ namespace SceneEngine
         if (!model) return ::Assets::AssetState::Invalid;
 
 		::Assets::AssetState state = model->GetAssetState();
-		if (stallWhilePending)
-			state = model->StallWhilePending();
+		if (stallWhilePending) {
+			auto res = model->StallWhilePending();
+			if (!res.has_value()) return ::Assets::AssetState::Pending;
+			state = res.value();
+		}
 
 		if (state != ::Assets::AssetState::Ready) return state;
 
