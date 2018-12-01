@@ -85,11 +85,11 @@ namespace RenderCore { namespace Techniques
             StringMeldAppend(bufferStart, bufferStart + dimof(_stringHelpers->_pendingAssets)) << "," << id;
     }
 
-    std::shared_ptr<IRenderStateDelegate> ParsingContext::SetStateSetResolver(
-        std::shared_ptr<IRenderStateDelegate> stateSetResolver)
+    std::shared_ptr<IRenderStateDelegate> ParsingContext::SetRenderStateDelegate(
+        const std::shared_ptr<IRenderStateDelegate>& stateSetResolver)
     {
-        std::shared_ptr<IRenderStateDelegate> oldResolver = std::move(_stateSetResolver);
-        _stateSetResolver = std::move(stateSetResolver);
+        std::shared_ptr<IRenderStateDelegate> oldResolver = std::move(_renderStateDelegate);
+        _renderStateDelegate = std::move(stateSetResolver);
         return std::move(oldResolver);
     }
 
@@ -101,7 +101,7 @@ namespace RenderCore { namespace Techniques
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
-        _stateSetResolver = _techniqueContext->_defaultStateSetResolver;
+        _renderStateDelegate = _techniqueContext->_defaultStateSetResolver;
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
 		_frameBufferPool = frameBufferPool;

@@ -5,7 +5,7 @@
 #include "Log.h"
 #include "OutputStream.h"
 #include "GlobalServices.h"
-#include "AttachableInternal.h"
+#include "AttachablePtr.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/SystemUtils.h"
 #include "../Utility/Streams/Stream.h"

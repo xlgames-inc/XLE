@@ -17,7 +17,7 @@
 #include "../../Assets/IntermediateAssets.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/GeneralCompiler.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
 namespace RenderCore { namespace Assets

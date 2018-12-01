@@ -15,7 +15,7 @@
 
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
-#include "../ConsoleRig/AttachableInternal.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
 

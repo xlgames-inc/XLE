@@ -13,7 +13,7 @@
 #include "../Assets/AssetServices.h"
 #include "../ConsoleRig/Console.h"
 #include "../ConsoleRig/Log.h"
-#include "../ConsoleRig/AttachableInternal.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/SystemUtils.h"

@@ -54,7 +54,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Threading/ThreadingUtils.h"

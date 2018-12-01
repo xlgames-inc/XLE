@@ -35,7 +35,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -523,7 +523,7 @@ namespace Sample
 
                 auto captureMarker = box._sharedStateSet->CaptureState(
                     *metalContext, 
-                    parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                    parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
 
                 metalContext->Bind(Metal::DepthStencilState(true, true));
 				metalContext->Bind(Metal::RasterizerState());
@@ -637,7 +637,7 @@ namespace Sample
                     auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
                         *metalContext, 
-                        parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+                        parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
                     box._modelRenderer->Render(
                         RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Deferred),
                         *box._sharedStateSet, Identity<Float4x4>());

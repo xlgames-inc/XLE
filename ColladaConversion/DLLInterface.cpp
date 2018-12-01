@@ -36,7 +36,7 @@
 #include "../Utility/StringFormat.h"
 #include "../ConsoleRig/OutputStream.h"
 #include "../ConsoleRig/AttachableLibrary.h"
-#include "../ConsoleRig/AttachableInternal.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
 #include <memory>

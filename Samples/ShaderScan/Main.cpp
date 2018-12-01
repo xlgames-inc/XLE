@@ -16,7 +16,7 @@
 #include "Assets/Assets.h"
 #include "ConsoleRig/GlobalServices.h"
 #include "ConsoleRig/Log.h"
-#include "ConsoleRig/AttachableInternal.h"
+#include "ConsoleRig/AttachablePtr.h"
 #include "Utility/StringUtils.h"
 #include "Utility/Streams/StreamFormatter.h"
 #include "Utility/Streams/StreamDOM.h"

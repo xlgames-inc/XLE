@@ -112,12 +112,12 @@ namespace SceneEngine
             std::shared_ptr<Techniques::IRenderStateDelegate> newResolver)
         {
             _parsingContext = &parsingContext;
-            _oldResolver = parsingContext.SetStateSetResolver(std::move(newResolver));
+            _oldResolver = parsingContext.SetRenderStateDelegate(std::move(newResolver));
         }
         ~StateSetChangeMarker()
         {
             if (_parsingContext)
-                _parsingContext->SetStateSetResolver(std::move(_oldResolver));
+                _parsingContext->SetRenderStateDelegate(std::move(_oldResolver));
         }
         StateSetChangeMarker(const StateSetChangeMarker&);
         StateSetChangeMarker& operator=(const StateSetChangeMarker&);

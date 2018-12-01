@@ -20,7 +20,7 @@
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"

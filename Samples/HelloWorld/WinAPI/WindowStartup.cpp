@@ -7,7 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
-#include "../../../ConsoleRig/AttachableInternal.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"

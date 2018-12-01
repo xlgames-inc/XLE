@@ -156,7 +156,7 @@ namespace ToolsRig
 
 			auto usi = std::make_shared<UniformsStreamInterface>();
 			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
-            
+
             auto geoType = _settings->_geometryType;
             if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
@@ -169,8 +169,7 @@ namespace ToolsRig
                 };
 
 				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
-				// drawable._techniqueConfig = "xleres/techniques/illum.tech";
-				drawable._material = nullptr;
+				drawable._material = _material.get();
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
@@ -198,8 +197,7 @@ namespace ToolsRig
                 } else return;
 
 				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
-				// drawable._techniqueConfig = "xleres/techniques/illum.tech";
-				drawable._material = nullptr;
+				drawable._material = _material.get();
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
 				drawable._geo->_vertexStreams[0]._vertexElements = Vertex3D_MiniInputLayout;
@@ -218,6 +216,7 @@ namespace ToolsRig
 				seqTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
 			if (!seqTechnique._materialDelegate)
 				seqTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+			seqTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
 
 			auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 			for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
@@ -240,10 +239,15 @@ namespace ToolsRig
         MaterialSceneParser(
             const std::shared_ptr<MaterialVisSettings>& settings,
             const std::shared_ptr<VisEnvSettings>& envSettings)
-        : VisSceneParser(settings->_camera, envSettings), _settings(settings) {}
+        : VisSceneParser(settings->_camera, envSettings), _settings(settings) 
+		{
+			_material = std::make_shared<RenderCore::Techniques::Material>();
+			XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
+		}
 
     protected:
         std::shared_ptr<MaterialVisSettings>  _settings;
+		std::shared_ptr<RenderCore::Techniques::Material> _material;
     };
 
 	std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(

@@ -12,6 +12,7 @@
 #include "../Utility/StringUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Core/SelectConfiguration.h"
+#include "../Core/Exceptions.h"
 
 namespace Assets
 {
@@ -170,8 +171,7 @@ namespace Assets
 			if (res) return res;
 		}
 
-		assert(0);  // couldn't find a compiler for this asset type
-		return nullptr;
+		Throw(::Exceptions::BasicLabel("Could not find compiler to prepare asset with type (0x%x) and initializer (%s)", typeCode, (initializerCount > 0)?initializers[0]:"<<none>>"));
 	}
 
 	void CompilerSet::StallOnPendingOperations(bool cancelAll)

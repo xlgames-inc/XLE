@@ -8,13 +8,16 @@
 
 #include "IteratorUtils.h"
 #include "PtrUtils.h"
-#include "Threading/Mutex.h"
 #include "../Core/Exceptions.h"
 #include "../Core/SelectConfiguration.h"
 #include <functional>
 #include <utility>
 #include <vector>
 #include <stdint.h>
+
+#if !defined(_M_CEE)	// cannot be included into CLR builds, for reasons known only to Microsoft
+#include "Threading/Mutex.h"
+#endif
 
 namespace Utility
 {
@@ -429,6 +432,8 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined(_M_CEE)		// (due to mutex dependencies, must be excluded from CLR builds)
+
     using SignalDelegateId = unsigned;
     enum class SignalDelegateResult { Continue, Unbind };
 
@@ -566,6 +571,8 @@ namespace Utility
             _delegates.erase(i);
             return result;
         }
+
+#endif
 
 	///////////////////////////////////////////////////////////////////////////////////////////////////
 		//      S T A T I C   C O N S T R U C T O R   F U N C T I O N

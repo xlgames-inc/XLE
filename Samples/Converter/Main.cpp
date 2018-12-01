@@ -6,7 +6,7 @@
 
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"

@@ -374,7 +374,7 @@ namespace Sample
             //  capture once and render multiple times with the same capture.
         auto captureMarker = _sharedStateSet->CaptureState(
 			context, 
-			parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+			parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
 
             //  Finally, we can render the object!
         _modelRenderer->Render(
@@ -388,7 +388,7 @@ namespace Sample
 		RenderCore::Techniques::SequencerTechnique result;
 		result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
 		result._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
-		result._renderStateDelegate = parserContext.GetStateSetResolver();
+		result._renderStateDelegate = parserContext.GetRenderStateDelegate();
 
 		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)

@@ -15,7 +15,7 @@
 #include "../RenderCore/ResourceUtils.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../ConsoleRig/AttachableInternal.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"

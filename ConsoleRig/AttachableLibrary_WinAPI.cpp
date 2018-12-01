@@ -6,7 +6,7 @@
 
 #include "AttachableLibrary.h"
 #include "GlobalServices.h"
-#include "AttachableInternal.h"
+#include "AttachablePtr.h"
 #include "../Utility/SystemUtils.h"
 #include "../Core/WinAPI/IncludeWindows.h"
 #include <string>

@@ -20,7 +20,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
 #include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Utility/MemoryUtils.h"

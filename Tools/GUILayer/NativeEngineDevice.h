@@ -7,13 +7,12 @@
 #pragma once
 
 #include "EngineForward.h"
-#include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include <memory>
 
 namespace RenderCore { namespace Assets { class Services; } }
 namespace ToolsRig { class DivergentAssetManager; }
-namespace ConsoleRig { class CrossModule; }
+namespace ConsoleRig { class GlobalServices; class CrossModule; }
 
 namespace GUILayer
 {

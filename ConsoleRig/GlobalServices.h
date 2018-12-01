@@ -6,9 +6,9 @@
 
 #pragma once
 
-#include "../Utility/FunctionUtils.h"
 #include <string>
 #include <memory>
+#include <assert.h>
 
 namespace Utility { class CompletionThreadPool; }
 
@@ -33,8 +33,8 @@ namespace ConsoleRig
     class GlobalServices
     {
     public:
-        CompletionThreadPool& GetShortTaskThreadPool();
-        CompletionThreadPool& GetLongTaskThreadPool();
+        Utility::CompletionThreadPool& GetShortTaskThreadPool();
+        Utility::CompletionThreadPool& GetLongTaskThreadPool();
 
         static GlobalServices& GetInstance() { assert(s_instance); return *s_instance; }
 

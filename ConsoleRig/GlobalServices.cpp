@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "GlobalServices.h"
-#include "AttachableInternal.h"
+#include "AttachablePtr.h"
 #include "Log.h"
 #include "Console.h"
 #include "ResourceBox.h"

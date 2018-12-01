@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Plugins.h"
-#include "AttachableInternal.h"
+#include "AttachablePtr.h"
 #include "AttachableLibrary.h"
 #include "Log.h"
 #include "../Utility/Streams/FileUtils.h"

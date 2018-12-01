@@ -58,7 +58,7 @@
     <ClCompile Include="..\Version.in.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\AttachableInternal.h" />
+    <ClInclude Include="..\AttachablePtr.h" />
     <ClInclude Include="..\AttachableLibrary.h" />
     <ClInclude Include="..\Console.h" />
     <ClInclude Include="..\GlobalServices.h" />

@@ -10,7 +10,7 @@
 #include "../IThreadContext.h"
 #include "IDeviceDX11.h"
 #include "Metal/DX11.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/IntrusivePtr.h"
 
 namespace RenderCore { namespace Metal_DX11 { class DeviceContext; class ObjectFactory; } }
