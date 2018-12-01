@@ -172,7 +172,7 @@ namespace SceneEngine
     StochasticTransparencyOp::~StochasticTransparencyOp() 
     {
         if (_parserContext) {
-            auto& runtimeState = _parserContext->GetTechniqueContext()._runtimeState;
+            auto& runtimeState = _parserContext->GetSubframeShaderSelectors();
             runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), 0u);
             runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), 0u);
             runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
@@ -211,7 +211,7 @@ namespace SceneEngine
         _context->Bind(Techniques::CommonResources()._dssReadWrite);
         _context->Bind(Techniques::CommonResources()._blendOpaque);
 
-        auto& runtimeState = _parserContext->GetTechniqueContext()._runtimeState;
+        auto& runtimeState = _parserContext->GetSubframeShaderSelectors();
         runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), box._primIdsTexture.IsGood());
         runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), box._opacitiesTexture.IsGood());
         runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);

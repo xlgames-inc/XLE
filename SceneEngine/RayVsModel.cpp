@@ -190,7 +190,7 @@ namespace SceneEngine
         _pimpl = std::make_unique<Pimpl>(techniqueContext);
         _pimpl->_threadContext = threadContext;
 
-        _pimpl->_parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+        _pimpl->_parserContext.GetSubframeShaderSelectors().SetParameter(
             (const utf8*)"INTERSECTION_TEST", unsigned(testType));
 
         auto metalContext = Metal::DeviceContext::Get(*threadContext);

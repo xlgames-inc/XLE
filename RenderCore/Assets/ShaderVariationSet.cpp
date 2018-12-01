@@ -54,7 +54,7 @@ namespace RenderCore { namespace Assets
         const ParameterBox* state[] = {
             &_geometryParameters, 
             &parsingContext.GetTechniqueContext()._globalEnvironmentState,
-            &parsingContext.GetTechniqueContext()._runtimeState, 
+            &parsingContext.GetSubframeShaderSelectors(), 
             &_materialParameters
         };
 		

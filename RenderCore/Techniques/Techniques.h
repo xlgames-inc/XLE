@@ -88,11 +88,9 @@ namespace RenderCore { namespace Techniques
     class TechniqueContext
     {
     public:
-        ParameterBox   _globalEnvironmentState;
-        ParameterBox   _runtimeState;
-
-        std::shared_ptr<ParameterBox> _stateSetEnvironment;
-        std::shared_ptr<IRenderStateDelegate> _defaultStateSetResolver;
+        ParameterBox							_globalEnvironmentState;
+        std::shared_ptr<ParameterBox>			_renderStateDelegateParameters;
+        std::shared_ptr<IRenderStateDelegate>	_defaultRenderStateDelegate;
 
         TechniqueContext();
 		static const UniformsStreamInterface& GetGlobalUniformsStreamInterface();
@@ -103,7 +101,6 @@ namespace RenderCore { namespace Techniques
         static const unsigned CB_OrthoShadowProjection = 3;
         static const unsigned CB_BasicLightingEnvironment = 4;
     };
-
 
 }}
 

@@ -114,7 +114,7 @@ namespace ToolsRig
 
             RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
             if (_sharedStateSet)
-                captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+                captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
             using namespace RenderCore;
             Metal::ConstantBuffer drawCallIndexBuffer(
@@ -389,7 +389,7 @@ namespace ToolsRig
 
                     RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                     if (model._sharedStateSet)
-                        captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+                        captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
                     const auto techniqueIndex = Techniques::TechniqueIndex::VisWireframe;
 
@@ -407,7 +407,7 @@ namespace ToolsRig
 
                     RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
                     if (model._sharedStateSet)
-                        captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+                        captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
                     const auto techniqueIndex = Techniques::TechniqueIndex::VisNormals;
 
@@ -535,7 +535,7 @@ namespace ToolsRig
         stateContext.SetRay(worldSpaceRay);
 
         {
-            auto captureMarker = model._sharedStateSet->CaptureState(*context.GetThreadContext(), parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+            auto captureMarker = model._sharedStateSet->CaptureState(*context.GetThreadContext(), parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
             RenderWithEmbeddedSkeleton(
                 RenderCore::Assets::ModelRendererContext(*context.GetThreadContext(), parserContext, 6),
                 *model._renderer, *model._sharedStateSet, model._model);

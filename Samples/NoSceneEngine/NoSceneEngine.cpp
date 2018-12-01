@@ -523,7 +523,7 @@ namespace Sample
 
                 auto captureMarker = box._sharedStateSet->CaptureState(
                     *metalContext, 
-                    parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+                    parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
                 metalContext->Bind(Metal::DepthStencilState(true, true));
 				metalContext->Bind(Metal::RasterizerState());
@@ -637,7 +637,7 @@ namespace Sample
                     auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
                         *metalContext, 
-                        parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+                        parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
                     box._modelRenderer->Render(
                         RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Deferred),
                         *box._sharedStateSet, Identity<Float4x4>());

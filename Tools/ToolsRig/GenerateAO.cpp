@@ -173,10 +173,10 @@ namespace ToolsRig
         metalContext.Bind(commonRes._defaultRasterizer);
 
         Techniques::TechniqueContext techniqueContext;
-        techniqueContext._runtimeState.SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
-        techniqueContext._runtimeState.SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
-        techniqueContext._runtimeState.SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
         Techniques::ParsingContext parserContext(techniqueContext);
+		parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"SHADOW_CASCADE_MODE", 1u);            // arbitrary projection mode
+        parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"FRUSTUM_FILTER", 31u);                // enable writing to 5 frustums
+        parserContext.GetSubframeShaderSelectors().SetParameter((const utf8*)"OUTPUT_SHADOW_PROJECTION_COUNT", 5u);
 
         SceneEngine::SetFrameGlobalStates(metalContext);
 
@@ -188,7 +188,7 @@ namespace ToolsRig
 
             // Render the model onto our cube map surface
         {
-            auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+            auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
             TRY {
                 RenderCore::Assets::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
                 renderer.Prepare(

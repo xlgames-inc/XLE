@@ -525,7 +525,7 @@ namespace SceneEngine
             // Draw the opaque & translucent parts of models that were previously prepared
         {
             auto capture = _cache->GetSharedStateSet().CaptureState(
-                context, parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+                context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
             ModelRenderer::RenderPrepared(
                 RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
                 _cache->GetSharedStateSet(), _preparedRenders, delayStep);

@@ -1061,16 +1061,16 @@ namespace SceneEngine
 
             //  we need to set the "shadow cascade mode" settings to the right
             //  mode for this prepare step;
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+        parserContext.GetSubframeShaderSelectors().SetParameter(
             StringShadowCascadeMode, 
             preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+        parserContext.GetSubframeShaderSelectors().SetParameter(
             StringShadowEnableNearCascade,  preparedResult._enableNearCascade?1:0);
 
         auto cleanup = MakeAutoCleanup(
             [&parserContext]() {
-                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
-                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowEnableNearCascade, 0);
+                parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowCascadeMode, 0);
+                parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowEnableNearCascade, 0);
             });
 
             /////////////////////////////////////////////

@@ -218,7 +218,7 @@ namespace SceneEngine
             metalContext, Techniques::TechniqueContext::CB_OrthoShadowProjection, 
             &dominantLight._orthoCBSource, sizeof(dominantLight._orthoCBSource));
 
-        auto& rtState = parsingContext.GetTechniqueContext()._runtimeState;
+        auto& rtState = parsingContext.GetSubframeShaderSelectors();
         rtState.SetParameter(u("SHADOW_CASCADE_MODE"), dominantLight._mode == ShadowProjectionDesc::Projections::Mode::Ortho?2:1);
         rtState.SetParameter(u("SHADOW_ENABLE_NEAR_CASCADE"), dominantLight._enableNearCascade?1:0);
     }
@@ -228,7 +228,7 @@ namespace SceneEngine
         Techniques::ParsingContext& parsingContext)
     {
         MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3,1);   // unbind shadow textures
-        auto& rtState = parsingContext.GetTechniqueContext()._runtimeState;
+        auto& rtState = parsingContext.GetSubframeShaderSelectors();
         rtState.SetParameter(u("SHADOW_CASCADE_MODE"), 0);
         rtState.SetParameter(u("SHADOW_ENABLE_NEAR_CASCADE"), 0);
     }

@@ -817,7 +817,7 @@ namespace SceneEngine
                 parserContext.SetGlobalCB(
                     context, Techniques::TechniqueContext::CB_GlobalTransform,
                     &globalTransform, sizeof(globalTransform));
-                parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 0u);
+                parserContext.GetSubframeShaderSelectors().SetParameter(u("DECAL_BLEND"), 0u);
             });
 
         auto globalTransform = BuildGlobalTransformConstants(projDesc);
@@ -827,7 +827,7 @@ namespace SceneEngine
 
             // We need to use the "DECAL_BLEND" mode.
             // This writes the blending alpha to the destination target
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(u("DECAL_BLEND"), 1u);
+        parserContext.GetSubframeShaderSelectors().SetParameter(u("DECAL_BLEND"), 1u);
 
             // Now we can just render the object.
             // Let's use a temporary DelayedDrawCallSet

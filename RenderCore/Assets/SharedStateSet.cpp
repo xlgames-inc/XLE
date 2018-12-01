@@ -191,13 +191,12 @@ namespace RenderCore { namespace Assets
 			return { _currentBoundUniforms, _currentBoundLayout };
         }
 
-        auto& techniqueContext = context._parserContext->GetTechniqueContext();
         const auto& sn = _pimpl->_resolvedTechniqueConfigs[shaderName.Value()];
         auto& shaderType = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(sn));
         const ParameterBox* state[] = {
             &_pimpl->_parameterBoxes[geoParamBox.Value()],
-            &techniqueContext._globalEnvironmentState,
-            &techniqueContext._runtimeState,
+            &context._parserContext->GetTechniqueContext()._globalEnvironmentState,
+            &context._parserContext->GetSubframeShaderSelectors(),
             &_pimpl->_parameterBoxes[materialParamBox.Value()]
         };
 

@@ -374,7 +374,7 @@ namespace Sample
             //  capture once and render multiple times with the same capture.
         auto captureMarker = _sharedStateSet->CaptureState(
 			context, 
-			parserContext.GetRenderStateDelegate(), parserContext.GetStateSetEnvironment());
+			parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
             //  Finally, we can render the object!
         _modelRenderer->Render(

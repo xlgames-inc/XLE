@@ -683,7 +683,7 @@ namespace SceneEngine
             ParameterBox dummyBox;
             const ParameterBox* state[] = {
                 &MaterialState_Blank, &parserContext.GetTechniqueContext()._globalEnvironmentState,
-                &parserContext.GetTechniqueContext()._runtimeState, &materialParameters
+                &parserContext.GetSubframeShaderSelectors(), &materialParameters
             };
             
 			UniformsStreamInterface usi;

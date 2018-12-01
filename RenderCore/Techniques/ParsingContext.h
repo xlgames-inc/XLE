@@ -11,6 +11,7 @@
 #include "../BufferView.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/ParameterBox.h"
 #include <vector>
 #include <memory>
 #include <functional>
@@ -46,6 +47,7 @@ namespace RenderCore { namespace Techniques
 
             //  ----------------- Working technique context -----------------
         TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
+		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 		UniformsStream			GetGlobalUniformsStream() const;
         Metal::Buffer&			GetGlobalTransformCB();
         Metal::Buffer&			GetGlobalStateCB();
@@ -56,7 +58,7 @@ namespace RenderCore { namespace Techniques
         std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(
             const std::shared_ptr<IRenderStateDelegate>& stateSetResolver);
         const std::shared_ptr<IRenderStateDelegate>& GetRenderStateDelegate()            { return _renderStateDelegate; }
-        const std::shared_ptr<Utility::ParameterBox>& GetStateSetEnvironment();
+        const std::shared_ptr<Utility::ParameterBox>& GetRenderStateDelegateParameters();
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
 
@@ -93,7 +95,9 @@ namespace RenderCore { namespace Techniques
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
         AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
-        std::shared_ptr<IRenderStateDelegate>          _renderStateDelegate;
+        std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
+
+		ParameterBox								_subframeShaderSelectors;
 
         AttachmentPool*     _namedResources;
 		FrameBufferPool*	_frameBufferPool;

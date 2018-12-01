@@ -93,15 +93,15 @@ namespace RenderCore { namespace Techniques
         return std::move(oldResolver);
     }
 
-    const std::shared_ptr<Utility::ParameterBox>& ParsingContext::GetStateSetEnvironment()
+    const std::shared_ptr<Utility::ParameterBox>& ParsingContext::GetRenderStateDelegateParameters()
     {
-        return _techniqueContext->_stateSetEnvironment;
+        return _techniqueContext->_renderStateDelegateParameters;
     }
 
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);
-        _renderStateDelegate = _techniqueContext->_defaultStateSetResolver;
+        _renderStateDelegate = _techniqueContext->_defaultRenderStateDelegate;
         _stringHelpers = std::make_unique<StringHelpers>();
         _namedResources = namedResources;
 		_frameBufferPool = frameBufferPool;

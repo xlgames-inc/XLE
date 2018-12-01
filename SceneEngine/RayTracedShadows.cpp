@@ -210,7 +210,7 @@ namespace SceneEngine
         parserContext.SetGlobalCB(metalContext, TC::CB_ShadowProjection, &preparedResult._arbitraryCBSource, sizeof(preparedResult._arbitraryCBSource));
         parserContext.SetGlobalCB(metalContext, TC::CB_OrthoShadowProjection, &preparedResult._orthoCBSource, sizeof(preparedResult._orthoCBSource));
 
-        parserContext.GetTechniqueContext()._runtimeState.SetParameter(
+        parserContext.GetSubframeShaderSelectors().SetParameter(
             StringShadowCascadeMode, 
             (preparedResult._mode == ShadowProjectionDesc::Projections::Mode::Ortho)?2:1);
 
@@ -239,7 +239,7 @@ namespace SceneEngine
         auto cleanup = MakeAutoCleanup(
             [&parserContext, &savedWorldToProjection]() {
                 parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
-                parserContext.GetTechniqueContext()._runtimeState.SetParameter(StringShadowCascadeMode, 0);
+                parserContext.GetSubframeShaderSelectors().SetParameter(StringShadowCascadeMode, 0);
             });
 
         CATCH_ASSETS_BEGIN
