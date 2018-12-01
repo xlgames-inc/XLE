@@ -447,7 +447,7 @@ namespace Utility
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = true;
                 return TypeDesc(TypeCat::Bool);
-            } else if (std::regex_match(expression.begin(), expression.end(), booleanFalse)) {
+            } else if (std::regex_match(expression.begin(), expression.end(), s_parsingChar.s_booleanFalse)) {
                 assert(destSize >= sizeof(bool));
                 *(bool*)dest = false;
                 return TypeDesc(TypeCat::Bool);
