@@ -3,10 +3,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "DelayedDrawCall.h"
-#include "../../Utility/MemoryUtils.h"
+#include "../Utility/MemoryUtils.h"
 #include <algorithm>
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
     void DelayedDrawCallSet::Reset() 
     {
@@ -42,5 +42,5 @@ namespace RenderCore { namespace Assets
             _entries[c].erase(std::remove_if(_entries[c].begin(), _entries[c].end(), std::not_fn(predicate)), _entries[c].end());
     }
 
-}}
+}
 

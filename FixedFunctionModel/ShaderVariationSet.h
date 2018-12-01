@@ -4,8 +4,8 @@
 
 #pragma once
 
-#include "../Techniques/ResolvedTechniqueShaders.h"
-#include "../../Utility/ParameterBox.h"
+#include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
+#include "../Utility/ParameterBox.h"
 
 namespace RenderCore { class InputElementDesc; }
 namespace RenderCore { namespace Techniques
@@ -13,7 +13,7 @@ namespace RenderCore { namespace Techniques
 	class PredefinedCBLayout;
 }}
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
 	/// <summary>Utility call for selecting a shader variation matching a given interface</summary>
 	class ShaderVariationSet
@@ -21,24 +21,24 @@ namespace RenderCore { namespace Assets
     public:
         ParameterBox _materialParameters;
         ParameterBox _geometryParameters;
-        Techniques::TechniqueInterface _techniqueInterface;
+        RenderCore::Techniques::TechniqueInterface _techniqueInterface;
 
         class Variation
         {
         public:
-			Techniques::ResolvedTechniqueShaders::ResolvedShader      _shader;
-            const Techniques::PredefinedCBLayout* _cbLayout;
+			RenderCore::Techniques::ResolvedTechniqueShaders::ResolvedShader      _shader;
+            const RenderCore::Techniques::PredefinedCBLayout* _cbLayout;
         };
 
         Variation FindVariation(
-			Techniques::ParsingContext& parsingContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
             unsigned techniqueIndex,
             StringSection<> techniqueConfig) const;
 
-        const Techniques::PredefinedCBLayout& GetCBLayout(StringSection<> techniqueConfig);
+        const RenderCore::Techniques::PredefinedCBLayout& GetCBLayout(StringSection<> techniqueConfig);
 
         ShaderVariationSet(
-            IteratorRange<const InputElementDesc*> inputLayout,
+            IteratorRange<const RenderCore::InputElementDesc*> inputLayout,
             const std::initializer_list<uint64_t>& objectCBs,
             const ParameterBox& materialParameters);
         ShaderVariationSet();
@@ -47,7 +47,7 @@ namespace RenderCore { namespace Assets
         ~ShaderVariationSet();
     };
 
-    ParameterBox TechParams_SetGeo(IteratorRange<const InputElementDesc*> inputLayout);
+    ParameterBox TechParams_SetGeo(IteratorRange<const RenderCore::InputElementDesc*> inputLayout);
 
-}}
+}
 

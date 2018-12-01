@@ -51,7 +51,7 @@
     </ProjectConfiguration>
   </ItemGroup>
   <PropertyGroup Label="Globals">
-    <RootNamespace>RenderOverlays</RootNamespace>
+    <RootNamespace>FixedFunctionModel</RootNamespace>
     <ProjectGuid>{BE4B2816-52BA-4A12-AC28-D338DA574CD2}</ProjectGuid>
   </PropertyGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />

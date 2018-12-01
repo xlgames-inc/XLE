@@ -4,14 +4,14 @@
 
 #pragma once
 
-#include "../../RenderCore/Types_Forward.h"
-#include "../../Math/Vector.h"
-#include "../../Math/Matrix.h"
-#include "../../Core/Types.h"
+#include "../RenderCore/Types_Forward.h"
+#include "../Math/Vector.h"
+#include "../Math/Matrix.h"
+#include "../Core/Types.h"
 #include <vector>
 #include <functional>
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
     class DelayedDrawCall
     {
@@ -30,7 +30,7 @@ namespace RenderCore { namespace Assets
 
             // 
         unsigned        _indexCount, _firstIndex, _firstVertex;
-        Topology        _topology;
+        RenderCore::Topology        _topology;
     };
 
     enum class DelayStep : unsigned
@@ -82,5 +82,5 @@ namespace RenderCore { namespace Assets
     protected:
         size_t _guid;
     };
-}}
+}
 

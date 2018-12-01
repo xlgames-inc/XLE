@@ -3,16 +3,18 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderVariationSet.h"
-#include "Services.h"
-#include "../Techniques/ParsingContext.h"
-#include "../Techniques/ResolvedTechniqueShaders.h"
-#include "../Techniques/TechniqueUtils.h"
-#include "../Types.h"
-#include "../../Assets/Assets.h"
-#include "../../Utility/StringFormat.h"
+#include "../RenderCore/Assets/Services.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Types.h"
+#include "../Assets/Assets.h"
+#include "../Utility/StringFormat.h"
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
+	using namespace RenderCore;
+
     static Techniques::TechniqueInterface MakeTechInterface(
         IteratorRange<const InputElementDesc*> inputLayout,
         const std::initializer_list<uint64_t>& objectCBs)
@@ -58,7 +60,7 @@ namespace RenderCore { namespace Assets
             &_materialParameters
         };
 		
-		const auto& searchDirs = Services::GetTechniqueConfigDirs();
+		const auto& searchDirs = RenderCore::Assets::Services::GetTechniqueConfigDirs();
 
 		assert(!XlFindStringI(techniqueConfig, ".tech"));
 		::Assets::ResChar resName[MaxPath];
@@ -81,5 +83,5 @@ namespace RenderCore { namespace Assets
         return techConfig.GetTechnique().TechniqueCBLayout();
     }
 
-}}
+}
 

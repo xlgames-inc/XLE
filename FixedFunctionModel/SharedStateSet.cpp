@@ -3,29 +3,31 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SharedStateSet.h"
-#include "../Types.h"
-#include "../Techniques/Techniques.h"
-#include "../Techniques/CommonResources.h"
-#include "../Techniques/ParsingContext.h"
-#include "../Techniques/CommonBindings.h"
-#include "../Techniques/RenderStateResolver.h"
-#include "../Techniques/CompiledRenderStateSet.h"
-#include "../Techniques/PredefinedCBLayout.h"
-#include "../Techniques/ResolvedTechniqueShaders.h"
-#include "../Metal/InputLayout.h"
-#include "../Metal/DeviceContext.h"
-#include "../Metal/Buffer.h"
-#include "../Metal/State.h"
-#include "../../ConsoleRig/ResourceBox.h"
-#include "../../Assets/Assets.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/ParameterBox.h"
-#include "../../Utility/StringUtils.h"
-#include "../../Utility/StringFormat.h"
+#include "../RenderCore/Types.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
+#include "../RenderCore/Techniques/CompiledRenderStateSet.h"
+#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
+#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/Metal/State.h"
+#include "../ConsoleRig/ResourceBox.h"
+#include "../Assets/Assets.h"
+#include "../Utility/Streams/FileUtils.h"
+#include "../Utility/ParameterBox.h"
+#include "../Utility/StringUtils.h"
+#include "../Utility/StringFormat.h"
 #include <vector>
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
+	using namespace RenderCore;
+
     class SharedStateSet::Pimpl
     {
     public:
@@ -361,5 +363,5 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-}}
+}
 

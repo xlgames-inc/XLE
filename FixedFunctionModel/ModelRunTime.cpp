@@ -5,51 +5,52 @@
 #include "ModelRunTime.h"
 #include "ModelRendererInternal.h"
 #include "DelayedDrawCall.h"
-#include "ModelImmutableData.h"
-#include "MaterialScaffold.h"
-#include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
-#include "DeferredShaderResource.h"
-#include "AssetUtils.h" // for IsDXTNormalMap
 
-#include "../Techniques/Techniques.h"
-#include "../Techniques/ParsingContext.h"
-#include "../Techniques/CommonResources.h"
-#include "../Techniques/PredefinedCBLayout.h"
-#include "../Techniques/TechniqueMaterial.h"
+#include "../RenderCore/Assets/ModelImmutableData.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
+#include "../RenderCore/Assets/RawAnimationCurve.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Assets/AssetUtils.h" // for IsDXTNormalMap
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../RenderCore/Techniques/TechniqueMaterial.h"
 
-#include "../Metal/Buffer.h"
-#include "../Metal/State.h"
-#include "../Metal/InputLayout.h"
-#include "../Metal/DeviceContext.h"
-#include "../Metal/ObjectFactory.h"
-#include "../RenderUtils.h"
-#include "../Types.h"
-#include "../Format.h"
-#include "../BufferView.h"
+#include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
+#include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Types.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/BufferView.h"
 
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/Assets.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/IteratorUtils.h"
-#include "../../Utility/StringFormat.h"
-#include "../../Math/Transformations.h"
-#include "../../ConsoleRig/Console.h"
-#include "../../ConsoleRig/Log.h"
-#include "../../ConsoleRig/ResourceBox.h"
-#include "../../Core/Exceptions.h"
+#include "../Assets/IFileSystem.h"
+#include "../Assets/Assets.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/Streams/FileUtils.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/StringFormat.h"
+#include "../Math/Transformations.h"
+#include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/ResourceBox.h"
+#include "../Core/Exceptions.h"
 
 #include <string>
 #include <set>
 
-#include "../Metal/DeviceContextImpl.h" // pulls in DX/Windows indirectly
+#include "../RenderCore/Metal/DeviceContextImpl.h" // pulls in DX/Windows indirectly
 
 #pragma warning(disable:4189)
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
     using ::Assets::ResChar;
+	using namespace RenderCore;
 
     /// <summary>Internal namespace with utilities for constructing models</summary>
     /// These functions are normally used within the constructor of ModelRenderer
@@ -78,7 +79,7 @@ namespace RenderCore { namespace Assets
             DelayStep _delayStep;
         };
 
-        static const ModelCommandStream::GeoCall& GetGeoCall(const ModelScaffold& scaffold, unsigned geoCallIndex)
+        static const RenderCore::Assets::ModelCommandStream::GeoCall& GetGeoCall(const RenderCore::Assets::ModelScaffold& scaffold, unsigned geoCallIndex)
         {
                 //  get the "RawGeometry" object in the given scaffold for the give
                 //  geocall index. This will query both unskinned and skinned raw calls
@@ -88,7 +89,7 @@ namespace RenderCore { namespace Assets
             return (geoCallIndex < geoCallCount) ? cmdStream.GetGeoCall(geoCallIndex) : cmdStream.GetSkinCall(geoCallIndex - geoCallCount);
         }
         
-        static const RawGeometry& GetGeo(const ModelScaffold& scaffold, unsigned geoCallIndex)
+        static const RenderCore::Assets::RawGeometry& GetGeo(const RenderCore::Assets::ModelScaffold& scaffold, unsigned geoCallIndex)
         {
                 //  get the "RawGeometry" object in the given scaffold for the give
                 //  geocall index. This will query both unskinned and skinned raw calls
@@ -96,21 +97,21 @@ namespace RenderCore { namespace Assets
             auto geoCallCount = scaffold.CommandStream().GetGeoCallCount();
 
             auto& geoCall = GetGeoCall(scaffold, geoCallIndex);
-            return (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
+            return (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RenderCore::Assets::RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
         }
 
-        static unsigned GetDrawCallCount(const ModelScaffold& scaffold, unsigned geoCallIndex)
+        static unsigned GetDrawCallCount(const RenderCore::Assets::ModelScaffold& scaffold, unsigned geoCallIndex)
         {
             return (unsigned)GetGeo(scaffold, geoCallIndex)._drawCalls.size();
         }
 
-        static MaterialGuid ScaffoldMaterialIndex(const ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
+        static MaterialGuid ScaffoldMaterialIndex(const RenderCore::Assets::ModelScaffold& scaffold, unsigned geoCallIndex, unsigned drawCallIndex)
         {
             auto& meshData = scaffold.ImmutableData();
             auto geoCallCount = scaffold.CommandStream().GetGeoCallCount();
 
             auto& geoCall = GetGeoCall(scaffold, geoCallIndex);
-            auto& geo = (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
+            auto& geo = (geoCallIndex < geoCallCount) ? meshData._geos[geoCall._geoId] : (RenderCore::Assets::RawGeometry&)meshData._boundSkinnedControllers[geoCall._geoId];
             unsigned subMatI = geo._drawCalls[drawCallIndex]._subMaterialIndex;
 
                 //  the "sub material index" in the draw call is an index
@@ -122,7 +123,7 @@ namespace RenderCore { namespace Assets
             return ~unsigned(0x0);
         }
 
-        template <typename T> static bool AtLeastOneValidDrawCall(const RawGeometry& geo, const ModelScaffold& scaffold, unsigned geoCallIndex, std::vector<std::pair<MaterialGuid, T>>& subMatResources)
+        template <typename T> static bool AtLeastOneValidDrawCall(const RenderCore::Assets::RawGeometry& geo, const RenderCore::Assets::ModelScaffold& scaffold, unsigned geoCallIndex, std::vector<std::pair<MaterialGuid, T>>& subMatResources)
         {
                 //  look for at least one valid draw call in this geo instance
                 //  a valid draw call should have got shader and material information bound
@@ -147,11 +148,11 @@ namespace RenderCore { namespace Assets
             file.Read(destination, 1, readSize);
         }
 
-        static bool HasElement(const GeoInputAssembly& ia, const char name[])
+        static bool HasElement(const RenderCore::Assets::GeoInputAssembly& ia, const char name[])
         {
             return std::find_if(
                 ia._elements.cbegin(), ia._elements.cend(), 
-                [=](const VertexElement& ele) { return !XlCompareStringI(ele._semanticName, name); }) != ia._elements.cend();
+                [=](const RenderCore::Assets::VertexElement& ele) { return !XlCompareStringI(ele._semanticName, name); }) != ia._elements.cend();
         }
 
         #if defined(_DEBUG)
@@ -205,7 +206,7 @@ namespace RenderCore { namespace Assets
         static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
 
         static std::vector<std::pair<MaterialGuid, SubMatResources>> BuildMaterialResources(
-            const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+            const RenderCore::Assets::ModelScaffold& scaffold, const RenderCore::Assets::MaterialScaffold& matScaffold,
             SharedStateSet& sharedStateSet, unsigned levelOfDetail,
             std::vector<uint64>& textureBindPoints,
             std::vector<std::vector<uint8>>& prescientMaterialConstantBuffers,
@@ -224,7 +225,7 @@ namespace RenderCore { namespace Assets
                 if (geoInst._levelOfDetail != levelOfDetail) { continue; }
 
                     //  Lookup the mesh geometry and material information from their respective inputs.
-                auto& geo = (gi < geoCallCount) ? meshData._geos[geoInst._geoId] : (RawGeometry&)meshData._boundSkinnedControllers[geoInst._geoId];
+                auto& geo = (gi < geoCallCount) ? meshData._geos[geoInst._geoId] : (RenderCore::Assets::RawGeometry&)meshData._boundSkinnedControllers[geoInst._geoId];
                 for (unsigned di=0; di<unsigned(geo._drawCalls.size()); ++di) {
                     auto scaffoldMatIndex = ScaffoldMaterialIndex(scaffold, gi, di);
                     auto existing = LowerBound(materialResources, scaffoldMatIndex);
@@ -297,9 +298,9 @@ namespace RenderCore { namespace Assets
                         if (searchRules) {
                             ::Assets::ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), boundNormalMapName.c_str());
-                            isDxtNormalMap = DeferredShaderResource::IsDXTNormalMap(resolvedPath);
+                            isDxtNormalMap = RenderCore::Assets::DeferredShaderResource::IsDXTNormalMap(resolvedPath);
                         } else 
-                            isDxtNormalMap = DeferredShaderResource::IsDXTNormalMap(boundNormalMapName.c_str());
+                            isDxtNormalMap = RenderCore::Assets::DeferredShaderResource::IsDXTNormalMap(boundNormalMapName.c_str());
                         materialParamBox.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
                     }
                 }
@@ -327,8 +328,8 @@ namespace RenderCore { namespace Assets
             return materialResources;
         }
 
-        std::vector<const DeferredShaderResource*> BuildBoundTextures(
-            const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+        std::vector<const RenderCore::Assets::DeferredShaderResource*> BuildBoundTextures(
+            const RenderCore::Assets::ModelScaffold& scaffold, const RenderCore::Assets::MaterialScaffold& matScaffold,
             const ::Assets::DirectorySearchRules* searchRules,
             const std::vector<std::pair<MaterialGuid, SubMatResources>>& materialResources,
             const std::vector<uint64>& textureBindPoints, unsigned textureSetCount,
@@ -336,7 +337,7 @@ namespace RenderCore { namespace Assets
         {
             auto texturesPerMaterial = textureBindPoints.size();
 
-            std::vector<const DeferredShaderResource*> boundTextures;
+            std::vector<const RenderCore::Assets::DeferredShaderResource*> boundTextures;
             boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
             DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
 
@@ -369,10 +370,10 @@ namespace RenderCore { namespace Assets
                         if (searchRules) {
                             ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), resourceName.c_str());
-                            boundTextures[dsti] = &::Assets::GetAssetDep<DeferredShaderResource>(resolvedPath);
+                            boundTextures[dsti] = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resolvedPath);
                             DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                         } else {
-                            boundTextures[dsti] = &::Assets::GetAssetDep<DeferredShaderResource>(resourceName.c_str());
+                            boundTextures[dsti] = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resourceName.c_str());
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
@@ -419,8 +420,8 @@ namespace RenderCore { namespace Assets
         };
 
         static void FindSupplementGeo(
-            std::vector<VertexData*>& result,
-            IteratorRange<const ModelSupplementScaffold**> supplements,
+            std::vector<RenderCore::Assets::VertexData*>& result,
+            IteratorRange<const RenderCore::Assets::ModelSupplementScaffold**> supplements,
             unsigned geoId)
         {
             result.clear();
@@ -445,44 +446,8 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    unsigned BuildLowLevelInputAssembly(
-        IteratorRange<InputElementDesc*> dst,
-        IteratorRange<const VertexElement*> source,
-        unsigned lowLevelSlot)
-    {
-        unsigned vertexElementCount = 0;
-        for (unsigned i=0; i<source.size(); ++i) {
-            auto& sourceElement = source[i];
-            assert((vertexElementCount+1) <= dst.size());
-            if ((vertexElementCount+1) <= dst.size()) {
-                    // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
-                    //  should be one after another in the vb (that is, not interleaved)
-                dst[vertexElementCount++] = InputElementDesc(
-                    sourceElement._semanticName, sourceElement._semanticIndex,
-                    sourceElement._nativeFormat, lowLevelSlot, sourceElement._alignedByteOffset);
-            }
-        }
-        return vertexElementCount;
-    }
-
-	std::vector<MiniInputElementDesc> BuildLowLevelInputAssembly(IteratorRange<const VertexElement*> source)
-	{
-		std::vector<MiniInputElementDesc> result;
-		result.reserve(source.size());
-		for (unsigned i=0; i<source.size(); ++i) {
-            auto& sourceElement = source[i];
-			#if defined(_DEBUG)
-				auto expectedOffset = CalculateVertexStride(MakeIteratorRange(result), false);
-				assert(expectedOffset == sourceElement._alignedByteOffset);
-			#endif
-			result.push_back(
-				MiniInputElementDesc{Hash64(sourceElement._semanticName) + sourceElement._semanticIndex, sourceElement._nativeFormat});
-		}
-		return result;
-	}
-
     ModelRenderer::ModelRenderer(
-        const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+        const RenderCore::Assets::ModelScaffold& scaffold, const RenderCore::Assets::MaterialScaffold& matScaffold,
         Supplements supplements,
         SharedStateSet& sharedStateSet, 
         const ::Assets::DirectorySearchRules* searchRules, unsigned levelOfDetail)
@@ -506,7 +471,7 @@ namespace RenderCore { namespace Assets
 
         auto& cmdStream = scaffold.CommandStream();
         auto& meshData = scaffold.ImmutableData();
-        std::vector<VertexData*> supplementGeo;
+        std::vector<RenderCore::Assets::VertexData*> supplementGeo;
 
             //  First we need to bind each draw call to a material in our
             //  material scaffold. Then we need to find the superset of all bound textures
@@ -910,9 +875,9 @@ namespace RenderCore { namespace Assets
     }
 
     auto ModelRenderer::Pimpl::BuildMesh(
-        const ModelCommandStream::GeoCall& geoInst,
-        const RawGeometry& geo,
-        IteratorRange<VertexData**> supplements,
+        const RenderCore::Assets::ModelCommandStream::GeoCall& geoInst,
+        const RenderCore::Assets::RawGeometry& geo,
+        IteratorRange<RenderCore::Assets::VertexData**> supplements,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -978,9 +943,9 @@ namespace RenderCore { namespace Assets
     }
 
     auto ModelRenderer::PimplWithSkinning::BuildMesh(
-        const ModelCommandStream::GeoCall& geoInst,
-        const BoundSkinnedGeometry& geo,
-        IteratorRange<VertexData**> supplements,
+        const RenderCore::Assets::ModelCommandStream::GeoCall& geoInst,
+        const RenderCore::Assets::BoundSkinnedGeometry& geo,
+        IteratorRange<RenderCore::Assets::VertexData**> supplements,
         ModelConstruction::BuffersUnderConstruction& workingBuffers,
         SharedStateSet& sharedStateSet,
         const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -993,13 +958,13 @@ namespace RenderCore { namespace Assets
         bool skinnedNormal = ModelConstruction::HasElement(geo._animatedVertexElements._ia, "NORMAL");
         PimplWithSkinning::SkinnedMesh result;
         (Mesh&)result = Pimpl::BuildMesh(
-            geoInst, (const RawGeometry&)geo, supplements, workingBuffers, sharedStateSet,
+            geoInst, (const RenderCore::Assets::RawGeometry&)geo, supplements, workingBuffers, sharedStateSet,
             textureBindPoints, textureBindPointsCnt,
             paramBoxDesc, skinnedNormal);
 
         auto animGeo = PimplWithSkinning::SkinnedMesh::VertexStreams::AnimatedGeo;
         auto skelBind = PimplWithSkinning::SkinnedMesh::VertexStreams::SkeletonBinding;
-        const VertexData* vd[2];
+        const RenderCore::Assets::VertexData* vd[2];
         vd[animGeo] = &geo._animatedVertexElements;
         vd[skelBind] = &geo._skeletonBinding;
 
@@ -1544,14 +1509,14 @@ namespace RenderCore { namespace Assets
 
     MeshToModel::MeshToModel(
         const Float4x4 skeletonOutput[], unsigned skeletonOutputCount,
-        const SkeletonBinding* binding)
+        const RenderCore::Assets::SkeletonBinding* binding)
     {
         _skeletonOutput = skeletonOutput;
         _skeletonOutputCount = skeletonOutputCount;
         _skeletonBinding = binding;
     }
 
-    MeshToModel::MeshToModel(const ModelScaffold& model)
+    MeshToModel::MeshToModel(const RenderCore::Assets::ModelScaffold& model)
     {
             // just get the default transforms stored in the model scaffold
         _skeletonBinding = nullptr;
@@ -1735,4 +1700,4 @@ namespace RenderCore { namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-}}
+}

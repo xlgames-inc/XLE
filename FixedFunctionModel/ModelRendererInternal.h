@@ -5,14 +5,17 @@
 #pragma once
 
 #include "ModelRunTime.h"
-#include "ModelScaffoldInternal.h"
 #include "SharedStateSet.h" // for SharedShaderName, SharedParameterBox, etc
-#include "../../Utility/Streams/Serialization.h"
-#include "../../Utility/PtrUtils.h"
-#include "../../Utility/IteratorUtils.h"
+#include "../RenderCore/Assets/ModelScaffold.h"
+#include "../RenderCore/Assets/ModelScaffoldInternal.h"
+#include "../Utility/Streams/Serialization.h"
+#include "../Utility/PtrUtils.h"
+#include "../Utility/IteratorUtils.h"
 
 namespace RenderCore { class IResource; class ConstantBufferView; class MiniInputElementDesc; }
-namespace RenderCore { namespace Assets 
+namespace RenderCore { namespace Assets { class DeferredShaderResource; }}
+
+namespace FixedFunctionModel 
 {
     class SkinningBindingBox;
 
@@ -20,8 +23,6 @@ namespace RenderCore { namespace Assets
     //      r e n d e r e r         //
 
     namespace ModelConstruction { class BuffersUnderConstruction; class ParamBoxDescriptions; }
-
-    class DeferredShaderResource;
 
     class PendingGeoUpload
     {
@@ -44,7 +45,7 @@ namespace RenderCore { namespace Assets
 
                 // indices
             UnifiedBufferOffset     _ibOffset;
-            Format					_indexFormat;
+            RenderCore::Format		_indexFormat;
 
                 // vertices
             UnifiedBufferOffset _vbOffsets[MaxVertexStreams];
@@ -62,7 +63,7 @@ namespace RenderCore { namespace Assets
             #endif
         };
 
-        std::vector<const DeferredShaderResource*> _boundTextures;
+        std::vector<const RenderCore::Assets::DeferredShaderResource*> _boundTextures;
         size_t  _texturesPerMaterial;
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -79,28 +80,28 @@ namespace RenderCore { namespace Assets
             SharedRenderStateSet _renderStateSet;
 
             DelayStep       _delayStep;
-            MaterialGuid    _materialBindingGuid;
+            RenderCore::Assets::MaterialGuid    _materialBindingGuid;
 
             DrawCallResources();
             DrawCallResources(
                 SharedTechniqueConfig shaderName,
                 SharedParameterBox geoParamBox, SharedParameterBox matParamBox,
                 unsigned textureSet, unsigned constantBuffer,
-                SharedRenderStateSet renderStateSet, DelayStep delayStep, MaterialGuid materialBindingIndex);
+                SharedRenderStateSet renderStateSet, DelayStep delayStep, RenderCore::Assets::MaterialGuid materialBindingIndex);
         };
         std::vector<DrawCallResources>   _drawCallRes;
 
         ///////////////////////////////////////////////////////////////////////////////
-        std::shared_ptr<IResource>	_vertexBuffer;
-        std::shared_ptr<IResource>	_indexBuffer;
+        std::shared_ptr<RenderCore::IResource>	_vertexBuffer;
+        std::shared_ptr<RenderCore::IResource>	_indexBuffer;
         std::vector<Mesh>			_meshes;
-        std::vector<Metal::ConstantBuffer>  _constantBuffers;
+        std::vector<RenderCore::Metal::ConstantBuffer>  _constantBuffers;
 
         ///////////////////////////////////////////////////////////////////////////////
-        typedef std::pair<unsigned, DrawCallDesc> MeshAndDrawCall;
+        typedef std::pair<unsigned, RenderCore::Assets::DrawCallDesc> MeshAndDrawCall;
         std::vector<MeshAndDrawCall>    _drawCalls;
 
-        const ModelScaffold*    _scaffold;
+        const RenderCore::Assets::ModelScaffold*    _scaffold;
         unsigned                _levelOfDetail;
 
         ///////////////////////////////////////////////////////////////////////////////
@@ -123,21 +124,21 @@ namespace RenderCore { namespace Assets
 
         SharedTechniqueInterface BeginGeoCall(
             const ModelRendererContext& context,
-            Metal::ConstantBuffer&  localTransformBuffer,
+            RenderCore::Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel&      transforms,
             const Float4x4&         modelToWorld,
             unsigned                geoCallIndex) const;
 
 		void ApplyBoundUnforms(
 			const ModelRendererContext&     context,
-			Metal::BoundUniforms&           boundUniforms,
+			RenderCore::Metal::BoundUniforms&           boundUniforms,
 			unsigned                        resourcesIndex,
 			unsigned                        constantsIndex,
-			ConstantBufferView				cbvs[2]);
+			RenderCore::ConstantBufferView				cbvs[2]);
 
 		void ApplyBoundInputLayout(
             const ModelRendererContext&		context,
-			Metal::BoundInputLayout&		boundInputLayout,
+			RenderCore::Metal::BoundInputLayout&		boundInputLayout,
             unsigned						geoCallIndex) const;
 
     ///////////////////////////////////////////////////////////////////////////////
@@ -145,9 +146,9 @@ namespace RenderCore { namespace Assets
     ///////////////////////////////////////////////////////////////////////////////
 
         static auto BuildMesh(
-            const ModelCommandStream::GeoCall& geoInst,
-            const RawGeometry& geo,
-            IteratorRange<VertexData**> supplements,
+            const RenderCore::Assets::ModelCommandStream::GeoCall& geoInst,
+            const RenderCore::Assets::RawGeometry& geo,
+            IteratorRange<RenderCore::Assets::VertexData**> supplements,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
@@ -176,7 +177,7 @@ namespace RenderCore { namespace Assets
         {
         public:
             uint64      _iaAnimationHash;
-            const BoundSkinnedGeometry* _scaffold;
+            const RenderCore::Assets::BoundSkinnedGeometry* _scaffold;
 
             SharedTechniqueInterface    _techniqueInterface;
             unsigned                    _vertexStride;
@@ -188,7 +189,7 @@ namespace RenderCore { namespace Assets
 
         SharedTechniqueInterface BeginSkinCall(
             const ModelRendererContext&     context,
-            Metal::ConstantBuffer&  localTransformBuffer,
+            RenderCore::Metal::ConstantBuffer&  localTransformBuffer,
             const MeshToModel&      transforms,
             const Float4x4&         modelToWorld,
             unsigned                geoCallIndex,
@@ -199,44 +200,44 @@ namespace RenderCore { namespace Assets
     ///////////////////////////////////////////////////////////////////////////////
 
         void BuildSkinnedBuffer(
-            Metal::DeviceContext&   context,
+            RenderCore::Metal::DeviceContext&   context,
             const SkinnedMesh&      mesh,
             const SkinnedMeshAnimBinding& preparedAnimBinding, 
             const Float4x4          transformationMachineResult[],
-            const SkeletonBinding&  skeletonBinding,
-            IResource&				outputResult,
+            const RenderCore::Assets::SkeletonBinding&  skeletonBinding,
+            RenderCore::IResource&				outputResult,
             unsigned                outputOffset) const;
 
         static auto BuildMesh(
-            const ModelCommandStream::GeoCall& geoInst,
-            const BoundSkinnedGeometry& geo,
-            IteratorRange<VertexData**> supplements,
+            const RenderCore::Assets::ModelCommandStream::GeoCall& geoInst,
+            const RenderCore::Assets::BoundSkinnedGeometry& geo,
+            IteratorRange<RenderCore::Assets::VertexData**> supplements,
             ModelConstruction::BuffersUnderConstruction& workingBuffers,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt,
             ModelConstruction::ParamBoxDescriptions& paramBoxDesc) -> SkinnedMesh;
 
         static auto BuildAnimBinding(
-            const ModelCommandStream::GeoCall& geoInst,
-            const BoundSkinnedGeometry& geo,
+            const RenderCore::Assets::ModelCommandStream::GeoCall& geoInst,
+            const RenderCore::Assets::BoundSkinnedGeometry& geo,
             SharedStateSet& sharedStateSet,
             const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMeshAnimBinding;
 
         static void InitialiseSkinningVertexAssembly(
             uint64 inputAssemblyHash,
-            const BoundSkinnedGeometry& scaffoldGeo);
+            const RenderCore::Assets::BoundSkinnedGeometry& scaffoldGeo);
 
         static unsigned BuildPostSkinInputAssembly(
-            InputElementDesc dst[],
+            RenderCore::InputElementDesc dst[],
             unsigned dstCount,
-            const BoundSkinnedGeometry& scaffoldGeo);
+            const RenderCore::Assets::BoundSkinnedGeometry& scaffoldGeo);
 
         ///////////////////////////////////////////////////////////////////////////////
             //   S K I N N I N G   S E T U P   //
         ///////////////////////////////////////////////////////////////////////////////
 
-        void StartBuildingSkinning(Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
-        void EndBuildingSkinning(Metal::DeviceContext& context) const;
+        void StartBuildingSkinning(RenderCore::Metal::DeviceContext& context, SkinningBindingBox& bindingBox) const;
+        void EndBuildingSkinning(RenderCore::Metal::DeviceContext& context) const;
     };
 
     class PreparedAnimation
@@ -244,7 +245,7 @@ namespace RenderCore { namespace Assets
     public:
         std::unique_ptr<Float4x4[]> _finalMatrices;
         unsigned                    _finalMatrixCount;
-        std::shared_ptr<IResource>	_skinningBuffer;
+        std::shared_ptr<RenderCore::IResource>	_skinningBuffer;
         std::vector<unsigned>       _vbOffsets;
 
         PreparedAnimation();
@@ -254,5 +255,5 @@ namespace RenderCore { namespace Assets
         PreparedAnimation& operator=(const PreparedAnimation&) = delete;
     };
 
-}}
+}
 

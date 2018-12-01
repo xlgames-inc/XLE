@@ -18,7 +18,6 @@ namespace RenderCore { namespace Assets
 {
     class ModelCommandStream;
     class SkeletonMachine;
-    class SkeletonBinding;
     
     class MaterialScaffold;
     class ModelSupplementScaffold;
@@ -28,19 +27,6 @@ namespace RenderCore { namespace Assets
     class ModelSupplementImmutableData;
 
     typedef uint64_t MaterialGuid;
-
-    /// <summary>Represents the state of animation effects on an object<summary>
-    /// AnimationState is a placeholder for containing the states related to
-    /// animating vertices in a model.
-    class AnimationState
-    {
-    public:
-            // only a single animation supported currently //
-        float       _time;
-        uint64_t	_animation;
-        AnimationState(float time, uint64_t animation) : _time(time), _animation(animation) {}
-        AnimationState() {}
-    };
 
 ////////////////////////////////////////////////////////////////////////////////////////////
 

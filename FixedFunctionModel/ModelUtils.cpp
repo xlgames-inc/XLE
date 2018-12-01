@@ -3,12 +3,13 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelUtils.h"
+#include "../RenderCore/Assets/ModelScaffold.h"
 
-namespace RenderCore { namespace Assets 
+namespace FixedFunctionModel 
 {
     EmbeddedSkeletonPose::EmbeddedSkeletonPose(
-        const ModelScaffold& scaffold, 
-        const TransformationParameterSet* paramSet)
+        const RenderCore::Assets::ModelScaffold& scaffold, 
+        const RenderCore::Assets::TransformationParameterSet* paramSet)
     {
         auto& transMachine = scaffold.EmbeddedSkeleton();
         auto transformCount = transMachine.GetOutputMatrixCount();
@@ -17,7 +18,7 @@ namespace RenderCore { namespace Assets
             AsPointer(_transforms.begin()), transformCount,
             paramSet ? paramSet : &transMachine.GetDefaultParameters());
 
-        _binding = SkeletonBinding(
+        _binding = RenderCore::Assets::SkeletonBinding(
             transMachine.GetOutputInterface(),
             scaffold.CommandStream().GetInputInterface());
     }
@@ -36,5 +37,5 @@ namespace RenderCore { namespace Assets
         return *this;
     }
 
-}}
+}
 

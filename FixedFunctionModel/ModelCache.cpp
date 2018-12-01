@@ -4,9 +4,10 @@
 
 #include "ModelCache.h"
 #include "ModelRunTime.h"
-#include "MaterialScaffold.h"
 #include "SharedStateSet.h"
-#include "Services.h"
+#include "../RenderCore/Assets/ModelScaffold.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
+#include "../RenderCore/Assets/Services.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -16,16 +17,18 @@
 #include "../../Utility/StringFormat.h"
 #include <map>
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
+	using namespace RenderCore;
+
     typedef std::pair<Float3, Float3> BoundingBox;
     class ModelCache::Pimpl
     {
     public:
         std::map<uint64, BoundingBox> _boundingBoxes;
 
-        LRUCache<::Assets::AssetFuture<ModelScaffold>>     _modelScaffolds;
-        LRUCache<::Assets::AssetFuture<MaterialScaffold>>  _materialScaffolds;
+        LRUCache<::Assets::AssetFuture<RenderCore::Assets::ModelScaffold>>     _modelScaffolds;
+        LRUCache<::Assets::AssetFuture<RenderCore::Assets::MaterialScaffold>>  _materialScaffolds;
         LRUCache<ModelRenderer>     _modelRenderers;
 
         std::unique_ptr<SharedStateSet> _sharedStateSet;
@@ -35,9 +38,9 @@ namespace RenderCore { namespace Assets
         Pimpl(const ModelCache::Config& cfg);
         ~Pimpl();
 
-        LRUCache<::Assets::AssetFuture<ModelSupplementScaffold>>   _supplements;
+        LRUCache<::Assets::AssetFuture<RenderCore::Assets::ModelSupplementScaffold>>   _supplements;
 
-        std::vector<const ModelSupplementScaffold*> 
+        std::vector<const RenderCore::Assets::ModelSupplementScaffold*> 
             LoadSupplementScaffolds(
                 StringSection<ResChar> modelFilename, 
                 StringSection<ResChar> materialFilename,
@@ -55,12 +58,12 @@ namespace RenderCore { namespace Assets
 
     namespace Internal
     {
-        static ::Assets::FuturePtr<ModelScaffold> CreateModelScaffold(StringSection<::Assets::ResChar> filename)
+        static ::Assets::FuturePtr<RenderCore::Assets::ModelScaffold> CreateModelScaffold(StringSection<::Assets::ResChar> filename)
         {
-            return ::Assets::MakeAsset<ModelScaffold>(filename);
+            return ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(filename);
         }
 
-        static ::Assets::FuturePtr<MaterialScaffold> CreateMaterialScaffold(
+        static ::Assets::FuturePtr<RenderCore::Assets::MaterialScaffold> CreateMaterialScaffold(
             StringSection<::Assets::ResChar> model, 
             StringSection<::Assets::ResChar> material)
         {
@@ -75,7 +78,7 @@ namespace RenderCore { namespace Assets
                 model = temp;
             }
 
-            return ::Assets::MakeAsset<MaterialScaffold>(material, model);
+            return ::Assets::MakeAsset<RenderCore::Assets::MaterialScaffold>(material, model);
         }
     }
 
@@ -117,22 +120,22 @@ namespace RenderCore { namespace Assets
 
     namespace Internal
     {
-        static ::Assets::FuturePtr<ModelSupplementScaffold> CreateSupplement(
+        static ::Assets::FuturePtr<RenderCore::Assets::ModelSupplementScaffold> CreateSupplement(
             uint64 compilerHash,
             StringSection<::Assets::ResChar> modelFilename,
             StringSection<::Assets::ResChar> materialFilename)
         {
-            return ::Assets::MakeAsset<ModelSupplementScaffold>(
+            return ::Assets::MakeAsset<RenderCore::Assets::ModelSupplementScaffold>(
 				MakeStringSection((const ::Assets::ResChar*)&compilerHash, (const ::Assets::ResChar*)PtrAdd(&compilerHash, sizeof(compilerHash))),
 				modelFilename, materialFilename);
         }
     }
 
-    std::vector<const ModelSupplementScaffold*> ModelCache::Pimpl::LoadSupplementScaffolds(
+    std::vector<const RenderCore::Assets::ModelSupplementScaffold*> ModelCache::Pimpl::LoadSupplementScaffolds(
         StringSection<ResChar> modelFilename, StringSection<ResChar> materialFilename,
         IteratorRange<const SupplementGUID*> supplements)
     {
-        std::vector<const ModelSupplementScaffold*> result;
+        std::vector<const RenderCore::Assets::ModelSupplementScaffold*> result;
         for (auto s=supplements.cbegin(); s!=supplements.cend(); ++s) {
             auto hashName = HashCombine(HashCombine(Hash64(modelFilename.begin(), modelFilename.end()), Hash64(materialFilename.begin(), materialFilename.end())), *s);
             auto supp = _supplements.Get(hashName);
@@ -215,7 +218,7 @@ namespace RenderCore { namespace Assets
         return ::Assets::AssetState::Ready;
     }
 
-    ::Assets::FuturePtr<ModelScaffold> ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
+    ::Assets::FuturePtr<RenderCore::Assets::ModelScaffold> ModelCache::GetModelScaffold(StringSection<ResChar> modelFilename)
     {
         auto hashedModelName = Hash64(modelFilename.begin(), modelFilename.end());
         auto modelFuture = _pimpl->_modelScaffolds.Get(hashedModelName);
@@ -240,4 +243,4 @@ namespace RenderCore { namespace Assets
     {}
 
 
-}}
+}

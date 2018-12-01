@@ -4,29 +4,24 @@
 
 #pragma once
 
+#include "SharedStateSet.h"
+#include "ModelUtils.h"
 #include "DelayedDrawCall.h"
 
-namespace ModelRenderer
+namespace RenderCore { namespace Assets 
+{
+	class SkeletonBinding;
+	class ModelSupplementScaffold;
+	class ModelScaffold;
+	class MaterialScaffold;
+	class AnimationSetScaffold;
+	class SkeletonScaffold;
+}}
+
+namespace FixedFunctionModel
 {
     class PreparedAnimation;
-
-    class MeshToModel
-    {
-    public:
-        const Float4x4*         _skeletonOutput;
-        unsigned                _skeletonOutputCount;
-        const SkeletonBinding*  _skeletonBinding;
-
-        Float4x4    GetMeshToModel(unsigned transformMarker) const;
-        bool        IsGood() const { return _skeletonOutput != nullptr; }
-
-        MeshToModel();
-        MeshToModel(const Float4x4 skeletonOutput[], unsigned skeletonOutputCount,
-                    const SkeletonBinding* binding = nullptr);
-        MeshToModel(const PreparedAnimation& preparedAnim, const SkeletonBinding* binding = nullptr);
-        MeshToModel(const ModelScaffold&);
-    };
-    
+    using MaterialGuid = RenderCore::Assets::MaterialGuid;
 
     /// <summary>Creates platform resources and renders a model</summary>
     /// ModelRenderer is used to render a model. Though the two classes work together, it is 
@@ -80,11 +75,11 @@ namespace ModelRenderer
         std::unique_ptr<PreparedAnimation, void(*)(PreparedAnimation*)> CreatePreparedAnimation() const;
 
         void PrepareAnimation(
-            IThreadContext& context, 
+            RenderCore::IThreadContext& context, 
             PreparedAnimation& state, 
-            const SkeletonBinding& skeletonBinding) const;
+            const RenderCore::Assets::SkeletonBinding& skeletonBinding) const;
 
-        static bool     CanDoPrepareAnimation(IThreadContext& context);
+        static bool     CanDoPrepareAnimation(RenderCore::IThreadContext& context);
 
         auto            DrawCallToMaterialBinding() const -> std::vector<MaterialGuid>;
         MaterialGuid    GetMaterialBindingForDrawCall(unsigned drawCallIndex) const;
@@ -96,11 +91,11 @@ namespace ModelRenderer
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const
             { return _validationCallback; }
 
-        using Supplements = IteratorRange<const ModelSupplementScaffold**>;
+        using Supplements = IteratorRange<const RenderCore::Assets::ModelSupplementScaffold**>;
 
             ////////////////////////////////////////////////////////////
         ModelRenderer(
-            const ModelScaffold& scaffold, const MaterialScaffold& matScaffold,
+            const RenderCore::Assets::ModelScaffold& scaffold, const RenderCore::Assets::MaterialScaffold& matScaffold,
             Supplements supplements,
             SharedStateSet& sharedStateSet, 
             const ::Assets::DirectorySearchRules* searchRules = nullptr, unsigned levelOfDetail = 0);
@@ -120,6 +115,19 @@ namespace ModelRenderer
                 const ModelRendererContext&, const SharedStateSet&,
                 const DelayedDrawCallSet&, DelayStep, 
                 const std::function<void(DrawCallEvent)>*);
+    };
+
+	/// <summary>Represents the state of animation effects on an object<summary>
+    /// AnimationState is a placeholder for containing the states related to
+    /// animating vertices in a model.
+    class AnimationState
+    {
+    public:
+            // only a single animation supported currently //
+        float       _time;
+        uint64_t	_animation;
+        AnimationState(float time, uint64_t animation) : _time(time), _animation(animation) {}
+        AnimationState() {}
     };
 
 
@@ -174,19 +182,19 @@ namespace ModelRenderer
     {
     public:
         void PrepareAnimation(  
-            IThreadContext& context, 
+            RenderCore::IThreadContext& context, 
             PreparedAnimation& state,
             const AnimationState& animState) const;
-        const SkeletonBinding& GetSkeletonBinding() const;
+        const RenderCore::Assets::SkeletonBinding& GetSkeletonBinding() const;
         unsigned GetSkeletonOutputCount() const;
 
         void RenderSkeleton(
-            IThreadContext& context, 
-            Techniques::ParsingContext& parserContext, 
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parserContext, 
             const AnimationState& animState, const Float4x4& localToWorld);
         
-        SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&);
-        SkinPrepareMachine(const ModelScaffold& skinScaffold, const SkeletonMachine& skeletonScaffold);
+        SkinPrepareMachine(const RenderCore::Assets::ModelScaffold&, const RenderCore::Assets::AnimationSetScaffold&, const RenderCore::Assets::SkeletonScaffold&);
+        SkinPrepareMachine(const RenderCore::Assets::ModelScaffold& skinScaffold, const RenderCore::Assets::SkeletonMachine& skeletonScaffold);
         ~SkinPrepareMachine();
     protected:
         class Pimpl;

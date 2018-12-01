@@ -4,7 +4,7 @@
 
 #include "SimpleModelRenderer.h"
 #include "SimpleModelDeform.h"
-#include "ModelRunTime.h"
+#include "ModelScaffold.h"
 #include "ModelScaffoldInternal.h"
 #include "ModelImmutableData.h"
 #include "MaterialScaffold.h"

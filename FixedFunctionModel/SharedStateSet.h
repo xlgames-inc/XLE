@@ -4,10 +4,10 @@
 
 #pragma once
 
-#include "../Metal/Forward.h"
-#include "../IThreadContext_Forward.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../Core/Types.h"
+#include "../RenderCore/Metal/Forward.h"
+#include "../RenderCore/IThreadContext_Forward.h"
+#include "../Assets/AssetUtils.h"
+#include "../Core/Types.h"
 #include <string>
 #include <memory>
 
@@ -24,24 +24,24 @@ namespace RenderCore
 }
 namespace Utility { class ParameterBox; }
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
     class ModelRendererContext
     {
     public:
-        Metal::DeviceContext* _context;
-        Techniques::ParsingContext* _parserContext;
+        RenderCore::Metal::DeviceContext* _context;
+        RenderCore::Techniques::ParsingContext* _parserContext;
         unsigned _techniqueIndex;
 
         ModelRendererContext(
-            Metal::DeviceContext& context, 
-            Techniques::ParsingContext& parserContext,
+            RenderCore::Metal::DeviceContext& context, 
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex)
         : _context(&context), _parserContext(&parserContext), _techniqueIndex(techniqueIndex) {}
 
         ModelRendererContext(
-            IThreadContext& context, 
-            Techniques::ParsingContext& parserContext,
+            RenderCore::IThreadContext& context, 
+            RenderCore::Techniques::ParsingContext& parserContext,
             unsigned techniqueIndex);
     };
 
@@ -79,12 +79,12 @@ namespace RenderCore { namespace Assets
 
         SharedTechniqueConfig InsertTechniqueConfig(StringSection<::Assets::ResChar> shaderName);
         SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
-        unsigned InsertRenderStateSet(const Techniques::RenderStateSet& states);
+        unsigned InsertRenderStateSet(const RenderCore::Techniques::RenderStateSet& states);
 
 		struct BoundVariation
 		{
-			Metal::BoundUniforms* _uniforms = nullptr;
-			Metal::BoundInputLayout* _inputLayout = nullptr;
+			RenderCore::Metal::BoundUniforms* _uniforms = nullptr;
+			RenderCore::Metal::BoundInputLayout* _inputLayout = nullptr;
 		};
         BoundVariation BeginVariation(
             const ModelRendererContext& context, 
@@ -95,7 +95,7 @@ namespace RenderCore { namespace Assets
             const ModelRendererContext& context, 
             SharedRenderStateSet renderStateSetIndex) const;
 
-        const Techniques::PredefinedCBLayout* GetCBLayout(SharedTechniqueConfig shaderName);
+        const RenderCore::Techniques::PredefinedCBLayout* GetCBLayout(SharedTechniqueConfig shaderName);
 
         class CaptureMarker
         {
@@ -107,9 +107,9 @@ namespace RenderCore { namespace Assets
 
         private:
             SharedStateSet* _state;
-            Metal::DeviceContext* _metalContext;
+            RenderCore::Metal::DeviceContext* _metalContext;
 
-            CaptureMarker(Metal::DeviceContext& metalContext, SharedStateSet& state);
+            CaptureMarker(RenderCore::Metal::DeviceContext& metalContext, SharedStateSet& state);
             CaptureMarker(const CaptureMarker&) = delete;
             CaptureMarker& operator=(const CaptureMarker&) = delete;
 
@@ -117,12 +117,12 @@ namespace RenderCore { namespace Assets
         };
         
         CaptureMarker CaptureState(
-            IThreadContext& context,
-            std::shared_ptr<Techniques::IRenderStateDelegate> stateResolver,
+            RenderCore::IThreadContext& context,
+            std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> stateResolver,
             std::shared_ptr<Utility::ParameterBox> environment);
         CaptureMarker CaptureState(
-            Metal::DeviceContext& context,
-            std::shared_ptr<Techniques::IRenderStateDelegate> stateResolver,
+            RenderCore::Metal::DeviceContext& context,
+            std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> stateResolver,
             std::shared_ptr<Utility::ParameterBox> environment);
 
         SharedStateSet(const ::Assets::DirectorySearchRules& shaderSearchDir);
@@ -136,13 +136,13 @@ namespace RenderCore { namespace Assets
         mutable SharedParameterBox _currentMaterialParamBox;
         mutable SharedParameterBox _currentGeoParamBox;
         mutable SharedRenderStateSet _currentRenderState;
-        mutable Metal::BoundUniforms* _currentBoundUniforms;
-		mutable Metal::BoundInputLayout* _currentBoundLayout;
+        mutable RenderCore::Metal::BoundUniforms* _currentBoundUniforms;
+		mutable RenderCore::Metal::BoundInputLayout* _currentBoundLayout;
 
-        void ReleaseState(Metal::DeviceContext& context);
+        void ReleaseState(RenderCore::Metal::DeviceContext& context);
         friend class CaptureMarker;
     };
   
     
-}}
+}
 

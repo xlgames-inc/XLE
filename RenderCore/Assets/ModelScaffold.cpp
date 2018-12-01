@@ -185,5 +185,39 @@ namespace RenderCore { namespace Assets
         return std::move(result);
     }
 
+	unsigned BuildLowLevelInputAssembly(
+        IteratorRange<InputElementDesc*> dst,
+        IteratorRange<const RenderCore::Assets::VertexElement*> source,
+        unsigned lowLevelSlot)
+    {
+        unsigned vertexElementCount = 0;
+        for (unsigned i=0; i<source.size(); ++i) {
+            auto& sourceElement = source[i];
+            assert((vertexElementCount+1) <= dst.size());
+            if ((vertexElementCount+1) <= dst.size()) {
+                    // in some cases we need multiple "slots". When we have multiple slots, the vertex data 
+                    //  should be one after another in the vb (that is, not interleaved)
+                dst[vertexElementCount++] = InputElementDesc(
+                    sourceElement._semanticName, sourceElement._semanticIndex,
+                    sourceElement._nativeFormat, lowLevelSlot, sourceElement._alignedByteOffset);
+            }
+        }
+        return vertexElementCount;
+    }
 
+	std::vector<MiniInputElementDesc> BuildLowLevelInputAssembly(IteratorRange<const RenderCore::Assets::VertexElement*> source)
+	{
+		std::vector<MiniInputElementDesc> result;
+		result.reserve(source.size());
+		for (unsigned i=0; i<source.size(); ++i) {
+            auto& sourceElement = source[i];
+			#if defined(_DEBUG)
+				auto expectedOffset = CalculateVertexStride(MakeIteratorRange(result), false);
+				assert(expectedOffset == sourceElement._alignedByteOffset);
+			#endif
+			result.push_back(
+				MiniInputElementDesc{Hash64(sourceElement._semanticName) + sourceElement._semanticIndex, sourceElement._nativeFormat});
+		}
+		return result;
+	}
 }}

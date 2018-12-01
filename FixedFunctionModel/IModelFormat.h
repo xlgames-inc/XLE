@@ -1,8 +1,8 @@
 #pragma once
 
-#include "../../Assets/Assets.h"
+#include "../Assets/Assets.h"
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
     class SharedStateSet;
     class ModelScaffold;
@@ -20,7 +20,7 @@ namespace RenderCore { namespace Assets
 
         virtual std::string DefaultMaterialName(const ModelScaffold&) = 0;
     };
-}}
+}
 
 
 

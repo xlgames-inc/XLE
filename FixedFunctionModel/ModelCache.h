@@ -4,17 +4,21 @@
 
 #pragma once
 
-#include "../../Assets/AssetsCore.h"
-#include "../../Math/Vector.h"
-#include "../../Utility/IteratorUtils.h"
-#include "../../Core/Types.h"
+#include "../Assets/AssetsCore.h"
+#include "../Math/Vector.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Core/Types.h"
 #include <utility>
 
 namespace RenderCore { namespace Assets
 {
-    class ModelRenderer;
     class ModelScaffold;
     class MaterialScaffold;
+}}
+
+namespace FixedFunctionModel
+{
+    class ModelRenderer;
     class SharedStateSet;
 
 	class ModelCacheModel
@@ -22,7 +26,7 @@ namespace RenderCore { namespace Assets
     public:
 		ModelRenderer*  _renderer;
         SharedStateSet* _sharedStateSet;
-		ModelScaffold*  _model;
+		RenderCore::Assets::ModelScaffold*  _model;
         std::pair<Float3, Float3> _boundingBox;
         uint64          _hashedModelName;
         uint64          _hashedMaterialName;
@@ -38,8 +42,8 @@ namespace RenderCore { namespace Assets
 	class ModelCacheScaffolds
     {
     public:
-		ModelScaffold*      _model = nullptr;
-		MaterialScaffold*   _material = nullptr;
+		RenderCore::Assets::ModelScaffold*      _model = nullptr;
+		RenderCore::Assets::MaterialScaffold*   _material = nullptr;
         uint64              _hashedModelName = 0;
         uint64              _hashedMaterialName = 0;
     };
@@ -77,7 +81,7 @@ namespace RenderCore { namespace Assets
             SupplementRange supplements = SupplementRange(),
             unsigned LOD = 0); 
 
-        auto				GetModelScaffold(StringSection<ResChar> modelFilename) -> ::Assets::FuturePtr<ModelScaffold>;
+        auto				GetModelScaffold(StringSection<ResChar> modelFilename) -> ::Assets::FuturePtr<RenderCore::Assets::ModelScaffold>;
         SharedStateSet&     GetSharedStateSet();
 
         uint32              GetReloadId();
@@ -88,4 +92,4 @@ namespace RenderCore { namespace Assets
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
-}}
+}

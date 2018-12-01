@@ -3,56 +3,57 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ModelRendererInternal.h"
-#include "SkeletonScaffoldInternal.h"
-#include "ModelImmutableData.h"
-#include "RawAnimationCurve.h"
 #include "SharedStateSet.h"
-#include "DeferredShaderResource.h"
-#include "../RenderUtils.h"
-#include "../Types.h"
-#include "../Format.h"
-#include "../BufferView.h"
+#include "../RenderCore/Assets/SkeletonScaffoldInternal.h"
+#include "../RenderCore/Assets/ModelImmutableData.h"
+#include "../RenderCore/Assets/RawAnimationCurve.h"
+#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/RenderUtils.h"
+#include "../RenderCore/Types.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/BufferView.h"
 
-#include "../IDevice.h"
-#include "../IThreadContext.h"
-#include "../Metal/Shader.h"
-#include "../Metal/InputLayout.h"
-#include "../Metal/DeviceContext.h"
-#include "../Metal/TextureView.h"
-#include "../Metal/Resource.h"
-#include "../Metal/ObjectFactory.h"
+#include "../RenderCore/IDevice.h"
+#include "../RenderCore/IThreadContext.h"
+#include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/TextureView.h"
+#include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 
-#include "../Techniques/Techniques.h"
-#include "../Techniques/TechniqueUtils.h"
-#include "../Techniques/ParsingContext.h"
-#include "../Techniques/CommonResources.h"
-#include "../../Assets/Assets.h"
-#include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/Console.h"
+#include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/CommonResources.h"
+#include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
+#include "../ConsoleRig/Console.h"
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11
-	#include "../DX11/Metal/DX11Utils.h"
-	#include "../DX11/Metal/IncludeDX11.h"
-    #include "../DX11/IDeviceDX11.h"
+	#include "../RenderCore/DX11/Metal/DX11Utils.h"
+	#include "../RenderCore/DX11/Metal/IncludeDX11.h"
+    #include "../RenderCore/DX11/IDeviceDX11.h"
 #endif
 
 #pragma warning(disable:4127)       // conditional expression is constant
 #pragma warning(disable:4505)		// unreferenced local function has been removed
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
+	using namespace RenderCore;
 
 	unsigned ModelRenderer::PimplWithSkinning::BuildPostSkinInputAssembly(
 		InputElementDesc dst[], unsigned dstCount,
-		const BoundSkinnedGeometry& scaffoldGeo)
+		const RenderCore::Assets::BoundSkinnedGeometry& scaffoldGeo)
 	{
 		assert(0);
 		return 0;
 	}
 
 	auto ModelRenderer::PimplWithSkinning::BuildAnimBinding(
-		const ModelCommandStream::GeoCall& geoInst,
-		const BoundSkinnedGeometry& geo,
+		const RenderCore::Assets::ModelCommandStream::GeoCall& geoInst,
+		const RenderCore::Assets::BoundSkinnedGeometry& geo,
 		SharedStateSet& sharedStateSet,
 		const uint64 textureBindPoints[], unsigned textureBindPointsCnt) -> SkinnedMeshAnimBinding
 	{
@@ -65,7 +66,7 @@ namespace RenderCore { namespace Assets
 		const SkinnedMesh&          mesh,
 		const SkinnedMeshAnimBinding& preparedAnimBinding,
 		const Float4x4              transformationMachineResult[],
-		const SkeletonBinding&      skeletonBinding,
+		const RenderCore::Assets::SkeletonBinding&      skeletonBinding,
 		IResource&					outputResult,
 		unsigned                    outputOffset) const
 	{
@@ -84,7 +85,7 @@ namespace RenderCore { namespace Assets
 
 	void ModelRenderer::PrepareAnimation(
 		IThreadContext& context, PreparedAnimation& result,
-		const SkeletonBinding& skeletonBinding) const
+		const RenderCore::Assets::SkeletonBinding& skeletonBinding) const
 	{
 		assert(0);
 	}
@@ -93,7 +94,7 @@ namespace RenderCore { namespace Assets
 	{
 		return false;
 	}
-}}
+}
 
 #if 0
 
@@ -951,9 +952,9 @@ namespace RenderCore { namespace Assets
 
 #else
 
-namespace RenderCore { namespace Assets
+namespace FixedFunctionModel
 {
-	MeshToModel::MeshToModel(const PreparedAnimation& preparedAnim, const SkeletonBinding* binding)
+	MeshToModel::MeshToModel(const PreparedAnimation& preparedAnim, const RenderCore::Assets::SkeletonBinding* binding)
 	{
 	}
 
@@ -968,9 +969,9 @@ namespace RenderCore { namespace Assets
         const AnimationState& animState) const
 	{}
 
-	const SkeletonBinding& SkinPrepareMachine::GetSkeletonBinding() const 
+	const RenderCore::Assets::SkeletonBinding& SkinPrepareMachine::GetSkeletonBinding() const 
 	{
-		return *(const SkeletonBinding*)nullptr;
+		return *(const RenderCore::Assets::SkeletonBinding*)nullptr;
 	}
 
 	unsigned SkinPrepareMachine::GetSkeletonOutputCount() const 
@@ -985,10 +986,10 @@ namespace RenderCore { namespace Assets
 	{
 	}
         
-	SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold&, const AnimationSetScaffold&, const SkeletonScaffold&) {}
-	SkinPrepareMachine::SkinPrepareMachine(const ModelScaffold& skinScaffold, const SkeletonMachine& skeletonScaffold) {}
+	SkinPrepareMachine::SkinPrepareMachine(const RenderCore::Assets::ModelScaffold&, const RenderCore::Assets::AnimationSetScaffold&, const RenderCore::Assets::SkeletonScaffold&) {}
+	SkinPrepareMachine::SkinPrepareMachine(const RenderCore::Assets::ModelScaffold& skinScaffold, const RenderCore::Assets::SkeletonMachine& skeletonScaffold) {}
     SkinPrepareMachine::~SkinPrepareMachine() {}
-}}
+}
 
 #endif
 
