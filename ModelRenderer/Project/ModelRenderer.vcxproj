@@ -84,6 +84,7 @@
     <ClCompile Include="..\DelayedDrawCall.cpp" />
     <ClCompile Include="..\ModelCache.cpp" />
     <ClCompile Include="..\ModelRunTime.cpp" />
+    <ClCompile Include="..\ModelUtils.cpp" />
     <ClCompile Include="..\ShaderVariationSet.cpp" />
     <ClCompile Include="..\SharedStateSet.cpp" />
     <ClCompile Include="..\SkinningRunTime.cpp" />
@@ -94,6 +95,7 @@
     <ClInclude Include="..\ModelCache.h" />
     <ClInclude Include="..\ModelRendererInternal.h" />
     <ClInclude Include="..\ModelRunTime.h" />
+    <ClInclude Include="..\ModelUtils.h" />
     <ClInclude Include="..\ShaderVariationSet.h" />
     <ClInclude Include="..\SharedStateSet.h" />
   </ItemGroup>
