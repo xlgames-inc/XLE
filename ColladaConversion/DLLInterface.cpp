@@ -613,7 +613,7 @@ namespace ColladaConversion
 		virtual FileKind	GetFileKind(unsigned index) const
 		{
 			assert(index==0);
-			return FileKind { MakeIteratorRange(s_knownAssetTypes), "dae", "Collada XML asset" };
+			return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset" };
 		}
 
 		CompilerDesc() {}

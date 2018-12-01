@@ -6,6 +6,7 @@
 
 #include "ConsoleDisplay.h"
 #include "../../RenderOverlays/Font.h"
+#include "../../Assets/Assets.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../ConsoleRig/Console.h"
@@ -23,7 +24,9 @@ namespace PlatformRig { namespace Overlays
         const unsigned height               = std::min(consoleMaxSize.Height() / 2, 512);
         consoleMaxSize._bottomRight[1]       = consoleMaxSize._topLeft[1] + height;
 
-        const float         textHeight      = GetDefaultFont()->GetFontProperties()._lineHeight;
+		auto font = GetX2Font("OrbitronBlack", 20);
+
+        const float         textHeight      = font->GetFontProperties()._lineHeight;
         const Coord         entryBoxHeight  = Coord(textHeight) + 2 * layout._paddingBetweenAllocations;
 
         const Rect          historyArea     = layout.AllocateFullWidth(consoleMaxSize.Height() - 2 * layout._paddingInternalBorder - layout._paddingBetweenAllocations - entryBoxHeight);
@@ -55,11 +58,8 @@ namespace PlatformRig { namespace Overlays
         for (auto i=lines.cbegin(); i!=lines.cend(); ++i) {
             char buffer[1024];
             ucs2_2_utf8(AsPointer(i->begin()), i->size(), (utf8*)buffer, dimof(buffer));
-            DrawText(&context, historyAreaLayout.AllocateFullWidth(Coord(textHeight)), 0.f, nullptr,
-                textColor, TextAlignment::Left, buffer);
+			context.DrawText(AsPixelCoords(historyAreaLayout.AllocateFullWidth(Coord(textHeight))), font, TextStyle{}, textColor, TextAlignment::Left, buffer);
         }
-
-		auto font = GetDefaultFont();
 
         Coord caretOffset = 0;
         Coord selStart = 0, selEnd = 0;
