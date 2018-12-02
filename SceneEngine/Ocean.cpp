@@ -22,7 +22,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -74,7 +74,7 @@ namespace SceneEngine
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
-        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds")->Actualize()->GetShaderResource()));
+        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds")->Actualize()->GetShaderResource()));
         SetupVertexGeneratorShader(*context);
         context->Draw(4);
         savedTargets.ResetToOldTargets(*context);
@@ -705,7 +705,7 @@ namespace SceneEngine
 					variation._boundLayout->Apply(*context, {});
                 }
 
-                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
+                //auto& surfaceSpecularity = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png");
                 auto& surfaceSpecularity = ConsoleRig::FindCachedBox2<WaterNoiseTexture>();
                 ConstantBufferView prebuiltBuffers[] = { oceanMaterialConstants, oceanGridConstants, oceanRenderingConstants, oceanLightingConstants };
                 const ShaderResourceView* srvs[]	= { &OceanReflectionResource, surfaceSpecularity._srv.get() };
@@ -749,7 +749,7 @@ namespace SceneEngine
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1, fftBuffer._normalsTextureSRV));
         context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, 
             fftBuffer._foamQuantitySRV[OceanBufferCounter&1], 
-            // ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
+            // ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/defaultresources/waternoise.png").GetShaderResource()
 			*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
         if (shallowWater) {
             shallowWater->BindForOceanRender(*context, OceanBufferCounter);

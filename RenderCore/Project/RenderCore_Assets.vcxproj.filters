@@ -19,7 +19,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Assets\AssetUtils.cpp" />
-    <ClCompile Include="..\Assets\DeferredShaderResource.cpp" />
     <ClCompile Include="..\Assets\Services.cpp" />
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\MaterialCompiler.cpp">
@@ -82,7 +81,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
-    <ClInclude Include="..\Assets\DeferredShaderResource.h" />
     <ClInclude Include="..\Assets\Services.h" />
     <ClInclude Include="..\Assets\LocalCompiledShaderSource.h" />
     <ClInclude Include="..\Assets\MaterialCompiler.h">

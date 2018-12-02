@@ -11,7 +11,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/State.h"
@@ -305,17 +305,17 @@ namespace SceneEngine
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_12");
                 if (*halfCubePart)
                     XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-                _faces12 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                _faces12 = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(nameBuffer);
 
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_34");
                 if (*halfCubePart)
                     XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-                _faces34 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                _faces34 = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(nameBuffer);
 
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_5");
                 if (*halfCubePart)
                     XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
-                _face5 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                _face5 = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(nameBuffer);
             } else {
                 switch (resourceType) {
                 case GlobalLightingDesc::SkyTextureType::Cube:                  _projectionType = 5; break;
@@ -323,7 +323,7 @@ namespace SceneEngine
                 default:
                 case GlobalLightingDesc::SkyTextureType::Equirectangular:       _projectionType = 3; break;
                 }
-                _face5 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(skyTextureName);
+                _face5 = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(skyTextureName);
             }
         } else {
             _faces12 = _faces34 = _face5 = nullptr;

@@ -14,7 +14,7 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
-#include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
@@ -126,7 +126,7 @@ namespace ToolsRig
             Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
+            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
             const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             Metal::BoundUniforms boundLayout(shaderProgram);
@@ -200,7 +200,7 @@ namespace ToolsRig
             Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
+            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
             const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             Metal::BoundUniforms boundLayout(shaderProgram);

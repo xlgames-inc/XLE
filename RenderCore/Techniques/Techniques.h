@@ -8,6 +8,7 @@
 
 #include "CommonBindings.h"     // for TechniqueIndex::Max
 #include "PredefinedCBLayout.h"
+#include "../Init.h"
 #include "../../Utility/ParameterBox.h"
 #include <string>
 #include <vector>
@@ -101,6 +102,8 @@ namespace RenderCore { namespace Techniques
         static const unsigned CB_OrthoShadowProjection = 3;
         static const unsigned CB_BasicLightingEnvironment = 4;
     };
+
+	UnderlyingAPI GetTargetAPI();
 
 }}
 

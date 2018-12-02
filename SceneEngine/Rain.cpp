@@ -11,7 +11,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/State.h"
@@ -106,7 +106,7 @@ namespace SceneEngine
 				usi);
 
             auto balancedNoise 
-                = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
+                = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
 
             ConstantBufferView cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource() };
@@ -274,7 +274,7 @@ namespace SceneEngine
             auto cb0 = MakeMetalCB(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
+                = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
             ConstantBufferView cbs[]				 = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             
@@ -441,7 +441,7 @@ namespace SceneEngine
             auto cb0 = MakeMetalCB(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                =* ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
+                =* ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
             ConstantBufferView cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             

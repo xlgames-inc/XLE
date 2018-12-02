@@ -25,7 +25,6 @@ namespace RenderCore { namespace Assets
         static bool HasInstance() { return s_instance != nullptr; }
         static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
 
-        static UnderlyingAPI GetTargetAPI();
         void InitModelCompilers();
 
         Services(const std::shared_ptr<RenderCore::IDevice>& device);

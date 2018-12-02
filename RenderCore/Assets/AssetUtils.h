@@ -23,14 +23,6 @@ namespace RenderCore { namespace Assets
 	IResourcePtr CreateStaticVertexBuffer(IDevice& device, IteratorRange<const void*> data);
 	IResourcePtr CreateStaticIndexBuffer(IDevice& device, IteratorRange<const void*> data);
 
-    /// <summary>Set the RES_HAS technique materials parameter</summary>
-    /// There are a few standard RES_HAS shader parameters that are defined by
-    /// the resources that are bound to a technique material. This function builds
-    /// a parameter box with these parameters set.
-    ParameterBox TechParams_SetResHas(
-        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
-        const ::Assets::DirectorySearchRules& searchRules);
-
     static const uint64 ChunkType_ModelScaffold = ConstHash64<'Mode', 'lSca', 'fold'>::Value;
     static const uint64 ChunkType_ModelScaffoldLargeBlocks = ConstHash64<'Mode', 'lSca', 'fold', 'Larg'>::Value;
     static const uint64 ChunkType_AnimationSet = ConstHash64<'Anim', 'Set'>::Value;

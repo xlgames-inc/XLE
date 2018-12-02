@@ -10,8 +10,7 @@
 #include "../Assets/AssetsCore.h"
 #include "../RenderCore/Metal/Forward.h"
 
-namespace RenderCore { namespace Assets { class DeferredShaderResource; } }
-namespace RenderCore { namespace Techniques { class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class DeferredShaderResource; class ParsingContext; } }
 namespace RenderCore { class IThreadContext; }
 
 namespace SceneEngine
@@ -19,9 +18,9 @@ namespace SceneEngine
     class SkyTextureParts
     {
     public:
-        ::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>	_faces12;
-        ::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>	_faces34;
-        ::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>	_face5;
+        ::Assets::FuturePtr<RenderCore::Techniques::DeferredShaderResource>	_faces12;
+        ::Assets::FuturePtr<RenderCore::Techniques::DeferredShaderResource>	_faces34;
+        ::Assets::FuturePtr<RenderCore::Techniques::DeferredShaderResource>	_face5;
         int _projectionType;
 
         bool IsGood() const { return _projectionType > 0; }

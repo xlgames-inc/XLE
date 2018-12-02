@@ -12,7 +12,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../Assets/Assets.h"
 #include "../Utility/StringFormat.h"
@@ -74,7 +74,7 @@ namespace SceneEngine
         context.Bind(shader, boundInterfaces);
 
         const auto* metricsDigits = "xleres/DefaultResources/metricsdigits.dds:T";
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(metricsDigits)->Actualize()->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(metricsDigits)->Actualize()->GetShaderResource()));
 
 		UniformsStreamInterface usi;
         usi.BindConstantBuffer(0, {Hash64("$Globals")});

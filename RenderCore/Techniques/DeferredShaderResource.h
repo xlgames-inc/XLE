@@ -10,7 +10,10 @@
 #include "../Metal/TextureView.h"
 #include "../../Assets/AssetsCore.h"
 
-namespace RenderCore { namespace Assets 
+namespace Utility { class ParameterBox; }
+namespace Assets { class DirectorySearchRules; }
+
+namespace RenderCore { namespace Techniques 
 {
     /// <summary>Prepares a shader resource from a file source</summary>
     /// This is used to load a file from disk, as use as a shader resource (eg, a texture).
@@ -67,6 +70,12 @@ namespace RenderCore { namespace Assets
 		::Assets::DepValPtr _depVal;
     };
     
-
+	/// <summary>Set the RES_HAS technique materials parameter</summary>
+    /// There are a few standard RES_HAS shader parameters that are defined by
+    /// the resources that are bound to a technique material. This function builds
+    /// a parameter box with these parameters set.
+    ParameterBox TechParams_SetResHas(
+        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
+        const ::Assets::DirectorySearchRules& searchRules);
 }}
 

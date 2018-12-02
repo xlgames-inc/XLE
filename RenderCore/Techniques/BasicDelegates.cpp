@@ -6,7 +6,7 @@
 #include "ResolvedTechniqueShaders.h"
 #include "ParsingContext.h"
 #include "TechniqueMaterial.h"
-#include "../Assets/DeferredShaderResource.h"
+#include "DeferredShaderResource.h"
 #include "../Metal/InputLayout.h"
 #include "../BufferView.h"
 #include "../../Assets/Assets.h"
@@ -57,7 +57,7 @@ namespace RenderCore { namespace Techniques
 		const RenderCore::Metal::ShaderResourceView* srvs[32];
 		unsigned c=0;
 		for (const auto&i:mat._bindings) {
-			auto future = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(
+			auto future = ::Assets::MakeAsset<DeferredShaderResource>(
 				MakeStringSection((char*)i.RawValue().begin(), (char*)i.RawValue().end()));
 			srvs[c++] = &future->Actualize()->GetShaderResource();
 		}

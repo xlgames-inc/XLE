@@ -143,7 +143,7 @@ namespace Sample
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
         Log(Verbose) << "Building primary managers" << std::endl;
-        auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
+        auto renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();

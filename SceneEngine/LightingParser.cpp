@@ -35,7 +35,7 @@
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/QueryPool.h"
@@ -152,8 +152,8 @@ namespace SceneEngine
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(6, samplerWrapU));
 
-        const auto& normalsFittingResource = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT")->Actualize()->GetShaderResource();
-		const auto& distintColors = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T")->Actualize()->GetShaderResource();
+        const auto& normalsFittingResource = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT")->Actualize()->GetShaderResource();
+		const auto& distintColors = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T")->Actualize()->GetShaderResource();
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Compute).Bind(RenderCore::MakeResourceList(14, normalsFittingResource));
 
@@ -162,8 +162,8 @@ namespace SceneEngine
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
 
             // procedural scratch texture for scratches test
-        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Metal::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
-        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Metal::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
     }
 
     void ReturnToSteadyState(Metal::DeviceContext& context)
@@ -349,7 +349,7 @@ namespace SceneEngine
                         "");
                 metalContext->Bind(metricsShader);
                 metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-                    3, ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T")->Actualize()->GetShaderResource()));
+                    3, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T")->Actualize()->GetShaderResource()));
                 metalContext->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 metalContext->Bind(DepthStencilState(false));
                 metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(lightingParserContext.GetMetricsBox()->_metricsBufferSRV));

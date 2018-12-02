@@ -17,7 +17,7 @@
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -668,7 +668,7 @@ namespace SceneEngine
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(9, 
-                ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(
+                ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(
                     "xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
             context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 Techniques::CommonResources()._defaultSampler, 

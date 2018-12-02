@@ -14,7 +14,7 @@
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/State.h"
 #include "../RenderCore/Metal/Shader.h"
@@ -140,7 +140,7 @@ namespace SceneEngine
     {
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(tileLightingResources._lightOutputTextureSRV));
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1, tileLightingResources._debuggingTextureSRV[0], tileLightingResources._debuggingTextureSRV[1], tileLightingResources._debuggingTextureSRV[2]));
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/digits.dds:T")->Actualize()->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/digits.dds:T")->Actualize()->GetShaderResource()));
         auto& debuggingShader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", 
             "xleres/deferred/debugging.psh:DepthsDebuggingTexture:ps_*");
@@ -303,7 +303,7 @@ namespace SceneEngine
                         auto& airLight = FindCachedBox<AirLightResources>(AirLightResources::Desc());
                         
                         context->BindCS(MakeResourceList(3, fogRes._inscatterPointLightsValuesUnorderedAccess));
-                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Metal::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+                        context->BindCS(MakeResourceList(13, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
                         context->BindCS(MakeResourceList(1, airLight._lookupShaderResource));
                         context->Bind(*fogShaders._injectPointLightSources);
                         context->Dispatch(160/10, 90/10, 128/8);

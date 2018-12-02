@@ -94,14 +94,5 @@ namespace RenderCore { namespace Assets
         s_instance = nullptr;
     }
 
-    UnderlyingAPI Services::GetTargetAPI()
-    {
-        #if GFXAPI_ACTIVE == GFXAPI_VULKAN
-            return RenderCore::UnderlyingAPI::Vulkan;
-        #else
-            return RenderCore::UnderlyingAPI::DX11;
-        #endif
-    }
-
 }}
 

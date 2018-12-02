@@ -13,7 +13,7 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Resource.h"
 #include "../RenderCore/Metal/Shader.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/AssetServices.h"
 #include "../Assets/CompileAndAsyncManager.h"
@@ -51,7 +51,7 @@ namespace SceneEngine
             //      the main rendering thread (or whatever thread is associated with the 
             //      immediate context)
 
-        auto inputTexture = RenderCore::Assets::DeferredShaderResource::LoadImmediately(sourceFile);
+        auto inputTexture = RenderCore::Techniques::DeferredShaderResource::LoadImmediately(sourceFile);
         auto inputRes = inputTexture.GetResource();
 
         auto destinationDesc = destinationArray.GetDesc();

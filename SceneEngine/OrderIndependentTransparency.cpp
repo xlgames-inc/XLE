@@ -16,7 +16,7 @@
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Format.h"
@@ -142,9 +142,9 @@ namespace SceneEngine
             //      Bind some resources required by the glass shader
             //
 
-        // auto box5   = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
-        // auto box12  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
-        // auto box34  = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
+        // auto box5   = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_5.dds").GetShaderResource();
+        // auto box12  = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_12.dds").GetShaderResource();
+        // auto box34  = ::Assets::GetAssetDep<RenderCore::Techniques::DeferredShaderResource>("xleres/refltexture/boxc_34.dds").GetShaderResource();
         // context->BindPS(MakeResourceList(8, box12, box34, box5));
 
         // auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());

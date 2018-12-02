@@ -15,6 +15,7 @@
     <ClInclude Include="..\Techniques\Drawables.h" />
     <ClInclude Include="..\Techniques\ResolvedTechniqueShaders.h" />
     <ClInclude Include="..\Techniques\BasicDelegates.h" />
+    <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -28,5 +29,6 @@
     <ClCompile Include="..\Techniques\Drawables.cpp" />
     <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
     <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
+    <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
   </ItemGroup>
 </Project>

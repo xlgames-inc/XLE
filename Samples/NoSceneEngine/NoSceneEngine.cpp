@@ -63,7 +63,7 @@
 #include "../../RenderCore/Vulkan/Metal/FrameBuffer.h"
 #include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
 
-#include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -352,7 +352,7 @@ namespace Sample
 				const Metal_Vulkan::ConstantBuffer* cbs[] = { &globalTransBuffer, &localTransBuffer };
                 
                 #if GFXAPI_ACTIVE == GFXAPI_VULKAN
-                    auto& tex = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L")->Actualize();
+                    auto& tex = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L")->Actualize();
                     const Metal_Vulkan::ShaderResourceView* srvs[] = { &tex.GetShaderResource() };
                 #else
                     auto& factory = vkContext->GetFactory();
@@ -688,7 +688,7 @@ namespace Sample
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
         Log(Verbose) << "Building primary managers" << std::endl;
-        auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
+        auto renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();

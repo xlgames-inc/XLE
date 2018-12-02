@@ -7,6 +7,7 @@
 #include "Techniques.h"
 #include "RenderStateResolver.h"
 #include "../UniformsStream.h"
+#include "../Metal/Metal.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/DepVal.h"
 #include "../../Assets/IFileSystem.h"
@@ -562,6 +563,14 @@ namespace RenderCore { namespace Techniques
         _defaultRenderStateDelegate = CreateRenderStateDelegate_Default();
     }
 
+	UnderlyingAPI GetTargetAPI()
+    {
+        #if GFXAPI_ACTIVE == GFXAPI_VULKAN
+            return RenderCore::UnderlyingAPI::Vulkan;
+        #else
+            return RenderCore::UnderlyingAPI::DX11;
+        #endif
+    }
 
 }}
 

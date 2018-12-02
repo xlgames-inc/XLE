@@ -7,7 +7,7 @@
 #include "../RenderCore/Assets/SkeletonScaffoldInternal.h"
 #include "../RenderCore/Assets/ModelImmutableData.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Format.h"

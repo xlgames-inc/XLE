@@ -15,7 +15,7 @@
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/RenderUtils.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Format.h"
@@ -361,7 +361,7 @@ namespace RenderOverlays
                 SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName, MakeIteratorRange(vbs));
                 if (!i->_textureName.empty()) {
                     _metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-                        ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(i->_textureName.c_str())->Actualize()->GetShaderResource()));
+                        ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(i->_textureName.c_str())->Actualize()->GetShaderResource()));
                 }
                 _metalContext->Draw(i->_vertexCount);
             }

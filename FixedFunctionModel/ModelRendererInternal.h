@@ -13,7 +13,7 @@
 #include "../Utility/IteratorUtils.h"
 
 namespace RenderCore { class IResource; class ConstantBufferView; class MiniInputElementDesc; }
-namespace RenderCore { namespace Assets { class DeferredShaderResource; }}
+namespace RenderCore { namespace Techniques { class DeferredShaderResource; }}
 
 namespace FixedFunctionModel 
 {
@@ -63,7 +63,7 @@ namespace FixedFunctionModel
             #endif
         };
 
-        std::vector<::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>> _boundTextures;
+        std::vector<::Assets::FuturePtr<RenderCore::Techniques::DeferredShaderResource>> _boundTextures;
         size_t  _texturesPerMaterial;
 
         ///////////////////////////////////////////////////////////////////////////////

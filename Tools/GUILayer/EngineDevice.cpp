@@ -87,7 +87,7 @@ namespace GUILayer
 
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
-        _renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
+        _renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
 
         _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);

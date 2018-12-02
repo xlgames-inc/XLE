@@ -10,7 +10,7 @@
 #include "../RenderCore/Assets/ModelImmutableData.h"
 #include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Assets/RawAnimationCurve.h"
-#include "../RenderCore/Assets/DeferredShaderResource.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Assets/AssetUtils.h" // for IsDXTNormalMap
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
@@ -298,9 +298,9 @@ namespace FixedFunctionModel
                         if (searchRules) {
                             ::Assets::ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), boundNormalMapName.c_str());
-                            isDxtNormalMap = RenderCore::Assets::DeferredShaderResource::IsDXTNormalMap(resolvedPath);
+                            isDxtNormalMap = RenderCore::Techniques::DeferredShaderResource::IsDXTNormalMap(resolvedPath);
                         } else 
-                            isDxtNormalMap = RenderCore::Assets::DeferredShaderResource::IsDXTNormalMap(boundNormalMapName.c_str());
+                            isDxtNormalMap = RenderCore::Techniques::DeferredShaderResource::IsDXTNormalMap(boundNormalMapName.c_str());
                         materialParamBox.SetParameter((const utf8*)"RES_HAS_NormalsTexture_DXT", isDxtNormalMap);
                     }
                 }
@@ -328,7 +328,7 @@ namespace FixedFunctionModel
             return materialResources;
         }
 
-        std::vector<::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>> BuildBoundTextures(
+        std::vector<::Assets::FuturePtr<RenderCore::Techniques::DeferredShaderResource>> BuildBoundTextures(
             const RenderCore::Assets::ModelScaffold& scaffold, const RenderCore::Assets::MaterialScaffold& matScaffold,
             const ::Assets::DirectorySearchRules* searchRules,
             const std::vector<std::pair<MaterialGuid, SubMatResources>>& materialResources,
@@ -337,7 +337,7 @@ namespace FixedFunctionModel
         {
             auto texturesPerMaterial = textureBindPoints.size();
 
-            std::vector<::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>> boundTextures;
+            std::vector<::Assets::FuturePtr<RenderCore::Techniques::DeferredShaderResource>> boundTextures;
             boundTextures.resize(textureSetCount * texturesPerMaterial);
             DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
 
@@ -370,10 +370,10 @@ namespace FixedFunctionModel
                         if (searchRules) {
                             ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), resourceName.c_str());
-                            boundTextures[dsti] = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(resolvedPath);
+                            boundTextures[dsti] = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(resolvedPath);
                             DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                         } else {
-                            boundTextures[dsti] = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(resourceName.c_str());
+                            boundTextures[dsti] = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(resourceName.c_str());
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidAsset&) {

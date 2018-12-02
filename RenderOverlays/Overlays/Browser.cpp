@@ -19,7 +19,7 @@
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../FixedFunctionModel/ModelCache.h"
-#include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/DeviceContextImpl.h"
 #include "../../RenderCore/IThreadContext.h"
@@ -615,7 +615,7 @@ namespace Overlays
     class TextureBrowser::Pimpl
     {
     public:
-        LRUCache<::Assets::AssetFuture<RenderCore::Assets::DeferredShaderResource>> _resources;
+        LRUCache<::Assets::AssetFuture<RenderCore::Techniques::DeferredShaderResource>> _resources;
         Pimpl();
     };
 
@@ -636,7 +636,7 @@ namespace Overlays
         if (!res) {
             utf8 utf8Filename[MaxPath];
             ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
-            res = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>((const char*)utf8Filename);
+            res = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>((const char*)utf8Filename);
             _pimpl->_resources.Insert(hashedName, res);
         }
 

@@ -7,7 +7,7 @@
 #define _SCL_SECURE_NO_WARNINGS
 
 #include "DeferredShaderResource.h"
-#include "Services.h"
+#include "../Assets/Services.h"
 #include "../Metal/TextureView.h"
 #include "../Format.h"
 #include "../../BufferUploads/IBufferUploads.h"
@@ -26,7 +26,7 @@
 #include "../../Utility/Streams/StreamDOM.h"
 #include "../../ConsoleRig/ResourceBox.h"
 
-namespace RenderCore { namespace Assets 
+namespace RenderCore { namespace Techniques 
 {
     using ResChar = ::Assets::ResChar;
 
@@ -115,7 +115,7 @@ namespace RenderCore { namespace Assets
 		~TransactionMonitor()
 		{
 			if (_id != ~BufferUploads::TransactionID(0))
-				Services::GetBufferUploads().Transaction_End(_id);
+				RenderCore::Assets::Services::GetBufferUploads().Transaction_End(_id);
 		}
 		TransactionMonitor(TransactionMonitor&& moveFrom)
 		: _id(moveFrom._id)
@@ -125,7 +125,7 @@ namespace RenderCore { namespace Assets
 		TransactionMonitor& operator=(TransactionMonitor&& moveFrom)
 		{
 			if (_id != ~BufferUploads::TransactionID(0)) {
-				Services::GetBufferUploads().Transaction_End(_id);
+				RenderCore::Assets::Services::GetBufferUploads().Transaction_End(_id);
 				_id = ~BufferUploads::TransactionID(0);
 			}
 			std::swap(_id, moveFrom._id);
@@ -183,7 +183,7 @@ namespace RenderCore { namespace Assets
 			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
 		}
 
-        auto transactionId = Services::GetBufferUploads().Transaction_Begin(
+        auto transactionId = RenderCore::Assets::Services::GetBufferUploads().Transaction_Begin(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,
@@ -204,7 +204,7 @@ namespace RenderCore { namespace Assets
 
         future.SetPollingFunction(
 			[mon, metaDataFuture, depVal, init, intializerStr](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
-				auto& bu = Services::GetBufferUploads();
+				auto& bu = RenderCore::Assets::Services::GetBufferUploads();
 				if (!bu.IsCompleted(mon->GetId())
 					|| (metaDataFuture && metaDataFuture->GetAssetState() == ::Assets::AssetState::Pending))
 					return true;
@@ -319,7 +319,7 @@ namespace RenderCore { namespace Assets
 		} else
 			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
 
-        auto result = Services::GetBufferUploads().Transaction_Immediate(
+        auto result = RenderCore::Assets::Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,
@@ -442,5 +442,31 @@ namespace RenderCore { namespace Assets
 
 	DeferredShaderResource::~DeferredShaderResource()
     {
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ParameterBox TechParams_SetResHas(
+        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
+        const ::Assets::DirectorySearchRules& searchRules)
+    {
+        static const auto DefaultNormalsTextureBindingHash = ParameterBox::MakeParameterNameHash("NormalsTexture");
+            // The "material parameters" ParameterBox should contain some "RES_HAS_..."
+            // settings. These tell the shader what resource bindings are available
+            // (and what are missing). We need to set these parameters according to our
+            // binding list
+        ParameterBox result = inputMatParameters;
+        for (const auto& param:resBindings) {
+            result.SetParameter(StringMeld<64, utf8>() << "RES_HAS_" << param.Name(), 1);
+            if (param.HashName() == DefaultNormalsTextureBindingHash) {
+                auto resourceName = resBindings.GetString<::Assets::ResChar>(DefaultNormalsTextureBindingHash);
+                ::Assets::ResChar resolvedName[MaxPath];
+                searchRules.ResolveFile(resolvedName, dimof(resolvedName), resourceName.c_str());
+                result.SetParameter(
+                    (const utf8*)"RES_HAS_NormalsTexture_DXT", 
+                    DeferredShaderResource::IsDXTNormalMap(resolvedName));
+            }
+        }
+        return std::move(result);
     }
 }}
