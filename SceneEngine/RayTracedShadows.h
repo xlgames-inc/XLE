@@ -6,8 +6,10 @@
 
 #pragma once
 
+#include "RenderStep.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Techniques/Drawables.h"
 
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
@@ -15,16 +17,12 @@ namespace SceneEngine
 {
     class ShadowProjectionDesc;
     class PreparedRTShadowFrustum;
-    class IMainTargets;
     class PreparedScene;
 	class LightingParserContext;
 	class ILightingParserDelegate;
+	class MainTargets;
 
-	class ViewDrawables_Shadow
-	{
-	public:
-		Techniques::DrawablesPacket _general;
-	};
+	class ViewDrawables_Shadow;
 
     PreparedRTShadowFrustum PrepareRTShadows(
         RenderCore::IThreadContext& context, 
@@ -39,5 +37,5 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext, 
 		LightingParserContext& lightingParserContext,
-        IMainTargets& mainTargets);
+        MainTargets& mainTargets);
 }

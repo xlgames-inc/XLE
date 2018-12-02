@@ -24,13 +24,12 @@ namespace SceneEngine
 	class RenderStep_ResolveHDR : public IRenderStep
 	{
 	public:
-		std::shared_ptr<IViewDelegate> CreateViewDelegate() = 0;
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
 		void Execute(
 			IThreadContext& threadContext,
 			Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
-			const Techniques::RenderPassFragment& rpi);
+			Techniques::RenderPassFragment& rpi);
 
 		RenderStep_ResolveHDR();
 		~RenderStep_ResolveHDR();
@@ -57,6 +56,8 @@ namespace SceneEngine
 			});
 	}
 
+	RenderStep_ResolveHDR::~RenderStep_ResolveHDR() {}
+
 	static void LightingParser_ResolveMSAA(
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
@@ -79,7 +80,7 @@ namespace SceneEngine
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		const Techniques::RenderPassFragment& rpi)
+		Techniques::RenderPassFragment& rpi)
 	{
 		GPUAnnotation anno(threadContext, "Resolve-MSAA-HDR");
 

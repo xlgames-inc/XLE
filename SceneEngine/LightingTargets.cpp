@@ -15,6 +15,7 @@
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/Resource.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/Console.h"
@@ -506,38 +507,36 @@ namespace SceneEngine
 
 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets)
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, const MainTargets& mainTargets)
         {
-            #if 0
-                using namespace BufferUploads;
-                BufferDesc stagingDesc[3];
-                for (unsigned c=0; c<3; ++c) {
-                    stagingDesc[c]._type = BufferDesc::Type::Texture;
-                    stagingDesc[c]._bindFlags = 0;
-                    stagingDesc[c]._cpuAccess = CPUAccess::Read;
-                    stagingDesc[c]._gpuAccess = 0;
-                    stagingDesc[c]._allocationRules = 0;
-                    stagingDesc[c]._textureDesc = BufferUploads::TextureDesc::Plain2D(
-                        mainTargets._desc._width, mainTargets._desc._height,
-                        mainTargets._desc._gbufferFormats[c]._shaderReadFormat, 1, 0, 
-                        mainTargets._desc._sampling);
-                }
+            #if 1
+				const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
+				uint64_t semantics[] = { 
+					RenderCore::Techniques::AttachmentSemantics::GBufferDiffuse,
+					RenderCore::Techniques::AttachmentSemantics::GBufferNormal,
+					RenderCore::Techniques::AttachmentSemantics::GBufferParameter };
 
-                const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
-                auto& bufferUploads = *GetBufferUploads();
+                auto& bufferUploads = GetBufferUploads();
                 for (unsigned c=0; c<3; ++c) {
-                    if (mainTargets._gbufferTextures[c]) {
-                        auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc[c])->AdoptUnderlying();
-                        Metal::Copy(*context, mainTargets._gbufferTextures[c].get());
-                        D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
-                    }
+					auto srcDesc = mainTargets.GetResource(semantics[c])->GetDesc();
+					RenderCore::ResourceDesc stagingDesc;
+                    stagingDesc._type = RenderCore::ResourceDesc::Type::Texture;
+                    stagingDesc._bindFlags = 0;
+                    stagingDesc._cpuAccess = RenderCore::CPUAccess::Read;
+                    stagingDesc._gpuAccess = 0;
+                    stagingDesc._allocationRules = 0;
+                    stagingDesc._textureDesc = srcDesc._textureDesc;
+
+                    auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc)->AdoptUnderlying();
+                    RenderCore::Metal::Copy(context, *stagingTexture, *mainTargets.GetResource(semantics[c]));
+                    D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
                 }
             #endif
         }
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, bool useMsaaSamplers, unsigned debuggingType)
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, MainTargets& mainTargets, bool useMsaaSamplers, unsigned debuggingType)
     {
         using namespace RenderCore;
 
@@ -566,7 +565,12 @@ namespace SceneEngine
         }
 
         auto& namedRes = parserContext.GetNamedResources();
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, *namedRes.GetSRV(IMainTargets::GBufferDiffuse), *namedRes.GetSRV(IMainTargets::GBufferNormals), *namedRes.GetSRV(IMainTargets::GBufferParameters), *namedRes.GetSRV(IMainTargets::MultisampledDepth)));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(
+			MakeResourceList(5, 
+				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), 
+				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), 
+				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter), 
+				mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);

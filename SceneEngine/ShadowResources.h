@@ -18,32 +18,6 @@ namespace RenderCore { namespace Techniques { class IRenderStateDelegate; }}
 
 namespace SceneEngine
 {
-    class ShadowTargetsBox
-    {
-    public:
-        class Desc
-        {
-        public:
-            unsigned        _width;
-            unsigned        _height;
-            unsigned        _targetCount;
-            FormatStack     _formats;
-            Desc(unsigned width, unsigned height, unsigned targetCount, const FormatStack& format) 
-                : _width(width), _height(height), _targetCount(targetCount), _formats(format) {}
-        };
-
-        using SRV = RenderCore::Metal::ShaderResourceView;
-        using DSV = RenderCore::Metal::DepthStencilView;
-        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
-        SRV _shaderResource;
-        DSV _depthStencilView;
-        std::vector<DSV> _dsvBySlice;
-        ResLocator _shadowTexture;
-
-        ShadowTargetsBox(const Desc& desc);
-        ~ShadowTargetsBox();
-    };
-
     class ShadowResourcesBox
     {
     public:

@@ -29,7 +29,8 @@ namespace SceneEngine
     public:
 		ILightingParserDelegate*	_delegate = nullptr;
 		PreparedScene*				_preparedScene = nullptr;
-		unsigned					_sampleCount;
+		unsigned					_sampleCount = 0;
+		unsigned					_gbufferType = 0;
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }

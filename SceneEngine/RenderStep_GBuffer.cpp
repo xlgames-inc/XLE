@@ -7,7 +7,7 @@
 #include "LightingTargets.h"
 #include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
-#include "RenderStepUtil.h"
+#include "RenderStepUtils.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -26,8 +26,7 @@ namespace SceneEngine
 	void LightingParser_ResolveGBuffer( 
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
-        IMainTargets& mainTargets);
+        LightingParserContext& lightingParserContext);
 
 	class RenderStep_GBuffer : public IRenderStep
 	{
@@ -38,7 +37,7 @@ namespace SceneEngine
 			IThreadContext& threadContext,
 			Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
-			const Techniques::RenderPassFragment& rpi,
+			Techniques::RenderPassFragment& rpi,
 			IViewDelegate* viewDelegate);
 
 		RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
@@ -168,7 +167,7 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		const RenderCore::Techniques::RenderPassFragment& rpi,
+		RenderCore::Techniques::RenderPassFragment& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);

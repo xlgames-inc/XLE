@@ -286,7 +286,8 @@ namespace SceneEngine
         IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
         LightingParserContext& lightingParserContext, 
-		SceneExecuteContext_Main& executedScene, PreparedScene& preparedScene, IMainTargets& mainTargets);
+		SceneExecuteContext_Main& executedScene, PreparedScene& preparedScene, 
+		MainTargets& mainTargets);
 
     static void LightingParser_Render(
         RenderCore::IThreadContext& context, 

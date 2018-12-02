@@ -4,34 +4,45 @@
 
 #include "RenderStep.h"
 #include "LightingParserContext.h"
+#include "LightingParser.h"		// (for ILightingParserPlugin);
 #include "SceneEngineUtils.h"
-#include "RenderStepUtil.h"
+#include "RenderStepUtils.h"
+#include "LightDesc.h"
+#include "LightInternal.h"
+#include "ShadowResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../ConsoleRig/Console.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/PtrUtils.h"
+#include "../Utility/FunctionUtils.h"
 
 namespace SceneEngine
 {
 	using namespace RenderCore;
 
+	class ViewDrawables_Shadow : public IViewDelegate
+	{
+	public:
+		RenderCore::Techniques::DrawablesPacket _general;
+	};
+
 	static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
     static const utf8* StringShadowEnableNearCascade = u("SHADOW_ENABLE_NEAR_CASCADE");
 
-    PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
+    static PreparedDMShadowFrustum LightingParser_PrepareDMShadow(
         IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext, 
 		ViewDrawables_Shadow& executedScene,
-        PreparedScene& preparedScene,
-        const ShadowProjectionDesc& frustum,
-        unsigned shadowFrustumIndex)
+        const ShadowProjectionDesc& frustum)
     {
         auto projectionCount = std::min(frustum._projections.Count(), MaxShadowTexturesPerLight);
         if (!projectionCount)
@@ -81,34 +92,16 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-        metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
-
-        parserContext.GetNamedResources().DefineAttachment(
-			IMainTargets::ShadowDepthMap + shadowFrustumIndex, 
-            {   // 
-                AsTypelessFormat(frustum._format),
-				float(frustum._width), float(frustum._height),
-                frustum._projections.Count(),
-                TextureViewDesc::DepthStencil,
-				AttachmentDesc::DimensionsMode::Absolute, 
-                AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil });
-
-		SubpassDesc subpasses[] = {
-			SubpassDesc {
-				{},
-				{IMainTargets::ShadowDepthMap + shadowFrustumIndex, LoadStore::Clear, LoadStore::Retain}
-			}
-		};
-        FrameBufferDesc resolveLighting = MakeIteratorRange(subpasses);
+        /*metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
 
 		auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(resolveLighting, parserContext.GetNamedResources());
 		ClearValue clearValues[] = {MakeClearValue(1.f, 0x0)};
         Techniques::RenderPassInstance rpi(
             threadContext, fb, resolveLighting,
             parserContext.GetNamedResources(),
-            (Techniques::RenderPassBeginDesc)MakeIteratorRange(clearValues));
+            (Techniques::RenderPassBeginDesc)MakeIteratorRange(clearValues));*/
 
-        preparedResult._shadowTextureName = IMainTargets::ShadowDepthMap + shadowFrustumIndex;
+        // preparedResult._shadowTextureName = IMainTargets::ShadowDepthMap + shadowFrustumIndex;
 
             /////////////////////////////////////////////
 
@@ -132,10 +125,65 @@ namespace SceneEngine
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(threadContext, parserContext, lightingParserContext, BatchFilter::DMShadows, TechniqueIndex_ShadowGen);
         
-        return std::move(preparedResult);
+        return preparedResult;
     }
 
-    PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
+	class RenderStep_PrepareDMShadows : public IRenderStep
+	{
+	public:
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		void Execute(
+			IThreadContext& threadContext,
+			Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_PrepareDMShadows(Format format, UInt2 dims, unsigned projectionCount);
+		~RenderStep_PrepareDMShadows();
+	private:
+		Techniques::FrameBufferDescFragment _fragment;
+	};
+
+	void RenderStep_PrepareDMShadows::Execute(
+		IThreadContext& threadContext,
+		Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		Techniques::RenderPassFragment& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		ShadowProjectionDesc frustum;
+		auto preparedResult = LightingParser_PrepareDMShadow(
+			threadContext, parsingContext,
+			lightingParserContext,
+			*checked_cast<ViewDrawables_Shadow*>(viewDelegate),
+			frustum);
+	}
+
+	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(Format format, UInt2 dims, unsigned projectionCount)
+	{
+		auto output = _fragment.DefineAttachment(
+			Techniques::AttachmentSemantics::ShadowDepthMap, 
+            {
+                AsTypelessFormat(format),
+				float(dims[0]), float(dims[1]),
+                projectionCount,
+                TextureViewDesc::DepthStencil,
+				AttachmentDesc::DimensionsMode::Absolute, 
+                AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil });
+
+		_fragment.AddSubpass(
+			SubpassDesc {
+				{},
+				{output, LoadStore::Clear, LoadStore::Retain}
+			});
+	}
+
+	RenderStep_PrepareDMShadows::~RenderStep_PrepareDMShadows() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
@@ -147,7 +195,7 @@ namespace SceneEngine
     }
 
     void LightingParser_PrepareShadows(
-        IThreadContext& context,
+        IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext, 
 		LightingParserContext& lightingParserContext,
 		SceneExecuteContext_Main& executedScene,
@@ -160,7 +208,7 @@ namespace SceneEngine
             return;
         }
 
-        GPUAnnotation anno(context, "Prepare-Shadows");
+        GPUAnnotation anno(threadContext, "Prepare-Shadows");
 
             // todo --  we should be using a temporary frame heap for this vector
         auto shadowFrustumCount = scene->GetShadowProjectionCount();
@@ -171,13 +219,13 @@ namespace SceneEngine
             CATCH_ASSETS_BEGIN
                 if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 
-                    auto shadow = LightingParser_PrepareDMShadow(context, parserContext, lightingParserContext, *scene, preparedScene, frustum, c);
+                    auto shadow = LightingParser_PrepareDMShadow(threadContext, parserContext, lightingParserContext, *scene, preparedScene, frustum, c);
                     if (shadow.IsReady())
                         lightingParserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 
                 } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
 
-                    auto shadow = LightingParser_PrepareRTShadow(context, parserContext, lightingParserContext, *scene, preparedScene, frustum, c);
+                    auto shadow = LightingParser_PrepareRTShadow(threadContext, parserContext, lightingParserContext, *scene, preparedScene, frustum, c);
                     if (shadow.IsReady())
                         lightingParserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
 

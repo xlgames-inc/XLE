@@ -169,7 +169,7 @@
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
     <ClCompile Include="..\RenderingUtils.cpp" />
-    <ClCompile Include="..\RenderStepUtil.cpp" />
+    <ClCompile Include="..\RenderStepUtils.cpp" />
     <ClCompile Include="..\RenderStep_PrepareShadows.cpp" />
     <ClCompile Include="..\RenderStep_ResolveHDR.cpp" />
     <ClCompile Include="..\SceneEngineUtils.cpp" />
@@ -231,7 +231,7 @@
     <ClInclude Include="..\RenderingUtils.h" />
     <ClInclude Include="..\LightingParser.h" />
     <ClInclude Include="..\RenderStep.h" />
-    <ClInclude Include="..\RenderStepUtil.h" />
+    <ClInclude Include="..\RenderStepUtils.h" />
     <ClInclude Include="..\SceneEngineUtils.h" />
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />

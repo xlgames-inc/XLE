@@ -13,6 +13,7 @@
 #include "LightDesc.h"
 #include "LightInternal.h"
 #include "LightingTargets.h"        // for MainTargetsBox in RTShadows_DrawMetrics
+#include "RenderStepUtils.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/ResourceLocator.h"
@@ -150,12 +151,12 @@ namespace SceneEngine
         IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
-		ViewDrawables_Shadow& executedScene,
+		ViewDrawables_Shadow& inputDrawables,
         PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
-		if (!BatchHasContent(executedScene._general))
+		if (!BatchHasContent(inputDrawables._general))
             return PreparedRTShadowFrustum();
 
         GPUAnnotation anno(threadContext, "Prepare-RTShadows");
@@ -239,10 +240,12 @@ namespace SceneEngine
             });
 
         CATCH_ASSETS_BEGIN
+			ExecuteDrawablesContext executeDrawblesContext;
             ExecuteDrawables(
                 threadContext, parserContext,
-				executedScene._general,
-                preparedScene, TechniqueIndex_RTShadowGen,
+				executeDrawblesContext,
+				inputDrawables._general,
+                TechniqueIndex_RTShadowGen,
 				"RTShadowGen");
         CATCH_ASSETS_END(parserContext)
 
@@ -301,7 +304,7 @@ namespace SceneEngine
         RenderCore::Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		LightingParserContext& lightingParserContext,
-		IMainTargets& mainTargets)
+		MainTargets& mainTargets)
     {
         SavedTargets savedTargets(context);
         auto restoreMarker = savedTargets.MakeResetMarker(context);
@@ -310,8 +313,8 @@ namespace SceneEngine
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 #endif
 
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters), mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
-        const bool useMsaaSamplers = mainTargets.GetSampling()._sampleCount > 1;
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter), mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth)));
+        const bool useMsaaSamplers = lightingParserContext._sampleCount > 1;
 
         StringMeld<256> defines;
         defines << "SHADOW_CASCADE_MODE=2";
@@ -339,8 +342,9 @@ namespace SceneEngine
         SetupVertexGeneratorShader(context);
 
         for (const auto& p:lightingParserContext._preparedRTShadows) {
+			auto depthSRV = mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth);
             const Metal::ShaderResourceView* srvs[] = 
-                { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &mainTargets.GetSRV(IMainTargets::MultisampledDepth) };
+                { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &depthSRV };
 
 			ConstantBufferView cbvs[] = {
 				&p.second._orthoCB,

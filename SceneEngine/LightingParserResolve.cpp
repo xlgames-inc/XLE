@@ -12,6 +12,7 @@
 #include "ShadowResources.h"
 #include "ShaderLightDesc.h"
 #include "LightInternal.h"
+#include "RenderStep.h"
 
 #include "Sky.h"
 #include "VolumetricFog.h"
@@ -130,23 +131,24 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static unsigned FindDMShadowFrustum(const LightingParserContext& parserContext, unsigned lightId);
-    static unsigned FindRTShadowFrustum(const LightingParserContext& parserContext, unsigned lightId);
+    static unsigned FindDMShadowFrustum(const LightingParserContext& parsingContext, unsigned lightId);
+    static unsigned FindRTShadowFrustum(const LightingParserContext& parsingContext, unsigned lightId);
 
     static Metal::ConstantBufferPacket BuildLightConstants(const LightDesc& light);
     static void ResolveLights(  Metal::DeviceContext& context,
-								Techniques::ParsingContext& parserContext,
+								Techniques::ParsingContext& parsingContext,
                                 LightingParserContext& lightingParserContext,
                                 const LightingResolveContext& resolveContext,
                                 bool debugging = false);
 
     static void SetupStateForDeferredLightingResolve(   
         Metal::DeviceContext& context, 
-        IMainTargets& mainTargets, 
+        LightingParserContext& lightingParserContext, 
         LightingResolveResources& resolveRes,
+		Techniques::RenderPassFragment& rpi,
         bool doSampleFrequencyOptimisation)
     {
-        const unsigned samplingCount = mainTargets.GetSampling()._sampleCount;
+        const unsigned samplingCount = lightingParserContext._sampleCount;
 
         SetupVertexGeneratorShader(context);
 
@@ -166,12 +168,13 @@ namespace SceneEngine
 			TextureDesc::Dimensionality::Undefined, 
 			TextureViewDesc::Flags::JustDepth};
 
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-            mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
-            mainTargets.GetSRV(IMainTargets::GBufferNormals),
-            mainTargets.GetSRV(IMainTargets::GBufferParameters),
-            Metal::ShaderResourceView(), 
-            mainTargets.GetSRV(IMainTargets::MultisampledDepth, justDepthWindow)));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(
+			MakeResourceList(
+				*rpi.GetSRV(0), // IMainTargets::GBufferDiffuse),
+				*rpi.GetSRV(1), // IMainTargets::GBufferNormals),
+				*rpi.GetSRV(2), // IMainTargets::GBufferParameters),
+				Metal::ShaderResourceView(), 
+				*rpi.GetSRV(3))); // IMainTargets::MultisampledDepth, justDepthWindow)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -244,7 +247,7 @@ namespace SceneEngine
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         Metal::DeviceContext& context,
-        Techniques::ParsingContext& parserContext,
+        Techniques::ParsingContext& parsingContext,
 		ILightingParserDelegate& delegate)
     {
             // bind resources and constants that are required for lighting resolve operations
@@ -275,21 +278,21 @@ namespace SceneEngine
 				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosstranslut.dds:LT")->Actualize()->GetShaderResource()));
 
             // context.BindPS_G(MakeResourceList(9, Metal::ConstantBuffer(&GlobalMaterialOverride, sizeof(GlobalMaterialOverride))));
-        CATCH_ASSETS_END(parserContext)
+        CATCH_ASSETS_END(parsingContext)
 
         return result;
     }
 
     void LightingParser_ResolveGBuffer(
-        IThreadContext& threadContext, Techniques::ParsingContext& parserContext, LightingParserContext& lightingParserContext, 
-		IMainTargets& mainTargets)
+        IThreadContext& threadContext, Techniques::ParsingContext& parsingContext, LightingParserContext& lightingParserContext,
+		RenderCore::Techniques::RenderPassFragment& rpi)
     {
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
         Metal::GPUAnnotation anno2(metalContext, "ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
 
-        LightingResolveContext lightingResolveContext(mainTargets);
+        LightingResolveContext lightingResolveContext(lightingParserContext);
         const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
@@ -299,6 +302,7 @@ namespace SceneEngine
         //     uint8(mainTargets.GetQualitySettings()._samplingQuality));
 
         auto& resolveRes = ConsoleRig::FindCachedBoxDep2<LightingResolveResources>(samplingCount);
+		auto& delegate = *lightingParserContext._delegate;
 
             //
             //    Our inputs is the prepared gbuffer 
@@ -318,7 +322,7 @@ namespace SceneEngine
             CATCH_ASSETS_BEGIN
                 metalContext.Bind(*resolveRes._perSampleMask);
                 metalContext.Draw(4);
-            CATCH_ASSETS_END(parserContext)
+            CATCH_ASSETS_END(parsingContext)
         }
 #endif
 
@@ -326,8 +330,8 @@ namespace SceneEngine
             Metal::GPUAnnotation anno(metalContext, "Prepare");
             for (auto i=lightingParserContext._plugins.cbegin(); i!=lightingParserContext._plugins.cend(); ++i) {
                 CATCH_ASSETS_BEGIN
-                    (*i)->OnLightingResolvePrepare(threadContext, parserContext, lightingParserContext, delegate, lightingResolveContext);
-                CATCH_ASSETS_END(parserContext)
+                    (*i)->OnLightingResolvePrepare(threadContext, parsingContext, lightingParserContext, lightingResolveContext);
+                CATCH_ASSETS_END(parsingContext)
             }
         }
 
@@ -372,50 +376,6 @@ namespace SceneEngine
 
             const unsigned passCount = (doSampleFrequencyOptimisation && samplingCount > 1)?2:1;
 
-            // Now, this is awkward because we want to first write to the stencil buffer using the depth information,
-            // and then we want to enable a stencil pass while simulanteously reading from the depth buffer in a shader.
-            // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
-            // separately the "aspects" so the DSV has stencil, and the SRV has depth.
-            // Perhaps we need an input attachment for the depth buffer in the second pass?
-            
-			const unsigned lightResolveTarget = IMainTargets::PresentationTarget; // IMainTargets::LightResolve
-
-			if (constant_expression<lightResolveTarget == IMainTargets::LightResolve>::result()) {
-				AttachmentDesc lightResolveAttachmentDesc =
-					{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
-						1.f, 1.f, 0u,
-						TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
-						AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
-			
-				parserContext.GetNamedResources().DefineAttachment(IMainTargets::LightResolve, lightResolveAttachmentDesc);
-			}
-
-			TextureViewDesc justStencilWindow {
-				TextureViewDesc::Aspect::Stencil,
-				TextureViewDesc::All, TextureViewDesc::All,
-				TextureDesc::Dimensionality::Undefined,
-				TextureViewDesc::Flags::JustStencil};
-
-			SubpassDesc subpasses[] {
-				SubpassDesc{
-					{AttachmentViewDesc{lightResolveTarget, LoadStore::DontCare, LoadStore::Retain}}, 
-					{IMainTargets::MultisampledDepth, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}},
-
-				// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
-				SubpassDesc{
-					{AttachmentViewDesc{lightResolveTarget, LoadStore::Retain, LoadStore::Retain}}, 
-					{IMainTargets::MultisampledDepth, LoadStore::Retain_RetainStencil, LoadStore::DontCare, justStencilWindow}},
-            };
-
-            FrameBufferDesc resolveLighting(MakeIteratorRange(subpasses));
-
-			auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(resolveLighting, parserContext.GetNamedResources());
-			ClearValue clearValues[] = {MakeClearValue(1.f, 0x0)};
-            Techniques::RenderPassInstance rpi(
-                threadContext, fb, resolveLighting,
-                parserContext.GetNamedResources(),
-				Techniques::RenderPassBeginDesc{MakeIteratorRange(clearValues)});
-
                 // -------- -------- -------- -------- -------- --------
                 //          E M I S S I V E
 
@@ -428,15 +388,15 @@ namespace SceneEngine
                 Metal::GPUAnnotation anno(metalContext, "Sky");
                 for (unsigned c=0; c<passCount; ++c) {
                     metalContext.Bind(resolveRes._dssPrepareSky, StencilSky);
-                    Sky_Render(threadContext, parserContext, delegate.GetGlobalLightingDesc(), false);
+                    Sky_Render(threadContext, parsingContext, lightingParserContext._delegate->GetGlobalLightingDesc(), false);
                 }
             }
 
             rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
 
             // set light resolve state (note that we have to bind the depth buffer as a shader input here)
-            SetupStateForDeferredLightingResolve(metalContext, mainTargets, resolveRes, doSampleFrequencyOptimisation);
-            auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, delegate);
+            SetupStateForDeferredLightingResolve(metalContext, lightingParserContext, resolveRes, rpi, doSampleFrequencyOptimisation);
+            auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parsingContext, delegate);
             MetalStubs::GetGlobalNumericUniforms(metalContext, ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
@@ -457,7 +417,7 @@ namespace SceneEngine
                         //-------- ambient light shader --------
                     auto& ambientResolveShaders = 
 						ConsoleRig::FindCachedBoxDep2<AmbientResolveShaders>(
-                            mainTargets.GetGBufferType(),
+                            lightingParserContext._gbufferType,
                             (c==0)?samplingCount:1, useMsaaSamplers, c==1,
                             lightingResolveContext._ambientOcclusionResult.IsGood(),
                             lightingResolveContext._tiledLightingResult.IsGood(),
@@ -478,7 +438,7 @@ namespace SceneEngine
                     };
 
                     auto ambientLightPacket = MakeSharedPkt(ambientcbuffer);
-                    ambientResolveShaders._ambientLightUniforms->Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+                    ambientResolveShaders._ambientLightUniforms->Apply(metalContext, 0, parsingContext.GetGlobalUniformsStream());
 					ConstantBufferView cbvs[] = {ambientLightPacket};
 					ambientResolveShaders._ambientLightUniforms->Apply(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
 
@@ -499,7 +459,7 @@ namespace SceneEngine
 
                     metalContext.Bind(*ambientResolveShaders._ambientLight);
                     metalContext.Draw(4);
-                CATCH_ASSETS_END(parserContext)
+                CATCH_ASSETS_END(parsingContext)
             }
 
                 // -------- -------- -------- -------- -------- --------
@@ -508,17 +468,17 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
             for (unsigned c=0; c<passCount; ++c) {
                 lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
-                ResolveLights(metalContext, parserContext, lightingParserContext, delegate, lightingResolveContext);
+                ResolveLights(metalContext, parsingContext, lightingParserContext, lightingResolveContext);
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
-                    (*i)(threadContext, parserContext, lightingParserContext, lightingResolveContext, c);
+                    (*i)(threadContext, parsingContext, lightingParserContext, lightingResolveContext, c);
                 }
             }
 
                 // -------- -------- -------- -------- -------- --------
 
-        CATCH_ASSETS_END(parserContext)
+        CATCH_ASSETS_END(parsingContext)
 
         MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 0, 9);
 
@@ -530,19 +490,20 @@ namespace SceneEngine
         // because the gbuffer needs to be retained and read from in a debugging phase
         auto debugging = Tweakable("DeferredDebugging", 0);
         if (debugging > 0) {
-            parserContext._pendingOverlays.push_back(
-                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, mainTargets.GetSampling()._sampleCount > 1, debugging));
+            parsingContext._pendingOverlays.push_back(
+                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, lightingParserContext._sampleCount > 1, debugging));
         }
 
         if (Tweakable("RTShadowMetrics", false)) {
-            parserContext._pendingOverlays.push_back(
-                std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(lightingParserContext), std::ref(mainTargets)));
+            parsingContext._pendingOverlays.push_back(
+                std::bind(&RTShadows_DrawMetrics, std::placeholders::_1, std::placeholders::_2, std::ref(lightingParserContext)));
         }
 
+#if 0
         if (Tweakable("LightResolveDebugging", false)) {
                 // we use the lamdba to store a copy of lightingResolveContext
-            parserContext._pendingOverlays.push_back(
-                [&mainTargets, &lightingParserContext, &delegate, lightingResolveContext, &resolveRes, doSampleFrequencyOptimisation](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext)
+            parsingContext._pendingOverlays.push_back(
+                [&mainTargets, &lightingParserContext, &delegate, lightingResolveContext, &resolveRes, doSampleFrequencyOptimisation](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parsingContext)
                 {
                     SavedTargets savedTargets(context);
                     auto restoreMarker = savedTargets.MakeResetMarker(context);
@@ -561,22 +522,23 @@ namespace SceneEngine
                         Metal::ShaderResourceView(), 
                         mainTargets.GetSRV(IMainTargets::MultisampledDepth)));
 
-                    LightingParser_BindLightResolveResources(context, parserContext, delegate);
+                    LightingParser_BindLightResolveResources(context, parsingContext, delegate);
 
                     context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
                     context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
 
-                    ResolveLights(context, parserContext, lightingParserContext, delegate, lightingResolveContext, true);
+                    ResolveLights(context, parsingContext, lightingParserContext, delegate, lightingResolveContext, true);
 
                     MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 9);
                     context.Bind(Techniques::CommonResources()._defaultRasterizer);
                     context.Bind(Techniques::CommonResources()._dssReadWrite);
                 });
         }
+#endif
     }
 
     static void ResolveLights(  Metal::DeviceContext& context,
-								Techniques::ParsingContext& parserContext,
+								Techniques::ParsingContext& parsingContext,
                                 LightingParserContext& lightingParserContext,
                                 const LightingResolveContext& resolveContext,
                                 bool debugging)
@@ -584,7 +546,8 @@ namespace SceneEngine
         const unsigned samplingCount = resolveContext.GetSamplingCount();
         const bool useMsaaSamplers = resolveContext.UseMsaaSamplers();
 
-        auto lightCount = delegate.GetLightCount();
+        auto& delegate = *lightingParserContext._delegate;
+		auto lightCount = delegate.GetLightCount();
         if (!lightCount) return;
 
         Metal::GPUAnnotation anno(context, "Lights");
@@ -614,7 +577,7 @@ namespace SceneEngine
 
         auto& lightingResolveShaders = 
 			ConsoleRig::FindCachedBoxDep2<LightingResolveShaders>(
-                resolveContext.GetMainTargets().GetGBufferType(),
+                lightingParserContext._gbufferType,
                 (resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerSample)?samplingCount:1, useMsaaSamplers, 
                 resolveContext.GetCurrentPass()==LightingResolveContext::Pass::PerPixel,
                 Tweakable("LightResolveDynamic", 0), debugging);
@@ -640,7 +603,7 @@ namespace SceneEngine
                     assert(lightingParserContext._preparedDMShadows[shadowFrustumIndex].second.IsReady());
 
                     const auto& preparedShadows = lightingParserContext._preparedDMShadows[shadowFrustumIndex].second;
-                    srvs[SR::DMShadow] = parserContext.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
+                    srvs[SR::DMShadow] = parsingContext.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
                     assert(srvs[SR::DMShadow]);
                     cbvs[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
                     cbvs[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
@@ -659,7 +622,7 @@ namespace SceneEngine
                         //              are affected by this light.
                         //
                     
-                    auto& mainCamProjDesc = parserContext.GetProjectionDesc();
+                    auto& mainCamProjDesc = parsingContext.GetProjectionDesc();
                     cbvs[CB::ScreenToShadow] = BuildScreenToShadowConstants(
                         preparedShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
@@ -677,7 +640,7 @@ namespace SceneEngine
                     auto rtShadowIndex = FindRTShadowFrustum(lightingParserContext, l);
                     if (rtShadowIndex < lightingParserContext._preparedRTShadows.size()) {
                         const auto& preparedRTShadows = lightingParserContext._preparedRTShadows[rtShadowIndex].second;
-                        auto& mainCamProjDesc = parserContext.GetProjectionDesc();
+                        auto& mainCamProjDesc = parsingContext.GetProjectionDesc();
                         cbvs[CB::ScreenToRTShadow] = BuildScreenToShadowConstants(
                             preparedRTShadows, mainCamProjDesc._cameraToWorld, mainCamProjDesc._cameraToProjection);
 
@@ -696,16 +659,102 @@ namespace SceneEngine
                 assert(shader);
                 if (!shader->_shader) continue;
 
-                shader->_uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+                shader->_uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
 				shader->_uniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
                 if (shader->_dynamicLinking)
                     context.Bind(*shader->_shader, shader->_boundClassInterfaces);
                 else
                     context.Bind(*shader->_shader);
                 context.Draw(4);
-            CATCH_ASSETS_END(parserContext)
+            CATCH_ASSETS_END(parsingContext)
         }
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class RenderStep_LightingResolve : public IRenderStep
+	{
+	public:
+		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		virtual void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_LightingResolve(bool precisionTargets);
+	private:
+		Techniques::FrameBufferDescFragment _fragment;
+	};
+
+	void RenderStep_LightingResolve::Execute(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		RenderCore::Techniques::RenderPassFragment& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext, rpi);
+	}
+
+	RenderStep_LightingResolve::RenderStep_LightingResolve(bool precisionTargets)
+	{
+		// Now, this is awkward because we want to first write to the stencil buffer using the depth information,
+        // and then we want to enable a stencil pass while simulanteously reading from the depth buffer in a shader.
+        // This requires that we have the depth buffer bound as a DSV and a SRV at the same time... But we can explicitly
+        // separately the "aspects" so the DSV has stencil, and the SRV has depth.
+        // Perhaps we need an input attachment for the depth buffer in the second pass?
+            
+		AttachmentDesc lightResolveAttachmentDesc =
+			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+				1.f, 1.f, 0u,
+				TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
+				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
+		auto lightResolveTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::HDRColor, lightResolveAttachmentDesc);
+		auto depthTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
+
+		TextureViewDesc justStencilWindow {
+			TextureViewDesc::Aspect::Stencil,
+			TextureViewDesc::All, TextureViewDesc::All,
+			TextureDesc::Dimensionality::Undefined,
+			TextureViewDesc::Flags::JustStencil};
+
+		TextureViewDesc justDepthWindow {
+			TextureViewDesc::Aspect::Depth,
+			TextureViewDesc::All, TextureViewDesc::All,
+			TextureDesc::Dimensionality::Undefined,
+			TextureViewDesc::Flags::JustDepth};
+
+		SubpassDesc firstSubpass {
+			{AttachmentViewDesc{lightResolveTarget, LoadStore::DontCare, LoadStore::Retain}}, 
+			AttachmentViewDesc{depthTarget, LoadStore::Retain_ClearStencil, LoadStore::Retain_RetainStencil}};
+
+			// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
+		SubpassDesc secondSubpass {
+			{AttachmentViewDesc { lightResolveTarget, LoadStore::Retain, LoadStore::Retain } }, 
+			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::DontCare, justStencilWindow } };
+		secondSubpass._input.push_back(
+			AttachmentViewDesc {
+				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse),
+				LoadStore::Retain, LoadStore::DontCare
+			});
+		secondSubpass._input.push_back(
+			AttachmentViewDesc {
+				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal),
+				LoadStore::Retain, LoadStore::DontCare
+			});
+		secondSubpass._input.push_back(
+			AttachmentViewDesc {
+				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter),
+				LoadStore::Retain, LoadStore::DontCare
+			});
+		secondSubpass._input.push_back(
+			AttachmentViewDesc { depthTarget, LoadStore::Retain, LoadStore::DontCare, justDepthWindow });
+
+		_fragment.AddSubpass(std::move(secondSubpass));
+		_fragment.AddSubpass(std::move(firstSubpass));
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -753,7 +802,6 @@ namespace SceneEngine
     auto            LightingResolveContext::GetCurrentPass() const -> Pass::Enum { return _pass; }
     bool            LightingResolveContext::UseMsaaSamplers() const     { return _useMsaaSamplers; }
     unsigned        LightingResolveContext::GetSamplingCount() const    { return _samplingCount; }
-    IMainTargets&   LightingResolveContext::GetMainTargets() const      { return *_mainTargets; }
     void            LightingResolveContext::AppendResolve(std::function<ResolveFn>&& fn) 
     {
             // It's not safe to all this function after the "prepare" step
@@ -765,29 +813,28 @@ namespace SceneEngine
     }
     void            LightingResolveContext::SetPass(Pass::Enum newPass) { _pass = newPass; }
 
-    LightingResolveContext::LightingResolveContext(IMainTargets& mainTargets)
-    : _mainTargets(&mainTargets)
-    , _pass(Pass::Prepare)
+    LightingResolveContext::LightingResolveContext(const LightingParserContext& lightingParserContext)
+    : _pass(Pass::Prepare)
     {
-        _samplingCount = mainTargets.GetSampling()._sampleCount;
+        _samplingCount = lightingParserContext._sampleCount;
         _useMsaaSamplers = _samplingCount > 1;
     }
     LightingResolveContext::~LightingResolveContext() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static unsigned FindDMShadowFrustum(const LightingParserContext& parserContext, unsigned lightId)
+    static unsigned FindDMShadowFrustum(const LightingParserContext& parsingContext, unsigned lightId)
     {
-        for (unsigned c=0; c<unsigned(parserContext._preparedDMShadows.size()); ++c)
-            if (parserContext._preparedDMShadows[c].first==lightId)
+        for (unsigned c=0; c<unsigned(parsingContext._preparedDMShadows.size()); ++c)
+            if (parsingContext._preparedDMShadows[c].first==lightId)
                 return c;
         return ~0u;
     }
 
-    static unsigned FindRTShadowFrustum(const LightingParserContext& parserContext, unsigned lightId)
+    static unsigned FindRTShadowFrustum(const LightingParserContext& parsingContext, unsigned lightId)
     {
-        for (unsigned c=0; c<unsigned(parserContext._preparedRTShadows.size()); ++c)
-            if (parserContext._preparedRTShadows[c].first==lightId)
+        for (unsigned c=0; c<unsigned(parsingContext._preparedRTShadows.size()); ++c)
+            if (parsingContext._preparedRTShadows[c].first==lightId)
                 return c;
         return ~0u;
     }
@@ -801,23 +848,23 @@ namespace SceneEngine
 
     void LightingParser_InitBasicLightEnv(  
         RenderCore::IThreadContext& threadContext,
-        Techniques::ParsingContext& parserContext,
+        Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext)
     {
         ShaderLightDesc::BasicEnvironment env;
-        auto globalDesc = delegate.GetGlobalLightingDesc();
+        auto globalDesc = lightingParserContext._delegate->GetGlobalLightingDesc();
         env._ambient = AsShaderDesc(globalDesc);
         env._rangeFog = AsRangeFogDesc(globalDesc);
         env._volumeFog = BlankVolumeFogDesc();
 
-        auto lightCount = delegate.GetLightCount();
+        auto lightCount = lightingParserContext._delegate->GetLightCount();
         for (unsigned l=0; l<dimof(env._dominant); ++l)
-            env._dominant[l] = (lightCount > l) ? AsShaderDesc(delegate.GetLightDesc(l)) : BlankLightDesc();
+            env._dominant[l] = (lightCount > l) ? AsShaderDesc(lightingParserContext._delegate->GetLightDesc(l)) : BlankLightDesc();
 
         for (const auto& p:lightingParserContext._plugins)
-            p->InitBasicLightEnvironment(threadContext, parserContext, lightingParserContext, delegate, env);
+            p->InitBasicLightEnvironment(threadContext, parsingContext, lightingParserContext, env);
 
-        parserContext.SetGlobalCB(
+        parsingContext.SetGlobalCB(
             *RenderCore::Metal::DeviceContext::Get(threadContext), Techniques::TechniqueContext::CB_BasicLightingEnvironment,
             &env, sizeof(env));
     }

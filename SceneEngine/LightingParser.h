@@ -122,8 +122,6 @@ namespace SceneEngine
 
 		///////////////////////////////////////////////////////////////////////////
 
-    class IMainTargets;
-
     /// <summary>The LightingResolveContext is used by lighting operations during the gbuffer resolve step</summary>
     /// Don't confuse with LightingParserContext. This is a different context object, representing
     /// a sub-step during the larger lighting parser process.
@@ -138,7 +136,7 @@ namespace SceneEngine
         Pass::Enum  GetCurrentPass() const;
         bool        UseMsaaSamplers() const;
         unsigned    GetSamplingCount() const;
-        IMainTargets& GetMainTargets() const;
+        // IMainTargets& GetMainTargets() const;
 
         typedef void ResolveFn(RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);
@@ -148,20 +146,21 @@ namespace SceneEngine
             //  In this way, we can do the resolve for all of these effects in one step
             //  (rather than having to perform a bunch of separate passes)
             //  But it means we need some special case handling for these resources.
-        RenderCore::Metal::ShaderResourceView      _tiledLightingResult;
-        RenderCore::Metal::ShaderResourceView      _ambientOcclusionResult;
-        RenderCore::Metal::ShaderResourceView      _screenSpaceReflectionsResult;
+        RenderCore::Metal::ShaderResourceView		_tiledLightingResult;
+        RenderCore::Metal::ShaderResourceView		_ambientOcclusionResult;
+        RenderCore::Metal::ShaderResourceView		_screenSpaceReflectionsResult;
 
-        std::vector<std::function<ResolveFn>>       _queuedResolveFunctions;
+        std::vector<std::function<ResolveFn>>		_queuedResolveFunctions;
 
-        LightingResolveContext(IMainTargets& mainTargets);
+        LightingResolveContext(const LightingParserContext& lightingParserContext);
         ~LightingResolveContext();
     private:
         unsigned _samplingCount;
         bool _useMsaaSamplers;
         Pass::Enum _pass;
-        IMainTargets* _mainTargets;
     };
+
+	enum class BatchFilter;
 
     /// <summary>Plug-in for the lighting parser</summary>
     /// This allows for some customization of the lighting parser operations.

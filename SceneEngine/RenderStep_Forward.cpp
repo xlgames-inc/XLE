@@ -4,8 +4,9 @@
 
 #include "RenderStep.h"
 #include "LightingParserContext.h"
+#include "LightInternal.h"
 #include "SceneEngineUtils.h"
-#include "RenderStepUtil.h"
+#include "RenderStepUtils.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -30,7 +31,7 @@ namespace SceneEngine
 			IThreadContext& threadContext,
 			Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
-			const Techniques::RenderPassFragment& rpi,
+			Techniques::RenderPassFragment& rpi,
 			IViewDelegate* viewDelegate);
 
 		RenderStep_Forward();
@@ -46,7 +47,7 @@ namespace SceneEngine
 
 	RenderStep_Forward::RenderStep_Forward()
 	{
-        auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::Color);
+        auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::HDRColor);
 		auto depth = _forward.DefineAttachment(Techniques::AttachmentSemantics::Depth);
 
 		_forward.AddSubpass(
@@ -170,7 +171,7 @@ namespace SceneEngine
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		const RenderCore::Techniques::RenderPassFragment& rpi,
+		RenderCore::Techniques::RenderPassFragment& rpi,
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);

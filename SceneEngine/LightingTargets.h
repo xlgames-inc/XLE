@@ -23,31 +23,19 @@ namespace SceneEngine
 {
     class RenderSceneSettings;
 
-#if 0
-    class IMainTargets
+    class MainTargets
     {
     public:
-        using Name = uint32;
-        static const Name PresentationTarget = 0u;
-        static const Name MultisampledDepth = 2u;
-        static const Name LightResolve = 3u;
-        static const Name GBufferDiffuse = 6u;
-        static const Name GBufferNormals = 7u;
-        static const Name GBufferParameters = 8u;
-        static const Name PostMSAALightResolve = 9u;
-
-        static const Name ShadowDepthMap = 20u;
-
         using SRV = RenderCore::Metal::ShaderResourceView;
+        SRV      GetSRV(uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
+		const RenderCore::IResourcePtr& GetResource(uint64_t semantic) const;
 
-        virtual unsigned                        GetGBufferType() const = 0;
-        virtual RenderCore::TextureSamples      GetSampling() const = 0;
-        virtual const RenderSceneSettings&		GetQualitySettings() const = 0;
-        virtual UInt2							GetDimensions() const = 0;
-
-        virtual const SRV&      GetSRV(Name, const RenderCore::TextureViewDesc& window = {}) const = 0;
+		MainTargets();
+		~MainTargets();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
     };
-#endif
 
     class LightingResolveShaders
     {
@@ -209,13 +197,11 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
-
- 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets);
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, const MainTargets& mainTargets);
     #endif
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, bool useMsaaSamplers, unsigned debuggingType);
+    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, MainTargets& mainTargets, bool useMsaaSamplers, unsigned debuggingType);
 
 }
 

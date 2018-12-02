@@ -62,6 +62,8 @@ namespace RenderCore { namespace Techniques
 		const uint64_t LDRColor			= ConstHash64<'ldrc', 'olor'>::Value;
 		const uint64_t HDRColor			= ConstHash64<'hdrc', 'olor'>::Value;
 		const uint64_t Depth			= ConstHash64<'dept', 'h'>::Value;
+
+		const uint64_t ShadowDepthMap	= ConstHash64<'shad', 'owdm'>::Value;
 	}
 }}
 

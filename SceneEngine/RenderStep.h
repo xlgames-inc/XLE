@@ -28,14 +28,14 @@ namespace SceneEngine
 	class IRenderStep
 	{
 	public:
-		virtual std::shared_ptr<IViewDelegate> CreateViewDelegate() = 0;
+		virtual std::shared_ptr<IViewDelegate> CreateViewDelegate();
 		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const = 0;
 		virtual void Execute(
 			RenderCore::IThreadContext& threadContext,
 			RenderCore::Techniques::ParsingContext& parsingContext,
 			LightingParserContext& lightingParserContext,
-			const RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate) = 0;
 		virtual ~IRenderStep();
 	};
 }

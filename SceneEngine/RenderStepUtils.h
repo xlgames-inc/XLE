@@ -4,7 +4,11 @@
 
 #include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Techniques/Drawables.h"
+#include "../Utility/ParameterBox.h"
 #include <memory>
+
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; class IRenderStateDelegate; class ProjectionDesc; }}
 
 namespace SceneEngine
 {
@@ -23,8 +27,8 @@ namespace SceneEngine
             if (_parsingContext)
                 _parsingContext->SetRenderStateDelegate(std::move(_oldResolver));
         }
-        RenderStateDelegateChangeMarker(const RenderStateDelegateChangeMarker&);
-        RenderStateDelegateChangeMarker& operator=(const RenderStateDelegateChangeMarker&);
+        RenderStateDelegateChangeMarker(const RenderStateDelegateChangeMarker&) = delete;
+        RenderStateDelegateChangeMarker& operator=(const RenderStateDelegateChangeMarker&) = delete;
     private:
         std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _oldResolver;
         RenderCore::Techniques::ParsingContext* _parsingContext;
@@ -37,51 +41,28 @@ namespace SceneEngine
 		ParameterBox _seqShaderSelectors;
 	};
 
-    static void ExecuteDrawables(
+    void ExecuteDrawables(
         RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
 		ExecuteDrawablesContext& context,
 		const RenderCore::Techniques::DrawablesPacket& drawables,
         unsigned techniqueIndex,
-		const char name[])
-    {
-		using namespace RenderCore;
-        CATCH_ASSETS_BEGIN
-            GPUAnnotation anno(threadContext, name);
-			for (auto d=drawables._drawables.begin(); d!=drawables._drawables.end(); ++d)
-				RenderCore::Techniques::Draw(
-					threadContext, 
-					parserContext,
-					techniqueIndex,
-					context._sequencerTechnique,
-					&context._seqShaderSelectors,
-					*(Techniques::Drawable*)d.get());
-        CATCH_ASSETS_END(parserContext)
-    }
+		const char name[]);
 
-    static bool BatchHasContent(const RenderCore::Techniques::DrawablesPacket& drawables)
-    {
-        return !drawables._drawables.empty();
-    }
+    bool BatchHasContent(const RenderCore::Techniques::DrawablesPacket& drawables);
 
 	class StateSetResolvers
     {
     public:
         class Desc {};
 
-        using Resolver = std::shared_ptr<Techniques::IRenderStateDelegate>;
+        using Resolver = std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>;
         Resolver _forward, _deferred, _depthOnly;
 
-        StateSetResolvers(const Desc&)
-        {
-            _forward = Techniques::CreateRenderStateDelegate_Forward();
-            _deferred = Techniques::CreateRenderStateDelegate_Deferred();
-            _depthOnly = Techniques::CreateRenderStateDelegate_DepthOnly();
-        }
+        StateSetResolvers(const Desc&);
     };
 
-    StateSetResolvers& GetStateSetResolvers() { return ConsoleRig::FindCachedBox2<StateSetResolvers>(); }
-
+    StateSetResolvers& GetStateSetResolvers();
 
 	class LightResolveResourcesRes
     {
@@ -91,6 +72,8 @@ namespace SceneEngine
         bool        _hasSpecularIBL;
     };
 
+	class ILightingParserDelegate;
+
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         RenderCore::Metal::DeviceContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext,
@@ -99,13 +82,6 @@ namespace SceneEngine
 	void LightingParser_SetGlobalTransform(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
-        const RenderCore::Techniques::ProjectionDesc& projDesc)
-    {
-        parserContext.GetProjectionDesc() = projDesc;
-        auto globalTransform = BuildGlobalTransformConstants(projDesc);
-        parserContext.SetGlobalCB(
-            *Metal::DeviceContext::Get(context), Techniques::TechniqueContext::CB_GlobalTransform,
-            &globalTransform, sizeof(globalTransform));
-    }
+        const RenderCore::Techniques::ProjectionDesc& projDesc);
 
 }
