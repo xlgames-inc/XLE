@@ -24,15 +24,15 @@ namespace RenderCore
 
 		void ClearCaches();
 
-        MinimalShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler);
+        MinimalShaderSource(std::shared_ptr<ILowLevelCompiler> compiler);
         ~MinimalShaderSource();
 
     protected:
-        std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
+        std::shared_ptr<ILowLevelCompiler> _compiler;
 
         std::shared_ptr<::Assets::ArtifactFuture> Compile(
             const void* shaderInMemory, size_t size,
-            const ShaderService::ResId& resId,
+            const ILowLevelCompiler::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;
     };
 }

@@ -44,14 +44,14 @@
 
 namespace RenderCore { namespace Metal_DX11
 {
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateVulkanPrecompiler();
+    std::shared_ptr<ILowLevelCompiler> CreateVulkanPrecompiler();
 }}
 
 namespace RenderCore { namespace Metal_Vulkan
 {
     using ::Assets::ResChar;
 
-    class HLSLToSPIRVCompiler : public ShaderService::ILowLevelCompiler
+    class HLSLToSPIRVCompiler : public ILowLevelCompiler
     {
     public:
         virtual void AdaptShaderModel(
@@ -64,26 +64,26 @@ namespace RenderCore { namespace Metal_Vulkan
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            const ShaderService::ResId& shaderPath,
+            const ResId& shaderPath,
             StringSection<::Assets::ResChar> definesTable,
-			IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
+			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
 
         HLSLToSPIRVCompiler(
-            std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler, 
+            std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
             const std::shared_ptr<PipelineLayout>& graphicsPipelineLayout,
             const std::shared_ptr<PipelineLayout>& computePipelineLayout);
         ~HLSLToSPIRVCompiler();
 
     private:
-        std::shared_ptr<ShaderService::ILowLevelCompiler>   _hlslCompiler;
-        std::shared_ptr<PipelineLayout>                     _graphicsPipelineLayout;
-        std::shared_ptr<PipelineLayout>                     _computePipelineLayout;
+        std::shared_ptr<ILowLevelCompiler>		_hlslCompiler;
+        std::shared_ptr<PipelineLayout>         _graphicsPipelineLayout;
+        std::shared_ptr<PipelineLayout>         _computePipelineLayout;
 
         static std::weak_ptr<HLSLToSPIRVCompiler> s_instance;
-        friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
     };
 
         ////////////////////////////////////////////////////////////
@@ -458,9 +458,9 @@ namespace RenderCore { namespace Metal_Vulkan
         /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        const ShaderService::ResId& shaderPath,
+        const ILowLevelCompiler::ResId& shaderPath,
         StringSection<::Assets::ResChar> definesTable,
-		IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
+		IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
     {
 #if defined(HAS_SPIRV_HEADERS)
         // So, this is a complex process for converting from HLSL source code into SPIR-V.
@@ -529,7 +529,7 @@ namespace RenderCore { namespace Metal_Vulkan
     std::weak_ptr<HLSLToSPIRVCompiler> HLSLToSPIRVCompiler::s_instance;
 
     HLSLToSPIRVCompiler::HLSLToSPIRVCompiler(
-        std::shared_ptr<ShaderService::ILowLevelCompiler> hlslCompiler, 
+        std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
         const std::shared_ptr<PipelineLayout>& graphicsPipelineLayout,
         const std::shared_ptr<PipelineLayout>& computePipelineLayout) 
     : _hlslCompiler(std::move(hlslCompiler))
@@ -553,7 +553,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		#endif
     }
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
         auto result = HLSLToSPIRVCompiler::s_instance.lock();
         if (result) return std::move(result);

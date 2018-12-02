@@ -41,7 +41,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
     };
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
     void DestroyGLESCachedShaders();
 }}

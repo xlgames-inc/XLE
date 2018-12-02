@@ -27,12 +27,13 @@ namespace Assets
 
 namespace RenderCore
 {
-    class ShaderService
+	class ILowLevelCompiler
     {
     public:
-        using ResChar = ::Assets::ResChar;
-        
-        class ResId
+        using Payload = ::Assets::Blob;
+		using ResChar = ::Assets::ResChar;
+
+		class ResId
         {
         public:
             ResChar     _filename[MaxPath];
@@ -48,6 +49,39 @@ namespace RenderCore
         protected:
             ResId(StringSection<ResChar> initializer);
         };
+
+		/* Represents source line number remapping (eg, during some preprocessing step) */
+        struct SourceLineMarker
+        {
+            std::string _sourceName;
+            unsigned    _sourceLine;
+            unsigned    _processedSourceLine;
+        };
+
+        virtual void AdaptShaderModel(
+            ResChar destination[], 
+            const size_t destinationCount,
+			StringSection<ResChar> source) const = 0;
+
+        virtual bool DoLowLevelCompile(
+            /*out*/ Payload& payload,
+            /*out*/ Payload& errors,
+            /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
+            const void* sourceCode, size_t sourceCodeLength,
+            const ResId& shaderPath,
+            StringSection<::Assets::ResChar> definesTable,
+            IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const = 0;
+
+        virtual std::string MakeShaderMetricsString(
+            const void* byteCode, size_t byteCodeSize) const = 0;
+
+        virtual ~ILowLevelCompiler();
+    };
+
+    class ShaderService
+    {
+    public:
+       using ResChar = ::Assets::ResChar;
         
         class ShaderHeader
         {
@@ -78,39 +112,6 @@ namespace RenderCore
             virtual ~IShaderSource();
         };
 
-        /* Represents source line number remapping (eg, during some preprocessing step) */
-        struct SourceLineMarker
-        {
-            std::string _sourceName;
-            unsigned    _sourceLine;
-            unsigned    _processedSourceLine;
-        };
-
-        class ILowLevelCompiler
-        {
-        public:
-            using Payload = ::Assets::Blob;
-
-            virtual void AdaptShaderModel(
-                ResChar destination[], 
-                const size_t destinationCount,
-				StringSection<ResChar> source) const = 0;
-
-            virtual bool DoLowLevelCompile(
-                /*out*/ Payload& payload,
-                /*out*/ Payload& errors,
-                /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
-                const void* sourceCode, size_t sourceCodeLength,
-                const ResId& shaderPath,
-                StringSection<::Assets::ResChar> definesTable,
-                IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const = 0;
-
-            virtual std::string MakeShaderMetricsString(
-                const void* byteCode, size_t byteCodeSize) const = 0;
-
-            virtual ~ILowLevelCompiler();
-        };
-
         std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
@@ -122,7 +123,7 @@ namespace RenderCore
 
         void AddShaderSource(std::shared_ptr<IShaderSource> shaderSource);
 
-        static ResId MakeResId(
+        static ILowLevelCompiler::ResId MakeResId(
             StringSection<::Assets::ResChar> initializer, 
             const ILowLevelCompiler* compiler = nullptr);
 

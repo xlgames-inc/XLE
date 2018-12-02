@@ -16,6 +16,7 @@
 #include "Metal/Format.h"
 #include "Metal/TextureView.h"
 #include "Metal/ObjectFactory.h"
+#include "Metal/Shader.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
@@ -347,6 +348,11 @@ namespace RenderCore { namespace ImplDX11
 		auto libVersion = ConsoleRig::GetLibVersionDesc();
         return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
+
+	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
+	{
+		return Metal_DX11::CreateLowLevelShaderCompiler(*this);
+	}
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 

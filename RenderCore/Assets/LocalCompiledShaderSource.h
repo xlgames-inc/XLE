@@ -26,7 +26,7 @@ namespace RenderCore { namespace Assets
         {
         public:
             std::string _processedSource;
-            std::vector<ShaderService::SourceLineMarker> _lineMarkers;
+            std::vector<ILowLevelCompiler::SourceLineMarker> _lineMarkers;
             std::vector<::Assets::DependentFileState> _dependencies;
         };
 
@@ -61,13 +61,13 @@ namespace RenderCore { namespace Assets
         void SetWriteErrorLogFiles(bool newValue) { _writeErrorLogFiles = newValue; }
 
         LocalCompiledShaderSource(
-            std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+            std::shared_ptr<ILowLevelCompiler> compiler,
             std::shared_ptr<ISourceCodePreprocessor> preprocessor,
             const DeviceDesc& devDesc);
         ~LocalCompiledShaderSource();
     protected:
         std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
-        std::shared_ptr<ShaderService::ILowLevelCompiler> _compiler;
+        std::shared_ptr<ILowLevelCompiler> _compiler;
         std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
         bool _writeErrorLogFiles = false;
 

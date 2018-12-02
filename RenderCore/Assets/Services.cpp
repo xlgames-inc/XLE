@@ -8,8 +8,6 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialCompiler.h"
 #include "MaterialScaffold.h"   // just for MaterialScaffold::CompileProcessType
-#include "../Metal/Metal.h"
-#include "../Metal/Shader.h"            // (for Metal::CreateLowLevelShaderCompiler)
 #include "../IDevice.h"
 #include "../Init.h"
 #include "../ShaderService.h"
@@ -30,7 +28,7 @@ namespace RenderCore { namespace Assets
         _shaderService = std::make_unique<ShaderService>();
 
         auto shaderSource = std::make_shared<LocalCompiledShaderSource>(
-            Metal::CreateLowLevelShaderCompiler(*device),
+            device->CreateShaderCompiler(),
 			nullptr,
             device->GetDesc());
         _shaderService->AddShaderSource(shaderSource);

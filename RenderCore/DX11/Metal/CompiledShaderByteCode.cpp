@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_DX11
 
     static const auto s_shaderReflectionInterfaceGuid = IID_ID3D11ShaderReflection; // __uuidof(ID3D::ShaderReflection); // 
 
-    class D3DShaderCompiler : public ShaderService::ILowLevelCompiler
+    class D3DShaderCompiler : public ILowLevelCompiler
     {
     public:
         virtual void AdaptShaderModel(
@@ -52,9 +52,9 @@ namespace RenderCore { namespace Metal_DX11
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            const ShaderService::ResId& shaderPath,
+            const ResId& shaderPath,
 			StringSection<::Assets::ResChar> definesTable,
-			IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const;
+			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -103,7 +103,7 @@ namespace RenderCore { namespace Metal_DX11
         HMODULE GetShaderCompileModule() const;
 
         static std::weak_ptr<D3DShaderCompiler> s_instance;
-        friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
         std::vector<D3D10_SHADER_MACRO> _fixedDefines;
     };
@@ -1186,9 +1186,9 @@ namespace RenderCore { namespace Metal_DX11
         /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        const ShaderService::ResId& shaderPath,
+        const ResId& shaderPath,
 		StringSection<::Assets::ResChar> definesTable,
-		IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
+		IteratorRange<const SourceLineMarker*> sourceLineMarkers) const
     {
             // This is called (typically in a background thread)
             // after the shader data has been loaded from disk.
@@ -1580,7 +1580,7 @@ namespace RenderCore { namespace Metal_DX11
         return moveptr(reflectionTemp);
     }
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
         auto result = D3DShaderCompiler::s_instance.lock();
         if (result) return std::move(result);
@@ -1596,7 +1596,7 @@ namespace RenderCore { namespace Metal_DX11
         return std::move(result);
     }
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateVulkanPrecompiler()
+    std::shared_ptr<ILowLevelCompiler> CreateVulkanPrecompiler()
     {
         D3D10_SHADER_MACRO fixedDefines[] = { 
             MakeShaderMacro("VULKAN", "1")

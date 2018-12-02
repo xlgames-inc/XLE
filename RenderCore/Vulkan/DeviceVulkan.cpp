@@ -14,6 +14,7 @@
 #include "Metal/Pools.h"
 #include "Metal/Resource.h"
 #include "Metal/PipelineLayout.h"
+#include "Metal/Shader.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/AttachablePtr.h"
@@ -774,6 +775,11 @@ namespace RenderCore { namespace ImplVulkan
 	FormatCapability    Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
 	{
 		return FormatCapability::Supported;
+	}
+
+	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
+	{
+		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this);
 	}
 
     static const char* s_underlyingApi = "Vulkan";

@@ -201,6 +201,8 @@ namespace RenderCore { namespace ImplVulkan
 
 		VkDevice	    GetUnderlyingDevice() { return _underlying.get(); }
 
+		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler();
+
         Device();
         ~Device();
     protected:

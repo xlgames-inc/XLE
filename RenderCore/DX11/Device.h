@@ -99,6 +99,8 @@ namespace RenderCore { namespace ImplDX11
 
         ID3D::Device*           GetUnderlyingDevice() { return _underlying.get(); }
 
+		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler();
+
         Device();
         ~Device();
 

@@ -17,7 +17,7 @@ namespace RenderCore
 
     auto MinimalShaderSource::Compile(
         const void* shaderInMemory, size_t size,
-        const ShaderService::ResId& resId,
+        const ILowLevelCompiler::ResId& resId,
 		StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         using Payload = ::Assets::Blob;
@@ -55,7 +55,7 @@ namespace RenderCore
     {
         return Compile(
             shaderInMemory.begin(), shaderInMemory.size(),
-            ShaderService::ResId(
+            ILowLevelCompiler::ResId(
                 StringMeld<64>() << "ShaderInMemory_" << Hash64(shaderInMemory.begin(), shaderInMemory.end()), 
                 entryPoint, shaderModel),
             definesTable);
@@ -65,7 +65,7 @@ namespace RenderCore
 	{
 	}
 
-    MinimalShaderSource::MinimalShaderSource(std::shared_ptr<ShaderService::ILowLevelCompiler> compiler)
+    MinimalShaderSource::MinimalShaderSource(std::shared_ptr<ILowLevelCompiler> compiler)
     : _compiler(compiler) {}
     MinimalShaderSource::~MinimalShaderSource() {}
 

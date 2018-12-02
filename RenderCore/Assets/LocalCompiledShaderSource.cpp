@@ -34,7 +34,7 @@ namespace RenderCore { namespace Assets
 {
     static const bool CompileInBackground = true;
     using ::Assets::ResChar;
-    using ResId = ShaderService::ResId;
+    using ResId = ILowLevelCompiler::ResId;
 
         ////////////////////////////////////////////////////////////
 
@@ -260,12 +260,12 @@ namespace RenderCore { namespace Assets
 
         Marker(
             StringSection<::Assets::ResChar> initializer, 
-            const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
+            const ILowLevelCompiler::ResId& res, StringSection<::Assets::ResChar> definesTable,
             const ::Assets::IntermediateAssets::Store& store,
             std::shared_ptr<LocalCompiledShaderSource> compiler);
         ~Marker();
     protected:
-        ShaderService::ResId _res;
+        ILowLevelCompiler::ResId _res;
         ::Assets::rstring _definesTable;
         ::Assets::rstring _initializer;
         std::weak_ptr<LocalCompiledShaderSource> _compiler;
@@ -273,7 +273,7 @@ namespace RenderCore { namespace Assets
     };
 
     static uint64 GetTarget(
-		const ShaderService::ResId& res, const ::Assets::rstring& definesTable,
+		const ILowLevelCompiler::ResId& res, const ::Assets::rstring& definesTable,
         /*out*/ ::Assets::ResChar archiveName[], size_t archiveNameCount,
         /*out*/ ::Assets::ResChar depName[], size_t depNameCount)
     {
@@ -463,7 +463,7 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::Marker::Marker(
-        StringSection<::Assets::ResChar> initializer, const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
+        StringSection<::Assets::ResChar> initializer, const ILowLevelCompiler::ResId& res, StringSection<::Assets::ResChar> definesTable,
         const ::Assets::IntermediateAssets::Store& store,
         std::shared_ptr<LocalCompiledShaderSource> compiler)
     : _initializer(initializer.AsString()), _res(res), _definesTable(definesTable.AsString()), _compiler(std::move(compiler)), _store(&store)
@@ -539,7 +539,7 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::LocalCompiledShaderSource(
-        std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+        std::shared_ptr<ILowLevelCompiler> compiler,
         std::shared_ptr<ISourceCodePreprocessor> preprocessor,
         const DeviceDesc& devDesc)
     : _compiler(std::move(compiler))

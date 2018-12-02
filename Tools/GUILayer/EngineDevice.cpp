@@ -16,6 +16,7 @@
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
