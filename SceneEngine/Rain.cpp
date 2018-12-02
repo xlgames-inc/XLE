@@ -105,8 +105,8 @@ namespace SceneEngine
 				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
 				usi);
 
-            auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
+            auto balancedNoise 
+                = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
 
             ConstantBufferView cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource() };
@@ -274,7 +274,7 @@ namespace SceneEngine
             auto cb0 = MakeMetalCB(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
+                = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
             ConstantBufferView cbs[]				 = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             
@@ -441,7 +441,7 @@ namespace SceneEngine
             auto cb0 = MakeMetalCB(&simParam, sizeof(simParam));
 
             auto& balancedNoise 
-                = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT");
+                =* ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize();
             ConstantBufferView cbs[]      = { &cb0 };
             const Metal::ShaderResourceView* srvs[] = { &balancedNoise.GetShaderResource(), &resources._simParticlesSRV, &depthsSRV, &normalsSRV };
             

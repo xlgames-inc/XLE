@@ -19,9 +19,9 @@ namespace SceneEngine
     class SkyTextureParts
     {
     public:
-        const RenderCore::Assets::DeferredShaderResource*      _faces12;
-        const RenderCore::Assets::DeferredShaderResource*      _faces34;
-        const RenderCore::Assets::DeferredShaderResource*      _face5;
+        ::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>	_faces12;
+        ::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>	_faces34;
+        ::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>	_face5;
         int _projectionType;
 
         bool IsGood() const { return _projectionType > 0; }

@@ -361,7 +361,7 @@ namespace RenderOverlays
                 SetShader(i->_topology, i->_vertexFormat, i->_projMode, i->_pixelShaderName, MakeIteratorRange(vbs));
                 if (!i->_textureName.empty()) {
                     _metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-                        ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(i->_textureName.c_str()).GetShaderResource()));
+                        ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(i->_textureName.c_str())->Actualize()->GetShaderResource()));
                 }
                 _metalContext->Draw(i->_vertexCount);
             }

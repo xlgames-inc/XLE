@@ -352,7 +352,7 @@ namespace Sample
 				const Metal_Vulkan::ConstantBuffer* cbs[] = { &globalTransBuffer, &localTransBuffer };
                 
                 #if GFXAPI_ACTIVE == GFXAPI_VULKAN
-                    auto& tex = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L");
+                    auto& tex = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L")->Actualize();
                     const Metal_Vulkan::ShaderResourceView* srvs[] = { &tex.GetShaderResource() };
                 #else
                     auto& factory = vkContext->GetFactory();

@@ -74,7 +74,7 @@ namespace SceneEngine
         context->Bind(::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:fullscreen:vs_*", "xleres/Ocean/FFTDebugging.psh:copy:ps_*"));
         context->Bind(MakeResourceList(box._workingTextureRealRTV, box._workingTextureImaginaryRTV), nullptr);
-        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds").GetShaderResource()));
+        context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("game/objects/env/nature/grassland/plant/co_gland_weed_a_df.dds")->Actualize()->GetShaderResource()));
         SetupVertexGeneratorShader(*context);
         context->Draw(4);
         savedTargets.ResetToOldTargets(*context);

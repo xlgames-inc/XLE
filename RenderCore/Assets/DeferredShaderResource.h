@@ -7,7 +7,7 @@
 #pragma once
 
 #include "../Types_Forward.h"
-#include "../Metal/Forward.h"
+#include "../Metal/TextureView.h"
 #include "../../Assets/AssetsCore.h"
 
 namespace RenderCore { namespace Assets 
@@ -44,30 +44,27 @@ namespace RenderCore { namespace Assets
     class DeferredShaderResource
     {
     public:
-        const Metal::ShaderResourceView&        GetShaderResource() const;
-        const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
-        StringSection<::Assets::ResChar>		Initializer() const;
+		const Metal::ShaderResourceView&        GetShaderResource() const			{ return _srv; }
+        const ::Assets::DepValPtr&				GetDependencyValidation() const     { return _depVal; }
+		StringSection<>							Initializer() const					{ return MakeStringSection(_initializer); }
 
         static Metal::ShaderResourceView LoadImmediately(StringSection<::Assets::ResChar> initializer);
         static Format LoadFormat(StringSection<::Assets::ResChar> initializer);
         static bool IsDXTNormalMap(StringSection<::Assets::ResChar> initializer);
 
-        ::Assets::AssetState GetAssetState() const;
-        ::Assets::AssetState TryResolve() const;
-
-        explicit DeferredShaderResource(StringSection<::Assets::ResChar> resourceName);
-        DeferredShaderResource(DeferredShaderResource&& moveFrom) never_throws;
-        DeferredShaderResource& operator=(DeferredShaderResource&& moveFrom) never_throws;
+        DeferredShaderResource(
+			const Metal::ShaderResourceView& srv,
+			const std::string& initializer,
+			const ::Assets::DepValPtr& depVal);
         ~DeferredShaderResource();
 
-        DeferredShaderResource(const DeferredShaderResource&) = delete;
-        DeferredShaderResource& operator=(const DeferredShaderResource&) = delete;
+		static void ConstructToFuture(
+			::Assets::AssetFuture<DeferredShaderResource>&,
+			StringSection<> initializer);
     private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-        std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
-        
-        DEBUG_ONLY(::Assets::ResChar _initializer[MaxPath];)
+		Metal::ShaderResourceView _srv;
+        std::string _initializer;
+		::Assets::DepValPtr _depVal;
     };
     
 

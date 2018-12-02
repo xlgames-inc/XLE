@@ -99,11 +99,11 @@ namespace SceneEngine
             //  this would be more efficient if we could combine the shader
             //  resources into 1 texture array... but we don't have support
             //  for that currently.
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._faces12->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._faces12->Actualize()->GetShaderResource()));
         context.Draw(6*2);
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._faces34->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._faces34->Actualize()->GetShaderResource()));
         context.Draw(6*2, 6*2);
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._face5->GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(parts._face5->Actualize()->GetShaderResource()));
         context.Draw(  6, 6*2*2);
     }
 
@@ -305,17 +305,17 @@ namespace SceneEngine
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_12");
                 if (*halfCubePart)
                     XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-                _faces12 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                _faces12 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
 
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_34");
                 if (*halfCubePart)
                     XlCopyString(&nameBuffer[beforePart+3], MaxPath-beforePart-3, &skyTextureName[beforePart+3]);
-                _faces34 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                _faces34 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
 
                 XlCopyString(&nameBuffer[beforePart], MaxPath-beforePart, "_5");
                 if (*halfCubePart)
                     XlCopyString(&nameBuffer[beforePart+2], MaxPath-beforePart-2, &skyTextureName[beforePart+3]);
-                _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
+                _face5 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(nameBuffer);
             } else {
                 switch (resourceType) {
                 case GlobalLightingDesc::SkyTextureType::Cube:                  _projectionType = 5; break;
@@ -323,7 +323,7 @@ namespace SceneEngine
                 default:
                 case GlobalLightingDesc::SkyTextureType::Equirectangular:       _projectionType = 3; break;
                 }
-                _face5 = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(skyTextureName);
+                _face5 = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(skyTextureName);
             }
         } else {
             _faces12 = _faces34 = _face5 = nullptr;
@@ -341,20 +341,20 @@ namespace SceneEngine
         if (!IsGood()) return ~0u;
 
         if (_projectionType==1) {
-			if (_faces12->TryResolve() != ::Assets::AssetState::Ready
-				|| _faces34->TryResolve() != ::Assets::AssetState::Ready
-				|| _face5->TryResolve() != ::Assets::AssetState::Ready)
+			if (_faces12->GetAssetState() != ::Assets::AssetState::Ready
+				|| _faces34->GetAssetState() != ::Assets::AssetState::Ready
+				|| _face5->GetAssetState() != ::Assets::AssetState::Ready)
 				return ~0u;
 
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-                bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
+                bindSlot, _faces12->Actualize()->GetShaderResource(), _faces34->Actualize()->GetShaderResource(), _face5->Actualize()->GetShaderResource()));
         } else {
-			if (_face5->TryResolve() != ::Assets::AssetState::Ready)
+			if (_face5->GetAssetState() != ::Assets::AssetState::Ready)
 				return ~0u;
 
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot,
-                _face5->GetShaderResource()));
+                _face5->Actualize()->GetShaderResource()));
 		}
 
         return _projectionType;
@@ -367,20 +367,20 @@ namespace SceneEngine
         if (!IsGood()) return ~0u;
 
         if (_projectionType==1) {
-			if (_faces12->TryResolve() != ::Assets::AssetState::Ready
-				|| _faces34->TryResolve() != ::Assets::AssetState::Ready
-				|| _face5->TryResolve() != ::Assets::AssetState::Ready)
+			if (_faces12->GetAssetState() != ::Assets::AssetState::Ready
+				|| _faces34->GetAssetState() != ::Assets::AssetState::Ready
+				|| _face5->GetAssetState() != ::Assets::AssetState::Ready)
 				return ~0u;
 
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(
-                bindSlot, _faces12->GetShaderResource(), _faces34->GetShaderResource(), _face5->GetShaderResource()));
+                bindSlot, _faces12->Actualize()->GetShaderResource(), _faces34->Actualize()->GetShaderResource(), _face5->Actualize()->GetShaderResource()));
         } else {
-			if (_face5->TryResolve() != ::Assets::AssetState::Ready)
+			if (_face5->GetAssetState() != ::Assets::AssetState::Ready)
 				return ~0u;
 
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(
                 bindSlot,
-                _face5->GetShaderResource()));
+                _face5->Actualize()->GetShaderResource()));
 		}
 
         return _projectionType;

@@ -10,25 +10,21 @@
 #include "Services.h"
 #include "../Metal/TextureView.h"
 #include "../Format.h"
-#include "../../Assets/AsyncLoadOperation.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../BufferUploads/DataPacket.h"
 #include "../../BufferUploads/ResourceLocator.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/AssetFuture.h"
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/DepVal.h"
 #include "../../Assets/IntermediateAssets.h"	// (for MakeIntermediateName)
-#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../ConsoleRig/Log.h"
+#include "../../Assets/CompileAndAsyncManager.h"
+
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/Threading/CompletionThreadPool.h"
-#include "../../Foreign/tinyxml2-master/tinyxml2.h"
-
+#include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/StreamDOM.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include <utility>
-
-#include "../../Core/WinAPI/IncludeWindows.h"
 
 namespace RenderCore { namespace Assets 
 {
@@ -36,100 +32,57 @@ namespace RenderCore { namespace Assets
 
     enum class SourceColorSpace { SRGB, Linear, Unspecified };
 
-    class MetadataLoadMarker : public ::Assets::GenericFuture, public ::Assets::AsyncLoadOperation
-    {
-    public:
-        SourceColorSpace _colorSpace;
-
-        virtual void Complete(const void* buffer, size_t bufferSize);
-		virtual void OnFailure();
-        MetadataLoadMarker() : _colorSpace(SourceColorSpace::Unspecified) {}
-    };
-
-    bool LoadColorSpaceFromMetadataFile(SourceColorSpace& result, const void* start, size_t size)
-    {
-        result = SourceColorSpace::Unspecified;
-
-        if (!start || !size) return false;
-
-        // skip over the "byte order mark", if it exists...
-        if (size >= 3 && ((const uint8*)start)[0] == 0xef && ((const uint8*)start)[1] == 0xbb && ((const uint8*)start)[2] == 0xbf) {
-            start = PtrAdd(start, 3);
-            size -= 3;
-        }
-
-        using namespace tinyxml2;
-        XMLDocument doc;
-	    auto e = doc.Parse((const char*)start, size);
-        if (e != XML_SUCCESS) return false;
-
-        const auto* root = doc.RootElement();
-        if (root) {
-            auto colorSpace = root->FindAttribute("colorSpace");
-            if (colorSpace) {
-                if (!XlCompareStringI(colorSpace->Value(), "srgb")) { result = SourceColorSpace::SRGB; }
-                else if (!XlCompareStringI(colorSpace->Value(), "linear")) { result = SourceColorSpace::Linear; }
-            }
-        }
-
-        return true;
-    }
-
-    void MetadataLoadMarker::Complete(const void* buffer, size_t bufferSize)
-    {
-            // Attempt to parse the xml in our data buffer...
-        if (!LoadColorSpaceFromMetadataFile(_colorSpace, buffer, bufferSize)) {
-            SetState(::Assets::AssetState::Invalid);
-			return;
-		}
-
-        SetState(::Assets::AssetState::Ready);
-    }
-
-	void MetadataLoadMarker::OnFailure() 
+	class TextureMetaData
 	{
-		SetState(::Assets::AssetState::Invalid);
+	public:
+		SourceColorSpace _colorSpace = SourceColorSpace::Unspecified;
+		const ::Assets::DepValPtr&				GetDependencyValidation() const     { return _depVal; }
+
+		TextureMetaData(
+			InputStreamFormatter<utf8>& input, 
+			const ::Assets::DirectorySearchRules&, 
+			const ::Assets::DepValPtr& depVal);
+	private:
+		::Assets::DepValPtr _depVal;
+	};
+
+	TextureMetaData::TextureMetaData(
+		InputStreamFormatter<utf8>& input, 
+		const ::Assets::DirectorySearchRules&, 
+		const ::Assets::DepValPtr& depVal)
+	{
+		Document<InputStreamFormatter<utf8>> dom(input);
+		auto colorSpace = dom.FirstChild().Attribute(u("colorSpace"));
+		if (colorSpace) {
+			if (!XlCompareStringI(colorSpace.Value(), u("srgb"))) { _colorSpace = SourceColorSpace::SRGB; }
+            else if (!XlCompareStringI(colorSpace.Value(), u("linear"))) { _colorSpace = SourceColorSpace::Linear; }
+		}
 	}
-
-    class DeferredShaderResource::Pimpl
-    {
-    public:
-        BufferUploads::TransactionID _transaction;
-        intrusive_ptr<BufferUploads::ResourceLocator> _locator;
-        Metal::ShaderResourceView _srv;
-
-        SourceColorSpace _colSpaceRequestString;
-        SourceColorSpace _colSpaceDefault;
-        std::shared_ptr<MetadataLoadMarker> _metadataMarker;
-    };
 
     class DecodedInitializer
     {
     public:
-        FileNameSplitter<ResChar> _splitter;
-
         SourceColorSpace    _colSpaceRequestString;
         SourceColorSpace    _colSpaceDefault;
         bool                _generateMipmaps;
 
-        DecodedInitializer(StringSection<ResChar> initializer);
+        DecodedInitializer(const FileNameSplitter<ResChar>& initializer);
     };
 
-    DecodedInitializer::DecodedInitializer(StringSection<ResChar> initializer)
-    : _splitter(initializer)
+    DecodedInitializer::DecodedInitializer(const FileNameSplitter<ResChar>& initializer)
     {
         _generateMipmaps = true;
         _colSpaceRequestString = SourceColorSpace::Unspecified;
         _colSpaceDefault = SourceColorSpace::Unspecified;
 
-        for (auto c:_splitter.Parameters()) {
+        for (auto c:initializer.Parameters()) {
             if (c == 'l' || c == 'L') { _colSpaceRequestString = SourceColorSpace::Linear; }
             if (c == 's' || c == 'S') { _colSpaceRequestString = SourceColorSpace::SRGB; }
             if (c == 't' || c == 'T') { _generateMipmaps = false; }
         }
 
         if (_colSpaceRequestString == SourceColorSpace::Unspecified) {
-            if (XlFindStringI(initializer, "_ddn")) {
+            if (XlFindStringI(initializer.File(), "_ddn")) {
                 _colSpaceDefault = SourceColorSpace::Linear;
             } else {
                 _colSpaceDefault = SourceColorSpace::SRGB;
@@ -154,20 +107,46 @@ namespace RenderCore { namespace Assets
 		XlCatString(buffer, Count, splitter.AllExceptParameters());
 	}
 
-    DeferredShaderResource::DeferredShaderResource(StringSection<ResChar> initializer)
+	class TransactionMonitor
+	{
+	public:
+		BufferUploads::TransactionID GetId() const { return _id; }
+		TransactionMonitor(BufferUploads::TransactionID id = ~BufferUploads::TransactionID(0)) : _id(id) {}
+		~TransactionMonitor()
+		{
+			if (_id != ~BufferUploads::TransactionID(0))
+				Services::GetBufferUploads().Transaction_End(_id);
+		}
+		TransactionMonitor(TransactionMonitor&& moveFrom)
+		: _id(moveFrom._id)
+		{
+			moveFrom._id = ~BufferUploads::TransactionID(0);
+		}
+		TransactionMonitor& operator=(TransactionMonitor&& moveFrom)
+		{
+			if (_id != ~BufferUploads::TransactionID(0)) {
+				Services::GetBufferUploads().Transaction_End(_id);
+				_id = ~BufferUploads::TransactionID(0);
+			}
+			std::swap(_id, moveFrom._id);
+			return *this;
+		}
+	private:
+		BufferUploads::TransactionID _id;
+	};
+
+	void DeferredShaderResource::ConstructToFuture(
+		::Assets::AssetFuture<DeferredShaderResource>& future,
+		StringSection<> initializer)
     {
-        DEBUG_ONLY(XlCopyString(_initializer, dimof(_initializer), initializer);)
-        _pimpl = std::make_unique<Pimpl>();
-
-        _validationCallback = std::make_shared<::Assets::DependencyValidation>();
-
             // parse initialiser for flags
-        DecodedInitializer init(initializer);
-        _pimpl->_colSpaceRequestString = init._colSpaceRequestString;
-        _pimpl->_colSpaceDefault = init._colSpaceDefault;
+		auto splitter = MakeFileNameSplitter(initializer);
+        DecodedInitializer init(splitter.Parameters());
+
+		std::shared_ptr<::Assets::AssetFuture<TextureMetaData>> metaDataFuture;
 
 		::Assets::ResChar filename[MaxPath];
-        if (_pimpl->_colSpaceRequestString == SourceColorSpace::Unspecified) {
+        if (init._colSpaceRequestString == SourceColorSpace::Unspecified) {
                 // No color space explicitly requested. We need to calculate the default
                 // color space for this texture...
                 // Most textures should be in SRGB space. However, some texture represent
@@ -183,12 +162,10 @@ namespace RenderCore { namespace Assets
 
                 // trigger a load of the metadata file (which should proceed in the background)
             
-            XlCopyString(filename, init._splitter.AllExceptParameters());
+            XlCopyString(filename, splitter.AllExceptParameters());
             XlCatString(filename, ".metadata");
-            RegisterFileDependency(_validationCallback, filename);
-
-            _pimpl->_metadataMarker = std::make_shared<MetadataLoadMarker>();
-			MetadataLoadMarker::Enqueue(_pimpl->_metadataMarker, filename, ConsoleRig::GlobalServices::GetInstance().GetShortTaskThreadPool());
+			if (::Assets::MainFileSystem::TryGetDesc(filename)._state == ::Assets::FileDesc::State::Normal)
+				metaDataFuture = ::Assets::MakeAsset<TextureMetaData>(filename);
         }
 
         using namespace BufferUploads;
@@ -198,130 +175,90 @@ namespace RenderCore { namespace Assets
 		// two names -- a possible shadowing file, and the original file as well. But don't do this for
 		// DDS files. We'll assume they do not have a shadowing file.
 		intrusive_ptr<DataPacket> pkt;
-		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
+		const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
-			BuildRequestString(filename, init._splitter);
+			BuildRequestString(filename, splitter);
 			pkt = CreateStreamingTextureSource(MakeStringSection(filename), flags);
 		} else {
-			pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
+			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
 		}
 
-        _pimpl->_transaction = Services::GetBufferUploads().Transaction_Begin(
+        auto transactionId = Services::GetBufferUploads().Transaction_Begin(
             CreateDesc(
                 BindFlag::ShaderResource,
                 0, GPUAccess::Read,
                 TextureDesc::Empty(), initializer),
             pkt.get());
 
-        RegisterFileDependency(_validationCallback, initializer);
-    }
+		auto depVal = std::make_shared<::Assets::DependencyValidation>();
+		::Assets::RegisterFileDependency(depVal, splitter.AllExceptParameters());
 
-    DeferredShaderResource::~DeferredShaderResource()
-    {
-        if (_pimpl->_transaction != ~BufferUploads::TransactionID(0))
-            if (Services::HasInstance())    // we can get here after RenderCore::Assets::Services has been destroyed (for example, as a result of a top level exception)
-                Services::GetBufferUploads().Transaction_End(_pimpl->_transaction);
-    }
+		if (transactionId == ~BufferUploads::TransactionID(0)) {
+			future.SetInvalidAsset(depVal, ::Assets::AsBlob("Could not begin buffer uploads transaction"));
+			return;
+		}
 
-    DeferredShaderResource::DeferredShaderResource(DeferredShaderResource&& moveFrom) never_throws
-    : _pimpl(std::move(moveFrom._pimpl))
-    , _validationCallback(std::move(moveFrom._validationCallback))
-    {
-        DEBUG_ONLY(XlCopyString(_initializer, moveFrom._initializer));
-    }
+		auto mon = std::make_shared<TransactionMonitor>(transactionId);
 
-    DeferredShaderResource& DeferredShaderResource::operator=(DeferredShaderResource&& moveFrom) never_throws
-    {
-        _pimpl = std::move(moveFrom._pimpl);
-        _validationCallback = std::move(moveFrom._validationCallback);
-        DEBUG_ONLY(XlCopyString(_initializer, moveFrom._initializer));
-        return *this;
-    }
+		std::string intializerStr = initializer.AsString();
 
-    const Metal::ShaderResourceView&       DeferredShaderResource::GetShaderResource() const
-    {
-        if (!_pimpl->_srv.IsGood()) {
-            auto state = TryResolve();
-            if (state == ::Assets::AssetState::Invalid) {
-				Throw(::Assets::Exceptions::InvalidAsset(Initializer(), nullptr, {}));
-            } else if (state == ::Assets::AssetState::Pending)
-				Throw(::Assets::Exceptions::PendingAsset(Initializer()));
+        future.SetPollingFunction(
+			[mon, metaDataFuture, depVal, init, intializerStr](::Assets::AssetFuture<DeferredShaderResource>& thatFuture) -> bool {
+				auto& bu = Services::GetBufferUploads();
+				if (!bu.IsCompleted(mon->GetId())
+					|| (metaDataFuture && metaDataFuture->GetAssetState() == ::Assets::AssetState::Pending))
+					return true;
 
-            assert(_pimpl->_srv.IsGood());
-        }
+				auto locator = bu.GetResource(mon->GetId());
+				*mon = {};	// release the transaction
 
-        return _pimpl->_srv;
-    }
+				if (!locator || !locator->GetUnderlying()) {
+					thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob("Buffer upload transaction completed, but with invalid resource"));
+					return false;
+				}
 
-    ::Assets::AssetState DeferredShaderResource::GetAssetState() const
-    {
-        if (_pimpl->_srv.IsGood())
-            return ::Assets::AssetState::Ready;
-        if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
-            return ::Assets::AssetState::Invalid;
-        return ::Assets::AssetState::Pending;
-    }
+				auto desc = locator->GetUnderlying()->GetDesc();
+				if (desc._type != RenderCore::ResourceDesc::Type::Texture) {
+					thatFuture.SetInvalidAsset(depVal, ::Assets::AsBlob("Unexpected resource type returned from buffer uploads transaction"));
+					return false;
+				}
 
-    ::Assets::AssetState DeferredShaderResource::TryResolve() const
-    {
-        if (_pimpl->_srv.IsGood())
-            return ::Assets::AssetState::Ready;
+					// calculate the color space to use (resolving the defaults, request string and metadata)
+				auto colSpace = SourceColorSpace::SRGB;
+				if (init._colSpaceRequestString != SourceColorSpace::Unspecified) {
+					colSpace = init._colSpaceRequestString;
+				} else {
+					if (init._colSpaceDefault != SourceColorSpace::Unspecified) colSpace = init._colSpaceDefault;
 
-        if (_pimpl->_transaction == ~BufferUploads::TransactionID(0))
-            return ::Assets::AssetState::Invalid;
+					std::shared_ptr<TextureMetaData> metaData;
+					if (metaDataFuture)
+						metaData = metaDataFuture->TryActualize();
 
-        auto& bu = Services::GetBufferUploads();
-        if (!bu.IsCompleted(_pimpl->_transaction))
-            return ::Assets::AssetState::Pending;
+					if (metaData) {
+						if (metaData->_colorSpace != SourceColorSpace::Unspecified) {
+							colSpace = metaData->_colorSpace;
+						}
+						::Assets::RegisterAssetDependency(depVal, metaData->GetDependencyValidation());
+					}
+				}
 
-        _pimpl->_locator = bu.GetResource(_pimpl->_transaction);
-        bu.Transaction_End(_pimpl->_transaction);
-        _pimpl->_transaction = ~BufferUploads::TransactionID(0);
+				auto format = desc._textureDesc._format;
+				if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
+				else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
 
-        if (!_pimpl->_locator || !_pimpl->_locator->GetUnderlying())
-            return ::Assets::AssetState::Invalid;
+				auto finalAsset = std::make_shared<DeferredShaderResource>(
+					Metal::ShaderResourceView(locator->GetUnderlying(), {format}),
+					intializerStr,
+					depVal);
 
-        auto desc = _pimpl->_locator->GetUnderlying()->GetDesc();
-        if (desc._type != RenderCore::ResourceDesc::Type::Texture)
-            return ::Assets::AssetState::Invalid;
-
-            // calculate the color space to use (resolving the defaults, request string and metadata)
-        auto colSpace = SourceColorSpace::SRGB;
-        if (_pimpl->_colSpaceRequestString != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceRequestString;
-        else {
-            if (_pimpl->_colSpaceDefault != SourceColorSpace::Unspecified) colSpace = _pimpl->_colSpaceDefault;
-
-            if (_pimpl->_metadataMarker) {
-                auto state = _pimpl->_metadataMarker->GetAssetState();
-                if (state == ::Assets::AssetState::Pending)
-                    return ::Assets::AssetState::Pending;
-
-                if (state == ::Assets::AssetState::Ready && _pimpl->_metadataMarker->_colorSpace != SourceColorSpace::Unspecified) {
-                    colSpace = _pimpl->_metadataMarker->_colorSpace;
-                }
-            }
-        }
-
-        auto format = desc._textureDesc._format;
-        if (colSpace == SourceColorSpace::SRGB) format = AsSRGBFormat(format);
-        else if (colSpace == SourceColorSpace::Linear) format = AsLinearFormat(format);
-
-        _pimpl->_srv = Metal::ShaderResourceView(_pimpl->_locator->GetUnderlying(), {format});
-        return ::Assets::AssetState::Ready;
-    }
-
-	StringSection<::Assets::ResChar> DeferredShaderResource::Initializer() const
-    {
-        #if defined(_DEBUG)
-            return _initializer;
-        #else
-            return StringSection<::Assets::ResChar>();
-        #endif
+				thatFuture.SetAsset(std::move(finalAsset), nullptr);
+				return false;
+			});
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static Format ResolveFormatImmediate(Format typelessFormat, const DecodedInitializer& init)
+    static Format ResolveFormatImmediate(Format typelessFormat, const DecodedInitializer& init, const FileNameSplitter<ResChar>& splitter)
     {
         auto result = typelessFormat;
         if (HasLinearAndSRGBFormats(result)) {
@@ -329,14 +266,15 @@ namespace RenderCore { namespace Assets
             if (finalColSpace == SourceColorSpace::Unspecified) {
                     // need to load the metadata file to get SRGB settings!
                 ::Assets::ResChar metadataFile[MaxPath];
-                XlCopyString(metadataFile, init._splitter.AllExceptParameters());
+                XlCopyString(metadataFile, splitter.AllExceptParameters());
                 XlCatString(metadataFile, ".metadata");
 
-                size_t filesize = 0;
-                auto rawFile = ::Assets::TryLoadFileAsMemoryBlock(metadataFile, &filesize);
-                if (rawFile.get())
-                    LoadColorSpaceFromMetadataFile(finalColSpace, rawFile.get(), filesize);
-            
+				auto res = ::Assets::MakeAsset<TextureMetaData>(metadataFile);
+				res->StallWhilePending();
+				auto actual = res->TryActualize();
+				if (actual)
+					finalColSpace = actual->_colorSpace;
+
                 if (finalColSpace == SourceColorSpace::Unspecified)
                     finalColSpace = (init._colSpaceDefault != SourceColorSpace::Unspecified) ? init._colSpaceDefault : SourceColorSpace::SRGB;
             }
@@ -349,35 +287,37 @@ namespace RenderCore { namespace Assets
 
 	Format DeferredShaderResource::LoadFormat(StringSection<::Assets::ResChar> initializer)
     {
-        DecodedInitializer init(initializer);
+		auto splitter = MakeFileNameSplitter(initializer);
+        DecodedInitializer init(splitter);
 
 		Format result;
-		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
+		const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
-			BuildRequestString(filename, init._splitter);
+			BuildRequestString(filename, splitter);
 			result = BufferUploads::LoadTextureFormat(MakeStringSection(filename))._format;
 		} else
-			result = BufferUploads::LoadTextureFormat(init._splitter.AllExceptParameters())._format;
+			result = BufferUploads::LoadTextureFormat(splitter.AllExceptParameters())._format;
 
-        return ResolveFormatImmediate(result, init);
+        return ResolveFormatImmediate(result, init, splitter);
     }
 
     Metal::ShaderResourceView DeferredShaderResource::LoadImmediately(StringSection<::Assets::ResChar> initializer)
     {
-        DecodedInitializer init(initializer);
+		auto splitter = MakeFileNameSplitter(initializer);
+        DecodedInitializer init(splitter);
 
         using namespace BufferUploads;
         TextureLoadFlags::BitField flags = init._generateMipmaps ? TextureLoadFlags::GenerateMipmaps : 0;
 
 		intrusive_ptr<DataPacket> pkt;
-		const bool checkForShadowingFile = CheckShadowingFile(init._splitter);
+		const bool checkForShadowingFile = CheckShadowingFile(splitter);
 		if (checkForShadowingFile) {
 			::Assets::ResChar filename[MaxPath];
-			BuildRequestString(filename, init._splitter);
+			BuildRequestString(filename, splitter);
 			pkt = CreateStreamingTextureSource(MakeStringSection(filename), flags);
 		} else
-			pkt = CreateStreamingTextureSource(init._splitter.AllExceptParameters(), flags);
+			pkt = CreateStreamingTextureSource(splitter.AllExceptParameters(), flags);
 
         auto result = Services::GetBufferUploads().Transaction_Immediate(
             CreateDesc(
@@ -396,7 +336,7 @@ namespace RenderCore { namespace Assets
         assert(desc._type == BufferDesc::Type::Texture);
         return Metal::ShaderResourceView(
             result->GetUnderlying(),
-            {ResolveFormatImmediate(desc._textureDesc._format, init)});
+            {ResolveFormatImmediate(desc._textureDesc._format, init, splitter)});
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -490,5 +430,17 @@ namespace RenderCore { namespace Assets
         }
 
         return IsDXTNormalMapFormat(i->second);
+    }
+
+
+	DeferredShaderResource::DeferredShaderResource(
+		const Metal::ShaderResourceView& srv,
+		const std::string& initializer,
+		const ::Assets::DepValPtr& depVal)
+	: _srv(srv), _initializer(initializer), _depVal(depVal)
+	{}
+
+	DeferredShaderResource::~DeferredShaderResource()
+    {
     }
 }}

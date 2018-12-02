@@ -152,8 +152,8 @@ namespace SceneEngine
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(6, samplerWrapU));
 
-        const auto& normalsFittingResource = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT").GetShaderResource();
-		const auto& distintColors = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T").GetShaderResource();
+        const auto& normalsFittingResource = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT")->Actualize()->GetShaderResource();
+		const auto& distintColors = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T")->Actualize()->GetShaderResource();
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
         MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Compute).Bind(RenderCore::MakeResourceList(14, normalsFittingResource));
 
@@ -349,7 +349,7 @@ namespace SceneEngine
                         "");
                 metalContext->Bind(metricsShader);
                 metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-                    3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T").GetShaderResource()));
+                    3, ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/metricsdigits.dds:T")->Actualize()->GetShaderResource()));
                 metalContext->Bind(BlendState(BlendOp::Add, Blend::One, Blend::InvSrcAlpha));
                 metalContext->Bind(DepthStencilState(false));
                 metalContext->GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(lightingParserContext.GetMetricsBox()->_metricsBufferSRV));

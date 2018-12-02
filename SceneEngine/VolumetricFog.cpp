@@ -668,8 +668,8 @@ namespace SceneEngine
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
             context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
             context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(9, 
-                ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(
-                    "xleres/DefaultResources/balanced_noise.dds:LT").GetShaderResource()));
+                ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(
+                    "xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
             context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 Techniques::CommonResources()._defaultSampler, 
                 Techniques::CommonResources()._linearClampSampler));

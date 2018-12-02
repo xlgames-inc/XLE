@@ -127,7 +127,7 @@ namespace ToolsRig
             Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L");
+            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
             const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             Metal::BoundUniforms boundLayout(shaderProgram);
@@ -201,7 +201,7 @@ namespace ToolsRig
             Metal::ConstantBufferPacket constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L");
+            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
             const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
 
             Metal::BoundUniforms boundLayout(shaderProgram);

@@ -615,7 +615,7 @@ namespace Overlays
     class TextureBrowser::Pimpl
     {
     public:
-        LRUCache<RenderCore::Assets::DeferredShaderResource> _resources;
+        LRUCache<::Assets::AssetFuture<RenderCore::Assets::DeferredShaderResource>> _resources;
         Pimpl();
     };
 
@@ -636,11 +636,12 @@ namespace Overlays
         if (!res) {
             utf8 utf8Filename[MaxPath];
             ucs2_2_utf8(AsPointer(filename.cbegin()), filename.size(), utf8Filename, dimof(utf8Filename));
-            res = std::make_shared<RenderCore::Assets::DeferredShaderResource>((const char*)utf8Filename);
+            res = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>((const char*)utf8Filename);
             _pimpl->_resources.Insert(hashedName, res);
         }
 
-        return std::make_pair(&res->GetShaderResource(), hashedName);
+		auto a = res->TryActualize();
+        return std::make_pair(a ? &a->GetShaderResource() : nullptr, hashedName);
     }
 
     bool TextureBrowser::Filter(const std::basic_string<ucs2>& filename)

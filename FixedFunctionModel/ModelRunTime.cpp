@@ -328,7 +328,7 @@ namespace FixedFunctionModel
             return materialResources;
         }
 
-        std::vector<const RenderCore::Assets::DeferredShaderResource*> BuildBoundTextures(
+        std::vector<::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>> BuildBoundTextures(
             const RenderCore::Assets::ModelScaffold& scaffold, const RenderCore::Assets::MaterialScaffold& matScaffold,
             const ::Assets::DirectorySearchRules* searchRules,
             const std::vector<std::pair<MaterialGuid, SubMatResources>>& materialResources,
@@ -337,8 +337,8 @@ namespace FixedFunctionModel
         {
             auto texturesPerMaterial = textureBindPoints.size();
 
-            std::vector<const RenderCore::Assets::DeferredShaderResource*> boundTextures;
-            boundTextures.resize(textureSetCount * texturesPerMaterial, nullptr);
+            std::vector<::Assets::FuturePtr<RenderCore::Assets::DeferredShaderResource>> boundTextures;
+            boundTextures.resize(textureSetCount * texturesPerMaterial);
             DEBUG_ONLY(boundTextureNames.resize(textureSetCount * texturesPerMaterial));
 
             for (auto mi=materialResources.begin(); mi!=materialResources.end(); ++mi) {
@@ -370,10 +370,10 @@ namespace FixedFunctionModel
                         if (searchRules) {
                             ResChar resolvedPath[MaxPath];
                             searchRules->ResolveFile(resolvedPath, dimof(resolvedPath), resourceName.c_str());
-                            boundTextures[dsti] = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resolvedPath);
+                            boundTextures[dsti] = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(resolvedPath);
                             DEBUG_ONLY(boundTextureNames[dsti] = resolvedPath);
                         } else {
-                            boundTextures[dsti] = &::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(resourceName.c_str());
+                            boundTextures[dsti] = ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(resourceName.c_str());
                             DEBUG_ONLY(boundTextureNames[dsti] = resourceName);
                         }
                     } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
@@ -833,8 +833,9 @@ namespace FixedFunctionModel
         const Metal::ShaderResourceView* srvs[16];
         assert(_texturesPerMaterial <= dimof(srvs));
         for (unsigned c=0; c<_texturesPerMaterial; c++) {
-            auto* t = _boundTextures[resourcesIndex * _texturesPerMaterial + c];
-            srvs[c] = t?(&t->GetShaderResource()):nullptr;
+            auto t = _boundTextures[resourcesIndex * _texturesPerMaterial + c];
+			auto a = t->TryActualize();
+            srvs[c] = a?(&a->GetShaderResource()):nullptr;
         }
 
 		assert(_constantBuffers[constantsIndex].IsGood());
@@ -1585,7 +1586,7 @@ namespace FixedFunctionModel
         bool gotPending = false;
         for (auto t=_pimpl->_boundTextures.cbegin(); t!=_pimpl->_boundTextures.cend(); ++t) {
             if (!*t) continue;
-            auto tState = (*t)->TryResolve();
+            auto tState = (*t)->StallWhilePending();
             if (tState == ::Assets::AssetState::Invalid) return ::Assets::AssetState::Invalid;
             gotPending |= tState == ::Assets::AssetState::Pending;
         }

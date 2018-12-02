@@ -74,7 +74,7 @@ namespace SceneEngine
         context.Bind(shader, boundInterfaces);
 
         const auto* metricsDigits = "xleres/DefaultResources/metricsdigits.dds:T";
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>(metricsDigits).GetShaderResource()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, ::Assets::MakeAsset<RenderCore::Assets::DeferredShaderResource>(metricsDigits)->Actualize()->GetShaderResource()));
 
 		UniformsStreamInterface usi;
         usi.BindConstantBuffer(0, {Hash64("$Globals")});
