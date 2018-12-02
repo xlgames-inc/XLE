@@ -146,6 +146,8 @@
     <ClCompile Include="..\Fluid.cpp" />
     <ClCompile Include="..\FluidAdvection.cpp" />
     <ClCompile Include="..\FluidHelper.cpp" />
+    <ClCompile Include="..\RenderStep_Forward.cpp" />
+    <ClCompile Include="..\RenderStep_GBuffer.cpp" />
     <ClCompile Include="..\GestaltResource.cpp" />
     <ClCompile Include="..\IntersectionTest.cpp" />
     <ClCompile Include="..\LightingTargets.cpp" />
@@ -167,6 +169,9 @@
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
     <ClCompile Include="..\RenderingUtils.cpp" />
+    <ClCompile Include="..\RenderStepUtil.cpp" />
+    <ClCompile Include="..\RenderStep_PrepareShadows.cpp" />
+    <ClCompile Include="..\RenderStep_ResolveHDR.cpp" />
     <ClCompile Include="..\SceneEngineUtils.cpp" />
     <ClCompile Include="..\ScreenspaceReflections.cpp" />
     <ClCompile Include="..\ShadowResources.cpp" />
@@ -225,6 +230,8 @@
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />
     <ClInclude Include="..\LightingParser.h" />
+    <ClInclude Include="..\RenderStep.h" />
+    <ClInclude Include="..\RenderStepUtil.h" />
     <ClInclude Include="..\SceneEngineUtils.h" />
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />

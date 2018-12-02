@@ -178,21 +178,19 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ILightingParserDelegate&, PreparedScene&) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const = 0;
 
         virtual void OnLightingResolvePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ILightingParserDelegate&, LightingResolveContext&) const = 0;
+			LightingResolveContext&) const = 0;
 
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-            ILightingParserDelegate&,
 			BatchFilter filter, unsigned techniqueIndex) const = 0;
 
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ILightingParserDelegate&, ShaderLightDesc::BasicEnvironment& env) const = 0;
+			ShaderLightDesc::BasicEnvironment& env) const = 0;
     };
 }
 

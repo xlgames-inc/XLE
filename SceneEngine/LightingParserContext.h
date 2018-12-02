@@ -20,13 +20,16 @@ namespace SceneEngine
 	class ILightingParserDelegate;
     class ILightingParserPlugin;
 	class RenderSceneSettings;
+	class PreparedScene;
 
     using LightId = unsigned;
 
     class LightingParserContext
     {
     public:
-		ILightingParserDelegate* _delegate;
+		ILightingParserDelegate*	_delegate = nullptr;
+		PreparedScene*				_preparedScene = nullptr;
+		unsigned					_sampleCount;
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }

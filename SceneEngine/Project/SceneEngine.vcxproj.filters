@@ -158,6 +158,11 @@
     <ClCompile Include="..\SceneEngineUtils.cpp">
       <Filter>Utilities</Filter>
     </ClCompile>
+    <ClCompile Include="..\RenderStepUtil.cpp" />
+    <ClCompile Include="..\RenderStep_GBuffer.cpp" />
+    <ClCompile Include="..\RenderStep_ResolveHDR.cpp" />
+    <ClCompile Include="..\RenderStep_Forward.cpp" />
+    <ClCompile Include="..\RenderStep_PrepareShadows.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AmbientOcclusion.h">
@@ -335,6 +340,8 @@
     <ClInclude Include="..\SceneEngineUtils.h">
       <Filter>Utilities</Filter>
     </ClInclude>
+    <ClInclude Include="..\RenderStep.h" />
+    <ClInclude Include="..\RenderStepUtil.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Lighting And Processing">

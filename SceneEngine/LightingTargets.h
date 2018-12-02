@@ -23,6 +23,7 @@ namespace SceneEngine
 {
     class RenderSceneSettings;
 
+#if 0
     class IMainTargets
     {
     public:
@@ -46,6 +47,7 @@ namespace SceneEngine
 
         virtual const SRV&      GetSRV(Name, const RenderCore::TextureViewDesc& window = {}) const = 0;
     };
+#endif
 
     class LightingResolveShaders
     {
