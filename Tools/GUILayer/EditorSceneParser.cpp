@@ -113,7 +113,7 @@ namespace GUILayer
             auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
             CATCH_ASSETS_BEGIN
                 for (auto i:delaySteps)
-                    if (i != RenderCore::Assets::DelayStep::OpaqueRender) {
+                    if (i != FixedFunctionModel::DelayStep::OpaqueRender) {
                         scene._placementsManager->GetRenderer()->CommitTransparent(
                             metalContext, parserContext, techniqueIndex, i);
                     } else {

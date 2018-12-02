@@ -12,8 +12,8 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/DivergentAsset.h"
+#include "../../FixedFunctionModel/ModelCache.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../Assets/AssetUtils.h"
@@ -182,7 +182,7 @@ namespace GUILayer
 
     String^ VisMouseOver::BuildFullMaterialName(
         const ToolsRig::ModelVisSettings& modelSettings,
-        RenderCore::Assets::ModelCache& modelCache,
+        FixedFunctionModel::ModelCache& modelCache,
         uint64 materialGuid)
     {
         auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
@@ -228,7 +228,7 @@ namespace GUILayer
     VisMouseOver::VisMouseOver(
         std::shared_ptr<ToolsRig::VisMouseOver> attached,
         std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-        std::shared_ptr<RenderCore::Assets::ModelCache> cache)
+        std::shared_ptr<FixedFunctionModel::ModelCache> cache)
     {
         _object = std::move(attached);
         _modelSettings = std::move(settings);

@@ -16,12 +16,12 @@
 #include "../ToolsRig/ManipulatorsRender.h"
 #include "../../PlatformRig/BasicSceneParser.h"     // (PlatformRig::EnvironmentSettings destructor)
 #include "../../SceneEngine/PlacementsManager.h"
+#include "../../FixedFunctionModel/ShaderVariationSet.h"
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
-#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Metal/Buffer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -123,7 +123,7 @@ namespace GUILayer
             const auto techniqueIndex = 0u;
 
             static ParameterBox materialParameters({std::make_pair((const utf8*)"MAT_SKIP_LIGHTING_SCALE", "1")});
-            RenderCore::Assets::ShaderVariationSet material(
+            FixedFunctionModel::ShaderVariationSet material(
                 vf._inputLayout,
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
                 materialParameters);

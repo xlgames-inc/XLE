@@ -33,7 +33,7 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
-#include "../../RenderCore/Assets/ModelCache.h"
+#include "../../FixedFunctionModel/ModelCache.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
@@ -76,7 +76,7 @@ namespace GUILayer
 
     EditorScene::EditorScene()
     {
-        auto modelCache = std::make_shared<RenderCore::Assets::ModelCache>();
+        auto modelCache = std::make_shared<FixedFunctionModel::ModelCache>();
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(modelCache);
         _placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
         _placementsCellsHidden = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));

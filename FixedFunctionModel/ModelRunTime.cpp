@@ -679,7 +679,7 @@ namespace FixedFunctionModel
         ::Assets::RegisterAssetDependency(_validationCallback, scaffold.GetDependencyValidation());
         ::Assets::RegisterAssetDependency(_validationCallback, matScaffold.GetDependencyValidation());
         for(auto i:cbLayouts) ::Assets::RegisterAssetDependency(_validationCallback, i->GetDependencyValidation());
-        for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
+        // for (const auto& t:boundTextures) if (t) ::Assets::RegisterAssetDependency(_validationCallback, t->GetDependencyValidation());       // rebuild the entire renderer if any texture changes
 
         auto pimpl = std::make_unique<PimplWithSkinning>();
 

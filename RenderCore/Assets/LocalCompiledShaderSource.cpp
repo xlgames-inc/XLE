@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LocalCompiledShaderSource.h"
-#include "../Metal/Shader.h"
 
 #include "../IDevice.h"
 #include "../../Assets/ChunkFile.h"

@@ -39,9 +39,9 @@ namespace ToolsRig
     public:
         float CalculateSkyDomeOcclusion(
             RenderCore::IThreadContext& threadContext,
-            const RenderCore::Assets::ModelRenderer& renderer, 
-            RenderCore::Assets::SharedStateSet& sharedStates, 
-            const RenderCore::Assets::MeshToModel& meshToModel,
+            const FixedFunctionModel::ModelRenderer& renderer, 
+            FixedFunctionModel::SharedStateSet& sharedStates, 
+            const FixedFunctionModel::MeshToModel& meshToModel,
             const Float3& samplePoint);
 
         class Desc

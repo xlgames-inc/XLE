@@ -19,14 +19,18 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
+#include "../../FixedFunctionModel/ModelUtils.h"
+#include "../../FixedFunctionModel/ModelCache.h"
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../RenderCore/Assets/ModelImmutableData.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
-#include "../../RenderCore/Assets/ModelUtils.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Assets/AssetUtils.h"
@@ -36,10 +40,6 @@
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/StringFormat.h"
-
-#include "../../RenderCore/Assets/ModelCache.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ModelImmutableData.h"
 
 // #include "../../RenderCore/Metal/DeviceContext.h"
 // #include "../../RenderCore/Metal/Shader.h"
@@ -55,19 +55,20 @@
 
 namespace ToolsRig
 {
-    using RenderCore::Assets::ModelRenderer;
-    using RenderCore::Assets::ModelScaffold;
+	using RenderCore::Assets::ModelScaffold;
     using RenderCore::Assets::MaterialScaffold;
-    using RenderCore::Assets::SharedStateSet;
-    using RenderCore::Assets::ModelCache;
-	using RenderCore::Assets::ModelCacheModel;
     using RenderCore::Assets::SkeletonMachine;
-    using RenderCore::Assets::DelayedDrawCallSet;
+
+    using FixedFunctionModel::ModelRenderer;
+	using FixedFunctionModel::SharedStateSet;
+    using FixedFunctionModel::ModelCache;
+	using FixedFunctionModel::ModelCacheModel;
+    using FixedFunctionModel::DelayedDrawCallSet;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     static void RenderWithEmbeddedSkeleton(
-        const RenderCore::Assets::ModelRendererContext& context,
+        const FixedFunctionModel::ModelRendererContext& context,
         const ModelRenderer& model,
         const SharedStateSet& sharedStateSet,
         const ModelScaffold* scaffold)
@@ -75,7 +76,7 @@ namespace ToolsRig
         if (scaffold) {
             model.Render(
                 context, sharedStateSet, Identity<Float4x4>(), 
-                RenderCore::Assets::EmbeddedSkeletonPose(*scaffold).GetMeshToModel());
+                FixedFunctionModel::EmbeddedSkeletonPose(*scaffold).GetMeshToModel());
         } else {
             model.Render(context, sharedStateSet, Identity<Float4x4>());
         }
@@ -90,7 +91,7 @@ namespace ToolsRig
         if (scaffold) {
             model.Prepare(
                 dest, sharedStateSet, Identity<Float4x4>(), 
-                RenderCore::Assets::EmbeddedSkeletonPose(*scaffold).GetMeshToModel());
+                FixedFunctionModel::EmbeddedSkeletonPose(*scaffold).GetMeshToModel());
         } else {
             model.Prepare(dest, sharedStateSet, Identity<Float4x4>());
         }
@@ -112,7 +113,7 @@ namespace ToolsRig
 
             auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
 
-            RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+            FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
             if (_sharedStateSet)
                 captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
@@ -123,19 +124,19 @@ namespace ToolsRig
             metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(drawCallIndexBuffer));
 
             if (Tweakable("RenderSkinned", false)) {
-                if (delaySteps[0] == RenderCore::Assets::DelayStep::OpaqueRender) {
+                if (delaySteps[0] == FixedFunctionModel::DelayStep::OpaqueRender) {
                     auto preparedAnimation = _model->CreatePreparedAnimation();
-                    RenderCore::Assets::SkinPrepareMachine prepareMachine(
+                    FixedFunctionModel::SkinPrepareMachine prepareMachine(
                         *_modelScaffold, _modelScaffold->EmbeddedSkeleton());
                     RenderCore::Assets::AnimationState animState = {0.f, 0u};
                     prepareMachine.PrepareAnimation(context, *preparedAnimation, animState);
                     _model->PrepareAnimation(context, *preparedAnimation, prepareMachine.GetSkeletonBinding());
 
-                    RenderCore::Assets::MeshToModel meshToModel(
+                    FixedFunctionModel::MeshToModel meshToModel(
                         *preparedAnimation, &prepareMachine.GetSkeletonBinding());
 
                     _model->Render(
-                        RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
+                        FixedFunctionModel::ModelRendererContext(*metalContext, parserContext, techniqueIndex),
                         *_sharedStateSet, Identity<Float4x4>(), 
                         meshToModel, preparedAnimation.get());
 
@@ -150,7 +151,7 @@ namespace ToolsRig
 
                 for (auto i:delaySteps)
                     ModelRenderer::RenderPrepared(
-                        RenderCore::Assets::ModelRendererContext(*metalContext.get(), parserContext, techniqueIndex),
+                        FixedFunctionModel::ModelRendererContext(*metalContext.get(), parserContext, techniqueIndex),
                         *_sharedStateSet, _delayedDrawCalls, i,
                         [&metalContext, &drawCallIndexBuffer, &fillInStencilInfo](ModelRenderer::DrawCallEvent evnt)
                         {
@@ -387,14 +388,14 @@ namespace ToolsRig
                     auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                     assert(model._renderer && model._sharedStateSet);
 
-                    RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                    FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
                     if (model._sharedStateSet)
                         captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
                     const auto techniqueIndex = Techniques::TechniqueIndex::VisWireframe;
 
                     RenderWithEmbeddedSkeleton(
-                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                        FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
                         *model._renderer, *model._sharedStateSet, model._model);
                 CATCH_ASSETS_END(parserContext)
             }
@@ -405,14 +406,14 @@ namespace ToolsRig
                     auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
                     assert(model._renderer && model._sharedStateSet);
 
-                    RenderCore::Assets::SharedStateSet::CaptureMarker captureMarker;
+                    FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
                     if (model._sharedStateSet)
                         captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
 
                     const auto techniqueIndex = Techniques::TechniqueIndex::VisNormals;
 
                     RenderWithEmbeddedSkeleton(
-                        RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                        FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
                         *model._renderer, *model._sharedStateSet, model._model);
                 CATCH_ASSETS_END(parserContext)
             }
@@ -537,7 +538,7 @@ namespace ToolsRig
         {
             auto captureMarker = model._sharedStateSet->CaptureState(*context.GetThreadContext(), parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
             RenderWithEmbeddedSkeleton(
-                RenderCore::Assets::ModelRendererContext(*context.GetThreadContext(), parserContext, 6),
+                FixedFunctionModel::ModelRendererContext(*context.GetThreadContext(), parserContext, 6),
                 *model._renderer, *model._sharedStateSet, model._model);
         }
 

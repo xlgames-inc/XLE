@@ -11,11 +11,12 @@
 #include "../../SceneEngine/LightInternal.h"    // for shadow projection constants;
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/LightingParser.h"   // for SetFrameGlobalStates
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../RenderCore/GeoProc/MeshDatabase.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
@@ -85,8 +86,8 @@ namespace ToolsRig
     using namespace RenderCore;
     using ModelScaffold = RenderCore::Assets::ModelScaffold;
     using MaterialScaffold = RenderCore::Assets::MaterialScaffold;
-    using ModelRenderer = RenderCore::Assets::ModelRenderer;
-    using SharedStateSet = RenderCore::Assets::SharedStateSet;
+    using ModelRenderer = FixedFunctionModel::ModelRenderer;
+    using SharedStateSet = FixedFunctionModel::SharedStateSet;
     using namespace RenderCore::Assets::GeoProc;
 
     class AoGen::Pimpl
@@ -117,8 +118,8 @@ namespace ToolsRig
     float AoGen::CalculateSkyDomeOcclusion(
         RenderCore::IThreadContext& threadContext,
         const ModelRenderer& renderer,
-        RenderCore::Assets::SharedStateSet& sharedStates,
-        const RenderCore::Assets::MeshToModel& meshToModel,
+        FixedFunctionModel::SharedStateSet& sharedStates,
+        const FixedFunctionModel::MeshToModel& meshToModel,
         const Float3& samplePoint)
     {
             //
@@ -190,16 +191,16 @@ namespace ToolsRig
         {
             auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
             TRY {
-                RenderCore::Assets::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
+                FixedFunctionModel::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
                 renderer.Prepare(
                     delayedDraws, sharedStates, AsFloat4x4(Float3(-samplePoint)), meshToModel);
 
                 ModelRenderer::Sort(delayedDraws);
-                for (unsigned c=0; c<unsigned(RenderCore::Assets::DelayStep::Max); ++c)
+                for (unsigned c=0; c<unsigned(FixedFunctionModel::DelayStep::Max); ++c)
                     ModelRenderer::RenderPrepared(
-                        RenderCore::Assets::ModelRendererContext(
+                        FixedFunctionModel::ModelRendererContext(
                             threadContext, parserContext, Techniques::TechniqueIndex::ShadowGen),
-                        sharedStates, delayedDraws, RenderCore::Assets::DelayStep(c));
+                        sharedStates, delayedDraws, FixedFunctionModel::DelayStep(c));
 
             } CATCH(...) {
                 savedTargets.ResetToOldTargets(metalContext);
@@ -445,7 +446,7 @@ namespace ToolsRig
             bufferUploads.Update(threadContext, false);     // (note -- render state can get reset here)
         }
 
-        RenderCore::Assets::MeshToModel meshToModel(model);
+        FixedFunctionModel::MeshToModel meshToModel(model);
 
             // We're going to be reading the vertex data directly from the
             // file on disk. We'll use a memory mapped file to access that

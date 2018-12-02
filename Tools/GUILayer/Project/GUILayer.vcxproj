@@ -220,6 +220,9 @@
     <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
       <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
     </ProjectReference>
+    <ProjectReference Include="..\..\..\FixedFunctionModel\Project\FixedFunctionModel.vcxproj">
+      <Project>{be4b2816-52ba-4a12-ac28-d338da574cd2}</Project>
+    </ProjectReference>
     <ProjectReference Include="..\..\..\Foreign\FreeType\builds\windows\vc2010\freetype.vcxproj">
       <Project>{78b079bd-9fc7-4b9e-b4a6-96da0f00248b}</Project>
     </ProjectReference>

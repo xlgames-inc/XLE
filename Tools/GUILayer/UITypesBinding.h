@@ -240,21 +240,21 @@ namespace GUILayer
 
         static System::String^ BuildFullMaterialName(
             const ToolsRig::ModelVisSettings& modelSettings,
-            RenderCore::Assets::ModelCache& modelCache,
+            FixedFunctionModel::ModelCache& modelCache,
             uint64 materialGuid);
         static System::String^ DescriptiveMaterialName(System::String^ fullName);
 
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
             std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-            std::shared_ptr<RenderCore::Assets::ModelCache> cache);
+            std::shared_ptr<FixedFunctionModel::ModelCache> cache);
         VisMouseOver();
         ~VisMouseOver();
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
         clix::shared_ptr<ToolsRig::ModelVisSettings> _modelSettings;
-        clix::shared_ptr<RenderCore::Assets::ModelCache> _modelCache;
+        clix::shared_ptr<FixedFunctionModel::ModelCache> _modelCache;
     };
 
     template<typename NameType, typename ValueType>

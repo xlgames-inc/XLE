@@ -20,9 +20,9 @@
 #include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/SimpleModelRenderer.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/IThreadContext.h"
 
 #include "../../Assets/Assets.h"

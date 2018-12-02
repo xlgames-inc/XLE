@@ -34,7 +34,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../RenderCore/Assets/ModelCache.h"
+#include "../../FixedFunctionModel/ModelCache.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
 #include <stack>
@@ -174,7 +174,7 @@ namespace GUILayer
     public ref class VisResources
     {
     public:
-        clix::shared_ptr<RenderCore::Assets::ModelCache> _visCache;
+        clix::shared_ptr<FixedFunctionModel::ModelCache> _visCache;
 
         VisResources();
         ~VisResources();
@@ -183,7 +183,7 @@ namespace GUILayer
 
     VisResources::VisResources()
     {
-        _visCache = std::make_shared<RenderCore::Assets::ModelCache>();
+        _visCache = std::make_shared<FixedFunctionModel::ModelCache>();
     }
 
     VisResources::~VisResources() {}
@@ -193,7 +193,7 @@ namespace GUILayer
         RenderOverlays::IOverlayContext& context,
         const ToolsRig::VisMouseOver& mouseOver,
         std::shared_ptr<ToolsRig::ModelVisSettings> modelSettings,
-        std::shared_ptr<RenderCore::Assets::ModelCache> modelCache,
+        std::shared_ptr<FixedFunctionModel::ModelCache> modelCache,
 		unsigned viewportWidth, unsigned viewportHeight)
     {
         using namespace RenderOverlays::DebuggingDisplay;

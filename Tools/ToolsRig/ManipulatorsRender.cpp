@@ -7,14 +7,14 @@
 #include "ManipulatorsRender.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/ShaderVariationSet.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
 #include "../../RenderCore/Assets/DeferredShaderResource.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ShaderVariationSet.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
@@ -42,7 +42,6 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
     {
-        using namespace RenderCore::Assets;
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
         if (materialGuid == ~0ull) {
             renderer.RenderFiltered(*metalContext.get(), parserContext, techniqueIndex, cellSet, filterBegin, filterEnd);
@@ -51,8 +50,8 @@ namespace ToolsRig
                 //  the given value
             renderer.RenderFiltered(
                 *metalContext, parserContext, techniqueIndex, cellSet, filterBegin, filterEnd,
-                [=](const DelayedDrawCall& e) { 
-                    return ((const ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
+                [=](const FixedFunctionModel::DelayedDrawCall& e) { 
+                    return ((const FixedFunctionModel::ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
                 });
         }
     }
@@ -244,7 +243,7 @@ namespace ToolsRig
 
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
-        RenderCore::Assets::ShaderVariationSet _materialGenCylinder;
+        FixedFunctionModel::ShaderVariationSet _materialGenCylinder;
 
         ManipulatorResBox(const Desc&);
     private:
