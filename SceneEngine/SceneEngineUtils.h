@@ -33,6 +33,9 @@ namespace Utility
 
 namespace SceneEngine
 {
+	void SetFrameGlobalStates(RenderCore::Metal::DeviceContext& context);
+    void ReturnToSteadyState(RenderCore::Metal::DeviceContext& context);
+
         // todo -- avoid D3D11 specific types here
 #if GFXAPI_ACTIVE == GFXAPI_DX11
     class SavedTargets
@@ -210,8 +213,7 @@ namespace SceneEngine
         ;
     }
 
-    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(
-        SceneParseSettings::BatchFilter filter);
+    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(BatchFilter filter);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

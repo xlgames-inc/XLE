@@ -312,9 +312,9 @@ namespace Sample
 		if (scene) {
             lightingParserContext = LightingParser_ExecuteScene(
                 context, parsingContext, *scene, scene->GetCameraDesc(),
-                RenderingQualitySettings{
+                RenderSceneSettings{
                     UInt2(viewContext->_width, viewContext->_height),
-                    (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
+                    (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,
 					{},
 					samples._sampleCount, samples._samplingQuality});
         }

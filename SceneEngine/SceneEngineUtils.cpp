@@ -6,11 +6,13 @@
 
 #include "SceneEngineUtils.h"
 #include "MetalStubs.h"
+#include "Noise.h"
 
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
@@ -28,6 +30,64 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
+
+	        //
+        //      Reserve some states as global states
+        //      These remain with some fixed value throughout
+        //      the entire scene. Don't change the values bound
+        //      here -- we are expecting these to be set once, and 
+        //      remain bound
+        //
+        //          PS t14 -- normals fitting texture
+        //          CS t14 -- normals fitting texture
+        //          
+        //          PS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
+        //          VS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
+        //          PS s6 -- samplerWrapU
+        //
+    void SetFrameGlobalStates(Metal::DeviceContext& context)
+    {
+        Metal::SamplerState 
+            samplerDefault, 
+            samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
+            samplerAnisotrophic(FilterMode::Anisotropic),
+            samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
+            samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(6, samplerWrapU));
+
+        const auto& normalsFittingResource = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT")->Actualize()->GetShaderResource();
+		const auto& distintColors = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T")->Actualize()->GetShaderResource();
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Compute).Bind(RenderCore::MakeResourceList(14, normalsFittingResource));
+
+            // perlin noise resources in standard slots
+        auto& perlinNoiseRes = ConsoleRig::FindCachedBox2<PerlinNoiseResources>();
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+
+            // procedural scratch texture for scratches test
+        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
+    }
+
+    void ReturnToSteadyState(Metal::DeviceContext& context)
+    {
+            //
+            //      Change some frequently changed states back
+            //      to their defaults.
+            //      Most rendering operations assume these states
+            //      are at their defaults.
+            //
+
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
+        context.Bind(Techniques::CommonResources()._blendOpaque);
+        context.Bind(Techniques::CommonResources()._defaultRasterizer);
+        context.Bind(Topology::TriangleList);
+        context.GetNumericUniforms(ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        MetalStubs::UnbindGeometryShader(context);
+    }
 
     BufferUploads::IManager& GetBufferUploads()
     {
@@ -340,9 +400,9 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(
-        SceneParseSettings::BatchFilter filter)
+        BatchFilter filter)
     {
-        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        using BF = BatchFilter;
         using V = std::vector<FixedFunctionModel::DelayStep>;
         using DelayStep = FixedFunctionModel::DelayStep;
 

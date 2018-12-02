@@ -27,6 +27,8 @@
 
 #include "../DX11/Metal/Buffer.h"
 
+#pragma warning(disable:4505)
+
 namespace RenderCore { namespace Assets 
 {
 	static IResourcePtr LoadVertexBuffer(

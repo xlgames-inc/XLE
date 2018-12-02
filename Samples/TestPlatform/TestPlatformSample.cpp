@@ -239,9 +239,9 @@ namespace Sample
             UInt2 presChainDims(presentationChain->GetDesc()->_width, presentationChain->GetDesc()->_height);
             LightingParser_ExecuteScene(
                 context, parsingContext, *scene, scene->GetCameraDesc(),
-                RenderingQualitySettings{
+                RenderSceneSettings{
                     presChainDims, 
-                    (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
+                    (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,
 					{},
 					(uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0)});
         }

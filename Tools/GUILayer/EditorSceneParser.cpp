@@ -274,11 +274,11 @@ namespace GUILayer
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
 
 			auto lightingPlugins = _sceneParser->GetLightingPlugins();
-			auto qualSettings = SceneEngine::RenderingQualitySettings{
+			auto qualSettings = SceneEngine::RenderSceneSettings{
 				UInt2(threadContext.GetStateDesc()._viewportDimensions[0], threadContext.GetStateDesc()._viewportDimensions[1]),
 				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
-					? RenderingQualitySettings::LightingModel::Deferred 
-					: RenderingQualitySettings::LightingModel::Forward,
+					? RenderSceneSettings::LightingModel::Deferred 
+					: RenderSceneSettings::LightingModel::Forward,
 				MakeIteratorRange(lightingPlugins)};
 
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);

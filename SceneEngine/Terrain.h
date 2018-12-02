@@ -18,7 +18,6 @@ namespace ConsoleRig { class IProgress; }
 
 namespace SceneEngine
 {
-	class ISceneParser;
     class PreparedScene;
     class HeightsUberSurfaceInterface;
     class CoverageUberSurfaceInterface;

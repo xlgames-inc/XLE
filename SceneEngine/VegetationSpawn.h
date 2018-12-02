@@ -82,7 +82,6 @@ namespace SceneEngine
     class LightingParserContext;
     class VegetationSpawnResources;
     class PreparedScene;
-	class ISceneParser;
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,

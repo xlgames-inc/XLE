@@ -17,14 +17,16 @@ namespace SceneEngine
     class MetricsBox;
     class PreparedDMShadowFrustum;
     class PreparedRTShadowFrustum;
+	class ILightingParserDelegate;
     class ILightingParserPlugin;
-	class RenderingQualitySettings;
+	class RenderSceneSettings;
 
     using LightId = unsigned;
 
     class LightingParserContext
     {
     public:
+		ILightingParserDelegate* _delegate;
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }

@@ -14,13 +14,14 @@
 #include "../RenderCore/Metal/FrameBuffer.h"
 
 #include "../BufferUploads/IBufferUploads.h"
+#include "../Math/Vector.h"
 
 namespace RenderCore { class TextureViewDesc; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class RenderingQualitySettings;
+    class RenderSceneSettings;
 
     class IMainTargets
     {
@@ -40,8 +41,8 @@ namespace SceneEngine
 
         virtual unsigned                        GetGBufferType() const = 0;
         virtual RenderCore::TextureSamples      GetSampling() const = 0;
-        virtual const RenderingQualitySettings& GetQualitySettings() const = 0;
-        virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
+        virtual const RenderSceneSettings&		GetQualitySettings() const = 0;
+        virtual UInt2							GetDimensions() const = 0;
 
         virtual const SRV&      GetSRV(Name, const RenderCore::TextureViewDesc& window = {}) const = 0;
     };

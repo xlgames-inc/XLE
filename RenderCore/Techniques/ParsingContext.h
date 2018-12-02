@@ -49,18 +49,21 @@ namespace RenderCore { namespace Techniques
         TechniqueContext&		GetTechniqueContext()               { return *_techniqueContext.get(); }
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 		UniformsStream			GetGlobalUniformsStream() const;
-        Metal::Buffer&			GetGlobalTransformCB();
-        Metal::Buffer&			GetGlobalStateCB();
-        void    SetGlobalCB(
-            Metal::DeviceContext& context, unsigned index, 
-            const void* newData, size_t dataSize);
-		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);
+        
         std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(
             const std::shared_ptr<IRenderStateDelegate>& stateSetResolver);
         const std::shared_ptr<IRenderStateDelegate>& GetRenderStateDelegate()            { return _renderStateDelegate; }
         const std::shared_ptr<Utility::ParameterBox>& GetRenderStateDelegateParameters();
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
+
+			//  ----------------- Legacy "global" CBs -----------------
+		Metal::Buffer&			GetGlobalTransformCB();
+        Metal::Buffer&			GetGlobalStateCB();
+        void    SetGlobalCB(
+            Metal::DeviceContext& context, unsigned index, 
+            const void* newData, size_t dataSize);
+		const std::shared_ptr<IResource>& GetGlobalCB(unsigned index);
 
 			//  ----------------- Overlays for late rendering -----------------
         typedef std::function<void(RenderCore::Metal::DeviceContext&, ParsingContext&)> PendingOverlay;

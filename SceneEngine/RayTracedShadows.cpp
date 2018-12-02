@@ -147,22 +147,18 @@ namespace SceneEngine
     static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
 
     PreparedRTShadowFrustum PrepareRTShadows(
-        IThreadContext& context,
+        IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
-		ISceneParser& sceneParser,
+		ViewDrawables_Shadow& executedScene,
         PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex)
     {
-        SceneParseSettings sceneParseSettings(
-            SceneParseSettings::BatchFilter::RayTracedShadows, 
-            ~SceneParseSettings::Toggles::BitField(0),
-            shadowFrustumIndex);
-        if (!sceneParser.HasContent(sceneParseSettings))
+		if (!BatchHasContent(executedScene._general))
             return PreparedRTShadowFrustum();
 
-        GPUAnnotation anno(context, "Prepare-RTShadows");
+        GPUAnnotation anno(threadContext, "Prepare-RTShadows");
 
         auto& box = ConsoleRig::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
         auto oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
@@ -183,7 +179,7 @@ namespace SceneEngine
             InputElementDesc("D", 0, Format::R32G32B32_FLOAT)
         };
 
-		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
         MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 5, 3);
 
@@ -243,9 +239,11 @@ namespace SceneEngine
             });
 
         CATCH_ASSETS_BEGIN
-            sceneParser.ExecuteScene(
-                context, parserContext, lightingParserContext, sceneParseSettings, 
-                preparedScene, TechniqueIndex_RTShadowGen);
+            ExecuteDrawables(
+                threadContext, parserContext,
+				executedScene._general,
+                preparedScene, TechniqueIndex_RTShadowGen,
+				"RTShadowGen");
         CATCH_ASSETS_END(parserContext)
 
         MetalStubs::UnbindSO(metalContext);

@@ -17,14 +17,20 @@ namespace SceneEngine
     class PreparedRTShadowFrustum;
     class IMainTargets;
     class PreparedScene;
-	class ISceneParser;
 	class LightingParserContext;
+	class ILightingParserDelegate;
+
+	class ViewDrawables_Shadow
+	{
+	public:
+		Techniques::DrawablesPacket _general;
+	};
 
     PreparedRTShadowFrustum PrepareRTShadows(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
-        ISceneParser& sceneParser,
+        ViewDrawables_Shadow& executedScene,
 		PreparedScene& preparedScene,
         const ShadowProjectionDesc& frustum,
         unsigned shadowFrustumIndex);

@@ -17,7 +17,6 @@ namespace RenderCore { class IThreadContext; class MiniInputElementDesc; class U
 
 namespace RenderCore { namespace Techniques
 {
-	class DrawablesPacket;
 	class ParsingContext;
 	class IUniformBufferDelegate;
 	class IShaderResourceDelegate;
@@ -81,6 +80,12 @@ namespace RenderCore { namespace Techniques
         ExecuteDrawFn*						_drawFn;
 
         std::shared_ptr<UniformsStreamInterface>  _uniformsInterface;
+	};
+
+	class DrawablesPacket
+	{
+	public:
+		VariantArray _drawables;
 	};
 
 	void Draw(

@@ -101,5 +101,14 @@ namespace RenderCore { namespace Techniques
 
 	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const InputElementDesc*> ia);
 	void SetGeoSelectors(ParameterBox& geoSelectors, IteratorRange<const MiniInputElementDesc*> ia);
+
+	/// <summary>Build a projection desc with parameters from a standard camera</summary>
+	ProjectionDesc BuildProjectionDesc(const CameraDesc& sceneCamera, UInt2 viewportDims);
+
+	/// <summary>Build a projection desc for an orthogonal camera</summary>
+    ProjectionDesc BuildOrthogonalProjectionDesc(
+        const Float4x4& cameraToWorld,
+        float l, float t, float r, float b,
+        float nearClip, float farClip);
 }}
 

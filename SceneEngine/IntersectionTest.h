@@ -18,7 +18,6 @@ namespace RenderCore { class PresentationChainDesc; }
 
 namespace SceneEngine
 {
-    class ISceneParser;
     class TerrainManager;
     class PlacementsEditor;
     class PlacementCellSet;

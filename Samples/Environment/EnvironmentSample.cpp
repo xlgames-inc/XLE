@@ -302,7 +302,7 @@ namespace Sample
                     TiledScreenshot(
                         *context, lightingParserContext,
                         *mainScene, mainScene->GetCameraDesc(),
-						SceneEngine::RenderingQualitySettings(UInt2(primMan._presChain->GetDesc()->_width, primMan._presChain->GetDesc()->_height)),
+						SceneEngine::RenderSceneSettings(UInt2(primMan._presChain->GetDesc()->_width, primMan._presChain->GetDesc()->_height)),
                         UInt2(screenshot, screenshot));
                     screenshot = 0;
                 }
@@ -360,9 +360,9 @@ namespace Sample
         using namespace SceneEngine;
         if (scene) {
 			auto presChainDesc = presentationChain->GetDesc();
-            RenderingQualitySettings qualSettings(
+            RenderSceneSettings qualSettings(
                 UInt2(presChainDesc->_width, presChainDesc->_height), 
-                (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
+                (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,
                 Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0));
 
             parserContext.GetProjectionDesc() = BuildProjectionDesc(scene->GetCameraDesc(), qualSettings._dimensions);

@@ -312,9 +312,9 @@ namespace ToolsRig
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 		};
-        auto qualSettings = SceneEngine::RenderingQualitySettings{
+        auto qualSettings = SceneEngine::RenderSceneSettings{
 			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
-			SceneEngine::RenderingQualitySettings::LightingModel::Deferred,
+			SceneEngine::RenderSceneSettings::LightingModel::Deferred,
 			MakeIteratorRange(lightingPlugins)};
 
         auto& screenshot = Tweakable("Screenshot", 0);

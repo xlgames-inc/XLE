@@ -219,5 +219,39 @@ namespace RenderCore { namespace Techniques
             { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
 	}
 
+	ProjectionDesc BuildProjectionDesc(const CameraDesc& sceneCamera, UInt2 viewportDims)
+    {
+        const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
+        auto cameraToProjection = Techniques::Projection(sceneCamera, aspectRatio);
+
+        RenderCore::Techniques::ProjectionDesc projDesc;
+        projDesc._verticalFov = sceneCamera._verticalFieldOfView;
+        projDesc._aspectRatio = aspectRatio;
+        projDesc._nearClip = sceneCamera._nearClip;
+        projDesc._farClip = sceneCamera._farClip;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = sceneCamera._cameraToWorld;
+        return projDesc;
+    }
+
+    ProjectionDesc BuildOrthogonalProjectionDesc(
+        const Float4x4& cameraToWorld,
+        float l, float t, float r, float b,
+        float nearClip, float farClip)
+    {
+        auto cameraToProjection = OrthogonalProjection(l, t, r, b, nearClip, farClip, Techniques::GetDefaultClipSpaceType());
+
+        RenderCore::Techniques::ProjectionDesc projDesc;
+        projDesc._verticalFov = 0.f;
+        projDesc._aspectRatio = 1.f;
+        projDesc._nearClip = nearClip;
+        projDesc._farClip = farClip;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = cameraToWorld;
+        return projDesc;
+    }
+
 }}
 

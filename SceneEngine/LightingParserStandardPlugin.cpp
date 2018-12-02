@@ -27,12 +27,12 @@ namespace SceneEngine
     using namespace RenderCore::Metal;
 
     void LightingParserStandardPlugin::OnPreScenePrepare(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, PreparedScene&) const
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ILightingParserDelegate&, PreparedScene&) const
     {
     }
 
     void LightingParserStandardPlugin::InitBasicLightEnvironment(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ILightingParserDelegate&, ShaderLightDesc::BasicEnvironment& env) const {}
 
             ////////////////////////////////////////////////////////////////////////
 
@@ -66,7 +66,7 @@ namespace SceneEngine
 
     static void ScreenSpaceReflections_Prepare(     DeviceContext& metalContext,
                                                     RenderCore::Techniques::ParsingContext& parserContext,
-													ISceneParser& sceneParser,
+													ILightingParserDelegate& sceneParser,
                                                     LightingResolveContext& resolveContext)
    {
         if (Tweakable("DoScreenSpaceReflections", false)) {
@@ -84,7 +84,7 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parserContext, 
         LightingParserContext& lightingParserContext,
-		ISceneParser& sceneParser,
+		ILightingParserDelegate& sceneParser,
         LightingResolveContext& resolveContext) const
     {
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
@@ -98,13 +98,13 @@ namespace SceneEngine
 
     void LightingParserStandardPlugin::OnPostSceneRender(
         RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, LightingParserContext& lightingParserContext, 
-        ISceneParser& sceneParser, const SceneParseSettings& parseSettings, unsigned techniqueIndex) const
+        ILightingParserDelegate& sceneParser, BatchFilter batch, unsigned techniqueIndex) const
     {
         const bool doTiledBeams             = Tweakable("TiledBeams", false);
         const bool doTiledRenderingTest     = Tweakable("DoTileRenderingTest", false);
         const bool tiledBeamsTransparent    = Tweakable("TiledBeamsTransparent", false);
 
-        const bool isTransparentPass = parseSettings._batchFilter == SceneParseSettings::BatchFilter::Transparent;
+        const bool isTransparentPass = batch == BatchFilter::Transparent;
         if (doTiledRenderingTest && tiledBeamsTransparent == isTransparentPass) {
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
             ViewportDesc viewport(metalContext);

@@ -290,16 +290,16 @@ namespace ToolsRig
 
     VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box);
 
-	static SceneEngine::RenderingQualitySettings::LightingModel AsLightingModel(DrawPreviewLightingType lightingType)
+	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(DrawPreviewLightingType lightingType)
 	{
 		switch (lightingType) {
 		case DrawPreviewLightingType::Deferred:
-			return SceneEngine::RenderingQualitySettings::LightingModel::Deferred;
+			return SceneEngine::RenderSceneSettings::LightingModel::Deferred;
 		case DrawPreviewLightingType::Forward:
-			return SceneEngine::RenderingQualitySettings::LightingModel::Forward;
+			return SceneEngine::RenderSceneSettings::LightingModel::Forward;
 		default:
 		case DrawPreviewLightingType::NoLightingParser:
-			return SceneEngine::RenderingQualitySettings::LightingModel::Direct;
+			return SceneEngine::RenderSceneSettings::LightingModel::Direct;
 		}
 	}
 
@@ -312,7 +312,7 @@ namespace ToolsRig
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 		};
-        SceneEngine::RenderingQualitySettings qualSettings{
+        SceneEngine::RenderSceneSettings qualSettings{
 			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
 			AsLightingModel(lightingType),
 			MakeIteratorRange(lightingPlugins)};

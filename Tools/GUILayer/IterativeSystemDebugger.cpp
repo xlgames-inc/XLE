@@ -77,7 +77,7 @@ namespace GUILayer
             Float3(0.f, 0.f, 0.f));
         SceneEngine::LightingParser_SetGlobalTransform(
             context, parserContext, 
-            SceneEngine::BuildProjectionDesc(
+            SceneEngine::BuildOrthogonalProjectionDesc(
                 camToWorld, 
                 0.f, worldDims[1], worldDims[0], 0.f, 
                 -4096.f, 4096.f));

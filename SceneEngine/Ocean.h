@@ -17,7 +17,6 @@ namespace SceneEngine
 {
     class DeepOceanSimSettings;
     class OceanLightingSettings;
-	class ISceneParser;
 
     /// Entry point for ocean rendering
     /// Draws the surface of the ocean, according to the given settings.
