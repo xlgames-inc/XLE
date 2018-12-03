@@ -88,7 +88,7 @@ namespace SceneEngine
         CB_ShadowResolveParameters  _resolveParameters;
         CB                          _resolveParametersCB;
 
-		const SRV&	GetSRV() const;
+		const SRV&	GetSRV() const { return _srv; }
 
         bool IsReady() const;
 

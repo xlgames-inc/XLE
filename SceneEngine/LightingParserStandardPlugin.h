@@ -20,7 +20,7 @@ namespace SceneEngine
 			LightingResolveContext& resolveContext) const override;
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext& parserContext, 
-			BatchFilter filter, unsigned techniqueIndex) const override;
+			RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const override;
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
 			ShaderLightDesc::BasicEnvironment& env) const override;

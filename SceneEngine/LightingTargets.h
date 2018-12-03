@@ -206,6 +206,7 @@ namespace SceneEngine
 
     void Deferred_DrawDebugging(
 		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext,
+		MainTargets& mainTargets,
 		bool useMsaaSamplers, unsigned debuggingType);
 
 }

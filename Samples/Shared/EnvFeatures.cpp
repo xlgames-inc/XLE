@@ -45,9 +45,9 @@ namespace Sample
         parserContext._plugins.push_back(_volumetricFogMan->GetParserPlugin());
     }
 
-    static const char* VegetationSpawnName(SceneEngine::SceneParseSettings::BatchFilter batchFilter)
+    static const char* VegetationSpawnName(RenderCore::Techniques::BatchFilter batchFilter)
     {
-        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         switch (batchFilter) {
         case BF::General: return "VegetationSpawn-General";
         case BF::Transparent:
@@ -66,7 +66,7 @@ namespace Sample
         const SceneEngine::SceneParseSettings& parseSettings,
         unsigned techniqueIndex) const
     {
-        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         using Toggles = SceneEngine::SceneParseSettings::Toggles;
 
         if (parseSettings._toggles & Toggles::NonTerrain) {

@@ -537,7 +537,9 @@ namespace SceneEngine
     #endif
 
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, MainTargets& mainTargets, bool useMsaaSamplers, unsigned debuggingType)
+    void Deferred_DrawDebugging(
+		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
+		MainTargets& mainTargets, bool useMsaaSamplers, unsigned debuggingType)
     {
         using namespace RenderCore;
 

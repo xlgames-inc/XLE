@@ -10,7 +10,7 @@
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; class DrawablesPacket; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
 
 namespace SceneEngine
 {
@@ -20,17 +20,6 @@ namespace SceneEngine
     class LightDesc;
     class ToneMapSettings;
     class PreparedScene;
-
-    enum class BatchFilter
-    {
-        General,                // general rendering batch
-        PreDepth,               // objects that should get a pre-depth pass
-        Transparent,            // transparent objects (particularly those that require some object based sorting)
-        OITransparent,          // order independent transparent
-        TransparentPreDepth,    // pre-depth pass for objects considered "transparent" (ie, opaque parts of transparent objects)
-        DMShadows,              // depth map shadows
-        RayTracedShadows        // objects enabled for rendering into ray traced shadows
-    };
 
 	class SceneView
 	{
@@ -48,7 +37,7 @@ namespace SceneEngine
 	public:
 		IteratorRange<const SceneView*> GetViews() const { return MakeIteratorRange(_views); }
 		IteratorRange<const std::shared_ptr<IViewDelegate>*> GetViewDelegates();
-		RenderCore::Techniques::DrawablesPacket& GetDrawablesPacket(unsigned viewIndex, BatchFilter batch);
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(unsigned viewIndex, RenderCore::Techniques::BatchFilter batch);
 		PreparedScene& GetPreparedScene();
 
 		void AddView(

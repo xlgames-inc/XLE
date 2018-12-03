@@ -899,7 +899,7 @@ namespace SceneEngine
 
         virtual void OnPostSceneRender(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-            BatchFilter, unsigned techniqueIndex) const;
+            Techniques::BatchFilter, unsigned techniqueIndex) const;
 
         virtual void InitBasicLightEnvironment(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
@@ -997,7 +997,7 @@ namespace SceneEngine
     
     void VolumetricFogPlugin::OnPostSceneRender(
         RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-        BatchFilter, unsigned techniqueIndex) const {}
+        Techniques::BatchFilter, unsigned techniqueIndex) const {}
 
     void VolumetricFogPlugin::InitBasicLightEnvironment(
         RenderCore::IThreadContext& metalContext,

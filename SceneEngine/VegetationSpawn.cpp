@@ -322,7 +322,7 @@ namespace SceneEngine
             g_TerrainVegetationSpawn_AlignToTerrainUp = alignToTerrainUp;
 
             SceneParseSettings parseSettings(
-                SceneParseSettings::BatchFilter::General,
+                Techniques::BatchFilter::General,
                 SceneParseSettings::Toggles::Terrain);
 
                 // Adjust the far clip so that it's very close...

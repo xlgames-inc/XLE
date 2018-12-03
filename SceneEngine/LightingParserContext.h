@@ -6,8 +6,7 @@
 
 #pragma once
 
-#include "PreparedScene.h"
-#include <functional>
+#include <vector>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace RenderCore { class IThreadContext; }
@@ -33,7 +32,8 @@ namespace SceneEngine
 		unsigned					_sampleCount = 0;
 		unsigned					_gbufferType = 0;
 
-		MainTargets&	GetMainTargets() const;
+		MainTargets&	GetMainTargets() const { return *_mainTargets; }
+		void			SetMainTargets(MainTargets* mainTargets);
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }
@@ -54,7 +54,8 @@ namespace SceneEngine
 		LightingParserContext& operator=(LightingParserContext&& moveFrom);
 
     private:
-        MetricsBox*         _metricsBox = nullptr;
+        MetricsBox*			_metricsBox = nullptr;
+		MainTargets*		_mainTargets = nullptr;
     };
 }
 

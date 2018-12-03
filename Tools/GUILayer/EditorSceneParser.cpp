@@ -95,7 +95,7 @@ namespace GUILayer
         PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
-        using BF = SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         auto batchFilter = parseSettings._batchFilter;
         auto& scene = *_editorScene;
 
@@ -117,7 +117,7 @@ namespace GUILayer
                         scene._placementsManager->GetRenderer()->CommitTransparent(
                             metalContext, parserContext, techniqueIndex, i);
                     } else {
-                        if (batchFilter == SceneParseSettings::BatchFilter::General) {
+                        if (batchFilter == RenderCore::Techniques::BatchFilter::General) {
                             scene._placementsManager->GetRenderer()->Render(
                                 metalContext, parserContext, preparedPackets,
                                 techniqueIndex, *scene._placementsCells);
@@ -168,7 +168,7 @@ namespace GUILayer
 
     bool EditorSceneParser::HasContent(const SceneParseSettings& parseSettings) const
     {
-        using BF = SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         auto batchFilter = parseSettings._batchFilter;
         if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {

@@ -11,7 +11,7 @@
 #include <vector>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; }}
+namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawablesPacket; }}
 namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
 
@@ -25,9 +25,11 @@ namespace RenderCore { namespace Assets
 	class SimpleModelRenderer
 	{
 	public:
-		VariantArray BuildDrawables(
+		void BuildDrawables(
+			IteratorRange<Techniques::DrawablesPacket** const> pkts,
 			const Float4x4& localToWorld = Identity<Float4x4>(),
 			uint64_t materialFilter = 0);
+
 		void GenerateDeformBuffer(IThreadContext& context);
 		unsigned DeformOperationCount() const { return (unsigned)_deformOps.size(); }
 		IDeformOperation& DeformOperation(unsigned idx) { return *_deformOps[idx]._deformOp; } 

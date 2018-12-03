@@ -118,7 +118,7 @@ namespace SceneEngine
             TechniqueIndex_ShadowGen, "ShadowGen-Prepare");
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(threadContext, parserContext, lightingParserContext, BatchFilter::DMShadows, TechniqueIndex_ShadowGen);
+            (*p)->OnPostSceneRender(threadContext, parserContext, lightingParserContext, Techniques::BatchFilter::General, TechniqueIndex_ShadowGen);
         
         return preparedResult;
     }
@@ -186,9 +186,9 @@ namespace SceneEngine
 	{
 	}
 
-	RenderCore::Techniques::DrawablesPacket* ViewDelegate_Shadow::GetDrawablesPacket(BatchFilter batch)
+	RenderCore::Techniques::DrawablesPacket* ViewDelegate_Shadow::GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch)
 	{
-		if (batch == BatchFilter::General)
+		if (batch == RenderCore::Techniques::BatchFilter::General)
 			return &_general;
 		return nullptr;
 	}

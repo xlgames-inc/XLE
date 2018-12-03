@@ -213,7 +213,7 @@ namespace SceneEngine
         ;
     }
 
-    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(BatchFilter filter);
+    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(RenderCore::Techniques::BatchFilter filter);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

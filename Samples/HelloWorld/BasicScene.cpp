@@ -211,7 +211,11 @@ namespace Sample
 		auto renderer = _simpleModelRenderer->TryActualize();
 		if (!renderer) return;
 
-		// renderer->BuildDrawables(packet);
+		RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+		for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
+			pkts[c] = executeContext.GetDrawablesPacket(0, RenderCore::Techniques::BatchFilter(c));
+		
+		renderer->BuildDrawables(MakeIteratorRange(pkts));
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

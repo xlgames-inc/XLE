@@ -22,9 +22,33 @@ namespace SceneEngine
 {
 	using namespace RenderCore;
 
+	class ViewDelegate_Forward : public IViewDelegate
+	{
+	public:
+		Techniques::DrawablesPacket _preDepth;
+		Techniques::DrawablesPacket _general;
+
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch)
+		{
+			switch (batch) {
+			case Techniques::BatchFilter::General:
+				return &_general;
+			case Techniques::BatchFilter::PreDepth:
+				return &_preDepth;
+			default:
+				return nullptr;
+			}
+		}
+	};
+
 	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_Forward::GetInterface() const
 	{
 		return _forward;
+	}
+
+	std::shared_ptr<IViewDelegate> RenderStep_Forward::CreateViewDelegate()
+	{
+		return std::make_shared<ViewDelegate_Forward>();
 	}
 
 	RenderStep_Forward::RenderStep_Forward()
@@ -43,24 +67,7 @@ namespace SceneEngine
 
 	RenderStep_Forward::~RenderStep_Forward() {}
 
-	class ViewDelegate_Forward : public IViewDelegate
-	{
-	public:
-		Techniques::DrawablesPacket _preDepth;
-		Techniques::DrawablesPacket _general;
-
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch)
-		{
-			switch (batch) {
-			case BatchFilter::General:
-				return &_general;
-			case BatchFilter::PreDepth:
-				return &_preDepth;
-			default:
-				return nullptr;
-			}
-		}
-	};
+	
 
 	static void ForwardLightingModel_Render(
         IThreadContext& threadContext,
@@ -134,7 +141,7 @@ namespace SceneEngine
                 //
             ReturnToSteadyState(metalContext);
             ExecuteScene(
-                context, parsingContext, SPS::BatchFilter::OITransparent, preparedScene,
+                context, parsingContext, Techniques::BatchFilter::OITransparent, preparedScene,
                 TechniqueIndex_OrderIndependentTransparency, "MainScene-OITrans");
         }
 

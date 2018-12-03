@@ -13,6 +13,7 @@
 #include "LightingTargets.h"
 #include "LightInternal.h"
 #include "RenderStep.h"
+#include "PreparedScene.h"
 
 #include "RefractionsBuffer.h"
 #include "Ocean.h"
@@ -45,12 +46,6 @@ namespace SceneEngine
 		const RenderSceneSettings& qualitySettings,
         unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
 
-	class SceneExecuteContext::Pimpl
-	{
-	public:
-		PreparedScene _preparedScene;
-	};
-
 	LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& threadContext, 
 		const RenderCore::IResourcePtr& renderTarget,
@@ -65,7 +60,7 @@ namespace SceneEngine
 
 		std::shared_ptr<IRenderStep> mainSceneRenderStep;
 		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
-		const bool precisionTargets = Tweakable("PrecisionTargets", false);;
+		const bool precisionTargets = Tweakable("PrecisionTargets", false);
 
 		SceneExecuteContext executeContext;
 		if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred) {
@@ -80,6 +75,7 @@ namespace SceneEngine
 
 		for (unsigned s=0; s<delegate.GetShadowProjectionCount(); ++s) {
 			auto proj = delegate.GetShadowProjectionDesc(s, mainSceneProjection);
+			// todo -- what's the correct projection to give to this view?
 			executeContext.AddView(
 				SceneView{/*proj*/mainSceneProjection, SceneView::Type::Shadow},
 				std::make_shared<ViewDelegate_Shadow>(proj));
@@ -187,6 +183,11 @@ namespace SceneEngine
         _metricsBox = box;
     }
 
+	void LightingParserContext::SetMainTargets(MainTargets* mainTargets)
+	{
+		_mainTargets = mainTargets;
+	}
+
     void LightingParserContext::Reset()
     {
         _preparedDMShadows.clear();
@@ -200,8 +201,16 @@ namespace SceneEngine
 	, _preparedRTShadows(std::move(moveFrom._preparedRTShadows))
 	, _plugins(std::move(moveFrom._plugins))
 	, _metricsBox(moveFrom._metricsBox)
+	, _mainTargets(moveFrom._mainTargets)
+	, _preparedScene(moveFrom._preparedScene)
+	, _sampleCount(moveFrom._sampleCount)
+	, _gbufferType(moveFrom._gbufferType)
 	{
+		moveFrom._preparedScene = nullptr;
+		moveFrom._sampleCount = 0;
+		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
+		moveFrom._mainTargets = nullptr;
 	}
 
 	LightingParserContext& LightingParserContext::operator=(LightingParserContext&& moveFrom)
@@ -209,8 +218,16 @@ namespace SceneEngine
 		_preparedDMShadows = std::move(moveFrom._preparedDMShadows);
 		_preparedRTShadows = std::move(moveFrom._preparedRTShadows);
 		_plugins = std::move(moveFrom._plugins);
+		_mainTargets = moveFrom._mainTargets;
+		_preparedScene = moveFrom._preparedScene;
+		_sampleCount = moveFrom._sampleCount;
+		_gbufferType = moveFrom._gbufferType;
 		_metricsBox = moveFrom._metricsBox;
+		moveFrom._preparedScene = nullptr;
+		moveFrom._sampleCount = 0;
+		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
+		moveFrom._mainTargets = nullptr;
 		return *this;
 	}
 
@@ -301,8 +318,89 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class MainTargets::Pimpl
+	{
+	};
+
+	auto MainTargets::GetSRV(uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> SRV
+	{
+		return SRV{};
+	}
+
+	const RenderCore::IResourcePtr& MainTargets::GetResource(uint64_t semantic) const
+	{
+		static RenderCore::IResourcePtr temp;
+		return temp;
+	}
+
+	UInt2		MainTargets::GetDimensions() const
+	{
+		return UInt2(0,0);
+	}
+
+	unsigned    MainTargets::GetSamplingCount() const
+	{
+		return 0;
+	}
+
+	MainTargets::MainTargets() 
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+	MainTargets::~MainTargets() {}
+
+
+	class SceneExecuteContext::Pimpl
+	{
+	public:
+		std::vector<std::shared_ptr<IViewDelegate>> _viewDelegates;
+		PreparedScene _preparedScene;
+	};
+
+	IteratorRange<const std::shared_ptr<IViewDelegate>*> SceneExecuteContext::GetViewDelegates()
+	{
+		return MakeIteratorRange(_pimpl->_viewDelegates);
+	}
+
+	RenderCore::Techniques::DrawablesPacket* SceneExecuteContext::GetDrawablesPacket(unsigned viewIndex, RenderCore::Techniques::BatchFilter batch)
+	{
+		return _pimpl->_viewDelegates[viewIndex]->GetDrawablesPacket(batch);
+	}
+
+	PreparedScene& SceneExecuteContext::GetPreparedScene()
+	{
+		return _pimpl->_preparedScene;
+	}
+
+	void SceneExecuteContext::AddView(
+		const SceneView& view,
+		const std::shared_ptr<IViewDelegate>& delegate)
+	{
+		_views.push_back(view);
+		_pimpl->_viewDelegates.push_back(delegate);
+		assert(_views.size() == _pimpl->_viewDelegates.size());
+	}
+
+	SceneExecuteContext::SceneExecuteContext()
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+	
+	SceneExecuteContext::~SceneExecuteContext()
+	{
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+
     IScene::~IScene() {}
 	ILightingParserDelegate::~ILightingParserDelegate() {}
+	IViewDelegate::~IViewDelegate() {}
+	std::shared_ptr<IViewDelegate> IRenderStep::CreateViewDelegate() { return nullptr; }
+	IRenderStep::~IRenderStep() {}
+	ILightingParserPlugin::~ILightingParserPlugin() {}
 
 }
 

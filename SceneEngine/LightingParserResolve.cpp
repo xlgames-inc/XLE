@@ -488,12 +488,13 @@ namespace SceneEngine
         
         // note -- we need to change the frame buffer desc if any of these are enabled
         // because the gbuffer needs to be retained and read from in a debugging phase
-        auto debugging = Tweakable("DeferredDebugging", 0u);
+        auto debugging = Tweakable("DeferredDebugging", 0);
         if (debugging > 0) {
             parsingContext._pendingOverlays.push_back(
                 std::bind(
 					&Deferred_DrawDebugging, 
 					std::placeholders::_1, std::placeholders::_2,
+					std::ref(lightingParserContext.GetMainTargets()),
 					lightingParserContext._sampleCount > 1, debugging));
         }
 

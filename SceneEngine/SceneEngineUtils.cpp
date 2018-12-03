@@ -400,9 +400,9 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(
-        BatchFilter filter)
+        Techniques::BatchFilter filter)
     {
-        using BF = BatchFilter;
+        using BF = Techniques::BatchFilter;
         using V = std::vector<FixedFunctionModel::DelayStep>;
         using DelayStep = FixedFunctionModel::DelayStep;
 
@@ -432,12 +432,12 @@ namespace SceneEngine
                 return MakeIteratorRange(result);
             }
         
-        case BF::DMShadows:
+        /*case BF::DMShadows:
         case BF::RayTracedShadows:
             {
                 static DelayStep result[] { DelayStep::OpaqueRender, DelayStep::PostDeferred, DelayStep::SortedBlending };
                 return MakeIteratorRange(result);
-            }
+            }*/
         }
 
         return IteratorRange<FixedFunctionModel::DelayStep*>();

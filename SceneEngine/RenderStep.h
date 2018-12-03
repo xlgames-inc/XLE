@@ -21,7 +21,7 @@ namespace SceneEngine
 	class IViewDelegate
 	{
 	public:
-		virtual RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch) = 0;
+		virtual RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch) = 0;
 		virtual ~IViewDelegate();
 	};
 
@@ -120,7 +120,7 @@ namespace SceneEngine
 		RenderCore::Techniques::DrawablesPacket _general;
 		ShadowProjectionDesc _shadowProj;
 
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch);
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch);
 		ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection);
 		~ViewDelegate_Shadow();
 	};

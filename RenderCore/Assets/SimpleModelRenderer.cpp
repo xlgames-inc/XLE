@@ -86,11 +86,13 @@ namespace RenderCore { namespace Assets
 		((Metal::Buffer*)_dynVB.get())->Unmap(metalContext);
 	}
 
-	VariantArray SimpleModelRenderer::BuildDrawables(
+	void SimpleModelRenderer::BuildDrawables(
+		IteratorRange<Techniques::DrawablesPacket** const> pkts,
 		const Float4x4& localToWorld,
 		uint64_t materialFilter)
 	{
-		VariantArray result;
+		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
+		if (!generalPkt) return;
 
 		const auto& cmdStream = _modelScaffold->CommandStream();
         const auto& immData = _modelScaffold->ImmutableData();
@@ -107,7 +109,7 @@ namespace RenderCore { namespace Assets
                 if (materialFilter != 0 && materialGuids != materialFilter)
                     continue;
 
-				auto& drawable = *result.Allocate<SimpleModelDrawable>(1);
+				auto& drawable = *generalPkt->_drawables.Allocate<SimpleModelDrawable>(1);
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._material = _materialScaffold->GetMaterial(materialGuids);
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
@@ -141,7 +143,7 @@ namespace RenderCore { namespace Assets
                     // index buffer and vertex buffer and topology
                     // then we just execute the draw command
 
-				auto& drawable = *result.Allocate<SimpleModelDrawable>(1);
+				auto& drawable = *generalPkt->_drawables.Allocate<SimpleModelDrawable>(1);
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._material = _materialScaffold->GetMaterial(materialGuids);
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
@@ -153,8 +155,6 @@ namespace RenderCore { namespace Assets
 					localToWorld);
             }
         }
-
-		return result;
 	}
 
 	static bool IsSorted(IteratorRange<const uint64_t*> suppressedElements)

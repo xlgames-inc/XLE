@@ -104,13 +104,13 @@ namespace SceneEngine
 
     void LightingParserStandardPlugin::OnPostSceneRender(
         RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, LightingParserContext& lightingParserContext, 
-        BatchFilter batch, unsigned techniqueIndex) const
+        Techniques::BatchFilter batch, unsigned techniqueIndex) const
     {
         const bool doTiledBeams             = Tweakable("TiledBeams", false);
         const bool doTiledRenderingTest     = Tweakable("DoTileRenderingTest", false);
         const bool tiledBeamsTransparent    = Tweakable("TiledBeamsTransparent", false);
 
-        const bool isTransparentPass = batch == BatchFilter::Transparent;
+        const bool isTransparentPass = batch == Techniques::BatchFilter::Transparent;
         if (doTiledRenderingTest && tiledBeamsTransparent == isTransparentPass) {
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
             ViewportDesc viewport(metalContext);

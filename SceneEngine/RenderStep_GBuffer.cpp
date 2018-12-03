@@ -143,29 +143,32 @@ namespace SceneEngine
 
 		Techniques::DrawablesPacket _gbufferOpaque;				// BatchFilter::General
 
-		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch) 
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(Techniques::BatchFilter batch) 
 		{
 			switch (batch) {
-			case BatchFilter::General:
+			case Techniques::BatchFilter::General:
 				return &_gbufferOpaque;
 
-			case BatchFilter::Transparent:
+			case Techniques::BatchFilter::Transparent:
 				return &_transparent;
 
-			case BatchFilter::OITransparent:
+			case Techniques::BatchFilter::OITransparent:
 				return &_oiTransparent;
 
-			case BatchFilter::TransparentPreDepth:
+			case Techniques::BatchFilter::TransparentPreDepth:
 				return &_transparentPreDepth;
 
-			case BatchFilter::PreDepth:
-			case BatchFilter::DMShadows:
-			case BatchFilter::RayTracedShadows:
+			case Techniques::BatchFilter::PreDepth:
 			default:
 				return nullptr;
 			}
 		}
 	};
+
+	std::shared_ptr<IViewDelegate> RenderStep_GBuffer::CreateViewDelegate()
+	{
+		return std::make_shared<ViewDelegate_Deferred>();
+	}
 
 	/*
 			auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(fbDescBox._createGBuffer, parsingContext.GetNamedResources());
@@ -220,7 +223,7 @@ namespace SceneEngine
         } CATCH_ASSETS_END(parsingContext)
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(threadContext, parsingContext, lightingParserContext, BatchFilter::General, TechniqueIndex_Deferred);
+            (*p)->OnPostSceneRender(threadContext, parsingContext, lightingParserContext, Techniques::BatchFilter::General, TechniqueIndex_Deferred);
 
             //
         //////////////////////////////////////////////////////////////////////////////////////
@@ -373,7 +376,7 @@ namespace SceneEngine
                 auto* transTargets = OrderIndependentTransparency_Prepare(metalContext, parserContext, duplicatedDepthBuffer);
 
                 ExecuteScene(
-                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    context, parserContext, Techniques::BatchFilter::OITransparent,
                     preparedScene,
                     TechniqueIndex_OrderIndependentTransparency, "MainScene-PostGBuffer-OI");
 
@@ -394,13 +397,13 @@ namespace SceneEngine
                     // MSAA
                 stochTransOp.PrepareFirstPass(mainTargets.GetSRV(IMainTargets::MultisampledDepth));
                 ExecuteScene(
-                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    context, parserContext, Techniques::BatchFilter::OITransparent,
                     preparedScene,
                     TechniqueIndex_DepthOnly, "MainScene-PostGBuffer-OI");
 
                 stochTransOp.PrepareSecondPass(mainTargets._msaaDepthBuffer);
                 ExecuteScene(
-                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    context, parserContext, Techniques::BatchFilter::OITransparent,
                     preparedScene,
                     TechniqueIndex_StochasticTransparency, "MainScene-PostGBuffer-OI-Res");
 
@@ -416,7 +419,7 @@ namespace SceneEngine
                 Metal::DepthStencilView dsv(savedTargets.GetDepthStencilView());
                 transOp.PrepareFirstPass(&dsv);
                 ExecuteScene(
-                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    context, parserContext, Techniques::BatchFilter::OITransparent,
                     preparedScene,
                     TechniqueIndex_DepthWeightedTransparency, "MainScene-PostGBuffer-OI");
 
@@ -425,7 +428,7 @@ namespace SceneEngine
             } else if (oiMode == OIMode::Unordered) {
                 RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
                 ExecuteScene(
-                    context, parserContext, SPS::BatchFilter::OITransparent,
+                    context, parserContext, Techniques::BatchFilter::OITransparent,
                     preparedScene,
                     TechniqueIndex_General, "MainScene-PostGBuffer-OI");
             }
@@ -439,6 +442,6 @@ namespace SceneEngine
             mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal));
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, BatchFilter::Transparent, TechniqueIndex_General);
+            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, Techniques::BatchFilter::Transparent, TechniqueIndex_General);
     }
 }

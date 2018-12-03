@@ -16,7 +16,7 @@
 #include "../Utility/IteratorUtils.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; enum class BatchFilter; } }
 
 namespace SceneEngine
 {
@@ -161,8 +161,6 @@ namespace SceneEngine
         Pass::Enum _pass;
     };
 
-	enum class BatchFilter;
-
     /// <summary>Plug-in for the lighting parser</summary>
     /// This allows for some customization of the lighting parser operations.
     /// <list>
@@ -186,7 +184,7 @@ namespace SceneEngine
 
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			BatchFilter filter, unsigned techniqueIndex) const = 0;
+			RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const = 0;
 
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 

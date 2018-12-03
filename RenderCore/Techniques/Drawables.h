@@ -96,4 +96,14 @@ namespace RenderCore { namespace Techniques
 		const ParameterBox* seqShaderSelectors,
 		const Drawable& drawable);
 
+	enum class BatchFilter
+    {
+        General,                // general rendering batch
+        Transparent,            // transparent objects (particularly those that require some object based sorting)
+        OITransparent,          // order independent transparent
+		PreDepth,               // objects that should get a pre-depth pass
+        TransparentPreDepth,	// pre-depth pass for objects considered "transparent" (ie, opaque parts of transparent objects)
+		Max
+    };
+
 }}

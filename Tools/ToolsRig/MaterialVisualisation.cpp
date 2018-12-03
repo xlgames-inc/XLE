@@ -97,7 +97,7 @@ namespace ToolsRig
             SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const 
         {
-            using BF = SceneEngine::SceneParseSettings::BatchFilter;
+            using BF = RenderCore::Techniques::BatchFilter;
             if (    parseSettings._batchFilter == BF::PreDepth
                 ||  parseSettings._batchFilter == BF::General
                 ||  parseSettings._batchFilter == BF::DMShadows) {
@@ -134,7 +134,7 @@ namespace ToolsRig
 
         bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
         {
-            using BF = SceneEngine::SceneParseSettings::BatchFilter;
+            using BF = RenderCore::Techniques::BatchFilter;
             return (    parseSettings._batchFilter == BF::PreDepth
                 ||      parseSettings._batchFilter == BF::General
                 ||      parseSettings._batchFilter == BF::DMShadows);
