@@ -73,6 +73,15 @@ namespace RenderCore
             result._flags = flags;
             return result;
         }
+
+        #if defined(_DEBUG)
+            mutable std::string _name = std::string();
+            inline AttachmentDesc&& SetName(const std::string& name) const { this->_name = name; return std::move(const_cast<AttachmentDesc&>(*this)); }
+            inline AttachmentDesc&& SetName(const std::string& name) { this->_name = name; return std::move(*this); }
+        #else
+            inline AttachmentDesc&& SetName(const std::string& name) const { return std::move(const_cast<AttachmentDesc&>(*this)); }
+            inline AttachmentDesc&& SetName(const std::string& name) { return std::move(*this); }
+        #endif
     };
 
     /// <summary>Defines which attachments are used during a subpass (and ordering)</summary>
@@ -90,6 +99,15 @@ namespace RenderCore
 		std::vector<AttachmentViewDesc> _resolve = {};
 
 		static const AttachmentViewDesc Unused;
+
+        #if defined(_DEBUG)
+            mutable std::string _name = std::string();
+            inline SubpassDesc&& SetName(const std::string& name) const { this->_name = name; return std::move(const_cast<SubpassDesc&>(*this)); }
+            inline SubpassDesc&& SetName(const std::string& name) { this->_name = name; return std::move(*this); }
+        #else
+            inline SubpassDesc&& SetName(const std::string& name) const { return std::move(const_cast<SubpassDesc&>(*this)); }
+            inline SubpassDesc&& SetName(const std::string& name) { return std::move(*this); }
+        #endif
     };
 
     class FrameBufferDesc
