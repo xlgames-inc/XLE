@@ -790,6 +790,7 @@ namespace RenderCore { namespace Techniques
                         workingAttachments.begin(), workingAttachments.end(),
                         [&interfaceAttachment](const PreregisteredAttachment& input) {
                             return (input._state == PreregisteredAttachment::State::Uninitialized)
+                                && (input._semantic == interfaceAttachment._semantic)
                                 && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
 
