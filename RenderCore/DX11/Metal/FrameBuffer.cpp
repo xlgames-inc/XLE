@@ -37,7 +37,7 @@ namespace RenderCore { namespace Metal_DX11
 		ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
         
-        assert(subpasses.size() < s_maxSubpasses);
+        _subpasses.resize(subpasses.size());
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
             const auto& spDesc = subpasses[c];
             auto& sp = _subpasses[c];
@@ -73,32 +73,35 @@ namespace RenderCore { namespace Metal_DX11
 				}
 			}
         }
-        _subpassCount = (unsigned)subpasses.size();
     }
 
     void FrameBuffer::BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const
     {
-        if (subpassIndex >= _subpassCount)
+        if (subpassIndex >= _subpasses.size())
             Throw(::Exceptions::BasicLabel("Attempting to set invalid subpass"));
 
         const auto& s = _subpasses[subpassIndex];
 		for (unsigned c = 0; c < s._rtvCount; ++c) {
+			ClearValue cv = (s._rtvClearValue[c] < clearValues.size()) ? clearValues[s._rtvClearValue[c]] : MakeClearValue(0.f, 0.f, 0.f, 1.f);
 			if (s._rtvLoad[c] == LoadStore::Clear)
-				context.Clear(s._rtvs[c], clearValues[s._rtvClearValue[c]]._float);
+				context.Clear(s._rtvs[c], cv._float);
 		}
 
 		if (s._dsvLoad == LoadStore::Clear_ClearStencil) {
+			ClearValue cv = (s._dsvClearValue < clearValues.size()) ? clearValues[s._dsvClearValue] : MakeClearValue(1.0f, 0);
 			context.Clear(
 				s._dsv, DeviceContext::ClearFilter::Depth | DeviceContext::ClearFilter::Stencil,
-				clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+				cv._depthStencil._depth, cv._depthStencil._stencil);
         } else if (s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil) {
+			ClearValue cv = (s._dsvClearValue < clearValues.size()) ? clearValues[s._dsvClearValue] : MakeClearValue(1.0f, 0);
 			context.Clear(
 				s._dsv, DeviceContext::ClearFilter::Depth,
-				clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+				cv._depthStencil._depth, cv._depthStencil._stencil);
         } else if (s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil) {
+			ClearValue cv = (s._dsvClearValue < clearValues.size()) ? clearValues[s._dsvClearValue] : MakeClearValue(1.0f, 0);
 			context.Clear(
 				s._dsv, DeviceContext::ClearFilter::Stencil,
-				clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+				cv._depthStencil._depth, cv._depthStencil._stencil);
         }
 
 		ID3D::RenderTargetView* bindRTVs[s_maxMRTs];
@@ -136,7 +139,8 @@ namespace RenderCore { namespace Metal_DX11
     {
         // Queue up the next render targets
 		auto subpassIndex = s_nextSubpass;
-		frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
+		if (subpassIndex < frameBuffer.GetSubpassCount())
+			frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
 		++s_nextSubpass;
     }
 

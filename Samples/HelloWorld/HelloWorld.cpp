@@ -328,6 +328,7 @@ namespace Sample
             // presentation buffer (which is always target "0")
         bool hasPendingResources = false;
         {
+			namedRes.Bind(0u, presentationResource);
 			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parsingContext);
 
                 //  If we need to, we can render outside of the lighting parser.

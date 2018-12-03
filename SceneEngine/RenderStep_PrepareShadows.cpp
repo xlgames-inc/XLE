@@ -109,7 +109,7 @@ namespace SceneEngine
 
             /////////////////////////////////////////////
 
-		ExecuteDrawablesContext executeDrawablesContext;
+		ExecuteDrawablesContext executeDrawablesContext(parserContext);
         RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
         metalContext.Bind(resources._rasterizerState);
         ExecuteDrawables(

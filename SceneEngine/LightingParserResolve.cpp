@@ -740,8 +740,8 @@ namespace SceneEngine
 		secondSubpass._input.push_back(
 			AttachmentViewDesc { depthTarget, LoadStore::Retain, LoadStore::DontCare, justDepthWindow });
 
-		_fragment.AddSubpass(std::move(secondSubpass));
 		_fragment.AddSubpass(std::move(firstSubpass));
+		_fragment.AddSubpass(std::move(secondSubpass));
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

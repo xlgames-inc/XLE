@@ -209,7 +209,7 @@ namespace SceneEngine
             //      Bind the gbuffer, begin the render pass
             //
 
-        ExecuteDrawablesContext executeDrawablesContext;
+        ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 		
 		ReturnToSteadyState(metalContext);
 
@@ -313,7 +313,7 @@ namespace SceneEngine
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         ReturnToSteadyState(metalContext);
 
-		ExecuteDrawablesContext executeDrawablesContext;
+		ExecuteDrawablesContext executeDrawablesContext(parserContext);
 
             // We must bind all of the lighting resolve resources here
             //  -- because we'll be doing lighting operations in the pixel

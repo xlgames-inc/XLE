@@ -82,7 +82,9 @@ namespace SceneEngine
 		}
 
 		// No, go ahead and execute the scene, which should generate a lot of Drawables (and potentially other scene preparation elements)
-        scene.ExecuteScene(threadContext, executeContext);
+        CATCH_ASSETS_BEGIN
+			scene.ExecuteScene(threadContext, executeContext);
+		CATCH_ASSETS_END(parsingContext)
 
         // Throw in a "frame priority barrier" here, right after the prepare scene. This will
         // force all uploads started during PrepareScene to be completed when we next call
@@ -107,32 +109,34 @@ namespace SceneEngine
 
 			auto viewDelegates = executeContext.GetViewDelegates();
 			for (unsigned c=1; c<viewDelegates.size(); ++c) {
-				auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegates[c].get());
-				if (shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
-					RenderStep_PrepareDMShadows renderStep(
-						shadowDelegate._shadowProj._format, 
-						UInt2(shadowDelegate._shadowProj._width, shadowDelegate._shadowProj._height),
-						shadowDelegate._shadowProj._projections.Count());
-					auto interf = renderStep.GetInterface();
+				CATCH_ASSETS_BEGIN
+					auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegates[c].get());
+					if (shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
+						RenderStep_PrepareDMShadows renderStep(
+							shadowDelegate._shadowProj._format, 
+							UInt2(shadowDelegate._shadowProj._width, shadowDelegate._shadowProj._height),
+							shadowDelegate._shadowProj._projections.Count());
+						auto interf = renderStep.GetInterface();
 
-					auto merged = Techniques::MergeFragments(
-						{}, MakeIteratorRange(&interf, &interf+1));
+						auto merged = Techniques::MergeFragments(
+							{}, MakeIteratorRange(&interf, &interf+1));
 
-					auto fbDesc = Techniques::BuildFrameBufferDesc(parsingContext.GetNamedResources(), std::move(merged.first));
-					auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
-						Metal::GetObjectFactory(), fbDesc, parsingContext.GetNamedResources());
+						auto fbDesc = Techniques::BuildFrameBufferDesc(parsingContext.GetNamedResources(), std::move(merged.first));
+						auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
+							Metal::GetObjectFactory(), fbDesc, parsingContext.GetNamedResources());
 
-					Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, parsingContext.GetNamedResources());
-					Techniques::RenderPassFragment rpf(rpi, merged.second[0], parsingContext.GetNamedResources());
-					Metal::DeviceContext::Get(threadContext)->Bind(
-						Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
+						Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, parsingContext.GetNamedResources());
+						Techniques::RenderPassFragment rpf(rpi, merged.second[0], parsingContext.GetNamedResources());
+						Metal::DeviceContext::Get(threadContext)->Bind(
+							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
 
-					renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
-				} else {
-					RenderStep_PrepareRTShadows renderStep;
-					Techniques::RenderPassFragment rpf;
-					renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
-				}
+						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+					} else {
+						RenderStep_PrepareRTShadows renderStep;
+						Techniques::RenderPassFragment rpf;
+						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
+					}
+				CATCH_ASSETS_END(parsingContext)
 			}
         }
 
@@ -169,10 +173,12 @@ namespace SceneEngine
 			Metal::ViewportDesc(0.f, 0.f, float(renderSettings._dimensions[0]), float(renderSettings._dimensions[1])));
 
 		for (unsigned c=0; c<dimof(renderSteps); ++c) {
-			Techniques::RenderPassFragment rpf(rpi, merged.second[c], parsingContext.GetNamedResources());
-			IViewDelegate* viewDelegate = nullptr;
-			if (c==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
-			renderSteps[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
+			CATCH_ASSETS_BEGIN
+				Techniques::RenderPassFragment rpf(rpi, merged.second[c], parsingContext.GetNamedResources());
+				IViewDelegate* viewDelegate = nullptr;
+				if (c==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
+				renderSteps[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
+			CATCH_ASSETS_END(parsingContext)
 		}
 
 		return lightingParserContext;
@@ -205,12 +211,14 @@ namespace SceneEngine
 	, _preparedScene(moveFrom._preparedScene)
 	, _sampleCount(moveFrom._sampleCount)
 	, _gbufferType(moveFrom._gbufferType)
+	, _delegate(moveFrom._delegate)
 	{
 		moveFrom._preparedScene = nullptr;
 		moveFrom._sampleCount = 0;
 		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
 		moveFrom._mainTargets = nullptr;
+		moveFrom._delegate = nullptr;
 	}
 
 	LightingParserContext& LightingParserContext::operator=(LightingParserContext&& moveFrom)
@@ -223,11 +231,13 @@ namespace SceneEngine
 		_sampleCount = moveFrom._sampleCount;
 		_gbufferType = moveFrom._gbufferType;
 		_metricsBox = moveFrom._metricsBox;
+		_delegate = moveFrom._delegate;
 		moveFrom._preparedScene = nullptr;
 		moveFrom._sampleCount = 0;
 		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
 		moveFrom._mainTargets = nullptr;
+		moveFrom._delegate = nullptr;
 		return *this;
 	}
 

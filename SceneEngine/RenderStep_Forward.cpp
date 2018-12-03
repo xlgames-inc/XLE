@@ -89,7 +89,7 @@ namespace SceneEngine
         const bool useOrderIndependentTransparency = Tweakable("UseOITrans", false) && (lightingParserContext._sampleCount <= 1);
 		assert(!useOrderIndependentTransparency);	// (order independent transparency broken during refactoring)
 
-		ExecuteDrawablesContext executeDrawablesContext;
+		ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 
         ReturnToSteadyState(metalContext);
 

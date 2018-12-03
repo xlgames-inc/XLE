@@ -7,6 +7,7 @@
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/RenderStateResolver.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/BasicDelegates.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../Assets/AssetsCore.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -62,5 +63,18 @@ namespace SceneEngine
             *Metal::DeviceContext::Get(context), Techniques::TechniqueContext::CB_GlobalTransform,
             &globalTransform, sizeof(globalTransform));
     }
+
+	ExecuteDrawablesContext::ExecuteDrawablesContext(RenderCore::Techniques::ParsingContext& parserContext)
+	{
+		_sequencerTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+		_sequencerTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+		_sequencerTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
+
+		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
+		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
+			_sequencerTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
+	}
+
+	ExecuteDrawablesContext::~ExecuteDrawablesContext() {}
 
 }

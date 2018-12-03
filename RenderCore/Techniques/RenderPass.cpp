@@ -883,7 +883,11 @@ namespace RenderCore { namespace Techniques
                 for (auto&a:newSubpass._resolve)
                     a._resourceName = Remap(attachmentRemapping, a._resourceName);
 
-                #if defined(_DEBUG)
+				// DavidJ -- in some interesting cases, a single attachment can be used mutliple times in the same subpass
+				//		but I think this should only happen if different "aspects" of the resource are used each time
+				//		for exampling, binding the stencil aspect of a DepthStencil buffer in the DepthStencil binding,
+				//		and then binding the depth aspect as in input binding
+                #if 0 // defined(_DEBUG)
                     std::vector<AttachmentName> uniqueAttachments;
                     for (auto&a:newSubpass._output) uniqueAttachments.push_back(a._resourceName);
                     uniqueAttachments.push_back(newSubpass._depthStencil._resourceName);

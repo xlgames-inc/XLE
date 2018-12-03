@@ -39,6 +39,9 @@ namespace SceneEngine
 	public:
 		RenderCore::Techniques::SequencerTechnique _sequencerTechnique;
 		ParameterBox _seqShaderSelectors;
+
+		ExecuteDrawablesContext(RenderCore::Techniques::ParsingContext& parserContext);
+		~ExecuteDrawablesContext();
 	};
 
     void ExecuteDrawables(

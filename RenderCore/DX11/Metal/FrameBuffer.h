@@ -23,6 +23,7 @@ namespace RenderCore { namespace Metal_DX11
 	{
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+		unsigned GetSubpassCount() const { return (unsigned)_subpasses.size(); }
 
 		FrameBuffer(
 			ObjectFactory& factory,
@@ -46,8 +47,7 @@ namespace RenderCore { namespace Metal_DX11
 			LoadStore _dsvLoad;
 			unsigned _dsvClearValue;
         };
-        Subpass     _subpasses[s_maxSubpasses];
-        unsigned    _subpassCount;
+        std::vector<Subpass> _subpasses;
 	};
 
     /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>

@@ -239,7 +239,7 @@ namespace SceneEngine
             });
 
         CATCH_ASSETS_BEGIN
-			ExecuteDrawablesContext executeDrawblesContext;
+			ExecuteDrawablesContext executeDrawblesContext(parserContext);
             ExecuteDrawables(
                 threadContext, parserContext,
 				executeDrawblesContext,
