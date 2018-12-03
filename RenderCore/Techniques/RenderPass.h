@@ -149,6 +149,7 @@ namespace RenderCore { namespace Techniques
         unsigned GetCurrentSubpassIndex() const;
 
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
+        const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
 
         RenderPassInstance(
             IThreadContext& context,
@@ -180,6 +181,7 @@ namespace RenderCore { namespace Techniques
         AttachmentDesc _desc;
         enum class State { Uninitialized, Initialized };
         State _state = State::Uninitialized;
+        State _stencilState = State::Uninitialized;
     };
 
     class FrameBufferFragmentMapping
@@ -212,6 +214,7 @@ namespace RenderCore { namespace Techniques
 		auto GetInputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
 		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
         AttachmentPool& GetAttachmentPool() const { return *_attachmentPool; }
+        const RenderPassInstance& GetRenderPassInstance() const { return *_rpi; }
 
         void NextSubpass();
 

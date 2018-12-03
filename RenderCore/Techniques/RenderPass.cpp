@@ -15,10 +15,44 @@
 #include "../ResourceUtils.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/ArithmeticUtils.h"
+#include "../../Utility/StreamUtils.h"
 #include <cmath>
 #include <sstream>
-#include <set>
 #include <iostream>
+#include <set>
+
+namespace RenderCore
+{
+    inline std::ostream& operator<<(std::ostream& str, const AttachmentDesc& attachment)
+    {
+        str << "AttachmentDesc {"
+            #if defined(_DEBUG)
+                << attachment._name << ", "
+            #endif
+            << AsString(attachment._format) << ", "
+            << attachment._width << ", "
+            << attachment._height << ", "
+            << attachment._arrayLayerCount << ", "
+            << attachment._defaultAspect << ", "
+            << unsigned(attachment._dimsMode)
+            << ", 0x" << std::hex << attachment._flags << std::dec << "}";
+        return str;
+    }
+
+    inline std::ostream& operator<<(std::ostream& str, const SubpassDesc& subpass)
+    {
+        str << "SubpassDesc { outputs [";
+        for (unsigned c=0; c<subpass._output.size(); ++c) { if (c!=0) str << ", "; str << subpass._output[c]._resourceName; }
+        str << "], DepthStencil: " << subpass._depthStencil._resourceName << ", inputs [";
+        for (unsigned c=0; c<subpass._input.size(); ++c) { if (c!=0) str << ", "; str << subpass._input[c]._resourceName; }
+        str << "], preserve [";
+        for (unsigned c=0; c<subpass._preserve.size(); ++c) { if (c!=0) str << ", "; str << subpass._preserve[c]._resourceName; }
+        str << "], resolve [";
+        for (unsigned c=0; c<subpass._resolve.size(); ++c) { if (c!=0) str << ", "; str << subpass._resolve[c]._resourceName; }
+        str << "] }";
+        return str;
+    }
+}
 
 namespace RenderCore { namespace Techniques
 {
@@ -671,35 +705,56 @@ namespace RenderCore { namespace Techniques
         return 0;
     }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    inline const char* AsString(PreregisteredAttachment::State state)
+    {
+        switch (state) {
+        case PreregisteredAttachment::State::Uninitialized: return "Uninitialized";
+        case PreregisteredAttachment::State::Initialized:   return "Initialized";
+        default:                                            return "<<unknown>>";
+        }
+    }
+
+    inline std::ostream& operator<<(std::ostream& str, const PreregisteredAttachment& attachment)
+    {
+        str << "PreregisteredAttachment {"
+            << attachment._name << ", "
+            << attachment._semantic << ", "
+            << attachment._desc << ", "
+            << AsString(attachment._state) << ", "
+            << AsString(attachment._stencilState) << "}";
+        return str;
+    }
+
+    inline std::ostream& operator<<(std::ostream& str, const FrameBufferDescFragment& fragment)
+    {
+        str << "FrameBufferDescFragment with attachments: " << std::endl;
+        for (unsigned c=0; c<fragment._attachments.size(); ++c) {
+            str << StreamIndent(4) << "[" << c << "] 0x" << std::hex << fragment._attachments[c].first << std::dec
+                << " 0x" << fragment._attachments[c].second._semantic << " : " << fragment._attachments[c].second._desc
+                << std::endl;
+        }
+        str << "Subpasses: " << std::endl;
+        for (unsigned c=0; c<fragment._subpasses.size(); ++c) {
+            str << StreamIndent(4) << "[" << c << "] " << fragment._subpasses[c] << std::endl;
+        }
+        return str;
+    }
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
     std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>> MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
         IteratorRange<const FrameBufferDescFragment*> fragments,
-        char *logBuffer,
-        size_t bufferLength)
+        char *logBuffer, size_t bufferLength)
     {
         #if defined(_DEBUG)
             std::stringstream debugInfo;
             debugInfo << "Preregistered Inputs:" << std::endl;
             for (auto a = preregisteredInputs.begin(); a != preregisteredInputs.end(); ++a) {
-                debugInfo << "  * "
-                    << "Attachment #"   << a->_name 
-                    << ", semantic: "   << a->_semantic 
-                    << ", state: "      << (int)a->_state 
-                    << ", format: "     << AsString(a->_desc._format) 
-                    << ", flags: "      << a->_desc._flags
-                    << ", dimensions: " << a->_desc._width              << std::endl;  
+                debugInfo << "[" << std::distance(preregisteredInputs.begin(), a) << "] " << *a << std::endl;
             }
-            debugInfo << "Input Fragments:" << std::endl;
-            for (auto f = fragments.begin(); f != fragments.end(); ++f) {
-                debugInfo << "  * Fragment " << std::distance(fragments.begin(), f) << std::endl;
-                for (auto p = f->_subpasses.begin(); p != f->_subpasses.end(); ++p) {
-                    debugInfo << "    * "
-                        << "Subpass "        << std::distance(f->_subpasses.begin(), p) << " with " 
-                        << p->_input.size()  << " inputs, " 
-                        << p->_output.size() << " outputs"                              << std::endl;
-                }
-            }
-            debugInfo << "Scanning for semantics that require ShaderResource bit:" << std::endl;
         #endif
         
         // Merge together the input fragments to create the final output
@@ -724,16 +779,6 @@ namespace RenderCore { namespace Techniques
                         auto semantic = GetSemantic(MakeIteratorRange(f->_attachments), a->_resourceName);
                         if (semantic) {
                             shaderResourceSemantics.push_back(semantic);
-                            #if defined(_DEBUG)
-                                debugInfo 
-                                    << "  * "
-                                    << "Fragment "                  << std::distance(fragments.begin(), f) 
-                                    << " Subpass "                  << std::distance(f->_subpasses.begin(), p)
-                                    << " Input attachment "         << std::distance(p->_input.begin(), a)
-                                    << " has Retain load op ("      << (int)a->_loadFromPreviousPhase 
-                                    << "), promoting its semantic " << (uint64_t)semantic 
-                                    << " as ShaderResource"         << std::endl;
-                            #endif
                         }
                     }
                 }
@@ -747,23 +792,10 @@ namespace RenderCore { namespace Techniques
         for (auto f = fragments.begin(); f != fragments.end(); ++f) {
             std::vector<PreregisteredAttachment> newWorkingAttachments;
             std::vector<std::pair<AttachmentName, AttachmentName>> attachmentRemapping;
-            #if defined(_DEBUG)
-                debugInfo << "Processing fragment " << std::distance(fragments.begin(), f) << std::endl;
-            #endif
             /////////////////////////////////////////////////////////////////////////////
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
                 auto interfaceAttachment = interf->second;
                 AttachmentName reboundName = ~0u;
-                #if defined(_DEBUG)
-                    debugInfo 
-                        << "  Processing attachment "   << std::distance(f->_attachments.begin(), interf)
-                        << ", semantic: "               << (uint64_t)interfaceAttachment._semantic
-                        << ", format: "                 << AsString(interfaceAttachment._desc._format)
-                        << ", dimensions: "             << interfaceAttachment._desc._width                 << std::endl
-                        << "    Determining load/store operation for this attachment"                       << std::endl
-                        << "      * ";
-                #endif
-                
                 DirectionFlags::BitField directionFlags = 0;
                 // Look through the load/store values in the subpasses to find the "direction" for
                 // this attachment. When deciding on the load flags, we must look for the first
@@ -773,10 +805,6 @@ namespace RenderCore { namespace Techniques
                     auto subpassDirectionFlags = GetLoadDirectionFlags(*p, interf->first);
                     if (subpassDirectionFlags != 0) {
                         directionFlags |= subpassDirectionFlags;
-                        #if defined(_DEBUG)
-                            if (subpassDirectionFlags & DirectionFlags::Load)
-                                debugInfo << "[First subpass with Load op: " << std::distance(f->_subpasses.begin(), p) << "] ";
-                        #endif
                         break;
                     }
                 }
@@ -784,32 +812,16 @@ namespace RenderCore { namespace Techniques
                     auto subpassDirectionFlags = GetStoreDirectionFlags(*p, interf->first);
                     if (subpassDirectionFlags != 0) {
                         directionFlags |= subpassDirectionFlags;
-                        #if defined(_DEBUG)
-                            if (subpassDirectionFlags & DirectionFlags::Store)
-                                debugInfo << "[Last subpass with Store op: " << std::distance(p, f->_subpasses.rend()) - 1 << "] ";
-                        #endif
                         break;
                     }
                 }
                 assert(directionFlags != 0);
-                #if defined(_DEBUG)
-                    debugInfo << "[Final direction flag is " << directionFlags << "] ";
-                #endif
-                
+
                 // toggle on the "ShaderResource" flag, if necessary
                 if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
                     interfaceAttachment._desc._flags |= AttachmentDesc::Flags::Enum::ShaderResource;
-                    #if defined(_DEBUG)
-                        debugInfo << "[Inherited ShaderResource flag, final binding flags: " << interfaceAttachment._desc._flags << "] ";
-                    #endif
                 }
-                #if defined(_DEBUG)
-                    debugInfo << std::endl;
-                #endif
                 if (directionFlags & DirectionFlags::Load) {
-                    #if defined(_DEBUG)
-                        debugInfo << "    Resolving Load operation, searching for compatible initialized buffer" << std::endl;
-                    #endif
                     // We're expecting a buffer that already has some initialized contents. Look for
                     // something matching in our working attachments array
                     auto compat = std::find_if(
@@ -822,19 +834,14 @@ namespace RenderCore { namespace Techniques
                     if (compat == workingAttachments.end()) {
                         #if defined(_DEBUG)
                             debugInfo << "      * Failed to find compatible buffer, cannot proceed. Working attachments are: " << std::endl;
-                            for (auto att : workingAttachments) {
-                                debugInfo 
-                                    << "        * " 
-                                    << "attachment #"   << att._name 
-                                    << ", semantic: "   << att._semantic 
-                                    << ", flags: "      << att._desc._flags
-                                    << ", format: "     << AsString(att._desc._format)
-                                    << ", dimensions: " << att._desc._width
-                                    << ", state: "      << (int)att._state              << std::endl;
-                            }
-                            Log(Error) << "MergeFragments() failed. Details:" << std::endl << debugInfo.str() << std::endl;
+                            for (auto att : workingAttachments)
+                                debugInfo << att << std::endl;
+                            auto debugInfoStr = debugInfo.str();
+                            Log(Error) << "MergeFragments() failed. Details:" << std::endl << debugInfoStr << std::endl;
+                            Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request. Details:\n%s\n", debugInfoStr.c_str()));
+                        #else
+                            Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request"));
                         #endif
-                        Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request"));
                     }
                     
                     reboundName = compat->_name;
@@ -844,16 +851,7 @@ namespace RenderCore { namespace Techniques
                     newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                     workingAttachments.erase(compat);
                     newWorkingAttachments.push_back(newState);
-                    #if defined(_DEBUG)
-                        debugInfo 
-                            << "      * "
-                            << "Found previous attachment #" << reboundName 
-                            << ", rebinding with state "     << (int)newState._state << std::endl;
-                    #endif
                 } else {
-                    #if defined(_DEBUG)
-                        debugInfo << "    No Load operation, searching for compatible unitialized buffer to reuse" << std::endl;
-                    #endif
                     // define a new output buffer, or reuse something that we can reuse
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
@@ -894,12 +892,7 @@ namespace RenderCore { namespace Techniques
                         #if defined(_DEBUG)
                             debugInfo 
                                 << "      * " 
-                                << "Cannot find compatible buffer, creating #"   << reboundName
-                                << ", semantic: "   << newState._semantic
-                                << ", flags: "      << newState._desc._flags
-                                << ", state: "      << (int)newState._state
-                                << ", format: "     << AsString(newState._desc._format)
-                                << ", dimensions: " << newState._desc._width            << std::endl;
+                                << "Cannot find compatible buffer, creating #" << reboundName << ", " << newState << std::endl;
                         #endif
                     } else {
                         reboundName = compat->_name;
@@ -909,13 +902,6 @@ namespace RenderCore { namespace Techniques
                         newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                         workingAttachments.erase(compat);
                         newWorkingAttachments.push_back(newState);
-
-                        #if defined(_DEBUG)
-                            debugInfo 
-                                << "      * " 
-                                << "Found compatible buffer #" << reboundName
-                                << ", updating state to "      << (int)newState._state << std::endl;
-                        #endif
                     }
                 }
 
@@ -926,6 +912,7 @@ namespace RenderCore { namespace Techniques
 
                 // setup the subpasses & PassFragment
             std::sort(attachmentRemapping.begin(), attachmentRemapping.end(), CompareFirst<AttachmentName, AttachmentName>());
+
             FrameBufferFragmentMapping passFragment;
             for (unsigned p=0; p<(unsigned)f->_subpasses.size(); ++p) {
                 SubpassDesc newSubpass = f->_subpasses[p];
@@ -967,6 +954,19 @@ namespace RenderCore { namespace Techniques
 
             workingAttachments.insert(workingAttachments.end(), newWorkingAttachments.begin(), newWorkingAttachments.end());
 
+            #if defined(_DEBUG)
+                debugInfo << "-------------------------------" << std::endl;
+                debugInfo << "Fragment [" << std::distance(fragments.begin(), f) << "] " << *f;
+                debugInfo << "Merge calculated this attachment remapping:" << std::endl;
+                for (const auto&r:attachmentRemapping)
+                    debugInfo << StreamIndent(4) << "[" << r.first << "] remapped to " << r.second << " ("
+                        << std::find_if(f->_attachments.begin(), f->_attachments.end(),
+                                        [r](const std::pair<AttachmentName, FrameBufferDescFragment::Attachment>& a) { return a.first == r.first; })->second._desc
+                        << ")" << std::endl;
+                debugInfo << "Current fragment interface:" << std::endl;
+                for (const auto&w:workingAttachments)
+                    debugInfo << StreamIndent(4) << w << std::endl;
+            #endif
         }
 
         // The workingAttachments array is now the list of attachments that must go into
@@ -977,7 +977,16 @@ namespace RenderCore { namespace Techniques
             result._attachments.push_back({a._name, r});
         }
 
+        std::sort(result._attachments.begin(), result._attachments.end(), CompareFirst<AttachmentName, FrameBufferDescFragment::Attachment>());
+
         #if defined(_DEBUG)
+            debugInfo << "-------------------------------" << std::endl;
+            debugInfo << "Final attachments" << std::endl;
+            for (unsigned c=0; c<result._attachments.size(); ++c)
+                debugInfo << StreamIndent(4) << "[" << result._attachments[c].first << "] 0x" << std::hex << result._attachments[c].first << std::dec << ": " << result._attachments[c].second._desc << std::endl;
+            debugInfo << "Final subpasses" << std::endl;
+            for (unsigned c=0; c<result._subpasses.size(); ++c)
+                debugInfo << StreamIndent(4) << "[" << c << "] " << result._subpasses[c] << std::endl;
             debugInfo << "MergeFragments() finished." << std::endl;
             if (logBuffer != nullptr) XlCopyString(logBuffer, bufferLength, StringSection<>(debugInfo.str()));
         #endif
