@@ -38,20 +38,29 @@ namespace SceneEngine
 		enum class Type { Normal, Shadow, Other };
 
 		RenderCore::Techniques::ProjectionDesc _projection;
-		Type _type;
+		Type _type = SceneView::Type::Normal;
 	};
+
+	class IViewDelegate;
 
 	class SceneExecuteContext
 	{
 	public:
 		IteratorRange<const SceneView*> GetViews() const { return MakeIteratorRange(_views); }
+		IteratorRange<const std::shared_ptr<IViewDelegate>*> GetViewDelegates();
+		RenderCore::Techniques::DrawablesPacket& GetDrawablesPacket(unsigned viewIndex, BatchFilter batch);
+		PreparedScene& GetPreparedScene();
 
-		virtual RenderCore::Techniques::DrawablesPacket& GetDrawablesPacket(unsigned viewIndex, BatchFilter batch) = 0;
-		virtual PreparedScene& GetPreparedScene() = 0;
+		void AddView(
+			const SceneView& view,
+			const std::shared_ptr<IViewDelegate>& delegate);
 
-		SceneExecuteContext(IteratorRange<const SceneView*> views);
+		SceneExecuteContext();
 		virtual ~SceneExecuteContext();
 	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+
 		std::vector<SceneView> _views;
 	};
 

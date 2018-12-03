@@ -30,6 +30,8 @@ namespace SceneEngine
         SRV      GetSRV(uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
 		const RenderCore::IResourcePtr& GetResource(uint64_t semantic) const;
 
+		UInt2	GetDimensions() const;
+
 		MainTargets();
 		~MainTargets();
 	private:

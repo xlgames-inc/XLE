@@ -17,6 +17,7 @@
 
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Techniques/CommonBindings.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
 #include "../Core/Exceptions.h"
@@ -27,12 +28,12 @@ namespace SceneEngine
     using namespace RenderCore::Metal;
 
     void LightingParserStandardPlugin::OnPreScenePrepare(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ILightingParserDelegate&, PreparedScene&) const
-    {
-    }
+		RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const
+    {}
 
     void LightingParserStandardPlugin::InitBasicLightEnvironment(
-        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ILightingParserDelegate&, ShaderLightDesc::BasicEnvironment& env) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const 
+	{}
 
             ////////////////////////////////////////////////////////////////////////
 
@@ -44,7 +45,7 @@ namespace SceneEngine
         resolveContext._tiledLightingResult = 
             TiledLighting_CalculateLighting(
                 &metalContext, parserContext,
-                resolveContext.GetMainTargets().GetSRV(IMainTargets::MultisampledDepth), resolveContext.GetMainTargets().GetSRV(IMainTargets::GBufferNormals),
+                resolveContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), resolveContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::GBufferNormal),
 				lightingParserContext.GetMetricsBox()->_metricsBufferUAV);
     }
 
@@ -59,7 +60,12 @@ namespace SceneEngine
                 mainTargets.GetDimensions()[0], mainTargets.GetDimensions()[1], Format::R8_UNORM,
                 useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
             ViewportDesc mainViewportDesc(metalContext);
-            AmbientOcclusion_Render(&metalContext, parserContext, aoRes, mainTargets.GetSRV(IMainTargets::MultisampledDepth), &mainTargets.GetSRV(IMainTargets::GBufferNormals), mainViewportDesc);
+			auto normalSRV = mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal);
+            AmbientOcclusion_Render(
+				&metalContext, parserContext, aoRes, 
+				mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), 
+				&normalSRV, 
+				mainViewportDesc);
             resolveContext._ambientOcclusionResult = aoRes._aoSRV;
         }
     }
@@ -74,8 +80,8 @@ namespace SceneEngine
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 metalContext, parserContext,
                 unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
-                mainTargets.GetSRV(IMainTargets::GBufferDiffuse), mainTargets.GetSRV(IMainTargets::GBufferNormals), mainTargets.GetSRV(IMainTargets::GBufferParameters),
-                mainTargets.GetSRV(IMainTargets::MultisampledDepth),
+                mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter),
+                mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth),
 				sceneParser.GetGlobalLightingDesc());
         }
     }
@@ -84,13 +90,12 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parserContext, 
         LightingParserContext& lightingParserContext,
-		ILightingParserDelegate& sceneParser,
         LightingResolveContext& resolveContext) const
     {
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         TiledLighting_Prepare(metalContext, parserContext, lightingParserContext, resolveContext);
         AmbientOcclusion_Prepare(metalContext, parserContext, resolveContext);
-        ScreenSpaceReflections_Prepare(metalContext, parserContext, sceneParser, resolveContext);
+        ScreenSpaceReflections_Prepare(metalContext, parserContext, *lightingParserContext._delegate, resolveContext);
     }
 
 
@@ -98,7 +103,7 @@ namespace SceneEngine
 
     void LightingParserStandardPlugin::OnPostSceneRender(
         RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, LightingParserContext& lightingParserContext, 
-        ILightingParserDelegate& sceneParser, BatchFilter batch, unsigned techniqueIndex) const
+        BatchFilter batch, unsigned techniqueIndex) const
     {
         const bool doTiledBeams             = Tweakable("TiledBeams", false);
         const bool doTiledRenderingTest     = Tweakable("DoTileRenderingTest", false);

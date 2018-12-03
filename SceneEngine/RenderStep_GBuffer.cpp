@@ -27,26 +27,7 @@ namespace SceneEngine
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext);
-
-	class RenderStep_GBuffer : public IRenderStep
-	{
-	public:
-		std::shared_ptr<IViewDelegate> CreateViewDelegate() = 0;
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
-		void Execute(
-			IThreadContext& threadContext,
-			Techniques::ParsingContext& parsingContext,
-			LightingParserContext& lightingParserContext,
-			Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
-
-		RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
-		~RenderStep_GBuffer();
-	private:
-		Techniques::FrameBufferDescFragment _createGBuffer;
-		unsigned _gbufferType;
-	};
-
+	
 	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_GBuffer::GetInterface() const
 	{
 		return _createGBuffer;
@@ -139,7 +120,7 @@ namespace SceneEngine
 
 	RenderStep_GBuffer::~RenderStep_GBuffer() {}
 
-	class ViewDrawables_Deferred : public IViewDelegate
+	class ViewDelegate_Deferred : public IViewDelegate
 	{
 	public:
 		Techniques::DrawablesPacket _transparentPreDepth;		// BatchFilter::TransparentPreDepth
@@ -147,6 +128,29 @@ namespace SceneEngine
 		Techniques::DrawablesPacket _oiTransparent;				// BatchFilter::OITransparent
 
 		Techniques::DrawablesPacket _gbufferOpaque;				// BatchFilter::General
+
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch) 
+		{
+			switch (batch) {
+			case BatchFilter::General:
+				return &_gbufferOpaque;
+
+			case BatchFilter::Transparent:
+				return &_transparent;
+
+			case BatchFilter::OITransparent:
+				return &_oiTransparent;
+
+			case BatchFilter::TransparentPreDepth:
+				return &_transparentPreDepth;
+
+			case BatchFilter::PreDepth:
+			case BatchFilter::DMShadows:
+			case BatchFilter::RayTracedShadows:
+			default:
+				return nullptr;
+			}
+		}
 	};
 
 	/*
@@ -173,7 +177,7 @@ namespace SceneEngine
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
 		assert(viewDelegate);
-		const auto& drawables = *checked_cast<ViewDrawables_Deferred*>(viewDelegate);
+		const auto& drawables = *checked_cast<ViewDelegate_Deferred*>(viewDelegate);
 
 			//
         //////////////////////////////////////////////////////////////////////////////////////
@@ -276,7 +280,7 @@ namespace SceneEngine
         IThreadContext& context,
 		Techniques::ParsingContext& parserContext,
         LightingParserContext& lightingParserContext,
-		ViewDrawables_Deferred& executedScene)
+		ViewDelegate_Deferred& executedScene)
     {
         //////////////////////////////////////////////////////////////////////////////////////////////////
             //  Render translucent objects (etc)

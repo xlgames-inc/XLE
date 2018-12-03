@@ -296,7 +296,7 @@ namespace SceneEngine
         const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
-        bool precisionTargets = Tweakable("PrecisionTargets", false);
+        // bool precisionTargets = Tweakable("PrecisionTargets", false);
         // auto sampling = TextureSamples::Create(
         //     uint8(std::max(mainTargets.GetQualitySettings()._samplingCount, 1u)), 
         //     uint8(mainTargets.GetQualitySettings()._samplingQuality));
@@ -672,22 +672,6 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class RenderStep_LightingResolve : public IRenderStep
-	{
-	public:
-		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
-		virtual void Execute(
-			RenderCore::IThreadContext& threadContext,
-			RenderCore::Techniques::ParsingContext& parsingContext,
-			LightingParserContext& lightingParserContext,
-			RenderCore::Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
-
-		RenderStep_LightingResolve(bool precisionTargets);
-	private:
-		Techniques::FrameBufferDescFragment _fragment;
-	};
-
 	void RenderStep_LightingResolve::Execute(
 		RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
@@ -711,7 +695,7 @@ namespace SceneEngine
 				1.f, 1.f, 0u,
 				TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
 				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
-		auto lightResolveTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::HDRColor, lightResolveAttachmentDesc);
+		auto lightResolveTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
 		auto depthTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
 
 		TextureViewDesc justStencilWindow {

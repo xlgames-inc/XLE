@@ -21,27 +21,11 @@ namespace SceneEngine
 {
 	using namespace RenderCore;
 
-	class RenderStep_ResolveHDR : public IRenderStep
-	{
-	public:
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
-		void Execute(
-			IThreadContext& threadContext,
-			Techniques::ParsingContext& parsingContext,
-			LightingParserContext& lightingParserContext,
-			Techniques::RenderPassFragment& rpi);
-
-		RenderStep_ResolveHDR();
-		~RenderStep_ResolveHDR();
-	private:
-		Techniques::FrameBufferDescFragment _fragment;
-	};
-
 	RenderStep_ResolveHDR::RenderStep_ResolveHDR()
 	{
-		auto input = _fragment.DefineAttachment(Techniques::AttachmentSemantics::HDRColor);
+		auto input = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
 		auto output = _fragment.DefineAttachment(
-			Techniques::AttachmentSemantics::LDRColor,
+			Techniques::AttachmentSemantics::ColorLDR,
 			AttachmentDesc { Format::R8G8B8A8_UNORM });
 
 		_fragment.AddSubpass(
@@ -80,7 +64,8 @@ namespace SceneEngine
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		Techniques::RenderPassFragment& rpi)
+		Techniques::RenderPassFragment& rpi,
+		IViewDelegate*)
 	{
 		GPUAnnotation anno(threadContext, "Resolve-MSAA-HDR");
 

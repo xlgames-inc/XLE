@@ -151,13 +151,12 @@ namespace SceneEngine
         IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext,
-		ViewDrawables_Shadow& inputDrawables,
-        PreparedScene& preparedScene,
-        const ShadowProjectionDesc& frustum,
-        unsigned shadowFrustumIndex)
+		ViewDelegate_Shadow& inputDrawables)
     {
 		if (!BatchHasContent(inputDrawables._general))
             return PreparedRTShadowFrustum();
+
+		const ShadowProjectionDesc& frustum = inputDrawables._shadowProj;
 
         GPUAnnotation anno(threadContext, "Prepare-RTShadows");
 

@@ -14,17 +14,16 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			PreparedScene&) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const override;
         virtual void OnLightingResolvePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&,  LightingParserContext& parserContext,
-			LightingResolveContext& resolveContext) const;
+			LightingResolveContext& resolveContext) const override;
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext& parserContext, 
-			BatchFilter filter, unsigned techniqueIndex) const;
+			BatchFilter filter, unsigned techniqueIndex) const override;
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ShaderLightDesc::BasicEnvironment& env) const;
+			ShaderLightDesc::BasicEnvironment& env) const override;
     };
     
 }

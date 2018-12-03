@@ -71,9 +71,14 @@ namespace RenderCore { namespace Techniques
     {
     }
 
+	RenderPassFragment::RenderPassFragment()
+	: _rpi(nullptr), _mapping(nullptr), _attachmentPool(nullptr), _currentPassIndex(~0u)
+	{
+	}
+
     RenderPassFragment::~RenderPassFragment()
     {
-        if (_mapping->_subpassCount)
+        if (_mapping && _mapping->_subpassCount)
             _rpi->NextSubpass();
     }
 

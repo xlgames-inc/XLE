@@ -216,6 +216,7 @@ namespace RenderCore { namespace Techniques
             RenderPassInstance& rpi,
             const FrameBufferFragmentMapping& mapping,
             AttachmentPool& attachmentPool);
+		RenderPassFragment();
         ~RenderPassFragment();
 
         RenderPassFragment(const RenderPassFragment&) = delete;

@@ -22,24 +22,6 @@ namespace SceneEngine
 {
 	using namespace RenderCore;
 
-	class RenderStep_Forward : public IRenderStep
-	{
-	public:
-		std::shared_ptr<IViewDelegate> CreateViewDelegate() = 0;
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
-		void Execute(
-			IThreadContext& threadContext,
-			Techniques::ParsingContext& parsingContext,
-			LightingParserContext& lightingParserContext,
-			Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
-
-		RenderStep_Forward();
-		~RenderStep_Forward();
-	private:
-		Techniques::FrameBufferDescFragment _forward;
-	};
-
 	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_Forward::GetInterface() const
 	{
 		return _forward;
@@ -47,7 +29,7 @@ namespace SceneEngine
 
 	RenderStep_Forward::RenderStep_Forward()
 	{
-        auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::HDRColor);
+        auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
 		auto depth = _forward.DefineAttachment(Techniques::AttachmentSemantics::Depth);
 
 		_forward.AddSubpass(
@@ -61,18 +43,30 @@ namespace SceneEngine
 
 	RenderStep_Forward::~RenderStep_Forward() {}
 
-	class ViewDrawables_Forward : public IViewDelegate
+	class ViewDelegate_Forward : public IViewDelegate
 	{
 	public:
 		Techniques::DrawablesPacket _preDepth;
 		Techniques::DrawablesPacket _general;
+
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch)
+		{
+			switch (batch) {
+			case BatchFilter::General:
+				return &_general;
+			case BatchFilter::PreDepth:
+				return &_preDepth;
+			default:
+				return nullptr;
+			}
+		}
 	};
 
 	static void ForwardLightingModel_Render(
         IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
         LightingParserContext& lightingParserContext,
-		ViewDrawables_Forward& executedScene)
+		ViewDelegate_Forward& executedScene)
     {
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
@@ -175,7 +169,7 @@ namespace SceneEngine
 		IViewDelegate* viewDelegate)
 	{
 		assert(viewDelegate);
-		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDrawables_Forward*>(viewDelegate));
+		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDelegate_Forward*>(viewDelegate));
 	}
 
 }

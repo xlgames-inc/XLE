@@ -5,7 +5,9 @@
 #pragma once
 
 #include "SceneParser.h"
+#include "LightDesc.h"
 #include "../RenderCore/Techniques/Drawables.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 #include <memory>
 
 namespace RenderCore { namespace Techniques 
@@ -19,7 +21,7 @@ namespace SceneEngine
 	class IViewDelegate
 	{
 	public:
-		virtual RenderCore::Techniques::DrawablesPacket& GetDrawablesPacket(BatchFilter batch) = 0;
+		virtual RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch) = 0;
 		virtual ~IViewDelegate();
 	};
 
@@ -38,4 +40,123 @@ namespace SceneEngine
 			IViewDelegate* viewDelegate) = 0;
 		virtual ~IRenderStep();
 	};
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class RenderStep_Forward : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate();
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_Forward();
+		~RenderStep_Forward();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _forward;
+	};
+
+	class RenderStep_GBuffer : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate();
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_GBuffer(unsigned gbufferType, bool precisionTargets);
+		~RenderStep_GBuffer();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _createGBuffer;
+		unsigned _gbufferType;
+	};
+
+	class RenderStep_PrepareDMShadows : public IRenderStep
+	{
+	public:
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_PrepareDMShadows(RenderCore::Format format, UInt2 dims, unsigned projectionCount);
+		~RenderStep_PrepareDMShadows();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _fragment;
+	};
+
+	class RenderStep_PrepareRTShadows : public IRenderStep
+	{
+	public:
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_PrepareRTShadows();
+		~RenderStep_PrepareRTShadows();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _fragment;
+	};
+
+	class ViewDelegate_Shadow : public IViewDelegate
+	{
+	public:
+		RenderCore::Techniques::DrawablesPacket _general;
+		ShadowProjectionDesc _shadowProj;
+
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(BatchFilter batch);
+		ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection);
+		~ViewDelegate_Shadow();
+	};
+
+	class RenderStep_LightingResolve : public IRenderStep
+	{
+	public:
+		virtual const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		virtual void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_LightingResolve(bool precisionTargets);
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _fragment;
+	};
+
+	class RenderStep_ResolveHDR : public IRenderStep
+	{
+	public:
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_ResolveHDR();
+		~RenderStep_ResolveHDR();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _fragment;
+	};
+
+
 }

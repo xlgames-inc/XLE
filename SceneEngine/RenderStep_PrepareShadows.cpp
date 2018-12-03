@@ -10,6 +10,7 @@
 #include "LightDesc.h"
 #include "LightInternal.h"
 #include "ShadowResources.h"
+#include "RayTracedShadows.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -28,12 +29,6 @@ namespace SceneEngine
 {
 	using namespace RenderCore;
 
-	class ViewDrawables_Shadow : public IViewDelegate
-	{
-	public:
-		RenderCore::Techniques::DrawablesPacket _general;
-	};
-
 	static const utf8* StringShadowCascadeMode = u("SHADOW_CASCADE_MODE");
     static const utf8* StringShadowEnableNearCascade = u("SHADOW_ENABLE_NEAR_CASCADE");
 
@@ -41,9 +36,9 @@ namespace SceneEngine
         IThreadContext& threadContext,
         Techniques::ParsingContext& parserContext,
 		LightingParserContext& lightingParserContext, 
-		ViewDrawables_Shadow& executedScene,
-        const ShadowProjectionDesc& frustum)
+		ViewDelegate_Shadow& executedScene)
     {
+		const ShadowProjectionDesc& frustum = executedScene._shadowProj;
         auto projectionCount = std::min(frustum._projections.Count(), MaxShadowTexturesPerLight);
         if (!projectionCount)
             return PreparedDMShadowFrustum();
@@ -128,23 +123,6 @@ namespace SceneEngine
         return preparedResult;
     }
 
-	class RenderStep_PrepareDMShadows : public IRenderStep
-	{
-	public:
-		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
-		void Execute(
-			IThreadContext& threadContext,
-			Techniques::ParsingContext& parsingContext,
-			LightingParserContext& lightingParserContext,
-			Techniques::RenderPassFragment& rpi,
-			IViewDelegate* viewDelegate);
-
-		RenderStep_PrepareDMShadows(Format format, UInt2 dims, unsigned projectionCount);
-		~RenderStep_PrepareDMShadows();
-	private:
-		Techniques::FrameBufferDescFragment _fragment;
-	};
-
 	void RenderStep_PrepareDMShadows::Execute(
 		IThreadContext& threadContext,
 		Techniques::ParsingContext& parsingContext,
@@ -152,12 +130,15 @@ namespace SceneEngine
 		Techniques::RenderPassFragment& rpi,
 		IViewDelegate* viewDelegate)
 	{
-		ShadowProjectionDesc frustum;
-		auto preparedResult = LightingParser_PrepareDMShadow(
+		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
+		assert(shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture);
+
+		auto shadow = LightingParser_PrepareDMShadow(
 			threadContext, parsingContext,
 			lightingParserContext,
-			*checked_cast<ViewDrawables_Shadow*>(viewDelegate),
-			frustum);
+			shadowDelegate);
+		if (shadow.IsReady())
+			lightingParserContext._preparedDMShadows.push_back(std::make_pair(shadowDelegate._shadowProj._lightId, std::move(shadow)));
 	}
 
 	RenderStep_PrepareDMShadows::RenderStep_PrepareDMShadows(Format format, UInt2 dims, unsigned projectionCount)
@@ -183,56 +164,43 @@ namespace SceneEngine
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	PreparedRTShadowFrustum LightingParser_PrepareRTShadow(
-        IThreadContext& context,
-		Techniques::ParsingContext& parserContext,
-        LightingParserContext& lightingParserContext,
-		ViewDrawables_Shadow& executedScene,
-        PreparedScene& preparedScene, const ShadowProjectionDesc& frustum,
-        unsigned shadowFrustumIndex)
-    {
-        return PrepareRTShadows(context, parserContext, lightingParserContext, executedScene, preparedScene, frustum, shadowFrustumIndex);
-    }
-
-    void LightingParser_PrepareShadows(
-        IThreadContext& threadContext,
-        Techniques::ParsingContext& parserContext, 
+	void RenderStep_PrepareRTShadows::Execute(
+		IThreadContext& threadContext,
+		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext,
-		SceneExecuteContext_Main& executedScene,
-		PreparedScene& preparedScene,
-        IMainTargets& mainTargets)
-    {
-        if (!executedScene._shadowViewCount) {
-            lightingParserContext._preparedDMShadows.clear();
-            lightingParserContext._preparedRTShadows.clear();
-            return;
-        }
+		Techniques::RenderPassFragment& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegate);
+		assert(shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::RayTraced);
 
-        GPUAnnotation anno(threadContext, "Prepare-Shadows");
+		auto shadow = PrepareRTShadows(threadContext, parsingContext, lightingParserContext, shadowDelegate);
+        if (shadow.IsReady())
+            lightingParserContext._preparedRTShadows.push_back(std::make_pair(shadowDelegate._shadowProj._lightId, std::move(shadow)));
+	}
 
-            // todo --  we should be using a temporary frame heap for this vector
-        auto shadowFrustumCount = scene->GetShadowProjectionCount();
-        lightingParserContext._preparedDMShadows.reserve(shadowFrustumCount);
+	RenderStep_PrepareRTShadows::RenderStep_PrepareRTShadows()
+	{
+	}
+	RenderStep_PrepareRTShadows::~RenderStep_PrepareRTShadows()
+	{
+	}
 
-        for (unsigned c=0; c<shadowFrustumCount; ++c) {
-            auto frustum = scene->GetShadowProjectionDesc(c, parserContext.GetProjectionDesc());
-            CATCH_ASSETS_BEGIN
-                if (frustum._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
+	RenderCore::Techniques::DrawablesPacket* ViewDelegate_Shadow::GetDrawablesPacket(BatchFilter batch)
+	{
+		if (batch == BatchFilter::General)
+			return &_general;
+		return nullptr;
+	}
 
-                    auto shadow = LightingParser_PrepareDMShadow(threadContext, parserContext, lightingParserContext, *scene, preparedScene, frustum, c);
-                    if (shadow.IsReady())
-                        lightingParserContext._preparedDMShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
+	ViewDelegate_Shadow::ViewDelegate_Shadow(ShadowProjectionDesc shadowProjection)
+	: _shadowProj(shadowProjection)
+	{
+	}
 
-                } else if (frustum._resolveType == ShadowProjectionDesc::ResolveType::RayTraced) {
-
-                    auto shadow = LightingParser_PrepareRTShadow(threadContext, parserContext, lightingParserContext, *scene, preparedScene, frustum, c);
-                    if (shadow.IsReady())
-                        lightingParserContext._preparedRTShadows.push_back(std::make_pair(frustum._lightId, std::move(shadow)));
-
-                }
-            CATCH_ASSETS_END(parserContext)
-        }
-    }
+	ViewDelegate_Shadow::~ViewDelegate_Shadow()
+	{
+	}
 
 }
 

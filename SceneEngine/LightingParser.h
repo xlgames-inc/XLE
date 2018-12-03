@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/IDevice_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../BufferUploads/IBufferUploads_Forward.h"
@@ -78,9 +79,9 @@ namespace SceneEngine
     ///
     ///     presentationChain->Present();
     /// </code>
-    LightingParserContext RenderScene(
+    LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context,
-		RenderCore::IResource& renderTarget,
+		RenderCore::IResourcePtr& renderTarget,
 		RenderCore::Techniques::ParsingContext& parserContext,
 		IScene& scene,
 		ILightingParserDelegate& lightingDelegate,
@@ -98,6 +99,7 @@ namespace SceneEngine
 	class GlobalLightingDesc;
 	class LightDesc;
 	class ToneMapSettings;
+	class MainTargets;
 
 	class ILightingParserDelegate
 	{
@@ -136,7 +138,7 @@ namespace SceneEngine
         Pass::Enum  GetCurrentPass() const;
         bool        UseMsaaSamplers() const;
         unsigned    GetSamplingCount() const;
-        // IMainTargets& GetMainTargets() const;
+        MainTargets& GetMainTargets() const;
 
         typedef void ResolveFn(RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);
@@ -190,6 +192,8 @@ namespace SceneEngine
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
 			ShaderLightDesc::BasicEnvironment& env) const = 0;
+
+		virtual ~ILightingParserPlugin();
     };
 }
 
