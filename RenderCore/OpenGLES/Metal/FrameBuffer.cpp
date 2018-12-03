@@ -100,8 +100,13 @@ namespace RenderCore { namespace Metal_OpenGLES
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
 				sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
-				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
-                sp._rtvClearValue[r] = HasClear(sp._rtvLoad[r]) ? (clearValueIterator++) : ~0u;
+                if (HasClear(attachmentView._loadFromPreviousPhase)) {
+				    sp._rtvLoad[r] = LoadStore::Clear;
+                    sp._rtvClearValue[r] = clearValueIterator++;
+                } else {
+                    sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
+                    sp._rtvClearValue[r] = ~0u;
+                }
 			}
 
             sp._dsvHasDepth = sp._dsvHasStencil = false;
@@ -378,6 +383,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     }
 
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
+    {
+        assert(subpassIndex < _subpasses.size());
+        return _subpasses[subpassIndex]._frameBuffer.get();
+    }
+
+    const OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex) const
     {
         assert(subpassIndex < _subpasses.size());
         return _subpasses[subpassIndex]._frameBuffer.get();
