@@ -88,11 +88,15 @@ namespace SceneEngine
         CB_ShadowResolveParameters  _resolveParameters;
         CB                          _resolveParametersCB;
 
+		const SRV&	GetSRV() const;
+
         bool IsReady() const;
 
         PreparedDMShadowFrustum();
         PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws;
         PreparedDMShadowFrustum& operator=(PreparedDMShadowFrustum&& moveFrom) never_throws;
+	private:
+		SRV _srv;
     };
 
     /// <summary>Prepared "Ray Traced" shadow frustum</summary>

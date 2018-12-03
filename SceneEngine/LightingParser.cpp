@@ -14,9 +14,8 @@
 #include "LightInternal.h"
 #include "RenderStep.h"
 
-#include "Ocean.h"
-#include "DeepOceanSim.h"
 #include "RefractionsBuffer.h"
+#include "Ocean.h"
 #include "MetalStubs.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
@@ -33,9 +32,6 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
-
-    DeepOceanSimSettings GlobalOceanSettings; 
-    OceanLightingSettings GlobalOceanLightingSettings; 
 
     void LightingParser_InitBasicLightEnv(
         RenderCore::IThreadContext& context,
@@ -57,7 +53,7 @@ namespace SceneEngine
 
 	LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& threadContext, 
-		RenderCore::IResourcePtr& renderTarget,
+		const RenderCore::IResourcePtr& renderTarget,
         Techniques::ParsingContext& parsingContext,
         IScene& scene,
 		ILightingParserDelegate& delegate,

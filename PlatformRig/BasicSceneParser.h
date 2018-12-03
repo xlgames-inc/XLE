@@ -59,11 +59,11 @@ namespace PlatformRig
 		::Assets::DepValPtr _depVal;
     };
 
-    /// <summary>Simple & partial implementation of the ISceneParser interface<summary>
+    /// <summary>Simple & partial implementation of the ILightingParserDelegate interface<summary>
     /// This provides implementations of the basic lighting related interfaces of
     /// ISceneParser that will hook into an EnvironmentSettings object.
     /// Derived classes should implement the accessor GetEnvSettings().
-    class BasicSceneParser : public SceneEngine::ISceneParser
+    class BasicLightingParserDelegate : public SceneEngine::ILightingParserDelegate
     {
     public:
         unsigned    GetShadowProjectionCount() const;
@@ -71,11 +71,6 @@ namespace PlatformRig
             ShadowProjIndex index, 
             const ProjectionDesc& mainSceneProj) const
             -> SceneEngine::ShadowProjectionDesc;
-
-        virtual void PrepareScene(
-            RenderCore::IThreadContext& context, 
-			RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::PreparedScene& preparedPackets) const;
 
         unsigned    GetLightCount() const;
         auto        GetLightDesc(unsigned index) const -> const SceneEngine::LightDesc&;

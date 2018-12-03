@@ -42,6 +42,7 @@ namespace SceneEngine
 
 	RenderStep_ResolveHDR::~RenderStep_ResolveHDR() {}
 
+#if 0
 	static void LightingParser_ResolveMSAA(
         Metal::DeviceContext& context, 
         LightingParserContext& parserContext,
@@ -59,6 +60,7 @@ namespace SceneEngine
 				Metal::AsDXGIFormat(resolveFormat));
 		#endif
     }
+#endif
 
 	void RenderStep_ResolveHDR::Execute(
 		IThreadContext& threadContext,
@@ -117,6 +119,7 @@ namespace SceneEngine
 
         ToneMap_Execute(
             threadContext, parsingContext, luminanceResult, toneMapSettings, 
+			RenderCore::FrameBufferDesc{},
             *postLightingResolveInput);
 	}
 }

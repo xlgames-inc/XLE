@@ -8,6 +8,16 @@
 #include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "RenderStepUtils.h"
+#include "LightingParser.h"
+#include "LightInternal.h"
+
+#include "Ocean.h"
+#include "DeepOceanSim.h"
+#include "Sky.h"
+#include "Tonemap.h"
+#include "Rain.h"
+#include "SunFlare.h"
+
 #include "../RenderCore/Techniques/RenderPass.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -17,11 +27,15 @@
 #include "../RenderCore/FrameBufferDesc.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../ConsoleRig/Console.h"
 #include "../Utility/FunctionUtils.h"
 
 namespace SceneEngine
 {
 	using namespace RenderCore;
+
+	DeepOceanSimSettings GlobalOceanSettings; 
+    OceanLightingSettings GlobalOceanLightingSettings; 
 
 	void LightingParser_ResolveGBuffer( 
         IThreadContext& context,
@@ -192,7 +206,9 @@ namespace SceneEngine
             //      Bind the gbuffer, begin the render pass
             //
 
-        ReturnToSteadyState(metalContext);
+        ExecuteDrawablesContext executeDrawablesContext;
+		
+		ReturnToSteadyState(metalContext);
 
         CATCH_ASSETS_BEGIN {
 			RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._deferred);
@@ -211,16 +227,16 @@ namespace SceneEngine
             //      Now resolve lighting
             //
 
-        CATCH_ASSETS_BEGIN {
-            LightingParser_ResolveGBuffer(context, parsingContext, lightingParserContext, mainTargets);
+        /*CATCH_ASSETS_BEGIN {
+            LightingParser_ResolveGBuffer(threadContext, parsingContext, lightingParserContext);
         } CATCH_ASSETS_END(parsingContext)
 
             // Post lighting resolve operations... (must rebind the depth buffer)
         metalContext.Bind(Techniques::CommonResources()._dssReadOnly);
 
         CATCH_ASSETS_BEGIN
-            LightingParser_DeferredPostGBuffer(context, parsingContext, lightingParserContext, sceneParser, preparedScene, mainTargets);
-        CATCH_ASSETS_END(parsingContext)
+            LightingParser_DeferredPostGBuffer(threadContext, parsingContext, lightingParserContext, sceneParser, preparedScene, mainTargets);
+        CATCH_ASSETS_END(parsingContext)*/
 	}
 
 	void LightingParser_PreTranslucency(
@@ -282,12 +298,14 @@ namespace SceneEngine
         LightingParserContext& lightingParserContext,
 		ViewDelegate_Deferred& executedScene)
     {
+		auto& mainTargets = lightingParserContext.GetMainTargets();
+
         //////////////////////////////////////////////////////////////////////////////////////////////////
             //  Render translucent objects (etc)
             //  everything after the gbuffer resolve
         LightingParser_PreTranslucency(
             context, parserContext, *lightingParserContext._delegate,
-            mainTargets.GetSRV(IMainTargets::MultisampledDepth));
+            mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth));
 
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         ReturnToSteadyState(metalContext);
@@ -297,7 +315,7 @@ namespace SceneEngine
             // We must bind all of the lighting resolve resources here
             //  -- because we'll be doing lighting operations in the pixel
             //      shaders in a forward-lit way
-        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, delegate);
+        auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parserContext, *lightingParserContext._delegate);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
         parserContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
@@ -317,7 +335,7 @@ namespace SceneEngine
         switch (Tweakable("OITransMode", 1)) {
         case 1:     oiMode = OIMode::Stochastic; break;
         case 2:     oiMode = OIMode::DepthWeighted; break;
-        case 3:     oiMode = (mainTargets.GetSampling()._sampleCount <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
+        case 3:     oiMode = (mainTargets.GetSamplingCount() <= 1) ? OIMode::SortedRef : OIMode::Stochastic; break;
         default:    oiMode = OIMode::Unordered; break;
         }
 
@@ -416,11 +434,11 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////////////////////////
         LightingParser_PostGBufferEffects(
-            context, parserContext, delegate,
-            mainTargets.GetSRV(IMainTargets::MultisampledDepth), 
-            mainTargets.GetSRV(IMainTargets::GBufferNormals));
+            context, parserContext, *lightingParserContext._delegate,
+            mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), 
+            mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal));
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
-            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, delegate, BatchFilter::Transparent, TechniqueIndex_General);
+            (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, BatchFilter::Transparent, TechniqueIndex_General);
     }
 }

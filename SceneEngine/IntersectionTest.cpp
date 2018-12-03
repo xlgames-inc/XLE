@@ -25,6 +25,8 @@
 #include "../Math/ProjectionMath.h"
 #include "../Utility/BitUtils.h"
 
+#pragma warning(disable:4505)
+
 namespace SceneEngine
 {
     
@@ -62,13 +64,18 @@ namespace SceneEngine
             0.f, 0.f, float(viewportDims[0]), float(viewportDims[1]), 0.f, 1.f);
         RenderCore::Metal::DeviceContext::Get(*intersectionContext.GetThreadContext())->Bind(newViewport);
 
-        RenderCore::Techniques::ParsingContext parserContext(intersectionContext.GetTechniqueContext());
-        LightingParser_SetupScene(*intersectionContext.GetThreadContext(), parserContext);
-        LightingParser_SetGlobalTransform(
-            *intersectionContext.GetThreadContext(), parserContext,
-            BuildProjectionDesc(intersectionContext.GetCameraDesc(), viewportDims));
+		#if 0
+			RenderCore::Techniques::ParsingContext parserContext(intersectionContext.GetTechniqueContext());
+			LightingParser_SetupScene(*intersectionContext.GetThreadContext(), parserContext);
+			LightingParser_SetGlobalTransform(
+				*intersectionContext.GetThreadContext(), parserContext,
+				BuildProjectionDesc(intersectionContext.GetCameraDesc(), viewportDims));
 
-        return FindTerrainIntersection(*intersectionContext.GetThreadContext(), parserContext, terrainManager, worldSpaceRay);
+			return FindTerrainIntersection(*intersectionContext.GetThreadContext(), parserContext, terrainManager, worldSpaceRay);
+		#else
+			assert(0);	// broken in LightingParser refactoring
+			return {Float3(0.f, 0.f, 0.f), false};
+		#endif
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
@@ -369,8 +376,6 @@ namespace SceneEngine
 
     RenderCore::Techniques::CameraDesc IntersectionTestContext::GetCameraDesc() const 
     {
-        if (_sceneParser)
-            return _sceneParser->GetCameraDesc();
         return _cameraDesc;
     }
 
@@ -387,7 +392,7 @@ namespace SceneEngine
 
     IntersectionTestContext::IntersectionTestContext(
         std::shared_ptr<RenderCore::IThreadContext> threadContext,
-        std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
+        std::shared_ptr<SceneEngine::IScene> sceneParser,
         std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
     : _threadContext(threadContext)

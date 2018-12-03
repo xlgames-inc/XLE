@@ -302,11 +302,11 @@ namespace SceneEngine
     void RTShadows_DrawMetrics(
         RenderCore::Metal::DeviceContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
-		LightingParserContext& lightingParserContext,
-		MainTargets& mainTargets)
+		LightingParserContext& lightingParserContext)
     {
         SavedTargets savedTargets(context);
         auto restoreMarker = savedTargets.MakeResetMarker(context);
+		auto& mainTargets = lightingParserContext.GetMainTargets();
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)

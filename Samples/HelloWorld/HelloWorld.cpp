@@ -69,8 +69,10 @@ namespace Sample
 
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        const RenderCore::ResourcePtr& resPtr,
-        RenderCore::Techniques::ParsingContext& parserContext, BasicSceneParser* scene,
+        const RenderCore::IResourcePtr& resPtr,
+        RenderCore::Techniques::ParsingContext& parserContext, 
+		SampleLightingDelegate* lightingDelegate,
+        BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* debugSystem);
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator);
@@ -185,6 +187,7 @@ namespace Sample
             //  simple scene parser.
         Log(Verbose) << "Creating main scene" << std::endl;
         auto mainScene = std::make_shared<BasicSceneParser>();
+		auto lightingDelegate = std::make_shared<SampleLightingDelegate>();
         
         {
                 // currently we need to maintain a reference on these two fonts -- 
@@ -207,7 +210,7 @@ namespace Sample
             frameRig.GetMainOverlaySystem()->AddSystem(overlaySwitch);
 
             frameRig.GetDebugSystem()->Register(
-                std::make_shared<::Overlays::ShadowFrustumDebugger>(mainScene), 
+                std::make_shared<::Overlays::ShadowFrustumDebugger>(lightingDelegate), 
                 "[Test] Shadow frustum debugger");
 
                 //  Setup input:
@@ -256,13 +259,13 @@ namespace Sample
                     &g_cpuProfiler,
                     std::bind(
                         RenderFrame, std::placeholders::_1, std::placeholders::_2,
-                        std::ref(parserContext), mainScene.get(), 
+                        std::ref(parserContext), lightingDelegate.get(), mainScene.get(),
                         presentationChain.get(), 
                         frameRig.GetMainOverlaySystem().get()));
 
                     // ------- Update ----------------------------------------
                 RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
-                mainScene->Update(frameResult._elapsedTime);
+                lightingDelegate->Update(frameResult._elapsedTime);
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
             }
@@ -277,6 +280,7 @@ namespace Sample
         RenderCore::Metal::DeviceContext::PrepareForDestruction(renderDevice.get(), presentationChain.get());
 
         mainScene.reset();
+		lightingDelegate.reset();
 
         assetServices->GetAssetSets().Clear();
 		ConsoleRig::ResourceBoxes_Shutdown();
@@ -288,8 +292,9 @@ namespace Sample
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
-        const RenderCore::ResourcePtr& presentationResource,
+        const RenderCore::IResourcePtr& presentationResource,
 		RenderCore::Techniques::ParsingContext& parsingContext,
+		SampleLightingDelegate* lightingDelegate,
         BasicSceneParser* scene,
         RenderCore::IPresentationChain* presentationChain,
         PlatformRig::IOverlaySystem* overlaySys)
@@ -300,10 +305,6 @@ namespace Sample
         namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, samples});
         namedRes.Bind(0u, presentationResource);
 
-            //  Some scene might need a "prepare" step to 
-            //  build some resources before the main render occurs.
-        scene->PrepareFrame(context);
-
         using namespace SceneEngine;
 
             //  Execute the lighting parser!
@@ -311,7 +312,7 @@ namespace Sample
         LightingParserContext lightingParserContext;
 		if (scene) {
             lightingParserContext = LightingParser_ExecuteScene(
-                context, parsingContext, *scene, scene->GetCameraDesc(),
+                context, presentationResource, parsingContext, *scene, *lightingDelegate, lightingDelegate->GetCameraDesc(),
                 RenderSceneSettings{
                     UInt2(viewContext->_width, viewContext->_height),
                     (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,

@@ -4,6 +4,8 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0
+
 #include "VegetationSpawn.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
@@ -808,3 +810,5 @@ namespace SceneEngine
 	IndirectDrawBuffer::~IndirectDrawBuffer(){}
 #endif
 }
+
+#endif

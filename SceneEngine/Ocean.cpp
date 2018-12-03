@@ -17,6 +17,7 @@
 #include "Noise.h"
 #include "LightDesc.h"
 #include "MetalStubs.h"
+#include "LightingParser.h"
 
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
@@ -593,7 +594,7 @@ namespace SceneEngine
 
     void RenderOceanSurface(RenderCore::Metal::DeviceContext* context, 
                             Techniques::ParsingContext& parserContext,
-							ISceneParser& sceneParser,
+							ILightingParserDelegate& lightingParserContext,
                             const DeepOceanSimSettings& oceanSettings, 
                             const OceanLightingSettings& oceanLightingSettings,
                             DeepOceanSim& fftBuffer, ShallowWaterSim* shallowWater, 
@@ -612,7 +613,7 @@ namespace SceneEngine
 
         const unsigned dimensions = oceanSettings._gridDimensions;
         const Float2 physicalDimensions = Float2(oceanSettings._physicalDimensions, oceanSettings._physicalDimensions);
-        const float currentTime = sceneParser.GetTimeValue();
+        const float currentTime = lightingParserContext.GetTimeValue();
         auto materialConstants = Internal::BuildOceanMaterialConstants(oceanSettings, shallowGridPhysicalDimension);
         auto renderingConstants = BuildOceanRenderingConstants(oceanSettings, OceanWorldToReflection, currentTime);
 
@@ -650,7 +651,7 @@ namespace SceneEngine
 
         //////////////////////////////////////////////////////////////////////////////
         
-        const auto& globalDesc = sceneParser.GetGlobalLightingDesc();
+        const auto& globalDesc = lightingParserContext.GetGlobalLightingDesc();
         auto skyProjectionType = SkyTextureParts(globalDesc).BindPS(*context, 6);
 
         bool doDynamicReflection = OceanReflectionResource.GetUnderlying() != nullptr;
@@ -786,7 +787,7 @@ namespace SceneEngine
 
     void Ocean_Execute( RenderCore::IThreadContext& threadContext,
 						Techniques::ParsingContext& parserContext,
-						ISceneParser& sceneParser,
+						ILightingParserDelegate& lightingParserContext,
                         const DeepOceanSimSettings& settings,
                         const OceanLightingSettings& lightingSettings,
                         const ShaderResourceView& depthBufferSRV)
@@ -838,7 +839,7 @@ namespace SceneEngine
                     OceanBufferCounter);
             }
             RenderOceanSurface(
-                &context, parserContext, sceneParser, settings, lightingSettings, fftBuffer, shallowWaterBox, 
+                &context, parserContext, lightingParserContext, settings, lightingSettings, fftBuffer, shallowWaterBox, 
                 &refractionBox, 
                 //mainTargets._msaaDepthBufferSRV,
                 secondaryDepthBufferSRV,

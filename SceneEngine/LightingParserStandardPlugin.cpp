@@ -45,20 +45,21 @@ namespace SceneEngine
         resolveContext._tiledLightingResult = 
             TiledLighting_CalculateLighting(
                 &metalContext, parserContext,
-                resolveContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), resolveContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::GBufferNormal),
+                lightingParserContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), lightingParserContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::GBufferNormal),
 				lightingParserContext.GetMetricsBox()->_metricsBufferUAV);
     }
 
     static void AmbientOcclusion_Prepare(   DeviceContext& metalContext,
                                             RenderCore::Techniques::ParsingContext& parserContext,
+											LightingParserContext& lightingParserContext,
                                             LightingResolveContext& resolveContext)
     {
         if (Tweakable("DoAO", true)) {
             const bool useNormals = Tweakable("AO_UseNormals", true);
-            auto& mainTargets = resolveContext.GetMainTargets();
+            auto& mainTargets = lightingParserContext.GetMainTargets();
             auto& aoRes = ConsoleRig::FindCachedBox2<AmbientOcclusionResources>(
                 mainTargets.GetDimensions()[0], mainTargets.GetDimensions()[1], Format::R8_UNORM,
-                useNormals, (useNormals && resolveContext.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
+                useNormals, (useNormals && mainTargets.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
             ViewportDesc mainViewportDesc(metalContext);
 			auto normalSRV = mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal);
             AmbientOcclusion_Render(
@@ -72,17 +73,17 @@ namespace SceneEngine
 
     static void ScreenSpaceReflections_Prepare(     DeviceContext& metalContext,
                                                     RenderCore::Techniques::ParsingContext& parserContext,
-													ILightingParserDelegate& sceneParser,
+													LightingParserContext& lightingParserContext,
                                                     LightingResolveContext& resolveContext)
    {
         if (Tweakable("DoScreenSpaceReflections", false)) {
-            auto& mainTargets = resolveContext.GetMainTargets();
+            auto& mainTargets = lightingParserContext.GetMainTargets();
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 metalContext, parserContext,
                 unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
                 mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter),
                 mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth),
-				sceneParser.GetGlobalLightingDesc());
+				lightingParserContext._delegate->GetGlobalLightingDesc());
         }
     }
 
@@ -94,8 +95,8 @@ namespace SceneEngine
     {
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         TiledLighting_Prepare(metalContext, parserContext, lightingParserContext, resolveContext);
-        AmbientOcclusion_Prepare(metalContext, parserContext, resolveContext);
-        ScreenSpaceReflections_Prepare(metalContext, parserContext, *lightingParserContext._delegate, resolveContext);
+        AmbientOcclusion_Prepare(metalContext, parserContext, lightingParserContext, resolveContext);
+        ScreenSpaceReflections_Prepare(metalContext, parserContext, lightingParserContext, resolveContext);
     }
 
 

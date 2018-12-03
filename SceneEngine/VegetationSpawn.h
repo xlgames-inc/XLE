@@ -79,6 +79,7 @@ namespace SceneEngine
 		::Assets::DepValPtr _depVal;
     };
 
+#if 0
     class LightingParserContext;
     class VegetationSpawnResources;
     class PreparedScene;
@@ -119,5 +120,8 @@ namespace SceneEngine
         std::unique_ptr<Pimpl> _pimpl;
         friend class VegetationSpawnPlugin;
     };
+#endif
+
+
 }
 

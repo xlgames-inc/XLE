@@ -163,14 +163,14 @@ namespace SceneEngine
 
     bool PreparedDMShadowFrustum::IsReady() const
     {
-        return (_shadowTextureName != ~0u) && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
+        return _srv.IsGood() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
     }
 
     PreparedDMShadowFrustum::PreparedDMShadowFrustum() {}
 
     PreparedDMShadowFrustum::PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws
     : PreparedShadowFrustum(std::move(moveFrom))
-    , _shadowTextureName(moveFrom._shadowTextureName)
+    , _srv(std::move(moveFrom._srv))
     , _resolveParameters(moveFrom._resolveParameters)
     , _resolveParametersCB(std::move(moveFrom._resolveParametersCB))
     {}
@@ -178,7 +178,7 @@ namespace SceneEngine
     PreparedDMShadowFrustum& PreparedDMShadowFrustum::operator=(PreparedDMShadowFrustum&& moveFrom) never_throws
     {
         PreparedShadowFrustum::operator=(std::move(moveFrom));
-        _shadowTextureName = moveFrom._shadowTextureName;
+        _srv = std::move(moveFrom._srv);
         _resolveParameters = moveFrom._resolveParameters;
         _resolveParametersCB = std::move(moveFrom._resolveParametersCB);
         return *this;

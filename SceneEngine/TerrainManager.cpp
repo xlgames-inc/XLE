@@ -15,6 +15,7 @@
 #include "TerrainFormat.h"
 #include "PreparedScene.h"
 #include "SceneEngineUtils.h"
+#include "LightingParser.h"
 #include "MetalStubs.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -703,7 +704,7 @@ namespace SceneEngine
     void TerrainManager::Render(
         IThreadContext& context, 
         Techniques::ParsingContext& parserContext, 
-		const ISceneParser* sceneParser,
+		const ILightingParserDelegate* lightingParserDelegate,
         PreparedScene& preparedPackets,
         unsigned techniqueIndex)
     {
@@ -736,8 +737,8 @@ namespace SceneEngine
             : TerrainRenderingContext::Mode_Normal;
 
         Float3 sunDirection(0.f, 0.f, 1.f);
-        if (sceneParser && sceneParser->GetLightCount() > 0)
-            sunDirection = sceneParser->GetLightDesc(0)._position;
+        if (lightingParserDelegate && lightingParserDelegate->GetLightCount() > 0)
+            sunDirection = lightingParserDelegate->GetLightDesc(0)._position;
 
             // We want to project the sun direction onto the plane for the precalculated sun movement.
             // Then find the appropriate angle for on that plane.

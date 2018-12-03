@@ -9,6 +9,7 @@
 #include "LightingParser.h"
 #include "LightingParserContext.h"
 #include "MetalStubs.h"
+#include "RenderStepUtils.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Format.h"
@@ -20,6 +21,7 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../BufferUploads/ResourceLocator.h"
+#include "../Math/Transformations.h"
 #include "../ConsoleRig/ResourceBox.h"
 
 namespace SceneEngine
@@ -208,22 +210,21 @@ namespace SceneEngine
 
 		RenderSceneSettings qualitySettings{UInt2(256, 256)};
 
-        Float4x4 specialProjMatrix = MakeFloat4x4(
-            0.f, 0.f, 0.f, 0.5f,
-            0.f, 0.f, 0.f, 0.5f,
-            0.f, 0.f, 0.f, 0.5f,
-            0.f, 0.f, 0.f, 1.f);
-
             // The camera settings can affect the LOD that objects a rendered with.
             // So, in some cases we need to initialise the camera to the same state
             // used in rendering. This will ensure that we get the right LOD behaviour.
         Techniques::CameraDesc camera;
         if (cameraForLOD) { camera = *cameraForLOD; }
 
-        LightingParser_SetupScene(*threadContext, _pimpl->_parserContext);
-        LightingParser_SetGlobalTransform(
-            *threadContext, _pimpl->_parserContext, 
-            BuildProjectionDesc(camera, qualitySettings._dimensions, &specialProjMatrix));
+        // LightingParser_SetupScene(*threadContext, _pimpl->_parserContext);
+		auto projDesc = BuildProjectionDesc(camera, qualitySettings._dimensions);
+		projDesc._cameraToProjection = MakeFloat4x4(
+            0.f, 0.f, 0.f, 0.5f,
+            0.f, 0.f, 0.f, 0.5f,
+            0.f, 0.f, 0.f, 0.5f,
+            0.f, 0.f, 0.f, 1.f);
+		projDesc._worldToProjection = Combine(InvertOrthonormalTransform(projDesc._cameraToWorld), projDesc._cameraToProjection);
+        LightingParser_SetGlobalTransform(*threadContext, _pimpl->_parserContext, projDesc);
 
         _pimpl->_oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
 

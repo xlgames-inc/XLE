@@ -30,7 +30,8 @@ namespace SceneEngine
         SRV      GetSRV(uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
 		const RenderCore::IResourcePtr& GetResource(uint64_t semantic) const;
 
-		UInt2	GetDimensions() const;
+		UInt2		GetDimensions() const;
+		unsigned    GetSamplingCount() const;
 
 		MainTargets();
 		~MainTargets();
@@ -203,7 +204,9 @@ namespace SceneEngine
         void SaveGBuffer(RenderCore::Metal::DeviceContext& context, const MainTargets& mainTargets);
     #endif
 
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, MainTargets& mainTargets, bool useMsaaSamplers, unsigned debuggingType);
+    void Deferred_DrawDebugging(
+		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext,
+		bool useMsaaSamplers, unsigned debuggingType);
 
 }
 

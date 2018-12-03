@@ -81,7 +81,7 @@ namespace SceneEngine
     /// </code>
     LightingParserContext LightingParser_ExecuteScene(
         RenderCore::IThreadContext& context,
-		RenderCore::IResourcePtr& renderTarget,
+		const RenderCore::IResourcePtr& renderTarget,
 		RenderCore::Techniques::ParsingContext& parserContext,
 		IScene& scene,
 		ILightingParserDelegate& lightingDelegate,
@@ -138,7 +138,6 @@ namespace SceneEngine
         Pass::Enum  GetCurrentPass() const;
         bool        UseMsaaSamplers() const;
         unsigned    GetSamplingCount() const;
-        MainTargets& GetMainTargets() const;
 
         typedef void ResolveFn(RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, LightingResolveContext&, unsigned resolvePass);
         void        AppendResolve(std::function<ResolveFn>&& fn);

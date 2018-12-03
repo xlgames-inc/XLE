@@ -22,6 +22,8 @@
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringFormat.h"
 
+#include "../Foreign/DirectXTex/DirectXTex/DirectXTex.h"
+
 namespace SceneEngine
 {
 #if 0
@@ -509,29 +511,28 @@ namespace SceneEngine
     #if defined(_DEBUG)
         void SaveGBuffer(RenderCore::Metal::DeviceContext& context, const MainTargets& mainTargets)
         {
-            #if 1
-				const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
-				uint64_t semantics[] = { 
-					RenderCore::Techniques::AttachmentSemantics::GBufferDiffuse,
-					RenderCore::Techniques::AttachmentSemantics::GBufferNormal,
-					RenderCore::Techniques::AttachmentSemantics::GBufferParameter };
+			const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
+			uint64_t semantics[] = { 
+				RenderCore::Techniques::AttachmentSemantics::GBufferDiffuse,
+				RenderCore::Techniques::AttachmentSemantics::GBufferNormal,
+				RenderCore::Techniques::AttachmentSemantics::GBufferParameter };
 
-                auto& bufferUploads = GetBufferUploads();
-                for (unsigned c=0; c<3; ++c) {
-					auto srcDesc = mainTargets.GetResource(semantics[c])->GetDesc();
-					RenderCore::ResourceDesc stagingDesc;
-                    stagingDesc._type = RenderCore::ResourceDesc::Type::Texture;
-                    stagingDesc._bindFlags = 0;
-                    stagingDesc._cpuAccess = RenderCore::CPUAccess::Read;
-                    stagingDesc._gpuAccess = 0;
-                    stagingDesc._allocationRules = 0;
-                    stagingDesc._textureDesc = srcDesc._textureDesc;
+            auto& bufferUploads = GetBufferUploads();
+            for (unsigned c=0; c<3; ++c) {
+				auto srcDesc = mainTargets.GetResource(semantics[c])->GetDesc();
+				RenderCore::ResourceDesc stagingDesc;
+                stagingDesc._type = RenderCore::ResourceDesc::Type::Texture;
+                stagingDesc._bindFlags = 0;
+                stagingDesc._cpuAccess = RenderCore::CPUAccess::Read;
+                stagingDesc._gpuAccess = 0;
+                stagingDesc._allocationRules = 0;
+                stagingDesc._textureDesc = srcDesc._textureDesc;
 
-                    auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc)->AdoptUnderlying();
-                    RenderCore::Metal::Copy(context, *stagingTexture, *mainTargets.GetResource(semantics[c]));
-                    D3DX11SaveTextureToFile(context->GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
-                }
-            #endif
+                auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc)->AdoptUnderlying();
+                RenderCore::Metal::Copy(context, *checked_cast<RenderCore::Metal::Resource*>(stagingTexture.get()), *checked_cast<RenderCore::Metal::Resource*>(mainTargets.GetResource(semantics[c]).get()));
+				assert(0); // todo -- need a texture write function
+                // D3DX11SaveTextureToFile(context.GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
+            }
         }
     #endif
 
@@ -564,7 +565,6 @@ namespace SceneEngine
             context.Bind(debuggingShader);
         }
 
-        auto& namedRes = parserContext.GetNamedResources();
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(
 			MakeResourceList(5, 
 				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), 

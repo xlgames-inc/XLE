@@ -21,6 +21,7 @@ namespace SceneEngine
     class ILightingParserPlugin;
 	class RenderSceneSettings;
 	class PreparedScene;
+	class MainTargets;
 
     using LightId = unsigned;
 
@@ -31,6 +32,8 @@ namespace SceneEngine
 		PreparedScene*				_preparedScene = nullptr;
 		unsigned					_sampleCount = 0;
 		unsigned					_gbufferType = 0;
+
+		MainTargets&	GetMainTargets() const;
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }

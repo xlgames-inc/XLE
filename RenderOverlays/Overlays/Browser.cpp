@@ -505,14 +505,18 @@ namespace Overlays
             //      orthogonal projection to make sure the object is positioned within the output viewport well.
         auto viewDims = context.GetStateDesc()._viewportDimensions;
 		SceneEngine::RenderSceneSettings qualitySettings{UInt2(viewDims[0], viewDims[1])};
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
+		(void)metalContext;
 
-        auto sceneParser = ToolsRig::CreateModelScene(model);
+		assert(0); // broken in lighting parser refactoring. Needs a bit of restructing in the way ToolsRig::CreateModelScene works
+				// with SceneEngine::IScene & SceneEngine::ILightingParserDelegate
+
+        /*auto sceneParser = ToolsRig::CreateModelScene(model);
         Techniques::TechniqueContext techniqueContext;
 		Techniques::ParsingContext parsingContext(techniqueContext);
         SceneEngine::LightingParser_ExecuteScene(
             context, parsingContext, *sceneParser.get(), 
-            sceneParser->GetCameraDesc(), qualitySettings);
+            sceneParser->GetCameraDesc(), qualitySettings);*/
     }
 
     static const unsigned ModelBrowserItemDimensions = 196;

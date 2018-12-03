@@ -15,12 +15,12 @@ namespace PlatformRig
 {
     using namespace SceneEngine;
 
-    unsigned BasicSceneParser::GetShadowProjectionCount() const 
+    unsigned BasicLightingParserDelegate::GetShadowProjectionCount() const 
     { 
         return (unsigned)GetEnvSettings()._shadowProj.size(); 
     }
 
-    auto BasicSceneParser::GetShadowProjectionDesc(
+    auto BasicLightingParserDelegate::GetShadowProjectionDesc(
         unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
         -> ShadowProjectionDesc
     {
@@ -31,31 +31,24 @@ namespace PlatformRig
             GetEnvSettings()._shadowProj[index]._shadowFrustumSettings);
     }
 
-    unsigned BasicSceneParser::GetLightCount() const 
+    unsigned BasicLightingParserDelegate::GetLightCount() const 
     { 
         return (unsigned)GetEnvSettings()._lights.size(); 
     }
 
-    auto BasicSceneParser::GetLightDesc(unsigned index) const -> const LightDesc&
+    auto BasicLightingParserDelegate::GetLightDesc(unsigned index) const -> const LightDesc&
     {
         return GetEnvSettings()._lights[index];
     }
 
-    auto BasicSceneParser::GetGlobalLightingDesc() const -> GlobalLightingDesc
+    auto BasicLightingParserDelegate::GetGlobalLightingDesc() const -> GlobalLightingDesc
     {
         return GetEnvSettings()._globalLightingDesc;
     }
 
-    ToneMapSettings BasicSceneParser::GetToneMapSettings() const
+    ToneMapSettings BasicLightingParserDelegate::GetToneMapSettings() const
     {
         return GetEnvSettings()._toneMapSettings;
-    }
-
-    void BasicSceneParser::PrepareScene(
-        RenderCore::IThreadContext& context, 
-		RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::PreparedScene& preparedPackets) const
-    {
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

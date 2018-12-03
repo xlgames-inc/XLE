@@ -33,6 +33,5 @@ namespace SceneEngine
     void RTShadows_DrawMetrics(
         RenderCore::Metal::DeviceContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext, 
-		LightingParserContext& lightingParserContext,
-        MainTargets& mainTargets);
+		LightingParserContext& lightingParserContext);
 }

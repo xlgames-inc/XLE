@@ -613,7 +613,7 @@ namespace SceneEngine
             SetupVertexGeneratorShader(context);
             context.Bind(*fogShaders._buildExponentialShadowMap);
 
-            auto* shadowSRV = parsingContext.GetNamedResources().GetSRV(shadowFrustum._shadowTextureName);
+            auto* shadowSRV = &shadowFrustum.GetSRV();
             assert(shadowSRV);
             context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(2, *shadowSRV));
 
@@ -891,20 +891,19 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-			ISceneParser&, PreparedScene&) const;
+            IThreadContext&, Techniques::ParsingContext&, LightingParserContext&) const;
 
         virtual void OnLightingResolvePrepare(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-			ISceneParser&, LightingResolveContext&) const;
+			LightingResolveContext&) const;
 
         virtual void OnPostSceneRender(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-            ISceneParser&, const SceneParseSettings&, unsigned techniqueIndex) const;
+            BatchFilter, unsigned techniqueIndex) const;
 
         virtual void InitBasicLightEnvironment(
             IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-			ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const;
+			ShaderLightDesc::BasicEnvironment& env) const;
 
         VolumetricFogPlugin(VolumetricFogManager::Pimpl& pimpl);
         ~VolumetricFogPlugin();
@@ -950,7 +949,6 @@ namespace SceneEngine
         IThreadContext& threadContext, 
 		Techniques::ParsingContext& parsingContext,
 		LightingParserContext& lightingParserContext, 
-		ISceneParser&, 
         LightingResolveContext& resolveContext) const 
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
@@ -995,15 +993,15 @@ namespace SceneEngine
     }
 
     void VolumetricFogPlugin::OnPreScenePrepare(
-        RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, PreparedScene&) const {}
+        RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&) const {}
     
     void VolumetricFogPlugin::OnPostSceneRender(
         RenderCore::IThreadContext&, Techniques::ParsingContext&, LightingParserContext&, 
-        ISceneParser&, const SceneParseSettings&, unsigned techniqueIndex) const {}
+        BatchFilter, unsigned techniqueIndex) const {}
 
     void VolumetricFogPlugin::InitBasicLightEnvironment(
         RenderCore::IThreadContext& metalContext,
-        Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const
+        Techniques::ParsingContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const
     {
         if (_pimpl->_cfg._volumes.empty() || _pimpl->_cfg._renderer._enable == false) return;
 

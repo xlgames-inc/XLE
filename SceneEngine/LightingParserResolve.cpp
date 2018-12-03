@@ -200,7 +200,7 @@ namespace SceneEngine
         // 11: ShadowResolveParameters
         // 12: ShadowParameters
 
-        auto* shadowSRV = parsingContext.GetNamedResources().GetSRV(dominantLight._shadowTextureName);
+        auto* shadowSRV = &dominantLight.GetSRV();
         assert(shadowSRV);
         metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(3, *shadowSRV));
 
@@ -293,7 +293,7 @@ namespace SceneEngine
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
 
         LightingResolveContext lightingResolveContext(lightingParserContext);
-        const unsigned samplingCount = lightingResolveContext.GetSamplingCount();
+        const unsigned samplingCount = lightingParserContext.GetMainTargets().GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
         // bool precisionTargets = Tweakable("PrecisionTargets", false);
@@ -488,10 +488,13 @@ namespace SceneEngine
         
         // note -- we need to change the frame buffer desc if any of these are enabled
         // because the gbuffer needs to be retained and read from in a debugging phase
-        auto debugging = Tweakable("DeferredDebugging", 0);
+        auto debugging = Tweakable("DeferredDebugging", 0u);
         if (debugging > 0) {
             parsingContext._pendingOverlays.push_back(
-                std::bind(&Deferred_DrawDebugging, std::placeholders::_1, std::placeholders::_2, lightingParserContext._sampleCount > 1, debugging));
+                std::bind(
+					&Deferred_DrawDebugging, 
+					std::placeholders::_1, std::placeholders::_2,
+					lightingParserContext._sampleCount > 1, debugging));
         }
 
         if (Tweakable("RTShadowMetrics", false)) {
@@ -603,7 +606,7 @@ namespace SceneEngine
                     assert(lightingParserContext._preparedDMShadows[shadowFrustumIndex].second.IsReady());
 
                     const auto& preparedShadows = lightingParserContext._preparedDMShadows[shadowFrustumIndex].second;
-                    srvs[SR::DMShadow] = parsingContext.GetNamedResources().GetSRV(preparedShadows._shadowTextureName);
+                    srvs[SR::DMShadow] = &preparedShadows.GetSRV();
                     assert(srvs[SR::DMShadow]);
                     cbvs[CB::ShadowProj_Arbit] = &preparedShadows._arbitraryCB;
                     cbvs[CB::ShadowProj_Ortho] = &preparedShadows._orthoCB;
