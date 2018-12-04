@@ -58,6 +58,21 @@ namespace RenderCore { namespace Metal_AppleMetal
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
     };
 
+    /**
+     * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
+     */
+    class AttachmentBlendDesc {
+    public:
+        bool _blendEnable;
+        RenderCore::Blend _srcColorBlendFactor;
+        RenderCore::Blend _dstColorBlendFactor;
+        RenderCore::BlendOp _colorBlendOp;
+        RenderCore::Blend _srcAlphaBlendFactor;
+        RenderCore::Blend _dstAlphaBlendFactor;
+        RenderCore::BlendOp _alphaBlendOp;
+        uint8_t _writeMask;
+    };
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class SamplerState

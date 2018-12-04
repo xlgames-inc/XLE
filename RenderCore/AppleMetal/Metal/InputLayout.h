@@ -37,6 +37,9 @@ namespace RenderCore { namespace Metal_AppleMetal
             const ShaderProgram& program);
 
         TBC::OCPtr<MTLVertexDescriptor> _vertexDescriptor;
+
+        bool AllAttributesBound() const { return _allAttributesBound; }
+        bool _allAttributesBound = true; // Metal HACK - Metal validation can help determine that bindings are correct
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -72,9 +75,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
 
     private:
-        struct CB { unsigned streamIdx, slot; uint64_t hashName; };
+        struct CB { unsigned streamIdx, slot; uint64_t hashName; DEBUG_ONLY(std::string _name;) };
         std::vector<CB> _cbs;
-        struct SRV { unsigned streamIdx, slot; uint64_t hashName; };
+        struct SRV { unsigned streamIdx, slot; uint64_t hashName; DEBUG_ONLY(std::string _name;) };
         std::vector<SRV> _srvs;
 
         // KenD -- Metal improvement? -- story pointers to MTLFunctions seems a bit invasive or heavy

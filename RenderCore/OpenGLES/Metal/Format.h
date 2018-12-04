@@ -56,6 +56,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     GLenum AsGLenum(FaceWinding faceWinding);
     GLenum AsGLenum(CompareOp compare);
     GLenum AsGLenum(StencilOp stencilOp);
+    GLenum AsGLenum(BlendOp input);
     
     CompareOp AsCompareOp(GLenum comparison);
     StencilOp AsStencilOp(GLenum stencilOp);

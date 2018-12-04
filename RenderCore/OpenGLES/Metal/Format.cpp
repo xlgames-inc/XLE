@@ -600,6 +600,18 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    GLenum AsGLenum(BlendOp blendOp)
+    {
+        switch (blendOp) {
+            case BlendOp::Add: return GL_FUNC_ADD;
+            case BlendOp::Subtract: return GL_FUNC_SUBTRACT;
+            case BlendOp::RevSubtract: return GL_FUNC_REVERSE_SUBTRACT;
+            case BlendOp::Min: return GL_MIN;
+            case BlendOp::Max: return GL_MAX;
+            default: return GL_INVALID_ENUM;
+        }
+    }
+
     const char* GLenumAsString(GLenum value)
     {
 #if defined(GL_ES_VERSION_3_0)
