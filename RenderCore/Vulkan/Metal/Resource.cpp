@@ -918,6 +918,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		return *this;
 	}
 
+	Resource& AsResource(IResource& res)
+	{
+		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		assert(r);
+		return *r;
+	}
+
 
 }}
 

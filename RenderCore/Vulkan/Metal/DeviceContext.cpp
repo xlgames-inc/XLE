@@ -51,6 +51,14 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
+	void		GraphicsPipelineBuilder::UnbindInputLayout()
+	{
+		if (_inputLayout) {
+			_pipelineStale = true;
+			_inputLayout = nullptr;
+		}
+	}
+
 	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
         if (_shaderProgram != &shaderProgram) {

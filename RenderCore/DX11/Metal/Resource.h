@@ -126,14 +126,9 @@ namespace RenderCore { namespace Metal_DX11
     class LayoutTransition
     {
     public:
-        Resource* _res;
-		ImageLayout _oldLayout, _newLayout;
-
-        LayoutTransition(
-            Resource* res = nullptr, 
-            ImageLayout oldLayout = ImageLayout::Undefined,
-            ImageLayout newLayout = ImageLayout::Undefined) 
-            : _res(res), _oldLayout(oldLayout), _newLayout(newLayout) {}
+        Resource* _res = nullptr;
+		ImageLayout _oldLayout = ImageLayout::Undefined;
+		ImageLayout _newLayout = ImageLayout::Undefined;
     };
     inline void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes) {}
 

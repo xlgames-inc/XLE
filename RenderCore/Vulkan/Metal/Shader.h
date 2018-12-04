@@ -83,6 +83,8 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
+	using DeepShaderProgram = ShaderProgram;
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ComputeShader

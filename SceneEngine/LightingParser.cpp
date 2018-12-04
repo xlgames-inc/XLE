@@ -23,6 +23,7 @@
 #include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/IDevice.h"

@@ -194,6 +194,7 @@ namespace RenderCore { namespace Metal_Vulkan
     ResourceDesc ExtractDesc(UnderlyingResourcePtr res);
 	ResourceDesc ExtractDesc(const TextureView& res);
 	RenderCore::ResourcePtr ExtractResource(const TextureView&);
+	Resource& AsResource(IResource& res);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
         //      U T I L S       //
@@ -202,14 +203,9 @@ namespace RenderCore { namespace Metal_Vulkan
     class LayoutTransition
     {
     public:
-        Resource* _res;
-		ImageLayout _oldLayout, _newLayout;
-
-        LayoutTransition(
-            Resource& res, 
-            ImageLayout oldLayout = ImageLayout::Undefined,
-            ImageLayout newLayout = ImageLayout::Undefined) 
-            : _res(&res), _oldLayout(oldLayout), _newLayout(newLayout) {}
+        Resource* _res = nullptr;
+		ImageLayout _oldLayout = ImageLayout::Undefined;
+		ImageLayout _newLayout = ImageLayout::Undefined;
     };
 	void SetImageLayouts(DeviceContext& context, IteratorRange<const LayoutTransition*> changes);
 

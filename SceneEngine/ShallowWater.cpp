@@ -545,7 +545,7 @@ namespace SceneEngine
 
         if (!_usePipeModel) {
 
-            metalContext.BindCS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 _simulationGrid->_waterHeightsUAV[thisFrameBuffer],
                 _simulationGrid->_waterVelocitiesUAV[0],
                 _simulationGrid->_waterVelocitiesUAV[1],
@@ -585,7 +585,7 @@ namespace SceneEngine
                     //      Second method for calculating velocity
                     //      This method uses the slopes of the change in height to attempt to estimate water flow
                     
-                metalContext.BindCS(MakeResourceList(
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                     5, _simulationGrid->_slopesBufferUAV[0],
                     _simulationGrid->_slopesBufferUAV[1]));
 
@@ -684,13 +684,13 @@ namespace SceneEngine
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
         if (!usePipeModel) {
-            metalContext.BindCS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 _simulationGrid->_waterHeightsUAV[0],
                 _simulationGrid->_waterHeightsUAV[1], 
                 _simulationGrid->_waterHeightsUAV[2],
                 _lookupTableUAV));
         } else {
-            metalContext.BindCS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 _simulationGrid->_waterHeightsUAV[0],
                 UAV(), UAV(), _lookupTableUAV));
         }
@@ -751,7 +751,7 @@ namespace SceneEngine
         }
 
         if (usePipeModel) {
-            metalContext.BindCS(MakeResourceList(
+            metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 _simulationGrid->_waterVelocitiesUAV[0],
                 _simulationGrid->_waterVelocitiesUAV[1],
                 _simulationGrid->_waterVelocitiesUAV[2],

@@ -24,15 +24,6 @@ namespace RenderCore { namespace Metal_DX11
 		_underlying->OMSetRenderTargets(0, nullptr, depthStencil ? depthStencil->GetUnderlying() : nullptr);
 	}
 
-    template<int Count> void DeviceContext::BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess)
-    {
-		ID3D::UnorderedAccessView* underlyings[Count];
-		CopyArrayOfUnderlying(underlyings, unorderedAccess);
-        const UINT initialCounts[16] = { UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1), UINT(-1) };
-        assert(Count <= dimof(initialCounts));
-        _underlying->CSSetUnorderedAccessViews(unorderedAccess._startingPoint, Count, underlyings, initialCounts);
-    }
-
     template<int Count1, int Count2> void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess)
     {
 		ID3D::RenderTargetView* underlyings[Count1];

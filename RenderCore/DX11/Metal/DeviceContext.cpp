@@ -268,18 +268,4 @@ namespace RenderCore { namespace Metal_DX11
     template void DeviceContext::Bind<4>(const ResourceList<RenderTargetView, 4>&, const DepthStencilView*);
     template void DeviceContext::Bind<1,1>(const ResourceList<RenderTargetView, 1>&, const DepthStencilView*, const ResourceList<UnorderedAccessView, 1>&);
     template void DeviceContext::Bind<1,2>(const ResourceList<RenderTargetView, 1>&, const DepthStencilView*, const ResourceList<UnorderedAccessView, 2>&);
-
-    #define EXPAND(BINDABLE, FN)                                                          \
-        template void DeviceContext::FN<1>(const ResourceList<BINDABLE, 1>&);             \
-        template void DeviceContext::FN<2>(const ResourceList<BINDABLE, 2>&);             \
-        template void DeviceContext::FN<3>(const ResourceList<BINDABLE, 3>&);             \
-        template void DeviceContext::FN<4>(const ResourceList<BINDABLE, 4>&);             \
-        template void DeviceContext::FN<5>(const ResourceList<BINDABLE, 5>&);             \
-        template void DeviceContext::FN<6>(const ResourceList<BINDABLE, 6>&);             \
-        template void DeviceContext::FN<7>(const ResourceList<BINDABLE, 7>&);             \
-        template void DeviceContext::FN<8>(const ResourceList<BINDABLE, 8>&);             \
-        template void DeviceContext::FN<9>(const ResourceList<BINDABLE, 9>&);             \
-        /**/
-
-    EXPAND(UnorderedAccessView, BindCS)
 }}

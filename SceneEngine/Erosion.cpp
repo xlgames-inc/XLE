@@ -245,7 +245,7 @@ namespace SceneEngine
         // Metal::ShaderResourceView terrainHeightsCopySRV(_pimpl->_gpucache[1].get());
 
         // UnorderedAccessView uav(_pimpl->_gpucache[0].get());
-        metalContext.BindCS(RenderCore::MakeResourceList(1, _pimpl->_hardMaterialsUAV, _pimpl->_softMaterialsUAV));
+        metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(RenderCore::MakeResourceList(1, _pimpl->_hardMaterialsUAV, _pimpl->_softMaterialsUAV));
         // metalContext.BindCS(RenderCore::MakeResourceList(terrainHeightsCopySRV));
 
         struct TickErosionSimConstats

@@ -131,7 +131,7 @@ namespace SceneEngine
         setupUniforms.Apply(*context, 0, parserContext.GetGlobalUniformsStream());
 		setupUniforms.Apply(*context, 1, UniformsStream{MakeIteratorRange(cbs)});
 
-        context->BindCS(MakeResourceList(
+        context->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
             _workingTextureRealUVA, _workingTextureImaginaryUVA,
             _workingTextureXRealUVA, _workingTextureXImaginaryUVA,
             _workingTextureYRealUVA, _workingTextureYImaginaryUVA));

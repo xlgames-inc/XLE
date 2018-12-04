@@ -60,8 +60,6 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
-        template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
-
         template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);

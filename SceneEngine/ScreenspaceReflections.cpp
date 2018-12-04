@@ -24,6 +24,7 @@
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Format.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../BufferUploads/DataPacket.h"
@@ -329,7 +330,7 @@ namespace SceneEngine
             //
         context.Bind(ResourceList<Metal::RenderTargetView, 0>(), nullptr);
         context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(gbufferDiffuse, res._downsampledNormals.SRV(), res._downsampledDepth.SRV()));
-        context.BindCS(MakeResourceList(res._mask.UAV()));
+        context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(res._mask.UAV()));
         context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(parserContext.GetGlobalTransformCB(), MakeMetalCB(&viewProjParam, sizeof(viewProjParam)), res._samplingPatternConstants, Metal::ConstantBuffer(), parserContext.GetGlobalStateCB()));
         context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(commonResources._linearWrapSampler, commonResources._linearClampSampler));
         context.Bind(*res._buildMask);
@@ -338,7 +339,7 @@ namespace SceneEngine
             //
             //      Now write the reflections texture
             //
-        context.BindCS(MakeResourceList(res._reflections.UAV()));
+        context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(res._reflections.UAV()));
         context.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(3, res._mask.SRV()));
         context.Bind(*res._buildReflections);
         context.Dispatch((cfg._width + (16-1))/16, (cfg._height + (16-1))/16);

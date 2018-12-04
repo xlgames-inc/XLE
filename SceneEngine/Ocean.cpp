@@ -654,7 +654,7 @@ namespace SceneEngine
         const auto& globalDesc = lightingParserContext.GetGlobalLightingDesc();
         auto skyProjectionType = SkyTextureParts(globalDesc).BindPS(*context, 6);
 
-        bool doDynamicReflection = OceanReflectionResource.GetUnderlying() != nullptr;
+        bool doDynamicReflection = OceanReflectionResource.IsGood();
 
         //////////////////////////////////////////////////////////////////////////////
 

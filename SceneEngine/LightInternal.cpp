@@ -187,7 +187,7 @@ namespace SceneEngine
 
     bool PreparedRTShadowFrustum::IsReady() const
     {
-        return _listHeadSRV.GetUnderlying() && _linkedListsSRV.GetUnderlying() && _trianglesSRV.GetUnderlying();
+        return _listHeadSRV.IsGood() && _linkedListsSRV.IsGood() && _trianglesSRV.IsGood();
     }
 
     PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}

@@ -213,7 +213,7 @@ namespace SceneEngine
             if (format == Format::Unknown) {
                     // go via a midway buffer and handle the min/max quantization
                 auto& midwayBox = ConsoleRig::FindCachedBox2<ShortCircuitMidwayBox>(UInt2(tile._width, tile._height));
-                metalContext.BindCS(
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(
                     MakeResourceList(1, midwayBox._midwayBuffer.UAV(), midwayBox._midwayGradFlags.UAV(), box._tileCoordsBuffer.UAV()));
 
                 metalContext.Bind(*box._cs0);
@@ -224,7 +224,7 @@ namespace SceneEngine
                     //  if everything is ok up to this point, we can commit to the final
                     //  output --
 				box._boundLayout.UnbindShaderResources(metalContext, 1);
-                metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(tileSet->GetUnorderedAccessView()));
                 metalContext.Bind(*box._cs1);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
@@ -245,7 +245,7 @@ namespace SceneEngine
                 }
             } else {
                     // just write directly
-                metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(tileSet->GetUnorderedAccessView()));
                 metalContext.Bind(*box._cs2);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
