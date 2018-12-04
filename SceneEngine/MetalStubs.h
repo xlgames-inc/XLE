@@ -58,17 +58,47 @@ namespace SceneEngine { namespace MetalStubs
 	template<typename Type, int Count>
 		void BindSO(RenderCore::Metal::DeviceContext& devContext, const RenderCore::ResourceList<Type, Count>& res) {}
 
-	template<typename Type> void UnbindVS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
+	template<typename Type> void UnbindVS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) 
+	{
+		for (unsigned slot=0; slot<slotCount; ++slot) {
+			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Vertex).Bind(
+				RenderCore::MakeResourceList(slotStart+slot, Type{}));
+		}
+	}
 	template<typename Type> void UnbindPS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) 
 	{
 		for (unsigned slot=0; slot<slotCount; ++slot) {
 			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Pixel).Bind(
-				RenderCore::MakeResourceList(slotStart+slot, RenderCore::Metal::ShaderResourceView{}));
+				RenderCore::MakeResourceList(slotStart+slot, Type{}));
 		}
 	}
-	template<typename Type> void UnbindGS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
-	template<typename Type> void UnbindCS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
-	template<typename Type> void UnbindHS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
-	template<typename Type> void UnbindDS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount) {}
+	template<typename Type> void UnbindGS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount)
+	{
+		for (unsigned slot=0; slot<slotCount; ++slot) {
+			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Geometry).Bind(
+				RenderCore::MakeResourceList(slotStart+slot, Type{}));
+		}
+	}
+	template<typename Type> void UnbindCS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount)
+		{
+		for (unsigned slot=0; slot<slotCount; ++slot) {
+			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Compute).Bind(
+				RenderCore::MakeResourceList(slotStart+slot, Type{}));
+		}
+	}
+	template<typename Type> void UnbindHS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount)
+	{
+		for (unsigned slot=0; slot<slotCount; ++slot) {
+			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Hull).Bind(
+				RenderCore::MakeResourceList(slotStart+slot, Type{}));
+		}
+	}
+	template<typename Type> void UnbindDS(RenderCore::Metal::DeviceContext& devContext, unsigned slotStart, unsigned slotCount)
+	{
+		for (unsigned slot=0; slot<slotCount; ++slot) {
+			GetGlobalNumericUniforms(devContext, RenderCore::ShaderStage::Domain).Bind(
+				RenderCore::MakeResourceList(slotStart+slot, Type{}));
+		}
+	}
 
 }}

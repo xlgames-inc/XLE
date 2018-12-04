@@ -96,6 +96,14 @@ namespace SceneEngine
 		auto lightingParserContext = LightingParser_SetupContext(threadContext, parsingContext, delegate, renderSettings);
         LightingParser_SetGlobalTransform(threadContext, parsingContext, mainSceneProjection);
 
+		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		ReturnToSteadyState(metalContext);
+		CATCH_ASSETS_BEGIN
+			SetFrameGlobalStates(metalContext);
+		CATCH_ASSETS_END(parsingContext)
+
+		Techniques::AttachmentPool shadowsAttachmentPool;
+
 		// Preparation steps (including shadows prepare)
         {
             GPUAnnotation anno(threadContext, "Prepare");
@@ -122,12 +130,12 @@ namespace SceneEngine
 						auto merged = Techniques::MergeFragments(
 							{}, MakeIteratorRange(&interf, &interf+1));
 
-						auto fbDesc = Techniques::BuildFrameBufferDesc(parsingContext.GetNamedResources(), std::move(merged.first));
+						auto fbDesc = Techniques::BuildFrameBufferDesc(shadowsAttachmentPool, std::move(merged.first));
 						auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
-							Metal::GetObjectFactory(), fbDesc, parsingContext.GetNamedResources());
+							Metal::GetObjectFactory(), fbDesc, shadowsAttachmentPool);
 
-						Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, parsingContext.GetNamedResources());
-						Techniques::RenderPassFragment rpf(rpi, merged.second[0], parsingContext.GetNamedResources());
+						Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, shadowsAttachmentPool);
+						Techniques::RenderPassFragment rpf(rpi, merged.second[0], shadowsAttachmentPool);
 						Metal::DeviceContext::Get(threadContext)->Bind(
 							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
 
@@ -153,11 +161,17 @@ namespace SceneEngine
 		for (unsigned c=0; c<dimof(renderSteps); ++c)
 			fragments[c] = renderSteps[c]->GetInterface();
 		
-		const auto& mainRenderTargetDesc = renderTarget->GetDesc()._textureDesc;
+		AttachmentDesc mainRenderTargetDesc
+			{   Format::R8G8B8A8_UNORM_SRGB,
+				1.f, 1.f, 0u,
+				TextureViewDesc::Aspect::UndefinedAspect,
+				AttachmentDesc::DimensionsMode::OutputRelative,
+				AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
 		Techniques::PreregisteredAttachment preregistered[] = {
-			Techniques::PreregisteredAttachment { 
+			Techniques::PreregisteredAttachment {
 				0, Techniques::AttachmentSemantics::ColorLDR, 
-				{mainRenderTargetDesc._format}, Techniques::PreregisteredAttachment::State::Uninitialized
+				mainRenderTargetDesc, 
+				Techniques::PreregisteredAttachment::State::Uninitialized
 			}
 		};
 		parsingContext.GetNamedResources().Bind(0, renderTarget);
@@ -170,7 +184,7 @@ namespace SceneEngine
 			Metal::GetObjectFactory(), fbDesc, parsingContext.GetNamedResources());
 
 		Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, parsingContext.GetNamedResources());
-		Metal::DeviceContext::Get(threadContext)->Bind(
+		metalContext.Bind(
 			Metal::ViewportDesc(0.f, 0.f, float(renderSettings._dimensions[0]), float(renderSettings._dimensions[1])));
 
 		for (unsigned c=0; c<dimof(renderSteps); ++c) {
@@ -353,7 +367,7 @@ namespace SceneEngine
 
 	unsigned    MainTargets::GetSamplingCount() const
 	{
-		return 0;
+		return 1;
 	}
 
 	MainTargets::MainTargets() 

@@ -535,6 +535,7 @@ namespace SceneEngine
                 }
 
                 MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 1);
+				MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 0, 1);
             }
 
             // We will read from bloom buffer 0 later down the pipeline...
@@ -584,7 +585,7 @@ namespace SceneEngine
         if (Tweakable("DoToneMap", true)) {
             auto& toneMapRes = GetResources(inputResource);
             bool success = TryCalculateInputs(
-                context, parserContext, 
+                context, parserContext,
                 toneMapRes, settings, inputResource, doAdapt);
 
             if (Tweakable("ToneMapDebugging", false)) {
@@ -667,8 +668,8 @@ namespace SceneEngine
 		usi.BindConstantBuffer(0, {Hash64("ToneMapSettings")});
 		usi.BindConstantBuffer(1, {Hash64("ColorGradingSettings")});
 		usi.BindShaderResource(0, Hash64("InputTexture"));
-		usi.BindShaderResource(0, Hash64("LuminanceBuffer"));
-		usi.BindShaderResource(0, Hash64("BloomMap"));
+		usi.BindShaderResource(1, Hash64("LuminanceBuffer"));
+		usi.BindShaderResource(2, Hash64("BloomMap"));
         _uniforms = Metal::BoundUniforms(
 			*_shaderProgram,
 			Metal::PipelineLayoutConfig{},
@@ -683,15 +684,13 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
-        const RenderCore::FrameBufferDesc& destination,
+        bool hardwareSRGBEnabled,
         const Metal::ShaderResourceView& inputResource)
     {
         // ProtectState protectState(context, ProtectState::States::BlendState);
         // bool hardwareSRGBEnabled = IsSRGBTargetBound(context);
 
 		auto& devContext = *Metal::DeviceContext::Get(context);
-
-        bool hardwareSRGBEnabled = destination.GetSubpasses()[0]._output[0]._window._format._aspect == TextureViewDesc::ColorSRGB;
 
         CATCH_ASSETS_BEGIN
             bool bindCopyShader = true;
@@ -743,12 +742,6 @@ namespace SceneEngine
                 devContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(inputResource));
             }
             
-			auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(destination, parserContext.GetNamedResources());
-            Techniques::RenderPassInstance rpi(
-                context, fb, destination,
-                parserContext.GetNamedResources(),
-                Techniques::RenderPassBeginDesc());
-
             SetupVertexGeneratorShader(devContext);
             devContext.Bind(Techniques::CommonResources()._blendOpaque);
             devContext.Draw(4);

@@ -23,21 +23,19 @@ namespace SceneEngine
 
 	RenderStep_ResolveHDR::RenderStep_ResolveHDR()
 	{
-		auto input = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
-		auto output = _fragment.DefineAttachment(
+		auto hdrInput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
+		auto ldrOutput = _fragment.DefineAttachment(
 			Techniques::AttachmentSemantics::ColorLDR,
-			AttachmentDesc { Format::R8G8B8A8_UNORM });
+			{   Format::R8G8B8A8_UNORM_SRGB,
+				1.f, 1.f, 0u,
+                TextureViewDesc::Aspect::UndefinedAspect,
+				AttachmentDesc::DimensionsMode::OutputRelative,
+                AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
 
-		_fragment.AddSubpass(
-			SubpassDesc {
-				std::vector<AttachmentViewDesc> {
-					{ output, LoadStore::DontCare, LoadStore::Retain },
-				},
-				SubpassDesc::Unused,
-				std::vector<AttachmentViewDesc> {
-					{ input, LoadStore::Retain, LoadStore::DontCare },
-				}
-			});
+		SubpassDesc subpass;
+		subpass._output.push_back({ ldrOutput, LoadStore::DontCare, LoadStore::Retain });
+		subpass._input.push_back({ hdrInput, LoadStore::Retain_RetainStencil, LoadStore::DontCare });
+		_fragment.AddSubpass(std::move(subpass));
 	}
 
 	RenderStep_ResolveHDR::~RenderStep_ResolveHDR() {}
@@ -117,9 +115,15 @@ namespace SceneEngine
             //  other times we don't (because some tone map operations produce
             //  SRGB results, others give linear results)
 
+		auto* targetDesc = rpi.GetOutputAttachmentDesc(0);
+		assert(targetDesc);
+		bool hardwareSRGBEnabled = 
+				(targetDesc->_defaultAspect == TextureViewDesc::ColorSRGB)
+			||	(HasLinearAndSRGBFormats(targetDesc->_format) && AsSRGBFormat(targetDesc->_format) == targetDesc->_format)
+			;
         ToneMap_Execute(
             threadContext, parsingContext, luminanceResult, toneMapSettings, 
-			RenderCore::FrameBufferDesc{},
+			hardwareSRGBEnabled,
             *postLightingResolveInput);
 	}
 }

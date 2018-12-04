@@ -294,15 +294,36 @@ namespace RenderCore { namespace Techniques
         bool BuildAttachment(AttachmentName attach);
     };
 
-    static bool Equal(const AttachmentDesc& lhs, const AttachmentDesc& rhs)
+    static bool Equal(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
     {
-        return lhs._dimsMode == rhs._dimsMode
-            && lhs._width == rhs._width
-            && lhs._height == rhs._height
-            && lhs._arrayLayerCount == rhs._arrayLayerCount
-            && lhs._format == rhs._format
-            && lhs._flags == rhs._flags
-            ;
+        if (lhs._arrayLayerCount != rhs._arrayLayerCount
+            || lhs._format != rhs._format
+            || lhs._flags != rhs._flags)
+			return false;
+
+		if (lhs._dimsMode == rhs._dimsMode) {
+            return lhs._width == rhs._width
+				&& lhs._height == rhs._height;
+		} else {
+			float lhsRealWidth, lhsRealHeight;
+			float rhsRealWidth, rhsRealHeight;
+			if (lhs._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
+				lhsRealWidth = lhs._width * props._outputWidth;
+				lhsRealHeight = lhs._height * props._outputHeight;
+			} else {
+				lhsRealWidth = lhs._width;
+				lhsRealHeight = lhs._height;
+			}
+			if (rhs._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
+				rhsRealWidth = rhs._width * props._outputWidth;
+				rhsRealHeight = rhs._height * props._outputHeight;
+			} else {
+				rhsRealWidth = rhs._width;
+				rhsRealHeight = rhs._height;
+			}
+			return Equivalent(lhsRealWidth, rhsRealWidth, 0.5f)
+				&& Equivalent(lhsRealHeight, rhsRealHeight, 0.5f);
+		}
     }
 
     bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attach)
@@ -400,7 +421,7 @@ namespace RenderCore { namespace Techniques
     void AttachmentPool::DefineAttachment(AttachmentName name, const AttachmentDesc& request)
     {
         assert(name < s_maxBoundTargets);
-        if (!Equal(_pimpl->_attachmentDescs[name], request)) {
+        if (!Equal(_pimpl->_attachmentDescs[name], request, _pimpl->_props)) {
             _pimpl->_attachments[name].reset();
             _pimpl->_attachmentDescs[name] = request;
         }

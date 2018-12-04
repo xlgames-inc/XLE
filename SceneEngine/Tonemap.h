@@ -50,7 +50,7 @@ namespace SceneEngine
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
-        const RenderCore::FrameBufferDesc& destination,
+        bool hardwareSRGBEnabled,
         const RenderCore::Metal::ShaderResourceView& inputResource);
 
     class AtmosphereBlurSettings
