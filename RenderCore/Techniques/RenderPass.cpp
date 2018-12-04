@@ -50,10 +50,40 @@ namespace RenderCore { namespace Techniques
                 return p.first == std::make_pair(passIndex, slot);
             });
         if (i == _mapping->_inputAttachmentMapping.end())
-            return {};
+            return nullptr;
 
         assert(_attachmentPool);
         return _attachmentPool->GetSRV(i->second);
+    }
+
+	auto RenderPassFragment::GetInputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*
+	{
+		auto passIndex = _currentPassIndex;
+        auto i = std::find_if(
+            _mapping->_inputAttachmentMapping.begin(), _mapping->_inputAttachmentMapping.end(),
+            [passIndex, slot](const std::pair<FrameBufferFragmentMapping::PassAndSlot, AttachmentName>& p) {
+                return p.first == std::make_pair(passIndex, slot);
+            });
+        if (i == _mapping->_inputAttachmentMapping.end())
+            return nullptr;
+
+        assert(_attachmentPool);
+        return _attachmentPool->GetDesc(i->second);
+	}
+
+	auto RenderPassFragment::GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*
+    {
+        auto passIndex = _currentPassIndex;
+        auto i = std::find_if(
+            _mapping->_outputAttachmentMapping.begin(), _mapping->_outputAttachmentMapping.end(),
+            [passIndex, slot](const std::pair<FrameBufferFragmentMapping::PassAndSlot, AttachmentName>& p) {
+                return p.first == std::make_pair(passIndex, slot);
+            });
+        if (i == _mapping->_outputAttachmentMapping.end())
+            return nullptr;
+
+        assert(_attachmentPool);
+        return _attachmentPool->GetDesc(i->second);
     }
 
     void RenderPassFragment::NextSubpass()
@@ -892,8 +922,10 @@ namespace RenderCore { namespace Techniques
             FrameBufferFragmentMapping passFragment;
             for (unsigned p=0; p<(unsigned)f->_subpasses.size(); ++p) {
                 SubpassDesc newSubpass = f->_subpasses[p];
-                for (auto&a:newSubpass._output)
-                    a._resourceName = Remap(attachmentRemapping, a._resourceName);
+                for (unsigned c=0; c<(unsigned)newSubpass._output.size(); ++c) {
+                    newSubpass._output[c]._resourceName = Remap(attachmentRemapping, newSubpass._output[c]._resourceName);
+					passFragment._outputAttachmentMapping.push_back({{p, c}, newSubpass._output[c]._resourceName});
+				}
                 newSubpass._depthStencil._resourceName = Remap(attachmentRemapping, newSubpass._depthStencil._resourceName);
                 for (unsigned c=0; c<(unsigned)newSubpass._input.size(); ++c) {
                     newSubpass._input[c]._resourceName = Remap(attachmentRemapping, newSubpass._input[c]._resourceName);

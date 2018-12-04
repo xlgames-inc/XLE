@@ -186,7 +186,8 @@ namespace RenderCore { namespace Techniques
     {
     public:
         using PassAndSlot = std::pair<unsigned, unsigned>;
-        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+        std::vector<std::pair<PassAndSlot, AttachmentName>> _outputAttachmentMapping;
+		std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
         unsigned _subpassCount;
     };
 
@@ -208,6 +209,8 @@ namespace RenderCore { namespace Techniques
     {
     public:
         auto GetSRV(unsigned slot) const -> Metal::ShaderResourceView*;
+		auto GetInputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
+		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
         AttachmentPool& GetAttachmentPool() const { return *_attachmentPool; }
 
         void NextSubpass();
