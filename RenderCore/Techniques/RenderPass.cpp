@@ -57,11 +57,12 @@ namespace RenderCore { namespace Techniques
 {
 
     AttachmentName FrameBufferDescFragment::DefineAttachment(
-        uint64_t semantic,
+        uint64_t inputSemanticBinding,
+        uint64_t outputSemanticBinding,
         const AttachmentDesc& request)
     {
         auto name = _nextAttachment++;
-        _attachments.push_back({name, {semantic, request}});
+        _attachments.push_back({name, {inputSemanticBinding, outputSemanticBinding, request}});
         return name;
     }
 
@@ -305,19 +306,26 @@ namespace RenderCore { namespace Techniques
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static const unsigned s_maxBoundTargets = 64;
-
     class AttachmentPool::Pimpl
     {
     public:
-        IResourcePtr		_attachments[s_maxBoundTargets];
-        AttachmentDesc		_attachmentDescs[s_maxBoundTargets];
-		
-		ViewPool<Metal::ShaderResourceView> _srvPool;
+        struct Attachment
+        {
+            IResourcePtr		    _resource;
+            AttachmentDesc		    _desc;
+        };
+        std::vector<Attachment>                         _attachments;
+
+        struct SemanticAttachment : public Attachment
+        {
+            uint64_t        _inputSemanticBinding;
+            uint64_t        _outputSemanticBinding;
+        };
+        std::vector<SemanticAttachment>    _semanticAttachments;
 
         FrameBufferProperties       _props;
-
-        Metal::ObjectFactory*      _factory;
+        Metal::ObjectFactory*       _factory;
+        ViewPool<Metal::ShaderResourceView> _srvPool;
 
         bool BuildAttachment(AttachmentName attach);
     };
@@ -333,11 +341,19 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attach)
+    bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attachName)
     {
-        assert(attach<s_maxBoundTargets);
-        _attachments[attach].reset();
-        const auto& a = _attachmentDescs[attach];
+        Attachment* attach = nullptr;
+        if (attachName & (1u<<31u)) {
+            auto semanticAttachIdx = attachName & ~(1u<<31u);
+            attach = &_semanticAttachments[semanticAttachIdx];
+        } else {
+            attach = &_attachments[attachName];
+        }
+        assert(attach);
+        if (!attach) return false;
+
+        const auto& a = attach->_desc;
 
         // We need to calculate the dimensions, format, samples and bind flags for this
         // attachment. All of the information we need should be defined as part of the frame
@@ -394,55 +410,133 @@ namespace RenderCore { namespace Techniques
         }
 
         // note -- it might be handy to have a cache of "device memory" that could be reused here?
-        _attachments[attach] = Metal::CreateResource(*_factory, desc);
-		assert(_attachments[attach]);
+        attach->_resource = Metal::CreateResource(*_factory, desc);
+		assert(attach->_resource);
         return true;
     }
 
-    auto AttachmentPool::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    auto AttachmentPool::GetDesc(AttachmentName attachName) const -> const AttachmentDesc*
     {
-        if (resName >= s_maxBoundTargets) return nullptr;
-        return &_pimpl->_attachmentDescs[resName];
+        Pimpl::Attachment* attach = nullptr;
+        if (attachName & (1u<<31u)) {
+            auto semanticAttachIdx = attachName & ~(1u<<31u);
+            if (semanticAttachIdx >= _pimpl->_semanticAttachments.size()) return nullptr;
+            attach = &_pimpl->_semanticAttachments[semanticAttachIdx];
+        } else {
+            if (attachName >= _pimpl->_attachments.size()) return nullptr;
+            attach = &_pimpl->_attachments[attachName];
+        }
+        assert(attach);
+        return &attach->_desc;
     }
     
-    IResourcePtr AttachmentPool::GetResource(AttachmentName resName) const
+    IResourcePtr AttachmentPool::GetResource(AttachmentName attachName) const
     {
-		if (resName >= s_maxBoundTargets) return nullptr;
-		if (!_pimpl->_attachments[resName])
-			_pimpl->BuildAttachment(resName);
-		assert(_pimpl->_attachments[resName]);
-		return _pimpl->_attachments[resName];
-	}
-
-	Metal::ShaderResourceView* AttachmentPool::GetSRV(AttachmentName resName, const TextureViewDesc& window) const
-	{
-		if (resName >= s_maxBoundTargets) return nullptr;
-		if (!_pimpl->_attachments[resName]) return nullptr;
-		return _pimpl->_srvPool.GetView(_pimpl->_attachments[resName], window);
-	}
-
-    void AttachmentPool::DefineAttachment(AttachmentName name, const AttachmentDesc& request)
-    {
-        assert(name < s_maxBoundTargets);
-        if (!Equal(_pimpl->_attachmentDescs[name], request)) {
-            _pimpl->_attachments[name].reset();
-            _pimpl->_attachmentDescs[name] = request;
+        Pimpl::Attachment* attach = nullptr;
+        if (attachName & (1u<<31u)) {
+            auto semanticAttachIdx = attachName & ~(1u<<31u);
+            if (semanticAttachIdx >= _pimpl->_semanticAttachments.size()) return nullptr;
+            attach = &_pimpl->_semanticAttachments[semanticAttachIdx];
+        } else {
+            if (attachName >= _pimpl->_attachments.size()) return nullptr;
+            attach = &_pimpl->_attachments[attachName];
         }
+        assert(attach);
+        if (!attach->_resource)
+            _pimpl->BuildAttachment(attachName);
+        return attach->_resource;
+	}
+
+	Metal::ShaderResourceView* AttachmentPool::GetSRV(AttachmentName attachName, const TextureViewDesc& window) const
+	{
+        Pimpl::Attachment* attach = nullptr;
+        if (attachName & (1u<<31u)) {
+            auto semanticAttachIdx = attachName & ~(1u<<31u);
+            if (semanticAttachIdx >= _pimpl->_semanticAttachments.size()) return nullptr;
+            attach = &_pimpl->_semanticAttachments[semanticAttachIdx];
+        } else {
+            if (attachName >= _pimpl->_attachments.size()) return nullptr;
+            attach = &_pimpl->_attachments[attachName];
+        }
+        assert(attach);
+		return _pimpl->_srvPool.GetView(attach->_resource, window);
+	}
+
+    std::vector<AttachmentName> AttachmentPool::GetAttachments(IteratorRange<const Request*> requests)
+    {
+        std::vector<bool> consumed(false, _pimpl->_attachments.size());
+        std::vector<bool> consumedSemantic(false, _pimpl->_semanticAttachments.size());
+        std::vector<AttachmentName> result;
+        for (const auto&r:requests) {
+            // If a semantic value is set, we should first check to see if the request can match
+            // one of the bound attachments.
+            bool foundMatch = false;
+            if (r._inputSemantic || r._outputSemantic) {
+                for (unsigned q=0; q<_pimpl->_semanticAttachments.size(); ++q) {
+                    if (r._inputSemantic == _pimpl->_semanticAttachments[q]._inputSemanticBinding
+                        && r._outputSemantic == _pimpl->_semanticAttachments[q]._outputSemanticBinding
+                        && !consumedSemantic[q]) {
+                        if (Equal(r._attachmentDesc, _pimpl->_semanticAttachments[q]._desc)
+                            && _pimpl->_semanticAttachments[q]._resource) {
+                            consumedSemantic[q] = true;
+                            foundMatch = true;
+                            result.push_back(q | (1u<<31u));
+                            break;
+                        } else {
+                            Log(Warning) << "Attachment bound to semantic (0x" << std::hex << r._inputSemantic << ", " << r._outputSemantic << std::dec << ") does not match the request for this semantic. The bound attachment will be ignored" << std::endl;
+                        }
+                    }
+                }
+                if (foundMatch) continue;
+
+                // If we didn't find a match in one of our bound semantic attachments, we must flow
+                // through and treat it as a temporary attachment.
+            }
+
+            // If we haven't found a match yet, we must treat the request as a temporary buffer
+            // We will go through and either find an existing buffer or create a new one
+            for (unsigned q=0; q<_pimpl->_semanticAttachments.size(); ++q) {
+                if (Equal(r._attachmentDesc, _pimpl->_semanticAttachments[q]._desc) && q < consumed.size() && !consumed[q]) {
+                    consumed[q] = true;
+                    result.push_back(q);
+                    foundMatch = true;
+                    break;
+                }
+            }
+
+            if (!foundMatch) {
+                _pimpl->_attachments.push_back(
+                    Pimpl::Attachment{nullptr, r._attachmentDesc});
+                result.push_back((unsigned)(_pimpl->_attachments.size()-1));
+            }
+        }
+        return result;
     }
 
-    void AttachmentPool::Bind(AttachmentName resName, const IResourcePtr& resource)
+    void AttachmentPool::Bind(uint64_t inputSemantic, uint64_t outputSemantic, const IResourcePtr& resource)
     {
-        assert(resName < s_maxBoundTargets);
-        if (_pimpl->_attachments[resName] == resource) return;
-
-        auto& attach = _pimpl->_attachments[resName];
-        if (attach) {
-		    _pimpl->_srvPool.Erase(*attach);
-            attach = nullptr;
+        assert(inputSemantic != 0 || outputSemantic != 0);      // using zero as a semantic is not supported; this is used as a sentinel for "no semantic"
+        
+        auto existingBinding = std::find_if(
+            _pimpl->_semanticAttachments.begin(),
+            _pimpl->_semanticAttachments.end(),
+            [inputSemantic, outputSemantic](const Pimpl::SemanticAttachment& a) {
+                return a._inputSemanticBinding == inputSemantic && a._outputSemanticBinding == outputSemantic;
+            });
+        if (existingBinding != _pimpl->_semanticAttachments.end()) {
+		    if (existingBinding->_resource)
+                _pimpl->_srvPool.Erase(*existingBinding->_resource);
+        } else {
+            Pimpl::SemanticAttachment newAttach;
+            newAttach._inputSemanticBinding = inputSemantic;
+            newAttach._outputSemanticBinding = outputSemantic;
+            existingBinding = _pimpl->_semanticAttachments.insert(
+                _pimpl->_semanticAttachments.end(),
+                newAttach);
         }
 
         auto desc = resource->GetDesc();
-        _pimpl->_attachmentDescs[resName] = 
+        existingBinding->_desc =
             {
                 desc._textureDesc._format,
                 (float)desc._textureDesc._width, (float)desc._textureDesc._height,
@@ -455,14 +549,22 @@ namespace RenderCore { namespace Techniques
                 | ((desc._bindFlags & BindFlag::TransferSrc) ? AttachmentDesc::Flags::TransferSource : 0u)
             };
 
-        attach = resource;
+        existingBinding->_resource = resource;
     }
 
-    void AttachmentPool::Unbind(AttachmentName resName)
+    void AttachmentPool::Unbind(const IResource& resource)
     {
-        assert(resName < s_maxBoundTargets);
-		if (_pimpl->_attachments[resName])
-			_pimpl->_srvPool.Erase(*_pimpl->_attachments[resName]);
+        auto existingBinding = std::find_if(
+            _pimpl->_semanticAttachments.begin(),
+            _pimpl->_semanticAttachments.end(),
+            [&resource](const Pimpl::SemanticAttachment& a) {
+                return a._resource.get() == &resource;
+            });
+        if (existingBinding != _pimpl->_semanticAttachments.end()) {
+            if (existingBinding->_resource)
+                _pimpl->_srvPool.Erase(*existingBinding->_resource);
+            existingBinding->_resource = nullptr;
+        }
     }
 
     void AttachmentPool::Bind(FrameBufferProperties props)
@@ -476,19 +578,19 @@ namespace RenderCore { namespace Techniques
         if (!xyChanged && !samplesChanged) return;
 
 		if (xyChanged)
-            for (unsigned c=0; c<s_maxBoundTargets; ++c)
-                if (_pimpl->_attachmentDescs[c]._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
-					if (_pimpl->_attachments[c])
-						_pimpl->_srvPool.Erase(*_pimpl->_attachments[c]);
-					_pimpl->_attachments[c].reset();
+            for (auto& r:_pimpl->_attachments)
+                if (r._desc._dimsMode == AttachmentDesc::DimensionsMode::OutputRelative) {
+					if (r._resource)
+						_pimpl->_srvPool.Erase(*r._resource);
+					r._resource.reset();
 				}
 
         if (samplesChanged) // Invalidate all resources and views that depend on the multisample state
-            for (unsigned c=0; c<s_maxBoundTargets; ++c)
-                if (_pimpl->_attachmentDescs[c]._flags & AttachmentDesc::Flags::Multisampled) {
-                    if (_pimpl->_attachments[c])
-						_pimpl->_srvPool.Erase(*_pimpl->_attachments[c]);
-					_pimpl->_attachments[c].reset();
+            for (auto& r:_pimpl->_attachments)
+                if (r._desc._flags & AttachmentDesc::Flags::Multisampled) {
+                    if (r._resource)
+                        _pimpl->_srvPool.Erase(*r._resource);
+                    r._resource.reset();
 				}
 
         _pimpl->_props = props;
@@ -499,33 +601,40 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_props;
     }
 
-    IteratorRange<const AttachmentDesc*> AttachmentPool::GetDescriptions() const
-    {
-        return MakeIteratorRange(_pimpl->_attachmentDescs);
-    }
-
     AttachmentPool::AttachmentPool()
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_factory = &Metal::GetObjectFactory();
-        for (unsigned c=0; c<s_maxBoundTargets; ++c) {
-            _pimpl->_attachmentDescs[c] = {};
-        }
         _pimpl->_props = {0u, 0u, TextureSamples::Create()};
     }
 
     AttachmentPool::~AttachmentPool()
     {}
     
-///////////////////////////////////////////////////////////////////////////////////////////////////
+////////////////////////////////////////////////////////////////////////////////////////////////////
 
     FrameBufferDesc BuildFrameBufferDesc(
         AttachmentPool& namedResources,
         FrameBufferDescFragment&& fragment)
     {
         // Define all of the attachments in the attachment pool
-        for (const auto& attachment:fragment._attachments)
-            namedResources.DefineAttachment(attachment.first, attachment.second._desc);
+        std::vector<AttachmentPool::Request> r;
+        for (unsigned c=0; c<fragment._attachments.size(); ++c)
+            r.push_back({fragment._attachments[c].second._inputSemanticBinding, fragment._attachments[c].second._outputSemanticBinding, fragment._attachments[c].second._desc});
+
+        auto attachmentNameMapping = namedResources.GetAttachments(MakeIteratorRange(r));
+
+        for (auto&s:fragment._subpasses) {
+            for (auto&a:s._output) a._resourceName = attachmentNameMapping[a._resourceName];
+            if (s._depthStencil._resourceName != SubpassDesc::Unused._resourceName) {
+                s._depthStencil._resourceName = attachmentNameMapping[s._depthStencil._resourceName];
+            } else {
+                s._depthStencil = SubpassDesc::Unused;
+            }
+            for (auto&a:s._input) a._resourceName = attachmentNameMapping[a._resourceName];
+            for (auto&a:s._preserve) a._resourceName = attachmentNameMapping[a._resourceName];
+            for (auto&a:s._resolve) a._resourceName = attachmentNameMapping[a._resourceName];
+        }
 
         // Generate the final FrameBufferDesc by moving the subpasses out of the fragment
         // Usually this function is called as a final step when converting a number of fragments
@@ -611,7 +720,21 @@ namespace RenderCore { namespace Techniques
         return result;
     }
 
-    static AttachmentName NextName(IteratorRange<const PreregisteredAttachment*> attachments0, IteratorRange<const PreregisteredAttachment*> attachments1)
+    class WorkingAttachment
+    {
+    public:
+        AttachmentName _name;
+        AttachmentDesc _desc;
+        uint64_t _inputSemanticBinding = 0;
+        uint64_t _outputSemanticBinding = 0;
+        uint64_t _firstReadSemantic = 0;
+        uint64_t _lastWriteSemantic = 0;
+        bool _forceShaderResourceFlag = false;
+        PreregisteredAttachment::State _state = PreregisteredAttachment::State::Uninitialized;
+        PreregisteredAttachment::State _stencilState = PreregisteredAttachment::State::Uninitialized;
+    };
+
+    static AttachmentName NextName(IteratorRange<const WorkingAttachment*> attachments0, IteratorRange<const WorkingAttachment*> attachments1)
     {
         // find the lowest name not used by any of the attachments
         uint64_t bitField = 0;
@@ -630,13 +753,13 @@ namespace RenderCore { namespace Techniques
         return xl_ctz8(~bitField);
     }
 
-    static uint64_t GetSemantic(IteratorRange<const std::pair<AttachmentName, FrameBufferDescFragment::Attachment>*> attachments, RenderCore::AttachmentName attachment)
+    /*static uint64_t GetSemantic(IteratorRange<const std::pair<AttachmentName, FrameBufferDescFragment::Attachment>*> attachments, RenderCore::AttachmentName attachment)
     {
         for (const auto& a:attachments)
             if (a.first == attachment)
                 return a.second._semantic;
         return 0;
-    }
+    }*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -652,9 +775,23 @@ namespace RenderCore { namespace Techniques
     inline std::ostream& operator<<(std::ostream& str, const PreregisteredAttachment& attachment)
     {
         str << "PreregisteredAttachment {"
-            << attachment._name << ", "
             << attachment._semantic << ", "
             << attachment._desc << ", "
+            << AsString(attachment._state) << ", "
+            << AsString(attachment._stencilState) << "}";
+        return str;
+    }
+
+    inline std::ostream& operator<<(std::ostream& str, const WorkingAttachment& attachment)
+    {
+        str << "WorkingAttachment {"
+            << attachment._name << ", "
+            << attachment._desc << ", "
+            << std::hex << "Input: 0x" << attachment._inputSemanticBinding << ", "
+            << "Output: 0x" << attachment._outputSemanticBinding << ", "
+            << "FirstRead: 0x" << attachment._firstReadSemantic << ", "
+            << "LastWrite: 0x" << attachment._lastWriteSemantic << ", " << std::dec
+            << attachment._forceShaderResourceFlag << ", "
             << AsString(attachment._state) << ", "
             << AsString(attachment._stencilState) << "}";
         return str;
@@ -664,8 +801,9 @@ namespace RenderCore { namespace Techniques
     {
         str << "FrameBufferDescFragment with attachments: " << std::endl;
         for (unsigned c=0; c<fragment._attachments.size(); ++c) {
-            str << StreamIndent(4) << "[" << c << "] 0x" << std::hex << fragment._attachments[c].first << std::dec
-                << " 0x" << fragment._attachments[c].second._semantic << " : " << fragment._attachments[c].second._desc
+            str << StreamIndent(4) << "[" << c << "] "
+                << std::hex << " 0x" << fragment._attachments[c].second._inputSemanticBinding
+                << ", 0x" << fragment._attachments[c].second._outputSemanticBinding << std::dec << " : " << fragment._attachments[c].second._desc
                 << std::endl;
         }
         str << "Subpasses: " << std::endl;
@@ -704,6 +842,8 @@ namespace RenderCore { namespace Techniques
         // non-shader resource attachment, it can never be moved to a shader resource attachment.
         // Hense we must ensure that any attachments that will ever be used as a shader resource
         // always have that flag set.
+
+        /*
         std::vector<uint64_t> shaderResourceSemantics;
         for (auto f = fragments.begin(); f != fragments.end(); ++f) {
             for (auto p = f->_subpasses.begin(); p != f->_subpasses.end(); ++p) {
@@ -717,13 +857,25 @@ namespace RenderCore { namespace Techniques
                 }
             }
         }
-        
         std::sort(shaderResourceSemantics.begin(), shaderResourceSemantics.end());
-        shaderResourceSemantics.erase(std::unique(shaderResourceSemantics.begin(), shaderResourceSemantics.end()), shaderResourceSemantics.end());
+        shaderResourceSemantics.erase(
+            std::unique(shaderResourceSemantics.begin(), shaderResourceSemantics.end()),
+            shaderResourceSemantics.end());
+        */
         
-        std::vector<PreregisteredAttachment> workingAttachments { preregisteredInputs.begin(), preregisteredInputs.end() };
-        for (auto f = fragments.begin(); f != fragments.end(); ++f) {
-            std::vector<PreregisteredAttachment> newWorkingAttachments;
+        std::vector<WorkingAttachment> workingAttachments;
+        workingAttachments.reserve(preregisteredInputs.size());
+        for (unsigned c=0; c<preregisteredInputs.size(); c++) {
+            WorkingAttachment initialState;
+            initialState._outputSemanticBinding = preregisteredInputs[c]._semantic;
+            initialState._desc = preregisteredInputs[c]._desc;
+            initialState._state = preregisteredInputs[c]._state;
+            initialState._stencilState = preregisteredInputs[c]._stencilState;
+        }
+            // workingAttachments.push_back({preregisteredInputs[c], c});
+
+        for (auto f=fragments.begin(); f!=fragments.end(); ++f) {
+            std::vector<WorkingAttachment> newWorkingAttachments;
             std::vector<std::pair<AttachmentName, AttachmentName>> attachmentRemapping;
             /////////////////////////////////////////////////////////////////////////////
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
@@ -751,17 +903,18 @@ namespace RenderCore { namespace Techniques
                 assert(directionFlags != 0);
 
                 // toggle on the "ShaderResource" flag, if necessary
-                if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
+                /*if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
                     interfaceAttachment._desc._flags |= AttachmentDesc::Flags::Enum::ShaderResource;
-                }
+                }*/
+
                 if (directionFlags & DirectionFlags::Load) {
                     // We're expecting a buffer that already has some initialized contents. Look for
                     // something matching in our working attachments array
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment](const PreregisteredAttachment& input) {
+                        [&interfaceAttachment](const WorkingAttachment& input) {
                             return (input._state == PreregisteredAttachment::State::Initialized)
-                                && (input._semantic == interfaceAttachment._semantic)
+                                && (input._outputSemanticBinding == interfaceAttachment._inputSemanticBinding)
                                 && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
                     if (compat == workingAttachments.end()) {
@@ -779,18 +932,25 @@ namespace RenderCore { namespace Techniques
                     
                     reboundName = compat->_name;
 
-                    // remove from the working attachments and push back in it's new state
+                    // Remove from the working attachments and push back in it's new state
+                    // If we're not writing to this attachment, it will lose it's semantic here
                     auto newState = *compat;
                     newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                    newState._inputSemanticBinding = 0;
+                    newState._outputSemanticBinding = (directionFlags & DirectionFlags::Store) ? interfaceAttachment._outputSemanticBinding : 0;
+                    if (!newState._firstReadSemantic)
+                        newState._firstReadSemantic = interfaceAttachment._inputSemanticBinding;
+                    if (directionFlags & DirectionFlags::Store)
+                        newState._lastWriteSemantic = interfaceAttachment._outputSemanticBinding;
                     workingAttachments.erase(compat);
                     newWorkingAttachments.push_back(newState);
                 } else {
                     // define a new output buffer, or reuse something that we can reuse
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment](const PreregisteredAttachment& input) {
+                        [&interfaceAttachment](const WorkingAttachment& input) {
                             return (input._state == PreregisteredAttachment::State::Uninitialized)
-                                && (input._semantic == interfaceAttachment._semantic)
+                                && (input._inputSemanticBinding == interfaceAttachment._outputSemanticBinding)
                                 && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
 
@@ -805,21 +965,26 @@ namespace RenderCore { namespace Techniques
                         // name, if necessary
                         auto desc = interfaceAttachment._desc;
                         auto sameSemantic = std::find_if(
-                            workingAttachments.begin(), workingAttachments.end(),
+                            preregisteredInputs.begin(), preregisteredInputs.end(),
                             [&interfaceAttachment](const PreregisteredAttachment& input) {
-                                return (input._semantic == interfaceAttachment._semantic);
+                                return (input._semantic == interfaceAttachment._outputSemanticBinding);
                             });
-                        if (sameSemantic != workingAttachments.end()) {
+                        if (sameSemantic != preregisteredInputs.end()) {
                             if (desc._format == Format::Unknown) desc._format = sameSemantic->_desc._format;
                             if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->_desc._defaultAspect;
+                        } else {
+                            assert(desc._format != Format::Unknown);
                         }
 
-                        PreregisteredAttachment newState {
-                            reboundName,
-                            interfaceAttachment._semantic,
-                            desc,
-                            (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized
-                        };
+                        WorkingAttachment newState;
+                        newState._name = reboundName;
+                        newState._desc = desc;
+                        newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        newState._stencilState = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        if (directionFlags & DirectionFlags::Store) {
+                            newState._outputSemanticBinding = interfaceAttachment._outputSemanticBinding;
+                            newState._lastWriteSemantic = interfaceAttachment._outputSemanticBinding;
+                        }
                         newWorkingAttachments.push_back(newState);
 
                         #if defined(_DEBUG)
@@ -833,6 +998,10 @@ namespace RenderCore { namespace Techniques
                         // remove from the working attachments and push back in it's new state
                         auto newState = *compat;
                         newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        if (directionFlags & DirectionFlags::Store) {
+                            newState._outputSemanticBinding = interfaceAttachment._outputSemanticBinding;
+                            newState._lastWriteSemantic = interfaceAttachment._outputSemanticBinding;
+                        }
                         workingAttachments.erase(compat);
                         newWorkingAttachments.push_back(newState);
                     }
@@ -900,7 +1069,7 @@ namespace RenderCore { namespace Techniques
         // the output fragment;
         result._attachments.reserve(workingAttachments.size());
         for (auto& a:workingAttachments) {
-            FrameBufferDescFragment::Attachment r { a._semantic, a._desc };
+            FrameBufferDescFragment::Attachment r { a._firstReadSemantic, a._lastWriteSemantic, a._desc };
             result._attachments.push_back({a._name, r});
         }
 
