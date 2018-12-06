@@ -59,8 +59,8 @@ namespace RenderCore { namespace Techniques
 
     AttachmentName FrameBufferDescFragment::DefineAttachment(uint64_t semantic, const AttachmentDesc& request)
     {
-        auto name = _nextAttachment++;
-        _attachments.push_back({semantic, semantic, name, request});
+        auto name = (AttachmentName)_attachments.size();
+        _attachments.push_back({semantic, semantic, request});
         return name;
     }
 
@@ -69,7 +69,7 @@ namespace RenderCore { namespace Techniques
         _subpasses.emplace_back(std::move(subpass));
     }
 
-    FrameBufferDescFragment::FrameBufferDescFragment() : _nextAttachment(0) {}
+    FrameBufferDescFragment::FrameBufferDescFragment() {}
     FrameBufferDescFragment::~FrameBufferDescFragment() {}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -874,7 +874,7 @@ namespace RenderCore { namespace Techniques
         return str;
     }
 
-    static bool CompareAttachmentName(const FrameBufferDescFragment::Attachment& lhs, const FrameBufferDescFragment::Attachment& rhs)
+    static bool CompareAttachmentName(const WorkingAttachment& lhs, const WorkingAttachment& rhs)
     {
         return lhs._name < rhs._name;
     }
@@ -947,20 +947,21 @@ namespace RenderCore { namespace Techniques
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
                 const auto& interfaceAttachment = *interf;
                 AttachmentName reboundName = ~0u;
+                AttachmentName interfaceAttachmentName = (AttachmentName)std::distance(f->_attachments.begin(), interf);
                 DirectionFlags::BitField directionFlags = 0;
                 // Look through the load/store values in the subpasses to find the "direction" for
                 // this attachment. When deciding on the load flags, we must look for the first
                 // subpass that references the attachment; for the store flags we look for the last
                 // subpass that writes to it
                 for (auto p = f->_subpasses.begin(); p != f->_subpasses.end(); ++p) {
-                    auto subpassDirectionFlags = GetLoadDirectionFlags(*p, interfaceAttachment._name);
+                    auto subpassDirectionFlags = GetLoadDirectionFlags(*p, interfaceAttachmentName);
                     if (subpassDirectionFlags != 0) {
                         directionFlags |= subpassDirectionFlags;
                         break;
                     }
                 }
                 for (auto p = f->_subpasses.rbegin(); p != f->_subpasses.rend(); ++p) {
-                    auto subpassDirectionFlags = GetStoreDirectionFlags(*p, interfaceAttachment._name);
+                    auto subpassDirectionFlags = GetStoreDirectionFlags(*p, interfaceAttachmentName);
                     if (subpassDirectionFlags != 0) {
                         directionFlags |= subpassDirectionFlags;
                         break;
@@ -1073,7 +1074,7 @@ namespace RenderCore { namespace Techniques
                     }
                 }
 
-                attachmentRemapping.push_back({interfaceAttachment._name, reboundName});
+                attachmentRemapping.push_back({interfaceAttachmentName, reboundName});
             }
 
             /////////////////////////////////////////////////////////////////////////////
@@ -1128,8 +1129,7 @@ namespace RenderCore { namespace Techniques
                 debugInfo << "Merge calculated this attachment remapping:" << std::endl;
                 for (const auto&r:attachmentRemapping)
                     debugInfo << StreamIndent(4) << "[" << r.first << "] remapped to " << r.second << " ("
-                        << std::find_if(f->_attachments.begin(), f->_attachments.end(),
-                                        [r](const FrameBufferDescFragment::Attachment& a) { return a._name == r.first; })->_desc
+                        << f->_attachments[r.first]._desc
                         << ")" << std::endl;
                 debugInfo << "Current fragment interface:" << std::endl;
                 for (const auto&w:workingAttachments)
@@ -1140,18 +1140,20 @@ namespace RenderCore { namespace Techniques
         // The workingAttachments array is now the list of attachments that must go into
         // the output fragment;
         result._attachments.reserve(workingAttachments.size());
+        std::sort(workingAttachments.begin(), workingAttachments.end(), CompareAttachmentName);
         for (auto& a:workingAttachments) {
-            FrameBufferDescFragment::Attachment r { a._firstReadSemantic, a._lastWriteSemantic, a._name, a._desc };
+            // The AttachmentNames in FrameBufferDescFragment are just indices into the attachment
+            // list -- so we must ensure that we insert in order, and without gaps
+            assert(a._name == result._attachments.size());
+            FrameBufferDescFragment::Attachment r { a._firstReadSemantic, a._lastWriteSemantic, a._desc };
             result._attachments.push_back(r);
         }
-
-        std::sort(result._attachments.begin(), result._attachments.end(), CompareAttachmentName);
 
         #if defined(_DEBUG)
             debugInfo << "-------------------------------" << std::endl;
             debugInfo << "Final attachments" << std::endl;
             for (unsigned c=0; c<result._attachments.size(); ++c)
-                debugInfo << StreamIndent(4) << "[" << result._attachments[c]._name << "] 0x"
+                debugInfo << StreamIndent(4) << "[" << c << "] 0x"
                     << std::hex << result._attachments[c].GetInputSemanticBinding() << ", 0x" << result._attachments[c].GetOutputSemanticBinding() << std::dec
                     << " : " << result._attachments[c]._desc << std::endl;
             debugInfo << "Final subpasses" << std::endl;
