@@ -73,7 +73,6 @@ namespace RenderCore { namespace Techniques
         {
             uint64_t        _inputSemanticBinding;
             uint64_t        _outputSemanticBinding;
-            AttachmentName  _name;
             AttachmentDesc  _desc;
 
             uint64_t GetInputSemanticBinding() const { return _inputSemanticBinding; }
@@ -81,9 +80,6 @@ namespace RenderCore { namespace Techniques
         };
         std::vector<Attachment>     _attachments;
         std::vector<SubpassDesc>    _subpasses;
-
-    private:
-        unsigned _nextAttachment;
     };
 
     FrameBufferDesc BuildFrameBufferDesc(
