@@ -33,7 +33,7 @@ namespace RenderCore { namespace Techniques
     class AttachmentPool
     {
     public:
-        void Bind(uint64_t inputSemantic, uint64_t outputSemantic, const IResourcePtr& resource);
+        void Bind(uint64_t semantic, const IResourcePtr& resource);
         void Unbind(const IResource& resource);
 
         struct Request
@@ -62,13 +62,8 @@ namespace RenderCore { namespace Techniques
     class FrameBufferDescFragment
     {
     public:
-        AttachmentName DefineAttachment(
-            uint64_t inputSemanticBinding,
-            uint64_t outputSemanticBinding,
-            const AttachmentDesc& request = {});
-        AttachmentName DefineInputAttachment(uint64_t semantic) { return DefineAttachment(semantic, 0, {}); }
-        AttachmentName DefineOutputAttachment(uint64_t semantic) { return DefineAttachment(0, semantic, {}); }
-        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, 0, request); }
+        AttachmentName DefineAttachment(uint64_t semantic, const AttachmentDesc& request = {});
+        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, request); }
         void AddSubpass(SubpassDesc&& subpass);
 
         FrameBufferDescFragment();
@@ -78,9 +73,13 @@ namespace RenderCore { namespace Techniques
         {
             uint64_t        _inputSemanticBinding;
             uint64_t        _outputSemanticBinding;
+            AttachmentName  _name;
             AttachmentDesc  _desc;
+
+            uint64_t GetInputSemanticBinding() const { return _inputSemanticBinding; }
+            uint64_t GetOutputSemanticBinding() const { return _outputSemanticBinding; }
         };
-        std::vector<std::pair<AttachmentName, Attachment>> _attachments;
+        std::vector<Attachment>     _attachments;
         std::vector<SubpassDesc>    _subpasses;
 
     private:
