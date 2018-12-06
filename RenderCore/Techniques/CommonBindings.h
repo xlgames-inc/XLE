@@ -42,14 +42,18 @@ namespace RenderCore { namespace Techniques
         static const auto Max = 12u;
     };
 
-	namespace Attachments
-	{
-		const unsigned PresentationTarget = 0;
-        const unsigned MainDepthStencil = 2;
-        const unsigned GBufferDiffuse = 3;
-        const unsigned GBufferNormals = 4;
-        const unsigned GBufferParams = 5;
-        const unsigned LightingResolve = 6;
-	}
+	namespace AttachmentSemantics
+    {
+        const uint64_t MultisampleDepth = ConstHash64<'Mult', 'isam', 'pleD', 'epth'>::Value;
+        const uint64_t GBufferDiffuse   = ConstHash64<'GBuf', 'ferD', 'iffu', 'se'>::Value;
+        const uint64_t GBufferNormal    = ConstHash64<'GBuf', 'ferN', 'orma', 'ls'>::Value;
+        const uint64_t GBufferParameter = ConstHash64<'GBuf', 'ferP', 'aram', 'eter'>::Value;
+
+        const uint64_t ColorLDR         = ConstHash64<'ldrc', 'olor'>::Value;
+        const uint64_t ColorHDR         = ConstHash64<'hdrc', 'olor'>::Value;
+        const uint64_t Depth            = ConstHash64<'dept', 'h'>::Value;
+
+        const uint64_t ShadowDepthMap    = ConstHash64<'shad', 'owdm'>::Value;
+    }
 }}
 

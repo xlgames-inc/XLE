@@ -33,17 +33,22 @@ namespace RenderCore { namespace Techniques
     class AttachmentPool
     {
     public:
-        void DefineAttachment(AttachmentName, const AttachmentDesc& request);
-        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        void Bind(uint64_t inputSemantic, uint64_t outputSemantic, const IResourcePtr& resource);
+        void Unbind(const IResource& resource);
 
-        void Bind(AttachmentName, const IResourcePtr& resource);
-        void Unbind(AttachmentName);
-        IResourcePtr GetResource(AttachmentName resName) const;
-        Metal::ShaderResourceView* GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
+        struct Request
+        {
+            uint64_t _inputSemantic;
+            uint64_t _outputSemantic;
+            AttachmentDesc _attachmentDesc;
+        };
+        std::vector<AttachmentName> GetAttachments(IteratorRange<const Request*> requests);
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetResource(AttachmentName resName) const -> IResourcePtr;
+        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
 
         void Bind(FrameBufferProperties props);
         const FrameBufferProperties& GetFrameBufferProperties() const;
-        IteratorRange<const AttachmentDesc*> GetDescriptions() const;
 
         AttachmentPool();
         ~AttachmentPool();
@@ -58,9 +63,12 @@ namespace RenderCore { namespace Techniques
     {
     public:
         AttachmentName DefineAttachment(
-            uint64_t semantic,
+            uint64_t inputSemanticBinding,
+            uint64_t outputSemanticBinding,
             const AttachmentDesc& request = {});
-        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, request); }
+        AttachmentName DefineInputAttachment(uint64_t semantic) { return DefineAttachment(semantic, 0, {}); }
+        AttachmentName DefineOutputAttachment(uint64_t semantic) { return DefineAttachment(0, semantic, {}); }
+        AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, 0, request); }
         void AddSubpass(SubpassDesc&& subpass);
 
         FrameBufferDescFragment();
@@ -68,7 +76,8 @@ namespace RenderCore { namespace Techniques
 
         struct Attachment
         {
-            uint64_t        _semantic;
+            uint64_t        _inputSemanticBinding;
+            uint64_t        _outputSemanticBinding;
             AttachmentDesc  _desc;
         };
         std::vector<std::pair<AttachmentName, Attachment>> _attachments;
@@ -172,7 +181,6 @@ namespace RenderCore { namespace Techniques
     struct PreregisteredAttachment
     {
     public:
-        AttachmentName _name;
         uint64_t _semantic;
         AttachmentDesc _desc;
         enum class State { Uninitialized, Initialized };
