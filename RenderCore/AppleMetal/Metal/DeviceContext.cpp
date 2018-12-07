@@ -242,10 +242,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationAlphaBlendFactor = AsMTLBlendFactor(desc._dstAlphaBlendFactor);
 
         _pimpl->_pipelineDescriptor.get().colorAttachments[0].writeMask =
-        (MTLColorWriteMaskRed   & (desc._writeMask & (1 << 3))) |
-        (MTLColorWriteMaskGreen & (desc._writeMask & (1 << 2))) |
-        (MTLColorWriteMaskBlue  & (desc._writeMask & (1 << 1))) |
-        (MTLColorWriteMaskAlpha & (desc._writeMask & (1 << 0)));
+        ((desc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
+        ((desc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
+        ((desc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
+        ((desc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
     }
 
     void GraphicsPipeline::Bind(const RasterizationDesc& desc)

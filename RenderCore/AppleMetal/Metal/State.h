@@ -58,6 +58,21 @@ namespace RenderCore { namespace Metal_AppleMetal
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
     };
 
+    namespace ColorWriteMask
+    {
+        enum Channels
+        {
+            Red     = (1<<0),
+            Green   = (1<<1),
+            Blue    = (1<<2),
+            Alpha   = (1<<3)
+        };
+        using BitField = unsigned;
+
+        const BitField All = (Red | Green | Blue | Alpha);
+        const BitField None = 0;
+    };
+
     /**
      * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
      */
@@ -70,7 +85,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         RenderCore::Blend _srcAlphaBlendFactor;
         RenderCore::Blend _dstAlphaBlendFactor;
         RenderCore::BlendOp _alphaBlendOp;
-        uint8_t _writeMask;
+        ColorWriteMask::BitField _writeMask;
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
