@@ -11,7 +11,6 @@
 #include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/IteratorUtils.h"
-#include "../../Core/Types.h"
 #include <memory>
 
 namespace RenderCore 
@@ -21,41 +20,13 @@ namespace RenderCore
     class TextureViewDesc;
     class TextureSamples;
     class FrameBufferProperties;
-    using AttachmentName = uint32;
+    using AttachmentName = uint32_t;
     class IResource;
     using IResourcePtr = std::shared_ptr<IResource>;
 }
 
 namespace RenderCore { namespace Techniques
 {
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class AttachmentPool
-    {
-    public:
-        void Bind(uint64_t semantic, const IResourcePtr& resource);
-        void Unbind(const IResource& resource);
-
-        struct Request
-        {
-            uint64_t _inputSemantic;
-            uint64_t _outputSemantic;
-            AttachmentDesc _attachmentDesc;
-        };
-        std::vector<AttachmentName> GetAttachments(IteratorRange<const Request*> requests);
-        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
-        auto GetResource(AttachmentName resName) const -> IResourcePtr;
-        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
-
-        void Bind(FrameBufferProperties props);
-        const FrameBufferProperties& GetFrameBufferProperties() const;
-
-        AttachmentPool();
-        ~AttachmentPool();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -83,10 +54,31 @@ namespace RenderCore { namespace Techniques
     };
 
     FrameBufferDesc BuildFrameBufferDesc(
-        AttachmentPool& namedResources,
         FrameBufferDescFragment&& fragment);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class AttachmentPool
+    {
+    public:
+        void Bind(uint64_t semantic, const IResourcePtr& resource);
+        void Unbind(const IResource& resource);
+
+        std::vector<AttachmentName> Request(IteratorRange<const FrameBufferDesc::Attachment*> requests);
+
+        void Bind(FrameBufferProperties props);
+        const FrameBufferProperties& GetFrameBufferProperties() const;
+
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetResource(AttachmentName resName) const -> IResourcePtr;
+        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+
+        AttachmentPool();
+        ~AttachmentPool();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 
     class RenderPassBeginDesc
     {
@@ -114,7 +106,13 @@ namespace RenderCore { namespace Techniques
     class FrameBufferPool
     {
     public:
-        std::shared_ptr<Metal::FrameBuffer> BuildFrameBuffer(
+        class Result
+        {
+        public:
+            std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
+            IteratorRange<const AttachmentName*> _poolAttachmentsRemapping;
+        };
+        Result BuildFrameBuffer(
             Metal::ObjectFactory& factory,
             const FrameBufferDesc& desc,
             AttachmentPool& attachmentPool);
@@ -155,11 +153,16 @@ namespace RenderCore { namespace Techniques
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
         const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
 
+        // The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetResource(AttachmentName resName) const -> IResourcePtr;
+        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+
         RenderPassInstance(
             IThreadContext& context,
-            const std::shared_ptr<Metal::FrameBuffer>& frameBuffer,
             const FrameBufferDesc& layout,
-            AttachmentPool& namedResources,
+            FrameBufferPool& frameBufferPool,
+            AttachmentPool& attachmentPool,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         ~RenderPassInstance();
@@ -171,9 +174,9 @@ namespace RenderCore { namespace Techniques
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
         Metal::DeviceContext* _attachedContext;
+        AttachmentPool* _attachmentPool;
+        std::vector<AttachmentName> _attachmentPoolRemapping;
     };
-
-    std::shared_ptr<INamedAttachments> MakeNamedAttachmentsWrapper(AttachmentPool& namedRes);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -213,19 +216,19 @@ namespace RenderCore { namespace Techniques
     class RenderPassFragment
     {
     public:
-        auto GetSRV(unsigned slot) const -> Metal::ShaderResourceView*;
-		auto GetInputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
-		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
-        AttachmentPool& GetAttachmentPool() const { return *_attachmentPool; }
         const RenderPassInstance& GetRenderPassInstance() const { return *_rpi; }
+
+        // The indicies here refer to the slot of the input attachment
+        auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
+        auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
+        auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
 
         void NextSubpass();
 
         RenderPassFragment(
             RenderPassInstance& rpi,
-            const FrameBufferFragmentMapping& mapping,
-            AttachmentPool& attachmentPool);
-		RenderPassFragment();
+            const FrameBufferFragmentMapping& mapping);
         ~RenderPassFragment();
 
         RenderPassFragment(const RenderPassFragment&) = delete;
@@ -233,8 +236,9 @@ namespace RenderCore { namespace Techniques
     private:
         RenderPassInstance* _rpi;
         const FrameBufferFragmentMapping* _mapping;
-        AttachmentPool* _attachmentPool;
         unsigned _currentPassIndex;
+
+        AttachmentName RemapToRPI(unsigned inputAttachmentSlot) const;
     };
 
 }}

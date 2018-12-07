@@ -12,21 +12,17 @@ namespace RenderCore
 {
 	const AttachmentViewDesc SubpassDesc::Unused = AttachmentViewDesc{};
 
-	FrameBufferDesc::FrameBufferDesc(std::vector<SubpassDesc>&& subpasses)
-	: _subpasses(std::move(subpasses))
+	FrameBufferDesc::FrameBufferDesc(
+        std::vector<Attachment>&& attachments,
+        std::vector<SubpassDesc>&& subpasses)
+	: _attachments(std::move(attachments))
+    , _subpasses(std::move(subpasses))
 	{
         // Calculate the hash value for this description by combining
         // together the hashes of the members.
-        _hash = Hash64(AsPointer(_subpasses.begin()), AsPointer(_subpasses.end()));
+        _hash = Hash64(AsPointer(_attachments.begin()), AsPointer(_attachments.end()));
+        _hash = Hash64(AsPointer(_subpasses.begin()), AsPointer(_subpasses.end()), _hash);
     }
-
-    FrameBufferDesc::FrameBufferDesc(IteratorRange<const SubpassDesc*> subpasses)
-    : FrameBufferDesc(std::vector<SubpassDesc>(subpasses.begin(), subpasses.end()))
-    {}
-
-	FrameBufferDesc::FrameBufferDesc(std::initializer_list<SubpassDesc> subpasses)
-	: FrameBufferDesc(std::vector<SubpassDesc>(subpasses.begin(), subpasses.end()))
-	{}
 
 	FrameBufferDesc::FrameBufferDesc()
     : _hash(0)
@@ -36,6 +32,21 @@ namespace RenderCore
     FrameBufferDesc::~FrameBufferDesc() {}
 
 	INamedAttachments::~INamedAttachments() {}
+
+    AttachmentDesc AsAttachmentDesc(const ResourceDesc& desc)
+    {
+        return {
+            desc._textureDesc._format,
+            (float)desc._textureDesc._width, (float)desc._textureDesc._height,
+            0u,
+            TextureViewDesc::UndefinedAspect,
+            RenderCore::AttachmentDesc::DimensionsMode::Absolute,
+              ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
+            | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)
+            | ((desc._bindFlags & BindFlag::DepthStencil) ? AttachmentDesc::Flags::DepthStencil : 0u)
+            | ((desc._bindFlags & BindFlag::TransferSrc) ? AttachmentDesc::Flags::TransferSource : 0u)
+        };
+    }
 
 	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc)
 	{
