@@ -42,12 +42,6 @@ namespace RenderCore { namespace Techniques
         static const auto Max = 12u;
     };
 
-        // const unsigned GBufferDiffuse = 3;
-        // const unsigned GBufferNormals = 4;
-        // const unsigned GBufferParams = 5;
-        // const unsigned LightingResolve = 6;
-	}
-
 	namespace AttachmentSemantics
 	{
 		const uint64_t MultisampleDepth = ConstHash64<'Mult', 'isam', 'pleD', 'epth'>::Value;

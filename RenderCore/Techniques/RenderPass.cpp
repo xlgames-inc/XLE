@@ -125,9 +125,7 @@ namespace RenderCore { namespace Techniques
             });
         if (i == _mapping->_outputAttachmentMapping.end())
             return nullptr;
-
-        assert(_attachmentPool);
-        return _attachmentPool->GetDesc(i->second);
+        return _rpi->GetDesc(i->second);
     }
 
     void RenderPassFragment::NextSubpass()
@@ -314,13 +312,6 @@ namespace RenderCore { namespace Techniques
             MakeIteratorRange(_pimpl->_entries[earliestEntry]._poolAttachmentsRemapping)
         };
     }
-
-	std::shared_ptr<Metal::FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-        const FrameBufferDesc& desc,
-        AttachmentPool& attachmentPool)
-	{
-		return BuildFrameBuffer(Metal::GetObjectFactory(), desc, attachmentPool);
-	}
 
     void FrameBufferPool::Reset()
     {
@@ -535,7 +526,7 @@ namespace RenderCore { namespace Techniques
             attach = &_pimpl->_attachments[attachName];
         }
         assert(attach);
-		auto completeView = CompleteTextureViewDesc(_pimpl->_attachmentDescs[resName], window);
+		auto completeView = CompleteTextureViewDesc(attach->_desc, window);
 		return _pimpl->_srvPool.GetView(attach->_resource, completeView);
 	}
 
