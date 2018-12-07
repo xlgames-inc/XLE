@@ -84,6 +84,8 @@ namespace RenderCore
         #endif
     };
 
+    AttachmentDesc AsAttachmentDesc(const ResourceDesc&);
+
     /// <summary>Defines which attachments are used during a subpass (and ordering)</summary>
     /// Input attachments are read by shader stages. Output attachments are for color data written
     /// from pixel shaders. There can be 0 or 1 depth stencil attachments.
@@ -114,17 +116,26 @@ namespace RenderCore
 	{
 	public:
         auto	GetSubpasses() const -> IteratorRange<const SubpassDesc*> { return MakeIteratorRange(_subpasses); }
-        uint64	GetHash() const { return _hash; }
 
-		FrameBufferDesc(IteratorRange<const SubpassDesc*> subpasses);
-		FrameBufferDesc(std::initializer_list<SubpassDesc> subpasses);
-		FrameBufferDesc(std::vector<SubpassDesc>&& subpasses);
+        struct Attachment
+        {
+            uint64_t        _semantic;
+            AttachmentDesc  _desc;
+        };
+        auto    GetAttachments() const -> IteratorRange<const Attachment*> { return MakeIteratorRange(_attachments); }
+
+        uint64_t    GetHash() const { return _hash; }
+
+		FrameBufferDesc(
+            std::vector<Attachment>&& attachments,
+            std::vector<SubpassDesc>&& subpasses);
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
 	private:
+        std::vector<Attachment>         _attachments;
         std::vector<SubpassDesc>        _subpasses;
-        uint64                          _hash;
+        uint64_t                        _hash;
 	};
 
     class FrameBufferProperties
