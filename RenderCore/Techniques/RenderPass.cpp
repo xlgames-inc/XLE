@@ -41,7 +41,11 @@ namespace RenderCore
 
     inline std::ostream& operator<<(std::ostream& str, const SubpassDesc& subpass)
     {
-        str << "SubpassDesc { outputs [";
+        str << "SubpassDesc { "
+            #if defined(_DEBUG)
+                << (!subpass._name.empty()?subpass._name:std::string("<<no name>>")) << ", "
+            #endif
+            << "outputs [";
         for (unsigned c=0; c<subpass._output.size(); ++c) { if (c!=0) str << ", "; str << subpass._output[c]._resourceName; }
         str << "], DepthStencil: ";
         if (subpass._depthStencil._resourceName != ~0u) { str << subpass._depthStencil._resourceName; } else { str << "<<none>>"; }
