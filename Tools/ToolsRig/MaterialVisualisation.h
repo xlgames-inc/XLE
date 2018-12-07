@@ -13,7 +13,7 @@
 #include <memory>
 
 namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; class ITechniqueDelegate; class IMaterialDelegate; } }
-namespace SceneEngine { class ISceneParser; }
+namespace SceneEngine { class IScene; }
 
 namespace ToolsRig
 {
@@ -33,10 +33,10 @@ namespace ToolsRig
         ::Assets::DirectorySearchRules		_searchRules;
         ::Assets::rstring					_previewModelFile;
         uint64_t							_previewMaterialBinding = 0;
-
-		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
-		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
     };
+
+	// std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+	// std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
 
     class VisEnvSettings;
 
@@ -56,9 +56,9 @@ namespace ToolsRig
 		RenderCore::Techniques::FrameBufferPool* frameBufferPool,
 		const std::shared_ptr<MaterialVisSettings>& visObject);
 
-	std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
+	/*std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
 		const std::shared_ptr<MaterialVisSettings>& settings,
-        const std::shared_ptr<VisEnvSettings>& envSettings);
+        const std::shared_ptr<VisEnvSettings>& envSettings);*/
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -81,14 +81,15 @@ namespace ToolsRig
 		void SetLightingType(DrawPreviewLightingType newType);
 
         MaterialVisLayer(
-            std::shared_ptr<SceneEngine::ISceneParser> sceneParser);
+            std::shared_ptr<SceneEngine::ILightingParserDelegate> lightingParser);
         ~MaterialVisLayer();
 
-        static bool Draw(
+        bool Draw(
             RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
 			RenderCore::Techniques::ParsingContext& parserContext,
             DrawPreviewLightingType lightingType,
-			SceneEngine::ISceneParser& sceneParser);
+			SceneEngine::IScene& sceneParser);
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

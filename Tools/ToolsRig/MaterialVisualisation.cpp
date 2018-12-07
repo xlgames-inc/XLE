@@ -86,26 +86,9 @@ namespace ToolsRig
 		}
 	};
 
-    class MaterialSceneParser : public VisSceneParser
+    class MaterialVisualizationScene : public SceneEngine::IScene
     {
     public:
-        void ExecuteScene(
-            RenderCore::IThreadContext& context,
-			RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::LightingParserContext& lightingParserContext,
-            const SceneEngine::SceneParseSettings& parseSettings,
-            SceneEngine::PreparedScene& preparedPackets,
-            unsigned techniqueIndex) const 
-        {
-            using BF = RenderCore::Techniques::BatchFilter;
-            if (    parseSettings._batchFilter == BF::PreDepth
-                ||  parseSettings._batchFilter == BF::General
-                ||  parseSettings._batchFilter == BF::DMShadows) {
-
-                Draw(context, parserContext, techniqueIndex);
-            }
-        }
-
 		virtual void PrepareScene(
             RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext,
@@ -132,27 +115,15 @@ namespace ToolsRig
 			}
 		}
 
-        bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
-        {
-            using BF = RenderCore::Techniques::BatchFilter;
-            return (    parseSettings._batchFilter == BF::PreDepth
-                ||      parseSettings._batchFilter == BF::General
-                ||      parseSettings._batchFilter == BF::DMShadows);
-        }
-
         void Draw(  IThreadContext& threadContext, 
-                    RenderCore::Techniques::ParsingContext& parserContext,
-                    unsigned techniqueIndex) const
+                    SceneEngine::SceneExecuteContext& executeContext,
+                    IteratorRange<Techniques::DrawablesPacket** const> pkts) const
         {
 			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-            if (techniqueIndex!=3)
-                metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);
 
                 // disable blending to avoid problem when rendering single component stuff 
                 //  (ie, nodes that output "float", not "float4")
             metalContext.Bind(Techniques::CommonResources()._blendOpaque);
-
-			VariantArray drawables;
 
 			auto usi = std::make_shared<UniformsStreamInterface>();
 			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
@@ -168,7 +139,7 @@ namespace ToolsRig
                     { Float3( 1.f,  1.f, 0.f),  Float3(0.f, 0.f, 1.f), Float2(1.f, 0.f), Float4(1.f, 0.f, 0.f, 1.f) }
                 };
 
-				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
+				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
 				drawable._material = _material.get();
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = RenderCore::Assets::CreateStaticVertexBuffer(*threadContext.GetDevice(), MakeIteratorRange(vertices));
@@ -181,7 +152,7 @@ namespace ToolsRig
 
             } else if (geoType == MaterialVisSettings::GeometryType::Model) {
 
-                drawables = DrawModel();
+                DrawModel(pkts);
 
             } else {
 
@@ -196,7 +167,7 @@ namespace ToolsRig
                     count = cachedGeo._cubeVCount;
                 } else return;
 
-				auto& drawable = *drawables.Allocate<MaterialSceneParserDrawable>();
+				auto& drawable = *pkts[unsigned(RenderCore::Techniques::BatchFilter::General)]->_drawables.Allocate<MaterialSceneParserDrawable>();
 				drawable._material = _material.get();
 				drawable._geo = std::make_shared<Techniques::DrawableGeo>();
 				drawable._geo->_vertexStreams[0]._resource = vb;
@@ -208,38 +179,13 @@ namespace ToolsRig
 				drawable._uniformsInterface = usi;
 
             }
-
-			Techniques::SequencerTechnique seqTechnique;
-			seqTechnique._techniqueDelegate = _settings->_techniqueDelegate;
-			seqTechnique._materialDelegate = _settings->_materialDelegate;
-			if (!seqTechnique._techniqueDelegate)
-				seqTechnique._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
-			if (!seqTechnique._materialDelegate)
-				seqTechnique._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
-			seqTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
-
-			auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
-			for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
-				seqTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
-
-			ParameterBox seqShaderSelectors;
-
-			for (auto d=drawables.begin(); d!=drawables.end(); ++d)
-				RenderCore::Techniques::Draw(
-					threadContext, 
-					parserContext,
-					techniqueIndex,
-					seqTechnique,
-					&seqShaderSelectors,
-					*(Techniques::Drawable*)d.get());
         }
 
-        VariantArray DrawModel() const;
+        void DrawModel(IteratorRange<Techniques::DrawablesPacket** const> pkts) const;
 
-        MaterialSceneParser(
-            const std::shared_ptr<MaterialVisSettings>& settings,
-            const std::shared_ptr<VisEnvSettings>& envSettings)
-        : VisSceneParser(settings->_camera, envSettings), _settings(settings) 
+        MaterialVisualizationScene(
+            const std::shared_ptr<MaterialVisSettings>& settings)
+        : _settings(settings) 
 		{
 			_material = std::make_shared<RenderCore::Techniques::Material>();
 			XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
@@ -249,17 +195,10 @@ namespace ToolsRig
         std::shared_ptr<MaterialVisSettings>  _settings;
 		std::shared_ptr<RenderCore::Techniques::Material> _material;
     };
-
-	std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
-		const std::shared_ptr<MaterialVisSettings>& settings,
-        const std::shared_ptr<VisEnvSettings>& envSettings)
-	{
-		return std::make_shared<MaterialSceneParser>(settings, envSettings);
-	}
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    VariantArray MaterialSceneParser::DrawModel() const
+    void MaterialVisualizationScene::DrawModel(IteratorRange<Techniques::DrawablesPacket** const> pkts) const
     {
             // This mode is a little more complex than the others. We want to
             // load the geometry data for a model and render all the parts of
@@ -270,7 +209,7 @@ namespace ToolsRig
             // It's a little complex. But it's a good way to test the internals of
             // the ModelScaffold class -- because we go through all the parts and
             // use each aspect of the model pipeline. 
-		if (_settings->_previewModelFile.empty()) return {};
+		if (_settings->_previewModelFile.empty()) return;
 
         using namespace RenderCore::Assets;
         auto modelFile = MakeStringSection(_settings->_previewModelFile);
@@ -280,10 +219,10 @@ namespace ToolsRig
 		auto state = modelFuture->StallWhilePending();
 
 		if (state != ::Assets::AssetState::Ready)
-			return {};
+			return;
 
 		auto& model = *modelFuture->Actualize();
-		return model.BuildDrawables(Identity<Float4x4>(), boundMaterial);
+		return model.BuildDrawables(pkts, Identity<Float4x4>(), boundMaterial);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -305,21 +244,23 @@ namespace ToolsRig
 
     bool MaterialVisLayer::Draw(
         IThreadContext& context,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
         DrawPreviewLightingType lightingType,
-		SceneEngine::ISceneParser& sceneParser)
+		SceneEngine::IScene& sceneParser)
     {
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 		};
         SceneEngine::RenderSceneSettings qualSettings{
-			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
 			AsLightingModel(lightingType),
+			_pimpl->_lightingParser.get(),
 			MakeIteratorRange(lightingPlugins)};
 
+		RenderCore::Techniques::CameraDesc cameraDesc;
         SceneEngine::LightingParser_ExecuteScene(
-            context, parserContext,
-            sceneParser, sceneParser.GetCameraDesc(), qualSettings);
+            context, renderTarget, parserContext,
+            sceneParser, cameraDesc, qualSettings);
 
         return true;
     }
@@ -329,7 +270,7 @@ namespace ToolsRig
     class MaterialVisLayer::Pimpl
     {
     public:
-		std::shared_ptr<SceneEngine::ISceneParser> _sceneParser;
+		std::shared_ptr<SceneEngine::ILightingParserDelegate> _lightingParser;
 		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::NoLightingParser;
     };
 
@@ -340,7 +281,7 @@ namespace ToolsRig
         IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        Draw(context, parserContext, _pimpl->_lightingType, *_pimpl->_sceneParser);
+        Draw(context, parserContext, _pimpl->_lightingType, *_pimpl->_lightingParser);
     }
 
     void MaterialVisLayer::RenderWidgets(
@@ -356,10 +297,10 @@ namespace ToolsRig
 	}
 
     MaterialVisLayer::MaterialVisLayer(
-		std::shared_ptr<SceneEngine::ISceneParser> sceneParser)
+		std::shared_ptr<SceneEngine::ILightingParserDelegate> lightingParser)
     {
         _pimpl = std::make_unique<Pimpl>();
-		_pimpl->_sceneParser = sceneParser;
+		_pimpl->_lightingParser = lightingParser;
     }
 
     MaterialVisLayer::~MaterialVisLayer()

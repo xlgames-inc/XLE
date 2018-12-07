@@ -66,18 +66,14 @@ namespace ToolsRig
     }
 
 
-    RenderCore::Techniques::CameraDesc  VisSceneParser::GetCameraDesc() const { return AsCameraDesc(*_settings); }
     float VisSceneParser::GetTimeValue() const { return 0.f; }
 
     VisSceneParser::VisSceneParser(
-        const std::shared_ptr<VisCameraSettings>& settings, 
         const std::shared_ptr<VisEnvSettings>& envSettings)
-    : _settings(settings) 
-    , _envSettings(envSettings)
+    : _envSettings(envSettings)
     {}
     VisSceneParser::~VisSceneParser() {}
 
-    void VisSceneParser::Prepare() {}
     const PlatformRig::EnvironmentSettings& VisSceneParser::GetEnvSettings() const { return _envSettings->_activeSetting; }
 
     VisEnvSettings::VisEnvSettings()

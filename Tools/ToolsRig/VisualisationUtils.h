@@ -53,19 +53,15 @@ namespace ToolsRig
 
     RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
 
-    class VisSceneParser : public PlatformRig::BasicSceneParser
+    class VisSceneParser : public PlatformRig::BasicLightingParserDelegate
     {
     public:
-        RenderCore::Techniques::CameraDesc  GetCameraDesc() const;
         float GetTimeValue() const;
-        void Prepare();
 
         VisSceneParser(
-            const std::shared_ptr<VisCameraSettings>& settings, 
             const std::shared_ptr<VisEnvSettings>& envSettings);
         ~VisSceneParser();
     protected:
-        std::shared_ptr<VisCameraSettings> _settings;
         std::shared_ptr<VisEnvSettings> _envSettings;
         virtual const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
     };
