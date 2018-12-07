@@ -135,15 +135,25 @@ namespace RenderCore { namespace Metal_AppleMetal
                 auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
                 if (!resource)
                     Throw(::Exceptions::BasicLabel("Could not find attachment texture for depth/stencil attachment in FrameBuffer::FrameBuffer"));
-                desc.depthAttachment.texture = AsResource(resource).GetTexture();
-                desc.depthAttachment.loadAction = NonStencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
-                desc.depthAttachment.storeAction = NonStencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
-                // clearDepth is set when binding subpass
 
-                desc.stencilAttachment.texture = AsResource(resource).GetTexture();
-                desc.stencilAttachment.loadAction = StencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
-                desc.stencilAttachment.storeAction = StencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
-                // clearStencil is set when binding subpass
+                auto& res = AsResource(resource);
+                auto format = res.GetDesc()._textureDesc._format;
+                auto resolvedFormat = ResolveFormat(format, {}, FormatUsage::DSV);
+                auto components = GetComponents(resolvedFormat);
+
+                if (components == FormatComponents::Depth || components == FormatComponents::DepthStencil) {
+                    desc.depthAttachment.texture = res.GetTexture();
+                    desc.depthAttachment.loadAction = NonStencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
+                    desc.depthAttachment.storeAction = NonStencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
+                    // clearDepth is set when binding subpass
+                }
+
+                if (components == FormatComponents::Stencil || components == FormatComponents::DepthStencil) {
+                    desc.stencilAttachment.texture = res.GetTexture();
+                    desc.stencilAttachment.loadAction = StencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
+                    desc.stencilAttachment.storeAction = StencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
+                    // clearStencil is set when binding subpass
+                }
             }
         }
     }
