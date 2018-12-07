@@ -23,17 +23,14 @@ namespace PlatformRig
     class IOverlaySystem
     {
     public:
-        typedef RenderOverlays::DebuggingDisplay::IInputListener IInputListener;
-
-        virtual std::shared_ptr<IInputListener> GetInputListener() = 0;
-
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& device, 
+		virtual void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
 			RenderCore::Techniques::ParsingContext& parserContext) = 0; 
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext) = 0;
-        virtual void SetActivationState(bool newState) = 0;
+
+        using IInputListener = RenderOverlays::DebuggingDisplay::IInputListener;
+        virtual std::shared_ptr<IInputListener> GetInputListener();
+        virtual void SetActivationState(bool newState);
 
         virtual ~IOverlaySystem();
     };
@@ -44,11 +41,9 @@ namespace PlatformRig
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext);
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool newState);
 
@@ -71,11 +66,9 @@ namespace PlatformRig
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext);
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool newState);
 

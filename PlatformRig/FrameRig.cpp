@@ -16,6 +16,8 @@
 
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/RenderPassUtils.h"
+#include "../RenderCore/Techniques/RenderPass.h"
 
 #include "../RenderOverlays/OverlayContext.h"
 
@@ -91,6 +93,7 @@ namespace PlatformRig
         bool        _updateAsyncMan;
 
         std::shared_ptr<OverlaySystemSet> _mainOverlaySys;
+		std::shared_ptr<OverlaySystemSet> _debugScreenOverlaySystem;
         std::shared_ptr<DebugScreensSystem> _debugSystem;
         std::vector<PostPresentCallback> _postPresentCallbacks;
 
@@ -141,16 +144,14 @@ namespace PlatformRig
 
         std::shared_ptr<IInputListener> GetInputListener()  { return _inputListener; }
 
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
-            RenderCore::Techniques::ParsingContext& parserContext) {}
-
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext)
         {
-			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
-			auto viewportDims = device.GetStateDesc()._viewportDimensions;
+			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
 			_debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
@@ -172,8 +173,8 @@ namespace PlatformRig
     auto FrameRig::ExecuteFrame(
         RenderCore::IThreadContext& context,
         RenderCore::IPresentationChain* presChain,
-        HierarchicalCPUProfiler* cpuProfiler,
-        const FrameRenderFunction& renderFunction) -> FrameResult
+		RenderCore::Techniques::ParsingContext& parserContext,
+        HierarchicalCPUProfiler* cpuProfiler) -> FrameResult
     {
         CPUProfileEvent_Conditional pEvnt("FrameRig::ExecuteFrame", cpuProfiler);
 
@@ -208,7 +209,8 @@ namespace PlatformRig
 
         ////////////////////////////////
 
-        auto renderRes = renderFunction(context, presentationTarget);
+		_pimpl->_mainOverlaySys->Render(context, presentationTarget, parserContext);
+		_pimpl->_debugScreenOverlaySystem->Render(context, presentationTarget, parserContext);
 
         ////////////////////////////////
 
@@ -251,7 +253,9 @@ namespace PlatformRig
             _pimpl->_prevFrameAllocationCount = accAlloc->GetAndClear();
         }
 
-        if (renderRes._hasPendingResources) {
+		PlatformRig::FrameRig::RenderResult renderResult { parserContext.HasPendingAssets() };
+
+        if (renderResult._hasPendingResources) {
             ::Threading::Sleep(16);  // slow down while we're building pending resources
         } else {
             Threading::YieldTimeSlice();    // this might be too extreme. We risk not getting execution back for a long while
@@ -261,7 +265,7 @@ namespace PlatformRig
 
         FrameResult result;
         result._elapsedTime = frameElapsedTime;
-        result._renderResult = renderRes;
+        result._renderResult = renderResult._hasPendingResources;
         return result;
     }
 
@@ -276,8 +280,9 @@ namespace PlatformRig
         _pimpl->_postPresentCallbacks.push_back(postPresentCallback);
     }
 
-    std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
-    std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
+    const std::shared_ptr<OverlaySystemSet>& FrameRig::GetMainOverlaySystem() { return _pimpl->_mainOverlaySys; }
+	const std::shared_ptr<OverlaySystemSet>& FrameRig::GetDebugScreensOverlaySystem() { return _pimpl->_debugScreenOverlaySystem; }
+    const std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem>& FrameRig::GetDebugSystem() { return _pimpl->_debugSystem; }
     void FrameRig::SetUpdateAsyncMan(bool updateAsyncMan) { _pimpl->_updateAsyncMan = updateAsyncMan; }
 
     FrameRig::FrameRig(bool isMainFrameRig)
@@ -285,6 +290,7 @@ namespace PlatformRig
         _pimpl = std::make_unique<Pimpl>();
 
         _pimpl->_mainOverlaySys = std::make_shared<OverlaySystemSet>();
+		_pimpl->_debugScreenOverlaySystem = std::make_shared<OverlaySystemSet>();
         _pimpl->_updateAsyncMan = isMainFrameRig;   // only the main frame rig should update the async man (in gui tools the async man update happens in a background thread)
 
         {
@@ -295,7 +301,7 @@ namespace PlatformRig
                     "FrameRig", DebugScreensSystem::SystemDisplay);
         }
 
-        _pimpl->_mainOverlaySys->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
+        _pimpl->_debugScreenOverlaySystem->AddSystem(CreateDebugScreensOverlay(_pimpl->_debugSystem));
 
 		Log(Verbose) << "---- Beginning FrameRig ------------------------------------------------------------------" << std::endl;
         auto accAlloc = AccumulatedAllocations::GetInstance();

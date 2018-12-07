@@ -21,6 +21,7 @@
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderOverlays/DebugHotKeys.h"
@@ -67,72 +68,29 @@ namespace Sample
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext& context,
-        const RenderCore::IResourcePtr& resPtr,
-        RenderCore::Techniques::ParsingContext& parserContext, 
-		SampleLightingDelegate* lightingDelegate,
-        BasicSceneParser* scene,
-        RenderCore::IPresentationChain* presentationChain,
-        PlatformRig::IOverlaySystem* debugSystem);
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator);
-    void RenderPostScene(RenderCore::IThreadContext& context);
 
-	void TestMaterialSerialization()
+	class SampleOverlay : public PlatformRig::IOverlaySystem
 	{
-		using namespace RenderCore;
-		using namespace RenderCore::Assets;
-		std::unique_ptr<uint8[]> blob;
+	public:
+		virtual void Render(
+            RenderCore::IThreadContext& device,
+			const RenderCore::IResourcePtr& renderTarget,
+			RenderCore::Techniques::ParsingContext& parserContext) override; 
 
-		struct TestStruct
-		{
-			SerializableVector<char> _testVector; 
-			Techniques::Material _mat;			
-			MaterialImmutableData _data;
-		};
-		
-		{
-			SerializableVector<std::pair<MaterialGuid, Techniques::Material>> resolved;
-			SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> resolvedNames;
+		std::shared_ptr<SceneEngine::IScene> _scene;
+		std::shared_ptr<SampleLightingDelegate> _lightingDelegate;
 
-			resolved.push_back({ 0, Techniques::Material{} });
-			resolved.push_back({ 1, Techniques::Material{} });
-			resolved.push_back({ 2, Techniques::Material{} });
-
-			char name[] = "SomeName";
-			resolvedNames.push_back({ 0, SerializableVector<char>{name, &name[dimof(name) - 1]} });
-
-			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, Techniques::Material>());
-			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, SerializableVector<char>>());
-
-			Serialization::NascentBlockSerializer blockSerializer;
-			::Serialize(blockSerializer, SerializableVector<char>{name, &name[dimof(name) - 1]}); 
-			Techniques::Material testMat;
-			testMat._bindings.SetParameter(u("binding"), 1);
-			testMat._matParams.SetParameter(u("matParams"), 2);
-			testMat._constants.SetParameter(u("constants"), 3);
-			XlCopyString(testMat._techniqueConfig, "XXXXXXXXXXXXXXXXXXXXXXXXXXXXXXXX");
-			::Serialize(blockSerializer, testMat);
-			::Serialize(blockSerializer, resolved);
-			::Serialize(blockSerializer, resolvedNames);
-			blob = blockSerializer.AsMemoryBlock();
-		}
-
-		Serialization::Block_Initialize(blob.get());
-		const auto& matScaffold = *(const TestStruct*)Serialization::Block_GetFirstObject(blob.get());
-
-		for (const auto& res : matScaffold._data._materials) {
-			std::cout << res.first << " = " << res.second._stateSet.GetHash() << std::endl;
-		}
-
-	}
+		SampleOverlay(
+			const std::shared_ptr<SceneEngine::IScene>& scene,
+			const std::shared_ptr<SampleLightingDelegate>& lightingDelegate)
+		: _scene(scene), _lightingDelegate(lightingDelegate) {}
+	};
 
     void ExecuteSample()
     {
         using namespace PlatformRig;
         using namespace Sample;
-
-		TestMaterialSerialization();
 
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
@@ -207,7 +165,7 @@ namespace Sample
 
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
             overlaySwitch->AddSystem(RenderOverlays::DebuggingDisplay::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
-            frameRig.GetMainOverlaySystem()->AddSystem(overlaySwitch);
+            frameRig.GetDebugScreensOverlaySystem()->AddSystem(overlaySwitch);
 
             frameRig.GetDebugSystem()->Register(
                 std::make_shared<::Overlays::ShadowFrustumDebugger>(lightingDelegate), 
@@ -220,7 +178,7 @@ namespace Sample
             Log(Verbose) << "Setup input" << std::endl;
             auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
             mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
-            mainInputHandler->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
+            mainInputHandler->AddListener(frameRig.GetDebugScreensOverlaySystem()->GetInputListener());
             window.GetInputTranslator().AddListener(mainInputHandler);
 
                 //  The lighting parser allows plug ins for customizing the lighting process
@@ -240,6 +198,7 @@ namespace Sample
                 //      * the DeviceContext provides the methods we need for rendering.
             Log(Verbose) << "Setup frame rig and rendering context" << std::endl;
             
+			frameRig.GetMainOverlaySystem()->AddSystem(std::make_shared<SampleOverlay>(mainScene, lightingDelegate));
 
             RenderCore::Techniques::AttachmentPool namedResources;
 			RenderCore::Techniques::FrameBufferPool frameBufferPool;
@@ -256,16 +215,11 @@ namespace Sample
 
                 auto frameResult = frameRig.ExecuteFrame(
                     *context.get(), presentationChain.get(), 
-                    &g_cpuProfiler,
-                    std::bind(
-                        RenderFrame, std::placeholders::_1, std::placeholders::_2,
-                        std::ref(parserContext), lightingDelegate.get(), mainScene.get(),
-                        presentationChain.get(), 
-                        frameRig.GetMainOverlaySystem().get()));
+					parserContext, &g_cpuProfiler);
 
                     // ------- Update ----------------------------------------
                 RenderCore::Assets::Services::GetBufferUploads().Update(*context, false);
-                lightingDelegate->Update(frameResult._elapsedTime);
+                lightingDelegate->Update(frameResult._elapsedTime * Tweakable("TimeScale", 1.0f));
                 g_cpuProfiler.EndFrame();
                 ++FrameRenderCount;
             }
@@ -290,67 +244,49 @@ namespace Sample
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext& context,
-        const RenderCore::IResourcePtr& presentationResource,
-		RenderCore::Techniques::ParsingContext& parsingContext,
-		SampleLightingDelegate* lightingDelegate,
-        BasicSceneParser* scene,
-        RenderCore::IPresentationChain* presentationChain,
-        PlatformRig::IOverlaySystem* overlaySys)
-    {
-        auto& namedRes = parsingContext.GetNamedResources();
-        auto viewContext = presentationChain->GetDesc();
+	void RenderPostScene(RenderCore::IThreadContext& context);
+	
+	void SampleOverlay::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::IResourcePtr& renderTarget,
+		RenderCore::Techniques::ParsingContext& parsingContext)
+	{
+		auto& namedRes = parsingContext.GetNamedResources();
+        auto textureDesc = renderTarget->GetDesc()._textureDesc;
         auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
-        namedRes.Bind(RenderCore::FrameBufferProperties{viewContext->_width, viewContext->_height, samples});
-        namedRes.Bind(0u, presentationResource);
+        namedRes.Bind(RenderCore::FrameBufferProperties{textureDesc._width, textureDesc._height, samples});
+        namedRes.Bind(0u, renderTarget);
 
         using namespace SceneEngine;
 
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
         LightingParserContext lightingParserContext;
-		if (scene) {
+		if (_scene) {
             lightingParserContext = LightingParser_ExecuteScene(
-                context, presentationResource, parsingContext, *scene, *lightingDelegate, lightingDelegate->GetCameraDesc(),
+                threadContext, renderTarget, parsingContext, *_scene, _lightingDelegate->GetCameraDesc(),
                 RenderSceneSettings{
-                    UInt2(viewContext->_width, viewContext->_height),
                     (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,
+					_lightingDelegate.get(),
 					{},
 					samples._sampleCount, samples._samplingQuality});
         }
 
-        if (overlaySys) {
-            overlaySys->RenderToScene(context, parsingContext);
-        }
+		{
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parsingContext);
 
-            // Begin a default render pass just rendering to the 
-            // presentation buffer (which is always target "0")
-        bool hasPendingResources = false;
-        {
-			namedRes.Bind(0u, presentationResource);
-			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parsingContext);
+				//  If we need to, we can render outside of the lighting parser.
+				//  We just need to to use the device context to perform any rendering
+				//  operations here.
+			RenderPostScene(threadContext);
+			SceneEngine::LightingParser_Overlays(threadContext, parsingContext, lightingParserContext);
 
-                //  If we need to, we can render outside of the lighting parser.
-                //  We just need to to use the device context to perform any rendering
-                //  operations here.
-            RenderPostScene(context);
-            LightingParser_Overlays(context, parsingContext, lightingParserContext);
-
-                //  The lighting parser will tell us if there where any pending resources
-                //  during the render. Here, we can render them as a short list...
-            hasPendingResources = parsingContext.HasPendingAssets();
-            auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-            DrawPendingResources(context, parsingContext, defaultFont0);
-
-            if (overlaySys) {
-                overlaySys->RenderWidgets(context, parsingContext);
-            }
-        }
-
-        namedRes.Unbind(0u);
-        return PlatformRig::FrameRig::RenderResult(hasPendingResources);
-    }
+				//  The lighting parser will tell us if there where any pending resources
+				//  during the render. Here, we can render them as a short list...
+			auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
+			SceneEngine::DrawPendingResources(threadContext, parsingContext, defaultFont0);
+		}
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys, RenderCore::IAnnotator* annotator)

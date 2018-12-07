@@ -9,6 +9,8 @@
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
@@ -70,20 +72,11 @@ namespace PlatformRig
         return _inputListener;
     }
 
-    void OverlaySystemSwitch::RenderWidgets(
-        RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parserContext) 
+    void OverlaySystemSwitch::Render(
+        RenderCore::IThreadContext& device, const RenderCore::IResourcePtr& renderTarget, RenderCore::Techniques::ParsingContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderWidgets(device, parserContext);
-        }
-    }
-
-    void OverlaySystemSwitch::RenderToScene(
-        RenderCore::IThreadContext& device, 
-		RenderCore::Techniques::ParsingContext& parserContext) 
-    {
-        if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext);
+            _childSystems[_activeChildIndex].second->Render(device, renderTarget, parserContext);
         }
     }
 
@@ -135,23 +128,13 @@ namespace PlatformRig
 
     std::shared_ptr<IInputListener> OverlaySystemSet::GetInputListener()         { return _inputListener; }
 
-    void OverlaySystemSet::RenderWidgets(
-        RenderCore::IThreadContext& device, 
+    void OverlaySystemSet::Render(
+        RenderCore::IThreadContext& device,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parsingContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            (*i)->RenderWidgets(device, parsingContext);
-        }
-    }
-
-    void OverlaySystemSet::RenderToScene(
-        RenderCore::IThreadContext& device, 
-        RenderCore::Techniques::ParsingContext& parserContext) 
-    {
-        for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            CATCH_ASSETS_BEGIN
-                (*i)->RenderToScene(device, parserContext);
-            CATCH_ASSETS_END(parserContext)
+            (*i)->Render(device, renderTarget, parsingContext);
         }
     }
 
@@ -178,6 +161,8 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	std::shared_ptr<IInputListener> IOverlaySystem::GetInputListener() { return nullptr; }
+	void IOverlaySystem::SetActivationState(bool newState) {}
     IOverlaySystem::~IOverlaySystem() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -186,11 +171,9 @@ namespace PlatformRig
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext);
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
+        void Render(
+            RenderCore::IThreadContext& device,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool);
 
@@ -207,18 +190,17 @@ namespace PlatformRig
         return _screens;
     }
 
-    void ConsoleOverlaySystem::RenderWidgets(
-        RenderCore::IThreadContext& device, 
+    void ConsoleOverlaySystem::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
-		auto viewportDims = device.GetStateDesc()._viewportDimensions;
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
 		_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
     }
 
-    void ConsoleOverlaySystem::RenderToScene(
-        RenderCore::IThreadContext& device, 
-        RenderCore::Techniques::ParsingContext& parserContext) {}
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 
     ConsoleOverlaySystem::ConsoleOverlaySystem()
