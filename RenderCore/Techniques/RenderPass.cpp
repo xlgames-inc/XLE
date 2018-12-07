@@ -18,6 +18,7 @@
 #include <cmath>
 #include <sstream>
 #include <set>
+#include <iostream>
 
 namespace RenderCore { namespace Techniques
 {
@@ -324,13 +325,8 @@ namespace RenderCore { namespace Techniques
         bool BuildAttachment(AttachmentName attach);
     };
 
-    static bool Equal(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
-    {
-        if (lhs._arrayLayerCount != rhs._arrayLayerCount
-            || lhs._format != rhs._format
-            || lhs._flags != rhs._flags)
-			return false;
-
+	static bool DimensionsAreEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
+	{
 		if (lhs._dimsMode == rhs._dimsMode) {
             return lhs._width == rhs._width
 				&& lhs._height == rhs._height;
@@ -354,6 +350,16 @@ namespace RenderCore { namespace Techniques
 			return Equivalent(lhsRealWidth, rhsRealWidth, 0.5f)
 				&& Equivalent(lhsRealHeight, rhsRealHeight, 0.5f);
 		}
+	}
+
+    static bool Equal(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
+    {
+        if (lhs._arrayLayerCount != rhs._arrayLayerCount
+            || lhs._format != rhs._format
+            || lhs._flags != rhs._flags)
+			return false;
+
+		return DimensionsAreEqual(lhs, rhs, props);
     }
 
     bool AttachmentPool::Pimpl::BuildAttachment(AttachmentName attach)
@@ -564,9 +570,9 @@ namespace RenderCore { namespace Techniques
     {
         return
             ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
-            && testAttachment._width == request._width && testAttachment._height == request._height
             && testAttachment._arrayLayerCount == request._arrayLayerCount
             && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
+			&& testAttachment._width == request._width && testAttachment._height == request._height
             && testAttachment._dimsMode == request._dimsMode
             && (testAttachment._flags & request._flags) == request._flags
             ;
@@ -853,6 +859,7 @@ namespace RenderCore { namespace Techniques
                         workingAttachments.begin(), workingAttachments.end(),
                         [&interfaceAttachment](const PreregisteredAttachment& input) {
                             return (input._state == PreregisteredAttachment::State::Uninitialized)
+								&& (input._semantic == interfaceAttachment._semantic)
                                 && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
 
