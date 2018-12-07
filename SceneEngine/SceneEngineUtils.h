@@ -310,10 +310,6 @@ namespace SceneEngine
 	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size);
 	RenderCore::Metal::Buffer MakeMetalIB(const void* data, size_t size);
 
-	RenderCore::Techniques::RenderPassInstance RenderPassToPresentationTarget(
-		RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext);
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     inline SavedTargets::ResetMarker::ResetMarker()

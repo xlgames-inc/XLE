@@ -16,6 +16,7 @@
     <ClInclude Include="..\Techniques\ResolvedTechniqueShaders.h" />
     <ClInclude Include="..\Techniques\BasicDelegates.h" />
     <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
+    <ClInclude Include="..\Techniques\RenderPassUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
@@ -30,5 +31,6 @@
     <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
     <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
     <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
+    <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
   </ItemGroup>
 </Project>

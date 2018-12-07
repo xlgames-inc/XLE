@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LightingTargets.h"
+#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "MetalStubs.h"
 
@@ -509,7 +510,7 @@ namespace SceneEngine
 
 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, const MainTargets& mainTargets)
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, const MainTargets& mainTargets)
         {
 			const char* outputNames[] = { "gbuffer_diffuse.dds", "gbuffer_normals.dds", "gbuffer_parameters.dds" };
 			uint64_t semantics[] = { 
@@ -519,7 +520,7 @@ namespace SceneEngine
 
             auto& bufferUploads = GetBufferUploads();
             for (unsigned c=0; c<3; ++c) {
-				auto srcDesc = mainTargets.GetResource(semantics[c])->GetDesc();
+				auto srcDesc = mainTargets.GetResource(parserContext, semantics[c])->GetDesc();
 				RenderCore::ResourceDesc stagingDesc;
                 stagingDesc._type = RenderCore::ResourceDesc::Type::Texture;
                 stagingDesc._bindFlags = 0;
@@ -529,7 +530,7 @@ namespace SceneEngine
                 stagingDesc._textureDesc = srcDesc._textureDesc;
 
                 auto stagingTexture = bufferUploads.Transaction_Immediate(stagingDesc)->AdoptUnderlying();
-                RenderCore::Metal::Copy(context, *checked_cast<RenderCore::Metal::Resource*>(stagingTexture.get()), *checked_cast<RenderCore::Metal::Resource*>(mainTargets.GetResource(semantics[c]).get()));
+                RenderCore::Metal::Copy(context, *checked_cast<RenderCore::Metal::Resource*>(stagingTexture.get()), *checked_cast<RenderCore::Metal::Resource*>(mainTargets.GetResource(parserContext, semantics[c]).get()));
 				assert(0); // todo -- need a texture write function
                 // D3DX11SaveTextureToFile(context.GetUnderlying(), stagingTexture.get(), D3DX11_IFF_DDS, outputNames[c]);
             }
@@ -539,7 +540,7 @@ namespace SceneEngine
 
     void Deferred_DrawDebugging(
 		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
-		MainTargets& mainTargets, bool useMsaaSamplers, unsigned debuggingType)
+		MainTargets mainTargets, bool useMsaaSamplers, unsigned debuggingType)
     {
         using namespace RenderCore;
 
@@ -569,10 +570,10 @@ namespace SceneEngine
 
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(
 			MakeResourceList(5, 
-				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), 
-				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), 
-				mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter), 
-				mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth)));
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth)));
         context.Bind(Techniques::CommonResources()._blendStraightAlpha);
         SetupVertexGeneratorShader(context);
         context.Draw(4);

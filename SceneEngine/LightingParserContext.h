@@ -10,6 +10,7 @@
 
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 namespace RenderCore { class IThreadContext; }
+namespace RenderCore { class TextureViewDesc; }
 
 namespace SceneEngine
 {
@@ -24,6 +25,24 @@ namespace SceneEngine
 
     using LightId = unsigned;
 
+	class MainTargets
+    {
+    public:
+		std::vector<std::pair<uint64_t, unsigned>> _namedTargetsMapping;
+		UInt2 _dimensions;
+		unsigned _samplingCount;
+
+        using SRV = RenderCore::Metal::ShaderResourceView;
+        SRV      GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
+		RenderCore::IResourcePtr GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
+
+		UInt2		GetDimensions() const;
+		unsigned    GetSamplingCount() const;
+
+		MainTargets();
+		~MainTargets();
+    };
+
     class LightingParserContext
     {
     public:
@@ -32,8 +51,8 @@ namespace SceneEngine
 		unsigned					_sampleCount = 0;
 		unsigned					_gbufferType = 0;
 
-		MainTargets&	GetMainTargets() const { return *_mainTargets; }
-		void			SetMainTargets(MainTargets* mainTargets);
+		const MainTargets&	GetMainTargets() const { return _mainTargets; }
+		MainTargets			_mainTargets;
 
             //  ----------------- Global states -----------------
         MetricsBox*     GetMetricsBox()                     { return _metricsBox; }
@@ -55,7 +74,6 @@ namespace SceneEngine
 
     private:
         MetricsBox*			_metricsBox = nullptr;
-		MainTargets*		_mainTargets = nullptr;
     };
 }
 

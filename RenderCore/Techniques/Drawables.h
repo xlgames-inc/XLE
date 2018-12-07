@@ -93,7 +93,6 @@ namespace RenderCore { namespace Techniques
         Techniques::ParsingContext& parserContext,
 		unsigned techniqueIndex,
 		const SequencerTechnique& sequencerTechnique,
-		const ParameterBox* seqShaderSelectors,
 		const Drawable& drawable);
 
 	enum class BatchFilter

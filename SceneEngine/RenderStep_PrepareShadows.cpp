@@ -83,34 +83,21 @@ namespace SceneEngine
         RenderCore::Techniques::RSDepthBias doubleSidedBias(
             frustum._dsRasterDepthBias, frustum._dsDepthBiasClamp, frustum._dsSlopeScaledBias);
         auto& resources = ConsoleRig::FindCachedBox2<ShadowWriteResources>(
-            singleSidedBias, doubleSidedBias, unsigned(frustum._windingCull));
+            singleSidedBias, doubleSidedBias, frustum._cullMode);
 
             /////////////////////////////////////////////
 
-        /*metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(frustum._width), float(frustum._height)));
-
-		auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(resolveLighting, parserContext.GetNamedResources());
-		ClearValue clearValues[] = {MakeClearValue(1.f, 0x0)};
-        Techniques::RenderPassInstance rpi(
-            threadContext, fb, resolveLighting,
-            parserContext.GetNamedResources(),
-            (Techniques::RenderPassBeginDesc)MakeIteratorRange(clearValues));*/
-
-        // preparedResult._shadowTextureName = IMainTargets::ShadowDepthMap + shadowFrustumIndex;
-
-            /////////////////////////////////////////////
-
-        Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
+        /* Float4x4 savedWorldToProjection = parserContext.GetProjectionDesc()._worldToProjection;
         parserContext.GetProjectionDesc()._worldToProjection = frustum._worldToClip;
         auto cleanup2 = MakeAutoCleanup(
             [&parserContext, &savedWorldToProjection]() {
                 parserContext.GetProjectionDesc()._worldToProjection = savedWorldToProjection;
-            });
+            }); */
 
             /////////////////////////////////////////////
 
+		RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
 		ExecuteDrawablesContext executeDrawablesContext(parserContext);
-        RenderStateDelegateChangeMarker stateMarker(parserContext, resources._stateResolver);
         metalContext.Bind(resources._rasterizerState);
         ExecuteDrawables(
             threadContext, parserContext, executeDrawablesContext,
@@ -137,6 +124,7 @@ namespace SceneEngine
 			threadContext, parsingContext,
 			lightingParserContext,
 			shadowDelegate);
+		shadow._srv = Metal::ShaderResourceView(_resource, TextureViewDesc{TextureViewDesc::Aspect::Depth});
 		if (shadow.IsReady())
 			lightingParserContext._preparedDMShadows.push_back(std::make_pair(shadowDelegate._shadowProj._lightId, std::move(shadow)));
 	}

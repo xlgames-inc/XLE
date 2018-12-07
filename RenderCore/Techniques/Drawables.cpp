@@ -28,13 +28,12 @@ namespace RenderCore { namespace Techniques
         Techniques::ParsingContext& parserContext,
 		unsigned techniqueIndex,
 		const SequencerTechnique& sequencerTechnique,
-		const ParameterBox* seqShaderSelectors,
 		const Drawable& drawable)
 	{
 		auto& metalContext = *Metal::DeviceContext::Get(context);
 
 		const ParameterBox* shaderSelectors[Techniques::ShaderSelectors::Source::Max] = {nullptr, nullptr, nullptr, nullptr};
-		shaderSelectors[Techniques::ShaderSelectors::Source::Runtime] = seqShaderSelectors;
+		shaderSelectors[Techniques::ShaderSelectors::Source::Runtime] = &parserContext.GetSubframeShaderSelectors();
 		shaderSelectors[Techniques::ShaderSelectors::Source::GlobalEnvironment] = &parserContext.GetTechniqueContext()._globalEnvironmentState;
 
 		ParameterBox globalRenderStates;
@@ -90,9 +89,11 @@ namespace RenderCore { namespace Techniques
 
 			//////////////////////////////////////////////////////////////////////////////
 
-			auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._stateSet, globalRenderStates, techniqueIndex);
-			metalContext.Bind(resolvedStates._blendState);
-			metalContext.Bind(resolvedStates._rasterizerState);
+			if (sequencerTechnique._renderStateDelegate) {
+				auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._stateSet, globalRenderStates, techniqueIndex);
+				metalContext.Bind(resolvedStates._blendState);
+				metalContext.Bind(resolvedStates._rasterizerState);
+			}
 
 			//////////////////////////////////////////////////////////////////////////////
 

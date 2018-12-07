@@ -16,29 +16,11 @@
 #include "../BufferUploads/IBufferUploads.h"
 #include "../Math/Vector.h"
 
-namespace RenderCore { class TextureViewDesc; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
     class RenderSceneSettings;
-
-    class MainTargets
-    {
-    public:
-        using SRV = RenderCore::Metal::ShaderResourceView;
-        SRV      GetSRV(uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
-		const RenderCore::IResourcePtr& GetResource(uint64_t semantic) const;
-
-		UInt2		GetDimensions() const;
-		unsigned    GetSamplingCount() const;
-
-		MainTargets();
-		~MainTargets();
-	private:
-		class Pimpl;
-		std::unique_ptr<Pimpl> _pimpl;
-    };
 
     class LightingResolveShaders
     {
@@ -200,13 +182,15 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
+	class MainTargets;
+
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, const MainTargets& mainTargets);
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, const MainTargets& mainTargets);
     #endif
 
     void Deferred_DrawDebugging(
 		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext,
-		MainTargets& mainTargets,
+		MainTargets mainTargets,
 		bool useMsaaSamplers, unsigned debuggingType);
 
 }

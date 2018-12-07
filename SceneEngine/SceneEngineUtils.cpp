@@ -761,18 +761,6 @@ namespace SceneEngine
 			RenderCore::Metal::GetObjectFactory(),
 			MakeIteratorRange(data, PtrAdd(data, size)));
 	}
-
-	RenderCore::Techniques::RenderPassInstance RenderPassToPresentationTarget(
-		RenderCore::IThreadContext& context,
-        RenderCore::Techniques::ParsingContext& parserContext)
-	{
-		RenderCore::SubpassDesc subPasses[] = {{std::vector<RenderCore::AttachmentViewDesc>{RenderCore::AttachmentViewDesc{0}}}};
-		RenderCore::FrameBufferDesc fbDesc = MakeIteratorRange(subPasses);
-		auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources());
-        return RenderCore::Techniques::RenderPassInstance(
-            context, fb, fbDesc,
-            parserContext.GetNamedResources());
-	}
-
+	
 }
 

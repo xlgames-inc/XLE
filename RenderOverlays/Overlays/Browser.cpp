@@ -503,8 +503,7 @@ namespace Overlays
             //      We need to create a LightingParserContext, and ISceneParser as well.
             //      Cameras and lights should be arranged to suit the bounding box given. Let's use 
             //      orthogonal projection to make sure the object is positioned within the output viewport well.
-        auto viewDims = context.GetStateDesc()._viewportDimensions;
-		SceneEngine::RenderSceneSettings qualitySettings{UInt2(viewDims[0], viewDims[1])};
+		SceneEngine::RenderSceneSettings qualitySettings{};
         auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 		(void)metalContext;
 

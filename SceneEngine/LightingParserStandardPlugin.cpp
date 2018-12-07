@@ -45,7 +45,7 @@ namespace SceneEngine
         resolveContext._tiledLightingResult = 
             TiledLighting_CalculateLighting(
                 &metalContext, parserContext,
-                lightingParserContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), lightingParserContext.GetMainTargets().GetSRV(Techniques::AttachmentSemantics::GBufferNormal),
+                lightingParserContext.GetMainTargets().GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth), lightingParserContext.GetMainTargets().GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal),
 				lightingParserContext.GetMetricsBox()->_metricsBufferUAV);
     }
 
@@ -61,10 +61,10 @@ namespace SceneEngine
                 mainTargets.GetDimensions()[0], mainTargets.GetDimensions()[1], Format::R8_UNORM,
                 useNormals, (useNormals && mainTargets.GetSamplingCount() > 1)?Format::R8G8B8A8_SNORM:Format::Unknown);
             ViewportDesc mainViewportDesc(metalContext);
-			auto normalSRV = mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal);
+			auto normalSRV = mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal);
             AmbientOcclusion_Render(
 				&metalContext, parserContext, aoRes, 
-				mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth), 
 				&normalSRV, 
 				mainViewportDesc);
             resolveContext._ambientOcclusionResult = aoRes._aoSRV;
@@ -81,8 +81,8 @@ namespace SceneEngine
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 metalContext, parserContext,
                 unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
-                mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter),
-                mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth),
+                mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter),
+                mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth),
 				lightingParserContext._delegate->GetGlobalLightingDesc());
         }
     }

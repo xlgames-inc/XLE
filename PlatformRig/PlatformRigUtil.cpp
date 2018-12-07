@@ -464,9 +464,9 @@ namespace PlatformRig
         }
 
         if (settings._flags & DefaultShadowFrustumSettings::Flags::CullFrontFaces) {
-            result._windingCull = ShadowProjectionDesc::WindingCull::FrontFaces;
+            result._cullMode = RenderCore::CullMode::Front;
         } else {
-            result._windingCull = ShadowProjectionDesc::WindingCull::BackFaces;
+            result._cullMode = RenderCore::CullMode::Back;
         }
 
         result._slopeScaledBias = settings._slopeScaledBias;

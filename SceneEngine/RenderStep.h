@@ -91,6 +91,8 @@ namespace SceneEngine
 			RenderCore::Techniques::RenderPassFragment& rpi,
 			IViewDelegate* viewDelegate);
 
+		RenderCore::IResourcePtr _resource;
+
 		RenderStep_PrepareDMShadows(RenderCore::Format format, UInt2 dims, unsigned projectionCount);
 		~RenderStep_PrepareDMShadows();
 	private:

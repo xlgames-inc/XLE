@@ -32,8 +32,6 @@ namespace SceneEngine
     class RenderSceneSettings
     {
     public:
-		UInt2 _dimensions;
-
         enum class LightingModel
         {
             Forward,
@@ -43,6 +41,7 @@ namespace SceneEngine
 
         LightingModel _lightingModel = LightingModel::Deferred;
 
+		ILightingParserDelegate* _lightingDelegate;
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
 
 		unsigned    _samplingCount = 0u;
@@ -84,7 +83,6 @@ namespace SceneEngine
 		const RenderCore::IResourcePtr& renderTarget,
 		RenderCore::Techniques::ParsingContext& parserContext,
 		IScene& scene,
-		ILightingParserDelegate& lightingDelegate,
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderSceneSettings& qualitySettings);
 

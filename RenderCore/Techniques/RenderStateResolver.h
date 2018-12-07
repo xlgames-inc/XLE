@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../Types_Forward.h"
+#include "../Types.h"
 #include "../../Core/Types.h"
 #include <memory>
 
@@ -157,7 +157,7 @@ namespace RenderCore { namespace Techniques
     std::shared_ptr<IRenderStateDelegate> CreateRenderStateDelegate_DepthOnly(
         const RSDepthBias& singleSidedBias = RSDepthBias(),
         const RSDepthBias& doubleSidedBias = RSDepthBias(),
-        CullMode cullMode = CullMode(3));
+        CullMode cullMode = CullMode::Back);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

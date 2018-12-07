@@ -291,6 +291,7 @@ namespace SceneEngine
         Metal::GPUAnnotation anno2(metalContext, "ResolveGBuffer");
 
         const bool doSampleFrequencyOptimisation = Tweakable("SampleFrequencyOptimisation", true);
+		const bool lightResolveDebugging = Tweakable("LightResolveDebugging", false);
 
         LightingResolveContext lightingResolveContext(lightingParserContext);
         const unsigned samplingCount = lightingParserContext.GetMainTargets().GetSamplingCount();
@@ -468,7 +469,7 @@ namespace SceneEngine
             metalContext.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
             for (unsigned c=0; c<passCount; ++c) {
                 lightingResolveContext.SetPass((LightingResolveContext::Pass::Enum)c);
-                ResolveLights(metalContext, parsingContext, lightingParserContext, lightingResolveContext);
+                ResolveLights(metalContext, parsingContext, lightingParserContext, lightingResolveContext, lightResolveDebugging);
 
                 for (auto i=lightingResolveContext._queuedResolveFunctions.cbegin();
                     i!=lightingResolveContext._queuedResolveFunctions.cend(); ++i) {
@@ -494,7 +495,7 @@ namespace SceneEngine
                 std::bind(
 					&Deferred_DrawDebugging, 
 					std::placeholders::_1, std::placeholders::_2,
-					std::ref(lightingParserContext.GetMainTargets()),
+					lightingParserContext.GetMainTargets(),
 					lightingParserContext._sampleCount > 1, debugging));
         }
 
@@ -664,7 +665,9 @@ namespace SceneEngine
                 if (!shader->_shader) continue;
 
                 shader->_uniforms.Apply(context, 0, parsingContext.GetGlobalUniformsStream());
-				shader->_uniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
+				shader->_uniforms.Apply(context, 1, UniformsStream{
+					MakeIteratorRange(cbvs),
+					UniformsStream::MakeResources(MakeIteratorRange(srvs))});
                 if (shader->_dynamicLinking)
                     context.Bind(*shader->_shader, shader->_boundClassInterfaces);
                 else

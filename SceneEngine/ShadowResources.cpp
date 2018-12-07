@@ -116,23 +116,15 @@ namespace SceneEngine
             // note --  should we be doing back-face culling during shadow rasterization?
             //          There are potentially some problems if the shadow camera enters
             //          the rasterized shape.
-        auto cullMode = CullMode::Back;
-        switch (desc._windingCullMode) {
-        default:
-        case 0: cullMode = CullMode::Back; break;
-        case 1: cullMode = CullMode::Front; break;
-        case 2: cullMode = CullMode::None; break;
-        }
-
         _rasterizerState = Metal::RasterizerState(
-            cullMode, true, 
+            desc._windingCullMode, true, 
             FillMode::Solid,
             desc._singleSidedBias._depthBias, 
             desc._singleSidedBias._depthBiasClamp, 
             desc._singleSidedBias._slopeScaledBias);
 
         _stateResolver = Techniques::CreateRenderStateDelegate_DepthOnly(
-            desc._singleSidedBias, desc._doubleSidedBias, cullMode);
+            desc._singleSidedBias, desc._doubleSidedBias, desc._windingCullMode);
     }
 
     ShadowWriteResources::~ShadowWriteResources() {}

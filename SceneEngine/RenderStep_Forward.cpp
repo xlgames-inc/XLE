@@ -89,12 +89,11 @@ namespace SceneEngine
         const bool useOrderIndependentTransparency = Tweakable("UseOITrans", false) && (lightingParserContext._sampleCount <= 1);
 		assert(!useOrderIndependentTransparency);	// (order independent transparency broken during refactoring)
 
-		ExecuteDrawablesContext executeDrawablesContext(parsingContext);
-
         ReturnToSteadyState(metalContext);
 
 		if (BatchHasContent(executedScene._preDepth)) {
 			RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._depthOnly);
+			ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 			ExecuteDrawables(
 				threadContext, parsingContext, executeDrawablesContext, executedScene._preDepth,
 				TechniqueIndex_DepthOnly, "MainScene-DepthOnly");
@@ -115,6 +114,7 @@ namespace SceneEngine
 
             /////
             
+		ExecuteDrawablesContext executeDrawablesContext(parsingContext);
         ExecuteDrawables(
             threadContext, parsingContext, executeDrawablesContext, executedScene._general,
             TechniqueIndex_General, "MainScene-General");

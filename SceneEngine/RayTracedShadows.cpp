@@ -312,7 +312,7 @@ namespace SceneEngine
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 #endif
 
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferParameter), mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth)));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth)));
         const bool useMsaaSamplers = lightingParserContext._sampleCount > 1;
 
         StringMeld<256> defines;
@@ -341,7 +341,7 @@ namespace SceneEngine
         SetupVertexGeneratorShader(context);
 
         for (const auto& p:lightingParserContext._preparedRTShadows) {
-			auto depthSRV = mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth);
+			auto depthSRV = mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth);
             const Metal::ShaderResourceView* srvs[] = 
                 { &p.second._listHeadSRV, &p.second._linkedListsSRV, &p.second._trianglesSRV, &depthSRV };
 

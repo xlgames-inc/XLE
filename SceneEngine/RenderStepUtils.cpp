@@ -33,7 +33,6 @@ namespace SceneEngine
 					parserContext,
 					techniqueIndex,
 					context._sequencerTechnique,
-					&context._seqShaderSelectors,
 					*(Techniques::Drawable*)d.get());
         CATCH_ASSETS_END(parserContext)
     }

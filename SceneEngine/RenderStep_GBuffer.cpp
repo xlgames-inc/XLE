@@ -209,13 +209,11 @@ namespace SceneEngine
             //      Bind the gbuffer, begin the render pass
             //
 
-        ExecuteDrawablesContext executeDrawablesContext(parsingContext);
-		
 		ReturnToSteadyState(metalContext);
 
         CATCH_ASSETS_BEGIN {
 			RenderStateDelegateChangeMarker marker(parsingContext, GetStateSetResolvers()._deferred);
-
+			ExecuteDrawablesContext executeDrawablesContext(parsingContext);
 			ExecuteDrawables(
 				threadContext, parsingContext, executeDrawablesContext,
 				drawables._gbufferOpaque,
@@ -308,12 +306,10 @@ namespace SceneEngine
             //  everything after the gbuffer resolve
         LightingParser_PreTranslucency(
             context, parserContext, *lightingParserContext._delegate,
-            mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth));
+            mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth));
 
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
         ReturnToSteadyState(metalContext);
-
-		ExecuteDrawablesContext executeDrawablesContext(parserContext);
 
             // We must bind all of the lighting resolve resources here
             //  -- because we'll be doing lighting operations in the pixel
@@ -354,6 +350,7 @@ namespace SceneEngine
             // but it's not clear that it helps overall.
         if (oiMode == OIMode::SortedRef && Tweakable("TransPrePass", false) && BatchHasContent(executedScene._transparentPreDepth)) {
             RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._depthOnly);
+			ExecuteDrawablesContext executeDrawablesContext(parserContext);
             ExecuteDrawables(
                 context, parserContext, executeDrawablesContext,
                 executedScene._transparentPreDepth,
@@ -362,6 +359,7 @@ namespace SceneEngine
 
         if (BatchHasContent(executedScene._transparent)) {
             RenderStateDelegateChangeMarker marker(parserContext, GetStateSetResolvers()._forward);
+			ExecuteDrawablesContext executeDrawablesContext(parserContext);
             ExecuteDrawables(
                 context, parserContext, executeDrawablesContext,
                 executedScene._transparent,
@@ -438,8 +436,8 @@ namespace SceneEngine
         //////////////////////////////////////////////////////////////////////////////////////////////////
         LightingParser_PostGBufferEffects(
             context, parserContext, *lightingParserContext._delegate,
-            mainTargets.GetSRV(Techniques::AttachmentSemantics::MultisampleDepth), 
-            mainTargets.GetSRV(Techniques::AttachmentSemantics::GBufferNormal));
+            mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth), 
+            mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal));
 
         for (auto p=lightingParserContext._plugins.cbegin(); p!=lightingParserContext._plugins.cend(); ++p)
             (*p)->OnPostSceneRender(context, parserContext, lightingParserContext, Techniques::BatchFilter::Transparent, TechniqueIndex_General);

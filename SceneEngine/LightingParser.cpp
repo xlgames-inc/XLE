@@ -52,12 +52,13 @@ namespace SceneEngine
 		const RenderCore::IResourcePtr& renderTarget,
         Techniques::ParsingContext& parsingContext,
         IScene& scene,
-		ILightingParserDelegate& delegate,
         const RenderCore::Techniques::CameraDesc& camera,
         const RenderSceneSettings& renderSettings)
     {
+		auto targetTextureDesc = renderTarget->GetDesc()._textureDesc;
+
 		// First, setup the views so we can do the "ExecuteScene" step
-		auto mainSceneProjection = RenderCore::Techniques::BuildProjectionDesc(camera, renderSettings._dimensions);
+		auto mainSceneProjection = RenderCore::Techniques::BuildProjectionDesc(camera, UInt2{targetTextureDesc._width, targetTextureDesc._height});
 
 		std::shared_ptr<IRenderStep> mainSceneRenderStep;
 		const bool enableParametersBuffer = Tweakable("EnableParametersBuffer", true);
@@ -74,6 +75,7 @@ namespace SceneEngine
 			SceneView{mainSceneProjection},
 			mainSceneRenderStep->CreateViewDelegate());
 
+		auto& delegate = *renderSettings._lightingDelegate;
 		for (unsigned s=0; s<delegate.GetShadowProjectionCount(); ++s) {
 			auto proj = delegate.GetShadowProjectionDesc(s, mainSceneProjection);
 			// todo -- what's the correct projection to give to this view?
@@ -94,6 +96,7 @@ namespace SceneEngine
         GetBufferUploads().FramePriority_Barrier();
 
 		auto lightingParserContext = LightingParser_SetupContext(threadContext, parsingContext, delegate, renderSettings);
+		lightingParserContext._gbufferType = enableParametersBuffer?1:2;
         LightingParser_SetGlobalTransform(threadContext, parsingContext, mainSceneProjection);
 
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
@@ -101,8 +104,6 @@ namespace SceneEngine
 		CATCH_ASSETS_BEGIN
 			SetFrameGlobalStates(metalContext);
 		CATCH_ASSETS_END(parsingContext)
-
-		Techniques::AttachmentPool shadowsAttachmentPool;
 
 		// Preparation steps (including shadows prepare)
         {
@@ -113,13 +114,13 @@ namespace SceneEngine
                 CATCH_ASSETS_END(parsingContext)
             }
 
-			lightingParserContext._preparedDMShadows.clear();
-            lightingParserContext._preparedRTShadows.clear();
-
 			auto viewDelegates = executeContext.GetViewDelegates();
 			for (unsigned c=1; c<viewDelegates.size(); ++c) {
 				CATCH_ASSETS_BEGIN
 					auto& shadowDelegate = *checked_cast<ViewDelegate_Shadow*>(viewDelegates[c].get());
+					if (shadowDelegate._general._drawables.empty())
+						continue;
+
 					if (shadowDelegate._shadowProj._resolveType == ShadowProjectionDesc::ResolveType::DepthTexture) {
 						RenderStep_PrepareDMShadows renderStep(
 							shadowDelegate._shadowProj._format, 
@@ -130,6 +131,7 @@ namespace SceneEngine
 						auto merged = Techniques::MergeFragments(
 							{}, MakeIteratorRange(&interf, &interf+1));
 
+						Techniques::AttachmentPool shadowsAttachmentPool;
 						auto fbDesc = Techniques::BuildFrameBufferDesc(shadowsAttachmentPool, std::move(merged.first));
 						auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
 							Metal::GetObjectFactory(), fbDesc, shadowsAttachmentPool);
@@ -139,6 +141,7 @@ namespace SceneEngine
 						Metal::DeviceContext::Get(threadContext)->Bind(
 							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
 
+						renderStep._resource = shadowsAttachmentPool.GetResource(0);
 						renderStep.Execute(threadContext, parsingContext, lightingParserContext, rpf, &shadowDelegate);
 					} else {
 						RenderStep_PrepareRTShadows renderStep;
@@ -161,23 +164,26 @@ namespace SceneEngine
 		for (unsigned c=0; c<dimof(renderSteps); ++c)
 			fragments[c] = renderSteps[c]->GetInterface();
 		
-		AttachmentDesc mainRenderTargetDesc
-			{   Format::R8G8B8A8_UNORM_SRGB,
-				1.f, 1.f, 0u,
-				TextureViewDesc::Aspect::UndefinedAspect,
-				AttachmentDesc::DimensionsMode::OutputRelative,
-				AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
+		parsingContext.GetNamedResources().Bind(0, renderTarget);
+		auto renderTargetDesc = *parsingContext.GetNamedResources().GetDesc(0);
+		renderTargetDesc._dimsMode = AttachmentDesc::DimensionsMode::OutputRelative;
+		renderTargetDesc._width = renderTargetDesc._height = 1.0f;
 		Techniques::PreregisteredAttachment preregistered[] = {
 			Techniques::PreregisteredAttachment {
 				0, Techniques::AttachmentSemantics::ColorLDR, 
-				mainRenderTargetDesc, 
+				renderTargetDesc,
 				Techniques::PreregisteredAttachment::State::Uninitialized
 			}
 		};
-		parsingContext.GetNamedResources().Bind(0, renderTarget);
+		
 		auto merged = Techniques::MergeFragments(
 			MakeIteratorRange(preregistered),
 			MakeIteratorRange(fragments));
+
+		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
+		lightingParserContext._mainTargets._samplingCount = 1;
+		for (unsigned c=0; c<merged.first._attachments.size(); ++c)
+			lightingParserContext._mainTargets._namedTargetsMapping.push_back({merged.first._attachments[c].second._semantic, merged.first._attachments[c].first});
 
 		auto fbDesc = Techniques::BuildFrameBufferDesc(parsingContext.GetNamedResources(), std::move(merged.first));
 		auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
@@ -185,7 +191,7 @@ namespace SceneEngine
 
 		Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, parsingContext.GetNamedResources());
 		metalContext.Bind(
-			Metal::ViewportDesc(0.f, 0.f, float(renderSettings._dimensions[0]), float(renderSettings._dimensions[1])));
+			Metal::ViewportDesc(0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)));
 
 		for (unsigned c=0; c<dimof(renderSteps); ++c) {
 			CATCH_ASSETS_BEGIN
@@ -204,11 +210,6 @@ namespace SceneEngine
         _metricsBox = box;
     }
 
-	void LightingParserContext::SetMainTargets(MainTargets* mainTargets)
-	{
-		_mainTargets = mainTargets;
-	}
-
     void LightingParserContext::Reset()
     {
         _preparedDMShadows.clear();
@@ -222,7 +223,7 @@ namespace SceneEngine
 	, _preparedRTShadows(std::move(moveFrom._preparedRTShadows))
 	, _plugins(std::move(moveFrom._plugins))
 	, _metricsBox(moveFrom._metricsBox)
-	, _mainTargets(moveFrom._mainTargets)
+	, _mainTargets(std::move(moveFrom._mainTargets))
 	, _preparedScene(moveFrom._preparedScene)
 	, _sampleCount(moveFrom._sampleCount)
 	, _gbufferType(moveFrom._gbufferType)
@@ -232,7 +233,6 @@ namespace SceneEngine
 		moveFrom._sampleCount = 0;
 		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
-		moveFrom._mainTargets = nullptr;
 		moveFrom._delegate = nullptr;
 	}
 
@@ -241,7 +241,7 @@ namespace SceneEngine
 		_preparedDMShadows = std::move(moveFrom._preparedDMShadows);
 		_preparedRTShadows = std::move(moveFrom._preparedRTShadows);
 		_plugins = std::move(moveFrom._plugins);
-		_mainTargets = moveFrom._mainTargets;
+		_mainTargets = std::move(moveFrom._mainTargets);
 		_preparedScene = moveFrom._preparedScene;
 		_sampleCount = moveFrom._sampleCount;
 		_gbufferType = moveFrom._gbufferType;
@@ -251,7 +251,6 @@ namespace SceneEngine
 		moveFrom._sampleCount = 0;
 		moveFrom._gbufferType = 0;
 		moveFrom._metricsBox = nullptr;
-		moveFrom._mainTargets = nullptr;
 		moveFrom._delegate = nullptr;
 		return *this;
 	}
@@ -345,35 +344,33 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class MainTargets::Pimpl
+	auto MainTargets::GetSRV(Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> SRV
 	{
-	};
-
-	auto MainTargets::GetSRV(uint64_t semantic, const RenderCore::TextureViewDesc& window) const -> SRV
-	{
-		return SRV{};
+		for (unsigned c=0; c<_namedTargetsMapping.size(); ++c)
+			if (_namedTargetsMapping[c].first == semantic)
+				return *context.GetNamedResources().GetSRV(_namedTargetsMapping[c].second, window);
+		return SRV {};
 	}
 
-	const RenderCore::IResourcePtr& MainTargets::GetResource(uint64_t semantic) const
+	RenderCore::IResourcePtr MainTargets::GetResource(Techniques::ParsingContext& context, uint64_t semantic) const
 	{
-		static RenderCore::IResourcePtr temp;
-		return temp;
+		for (unsigned c=0; c<_namedTargetsMapping.size(); ++c)
+			if (_namedTargetsMapping[c].first == semantic)
+				return context.GetNamedResources().GetResource(_namedTargetsMapping[c].second);
+		return nullptr;
 	}
 
 	UInt2		MainTargets::GetDimensions() const
 	{
-		return UInt2(0,0);
+		return _dimensions;
 	}
 
 	unsigned    MainTargets::GetSamplingCount() const
 	{
-		return 1;
+		return _samplingCount;
 	}
 
-	MainTargets::MainTargets() 
-	{
-		_pimpl = std::make_unique<Pimpl>();
-	}
+	MainTargets::MainTargets()  {}
 	MainTargets::~MainTargets() {}
 
 

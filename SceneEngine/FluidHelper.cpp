@@ -332,6 +332,7 @@ namespace SceneEngine
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/RenderPassUtils.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
 
 namespace SceneEngine
@@ -349,7 +350,7 @@ namespace SceneEngine
 
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
-			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parserContext);
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(context, parserContext);
 
             auto dx = dimensions[0], dy = dimensions[1];
 
@@ -422,7 +423,7 @@ namespace SceneEngine
 
 			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
-			auto rpi = SceneEngine::RenderPassToPresentationTarget(context, parserContext);
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(context, parserContext);
 
             auto dx = dimensions[0], dy = dimensions[1], dz = dimensions[2];
             auto pktSize = dx*dy*dz*sizeof(float);

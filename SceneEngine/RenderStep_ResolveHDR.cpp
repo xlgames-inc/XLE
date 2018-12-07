@@ -24,13 +24,7 @@ namespace SceneEngine
 	RenderStep_ResolveHDR::RenderStep_ResolveHDR()
 	{
 		auto hdrInput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
-		auto ldrOutput = _fragment.DefineAttachment(
-			Techniques::AttachmentSemantics::ColorLDR,
-			{   Format::R8G8B8A8_UNORM_SRGB,
-				1.f, 1.f, 0u,
-                TextureViewDesc::Aspect::UndefinedAspect,
-				AttachmentDesc::DimensionsMode::OutputRelative,
-                AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
+		auto ldrOutput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
 
 		SubpassDesc subpass;
 		subpass._output.push_back({ ldrOutput, LoadStore::DontCare, LoadStore::Retain });

@@ -11,6 +11,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Types.h"
 #include <vector>
 
 namespace BufferUploads { class ResourceLocator; }
@@ -38,11 +39,11 @@ namespace SceneEngine
             using RSDepthBias = RenderCore::Techniques::RSDepthBias;
             RSDepthBias     _singleSidedBias;
             RSDepthBias     _doubleSidedBias;
-            unsigned        _windingCullMode;
+            RenderCore::CullMode	_windingCullMode;
 
             Desc(   const RSDepthBias& singleSidedBias,
                     const RSDepthBias& doubleSidedBias,
-                    unsigned windingCullMode) 
+                    RenderCore::CullMode windingCullMode) 
             : _singleSidedBias(singleSidedBias)
             , _doubleSidedBias(doubleSidedBias)
             , _windingCullMode(windingCullMode) {}

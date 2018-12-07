@@ -23,10 +23,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
     }
 
-	static Resource& AsResource(IResource& input)
+	Resource& AsResource(IResource& res)
 	{
-		assert(input.QueryInterface(typeid(Resource).hash_code()));
-		return *(Resource*)&input;
+		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		assert(r);
+		return *r;
 	}
 
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
@@ -916,13 +917,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		_mem = moveFrom._mem; moveFrom._mem = nullptr;
         _pitches = moveFrom._pitches;
 		return *this;
-	}
-
-	Resource& AsResource(IResource& res)
-	{
-		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
-		assert(r);
-		return *r;
 	}
 
 

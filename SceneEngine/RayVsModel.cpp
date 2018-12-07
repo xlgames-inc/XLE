@@ -208,7 +208,7 @@ namespace SceneEngine
         Metal::ViewportDesc newViewport(0.f, 0.f, float(255.f), float(255.f), 0.f, 1.f);
         metalContext->Bind(newViewport);
 
-		RenderSceneSettings qualitySettings{UInt2(256, 256)};
+		RenderSceneSettings qualitySettings{};
 
             // The camera settings can affect the LOD that objects a rendered with.
             // So, in some cases we need to initialise the camera to the same state
@@ -217,7 +217,7 @@ namespace SceneEngine
         if (cameraForLOD) { camera = *cameraForLOD; }
 
         // LightingParser_SetupScene(*threadContext, _pimpl->_parserContext);
-		auto projDesc = BuildProjectionDesc(camera, qualitySettings._dimensions);
+		auto projDesc = BuildProjectionDesc(camera, UInt2(256, 256));
 		projDesc._cameraToProjection = MakeFloat4x4(
             0.f, 0.f, 0.f, 0.5f,
             0.f, 0.f, 0.f, 0.5f,

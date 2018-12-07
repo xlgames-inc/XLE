@@ -95,7 +95,7 @@ namespace SceneEngine
         PreparedDMShadowFrustum();
         PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws;
         PreparedDMShadowFrustum& operator=(PreparedDMShadowFrustum&& moveFrom) never_throws;
-	private:
+	// private:
 		SRV _srv;
     };
 
