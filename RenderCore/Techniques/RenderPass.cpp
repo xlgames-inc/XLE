@@ -829,6 +829,7 @@ namespace RenderCore { namespace Techniques
         uint64_t _outputSemanticBinding = 0;
         uint64_t _firstReadSemantic = 0;
         uint64_t _lastWriteSemantic = 0;
+        bool _isPredefinedAttachment = false;
         bool _forceShaderResourceFlag = false;
         PreregisteredAttachment::State _state = PreregisteredAttachment::State::Uninitialized;
         PreregisteredAttachment::State _stencilState = PreregisteredAttachment::State::Uninitialized;
@@ -975,12 +976,24 @@ namespace RenderCore { namespace Techniques
             initialState._desc = preregisteredInputs[c]._desc;
             initialState._state = preregisteredInputs[c]._state;
             initialState._stencilState = preregisteredInputs[c]._stencilState;
+            initialState._isPredefinedAttachment = true;
+            initialState._name = (AttachmentName)workingAttachments.size();
+            workingAttachments.push_back(initialState);
         }
-            // workingAttachments.push_back({preregisteredInputs[c], c});
 
         for (auto f=fragments.begin(); f!=fragments.end(); ++f) {
             std::vector<WorkingAttachment> newWorkingAttachments;
             std::vector<std::pair<AttachmentName, AttachmentName>> attachmentRemapping;
+
+            // Capture the default properties for each semantic on the interface now
+            std::vector<std::pair<uint64_t, AttachmentDesc>> defaultSemanticFormats;
+            for (const auto& a:workingAttachments) {
+                if (a._inputSemanticBinding)
+                    defaultSemanticFormats.push_back(std::make_pair(a._inputSemanticBinding, a._desc));
+                if (a._outputSemanticBinding)
+                    defaultSemanticFormats.push_back(std::make_pair(a._outputSemanticBinding, a._desc));
+            }
+
             /////////////////////////////////////////////////////////////////////////////
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
                 const auto& interfaceAttachment = *interf;
@@ -1043,10 +1056,11 @@ namespace RenderCore { namespace Techniques
                     newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                     newState._inputSemanticBinding = 0;
                     newState._outputSemanticBinding = (directionFlags & DirectionFlags::Store) ? interfaceAttachment.GetOutputSemanticBinding() : 0;
-                    if (!newState._firstReadSemantic)
+                    if (!newState._firstReadSemantic && compat->_isPredefinedAttachment)    // (we only really care about first read for predefined attachments)
                         newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
                     if (directionFlags & DirectionFlags::Store)
                         newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
+                    newState._isPredefinedAttachment = false;
                     workingAttachments.erase(compat);
                     newWorkingAttachments.push_back(newState);
                 } else {
@@ -1054,8 +1068,7 @@ namespace RenderCore { namespace Techniques
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
                         [&interfaceAttachment](const WorkingAttachment& input) {
-                            return (input._state == PreregisteredAttachment::State::Uninitialized)
-                                && (input._inputSemanticBinding == interfaceAttachment.GetOutputSemanticBinding())
+                            return (input._inputSemanticBinding == interfaceAttachment.GetOutputSemanticBinding())
                                 && IsCompatible(input._desc, interfaceAttachment._desc);
                         });
 
@@ -1067,16 +1080,17 @@ namespace RenderCore { namespace Techniques
                         reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
 
                         // We can steal the settings from an existing attachment with the same semantic
-                        // name, if necessary
+                        // name, if necessary. We get these from a capture of the working attachments
+                        // we made at the same of the fragment
                         auto desc = interfaceAttachment._desc;
                         auto sameSemantic = std::find_if(
-                            preregisteredInputs.begin(), preregisteredInputs.end(),
-                            [&interfaceAttachment](const PreregisteredAttachment& input) {
-                                return (input._semantic == interfaceAttachment.GetOutputSemanticBinding());
+                            defaultSemanticFormats.begin(), defaultSemanticFormats.end(),
+                            [&interfaceAttachment](const std::pair<uint64_t, AttachmentDesc>& input) {
+                                return (input.first == interfaceAttachment.GetOutputSemanticBinding());
                             });
-                        if (sameSemantic != preregisteredInputs.end()) {
-                            if (desc._format == Format::Unknown) desc._format = sameSemantic->_desc._format;
-                            if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->_desc._defaultAspect;
+                        if (sameSemantic != defaultSemanticFormats.end()) {
+                            if (desc._format == Format::Unknown) desc._format = sameSemantic->second._format;
+                            if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->second._defaultAspect;
                         } else {
                             assert(desc._format != Format::Unknown);
                         }
@@ -1090,6 +1104,7 @@ namespace RenderCore { namespace Techniques
                             newState._outputSemanticBinding = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                         }
+                        newState._isPredefinedAttachment = false;
                         newWorkingAttachments.push_back(newState);
 
                         #if defined(_DEBUG)
@@ -1107,6 +1122,7 @@ namespace RenderCore { namespace Techniques
                             newState._outputSemanticBinding = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                         }
+                        newState._isPredefinedAttachment = false;
                         workingAttachments.erase(compat);
                         newWorkingAttachments.push_back(newState);
                     }
