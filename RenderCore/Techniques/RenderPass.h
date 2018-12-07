@@ -63,6 +63,7 @@ namespace RenderCore { namespace Techniques
     public:
         void Bind(uint64_t semantic, const IResourcePtr& resource);
         void Unbind(const IResource& resource);
+		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
 
         std::vector<AttachmentName> Request(IteratorRange<const FrameBufferDesc::Attachment*> requests);
 
@@ -223,7 +224,8 @@ namespace RenderCore { namespace Techniques
         RenderPassFragment(
             RenderPassInstance& rpi,
             const FrameBufferFragmentMapping& mapping);
-        ~RenderPassFragment();
+        RenderPassFragment();
+		~RenderPassFragment();
 
         RenderPassFragment(const RenderPassFragment&) = delete;
         RenderPassFragment& operator=(const RenderPassFragment&) = delete;

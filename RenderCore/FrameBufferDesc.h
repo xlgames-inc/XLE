@@ -138,8 +138,8 @@ namespace RenderCore
 
         struct Attachment
         {
-            uint64_t        _semantic;
-            AttachmentDesc  _desc;
+            uint64_t        _semantic = 0;
+			AttachmentDesc  _desc = {};
         };
         auto    GetAttachments() const -> IteratorRange<const Attachment*> { return MakeIteratorRange(_attachments); }
 
