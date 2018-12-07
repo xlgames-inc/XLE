@@ -145,7 +145,7 @@ namespace RenderCore { namespace Techniques
     }
 
 	RenderPassFragment::RenderPassFragment()
-	: _rpi(nullptr), _mapping(nullptr), _attachmentPool(nullptr), _currentPassIndex(~0u)
+	: _rpi(nullptr), _mapping(nullptr), _currentPassIndex(~0u)
 	{
 	}
 
@@ -269,8 +269,9 @@ namespace RenderCore { namespace Techniques
         AttachmentPool& attachmentPool) -> Result
     {
         auto poolAttachments = attachmentPool.Request(desc.GetAttachments());
+		assert(poolAttachments.size() == desc.GetAttachments().size());
 
-        uint64_t hashValue = DefaultSeed64;
+        uint64_t hashValue = desc.GetHash();
         for (const auto&a:poolAttachments)
             hashValue = HashCombine(attachmentPool.GetResource(a)->GetGUID(), hashValue);
         assert(hashValue != 0);     // using 0 has a sentinel, so this will cause some problems
@@ -280,11 +281,12 @@ namespace RenderCore { namespace Techniques
         for (unsigned c=0; c<dimof(_pimpl->_entries); ++c) {
             if (_pimpl->_entries[c]._hash == hashValue) {
                 _pimpl->_entries[c]._tickId = _pimpl->_currentTickId;
+				_pimpl->_entries[c]._poolAttachmentsRemapping = std::move(poolAttachments);	// update the mapping, because attachments map have moved
                 _pimpl->IncreaseTickId();
                 assert(_pimpl->_entries[c]._fb != nullptr);
                 return {
                     _pimpl->_entries[c]._fb,
-                    MakeIteratorRange(_pimpl->_entries[earliestEntry]._poolAttachmentsRemapping)
+                    MakeIteratorRange(_pimpl->_entries[c]._poolAttachmentsRemapping)
                 };
             }
             if (_pimpl->_entries[c]._tickId < tickIdOfEarliestEntry) {
@@ -663,6 +665,19 @@ namespace RenderCore { namespace Techniques
             existingBinding->_resource = nullptr;
         }
     }
+
+	auto AttachmentPool::GetBoundResource(uint64_t semantic) -> IResourcePtr
+	{
+		auto existingBinding = std::find_if(
+            _pimpl->_semanticAttachments.begin(),
+            _pimpl->_semanticAttachments.end(),
+            [semantic](const Pimpl::SemanticAttachment& a) {
+                return a._semantic == semantic;
+            });
+		if (existingBinding != _pimpl->_semanticAttachments.end())
+			return existingBinding->_resource;
+		return nullptr;
+	}
 
     void AttachmentPool::Bind(FrameBufferProperties props)
     {
