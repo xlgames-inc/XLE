@@ -113,18 +113,18 @@ namespace RenderCore
 
         void AppendOutput(
             AttachmentName attachment,
-            LoadStore loadOp = LoadStore::DontCare,     // by default, we won't load from a output attachment (ie, we're assuming we're not blending into this buffer, just overwriting it)
-            LoadStore storeOp = LoadStore::Retain);     // by default, we want to retain the values we write out to this buffer
+            LoadStore loadOp = LoadStore::Retain,
+            LoadStore storeOp = LoadStore::Retain);
 
         void AppendInput(
             AttachmentName attachment,
-            LoadStore loadOp = LoadStore::Retain,       // by default, we should "retain" the previous contents of the buffer (ie, we want to read what a previous subpass wrote)
-            LoadStore storeOp = LoadStore::Retain);      // by default, we want to retain the values because we might use it again
+            LoadStore loadOp = LoadStore::Retain,
+            LoadStore storeOp = LoadStore::Retain);
 
         void SetDepthStencil(
             AttachmentName attachment,
-            LoadStore loadOp = LoadStore::Retain_RetainStencil,         // by default, retain both depth and stencil information
-            LoadStore storeOp = LoadStore::Retain_RetainStencil);       // by default, retain both depth and stencil information
+            LoadStore loadOp = LoadStore::Retain_RetainStencil,
+            LoadStore storeOp = LoadStore::Retain_RetainStencil);
 
         void AppendOutput(const AttachmentViewDesc& view);
         void AppendInput(const AttachmentViewDesc& view);
@@ -259,16 +259,16 @@ namespace RenderCore
         contents in future subpasses.
 
         For loadOp, we have these choices, all of which are commonly used:
-        - **DontCare** -- this is the default, it means we will never read from the previous contents
+        - **DontCare** -- it means we will never read from the previous contents
             of this buffer. The buffer will typically be filled with indeterminant noise. The subpass
             should write to every pixel in the buffer and not use blending (otherwise we will pass
             that noise down the pipeline). This is the most efficient option.
         - **Clear** -- clear the buffer before we start rendering. Because we're clearing the buffer
             entirely, anything written to it by previous subpasses will be lost.
-        - **Retain** -- keep the contents from previous subpasses. This is the least efficient (since
-            the hardware has to reinitialize it's framebuffer memory). It's typically required when
-            we're not going to write to every pixel in the render buffer, or when we want to use a blend
-            mode to blend our output with something underneath.
+        - **Retain** -- this is the default, keep the contents from previous subpasses. This is the
+            least efficient (since the hardware has to reinitialize it's framebuffer memory).
+            It's typically required when we're not going to write to every pixel in the render buffer,
+            or when we want to use a blend mode to blend our output with something underneath.
 
         For storeOp, we will almost always use Retain. We can use DontCare, but that just instructs the
         system not to keep any of the data we write out.
