@@ -557,10 +557,12 @@ namespace RenderCore { namespace Techniques
         return lhsWidth == rhsWidth && lhsHeight == rhsHeight;
     }
 
+    static unsigned GetArrayCount(const AttachmentDesc& lhs) { return (lhs._arrayLayerCount == 0) ? 1 : lhs._arrayLayerCount; }
+
     static bool MatchRequest(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
     {
         return
-            lhs._arrayLayerCount == rhs._arrayLayerCount
+            GetArrayCount(lhs) == GetArrayCount(rhs)
             && lhs._format == rhs._format
             && DimsEqual(lhs, rhs, props)
             ;
@@ -783,7 +785,7 @@ namespace RenderCore { namespace Techniques
     {
         return
             ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
-            && testAttachment._arrayLayerCount == request._arrayLayerCount
+            && GetArrayCount(testAttachment) == GetArrayCount(request)
             && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
 			&& testAttachment._width == request._width && testAttachment._height == request._height
             && testAttachment._dimsMode == request._dimsMode
@@ -805,7 +807,8 @@ namespace RenderCore { namespace Techniques
         {
             Reference = 1<<0,
             Load = 1<<1,
-            Store = 1<<2
+            RetainAfterLoad = 1<<2,
+            Store = 1<<3
         };
         using BitField = unsigned;
     };
@@ -854,16 +857,21 @@ namespace RenderCore { namespace Techniques
             if (HasRetain(p._depthStencil._storeToNextPhase))
                 result |= DirectionFlags::Store;
         }
+        for (const auto&a:p._input)
+            if (a._resourceName == attachment) {
+                if (HasRetain(a._storeToNextPhase))
+                    result |= DirectionFlags::RetainAfterLoad;
+            }
         return result;
     }
 
     class WorkingAttachment
     {
     public:
-        AttachmentName _name;
+        AttachmentName _name = ~0u;
         AttachmentDesc _desc;
-        uint64_t _inputSemanticBinding = 0;
-        uint64_t _outputSemanticBinding = 0;
+        uint64_t _shouldReceiveDataForSemantic = 0;         // when looking for an attachment to write the data for this semantic, prefer this attachment
+        uint64_t _containsDataForSemantic = 0;              // the data for this semantic is already written to this attachment
         uint64_t _firstReadSemantic = 0;
         uint64_t _lastWriteSemantic = 0;
         bool _isPredefinedAttachment = false;
@@ -877,11 +885,13 @@ namespace RenderCore { namespace Techniques
         // find the lowest name not used by any of the attachments
         uint64_t bitField = 0;
         for (const auto& a:attachments0) {
+            if (a._name == ~0u) continue;
             assert(a._name < 64);
             assert(!(bitField & (1ull << uint64_t(a._name))));
             bitField |= 1ull << uint64_t(a._name);
         }
         for (const auto& a:attachments1) {
+            if (a._name == ~0u) continue;
             assert(a._name < 64);
             assert(!(bitField & (1ull << uint64_t(a._name))));
             bitField |= 1ull << uint64_t(a._name);
@@ -912,8 +922,8 @@ namespace RenderCore { namespace Techniques
 
     inline std::ostream& operator<<(std::ostream& str, const PreregisteredAttachment& attachment)
     {
-        str << "PreregisteredAttachment {"
-            << attachment._semantic << ", "
+        str << "PreregisteredAttachment { 0x"
+            << std::hex << attachment._semantic << std::dec << ", "
             << attachment._desc << ", "
             << AsString(attachment._state) << ", "
             << AsString(attachment._stencilState) << "}";
@@ -925,8 +935,8 @@ namespace RenderCore { namespace Techniques
         str << "WorkingAttachment {"
             << attachment._name << ", "
             << attachment._desc << ", "
-            << std::hex << "Input: 0x" << attachment._inputSemanticBinding << ", "
-            << "Output: 0x" << attachment._outputSemanticBinding << ", "
+            << std::hex << "Contains: 0x" << attachment._containsDataForSemantic << ", "
+            << "ShouldReceive: 0x" << attachment._shouldReceiveDataForSemantic << ", "
             << "FirstRead: 0x" << attachment._firstReadSemantic << ", "
             << "LastWrite: 0x" << attachment._lastWriteSemantic << ", " << std::dec
             << attachment._forceShaderResourceFlag << ", "
@@ -1009,12 +1019,15 @@ namespace RenderCore { namespace Techniques
         workingAttachments.reserve(preregisteredInputs.size());
         for (unsigned c=0; c<preregisteredInputs.size(); c++) {
             WorkingAttachment initialState;
-            initialState._outputSemanticBinding = preregisteredInputs[c]._semantic;
+            initialState._shouldReceiveDataForSemantic = preregisteredInputs[c]._semantic;
+            if (    preregisteredInputs[c]._state == PreregisteredAttachment::State::Initialized
+                ||  preregisteredInputs[c]._stencilState == PreregisteredAttachment::State::Initialized)
+                initialState._containsDataForSemantic = preregisteredInputs[c]._semantic;
             initialState._desc = preregisteredInputs[c]._desc;
             initialState._state = preregisteredInputs[c]._state;
             initialState._stencilState = preregisteredInputs[c]._stencilState;
             initialState._isPredefinedAttachment = true;
-            initialState._name = (AttachmentName)workingAttachments.size();
+            initialState._name = ~0u;       // start with no name (which equates to unused)
             workingAttachments.push_back(initialState);
         }
 
@@ -1023,19 +1036,28 @@ namespace RenderCore { namespace Techniques
             std::vector<std::pair<AttachmentName, AttachmentName>> attachmentRemapping;
 
             // Capture the default properties for each semantic on the interface now
-            std::vector<std::pair<uint64_t, AttachmentDesc>> defaultSemanticFormats;
+            std::unordered_map<uint64_t, AttachmentDesc> defaultSemanticFormats;
+            for (const auto& a:preregisteredInputs) {
+                defaultSemanticFormats[a._semantic] = a._desc;
+            }
             for (const auto& a:workingAttachments) {
-                if (a._inputSemanticBinding)
-                    defaultSemanticFormats.push_back(std::make_pair(a._inputSemanticBinding, a._desc));
-                if (a._outputSemanticBinding)
-                    defaultSemanticFormats.push_back(std::make_pair(a._outputSemanticBinding, a._desc));
+                if (a._shouldReceiveDataForSemantic)
+                    defaultSemanticFormats[a._shouldReceiveDataForSemantic] = a._desc;
+                if (a._containsDataForSemantic)
+                    defaultSemanticFormats[a._containsDataForSemantic] = a._desc;
             }
 
+            #if defined(_DEBUG)
+                debugInfo << "-------------------------------" << std::endl;
+                debugInfo << "Fragment [" << std::distance(fragments.begin(), f) << "] " << *f;
+            #endif
+
             /////////////////////////////////////////////////////////////////////////////
+            using AttachmentAndDirection = std::pair<AttachmentName, DirectionFlags::BitField>;
+            std::vector<AttachmentAndDirection> sortedInterfaceAttachments;
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
-                const auto& interfaceAttachment = *interf;
-                AttachmentName reboundName = ~0u;
                 AttachmentName interfaceAttachmentName = (AttachmentName)std::distance(f->_attachments.begin(), interf);
+
                 DirectionFlags::BitField directionFlags = 0;
                 // Look through the load/store values in the subpasses to find the "direction" for
                 // this attachment. When deciding on the load flags, we must look for the first
@@ -1057,6 +1079,22 @@ namespace RenderCore { namespace Techniques
                 }
                 assert(directionFlags != 0);
 
+                sortedInterfaceAttachments.push_back({interfaceAttachmentName, directionFlags});
+            }
+
+            // sort so the attachment with "load" direction are handled first
+            std::stable_sort(
+                sortedInterfaceAttachments.begin(), sortedInterfaceAttachments.end(),
+                [](const AttachmentAndDirection& lhs, const AttachmentAndDirection& rhs) {
+                    return (lhs.second & DirectionFlags::Load) > (rhs.second & DirectionFlags::Load);
+                });
+
+            for (const auto&pair:sortedInterfaceAttachments) {
+                const auto& interfaceAttachment = f->_attachments[pair.first];
+                AttachmentName reboundName = ~0u;
+                AttachmentName interfaceAttachmentName = pair.first;
+                DirectionFlags::BitField directionFlags = pair.second;
+
                 // toggle on the "ShaderResource" flag, if necessary
                 /*if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
                     interfaceAttachment._desc._flags |= AttachmentDesc::Flags::Enum::ShaderResource;
@@ -1067,15 +1105,23 @@ namespace RenderCore { namespace Techniques
                     // something matching in our working attachments array
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment](const WorkingAttachment& input) {
-                            return (input._state == PreregisteredAttachment::State::Initialized)
-                                && (input._outputSemanticBinding == interfaceAttachment.GetInputSemanticBinding())
-                                && IsCompatible(input._desc, interfaceAttachment._desc);
+                        [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                            return (workingAttachment._state == PreregisteredAttachment::State::Initialized)
+                                && (workingAttachment._containsDataForSemantic == interfaceAttachment.GetInputSemanticBinding())
+                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
                         });
                     if (compat == workingAttachments.end()) {
                         #if defined(_DEBUG)
-                            debugInfo << "      * Failed to find compatible buffer, cannot proceed. Working attachments are: " << std::endl;
-                            for (auto att : workingAttachments)
+                            auto uninitializedCheck = std::find_if(
+                                workingAttachments.begin(), workingAttachments.end(),
+                                [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                                    return IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                                });
+                            debugInfo << "      * Failed to find compatible initialized buffer for request: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
+                            if (uninitializedCheck != workingAttachments.end())
+                                debugInfo << "      * Buffer " << std::distance(workingAttachments.begin(), uninitializedCheck) << " is compatible, but does not contain any initialized data (is there a missing Retain flag?)" << std::endl;
+                            debugInfo << "      * Working attachments are: " << std::endl;
+                            for (const auto& att : workingAttachments)
                                 debugInfo << att << std::endl;
                             auto debugInfoStr = debugInfo.str();
                             Log(Error) << "MergeFragments() failed. Details:" << std::endl << debugInfoStr << std::endl;
@@ -1086,28 +1132,65 @@ namespace RenderCore { namespace Techniques
                     }
                     
                     reboundName = compat->_name;
+                    if (reboundName == ~0u)
+                        reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
 
                     // Remove from the working attachments and push back in it's new state
                     // If we're not writing to this attachment, it will lose it's semantic here
                     auto newState = *compat;
-                    newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                    newState._inputSemanticBinding = 0;
-                    newState._outputSemanticBinding = (directionFlags & DirectionFlags::Store) ? interfaceAttachment.GetOutputSemanticBinding() : 0;
+                    newState._state = (directionFlags & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                    newState._stencilState = (directionFlags & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+
+                    newState._shouldReceiveDataForSemantic = compat->_shouldReceiveDataForSemantic;
+                    newState._containsDataForSemantic = (directionFlags & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? interfaceAttachment.GetOutputSemanticBinding() : 0;
                     if (!newState._firstReadSemantic && compat->_isPredefinedAttachment)    // (we only really care about first read for predefined attachments)
                         newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
                     if (directionFlags & DirectionFlags::Store)
                         newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                     newState._isPredefinedAttachment = false;
+                    newState._name = reboundName;
                     workingAttachments.erase(compat);
                     newWorkingAttachments.push_back(newState);
                 } else {
                     // define a new output buffer, or reuse something that we can reuse
+                    // Prefer a buffer that is uninitialized, but we can drop back to something that
+                    // is initialized if we have to
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment](const WorkingAttachment& input) {
-                            return (input._inputSemanticBinding == interfaceAttachment.GetOutputSemanticBinding())
-                                && IsCompatible(input._desc, interfaceAttachment._desc);
+                        [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                            return (workingAttachment._shouldReceiveDataForSemantic == interfaceAttachment.GetOutputSemanticBinding())
+                                && (workingAttachment._state == PreregisteredAttachment::State::Uninitialized)
+                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
                         });
+
+                    if (compat == workingAttachments.end() && interfaceAttachment.GetOutputSemanticBinding()) {
+                        // Look for a buffer with no assigned semantic. It will take on the semantic we
+                        // give it
+                        compat = std::find_if(
+                            workingAttachments.begin(), workingAttachments.end(),
+                            [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                                return (workingAttachment._shouldReceiveDataForSemantic == 0)
+                                    && (workingAttachment._state == PreregisteredAttachment::State::Uninitialized)
+                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                            });
+                    }
+
+                    if (compat == workingAttachments.end()) {
+                        // Couldn't find a buffer in the "uninitialized" state. We're just going to
+                        // find a initialized buffer and overwrite it's contents.
+                        // We need this flexibility because some fragments use "retain" on their
+                        // last read or write speculatively (maybe because they don't know whether the buffer
+                        // will actually be read from again, or they have been mistakenly marked as
+                        // retain)
+                        // (this relies on us sorting the attachment list so load operations are processed
+                        // first to work reliably)
+                        compat = std::find_if(
+                            workingAttachments.begin(), workingAttachments.end(),
+                            [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                                return (workingAttachment._shouldReceiveDataForSemantic == interfaceAttachment.GetOutputSemanticBinding() || workingAttachment._shouldReceiveDataForSemantic == 0)
+                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                            });
+                    }
 
                     if (compat == workingAttachments.end()) {
                         // Technically we could do a second pass looking for some initialized attachment
@@ -1120,16 +1203,19 @@ namespace RenderCore { namespace Techniques
                         // name, if necessary. We get these from a capture of the working attachments
                         // we made at the same of the fragment
                         auto desc = interfaceAttachment._desc;
-                        auto sameSemantic = std::find_if(
-                            defaultSemanticFormats.begin(), defaultSemanticFormats.end(),
-                            [&interfaceAttachment](const std::pair<uint64_t, AttachmentDesc>& input) {
-                                return (input.first == interfaceAttachment.GetOutputSemanticBinding());
-                            });
+                        auto sameSemantic = defaultSemanticFormats.find(interfaceAttachment.GetOutputSemanticBinding());
                         if (sameSemantic != defaultSemanticFormats.end()) {
                             if (desc._format == Format::Unknown) desc._format = sameSemantic->second._format;
                             if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->second._defaultAspect;
                         } else {
-                            assert(desc._format != Format::Unknown);
+                            if (desc._format == Format::Unknown) {
+                                debugInfo << "      * Could not resolve correct format for attachment: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
+                                for (const auto& att : workingAttachments)
+                                    debugInfo << att << std::endl;
+                                auto debugInfoStr = debugInfo.str();
+                                Log(Error) << "MergeFragments() failed. Details:" << std::endl << debugInfoStr << std::endl;
+                                Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request. Details:\n%s\n", debugInfoStr.c_str()));
+                            }
                         }
 
                         WorkingAttachment newState;
@@ -1138,7 +1224,7 @@ namespace RenderCore { namespace Techniques
                         newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                         newState._stencilState = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                         if (directionFlags & DirectionFlags::Store) {
-                            newState._outputSemanticBinding = interfaceAttachment.GetOutputSemanticBinding();
+                            newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                         }
                         newState._isPredefinedAttachment = false;
@@ -1151,15 +1237,19 @@ namespace RenderCore { namespace Techniques
                         #endif
                     } else {
                         reboundName = compat->_name;
+                        if (reboundName == ~0u)
+                            reboundName = NextName(MakeIteratorRange(workingAttachments), MakeIteratorRange(newWorkingAttachments));
 
                         // remove from the working attachments and push back in it's new state
                         auto newState = *compat;
                         newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        newState._stencilState = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                         if (directionFlags & DirectionFlags::Store) {
-                            newState._outputSemanticBinding = interfaceAttachment.GetOutputSemanticBinding();
+                            newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                         }
                         newState._isPredefinedAttachment = false;
+                        newState._name = reboundName;
                         workingAttachments.erase(compat);
                         newWorkingAttachments.push_back(newState);
                     }
@@ -1215,8 +1305,6 @@ namespace RenderCore { namespace Techniques
             workingAttachments.insert(workingAttachments.end(), newWorkingAttachments.begin(), newWorkingAttachments.end());
 
             #if defined(_DEBUG)
-                debugInfo << "-------------------------------" << std::endl;
-                debugInfo << "Fragment [" << std::distance(fragments.begin(), f) << "] " << *f;
                 debugInfo << "Merge calculated this attachment remapping:" << std::endl;
                 for (const auto&r:attachmentRemapping)
                     debugInfo << StreamIndent(4) << "[" << r.first << "] remapped to " << r.second << " ("
@@ -1233,6 +1321,7 @@ namespace RenderCore { namespace Techniques
         result._attachments.reserve(workingAttachments.size());
         std::sort(workingAttachments.begin(), workingAttachments.end(), CompareAttachmentName);
         for (auto& a:workingAttachments) {
+            if (a._name == ~0u) continue;
             // The AttachmentNames in FrameBufferDescFragment are just indices into the attachment
             // list -- so we must ensure that we insert in order, and without gaps
             assert(a._name == result._attachments.size());
