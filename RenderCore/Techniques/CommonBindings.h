@@ -49,8 +49,8 @@ namespace RenderCore { namespace Techniques
         const uint64_t GBufferNormal    = ConstHash64<'GBuf', 'ferN', 'orma', 'ls'>::Value;
         const uint64_t GBufferParameter = ConstHash64<'GBuf', 'ferP', 'aram', 'eter'>::Value;
 
-        const uint64_t ColorLDR         = ConstHash64<'ldrc', 'olor'>::Value;
-        const uint64_t ColorHDR         = ConstHash64<'hdrc', 'olor'>::Value;
+        const uint64_t ColorLDR         = ConstHash64<'post', 'resc', 'olor'>::Value;
+        const uint64_t ColorHDR         = ConstHash64<'prer', 'esco', 'lor'>::Value;
         const uint64_t Depth            = ConstHash64<'dept', 'h'>::Value;
 
         const uint64_t ShadowDepthMap    = ConstHash64<'shad', 'owdm'>::Value;
