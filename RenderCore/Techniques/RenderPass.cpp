@@ -781,14 +781,13 @@ namespace RenderCore { namespace Techniques
             std::move(fragment._subpasses) };
     }
 
-    static bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request)
+    static bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions)
     {
         return
             ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && GetArrayCount(testAttachment) == GetArrayCount(request)
             && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
-			&& testAttachment._width == request._width && testAttachment._height == request._height
-            && testAttachment._dimsMode == request._dimsMode
+			&& DimsEqual(testAttachment, request, FrameBufferProperties{dimensions[0], dimensions[1]})
             && (testAttachment._flags & request._flags) == request._flags
             ;
     }
@@ -954,7 +953,8 @@ namespace RenderCore { namespace Techniques
 
     MergeFragmentsResult MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
-        IteratorRange<const FrameBufferDescFragment*> fragments)
+        IteratorRange<const FrameBufferDescFragment*> fragments,
+		UInt2 dimensionsForCompatibilityTests)
     {
         #if defined(_DEBUG)
             std::stringstream debugInfo;
@@ -1085,17 +1085,17 @@ namespace RenderCore { namespace Techniques
                     // something matching in our working attachments array
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                        [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
                             return (workingAttachment._state == PreregisteredAttachment::State::Initialized)
                                 && (workingAttachment._containsDataForSemantic == interfaceAttachment.GetInputSemanticBinding())
-                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
                         });
                     if (compat == workingAttachments.end()) {
                         #if defined(_DEBUG)
                             auto uninitializedCheck = std::find_if(
                                 workingAttachments.begin(), workingAttachments.end(),
-                                [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
-                                    return IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                                [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
+                                    return IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
                                 });
                             debugInfo << "      * Failed to find compatible initialized buffer for request: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
                             if (uninitializedCheck != workingAttachments.end())
@@ -1137,10 +1137,10 @@ namespace RenderCore { namespace Techniques
                     // is initialized if we have to
                     auto compat = std::find_if(
                         workingAttachments.begin(), workingAttachments.end(),
-                        [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                        [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
                             return (workingAttachment._shouldReceiveDataForSemantic == interfaceAttachment.GetOutputSemanticBinding())
                                 && (workingAttachment._state == PreregisteredAttachment::State::Uninitialized)
-                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                                && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
                         });
 
                     if (compat == workingAttachments.end() && interfaceAttachment.GetOutputSemanticBinding()) {
@@ -1148,14 +1148,14 @@ namespace RenderCore { namespace Techniques
                         // give it
                         compat = std::find_if(
                             workingAttachments.begin(), workingAttachments.end(),
-                            [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                            [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
                                 return (workingAttachment._shouldReceiveDataForSemantic == 0)
                                     && (workingAttachment._state == PreregisteredAttachment::State::Uninitialized)
-                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
                             });
                     }
 
-                    if (compat == workingAttachments.end()) {
+                    if (compat == workingAttachments.end() && interfaceAttachment._desc._format != Format::Unknown) {
                         // Couldn't find a buffer in the "uninitialized" state. We're just going to
                         // find a initialized buffer and overwrite it's contents.
                         // We need this flexibility because some fragments use "retain" on their
@@ -1164,11 +1164,13 @@ namespace RenderCore { namespace Techniques
                         // retain)
                         // (this relies on us sorting the attachment list so load operations are processed
                         // first to work reliably)
+						// Also, we shouldn't do this when the request format is "unknown" -- because then we
+						// can match against almost anything
                         compat = std::find_if(
                             workingAttachments.begin(), workingAttachments.end(),
-                            [&interfaceAttachment](const WorkingAttachment& workingAttachment) {
+                            [&interfaceAttachment, dimensionsForCompatibilityTests](const WorkingAttachment& workingAttachment) {
                                 return (workingAttachment._shouldReceiveDataForSemantic == interfaceAttachment.GetOutputSemanticBinding() || workingAttachment._shouldReceiveDataForSemantic == 0)
-                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc);
+                                    && IsCompatible(workingAttachment._desc, interfaceAttachment._desc, dimensionsForCompatibilityTests);
                             });
                     }
 
