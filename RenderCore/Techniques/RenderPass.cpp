@@ -806,7 +806,7 @@ namespace RenderCore { namespace Techniques
             ;
     }
 
-    static DirectionFlags::BitField GetLoadDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
+    static DirectionFlags::BitField GetDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
     {
         DirectionFlags::BitField result = 0;
         for (const auto&a:p._output)
@@ -814,34 +814,19 @@ namespace RenderCore { namespace Techniques
                 result |= DirectionFlags::Reference;
                 if (HasRetain(a._loadFromPreviousPhase))
                     result |= DirectionFlags::Load;
-            }
-        if (p._depthStencil._resourceName == attachment) {
-            result |= DirectionFlags::Reference;
-            if (HasRetain(p._depthStencil._loadFromPreviousPhase))
-                result |= DirectionFlags::Load;
-        }
-        for (const auto&a:p._input)
-            if (a._resourceName == attachment)
-                result |= DirectionFlags::Reference | DirectionFlags::Load;
-        return result;
-    }
-
-    static DirectionFlags::BitField GetStoreDirectionFlags(const SubpassDesc& p, AttachmentName attachment)
-    {
-        DirectionFlags::BitField result = 0;
-        for (const auto&a:p._output)
-            if (a._resourceName == attachment) {
-                result |= DirectionFlags::Reference;
                 if (HasRetain(a._storeToNextPhase))
                     result |= DirectionFlags::Store;
             }
         if (p._depthStencil._resourceName == attachment) {
             result |= DirectionFlags::Reference;
+            if (HasRetain(p._depthStencil._loadFromPreviousPhase))
+                result |= DirectionFlags::Load;
             if (HasRetain(p._depthStencil._storeToNextPhase))
                 result |= DirectionFlags::Store;
         }
         for (const auto&a:p._input)
             if (a._resourceName == attachment) {
+                result |= DirectionFlags::Reference | DirectionFlags::Load;
                 if (HasRetain(a._storeToNextPhase))
                     result |= DirectionFlags::RetainAfterLoad;
             }
@@ -1041,28 +1026,17 @@ namespace RenderCore { namespace Techniques
             for (auto interf = f->_attachments.begin(); interf != f->_attachments.end(); ++interf) {
                 AttachmentName interfaceAttachmentName = (AttachmentName)std::distance(f->_attachments.begin(), interf);
 
-                DirectionFlags::BitField directionFlags = 0;
+                DirectionFlags::BitField firstUseDirection = 0;
                 // Look through the load/store values in the subpasses to find the "direction" for
-                // this attachment. When deciding on the load flags, we must look for the first
-                // subpass that references the attachment; for the store flags we look for the last
-                // subpass that writes to it
+                // the first use of this attachment;
                 for (auto p = f->_subpasses.begin(); p != f->_subpasses.end(); ++p) {
-                    auto subpassDirectionFlags = GetLoadDirectionFlags(*p, interfaceAttachmentName);
-                    if (subpassDirectionFlags != 0) {
-                        directionFlags |= subpassDirectionFlags;
+                    firstUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
+                    if (firstUseDirection)
                         break;
-                    }
                 }
-                for (auto p = f->_subpasses.rbegin(); p != f->_subpasses.rend(); ++p) {
-                    auto subpassDirectionFlags = GetStoreDirectionFlags(*p, interfaceAttachmentName);
-                    if (subpassDirectionFlags != 0) {
-                        directionFlags |= subpassDirectionFlags;
-                        break;
-                    }
-                }
-                assert(directionFlags != 0);
+                assert(firstUseDirection != 0);
 
-                sortedInterfaceAttachments.push_back({interfaceAttachmentName, directionFlags});
+                sortedInterfaceAttachments.push_back({interfaceAttachmentName, firstUseDirection});
             }
 
             // sort so the attachment with "load" direction are handled first
@@ -1076,14 +1050,21 @@ namespace RenderCore { namespace Techniques
                 const auto& interfaceAttachment = f->_attachments[pair.first];
                 AttachmentName reboundName = ~0u;
                 AttachmentName interfaceAttachmentName = pair.first;
-                DirectionFlags::BitField directionFlags = pair.second;
+                DirectionFlags::BitField firstUseDirection = pair.second;
 
                 // toggle on the "ShaderResource" flag, if necessary
                 /*if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
                     interfaceAttachment._desc._flags |= AttachmentDesc::Flags::Enum::ShaderResource;
                 }*/
 
-                if (directionFlags & DirectionFlags::Load) {
+                DirectionFlags::BitField lastUseDirection = 0;
+                for (auto p = f->_subpasses.rbegin(); p != f->_subpasses.rend(); ++p) {
+                    lastUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
+                    if (lastUseDirection)
+                        break;
+                }
+
+                if (firstUseDirection & DirectionFlags::Load) {
                     // We're expecting a buffer that already has some initialized contents. Look for
                     // something matching in our working attachments array
                     auto compat = std::find_if(
@@ -1121,14 +1102,14 @@ namespace RenderCore { namespace Techniques
                     // Remove from the working attachments and push back in it's new state
                     // If we're not writing to this attachment, it will lose it's semantic here
                     auto newState = *compat;
-                    newState._state = (directionFlags & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                    newState._stencilState = (directionFlags & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                    newState._state = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                    newState._stencilState = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
 
                     newState._shouldReceiveDataForSemantic = compat->_shouldReceiveDataForSemantic;
-                    newState._containsDataForSemantic = (directionFlags & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? interfaceAttachment.GetOutputSemanticBinding() : 0;
+                    newState._containsDataForSemantic = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? interfaceAttachment.GetOutputSemanticBinding() : 0;
                     if (!newState._firstReadSemantic && compat->_isPredefinedAttachment)    // (we only really care about first read for predefined attachments)
                         newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
-                    if (directionFlags & DirectionFlags::Store)
+                    if (lastUseDirection & DirectionFlags::Store)
                         newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                     newState._isPredefinedAttachment = false;
                     newState._name = reboundName;
@@ -1204,9 +1185,9 @@ namespace RenderCore { namespace Techniques
                         WorkingAttachment newState;
                         newState._name = reboundName;
                         newState._desc = desc;
-                        newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        newState._stencilState = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        if (directionFlags & DirectionFlags::Store) {
+                        newState._state = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        newState._stencilState = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        if (lastUseDirection & DirectionFlags::Store) {
                             newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                         }
@@ -1225,9 +1206,9 @@ namespace RenderCore { namespace Techniques
 
                         // remove from the working attachments and push back in it's new state
                         auto newState = *compat;
-                        newState._state = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        newState._stencilState = (directionFlags & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
-                        if (directionFlags & DirectionFlags::Store) {
+                        newState._state = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        newState._stencilState = (lastUseDirection & DirectionFlags::Store) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
+                        if (lastUseDirection & DirectionFlags::Store) {
                             newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
                         }
