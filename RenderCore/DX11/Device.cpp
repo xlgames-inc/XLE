@@ -425,6 +425,9 @@ namespace RenderCore { namespace ImplDX11
             }
         }
 
+		_lastBackBuffer.reset();
+		_lastBackBufferResource.reset();
+
         const auto backBufferCount = 2u;
         _underlying->ResizeBuffers(
             backBufferCount, newWidth, newHeight, 
@@ -466,6 +469,22 @@ namespace RenderCore { namespace ImplDX11
         }
     }
 
+	ResourcePtr PresentationChain::GetPresentationResource()
+	{
+		ID3D::Texture2D* backBuffer0Temp = nullptr;
+        HRESULT hresult = _underlying->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
+        intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
+        if (SUCCEEDED(hresult)) {
+			if (_lastBackBuffer != backBuffer0) {
+				_lastBackBuffer = std::move(backBuffer0);
+				_lastBackBufferResource = Metal_DX11::AsResourcePtr((ID3D::Resource*)_lastBackBuffer.get());
+			}
+            return _lastBackBufferResource;
+		}
+        
+        return nullptr;
+	}
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     render_dll_export std::shared_ptr<IDevice>    CreateDevice()
@@ -482,18 +501,7 @@ namespace RenderCore { namespace ImplDX11
         swapChain->AttachToContext(*_underlying, Metal_DX11::GetObjectFactory(*d->GetUnderlyingDevice()));
         IncrFrameId();
 
-        ID3D::Texture2D* backBuffer0Temp = nullptr;
-        HRESULT hresult = swapChain->GetUnderlying()->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
-        intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
-        if (SUCCEEDED(hresult)) {
-			if (_lastBackBuffer != backBuffer0) {
-				_lastBackBuffer = std::move(backBuffer0);
-				_lastBackBufferResource = Metal_DX11::AsResourcePtr((ID3D::Resource*)_lastBackBuffer.get());
-			}
-            return _lastBackBufferResource;
-		}
-        
-        return nullptr;
+		return swapChain->GetPresentationResource();
     }
 
     void            ThreadContext::Present(IPresentationChain& presentationChain)

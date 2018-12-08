@@ -31,7 +31,7 @@ namespace RenderCore { namespace Techniques
     class ParsingContext;
 }}
 
-namespace SceneEngine { class ISceneParser; class IntersectionTestScene; }
+namespace SceneEngine { class IntersectionTestScene; class IScene; }
 namespace RenderOverlays { class IOverlayContext; }
 namespace Utility { class OnChangeCallback; }
 
@@ -100,15 +100,10 @@ namespace ToolsRig
     class ModelVisLayer : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual std::shared_ptr<IInputListener> GetInputListener();
-
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext);
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parsingContext);
-        virtual void SetActivationState(bool newState);
+        virtual void Render(
+            RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) override;
 
         void SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings);
 
@@ -126,11 +121,9 @@ namespace ToolsRig
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();
 
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext); 
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& context, 
+        virtual void Render(
+            RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         virtual void SetActivationState(bool newState);
 
@@ -149,11 +142,9 @@ namespace ToolsRig
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();
 
-        virtual void RenderToScene(
+        virtual void Render(
             RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parserContext); 
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& context, 
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         virtual void SetActivationState(bool newState);
 
@@ -174,7 +165,7 @@ namespace ToolsRig
         OverlayFn _overlayFn;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
+    std::unique_ptr<SceneEngine::IScene> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
         std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<FixedFunctionModel::ModelCache> cache);
 }

@@ -35,9 +35,6 @@
     <ClCompile Include="..\UITypesBinding.cpp">
       <Filter>Vis</Filter>
     </ClCompile>
-    <ClCompile Include="..\TestControl.cpp">
-      <Filter>BasicControls</Filter>
-    </ClCompile>
     <ClCompile Include="..\ManipulatorsLayer.cpp">
       <Filter>LevelEditor</Filter>
     </ClCompile>
@@ -98,9 +95,6 @@
     </ClInclude>
     <ClInclude Include="..\UITypesBinding.h">
       <Filter>Vis</Filter>
-    </ClInclude>
-    <ClInclude Include="..\TestControl.h">
-      <Filter>BasicControls</Filter>
     </ClInclude>
     <ClInclude Include="..\IOverlaySystem.h">
       <Filter>BasicControls</Filter>

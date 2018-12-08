@@ -42,57 +42,8 @@
 
 using namespace System;
 
-unsigned FrameRenderCount = 0;
-
 namespace GUILayer 
 {
-    
-    static PlatformRig::FrameRig::RenderResult RenderFrame(
-        RenderCore::IThreadContext& context,
-        const RenderCore::ResourcePtr& presentationResource,
-        LayerControlPimpl& pimpl,
-        PlatformRig::IOverlaySystem* overlaySys)
-    {
-        using namespace SceneEngine;
-
-        RenderCore::Techniques::ParsingContext parserContext(*pimpl._globalTechniqueContext, pimpl._namedResources.get(), pimpl._frameBufferPool.get());
-
-        auto stateDesc = context.GetStateDesc();
-        pimpl._namedResources->Bind(RenderCore::FrameBufferProperties{
-            stateDesc._viewportDimensions[0], stateDesc._viewportDimensions[1], RenderCore::TextureSamples::Create()});
-        pimpl._namedResources->Bind(0u, presentationResource);
-
-        if (overlaySys) {
-            overlaySys->RenderToScene(context, parserContext);
-        }
-
-        {
-			RenderCore::SubpassDesc subpasses[] = {
-				RenderCore::SubpassDesc{{RenderCore::AttachmentViewDesc{0}}}
-            };
-			RenderCore::FrameBufferDesc fbDesc{MakeIteratorRange(subpasses)};
-			auto fb = pimpl._frameBufferPool->BuildFrameBuffer(fbDesc, *pimpl._namedResources);
-            RenderCore::Techniques::RenderPassInstance rpi(
-                context, fb, fbDesc,
-                *pimpl._namedResources);
-
-            ///////////////////////////////////////////////////////////////////////
-            bool hasPendingMessage = parserContext.HasPendingAssets() || parserContext.HasInvalidAssets() || parserContext.HasErrorString();
-            if (hasPendingMessage) {
-                auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-                DrawPendingResources(context, parserContext, defaultFont0);
-            }
-            ///////////////////////////////////////////////////////////////////////
-
-            if (overlaySys) {
-                overlaySys->RenderWidgets(context, parserContext);
-            }
-        }
-
-        pimpl._namedResources->Unbind(0u);
-        return PlatformRig::FrameRig::RenderResult(parserContext.HasPendingAssets());
-    }
-
     bool LayerControl::Render(RenderCore::IThreadContext& threadContext, IWindowRig& windowRig)
     {
             // Rare cases can recursively start rendering
@@ -115,12 +66,10 @@ namespace GUILayer
         TRY
         {
             auto& frameRig = windowRig.GetFrameRig();
+			RenderCore::Techniques::ParsingContext parserContext(*_pimpl->_globalTechniqueContext, _pimpl->_namedResources.get(), _pimpl->_frameBufferPool.get());
             auto frResult = frameRig.ExecuteFrame(
                 threadContext, windowRig.GetPresentationChain().get(), 
-                nullptr,
-                std::bind(
-                    RenderFrame, std::placeholders::_1, std::placeholders::_2,
-                    std::ref(*_pimpl), frameRig.GetMainOverlaySystem().get()));
+                parserContext, nullptr);
 
             // return false if when we have pending resources (encourage another redraw)
             result =  !frResult._renderResult._hasPendingResources;
@@ -139,13 +88,10 @@ namespace GUILayer
     public:
         std::shared_ptr<IInputListener> GetInputListener();
 
-        void RenderToScene(
-            RenderCore::IThreadContext& context, 
+        void Render(
+            RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext); 
-        void RenderWidgets(
-            RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parsingContext);
-        void SetActivationState(bool newState);
 
         InputLayer(std::shared_ptr<IInputListener> listener);
         ~InputLayer();
@@ -158,13 +104,10 @@ namespace GUILayer
         return _listener;
     }
 
-    void InputLayer::RenderToScene(
+    void InputLayer::Render(
         RenderCore::IThreadContext&,
+		const RenderCore::IResourcePtr&,
 		RenderCore::Techniques::ParsingContext&) {}
-    void InputLayer::RenderWidgets(
-        RenderCore::IThreadContext&, 
-        RenderCore::Techniques::ParsingContext&) {}
-    void InputLayer::SetActivationState(bool) {}
 
     InputLayer::InputLayer(std::shared_ptr<IInputListener> listener) : _listener(listener) {}
     InputLayer::~InputLayer() {}
@@ -286,18 +229,12 @@ namespace GUILayer
                 return nullptr;
             }
 
-            void RenderToScene(
-                RenderCore::IThreadContext& device, 
+            void Render(
+                RenderCore::IThreadContext& device,
+				const RenderCore::IResourcePtr& renderTarget,
                 RenderCore::Techniques::ParsingContext& parserContext)
             {
-                _managedOverlay->RenderToScene(device, parserContext);
-            }
-            
-            void RenderWidgets(
-                RenderCore::IThreadContext& device, 
-                RenderCore::Techniques::ParsingContext& parsingContext)
-            {
-                _managedOverlay->RenderWidgets(device, parsingContext);
+                _managedOverlay->Render(device, renderTarget, parserContext);
             }
 
             void SetActivationState(bool newState)

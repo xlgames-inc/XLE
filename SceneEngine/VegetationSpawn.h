@@ -120,6 +120,17 @@ namespace SceneEngine
         std::unique_ptr<Pimpl> _pimpl;
         friend class VegetationSpawnPlugin;
     };
+#else
+	class ILightingParserPlugin;
+	class VegetationSpawnManager
+    {
+	public:
+		const VegetationSpawnConfig& GetConfig() const;
+		std::shared_ptr<ILightingParserPlugin> GetParserPlugin() { return nullptr; }
+		VegetationSpawnManager(
+            std::shared_ptr<FixedFunctionModel::ModelCache> modelCache);
+        ~VegetationSpawnManager();
+	};
 #endif
 
 

@@ -19,6 +19,7 @@ namespace IterativeSystemDebugger
             _hasOldMouse = false;
             _system = system;
             _previewWindow.Underlying.AddSystem(_system.Overlay);
+            _previewWindow.Underlying.AddSystem(_system.WidgetsOverlay);
             _previewSettings.SelectedObject = _system.PreviewSettings;
 
             _schemaLoader = new CFDSettingsSchemaLoader(settingsName);

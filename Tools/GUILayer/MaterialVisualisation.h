@@ -61,13 +61,10 @@ namespace GUILayer
     public ref class MaterialVisLayer : public IOverlaySystem
     {
     public:
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& context, 
+        virtual void Render(
+            RenderCore::IThreadContext& context,
+			const std::shared_ptr<RenderCore::IResource>& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& projectionDesc) override;
-        virtual void SetActivationState(bool newState) override;
 
         void SetConfig(
             IEnumerable<RawMaterial^>^ config, 

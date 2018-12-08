@@ -66,15 +66,15 @@ namespace ToolsRig
     }
 
 
-    float VisSceneParser::GetTimeValue() const { return 0.f; }
+    float VisLightingParserDelegate::GetTimeValue() const { return 0.f; }
 
-    VisSceneParser::VisSceneParser(
+    VisLightingParserDelegate::VisLightingParserDelegate(
         const std::shared_ptr<VisEnvSettings>& envSettings)
     : _envSettings(envSettings)
     {}
-    VisSceneParser::~VisSceneParser() {}
+    VisLightingParserDelegate::~VisLightingParserDelegate() {}
 
-    const PlatformRig::EnvironmentSettings& VisSceneParser::GetEnvSettings() const { return _envSettings->_activeSetting; }
+    const PlatformRig::EnvironmentSettings& VisLightingParserDelegate::GetEnvSettings() const { return _envSettings->_activeSetting; }
 
     VisEnvSettings::VisEnvSettings()
     {

@@ -30,6 +30,7 @@ namespace RenderCore { namespace ImplDX11
         void                AttachToContext(Metal_DX11::DeviceContext& context, Metal_DX11::ObjectFactory& factory);
 
         const std::shared_ptr<PresentationChainDesc>& GetDesc() const;
+		ResourcePtr GetPresentationResource();
 
         PresentationChain(intrusive_ptr<IDXGI::SwapChain> underlying, const void* attachedWindow);
         ~PresentationChain();
@@ -38,6 +39,9 @@ namespace RenderCore { namespace ImplDX11
         const void*                             _attachedWindow;
         intrusive_ptr<ID3D::Texture2D>          _defaultDepthTarget;
         std::shared_ptr<PresentationChainDesc>  _desc;
+
+		intrusive_ptr<ID3D::Texture2D> _lastBackBuffer;
+		std::shared_ptr<RenderCore::IResource> _lastBackBufferResource;
     };
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -63,9 +67,6 @@ namespace RenderCore { namespace ImplDX11
         std::weak_ptr<Device>   _device;  // (must be weak, because Device holds a shared_ptr to the immediate context)
         unsigned                _frameId;
 		std::unique_ptr<IAnnotator> _annotator;
-
-		intrusive_ptr<ID3D::Texture2D> _lastBackBuffer;
-		std::shared_ptr<RenderCore::IResource> _lastBackBufferResource;
     };
 
     class ThreadContextDX11 : public ThreadContext, public IThreadContextDX11

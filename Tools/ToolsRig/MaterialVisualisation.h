@@ -12,8 +12,8 @@
 #include "../../Assets/AssetUtils.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; class ITechniqueDelegate; class IMaterialDelegate; } }
-namespace SceneEngine { class IScene; }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; class ITechniqueDelegate; class IMaterialDelegate; class CameraDesc; } }
+namespace SceneEngine { class IScene; class ILightingParserDelegate; }
 
 namespace ToolsRig
 {
@@ -51,14 +51,12 @@ namespace ToolsRig
 
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
-        const RenderCore::Techniques::TechniqueContext& techContext,
-		RenderCore::Techniques::AttachmentPool* attachmentPool,
-		RenderCore::Techniques::FrameBufferPool* frameBufferPool,
-		const std::shared_ptr<MaterialVisSettings>& visObject);
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		const std::shared_ptr<MaterialVisSettings>& visObject,
+		const std::shared_ptr<VisEnvSettings>& envSettings);
 
-	/*std::shared_ptr<SceneEngine::ISceneParser> CreateMaterialVisSceneParser(
-		const std::shared_ptr<MaterialVisSettings>& settings,
-        const std::shared_ptr<VisEnvSettings>& envSettings);*/
+	std::shared_ptr<SceneEngine::IScene> CreateScene(const std::shared_ptr<MaterialVisSettings>& visObject);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -68,28 +66,26 @@ namespace ToolsRig
     class MaterialVisLayer : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual std::shared_ptr<IInputListener> GetInputListener();
-
-        virtual void RenderToScene(
+        virtual void Render(
             RenderCore::IThreadContext& context, 
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& context, 
-            RenderCore::Techniques::ParsingContext& parsingContext);
-        virtual void SetActivationState(bool newState);
-
 		void SetLightingType(DrawPreviewLightingType newType);
 
         MaterialVisLayer(
-            std::shared_ptr<SceneEngine::ILightingParserDelegate> lightingParser);
+            const std::shared_ptr<SceneEngine::IScene>& scene,
+			const std::shared_ptr<SceneEngine::ILightingParserDelegate>& lightingParserDelegate,
+			const std::shared_ptr<VisCameraSettings>& camera);
         ~MaterialVisLayer();
 
-        bool Draw(
+        static bool Draw(
             RenderCore::IThreadContext& context,
 			const RenderCore::IResourcePtr& renderTarget,
 			RenderCore::Techniques::ParsingContext& parserContext,
             DrawPreviewLightingType lightingType,
-			SceneEngine::IScene& sceneParser);
+			SceneEngine::IScene& sceneParser,
+			SceneEngine::ILightingParserDelegate& lightingParserDelegate,
+			const RenderCore::Techniques::CameraDesc& cameraDesc);
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;

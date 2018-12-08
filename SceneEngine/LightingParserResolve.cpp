@@ -170,11 +170,11 @@ namespace SceneEngine
 
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(
 			MakeResourceList(
-				*rpi.GetSRV(0), // IMainTargets::GBufferDiffuse),
-				*rpi.GetSRV(1), // IMainTargets::GBufferNormals),
-				*rpi.GetSRV(2), // IMainTargets::GBufferParameters),
+				*rpi.GetInputAttachmentSRV(0), // IMainTargets::GBufferDiffuse),
+				*rpi.GetInputAttachmentSRV(1), // IMainTargets::GBufferNormals),
+				*rpi.GetInputAttachmentSRV(2), // IMainTargets::GBufferParameters),
 				Metal::ShaderResourceView(), 
-				*rpi.GetSRV(3))); // IMainTargets::MultisampledDepth, justDepthWindow)));
+				*rpi.GetInputAttachmentSRV(3, justDepthWindow))); // IMainTargets::MultisampledDepth, justDepthWindow)));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -251,40 +251,24 @@ namespace Sample
 		const RenderCore::IResourcePtr& renderTarget,
 		RenderCore::Techniques::ParsingContext& parsingContext)
 	{
-		auto& namedRes = parsingContext.GetNamedResources();
-        auto textureDesc = renderTarget->GetDesc()._textureDesc;
-        auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
-        namedRes.Bind(RenderCore::FrameBufferProperties{textureDesc._width, textureDesc._height, samples});
-        namedRes.Bind(0u, renderTarget);
-
-        using namespace SceneEngine;
-
             //  Execute the lighting parser!
             //      This is where most rendering actually happens.
-        LightingParserContext lightingParserContext;
+        SceneEngine::LightingParserContext lightingParserContext;
 		if (_scene) {
+			auto samples = RenderCore::TextureSamples::Create((uint8)Tweakable("SamplingCount", 1), (uint8)Tweakable("SamplingQuality", 0));
             lightingParserContext = LightingParser_ExecuteScene(
                 threadContext, renderTarget, parsingContext, *_scene, _lightingDelegate->GetCameraDesc(),
-                RenderSceneSettings{
-                    (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,
+                SceneEngine::RenderSceneSettings {
+                    (Tweakable("LightingModel", 0) == 0) ? SceneEngine::RenderSceneSettings::LightingModel::Deferred : SceneEngine::RenderSceneSettings::LightingModel::Forward,
 					_lightingDelegate.get(),
 					{},
-					samples._sampleCount, samples._samplingQuality});
+					samples._sampleCount, samples._samplingQuality } );
         }
 
 		{
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parsingContext);
-
-				//  If we need to, we can render outside of the lighting parser.
-				//  We just need to to use the device context to perform any rendering
-				//  operations here.
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parsingContext);
 			RenderPostScene(threadContext);
 			SceneEngine::LightingParser_Overlays(threadContext, parsingContext, lightingParserContext);
-
-				//  The lighting parser will tell us if there where any pending resources
-				//  during the render. Here, we can render them as a short list...
-			auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
-			SceneEngine::DrawPendingResources(threadContext, parsingContext, defaultFont0);
 		}
 	}
 

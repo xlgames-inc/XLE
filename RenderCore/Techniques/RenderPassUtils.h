@@ -4,7 +4,10 @@
 
 #pragma once
 
-namespace RenderCore { class IThreadContext; }
+#include <memory>
+
+namespace RenderCore { class IThreadContext; class IResource; }
+
 namespace RenderCore { namespace Techniques
 {
 	class RenderPassInstance;
@@ -12,5 +15,10 @@ namespace RenderCore { namespace Techniques
 
 	RenderPassInstance RenderPassToPresentationTarget(
 		IThreadContext& context,
+        ParsingContext& parserContext);
+
+	RenderPassInstance RenderPassToPresentationTarget(
+		IThreadContext& context,
+		const std::shared_ptr<RenderCore::IResource>& presentationTarget,
         ParsingContext& parserContext);
 }}

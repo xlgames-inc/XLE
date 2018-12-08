@@ -40,27 +40,29 @@ namespace GUILayer
     using namespace SceneEngine;
     using EnvironmentSettings = PlatformRig::EnvironmentSettings;
 
-    class EditorSceneParser : public PlatformRig::BasicSceneParser
+    class EditorSceneParser : public SceneEngine::IScene, public PlatformRig::BasicLightingParserDelegate
     {
     public:
         RenderCore::Techniques::CameraDesc GetCameraDesc() const { return AsCameraDesc(*_camera); }
 
         using DeviceContext = RenderCore::Metal::DeviceContext;
         using LightingParserContext = SceneEngine::LightingParserContext;
-        using SceneParseSettings =  SceneEngine::SceneParseSettings;
 
-        void ExecuteScene(  
+        void ExecuteScene(
             RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext,
             LightingParserContext& lightingParserContext, 
-            const SceneParseSettings& parseSettings,
+            RenderCore::Techniques::BatchFilter batchFilter,
             PreparedScene& preparedPackets,
             unsigned techniqueIndex) const;
         void PrepareScene(
             RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext,
             PreparedScene& preparedPackets) const;
-        bool HasContent(const SceneParseSettings& parseSettings) const;
+
+		virtual void ExecuteScene(
+            RenderCore::IThreadContext& threadContext,
+			SceneExecuteContext& executeContext) const;
 
         float GetTimeValue() const;
         void PrepareEnvironmentalSettings(const char envSettings[]);
@@ -91,17 +93,16 @@ namespace GUILayer
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		LightingParserContext& lightingParserContext, 
-        const SceneParseSettings& parseSettings,
+        RenderCore::Techniques::BatchFilter batchFilter,
         PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
         using BF = RenderCore::Techniques::BatchFilter;
-        auto batchFilter = parseSettings._batchFilter;
         auto& scene = *_editorScene;
 
         auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
-        if (parseSettings._toggles & SceneParseSettings::Toggles::Terrain && scene._terrainManager) {
+        if (1) { // parseSettings._toggles & SceneParseSettings::Toggles::Terrain && scene._terrainManager) {
             if (batchFilter == BF::General) {
                 CATCH_ASSETS_BEGIN
                     scene._terrainManager->Render(context, parserContext, this, preparedPackets, techniqueIndex);
@@ -109,7 +110,7 @@ namespace GUILayer
             }
         }
 
-        if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
+        if (1) { // parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
             auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
             CATCH_ASSETS_BEGIN
                 for (auto i:delaySteps)
@@ -130,14 +131,14 @@ namespace GUILayer
             CATCH_ASSETS_END(parserContext)
 
             CATCH_ASSETS_BEGIN
-                for (auto i:delaySteps)
-                    scene._vegetationSpawnManager->Render(context, parserContext, techniqueIndex, i);
+                //for (auto i:delaySteps)
+                //    scene._vegetationSpawnManager->Render(context, parserContext, techniqueIndex, i);
             CATCH_ASSETS_END(parserContext)
         
             if (batchFilter == BF::Transparent) {
                 CATCH_ASSETS_BEGIN
                     scene._placeholders->Render(metalContext, parserContext, techniqueIndex);
-                    scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene), GetGlobalLightingDesc());
+                    scene._shallowSurfaceManager->RenderDebugging(metalContext, parserContext, techniqueIndex, GetSurfaceHeights(scene), lightingParserContext._delegate->GetGlobalLightingDesc());
                 CATCH_ASSETS_END(parserContext)
             }
         }
@@ -155,6 +156,13 @@ namespace GUILayer
         }
     }
 
+	void EditorSceneParser::ExecuteScene(
+        RenderCore::IThreadContext& threadContext,
+		SceneExecuteContext& executeContext) const
+	{
+		assert(0);	// unimplemented
+	}
+
     void EditorSceneParser::RenderShadowForHiddenPlacements(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext) const
@@ -164,28 +172,6 @@ namespace GUILayer
             *_editorScene->_placementsManager->GetRenderer(), 
             *_editorScene->_placementsCellsHidden,
             nullptr, nullptr);
-    }
-
-    bool EditorSceneParser::HasContent(const SceneParseSettings& parseSettings) const
-    {
-        using BF = RenderCore::Techniques::BatchFilter;
-        auto batchFilter = parseSettings._batchFilter;
-        if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
-            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                
-                    // always something in "transparent"
-                if (batchFilter == BF::Transparent) return true;
-
-                auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
-                for (auto i:delaySteps)
-                    if (    _editorScene->_placementsManager->GetRenderer()->HasPrepared(i)
-                        ||  _editorScene->_vegetationSpawnManager->HasContent(i))
-                        return true;
-            }
-            return false;
-        }
-     
-        return true;
     }
 
     float EditorSceneParser::GetTimeValue() const { return _editorScene->_currentTime; }
@@ -222,7 +208,9 @@ namespace GUILayer
 	std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> EditorSceneParser::GetLightingPlugins()
     {
 		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> result;
-        result.push_back(_editorScene->_vegetationSpawnManager->GetParserPlugin());
+		auto vegetationPlugin = _editorScene->_vegetationSpawnManager->GetParserPlugin();
+		if (vegetationPlugin)
+			result.push_back(vegetationPlugin);
         result.push_back(_editorScene->_volumeFogManager->GetParserPlugin());
 		return result;
     }
@@ -242,13 +230,10 @@ namespace GUILayer
     public ref class EditorSceneOverlay : public IOverlaySystem
     {
     public:
-        void RenderToScene(
-            RenderCore::IThreadContext& threadContext, 
+        void Render(
+            RenderCore::IThreadContext& threadContext,
+			const std::shared_ptr<RenderCore::IResource>& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parsingContext) override;
-        void SetActivationState(bool newState) override;
 
         EditorSceneOverlay(
             std::shared_ptr<EditorSceneParser> sceneParser,
@@ -265,8 +250,9 @@ namespace GUILayer
         clix::shared_ptr<SceneEngine::PlacementsRenderer> _placementsRenderer;
     };
     
-    void EditorSceneOverlay::RenderToScene(
-        RenderCore::IThreadContext& threadContext, 
+    void EditorSceneOverlay::Render(
+        RenderCore::IThreadContext& threadContext,
+		const std::shared_ptr<RenderCore::IResource>& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (_sceneParser.get()) {
@@ -275,10 +261,10 @@ namespace GUILayer
 
 			auto lightingPlugins = _sceneParser->GetLightingPlugins();
 			auto qualSettings = SceneEngine::RenderSceneSettings{
-				UInt2(threadContext.GetStateDesc()._viewportDimensions[0], threadContext.GetStateDesc()._viewportDimensions[1]),
 				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
 					? RenderSceneSettings::LightingModel::Deferred 
 					: RenderSceneSettings::LightingModel::Forward,
+				_sceneParser.get(),
 				MakeIteratorRange(lightingPlugins)};
 
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
@@ -291,7 +277,7 @@ namespace GUILayer
             }
             
             SceneEngine::LightingParser_ExecuteScene(
-                threadContext, parserContext, *_sceneParser.get(), 
+                threadContext, renderTarget, parserContext, *_sceneParser.get(), 
                 _sceneParser->GetCameraDesc(), qualSettings);
         }
 
@@ -313,13 +299,6 @@ namespace GUILayer
                 *_placementsRenderer.get(), *_placementCellsHidden.get());
         }
     }
-
-    void EditorSceneOverlay::RenderWidgets(
-        RenderCore::IThreadContext&, 
-        RenderCore::Techniques::ParsingContext&)
-    {}
-
-    void EditorSceneOverlay::SetActivationState(bool) {}
 
     EditorSceneOverlay::EditorSceneOverlay(
         std::shared_ptr<EditorSceneParser> sceneParser,

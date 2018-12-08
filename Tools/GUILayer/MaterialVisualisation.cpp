@@ -33,8 +33,9 @@ namespace GUILayer
         }
     }
 
-    void MaterialVisLayer::RenderToScene(
-        RenderCore::IThreadContext& context, 
+    void MaterialVisLayer::Render(
+        RenderCore::IThreadContext& context,
+		const std::shared_ptr<RenderCore::IResource>& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
 		if (_nativeVisSettingsDirty) {
@@ -53,16 +54,15 @@ namespace GUILayer
 			visObject._previewMaterialBinding = _materialBinding;
 		}
 
-		auto sceneParser = ToolsRig::CreateMaterialVisSceneParser(_settings->GetUnderlyingPtr(), _envSettings.GetNativePtr());
-        ToolsRig::MaterialVisLayer::Draw(context, parserContext, AsNative(_settings->Lighting), *sceneParser);
+		auto scene = ToolsRig::CreateScene(_settings->GetUnderlyingPtr());
+		ToolsRig::VisLightingParserDelegate lightingParserDelegate(_envSettings.GetNativePtr());
+
+        ToolsRig::MaterialVisLayer::Draw(
+			context, renderTarget, parserContext, 
+			AsNative(_settings->Lighting), 
+			*scene, lightingParserDelegate,
+			AsCameraDesc(*_settings->Camera->GetUnderlying()));
     }
-
-    void MaterialVisLayer::RenderWidgets(
-        RenderCore::IThreadContext& device, 
-        RenderCore::Techniques::ParsingContext&)
-    {}
-
-    void MaterialVisLayer::SetActivationState(bool newState) {}
 
     void MaterialVisLayer::ChangeHandler(System::Object^ sender, System::EventArgs^ args)
     {

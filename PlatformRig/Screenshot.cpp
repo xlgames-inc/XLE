@@ -431,7 +431,7 @@ namespace PlatformRig
     void TiledScreenshot(
         RenderCore::IThreadContext& context,
         RenderCore::Techniques::ParsingContext& parserContext,
-        SceneEngine::ISceneParser& sceneParser,
+        SceneEngine::IScene& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
         const SceneEngine::RenderSceneSettings& qualitySettings,
         UInt2 sampleCount) {}

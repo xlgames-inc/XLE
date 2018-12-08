@@ -63,7 +63,7 @@ namespace SceneEngine
 	{
 		GPUAnnotation anno(threadContext, "Resolve-MSAA-HDR");
 
-		auto* postLightingResolveInput = rpi.GetSRV(0);
+		auto* postLightingResolveInput = rpi.GetInputAttachmentSRV(0);
 		assert(postLightingResolveInput);
 
 #if 0   // platformtemp
@@ -98,7 +98,7 @@ namespace SceneEngine
         if (toneMapSettings._flags & ToneMapSettings::Flags::EnableToneMap) {
                 //  (must resolve luminance early, because we use it during the MSAA resolve)
             luminanceResult = ToneMap_SampleLuminance(
-                threadContext, parsingContext, toneMapSettings, 
+                threadContext, parsingContext, toneMapSettings,
 				*postLightingResolveInput);
         }
 

@@ -89,10 +89,7 @@ namespace ToolsRig
     class MaterialVisualizationScene : public SceneEngine::IScene
     {
     public:
-		virtual void PrepareScene(
-            RenderCore::IThreadContext& context, 
-			RenderCore::Techniques::ParsingContext& parserContext,
-            SceneEngine::PreparedScene& preparedPackets) const
+		void PrepareScene() const
 		{
 			// if we need to reset the camera, do so now...
 			if (_settings->_pendingCameraAlignToModel) {
@@ -181,6 +178,19 @@ namespace ToolsRig
             }
         }
 
+		virtual void ExecuteScene(
+            RenderCore::IThreadContext& threadContext,
+			SceneEngine::SceneExecuteContext& executeContext) const
+		{
+			for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
+				RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+				for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
+					pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
+
+				Draw(threadContext, executeContext, MakeIteratorRange(pkts));
+			}
+		}
+
         void DrawModel(IteratorRange<Techniques::DrawablesPacket** const> pkts) const;
 
         MaterialVisualizationScene(
@@ -227,6 +237,15 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class MaterialVisLayer::Pimpl
+    {
+    public:
+		std::shared_ptr<SceneEngine::IScene> _scene;
+		std::shared_ptr<SceneEngine::ILightingParserDelegate> _lightingParserDelegate;
+		std::shared_ptr<VisCameraSettings>_camera;
+		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::Deferred;
+    };
+
     VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box);
 
 	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(DrawPreviewLightingType lightingType)
@@ -247,17 +266,18 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
         DrawPreviewLightingType lightingType,
-		SceneEngine::IScene& sceneParser)
+		SceneEngine::IScene& sceneParser,
+		SceneEngine::ILightingParserDelegate& lightingParserDelegate,
+		const RenderCore::Techniques::CameraDesc& cameraDesc)
     {
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 		};
         SceneEngine::RenderSceneSettings qualSettings{
 			AsLightingModel(lightingType),
-			_pimpl->_lightingParser.get(),
+			&lightingParserDelegate,
 			MakeIteratorRange(lightingPlugins)};
 
-		RenderCore::Techniques::CameraDesc cameraDesc;
         SceneEngine::LightingParser_ExecuteScene(
             context, renderTarget, parserContext,
             sceneParser, cameraDesc, qualSettings);
@@ -267,29 +287,16 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MaterialVisLayer::Pimpl
-    {
-    public:
-		std::shared_ptr<SceneEngine::ILightingParserDelegate> _lightingParser;
-		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::NoLightingParser;
-    };
-
-    auto MaterialVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
-        { return nullptr; }
-
-    void MaterialVisLayer::RenderToScene(
-        IThreadContext& context, 
+    void MaterialVisLayer::Render(
+        IThreadContext& context,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        Draw(context, parserContext, _pimpl->_lightingType, *_pimpl->_lightingParser);
+        Draw(context, renderTarget, parserContext, 
+			_pimpl->_lightingType, 
+			*_pimpl->_scene, *_pimpl->_lightingParserDelegate,
+			AsCameraDesc(*_pimpl->_camera));
     }
-
-    void MaterialVisLayer::RenderWidgets(
-        IThreadContext& context, 
-        Techniques::ParsingContext& parsingContext)
-    {}
-
-    void MaterialVisLayer::SetActivationState(bool) {}
 
 	void MaterialVisLayer::SetLightingType(DrawPreviewLightingType newType)
 	{
@@ -297,10 +304,14 @@ namespace ToolsRig
 	}
 
     MaterialVisLayer::MaterialVisLayer(
-		std::shared_ptr<SceneEngine::ILightingParserDelegate> lightingParser)
+		const std::shared_ptr<SceneEngine::IScene>& scene,
+		const std::shared_ptr<SceneEngine::ILightingParserDelegate>& lightingParserDelegate,
+		const std::shared_ptr<VisCameraSettings>& camera)
     {
         _pimpl = std::make_unique<Pimpl>();
-		_pimpl->_lightingParser = lightingParser;
+		_pimpl->_scene = scene;
+		_pimpl->_lightingParserDelegate = lightingParserDelegate;
+		_pimpl->_camera = camera;
     }
 
     MaterialVisLayer::~MaterialVisLayer()
@@ -308,13 +319,21 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	std::shared_ptr<SceneEngine::IScene> CreateScene(const std::shared_ptr<MaterialVisSettings>& visObject)
+	{
+		auto result = std::make_shared<MaterialVisualizationScene>(visObject);
+		result->PrepareScene();
+		return result;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
-        const RenderCore::Techniques::TechniqueContext& techContext,
-		RenderCore::Techniques::AttachmentPool* attachmentPool,
-		RenderCore::Techniques::FrameBufferPool* frameBufferPool,
-		const std::shared_ptr<MaterialVisSettings>& visObject)
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		const std::shared_ptr<MaterialVisSettings>& visObject,
+		const std::shared_ptr<VisEnvSettings>& envSettings)
     {
         using namespace ToolsRig;
 
@@ -330,12 +349,16 @@ namespace ToolsRig
                     model->Actualize()->GetStaticBoundingBox());
             }
 
-			auto sceneParser = CreateMaterialVisSceneParser(visObject, std::make_shared<VisEnvSettings>());
+			MaterialVisualizationScene scene(visObject);
+			VisLightingParserDelegate lightingParserDelegate(envSettings);
 
-            RenderCore::Techniques::ParsingContext parserContext(techContext, attachmentPool, frameBufferPool);
+			scene.PrepareScene();
+
             bool result = ToolsRig::MaterialVisLayer::Draw(
-                context, parserContext, 
-                DrawPreviewLightingType::NoLightingParser, *sceneParser);
+                context, renderTarget, parserContext, 
+                DrawPreviewLightingType::Deferred, 
+				scene, lightingParserDelegate,
+				AsCameraDesc(*visObject->_camera));
             if (parserContext.HasInvalidAssets())
 				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
 			if (parserContext.HasErrorString())

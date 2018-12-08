@@ -27,6 +27,7 @@
 #include "../RenderCore/IThreadContext.h"
 #include "../RenderCore/IAnnotator.h"
 #include "../RenderCore/IDevice.h"
+#include "../RenderOverlays/Font.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
@@ -132,12 +133,10 @@ namespace SceneEngine
 							{}, MakeIteratorRange(&interf, &interf+1));
 
 						Techniques::AttachmentPool shadowsAttachmentPool;
-						auto fbDesc = Techniques::BuildFrameBufferDesc(shadowsAttachmentPool, std::move(merged.first));
-						auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
-							Metal::GetObjectFactory(), fbDesc, shadowsAttachmentPool);
+						auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 
-						Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, shadowsAttachmentPool);
-						Techniques::RenderPassFragment rpf(rpi, merged.second[0], shadowsAttachmentPool);
+						Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), shadowsAttachmentPool);
+						Techniques::RenderPassFragment rpf(rpi, merged._remapping[0]);
 						Metal::DeviceContext::Get(threadContext)->Bind(
 							Metal::ViewportDesc(0.f, 0.f, float(shadowDelegate._shadowProj._width), float(shadowDelegate._shadowProj._height)));
 
@@ -164,38 +163,37 @@ namespace SceneEngine
 		for (unsigned c=0; c<dimof(renderSteps); ++c)
 			fragments[c] = renderSteps[c]->GetInterface();
 		
-		parsingContext.GetNamedResources().Bind(0, renderTarget);
-		auto renderTargetDesc = *parsingContext.GetNamedResources().GetDesc(0);
-		renderTargetDesc._dimsMode = AttachmentDesc::DimensionsMode::OutputRelative;
-		renderTargetDesc._width = renderTargetDesc._height = 1.0f;
+		parsingContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
+		parsingContext.GetNamedResources().Bind(
+			RenderCore::FrameBufferProperties{
+				targetTextureDesc._width, targetTextureDesc._height, 
+				TextureSamples::Create((uint8_t)renderSettings._samplingCount, (uint8_t)renderSettings._samplingQuality)});
+
 		Techniques::PreregisteredAttachment preregistered[] = {
 			Techniques::PreregisteredAttachment {
-				0, Techniques::AttachmentSemantics::ColorLDR, 
-				renderTargetDesc,
-				Techniques::PreregisteredAttachment::State::Uninitialized
+				Techniques::AttachmentSemantics::ColorLDR,
+				AsAttachmentDesc(renderTarget->GetDesc())
 			}
 		};
 		
 		auto merged = Techniques::MergeFragments(
 			MakeIteratorRange(preregistered),
-			MakeIteratorRange(fragments));
+			MakeIteratorRange(fragments),
+			UInt2(targetTextureDesc._width, targetTextureDesc._height));
 
 		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
 		lightingParserContext._mainTargets._samplingCount = 1;
-		for (unsigned c=0; c<merged.first._attachments.size(); ++c)
-			lightingParserContext._mainTargets._namedTargetsMapping.push_back({merged.first._attachments[c].second._semantic, merged.first._attachments[c].first});
+		for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c)
+			lightingParserContext._mainTargets._namedTargetsMapping.push_back({merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), c});
 
-		auto fbDesc = Techniques::BuildFrameBufferDesc(parsingContext.GetNamedResources(), std::move(merged.first));
-		auto fb = parsingContext.GetFrameBufferPool().BuildFrameBuffer(
-			Metal::GetObjectFactory(), fbDesc, parsingContext.GetNamedResources());
-
-		Techniques::RenderPassInstance rpi(threadContext, fb, fbDesc, parsingContext.GetNamedResources());
+		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
+		Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources());
 		metalContext.Bind(
 			Metal::ViewportDesc(0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)));
 
 		for (unsigned c=0; c<dimof(renderSteps); ++c) {
 			CATCH_ASSETS_BEGIN
-				Techniques::RenderPassFragment rpf(rpi, merged.second[c], parsingContext.GetNamedResources());
+				Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
 				IViewDelegate* viewDelegate = nullptr;
 				if (c==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
 				renderSteps[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
@@ -299,6 +297,9 @@ namespace SceneEngine
         auto& refractionBox = ConsoleRig::FindCachedBox2<RefractionsBuffer>(unsigned(mainViewportDesc.Width/2), unsigned(mainViewportDesc.Height/2));
         refractionBox.Build(*metalContext, parsingContext, 4.f);
         MetalStubs::GetGlobalNumericUniforms(*metalContext, ShaderStage::Pixel).Bind(MakeResourceList(12, refractionBox.GetSRV()));
+
+		auto defaultFont0 = RenderOverlays::GetX2Font("Raleway", 16);
+		SceneEngine::DrawPendingResources(context, parsingContext, defaultFont0);
 
         for (auto i=parsingContext._pendingOverlays.cbegin(); i!=parsingContext._pendingOverlays.cend(); ++i) {
             CATCH_ASSETS_BEGIN

@@ -75,6 +75,7 @@ namespace GUILayer
     public:
         property Object^ PreviewSettings { Object^ get(); }
         property IOverlaySystem^ Overlay { IOverlaySystem^ get(); }
+		property IOverlaySystem^ WidgetsOverlay { IOverlaySystem^ get(); }
         property IGetAndSetProperties^ SimulationSettings { IGetAndSetProperties^ get(); }
 
         virtual void Tick();
@@ -91,6 +92,7 @@ namespace GUILayer
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return nullptr; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
@@ -114,6 +116,7 @@ namespace GUILayer
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return nullptr; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
@@ -137,6 +140,7 @@ namespace GUILayer
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return nullptr; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
@@ -156,11 +160,13 @@ namespace GUILayer
     {
     public:
         IOverlaySystem^ _overlay;
+		IOverlaySystem^ _widgetsOverlay;
         IGetAndSetProperties^ _getAndSetProperties;
         CFDPreviewSettings^ _settings;
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return _widgetsOverlay; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();

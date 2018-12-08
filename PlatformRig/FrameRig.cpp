@@ -151,7 +151,7 @@ namespace PlatformRig
         {
 			auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
 			auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
-			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parserContext);
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 			_debugScreensSystem->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ { 0,0 },{ int(viewportDims[0]), int(viewportDims[1]) } });
         }
 
@@ -231,6 +231,8 @@ namespace PlatformRig
                 }
             }
         }
+
+		parserContext.GetNamedResources().Unbind(*presentationTarget);
 
         {
             CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);

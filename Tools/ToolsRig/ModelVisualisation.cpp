@@ -16,6 +16,7 @@
 #include "../../SceneEngine/PreparedScene.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
@@ -97,18 +98,18 @@ namespace ToolsRig
         }
     }
     
-    class ModelSceneParser : public VisSceneParser
+    class ModelSceneParser : public SceneEngine::IScene
     {
     public:
         void ExecuteScene(  
             RenderCore::IThreadContext& context,
 			RenderCore::Techniques::ParsingContext& parserContext,
             SceneEngine::LightingParserContext& lightingParserContext, 
-            const SceneEngine::SceneParseSettings& parseSettings,
+            RenderCore::Techniques::BatchFilter batchFilter,
             SceneEngine::PreparedScene& preparedPackets,
             unsigned techniqueIndex) const 
         {
-            auto delaySteps = SceneEngine::AsDelaySteps(parseSettings._batchFilter);
+            auto delaySteps = SceneEngine::AsDelaySteps(batchFilter);
             if (delaySteps.empty()) return;
 
             auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
@@ -186,23 +187,18 @@ namespace ToolsRig
             }
         }
 
-        bool HasContent(const SceneEngine::SceneParseSettings& parseSettings) const
-        {
-            auto delaySteps = AsDelaySteps(parseSettings._batchFilter);
-            if (delaySteps.empty()) return false;
-            for (auto i:delaySteps)
-                if (!_delayedDrawCalls.IsEmpty(i))
-                    return true;
-            return false;
-        }
+		virtual void ExecuteScene(
+            RenderCore::IThreadContext& threadContext,
+			SceneEngine::SceneExecuteContext& executeContext) const override
+		{
+			assert(0);	// unimplemented
+		}
 
-        ModelSceneParser(
+		ModelSceneParser(
             const ModelVisSettings& settings,
-            const std::shared_ptr<VisEnvSettings>& envSettings,
             ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet,
             const ModelScaffold* modelScaffold = nullptr)
-        : VisSceneParser(settings._camera, envSettings)
-        , _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
+        : _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
         , _settings(&settings), _modelScaffold(modelScaffold) 
         , _delayedDrawCalls(typeid(ModelRenderer).hash_code())
         {
@@ -223,12 +219,12 @@ namespace ToolsRig
         DelayedDrawCallSet _delayedDrawCalls;
     };
 
-    std::unique_ptr<SceneEngine::ISceneParser> CreateModelScene(const ModelCacheModel& model)
+    std::unique_ptr<SceneEngine::IScene> CreateModelScene(const ModelCacheModel& model)
     {
         ModelVisSettings settings;
         *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
         return std::make_unique<ModelSceneParser>(
-            settings, std::make_shared<VisEnvSettings>(),
+            settings,
             *model._renderer, model._boundingBox, *model._sharedStateSet);
     }
 
@@ -269,13 +265,9 @@ namespace ToolsRig
         ModelCacheModel GetModel() { return ToolsRig::GetModel(*_cache, *_settings); }
     };
 
-    auto ModelVisLayer::GetInputListener() -> std::shared_ptr<IInputListener>
-    {
-        return nullptr;
-    }
-
-    void ModelVisLayer::RenderToScene(
-        RenderCore::IThreadContext& context, 
+    void ModelVisLayer::Render(
+        RenderCore::IThreadContext& context,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace SceneEngine;
@@ -283,7 +275,6 @@ namespace ToolsRig
         auto model = _pimpl->GetModel();
 		if (!model._renderer || !model._sharedStateSet)
 			return;
-        // assert(model._renderer && model._sharedStateSet);
 
         if (_pimpl->_settings->_pendingCameraAlignToModel) {
                 // After the model is loaded, if we have a pending camera align,
@@ -304,41 +295,35 @@ namespace ToolsRig
 			envSettings = std::make_shared<VisEnvSettings>();
 
         ModelSceneParser sceneParser(
-            *_pimpl->_settings, envSettings,
+			*_pimpl->_settings,
             *model._renderer, model._boundingBox, *model._sharedStateSet,
             model._model);
-        sceneParser.Prepare();
+        // sceneParser.Prepare();
+		VisLightingParserDelegate lightingParserDelegate(envSettings);
+		
 
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
 		};
         auto qualSettings = SceneEngine::RenderSceneSettings{
-			UInt2(context.GetStateDesc()._viewportDimensions[0], context.GetStateDesc()._viewportDimensions[1]),
 			SceneEngine::RenderSceneSettings::LightingModel::Deferred,
+			&lightingParserDelegate,
 			MakeIteratorRange(lightingPlugins)};
 
         auto& screenshot = Tweakable("Screenshot", 0);
         if (screenshot) {
             PlatformRig::TiledScreenshot(
                 context, parserContext,
-                sceneParser, sceneParser.GetCameraDesc(),
+                sceneParser, AsCameraDesc(*_pimpl->_settings->_camera),
                 qualSettings, UInt2(screenshot, screenshot));
             screenshot = 0;
         }
 
         LightingParser_ExecuteScene(
-            context, parserContext, sceneParser, sceneParser.GetCameraDesc(),
+            context, renderTarget, parserContext, 
+			sceneParser, AsCameraDesc(*_pimpl->_settings->_camera),
             qualSettings);
     }
-
-    void ModelVisLayer::RenderWidgets(
-        RenderCore::IThreadContext& device, 
-        RenderCore::Techniques::ParsingContext& parsingContext)
-    {
-    }
-
-    void ModelVisLayer::SetActivationState(bool newState)
-    {}
 
     void ModelVisLayer::SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings)
     {
@@ -366,21 +351,30 @@ namespace ToolsRig
         std::shared_ptr<VisMouseOver> _mouseOver;
     };
     
-    void VisualisationOverlay::RenderToScene(
+    void VisualisationOverlay::Render(
         RenderCore::IThreadContext& context, 
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderCore;
         if (_pimpl->_settings->_drawWireframe || _pimpl->_settings->_drawNormals) {
 
-			AttachmentViewDesc v_mainColor {0u};
-			AttachmentViewDesc v_mainDepth {2u};
-			SubpassDesc mainPass { {v_mainColor}, v_mainDepth };
-			FrameBufferDesc fbDesc{mainPass};
+			std::vector<FrameBufferDesc::Attachment> attachments {
+				{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+				{ Techniques::AttachmentSemantics::MultisampleDepth, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth)->GetDesc()) },
+			};
+			SubpassDesc mainPass;
+			mainPass.SetName("VisualisationOverlay");
+			mainPass.AppendOutput(0, LoadStore::Retain, LoadStore::Retain);
+			mainPass.SetDepthStencil(1);
+			FrameBufferDesc fbDesc{
+				std::move(attachments),
+				{mainPass}};
             Techniques::RenderPassInstance rpi{
 				context, 
-				parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources()),
-				fbDesc, parserContext.GetNamedResources()};
+				fbDesc, 
+				parserContext.GetFrameBufferPool(),
+				parserContext.GetNamedResources()};
 
             if (_pimpl->_settings->_drawWireframe) {
 
@@ -450,27 +444,11 @@ namespace ToolsRig
                     settings._highlightedMarker = UInt4(unsigned(guid), unsigned(guid), unsigned(guid), unsigned(guid));
                 }
 
-                {
-					AttachmentViewDesc v_mainColor {0u};
-					SubpassDesc mainPass { {v_mainColor} };
-					FrameBufferDesc fbDesc{mainPass};
-                    Techniques::RenderPassInstance rpi{
-						context, 
-						parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources()),
-						fbDesc, parserContext.GetNamedResources()};
-                    ExecuteHighlightByStencil(
-                        context, parserContext.GetNamedResources(), 
-                        settings, _pimpl->_settings->_colourByMaterial==2);
-                }
+                ExecuteHighlightByStencil(
+                    context, parserContext, 
+                    settings, _pimpl->_settings->_colourByMaterial==2);
             CATCH_ASSETS_END(parserContext)
         }
-    }
-
-    void VisualisationOverlay::RenderWidgets(
-        RenderCore::IThreadContext& threadContext, 
-        RenderCore::Techniques::ParsingContext& parserContext)
-    {
-            
     }
 
     auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
@@ -659,12 +637,9 @@ namespace ToolsRig
         return _inputListener;
     }
 
-    void MouseOverTrackingOverlay::RenderToScene(
-        RenderCore::IThreadContext&, 
-        RenderCore::Techniques::ParsingContext&) {}
-    
-    void MouseOverTrackingOverlay::RenderWidgets(
-        RenderCore::IThreadContext& threadContext, 
+    void MouseOverTrackingOverlay::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parsingContext) 
     {
         if (!_mouseOver->_hasMouseOver || !_overlayFn) return;

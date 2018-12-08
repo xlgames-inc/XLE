@@ -20,7 +20,7 @@ namespace SceneEngine
 {
     class PlacementsManager; class PlacementsEditor; 
     class TerrainManager;
-    class ISceneParser; class IntersectionTestScene; 
+    class IntersectionTestScene; 
     class VegetationSpawnManager;
     class VolumetricFogManager;
     class ShallowSurfaceManager;

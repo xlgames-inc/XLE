@@ -21,7 +21,6 @@ namespace RenderCore { namespace Techniques { class CameraDesc; class Projection
 namespace SceneEngine
 {
 	class LightingParserContext;
-    class SceneParseSettings;
     class IScene;
     class PreparedScene;
 	class ILightingParserDelegate;
@@ -44,7 +43,7 @@ namespace SceneEngine
 		ILightingParserDelegate* _lightingDelegate;
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
 
-		unsigned    _samplingCount = 0u;
+		unsigned    _samplingCount = 1u;
 		unsigned	_samplingQuality = 0u;
     };
 

@@ -172,7 +172,6 @@
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp" />
     <ClCompile Include="..\TerrainLayer.cpp" />
-    <ClCompile Include="..\TestControl.cpp" />
     <ClCompile Include="..\TweakableBridge.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
@@ -199,7 +198,6 @@
     <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\TerrainLayer.h" />
-    <ClInclude Include="..\TestControl.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MathLayer.h" />
     <ClInclude Include="..\WindowRigInternal.h" />

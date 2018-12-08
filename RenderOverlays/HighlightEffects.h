@@ -10,7 +10,7 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../Math/Vector.h"
 
-namespace RenderCore { namespace Techniques { class AttachmentPool; class FrameBufferPool; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class AttachmentPool; class FrameBufferPool; } }
 
 namespace RenderOverlays
 {
@@ -28,7 +28,7 @@ namespace RenderOverlays
 
     void ExecuteHighlightByStencil(
         RenderCore::IThreadContext& threadContext,
-        RenderCore::Techniques::AttachmentPool& namedRes,
+        RenderCore::Techniques::ParsingContext& parsingContext,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted);
 

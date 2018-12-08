@@ -14,6 +14,7 @@
 #include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/BufferView.h"
@@ -99,25 +100,27 @@ namespace RenderOverlays
 
     void ExecuteHighlightByStencil(
         RenderCore::IThreadContext& threadContext,
-        Techniques::AttachmentPool& namedRes,
+        RenderCore::Techniques::ParsingContext& parsingContext,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
-        auto stencilSrv = namedRes.GetSRV(
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parsingContext);
+
+		Metal::ShaderResourceView* stencilSrv = nullptr;
+		assert(0);
+        /*auto stencilSrv = namedRes.GetSRV(
             RenderCore::Techniques::Attachments::MainDepthStencil,
             TextureViewDesc{
                 {TextureViewDesc::Aspect::Stencil},
                 TextureViewDesc::All, TextureViewDesc::All, TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::JustStencil});
-        if (!stencilSrv->IsGood()) return;
+        if (!stencilSrv->IsGood()) return;*/
 
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
         ExecuteHighlightByStencil(*metalContext, *stencilSrv, settings, onlyHighlighted);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    static const RenderCore::AttachmentName s_commonOffscreen = 15u;
 
     class HighlightShaders
     {
@@ -180,34 +183,44 @@ namespace RenderOverlays
         using namespace RenderCore;
         _pimpl = std::make_unique<Pimpl>(threadContext, namedRes);
 
-		AttachmentDesc d_commonOffscreen {
-			Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
-			TextureViewDesc::ColorLinear,
-			AttachmentDesc::DimensionsMode::OutputRelative, 
-			AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
+		const bool doDepthTest = true;
 
-        namedRes.DefineAttachment(s_commonOffscreen, d_commonOffscreen);
+		Techniques::FrameBufferDescFragment fbDescFrag;
+		auto n_offscreen = fbDescFrag.DefineTemporaryAttachment(
+			AttachmentDesc {
+				Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
+				TextureViewDesc::ColorLinear,
+				AttachmentDesc::DimensionsMode::OutputRelative, 
+				AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource });
+		auto n_mainColor = fbDescFrag.DefineAttachment(
+			RenderCore::Techniques::AttachmentSemantics::ColorLDR,
+			AsAttachmentDesc(namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()));
+		AttachmentName n_depth = ~0u;
+		if (doDepthTest)
+			n_depth = fbDescFrag.DefineAttachment(
+				RenderCore::Techniques::AttachmentSemantics::MultisampleDepth,
+				AsAttachmentDesc(namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth)->GetDesc()));
 
-		using namespace RenderCore::Techniques::Attachments;
-        const bool doDepthTest = true;
-		AttachmentViewDesc v_commonOffscreen { s_commonOffscreen, LoadStore::Clear, LoadStore::Retain };
-		AttachmentViewDesc v_mainColor { PresentationTarget, LoadStore::Retain, LoadStore::Retain };
-		AttachmentViewDesc v_mainDepth { doDepthTest?MainDepthStencil:~0u, LoadStore::Retain, LoadStore::Retain };
-        FrameBufferDesc fbLayout {
-			SubpassDesc {{v_commonOffscreen}, v_mainDepth}, 
-			SubpassDesc {{v_mainColor}, SubpassDesc::Unused, {v_commonOffscreen}}
-		};
+		SubpassDesc subpass0;
+		subpass0.AppendOutput(n_offscreen, LoadStore::Clear, LoadStore::Retain);
+		subpass0.SetDepthStencil(n_depth);
+		fbDescFrag.AddSubpass(std::move(subpass0));
+
+		SubpassDesc subpass1;
+		subpass1.AppendOutput(n_mainColor, LoadStore::Retain, LoadStore::Retain);
+		subpass1.AppendInput(n_offscreen, LoadStore::Retain, LoadStore::DontCare);
+		fbDescFrag.AddSubpass(std::move(subpass1));
+        
 		ClearValue clearValues[] = {MakeClearValue(0.f, 0.f, 0.f, 0.f)};
-		auto fb = fbPool.BuildFrameBuffer(fbLayout, namedRes);
         _pimpl->_rpi = Techniques::RenderPassInstance(
-            threadContext, fb, fbLayout, 
-			namedRes,
+            threadContext, Techniques::BuildFrameBufferDesc(std::move(fbDescFrag)), 
+			fbPool, namedRes,
 			{MakeIteratorRange(clearValues)});
     }
 
     void BinaryHighlight::FinishWithOutlineAndOverlay(RenderCore::IThreadContext& threadContext, Float3 outlineColor, unsigned overlayColor)
     {
-        auto& srv = *_pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        auto& srv = *_pimpl->_rpi.GetSRV(0);
         assert(srv.IsGood());
         if (!srv.IsGood()) return;
 
@@ -237,7 +250,7 @@ namespace RenderOverlays
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        auto& srv = *_pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        auto& srv = *_pimpl->_rpi.GetSRV(0);
         assert(srv.IsGood());
         if (!srv.IsGood()) return;
 
@@ -261,7 +274,7 @@ namespace RenderOverlays
 
     void BinaryHighlight::FinishWithShadow(RenderCore::IThreadContext& threadContext, Float4 shadowColor)
     {
-        auto& srv = *_pimpl->_namedRes->GetSRV(s_commonOffscreen);
+        auto& srv = *_pimpl->_rpi.GetSRV(0);
         assert(srv.IsGood());
         if (srv.IsGood()) return;
 

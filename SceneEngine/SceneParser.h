@@ -57,7 +57,7 @@ namespace SceneEngine
     {
     public:
         virtual void ExecuteScene(
-            RenderCore::IThreadContext& threadCpntext,
+            RenderCore::IThreadContext& threadContext,
 			SceneExecuteContext& executeContext) const = 0;
 
 		virtual ~IScene();

@@ -811,4 +811,20 @@ namespace SceneEngine
 #endif
 }
 
+#else
+
+#include "VegetationSpawn.h"
+
+namespace SceneEngine
+{
+	const VegetationSpawnConfig& VegetationSpawnManager::GetConfig() const
+	{
+		static VegetationSpawnConfig cfg;
+		return cfg;
+	}
+	VegetationSpawnManager::VegetationSpawnManager(
+		std::shared_ptr<FixedFunctionModel::ModelCache> modelCache) {}
+	VegetationSpawnManager::~VegetationSpawnManager() {}
+}
+
 #endif

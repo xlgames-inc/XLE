@@ -5,6 +5,9 @@
 #include "RenderPassUtils.h"
 #include "RenderPass.h"
 #include "ParsingContext.h"
+#include "CommonBindings.h"
+#include "../IDevice.h"
+#include "../../Utility/IteratorUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -12,11 +15,29 @@ namespace RenderCore { namespace Techniques
 		IThreadContext& context,
         ParsingContext& parserContext)
 	{
-		SubpassDesc subPasses[] = {{std::vector<AttachmentViewDesc>{AttachmentViewDesc{0}}}};
-		FrameBufferDesc fbDesc = MakeIteratorRange(subPasses);
-		auto fb = parserContext.GetFrameBufferPool().BuildFrameBuffer(fbDesc, parserContext.GetNamedResources());
+		SubpassDesc subpass;
+		subpass.AppendOutput(0, LoadStore::Retain);
+		FrameBufferDesc::Attachment attachment { 
+			AttachmentSemantics::ColorLDR,
+			AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::ColorLDR)->GetDesc())
+		};
+
+		FrameBufferDesc fbDesc {
+			std::vector<FrameBufferDesc::Attachment>{attachment},
+			std::vector<SubpassDesc>{subpass}
+		};
         return RenderPassInstance(
-            context, fb, fbDesc,
+            context, fbDesc,
+			parserContext.GetFrameBufferPool(),
             parserContext.GetNamedResources());
+	}
+
+	RenderPassInstance RenderPassToPresentationTarget(
+		IThreadContext& context,
+		const RenderCore::IResourcePtr& presentationTarget,
+        ParsingContext& parserContext)
+	{
+		parserContext.GetNamedResources().Bind(AttachmentSemantics::ColorLDR, presentationTarget);
+		return RenderPassToPresentationTarget(context, parserContext);
 	}
 }}
