@@ -196,12 +196,19 @@ namespace RenderCore { namespace Techniques
         unsigned _subpassCount;
     };
 
-    std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>>
-        MergeFragments(
-            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
-            IteratorRange<const FrameBufferDescFragment*> fragments,
-            char *logBuffer = nullptr,
-            size_t bufferLength = 0u);
+    class MergeFragmentsResult
+    {
+    public:
+        FrameBufferDescFragment _mergedFragment;
+        std::vector<FrameBufferFragmentMapping> _remapping;
+        std::vector<FrameBufferDesc::Attachment> _inputAttachments;
+        std::vector<FrameBufferDesc::Attachment> _outputAttachments;
+        std::string _log;
+    };
+
+    MergeFragmentsResult MergeFragments(
+        IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
+        IteratorRange<const FrameBufferDescFragment*> fragments);
 
     /// <summary>Like RenderPassInstance, but works with a single fragment</summary>
     /// RenderPasses are often generated from many "fragments" -- which are merged together into a

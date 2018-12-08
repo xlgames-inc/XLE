@@ -952,10 +952,9 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>> MergeFragments(
+    MergeFragmentsResult MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredInputs,
-        IteratorRange<const FrameBufferDescFragment*> fragments,
-        char *logBuffer, size_t bufferLength)
+        IteratorRange<const FrameBufferDescFragment*> fragments)
     {
         #if defined(_DEBUG)
             std::stringstream debugInfo;
@@ -1310,6 +1309,18 @@ namespace RenderCore { namespace Techniques
             result._attachments.push_back(r);
         }
 
+        MergeFragmentsResult finalResult;
+        finalResult._mergedFragment = std::move(result);
+        finalResult._remapping = std::move(fragmentRemapping);
+
+        for (auto& a:workingAttachments) {
+            if (a._name == ~0u) continue;
+            if (a._firstReadSemantic)
+                finalResult._inputAttachments.push_back({a._firstReadSemantic, a._desc});
+            if (a._containsDataForSemantic)
+                finalResult._outputAttachments.push_back({a._containsDataForSemantic, a._desc});
+        }
+
         #if defined(_DEBUG)
             debugInfo << "-------------------------------" << std::endl;
             debugInfo << "Final attachments" << std::endl;
@@ -1321,10 +1332,10 @@ namespace RenderCore { namespace Techniques
             for (unsigned c=0; c<result._subpasses.size(); ++c)
                 debugInfo << StreamIndent(4) << "[" << c << "] " << result._subpasses[c] << std::endl;
             debugInfo << "MergeFragments() finished." << std::endl;
-            if (logBuffer != nullptr) XlCopyString(logBuffer, bufferLength, StringSection<>(debugInfo.str()));
+            finalResult._log = debugInfo.str();
         #endif
         
-        return { std::move(result), std::move(fragmentRemapping) };
+        return finalResult;
     }
 
 }}
