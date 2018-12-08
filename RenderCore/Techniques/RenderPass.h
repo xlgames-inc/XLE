@@ -10,6 +10,7 @@
 #include "../FrameBufferDesc.h"
 #include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
+#include "../../Math/Vector.h"
 #include "../../Utility/IteratorUtils.h"
 #include <memory>
 
@@ -207,7 +208,8 @@ namespace RenderCore { namespace Techniques
 
     MergeFragmentsResult MergeFragments(
         IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
-        IteratorRange<const FrameBufferDescFragment*> fragments);
+        IteratorRange<const FrameBufferDescFragment*> fragments,
+		UInt2 dimenionsForCompatibilityTests = UInt2(1024, 1024));
 
     /// <summary>Like RenderPassInstance, but works with a single fragment</summary>
     /// RenderPasses are often generated from many "fragments" -- which are merged together into a
