@@ -8,6 +8,7 @@
 #include "DeviceContext.h"
 #include "ObjectFactory.h"
 #include "InputLayout.h"
+#include "../../Format.h"
 
 #include "IncludeDX11.h"
 #include <D3D11Shader.h>
@@ -18,15 +19,13 @@ namespace RenderCore { namespace Metal_DX11
 {
     using ::Assets::ResChar;
 
-#if 0
-
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     static unsigned BuildNativeDeclaration(
         D3D11_SO_DECLARATION_ENTRY nativeDeclaration[], unsigned nativeDeclarationCount,
-        const GeometryShader::StreamOutputInitializers& soInitializers)
+        const StreamOutputInitializers& soInitializers)
     {
-        auto finalCount = std::min(nativeDeclarationCount, soInitializers._outputElementCount);
+        auto finalCount = std::min(nativeDeclarationCount, (unsigned)soInitializers._outputElements.size());
         for (unsigned c=0; c<finalCount; ++c) {
             auto& ele = soInitializers._outputElements[c];
             nativeDeclaration[c].Stream = 0;
@@ -38,119 +37,39 @@ namespace RenderCore { namespace Metal_DX11
             if (ele._nativeFormat == Format::R16G16B16A16_FLOAT)
                 nativeDeclaration[c].ComponentCount = 3;
             nativeDeclaration[c].OutputSlot = (BYTE)ele._inputSlot;
-            assert(nativeDeclaration[c].OutputSlot < soInitializers._outputBufferCount);
+            assert(nativeDeclaration[c].OutputSlot < soInitializers._outputBufferStrides.size());
         }
         return finalCount;
     }
 
-    GeometryShader::GeometryShader( StringSection<ResChar> initializer,
-                                    const StreamOutputInitializers& soInitializers)
+    intrusive_ptr<ID3D::GeometryShader> CreateSOGeometryShader(
+		ObjectFactory& objFactory,
+		const CompiledShaderByteCode& compiledShader, 
+		const StreamOutputInitializers& soInitializers,
+		ID3D::ClassLinkage* classLinkage)
     {
-            //
-            //      We have to append the shader model to the resource name
-            //      (if it's not already there)
-            //
-        ResChar temp[MaxPath];
-        if (!XlFindStringI(initializer, "gs_")) {
-            StringMeldInPlace(temp) << initializer << ":" GS_DefShaderModel;
-            initializer = temp;
-        }
+        assert(compiledShader.GetStage() == ShaderStage::Geometry);
+		assert(!soInitializers._outputBufferStrides.empty());
+		assert(!soInitializers._outputElements.empty());
 
-        intrusive_ptr<ID3D::GeometryShader> underlying;
+        auto byteCode = compiledShader.GetByteCode();
 
-        if (soInitializers._outputBufferCount == 0) {
+        assert(soInitializers._outputBufferStrides.size() <= D3D11_SO_BUFFER_SLOT_COUNT);
+        D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
+        auto delcCount = BuildNativeDeclaration(nativeDeclaration, dimof(nativeDeclaration), soInitializers);
 
-			const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
-            assert(compiledShader.GetStage() == ShaderStage::Geometry);
-            auto byteCode = compiledShader.GetByteCode();
-            underlying = GetObjectFactory().CreateGeometryShader(byteCode.begin(), byteCode.size());
+        auto featureLevel = objFactory.GetUnderlying()->GetFeatureLevel();
+        auto result = objFactory.CreateGeometryShaderWithStreamOutput( 
+			byteCode.begin(), byteCode.size(),
+            nativeDeclaration, delcCount,
+            soInitializers._outputBufferStrides.begin(), (unsigned)soInitializers._outputBufferStrides.size(),
+                //      Note --     "NO_RASTERIZED_STREAM" is only supported on feature level 11. For other feature levels
+                //                  we must disable the rasterization step some other way
+            (featureLevel>=D3D_FEATURE_LEVEL_11_0)?D3D11_SO_NO_RASTERIZED_STREAM:0,
+			classLinkage);
 
-        } else {
-
-            assert(soInitializers._outputBufferCount < D3D11_SO_BUFFER_SLOT_COUNT);
-            D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
-            auto delcCount = BuildNativeDeclaration(nativeDeclaration, dimof(nativeDeclaration), soInitializers);
-
-            auto& objFactory = GetObjectFactory();
-            auto featureLevel = objFactory.GetUnderlying()->GetFeatureLevel();
-
-			const auto& compiledShader = ::Assets::GetAssetComp<CompiledShaderByteCode>(initializer);
-            assert(compiledShader.GetStage() == ShaderStage::Geometry);
-            auto byteCode = compiledShader.GetByteCode();
-            underlying = objFactory.CreateGeometryShaderWithStreamOutput( 
-				byteCode.begin(), byteCode.size(),
-                nativeDeclaration, delcCount,
-                soInitializers._outputBufferStrides, soInitializers._outputBufferCount,
-                    //      Note --     "NO_RASTERIZED_STREAM" is only supported on feature level 11. For other feature levels
-                    //                  we must disable the rasterization step some other way
-                (featureLevel>=D3D_FEATURE_LEVEL_11_0)?D3D11_SO_NO_RASTERIZED_STREAM:0);
-
-        }
-
-            //  (creation successful; we can commit to member now)
-        _underlying = std::move(underlying);
+		return result;
     }
-
-    GeometryShader::GeometryShader(const CompiledShaderByteCode& compiledShader, const StreamOutputInitializers& soInitializers)
-    {
-        if (compiledShader.GetStage() != ShaderStage::Null) {
-            assert(compiledShader.GetStage() == ShaderStage::Geometry);
-
-            auto byteCode = compiledShader.GetByteCode();
-
-            intrusive_ptr<ID3D::GeometryShader> underlying;
-            if (soInitializers._outputBufferCount == 0) {
-
-                underlying = GetObjectFactory().CreateGeometryShader(byteCode.begin(), byteCode.size());
-
-            } else {
-
-                assert(soInitializers._outputBufferCount <= D3D11_SO_BUFFER_SLOT_COUNT);
-                D3D11_SO_DECLARATION_ENTRY nativeDeclaration[D3D11_SO_STREAM_COUNT * D3D11_SO_OUTPUT_COMPONENT_COUNT];
-                auto delcCount = BuildNativeDeclaration(nativeDeclaration, dimof(nativeDeclaration), soInitializers);
-
-                auto& objFactory = GetObjectFactory();
-                auto featureLevel = objFactory.GetUnderlying()->GetFeatureLevel();
-                underlying = objFactory.CreateGeometryShaderWithStreamOutput( 
-					byteCode.begin(), byteCode.size(),
-                    nativeDeclaration, delcCount,
-                    soInitializers._outputBufferStrides, soInitializers._outputBufferCount,
-                        //      Note --     "NO_RASTERIZED_STREAM" is only supported on feature level 11. For other feature levels
-                        //                  we must disable the rasterization step some other way
-                    (featureLevel>=D3D_FEATURE_LEVEL_11_0)?D3D11_SO_NO_RASTERIZED_STREAM:0);
-
-            }
-
-            _underlying = std::move(underlying);
-        }
-    }
-
-    GeometryShader::GeometryShader(GeometryShader&& moveFrom)
-    {
-        _underlying = std::move(moveFrom._underlying);
-    }
-    
-    GeometryShader& GeometryShader::operator=(GeometryShader&& moveFrom)
-    {
-        _underlying = std::move(moveFrom._underlying);
-        return *this;
-    }
-
-    GeometryShader::GeometryShader() {}
-    GeometryShader::~GeometryShader() {}
-
-    GeometryShader::StreamOutputInitializers GeometryShader::_hackInitializers;
-
-    void GeometryShader::SetDefaultStreamOutputInitializers(const StreamOutputInitializers& initializers)
-    {
-        _hackInitializers = initializers;
-    }
-
-    auto GeometryShader::GetDefaultStreamOutputInitializers() -> const StreamOutputInitializers&
-    {
-        return _hackInitializers;
-    }
-#endif
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -245,7 +164,8 @@ namespace RenderCore { namespace Metal_DX11
     ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& gs,
-									const CompiledShaderByteCode& ps)
+									const CompiledShaderByteCode& ps,
+									StreamOutputInitializers so)
 	: ShaderProgram(factory, vs, ps)
     {
 		///////////////// GS ////////////////////
@@ -254,8 +174,13 @@ namespace RenderCore { namespace Metal_DX11
 
 		if (gs.GetStage() != ShaderStage::Null) {
 			assert(gs.GetStage() == ShaderStage::Geometry);
-			auto byteCode = gs.GetByteCode();
-			_geometryShader = factory.CreateGeometryShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Geometry].get());
+			if (!so._outputElements.empty()) {
+				_geometryShader = CreateSOGeometryShader(
+					factory, gs, so, _classLinkage[(unsigned)ShaderStage::Geometry].get());
+			} else {
+				auto byteCode = gs.GetByteCode();
+				_geometryShader = factory.CreateGeometryShader(byteCode.begin(), byteCode.size(), _classLinkage[(unsigned)ShaderStage::Geometry].get());
+			}
 			_compiledCode[(unsigned)ShaderStage::Geometry] = gs;
 		}
 
@@ -267,8 +192,9 @@ namespace RenderCore { namespace Metal_DX11
 									const CompiledShaderByteCode& gs,
 									const CompiledShaderByteCode& ps,
 									const CompiledShaderByteCode& hs,
-									const CompiledShaderByteCode& ds)
-	: ShaderProgram(factory, vs, gs, ps)
+									const CompiledShaderByteCode& ds,
+									StreamOutputInitializers so)
+	: ShaderProgram(factory, vs, gs, ps, so)
     {
 		///////////////// HS ////////////////////
 		if (hs.DynamicLinkingEnabled())

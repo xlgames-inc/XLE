@@ -5,13 +5,14 @@
 #pragma once
 
 #include "ModelImmutableData.h"		// for SkeletonBinding
+#include "../Metal/Forward.h"
 #include "../../Math/Matrix.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Utility/StringUtils.h"
 #include <vector>
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawablesPacket; }}
+namespace RenderCore { namespace Techniques { class Drawable; class DrawableGeo; class DrawablesPacket; class ParsingContext; }}
 namespace RenderCore { class IThreadContext; class IResource; class UniformsStreamInterface; }
 namespace Utility { class VariantArray; }
 
@@ -27,8 +28,22 @@ namespace RenderCore { namespace Assets
 	public:
 		void BuildDrawables(
 			IteratorRange<Techniques::DrawablesPacket** const> pkts,
-			const Float4x4& localToWorld = Identity<Float4x4>(),
-			uint64_t materialFilter = 0);
+			const Float4x4& localToWorld = Identity<Float4x4>()) const;
+
+		class IPreDrawDelegate
+		{
+		public:
+			virtual bool OnDraw(
+				Metal::DeviceContext&, Techniques::ParsingContext&,
+				const Techniques::Drawable&,
+				uint64_t materialGuid, unsigned drawCallIdx) = 0;
+			virtual ~IPreDrawDelegate();
+		};
+
+		void BuildDrawables(
+			IteratorRange<Techniques::DrawablesPacket** const> pkts,
+			const Float4x4& localToWorld,
+			const std::shared_ptr<IPreDrawDelegate>& delegate) const;
 
 		void GenerateDeformBuffer(IThreadContext& context);
 		unsigned DeformOperationCount() const { return (unsigned)_deformOps.size(); }

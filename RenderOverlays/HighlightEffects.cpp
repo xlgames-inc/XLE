@@ -13,9 +13,10 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Resource.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/RenderPassUtils.h"
-#include "../../RenderCore/Techniques/CommonBindings.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/BufferView.h"
 #include "../../Assets/Assets.h"
@@ -99,25 +100,35 @@ namespace RenderOverlays
     }
 
     void ExecuteHighlightByStencil(
-        RenderCore::IThreadContext& threadContext,
-        RenderCore::Techniques::ParsingContext& parsingContext,
+        IThreadContext& threadContext,
+        Techniques::ParsingContext& parsingContext,
         const HighlightByStencilSettings& settings,
         bool onlyHighlighted)
     {
-		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, parsingContext);
+		std::vector<FrameBufferDesc::Attachment> attachments {
+			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parsingContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+			{ 0, Format::D24_UNORM_S8_UINT }
+		};
+		SubpassDesc mainPass;
+		mainPass.SetName("VisualisationOverlay");
+		mainPass.AppendOutput(0);
+		mainPass.AppendInput(1);
+		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
+		Techniques::RenderPassInstance rpi {
+			threadContext, fbDesc, 
+			parsingContext.GetFrameBufferPool(),
+			parsingContext.GetNamedResources() };
 
-		Metal::ShaderResourceView* stencilSrv = nullptr;
-		assert(0);
-        /*auto stencilSrv = namedRes.GetSRV(
-            RenderCore::Techniques::Attachments::MainDepthStencil,
+        auto stencilSrv = rpi.GetSRV(
+            1,
             TextureViewDesc{
                 {TextureViewDesc::Aspect::Stencil},
                 TextureViewDesc::All, TextureViewDesc::All, TextureDesc::Dimensionality::Undefined,
 				TextureViewDesc::Flags::JustStencil});
-        if (!stencilSrv->IsGood()) return;*/
+        if (!stencilSrv->IsGood()) return;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
-        ExecuteHighlightByStencil(*metalContext, *stencilSrv, settings, onlyHighlighted);
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
+        ExecuteHighlightByStencil(metalContext, *stencilSrv, settings, onlyHighlighted);
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -35,7 +35,7 @@ namespace RenderCore { namespace Assets
 		auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, SerializableVector<char>>());
 		if (i != data._materialNames.end() && i->first == guid)
 			return MakeStringSection(i->second.begin(), i->second.end());
-		return nullptr;
+		return {};
 	}
 
 	const ::Assets::AssetChunkRequest MaterialScaffold::ChunkRequests[]

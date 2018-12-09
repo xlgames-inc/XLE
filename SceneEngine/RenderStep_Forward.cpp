@@ -51,10 +51,22 @@ namespace SceneEngine
 		return std::make_shared<ViewDelegate_Forward>();
 	}
 
-	RenderStep_Forward::RenderStep_Forward()
+	RenderStep_Forward::RenderStep_Forward(bool precisionTargets)
 	{
-        auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
-		auto depth = _forward.DefineAttachment(Techniques::AttachmentSemantics::Depth);
+		AttachmentDesc lightResolveAttachmentDesc =
+			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
+				1.f, 1.f, 0u,
+				TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
+				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
+
+		AttachmentDesc msDepthDesc =
+            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,		// ,
+                TextureViewDesc::Aspect::DepthStencil,
+				AttachmentDesc::DimensionsMode::OutputRelative, 
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil };
+
+        auto output = _forward.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
+		auto depth = _forward.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
 
 		_forward.AddSubpass(
 			SubpassDesc {

@@ -57,9 +57,13 @@ namespace RenderCore { namespace Techniques
 		const RenderCore::Metal::ShaderResourceView* srvs[32];
 		unsigned c=0;
 		for (const auto&i:mat._bindings) {
-			auto future = ::Assets::MakeAsset<DeferredShaderResource>(
-				MakeStringSection((char*)i.RawValue().begin(), (char*)i.RawValue().end()));
-			srvs[c++] = &future->Actualize()->GetShaderResource();
+			if (!i.RawValue().empty()) {
+				auto future = ::Assets::MakeAsset<DeferredShaderResource>(
+					MakeStringSection((char*)i.RawValue().begin(), (char*)i.RawValue().end()));
+				srvs[c++] = &future->Actualize()->GetShaderResource();
+			} else {
+				srvs[c++] = nullptr;
+			}
 		}
 		auto techniqueFuture = ::Assets::MakeAsset<Technique>(mat._techniqueConfig);
 		const auto& cbLayout = techniqueFuture->Actualize()->TechniqueCBLayout();

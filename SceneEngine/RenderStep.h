@@ -55,7 +55,7 @@ namespace SceneEngine
 			RenderCore::Techniques::RenderPassFragment& rpi,
 			IViewDelegate* viewDelegate);
 
-		RenderStep_Forward();
+		RenderStep_Forward(bool precisionTargets);
 		~RenderStep_Forward();
 	private:
 		RenderCore::Techniques::FrameBufferDescFragment _forward;

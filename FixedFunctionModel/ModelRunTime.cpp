@@ -1303,9 +1303,6 @@ namespace FixedFunctionModel
             TransformPointByOrthonormalInverse(t, worldSpaceView);
             dst->_localSpaceView = worldSpaceView;
         }
-        if (constant_expression<!!(Flags&WLTFlags::MaterialGuid)>::result()) {
-            dst->_materialGuid = materialGuid;
-        }
     }
 
     void ModelRenderer::Sort(DelayedDrawCallSet& drawCalls)

@@ -69,7 +69,7 @@ namespace SceneEngine
 		if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred) {
 			mainSceneRenderStep = std::make_shared<RenderStep_GBuffer>(enableParametersBuffer?1:2, precisionTargets);
 		} else {
-			mainSceneRenderStep = std::make_shared<RenderStep_Forward>();
+			mainSceneRenderStep = std::make_shared<RenderStep_Forward>(precisionTargets);
 		}
 
 		executeContext.AddView(
@@ -153,15 +153,15 @@ namespace SceneEngine
 
         GetBufferUploads().Update(threadContext, true);
 
-		std::shared_ptr<IRenderStep> renderSteps[] = {
-			mainSceneRenderStep,
-			std::make_shared<RenderStep_LightingResolve>(precisionTargets),
-			std::make_shared<RenderStep_ResolveHDR>()
-		};
+		std::vector<std::shared_ptr<IRenderStep>> renderSteps;
+		renderSteps.push_back(mainSceneRenderStep);
+		if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred)
+			renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
+		renderSteps.push_back(std::make_shared<RenderStep_ResolveHDR>());
 
-		Techniques::FrameBufferDescFragment fragments[dimof(renderSteps)];
-		for (unsigned c=0; c<dimof(renderSteps); ++c)
-			fragments[c] = renderSteps[c]->GetInterface();
+		std::vector<Techniques::FrameBufferDescFragment> fragments;
+		for (unsigned c=0; c<renderSteps.size(); ++c)
+			fragments.push_back(renderSteps[c]->GetInterface());
 		
 		parsingContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 		parsingContext.GetNamedResources().Bind(
@@ -191,7 +191,7 @@ namespace SceneEngine
 		metalContext.Bind(
 			Metal::ViewportDesc(0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)));
 
-		for (unsigned c=0; c<dimof(renderSteps); ++c) {
+		for (unsigned c=0; c<renderSteps.size(); ++c) {
 			CATCH_ASSETS_BEGIN
 				Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
 				IViewDelegate* viewDelegate = nullptr;

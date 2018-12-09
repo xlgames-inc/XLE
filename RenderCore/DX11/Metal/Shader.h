@@ -76,14 +76,16 @@ namespace RenderCore { namespace Metal_DX11
         ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
-						const CompiledShaderByteCode& ps);
+						const CompiledShaderByteCode& ps,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
 						const CompiledShaderByteCode& ps,
 						const CompiledShaderByteCode& hs,
-						const CompiledShaderByteCode& ds);
+						const CompiledShaderByteCode& ds,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram();
         ~ShaderProgram();
@@ -181,143 +183,7 @@ namespace RenderCore { namespace Metal_DX11
 
     std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
+	extern template intrusive_ptr<ID3D::ShaderReflection>;
     intrusive_ptr<ID3D::ShaderReflection>  CreateReflection(const CompiledShaderByteCode& shaderCode);
-
-    extern template intrusive_ptr<ID3D::ShaderReflection>;
-
-
-#if 0
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class VertexShader
-	{
-	public:
-		//
-		//          Resource interface
-		//
-		explicit VertexShader(StringSection<::Assets::ResChar> initializer);
-		explicit VertexShader(const CompiledShaderByteCode& byteCode);
-		VertexShader();
-		~VertexShader();
-
-		typedef ID3D::VertexShader* UnderlyingType;
-		UnderlyingType  GetUnderlying() const { return _underlying.get(); }
-		ID3D::ClassLinkage* GetClassLinkage() const { return _classLinkage.get(); }
-
-	private:
-		intrusive_ptr<ID3D::VertexShader>   _underlying;
-		intrusive_ptr<ID3D::ClassLinkage>   _classLinkage;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class PixelShader
-	{
-	public:
-		//
-		//          Resource interface
-		//
-		explicit PixelShader(StringSection<::Assets::ResChar> initializer);
-		explicit PixelShader(const CompiledShaderByteCode& byteCode);
-		PixelShader();
-		~PixelShader();
-
-		typedef ID3D::PixelShader*  UnderlyingType;
-		UnderlyingType      GetUnderlying() const { return _underlying.get(); }
-		ID3D::ClassLinkage* GetClassLinkage() const { return _classLinkage.get(); }
-
-	private:
-		intrusive_ptr<ID3D::PixelShader>    _underlying;
-		intrusive_ptr<ID3D::ClassLinkage>   _classLinkage;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class GeometryShader
-	{
-	public:
-		class StreamOutputInitializers
-		{
-		public:
-			const InputElementDesc* _outputElements;
-			unsigned _outputElementCount;
-			const unsigned* _outputBufferStrides;
-			unsigned _outputBufferCount;
-
-			StreamOutputInitializers(
-				const InputElementDesc outputElements[], unsigned outputElementCount,
-				const unsigned outputBufferStrides[], unsigned outputBufferCount)
-				: _outputElements(outputElements), _outputElementCount(outputElementCount)
-				, _outputBufferStrides(outputBufferStrides), _outputBufferCount(outputBufferCount)
-			{}
-			StreamOutputInitializers()
-				: _outputElements(nullptr), _outputElementCount(0)
-				, _outputBufferStrides(nullptr), _outputBufferCount(0)
-			{}
-		};
-
-		//
-		//          Resource interface
-		//
-		GeometryShader(StringSection<::Assets::ResChar> initializer, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
-		explicit GeometryShader(const CompiledShaderByteCode& byteCode, const StreamOutputInitializers& soInitializers = GetDefaultStreamOutputInitializers());
-		GeometryShader();
-		~GeometryShader();
-		GeometryShader(GeometryShader&& moveFrom);
-		GeometryShader& operator=(GeometryShader&& moveFrom);
-
-		static void SetDefaultStreamOutputInitializers(const StreamOutputInitializers&);
-		static const StreamOutputInitializers& GetDefaultStreamOutputInitializers();
-
-		typedef ID3D::GeometryShader*       UnderlyingType;
-		UnderlyingType                      GetUnderlying() const { return _underlying.get(); }
-
-	private:
-		intrusive_ptr<ID3D::GeometryShader>     _underlying;
-		static StreamOutputInitializers         _hackInitializers;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class HullShader
-	{
-	public:
-		explicit HullShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable = StringSection<::Assets::ResChar>());
-		explicit HullShader(const CompiledShaderByteCode& byteCode);
-		~HullShader();
-
-		typedef ID3D::HullShader*       UnderlyingType;
-		UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
-
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
-
-	private:
-		intrusive_ptr<ID3D::HullShader>            _underlying;
-		std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class DomainShader
-	{
-	public:
-		explicit DomainShader(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> definesTable = StringSection<::Assets::ResChar>());
-		explicit DomainShader(const CompiledShaderByteCode& byteCode);
-		~DomainShader();
-
-		typedef ID3D::DomainShader*     UnderlyingType;
-		UnderlyingType                  GetUnderlying() const { return _underlying.get(); }
-
-		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
-
-	private:
-		intrusive_ptr<ID3D::DomainShader>          _underlying;
-		std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
-	};
-
-	////////////////////////////////////////////////////////////////////////////////////////////////
-
-	
-#endif
 }}
 

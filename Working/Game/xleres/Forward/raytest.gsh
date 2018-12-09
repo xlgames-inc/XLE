@@ -31,8 +31,9 @@ cbuffer IntersectionFrustumDefinition : register(b9)
 	row_major float4x4 IntersectionFrustum;
 }
 
-cbuffer SystemConstants : register(b0)
+cbuffer DrawCallProperties
 {
+	uint2 MaterialGuid;
 	uint CurrentDrawCallIndex;
 }
 

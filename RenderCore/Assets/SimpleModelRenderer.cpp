@@ -38,11 +38,22 @@ namespace RenderCore { namespace Assets
         const RenderCore::Assets::ModelScaffold& scaffold,
         const RenderCore::Assets::IndexData& ib);
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	class SimpleModelDrawable : public Techniques::Drawable
 	{
 	public:
 		DrawCallDesc _drawCall;
 		Float4x4 _objectToWorld;
+		uint64_t _materialGuid;
+		unsigned _drawCallIdx;
+	};
+
+	struct DrawCallProperties
+	{
+		uint64_t _materialGuid;
+		unsigned _drawCallIdx;
+		unsigned _dummy;
 	};
 
 	static void DrawFn_SimpleModelStatic(
@@ -51,15 +62,185 @@ namespace RenderCore { namespace Assets
         const SimpleModelDrawable& drawable, const Metal::BoundUniforms& boundUniforms,
         const Metal::ShaderProgram&)
 	{
-		ConstantBufferView cbvs[] = {
+		ConstantBufferView cbvs[2];
+		cbvs[0] = {
 			Techniques::MakeLocalTransformPacket(
 				drawable._objectToWorld, 
 				ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld))};
+		if (boundUniforms._boundUniformBufferSlots[3] & (1<<1)) {
+			cbvs[1] = MakeSharedPkt(DrawCallProperties{drawable._materialGuid, drawable._drawCallIdx});
+		}
 		boundUniforms.Apply(metalContext, 3, UniformsStream{MakeIteratorRange(cbvs)});
 
 		metalContext.Bind(drawable._drawCall._topology);
         metalContext.DrawIndexed(drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
 	}
+
+	void SimpleModelRenderer::BuildDrawables(
+		IteratorRange<Techniques::DrawablesPacket** const> pkts,
+		const Float4x4& localToWorld) const
+	{
+		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
+		if (!generalPkt) return;
+
+		unsigned drawCallCounter = 0;
+		const auto& cmdStream = _modelScaffold->CommandStream();
+        const auto& immData = _modelScaffold->ImmutableData();
+        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetGeoCall(c);
+            auto& rawGeo = immData._geos[geoCall._geoId];
+
+			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
+            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
+                const auto& drawCall = rawGeo._drawCalls[d];
+				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
+
+				auto& drawable = allocatedDrawables[d];
+				drawable._geo = _geos[geoCall._geoId];
+				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
+				drawable._drawCall = drawCall;
+				drawable._uniformsInterface = _usi;
+				drawable._materialGuid = materialGuid;
+				drawable._drawCallIdx = drawCallCounter;
+
+				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+                if (machineOutput < _baseTransformCount) {
+                    drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
+                } else {
+                    drawable._objectToWorld = localToWorld;
+                }
+
+				++drawCallCounter;
+            }
+        }
+
+        for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetSkinCall(c);
+            auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
+
+			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable>(rawGeo._drawCalls.size());
+            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
+                const auto& drawCall = rawGeo._drawCalls[d];
+				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
+
+                    // now we have at least once piece of geometry
+                    // that we want to render... We need to bind the material,
+                    // index buffer and vertex buffer and topology
+                    // then we just execute the draw command
+
+				auto& drawable = allocatedDrawables[d];
+				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
+				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
+				drawable._drawCall = drawCall;
+				drawable._uniformsInterface = _usi;
+				drawable._materialGuid = materialGuid;
+				drawable._drawCallIdx = drawCallCounter;
+
+                drawable._objectToWorld = Combine(
+					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
+					localToWorld);
+
+				++drawCallCounter;
+            }
+        }
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class SimpleModelDrawable_Delegate : public SimpleModelDrawable
+	{
+	public:
+		std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate> _delegate;
+	};
+
+	static void DrawFn_SimpleModelDelegate(
+        Metal::DeviceContext& metalContext,
+		Techniques::ParsingContext& parserContext,
+        const SimpleModelDrawable_Delegate& drawable, const Metal::BoundUniforms& boundUniforms,
+        const Metal::ShaderProgram& shader)
+	{
+		bool delegateResult = drawable._delegate->OnDraw(metalContext, parserContext, drawable, drawable._materialGuid, drawable._drawCallIdx);
+		if (delegateResult)
+			DrawFn_SimpleModelStatic(metalContext, parserContext, drawable, boundUniforms, shader);
+	}
+
+	void SimpleModelRenderer::BuildDrawables(
+		IteratorRange<Techniques::DrawablesPacket** const> pkts,
+		const Float4x4& localToWorld,
+		const std::shared_ptr<IPreDrawDelegate>& delegate) const
+	{
+		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
+		if (!generalPkt) return;
+
+		unsigned drawCallCounter = 0;
+		const auto& cmdStream = _modelScaffold->CommandStream();
+        const auto& immData = _modelScaffold->ImmutableData();
+        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetGeoCall(c);
+            auto& rawGeo = immData._geos[geoCall._geoId];
+
+			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
+            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
+                const auto& drawCall = rawGeo._drawCalls[d];
+				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
+
+				auto& drawable = allocatedDrawables[d];
+				drawable._geo = _geos[geoCall._geoId];
+				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
+				drawable._drawCall = drawCall;
+				drawable._uniformsInterface = _usi;
+				drawable._materialGuid = materialGuid;
+				drawable._drawCallIdx = drawCallCounter;
+				drawable._delegate = delegate;
+
+				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+                if (machineOutput < _baseTransformCount) {
+                    drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
+                } else {
+                    drawable._objectToWorld = localToWorld;
+                }
+
+				++drawCallCounter;
+            }
+        }
+
+        for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
+            const auto& geoCall = cmdStream.GetSkinCall(c);
+            auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
+
+			auto* allocatedDrawables = generalPkt->_drawables.Allocate<SimpleModelDrawable_Delegate>(rawGeo._drawCalls.size());
+            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
+                const auto& drawCall = rawGeo._drawCalls[d];
+				auto materialGuid = geoCall._materialGuids[drawCall._subMaterialIndex];
+
+                    // now we have at least once piece of geometry
+                    // that we want to render... We need to bind the material,
+                    // index buffer and vertex buffer and topology
+                    // then we just execute the draw command
+
+				auto& drawable = allocatedDrawables[d];
+				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
+				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
+				drawable._drawCall = drawCall;
+				drawable._uniformsInterface = _usi;
+				drawable._materialGuid = materialGuid;
+				drawable._drawCallIdx = drawCallCounter;
+				drawable._delegate = delegate;
+
+                drawable._objectToWorld = Combine(
+					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
+					localToWorld);
+
+				++drawCallCounter;
+            }
+        }
+	}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	void SimpleModelRenderer::GenerateDeformBuffer(IThreadContext& context)
 	{
@@ -84,77 +265,6 @@ namespace RenderCore { namespace Assets
 			d._deformOp->Execute(MakeIteratorRange(elementRanges, &elementRanges[d._elements.size()]));
 		}
 		((Metal::Buffer*)_dynVB.get())->Unmap(metalContext);
-	}
-
-	void SimpleModelRenderer::BuildDrawables(
-		IteratorRange<Techniques::DrawablesPacket** const> pkts,
-		const Float4x4& localToWorld,
-		uint64_t materialFilter)
-	{
-		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
-		if (!generalPkt) return;
-
-		const auto& cmdStream = _modelScaffold->CommandStream();
-        const auto& immData = _modelScaffold->ImmutableData();
-        for (unsigned c = 0; c < cmdStream.GetGeoCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetGeoCall(c);
-            
-            auto& rawGeo = immData._geos[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
-				auto materialGuids = geoCall._materialGuids[drawCall._subMaterialIndex];
-
-                    // reject geometry that doesn't match the material
-                    // binding that we want
-                if (materialFilter != 0 && materialGuids != materialFilter)
-                    continue;
-
-				auto& drawable = *generalPkt->_drawables.Allocate<SimpleModelDrawable>(1);
-				drawable._geo = _geos[geoCall._geoId];
-				drawable._material = _materialScaffold->GetMaterial(materialGuids);
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
-				drawable._drawCall = drawCall;
-				drawable._uniformsInterface = _usi;
-
-				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                if (machineOutput < _baseTransformCount) {
-                    drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
-                } else {
-                    drawable._objectToWorld = localToWorld;
-                }
-            }
-        }
-
-        for (unsigned c = 0; c < cmdStream.GetSkinCallCount(); ++c) {
-            const auto& geoCall = cmdStream.GetSkinCall(c);
-            
-            auto& rawGeo = immData._boundSkinnedControllers[geoCall._geoId];
-            for (unsigned d = 0; d < unsigned(rawGeo._drawCalls.size()); ++d) {
-                const auto& drawCall = rawGeo._drawCalls[d];
-				auto materialGuids = geoCall._materialGuids[drawCall._subMaterialIndex];
-
-                    // reject geometry that doesn't match the material
-                    // binding that we want
-                if (materialFilter != 0 && materialGuids != materialFilter)
-                    continue;
-
-                    // now we have at least once piece of geometry
-                    // that we want to render... We need to bind the material,
-                    // index buffer and vertex buffer and topology
-                    // then we just execute the draw command
-
-				auto& drawable = *generalPkt->_drawables.Allocate<SimpleModelDrawable>(1);
-				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
-				drawable._material = _materialScaffold->GetMaterial(materialGuids);
-				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelStatic;
-				drawable._drawCall = drawCall;
-				drawable._uniformsInterface = _usi;
-
-                drawable._objectToWorld = Combine(
-					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
-					localToWorld);
-            }
-        }
 	}
 
 	static bool IsSorted(IteratorRange<const uint64_t*> suppressedElements)
@@ -307,6 +417,7 @@ namespace RenderCore { namespace Assets
 
 		_usi = std::make_shared<UniformsStreamInterface>();
 		_usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
+		_usi->BindConstantBuffer(1, {Techniques::ObjectCB::DrawCallProperties});
 	}
 
 	struct DeformConstructionFuture
@@ -407,5 +518,7 @@ namespace RenderCore { namespace Assets
 		return RenderCore::Assets::CreateStaticIndexBuffer(
 			MakeIteratorRange(buffer.get(), PtrAdd(buffer.get(), ib._size)));
     }
+
+	SimpleModelRenderer::IPreDrawDelegate::~IPreDrawDelegate() {}
 
 }}

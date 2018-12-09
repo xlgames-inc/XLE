@@ -54,6 +54,7 @@ namespace SceneEngine
 
     static std::pair<Float3, bool> FindTerrainIntersection(
         const IntersectionTestContext& intersectionContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
@@ -63,23 +64,13 @@ namespace SceneEngine
         RenderCore::Metal::ViewportDesc newViewport(
             0.f, 0.f, float(viewportDims[0]), float(viewportDims[1]), 0.f, 1.f);
         RenderCore::Metal::DeviceContext::Get(*intersectionContext.GetThreadContext())->Bind(newViewport);
-
-		#if 0
-			RenderCore::Techniques::ParsingContext parserContext(intersectionContext.GetTechniqueContext());
-			LightingParser_SetupScene(*intersectionContext.GetThreadContext(), parserContext);
-			LightingParser_SetGlobalTransform(
-				*intersectionContext.GetThreadContext(), parserContext,
-				BuildProjectionDesc(intersectionContext.GetCameraDesc(), viewportDims));
-
-			return FindTerrainIntersection(*intersectionContext.GetThreadContext(), parserContext, terrainManager, worldSpaceRay);
-		#else
-			assert(0);	// broken in LightingParser refactoring
-			return {Float3(0.f, 0.f, 0.f), false};
-		#endif
+		return FindTerrainIntersection(*intersectionContext.GetThreadContext(), parsingContext, terrainManager, worldSpaceRay);
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
-        RenderCore::Metal::DeviceContext& metalContext, ModelIntersectionStateContext& stateContext,
+        RenderCore::Metal::DeviceContext& metalContext, 
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		ModelIntersectionStateContext& stateContext,
         SceneEngine::PlacementsRenderer& placementsRenderer, SceneEngine::PlacementCellSet& cellSet,
         SceneEngine::PlacementGUID object)
     {
@@ -97,7 +88,7 @@ namespace SceneEngine
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
         placementsRenderer.RenderFiltered(
-            metalContext, stateContext.GetParserContext(), RenderCore::Techniques::TechniqueIndex::RayTest,
+            metalContext, parsingContext, RenderCore::Techniques::TechniqueIndex::DepthOnly,
             cellSet, &object, &object+1);
         return stateContext.GetResults();
     }
@@ -111,11 +102,12 @@ namespace SceneEngine
     {
         Result result;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+		RenderCore::Techniques::ParsingContext parsingContext(context.GetTechniqueContext());
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
-                context, *_terrainManager.get(), worldSpaceRay);
+                context, parsingContext, *_terrainManager.get(), worldSpaceRay);
             if (intersection.second) {
                 float distance = Magnitude(intersection.first - worldSpaceRay.first);
                 if (distance < result._distance) {
@@ -145,12 +137,11 @@ namespace SceneEngine
                 TRY
                 {
                     float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-
                     auto cam = context.GetCameraDesc();
-                    ModelIntersectionStateContext stateContext(
+                    ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::RayTest,
-                        context.GetThreadContext(), context.GetTechniqueContext(), &cam);
-                    stateContext.SetRay(worldSpaceRay);
+                        *context.GetThreadContext(), parsingContext, &cam);
+                    intersectionContext.SetRay(worldSpaceRay);
 
                     // note --  we could do this all in a single render call, except that there
                     //          is no way to associate a low level intersection result with a specific
@@ -159,7 +150,7 @@ namespace SceneEngine
                     for (unsigned c=0; c<count; ++c) {
                         auto guid = trans->GetGuid(c);
                         auto results = PlacementsIntersection(
-                            *metalContext.get(), stateContext, 
+                            metalContext, parsingContext, intersectionContext, 
                             *_placementsEditor->GetManager()->GetRenderer(), *_placements,
                             guid);
 
@@ -223,7 +214,7 @@ namespace SceneEngine
     {
         std::vector<Result> result;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
 
         if ((filter & Type::Placement) && _placements && _placementsEditor) {
             auto intersections = _placementsEditor->GetManager()->GetIntersections();
@@ -242,10 +233,11 @@ namespace SceneEngine
                 TRY
                 {
                     auto cam = context.GetCameraDesc();
-                    ModelIntersectionStateContext stateContext(
+					RenderCore::Techniques::ParsingContext parsingContext(context.GetTechniqueContext());
+                    ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::FrustumTest,
-                        context.GetThreadContext(), context.GetTechniqueContext(), &cam);
-                    stateContext.SetFrustum(worldToProjection);
+                        *context.GetThreadContext(), parsingContext, &cam);
+                    intersectionContext.SetFrustum(worldToProjection);
 
                     // note --  we could do this all in a single render call, except that there
                     //          is no way to associate a low level intersection result with a specific
@@ -267,7 +259,7 @@ namespace SceneEngine
                         bool isInside = boundaryTest == AABBIntersection::Within;
                         if (!isInside) {
                             auto results = PlacementsIntersection(
-                                *metalContext.get(), stateContext, 
+                                metalContext, parsingContext, intersectionContext, 
                                 *_placementsEditor->GetManager()->GetRenderer(), *_placements, guid);
                             isInside = !results.empty();
                         }
@@ -380,23 +372,12 @@ namespace SceneEngine
     }
 
     IntersectionTestContext::IntersectionTestContext(
-        std::shared_ptr<RenderCore::IThreadContext> threadContext,
+        const std::shared_ptr<RenderCore::IThreadContext>& threadContext,
         const RenderCore::Techniques::CameraDesc& cameraDesc,
-        std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
+        const std::shared_ptr<RenderCore::PresentationChainDesc>& viewportContext,
+        const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     : _threadContext(threadContext)
     , _cameraDesc(cameraDesc)
-    , _techniqueContext(std::move(techniqueContext))
-    , _viewportContext(std::move(viewportContext))
-    {}
-
-    IntersectionTestContext::IntersectionTestContext(
-        std::shared_ptr<RenderCore::IThreadContext> threadContext,
-        std::shared_ptr<SceneEngine::IScene> sceneParser,
-        std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
-    : _threadContext(threadContext)
-    , _sceneParser(sceneParser)
     , _techniqueContext(std::move(techniqueContext))
     , _viewportContext(std::move(viewportContext))
     {}

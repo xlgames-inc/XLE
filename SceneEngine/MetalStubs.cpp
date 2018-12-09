@@ -4,7 +4,9 @@
 
 #include "MetalStubs.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/DX11/Metal/Buffer.h"
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
+
 
 namespace SceneEngine { namespace MetalStubs
 {
@@ -37,4 +39,15 @@ namespace SceneEngine { namespace MetalStubs
 	{
 		return devContext.GetNumericUniforms(stage);
 	}
+
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+	void BindSO(RenderCore::Metal::DeviceContext& metalContext, RenderCore::IResource& res, unsigned offset)
+	{
+		auto* metalResource = (RenderCore::Metal::Resource*)res.QueryInterface(typeid(RenderCore::Metal::Resource).hash_code());
+		ID3D::Buffer* underlying = (ID3D::Buffer*)metalResource->GetUnderlying().get();
+        metalContext.GetUnderlying()->SOSetTargets(1, &underlying, &offset);
+	}
+#else
+	void BindSO(RenderCore::Metal::DeviceContext&, unsigned slot, RenderCore::IResource& res, unsigned offset) {}
+#endif
 }}

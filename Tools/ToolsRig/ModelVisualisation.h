@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../Utility/StringUtils.h"
 #include <functional>
 #include <memory>
 
@@ -108,8 +109,7 @@ namespace ToolsRig
         void SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings);
 
         ModelVisLayer(
-            std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<FixedFunctionModel::ModelCache> cache);
+            std::shared_ptr<ModelVisSettings> settings);
         ~ModelVisLayer();
     protected:
         class Pimpl;
@@ -129,7 +129,7 @@ namespace ToolsRig
 
         VisualisationOverlay(
             std::shared_ptr<ModelVisSettings> settings,
-            std::shared_ptr<FixedFunctionModel::ModelCache> cache,
+			std::shared_ptr<FixedFunctionModel::ModelCache> cache,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();
     protected:
@@ -146,7 +146,6 @@ namespace ToolsRig
             RenderCore::IThreadContext& context, 
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
-        virtual void SetActivationState(bool newState);
 
         using OverlayFn = std::function<void(RenderOverlays::IOverlayContext&, const ToolsRig::VisMouseOver&)>;
 
@@ -167,6 +166,6 @@ namespace ToolsRig
 
     std::unique_ptr<SceneEngine::IScene> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
-        std::shared_ptr<ModelVisSettings> settings, std::shared_ptr<FixedFunctionModel::ModelCache> cache);
+        StringSection<> modelName, StringSection<> materialName);
 }
 

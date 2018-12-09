@@ -42,7 +42,7 @@ namespace RenderCore { namespace Techniques
             const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
-            return CompiledRenderStateSet(Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states));
+			return CompiledRenderStateSet { Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states) };
         }
 
         virtual uint64 GetHash()
@@ -67,7 +67,7 @@ namespace RenderCore { namespace Techniques
                 ? CommonResources()._blendStraightAlpha
                 : CommonResources()._blendOpaque;
 
-            return CompiledRenderStateSet(Metal::BlendState(blendState), BuildDefaultRastizerState(states));
+			return CompiledRenderStateSet { Metal::BlendState(blendState), BuildDefaultRastizerState(states) };
         }
 
         virtual uint64 GetHash() { return typeid(StateSetResolver_Deferred).hash_code(); }

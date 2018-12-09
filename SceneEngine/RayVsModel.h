@@ -16,6 +16,7 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext; class CameraDesc;
 	class ParsingContext;
+	class ITechniqueDelegate;
 }}
 
 namespace SceneEngine
@@ -40,14 +41,13 @@ namespace SceneEngine
         std::vector<ResultEntry> GetResults();
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
         void SetFrustum(const Float4x4& frustum);
-        RenderCore::Techniques::ParsingContext& GetParserContext();
 
         enum TestType { RayTest = 0, FrustumTest = 1 };
 
         ModelIntersectionStateContext(
             TestType testType,
-            std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            const RenderCore::Techniques::TechniqueContext& techniqueContext,
+            RenderCore::IThreadContext& threadContext,
+            RenderCore::Techniques::ParsingContext& parsingContext,
             const RenderCore::Techniques::CameraDesc* cameraForLOD = nullptr);
         ~ModelIntersectionStateContext();
 
@@ -57,5 +57,7 @@ namespace SceneEngine
 
         static const unsigned s_maxResultCount = 256;
     };
+
+	std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> CreateRayTestTechniqueDelegate();
 }
 

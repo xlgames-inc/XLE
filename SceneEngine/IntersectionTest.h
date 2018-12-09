@@ -21,7 +21,6 @@ namespace SceneEngine
     class TerrainManager;
     class PlacementsEditor;
     class PlacementCellSet;
-	class IScene;
 
     /// <summary>Context for doing ray & box intersection test<summary>
     /// This context is intended for performing ray intersections for tools.
@@ -47,7 +46,6 @@ namespace SceneEngine
         
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
         RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-        IScene* GetSceneParser() const { return _sceneParser.get(); }
         UInt2 GetViewportSize() const;
 
             // technique context & thread context is enough for most operations
@@ -55,19 +53,13 @@ namespace SceneEngine
         const std::shared_ptr<RenderCore::IThreadContext>& GetThreadContext() const;
 
         IntersectionTestContext(
-            std::shared_ptr<RenderCore::IThreadContext> threadContext,
+            const std::shared_ptr<RenderCore::IThreadContext>& threadContext,
             const RenderCore::Techniques::CameraDesc& cameraDesc,
-            std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
-        IntersectionTestContext(
-            std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            std::shared_ptr<SceneEngine::IScene> sceneParser,
-            std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+            const std::shared_ptr<RenderCore::PresentationChainDesc>& viewportContext,
+            const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~IntersectionTestContext();
     protected:
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
-        std::shared_ptr<IScene> _sceneParser;
         std::shared_ptr<RenderCore::PresentationChainDesc> _viewportContext;
         RenderCore::Techniques::CameraDesc _cameraDesc;
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;

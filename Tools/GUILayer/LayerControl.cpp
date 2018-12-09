@@ -161,7 +161,7 @@ namespace GUILayer
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
     {
         auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(
-            settings->GetUnderlying(), resources->_visCache.GetNativePtr());
+            settings->GetUnderlying());
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(std::move(visLayer));
         overlaySet.AddSystem(
@@ -171,8 +171,9 @@ namespace GUILayer
 
         auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
 
-        auto intersectionScene = CreateModelIntersectionScene(
-            settings->GetUnderlying(), resources->_visCache.GetNativePtr());
+        auto intersectionScene = ToolsRig::CreateModelIntersectionScene(
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->ModelName)),
+			MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->MaterialName)));
         auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
             immContext,
             RenderCore::Techniques::CameraDesc(), 

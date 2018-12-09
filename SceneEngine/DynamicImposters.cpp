@@ -733,9 +733,9 @@ namespace SceneEngine
             const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> Techniques::CompiledRenderStateSet
         {
-            return Techniques::CompiledRenderStateSet(
+            return Techniques::CompiledRenderStateSet{
                 Metal::BlendState(_blendState), 
-                Techniques::BuildDefaultRastizerState(states));
+				Techniques::BuildDefaultRastizerState(states)};
         }
 
         virtual uint64 GetHash() { return typeid(CustomStateResolver).hash_code(); }

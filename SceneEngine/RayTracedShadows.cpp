@@ -191,7 +191,7 @@ namespace SceneEngine
 
         static_assert(bufferCount == dimof(strides), "Stream output buffer count mismatch");
         static_assert(bufferCount == dimof(offsets), "Stream output buffer count mismatch");
-        MetalStubs::BindSO(metalContext, MakeResourceList(box._triangleBufferVB));
+        MetalStubs::BindSO(metalContext, *box._triangleBufferVB);
 
             // set up the render state for writing into the grid buffer
         SavedTargets savedTargets(metalContext);

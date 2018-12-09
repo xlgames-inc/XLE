@@ -6,6 +6,7 @@
 
 #include "Techniques.h"
 #include "../Metal/Forward.h"
+#include <functional>
 
 namespace RenderCore { class InputElementDesc; class VertexBufferView; class UniformsStream; }
 
@@ -60,9 +61,45 @@ namespace RenderCore { namespace Techniques
         friend class ResolvedTechniqueShaders; // makes internal structure easier
     };
 
+	class ResolvedShaderVariationSet
+	{
+	public:
+		using ShaderFuture = ::Assets::FuturePtr<Metal::ShaderProgram>;
+		ShaderFuture FindVariation(
+			const TechniqueEntry& techEntry,
+			const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
+
+		using CreationFn = std::function<ShaderFuture(
+			StringSection<> vsName,
+			StringSection<> gsName,
+			StringSection<> psName,
+			StringSection<> defines)>;
+		CreationFn _creationFn;
+
+		ResolvedShaderVariationSet();
+		~ResolvedShaderVariationSet();
+	protected:
+		mutable std::vector<std::pair<uint64_t, ::Assets::FuturePtr<Metal::ShaderProgram>>>		_filteredToResolved;
+		mutable std::vector<std::pair<uint64_t, uint64_t>>										_globalToFiltered;
+
+		ShaderFuture MakeShaderVariation(
+			const TechniqueEntry& techEntry,
+			const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
+	};
+
     class ResolvedTechniqueShaders
     {
     public:
+		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
+			int techniqueIndex,
+			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const;
+
+		const Technique& GetTechnique() const { return *_technique; }
+
+		ResolvedTechniqueShaders(const std::shared_ptr<Technique>& technique);
+		~ResolvedTechniqueShaders();
+
+		///////////////////////////////////////
 		class ResolvedShader
 		{
 		public:
@@ -86,15 +123,7 @@ namespace RenderCore { namespace Techniques
             int techniqueIndex, 
             const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
             const TechniqueInterface& techniqueInterface) const;
-
-		::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
-			int techniqueIndex,
-			const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const;
-
-		const Technique& GetTechnique() const { return *_technique; }
-
-		ResolvedTechniqueShaders(const std::shared_ptr<Technique>& technique);
-		~ResolvedTechniqueShaders();
+		///////////////////////////////////////
 
 		const ::Assets::DepValPtr& GetDependencyValidation();
 		static void ConstructToFuture(
@@ -102,7 +131,7 @@ namespace RenderCore { namespace Techniques
 			StringSection<::Assets::ResChar> techniqueName);
 
     private:
-		class Entry
+		class Entry : public ResolvedShaderVariationSet
 		{
 		public:
 			class BoundShader
@@ -113,17 +142,11 @@ namespace RenderCore { namespace Techniques
 				std::unique_ptr<Metal::BoundInputLayout>	_boundLayout;
 			};
 			mutable std::vector<std::pair<uint64_t, BoundShader>>									_filteredToBoundShader;
-			mutable std::vector<std::pair<uint64_t, ::Assets::FuturePtr<Metal::ShaderProgram>>>		_filteredToResolved;
-			mutable std::vector<std::pair<uint64_t, uint64_t>>										_globalToFiltered;
-
-			ResolvedShader FindVariation(
+			
+			ResolvedShader FindResolvedShaderVariation(
 				const TechniqueEntry& techEntry,
 				const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max], 
 				const TechniqueInterface& techniqueInterface) const;
-
-			::Assets::FuturePtr<Metal::ShaderProgram> FindVariation(
-				const TechniqueEntry& techEntry,
-				const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
 
 			static BoundShader MakeBoundShader(
 				const std::shared_ptr<Metal::ShaderProgram>& shader, 

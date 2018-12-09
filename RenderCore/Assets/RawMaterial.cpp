@@ -399,9 +399,14 @@ namespace RenderCore { namespace Assets
 
 		// Resolve all of the directory names here, as we write into the Techniques::Material
 		for (const auto&b:_resourceBindings) {
-			char resolvedName[MaxPath];
-			_searchRules.ResolveFile(resolvedName, b.ValueAsString());
-			dest._bindings.SetParameter(b.Name(), MakeStringSection(resolvedName));
+			auto unresolvedName = b.ValueAsString();
+			if (!unresolvedName.empty()) {
+				char resolvedName[MaxPath];
+				_searchRules.ResolveFile(resolvedName, unresolvedName);
+				dest._bindings.SetParameter(b.Name(), MakeStringSection(resolvedName));
+			} else {
+				dest._bindings.SetParameter(b.Name(), MakeStringSection(unresolvedName));
+			}
 		}
 
         if (!_techniqueConfig.empty()) {

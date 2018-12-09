@@ -164,7 +164,6 @@ namespace RenderCore { namespace Techniques
         CopyTransform(localTransform._localToWorld, localToWorld);
         auto worldToLocal = InvertOrthonormalTransform(localToWorld);
         localTransform._localSpaceView = TransformPoint(worldToLocal, worldSpaceCameraPosition);
-        localTransform._materialGuid = ~0x0ull;
         return localTransform;
     }
 

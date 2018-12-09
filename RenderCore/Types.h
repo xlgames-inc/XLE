@@ -103,6 +103,13 @@ namespace RenderCore
 	bool HasElement(IteratorRange<const MiniInputElementDesc*> elements, uint64 semanticHash);
 	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment=true);
 
+	class StreamOutputInitializers
+	{
+	public:
+		IteratorRange<const RenderCore::InputElementDesc*> _outputElements;
+		IteratorRange<const unsigned*> _outputBufferStrides;
+	};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	enum class Topology

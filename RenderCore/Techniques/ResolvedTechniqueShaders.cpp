@@ -121,62 +121,16 @@ namespace RenderCore { namespace Techniques
 	}
 
     static ::Assets::FuturePtr<Metal::ShaderProgram> GetShaderVariation(
-		const TechniqueEntry& techEntry,
-		const ParameterBox* globalState[ShaderSelectors::Source::Max])
+		StringSection<> vsName,
+		StringSection<> gsName,
+		StringSection<> psName,
+		StringSection<> defines)
     {
-        std::vector<std::pair<const utf8*, std::string>> defines;
-        techEntry._baseSelectors.BuildStringTable(defines);
-        for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
-            OverrideStringTable(defines, *globalState[c]);
-        }
-
-        auto combinedStrings = FlattenStringTable(defines);
-
-        std::string vsShaderModel, psShaderModel, gsShaderModel;
-        auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());
-        if (vsi != defines.cend() && !XlCompareString(vsi->first, (const utf8*)"vs_")) {
-            char buffer[32];
-            int integerValue = Utility::XlAtoI32(vsi->second.c_str());
-            sprintf_s(buffer, dimof(buffer), ":vs_%i_%i", integerValue/10, integerValue%10);
-            vsShaderModel = buffer;
+        if (gsName.IsEmpty()) {
+            return ::Assets::MakeAsset<Metal::ShaderProgram>(vsName, psName, defines);
         } else {
-            vsShaderModel = ":" VS_DefShaderModel;
+            return ::Assets::MakeAsset<Metal::ShaderProgram>(vsName, gsName, psName, defines);
         }
-        auto psi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"ps_", CompareFirst<const utf8*, std::string>());
-        if (psi != defines.cend() && !XlCompareString(psi->first, (const utf8*)"ps_")) {
-            char buffer[32];
-            int integerValue = Utility::XlAtoI32(psi->second.c_str());
-            sprintf_s(buffer, dimof(buffer), ":ps_%i_%i", integerValue/10, integerValue%10);
-            psShaderModel = buffer;
-        } else {
-            psShaderModel = ":" PS_DefShaderModel;
-        }
-        auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"gs_", CompareFirst<const utf8*, std::string>());
-        if (gsi != defines.cend() && !XlCompareString(gsi->first, (const utf8*)"gs_")) {
-            char buffer[32];
-            int integerValue = Utility::XlAtoI32(psi->second.c_str());
-            sprintf_s(buffer, dimof(buffer), ":gs_%i_%i", integerValue/10, integerValue%10);
-            gsShaderModel = buffer;
-        } else {
-            gsShaderModel = ":" GS_DefShaderModel;
-        }
-
-        ::Assets::FuturePtr<Metal::ShaderProgram> shaderProgramFuture;
-
-        if (techEntry._geometryShaderName.empty()) {
-            shaderProgramFuture = ::Assets::MakeAsset<Metal::ShaderProgram>(
-                (techEntry._vertexShaderName + vsShaderModel).c_str(), 
-                (techEntry._pixelShaderName + psShaderModel).c_str(), 
-                combinedStrings.c_str());
-        } else {
-            shaderProgramFuture = ::Assets::MakeAsset<Metal::ShaderProgram>(
-                (techEntry._vertexShaderName + vsShaderModel).c_str(), 
-                (techEntry._geometryShaderName + gsShaderModel).c_str(), 
-                (techEntry._pixelShaderName + psShaderModel).c_str(), 
-                combinedStrings.c_str());
-        }
-
-		return shaderProgramFuture;
 	}
 
 	static uint64_t Hash64(const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max])
@@ -198,7 +152,7 @@ namespace RenderCore { namespace Techniques
 		return inputHash;
 	}
 
-	::Assets::FuturePtr<Metal::ShaderProgram> ResolvedTechniqueShaders::Entry::FindVariation(
+	::Assets::FuturePtr<Metal::ShaderProgram> ResolvedShaderVariationSet::FindVariation(
 		const TechniqueEntry& techEntry,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const
 	{
@@ -216,15 +170,70 @@ namespace RenderCore { namespace Techniques
 		auto i3 = LowerBound(_filteredToResolved, filteredHashValue);
         if (i3!=_filteredToResolved.cend() && i3->first == filteredHashValue) {
 			if (i3->second->GetDependencyValidation() && i3->second->GetDependencyValidation()->GetValidationIndex()!=0)
-				i3->second = GetShaderVariation(techEntry, shaderSelectors);
+				i3->second = MakeShaderVariation(techEntry, shaderSelectors);;
         } else {
-			auto newVariation = GetShaderVariation(techEntry, shaderSelectors);
+			auto newVariation = MakeShaderVariation(techEntry, shaderSelectors);
 			i3 = _filteredToResolved.insert(i3, {filteredHashValue, newVariation});
 		}
+
 		return i3->second;
 	}
 
-    auto      ResolvedTechniqueShaders::Entry::FindVariation(	
+	auto ResolvedShaderVariationSet::MakeShaderVariation(
+		const TechniqueEntry& techEntry,
+		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const -> ShaderFuture
+	{
+		std::vector<std::pair<const utf8*, std::string>> defines;
+		techEntry._baseSelectors.BuildStringTable(defines);
+		for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
+			OverrideStringTable(defines, *shaderSelectors[c]);
+		}
+
+		auto combinedStrings = FlattenStringTable(defines);
+
+		std::string vs, ps, gs;
+		auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());
+		if (vsi != defines.cend() && !XlCompareString(vsi->first, (const utf8*)"vs_")) {
+			char buffer[32];
+			int integerValue = Utility::XlAtoI32(vsi->second.c_str());
+			sprintf_s(buffer, dimof(buffer), ":vs_%i_%i", integerValue/10, integerValue%10);
+			vs = techEntry._vertexShaderName + buffer;
+		} else {
+			vs = techEntry._vertexShaderName + ":" VS_DefShaderModel;
+		}
+		auto psi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"ps_", CompareFirst<const utf8*, std::string>());
+		if (psi != defines.cend() && !XlCompareString(psi->first, (const utf8*)"ps_")) {
+			char buffer[32];
+			int integerValue = Utility::XlAtoI32(psi->second.c_str());
+			sprintf_s(buffer, dimof(buffer), ":ps_%i_%i", integerValue/10, integerValue%10);
+			ps = techEntry._pixelShaderName + buffer;
+		} else {
+			ps = techEntry._pixelShaderName + ":" PS_DefShaderModel;
+		}
+		if (!techEntry._geometryShaderName.empty()) {
+			auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"gs_", CompareFirst<const utf8*, std::string>());
+			if (gsi != defines.cend() && !XlCompareString(gsi->first, (const utf8*)"gs_")) {
+				char buffer[32];
+				int integerValue = Utility::XlAtoI32(psi->second.c_str());
+				sprintf_s(buffer, dimof(buffer), ":gs_%i_%i", integerValue/10, integerValue%10);
+				gs = techEntry._geometryShaderName + buffer;
+			} else {
+				gs = techEntry._geometryShaderName + ":" GS_DefShaderModel;
+			}
+		}
+
+		return _creationFn(MakeStringSection(vs), MakeStringSection(gs), MakeStringSection(ps), MakeStringSection(combinedStrings));
+	}
+
+	ResolvedShaderVariationSet::ResolvedShaderVariationSet() 
+	{
+		_creationFn = GetShaderVariation;
+	}
+	ResolvedShaderVariationSet::~ResolvedShaderVariationSet() {}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    auto      ResolvedTechniqueShaders::Entry::FindResolvedShaderVariation(	
 		const TechniqueEntry& techEntry,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max],
 		const TechniqueInterface& techniqueInterface) const -> ResolvedShader
@@ -254,9 +263,9 @@ namespace RenderCore { namespace Techniques
 		auto i3 = LowerBound(_filteredToResolved, filteredHashValue);
         if (i3!=_filteredToResolved.cend() && i3->first == filteredHashValue) {
 			if (i3->second->GetDependencyValidation() && i3->second->GetDependencyValidation()->GetValidationIndex()!=0)
-				i3->second = GetShaderVariation(techEntry, shaderSelectors);
+				i3->second = MakeShaderVariation(techEntry, shaderSelectors);
         } else {
-			auto newVariation = GetShaderVariation(techEntry, shaderSelectors);
+			auto newVariation = MakeShaderVariation(techEntry, shaderSelectors);
 			i3 = _filteredToResolved.insert(i3, {filteredHashValue, newVariation});
 		}
 
@@ -307,7 +316,7 @@ namespace RenderCore { namespace Techniques
 		const auto& techEntry = _technique->GetEntry(techniqueIndex);
         if (techniqueIndex >= dimof(_entries) || !techEntry.IsValid())
             return ResolvedShader();
-        return _entries[techniqueIndex].FindVariation(techEntry, shaderSelectors, techniqueInterface);
+        return _entries[techniqueIndex].FindResolvedShaderVariation(techEntry, shaderSelectors, techniqueInterface);
     }
 
 	::Assets::FuturePtr<Metal::ShaderProgram> ResolvedTechniqueShaders::FindVariation(

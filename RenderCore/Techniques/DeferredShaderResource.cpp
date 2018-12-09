@@ -143,6 +143,8 @@ namespace RenderCore { namespace Techniques
 		auto splitter = MakeFileNameSplitter(initializer);
         DecodedInitializer init(splitter.Parameters());
 
+		assert(!splitter.File().IsEmpty());
+
 		std::shared_ptr<::Assets::AssetFuture<TextureMetaData>> metaDataFuture;
 
 		::Assets::ResChar filename[MaxPath];

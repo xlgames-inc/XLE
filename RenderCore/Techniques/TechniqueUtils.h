@@ -77,8 +77,6 @@ namespace RenderCore { namespace Techniques
         Float3x4    _localToWorld;
         Float3      _localSpaceView;
         unsigned    _dummy0;
-        uint64      _materialGuid;
-        unsigned    _dummy1[2];
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

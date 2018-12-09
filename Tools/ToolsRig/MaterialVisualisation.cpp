@@ -208,6 +208,24 @@ namespace ToolsRig
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class MaterialFilterDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
+	{
+	public:
+		virtual bool OnDraw( 
+			RenderCore::Metal::DeviceContext& metalContext, RenderCore::Techniques::ParsingContext&,
+			const RenderCore::Techniques::Drawable&,
+			uint64_t materialGuid, unsigned drawCallIdx) override
+		{
+			// Note that we're rejecting other draw calls very late in the pipeline here. But it
+			// helps avoid extra overhead in the more common cases
+			return materialGuid == _activeMaterial;
+		}
+
+		MaterialFilterDelegate(uint64_t activeMaterial) : _activeMaterial(activeMaterial) {}
+	private:
+		uint64_t _activeMaterial;
+	};
+
     void MaterialVisualizationScene::DrawModel(IteratorRange<Techniques::DrawablesPacket** const> pkts) const
     {
             // This mode is a little more complex than the others. We want to
@@ -232,7 +250,7 @@ namespace ToolsRig
 			return;
 
 		auto& model = *modelFuture->Actualize();
-		return model.BuildDrawables(pkts, Identity<Float4x4>(), boundMaterial);
+		return model.BuildDrawables(pkts, Identity<Float4x4>(), std::make_shared<MaterialFilterDelegate>(boundMaterial));
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

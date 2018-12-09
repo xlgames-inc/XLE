@@ -861,7 +861,7 @@ namespace SceneEngine
 
             gpuOutput = outputRes->GetUnderlying();
             if (gpuOutput)
-                MetalStubs::BindSO(metalContext, MakeResourceList(gpuOutput));
+                MetalStubs::BindSO(metalContext, *gpuOutput);
         }
 
         struct RayTestBuffer

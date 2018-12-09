@@ -37,15 +37,5 @@ namespace RenderCore { namespace Metal_DX11
             Count1 + unorderedAccess._startingPoint, Count2, uavUnderlyings, initialCounts);
     }
 
-    /*template<int Count> void DeviceContext::BindSO(const ResourceList<Buffer, Count>& buffers, unsigned offset)
-    {
-		ID3D::Buffer* underlyings[Count];
-		CopyArrayOfUnderlying(underlyings, buffers);
-        UINT offsets[Count];
-        std::fill(offsets, &offsets[dimof(offsets)], offset);
-        assert(buffers._startingPoint==0);
-        _underlying->SOSetTargets(Count, underlyings, offsets);
-    }*/
-
 }}
 
