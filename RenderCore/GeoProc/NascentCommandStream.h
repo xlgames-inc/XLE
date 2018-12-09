@@ -93,7 +93,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         bool    HasAnimationDriver(const std::string&  parameterName) const;
 
         void    MergeAnimation(
-            const NascentAnimationSet& animation, const char name[],
+            const NascentAnimationSet& animation, const std::string& name,
             const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
             std::vector<Assets::RawAnimationCurve>& destinationCurves);
 

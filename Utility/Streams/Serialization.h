@@ -160,6 +160,8 @@ namespace Utility
 		iterator end() { return _end; }
 		const_iterator end() const { return _end; }
 		const_iterator cend() const { return _end; }
+		Element* data() { return _begin; }
+		const Element* data() const { return _begin; }
 
 		void push_back(const Element& value) 
 		{

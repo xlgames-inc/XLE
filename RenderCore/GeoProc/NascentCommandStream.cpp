@@ -100,7 +100,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     }
 
     void    NascentAnimationSet::MergeAnimation(
-        const NascentAnimationSet& animation, const char name[],
+        const NascentAnimationSet& animation, const std::string& name,
         const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
         std::vector<Assets::RawAnimationCurve>& destinationCurves)
     {
@@ -216,7 +216,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", c, _parameterInterfaceDefinition[c].c_str());
             parameterNameHashes[c] = Hash64(AsPointer(_parameterInterfaceDefinition[c].begin()), AsPointer(_parameterInterfaceDefinition[c].end()));
         }
-        serializer.SerializeSubBlock(MakeIteratorRange((const AnimationDesc*)parameterNameHashes.get(), (const AnimationDesc*)&parameterNameHashes[_parameterInterfaceDefinition.size()]));
+        serializer.SerializeSubBlock(MakeIteratorRange(parameterNameHashes.get(), &parameterNameHashes[_parameterInterfaceDefinition.size()]));
         serializer.SerializeValue(_parameterInterfaceDefinition.size());
     }
 

@@ -307,8 +307,8 @@ namespace RenderCore { namespace Assets
     template Float4x4   RawAnimationCurve::Calculate(float inputTime) const never_throws;
 	template Quaternion RawAnimationCurve::Calculate(float inputTime) const never_throws;
 
-    RawAnimationCurve::RawAnimationCurve(   DynamicArray<float>&&	timeMarkers, 
-											DynamicArray<uint8>&&   keyData,
+    RawAnimationCurve::RawAnimationCurve(   SerializableVector<float>&&	timeMarkers, 
+											SerializableVector<uint8>&&   keyData,
 											const CurveKeyDataDesc&	keyDataDesc,
 											CurveInterpolationType	interpolationType)
     :       _timeMarkers(std::move(timeMarkers))
@@ -320,16 +320,16 @@ namespace RenderCore { namespace Assets
 	RawAnimationCurve::~RawAnimationCurve() {}
 
 	RawAnimationCurve::RawAnimationCurve(const RawAnimationCurve& copyFrom)
-	: _timeMarkers(decltype(_timeMarkers)::Copy(copyFrom._timeMarkers))
-	, _keyData(decltype(_keyData)::Copy(copyFrom._keyData))
+	: _timeMarkers(copyFrom._timeMarkers)
+	, _keyData(copyFrom._keyData)
 	, _keyDataDesc(copyFrom._keyDataDesc)
 	, _interpolationType(copyFrom._interpolationType) 
 	{}
 
 	RawAnimationCurve& RawAnimationCurve::operator=(const RawAnimationCurve& copyFrom) 
 	{
-		_timeMarkers = decltype(_timeMarkers)::Copy(copyFrom._timeMarkers);
-		_keyData = decltype(_keyData)::Copy(copyFrom._keyData);
+		_timeMarkers = copyFrom._timeMarkers;
+		_keyData = copyFrom._keyData;
 		_keyDataDesc = copyFrom._keyDataDesc;
 		_interpolationType = copyFrom._interpolationType;
 		return *this;

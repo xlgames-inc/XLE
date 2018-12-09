@@ -30,13 +30,15 @@ namespace Serialization
 
     void    NascentBlockSerializer::PushBackPlaceholder(SpecialBuffer::Enum specialBuffer)
     {
-        if (specialBuffer == SpecialBuffer::String) {
+        if (specialBuffer == SpecialBuffer::Vector) {
+            _memory.insert(_memory.end(), sizeof(SerializableVector<unsigned>), 0);
+        } else if (specialBuffer == SpecialBuffer::String) {
+			assert(0);
             _memory.insert(_memory.end(), sizeof(std::string), 0);
         } else if (specialBuffer == SpecialBuffer::VertexBuffer || specialBuffer == SpecialBuffer::IndexBuffer) {
             assert(0);
-        } else if (specialBuffer == SpecialBuffer::Vector) {
-            _memory.insert(_memory.end(), sizeof(SerializableVector<unsigned>), 0);
         } else if (specialBuffer == SpecialBuffer::UniquePtr) {
+			assert(0);
             _memory.insert(_memory.end(), sizeof(std::unique_ptr<void, BlockSerializerDeleter<void>>), 0);
         } else if (specialBuffer == SpecialBuffer::Unknown) {
             PushBackPointer(0);

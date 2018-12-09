@@ -133,9 +133,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             return false;
         }
 
-		_dehashTable.push_back(std::make_pair(hashName, paramName.AsString()));
+		auto dhi = LowerBound(_dehashTable, hashName);
+		if (dhi!=_dehashTable.end() && dhi->first == hashName) {
+			Log(Warning) << "Duplicate animation parameter name in node " << paramName.AsString() << ". Only the first will work. The rest will be static." << std::endl;
+            return false;
+		}
+		_dehashTable.insert(dhi, std::make_pair(hashName, paramName.AsString()));
         paramIndex = (uint32)tables.size();
-        tables[paramIndex] = hashName;
+        tables.push_back(hashName);
         return true;
     }
 

@@ -567,10 +567,8 @@ namespace ColladaConversion
 	ColladaCompileOp::ColladaCompileOp() {}
 	ColladaCompileOp::~ColladaCompileOp() {}
 
-	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(StringSection<::Assets::ResChar> identifier)
+	std::shared_ptr<::Assets::ICompileOperation> CreateNormalCompileOperation(StringSection<::Assets::ResChar> identifier)
 	{
-#pragma comment(linker, "/EXPORT:CreateCompileOperation=" __FUNCDNAME__)
-
 		std::shared_ptr<ColladaCompileOp> result = std::make_shared<ColladaCompileOp>();
 
 		auto split = MakeFileNameSplitter(identifier);
@@ -600,20 +598,93 @@ namespace ColladaConversion
 		return std::move(result);
 	}
 
+	class MergedAnimCompileOp : public ::Assets::ICompileOperation
+    {
+    public:
+		std::vector<TargetDesc> _targets;
+		std::vector<::Assets::DependentFileState> _dependencies;
+
+		NascentAnimationSet _animationSet;
+        std::vector<RenderCore::Assets::RawAnimationCurve> _curves;
+
+		std::vector<TargetDesc> GetTargets() const { return _targets; }
+		std::vector<::Assets::DependentFileState> GetDependencies() const { return _dependencies; }
+
+		std::vector<OperationResult> SerializeTarget(unsigned idx)
+		{
+			return SerializeAnimationsToChunks(
+				"MergedAnimSet", _animationSet,
+				MakeIteratorRange(_curves));
+		}
+    };
+
+	std::shared_ptr<::Assets::ICompileOperation> CreateMergedAnimSetCompileOperation(StringSection<::Assets::ResChar> identifier)
+	{
+		// Search the given directory for all .dae files. We'll merge them all together as a single animation set
+		auto sourceFiles = RawFS::FindFiles(identifier.AsString() + "/*.dae", RawFS::FindFilesFilter::File);
+
+		std::shared_ptr<MergedAnimCompileOp> result = std::make_shared<MergedAnimCompileOp>();
+		::Assets::DependentFileState cfgDep { MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime };
+		result->_dependencies.push_back(cfgDep);
+
+		ImportConfiguration cfg("colladaimport.cfg");
+
+		for (const auto&filePath:sourceFiles) {
+			::Assets::DependentFileState subFileDep { filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime };
+			result->_dependencies.push_back(subFileDep);
+
+			ColladaCompileOp subResult;
+			subResult._cfg = cfg;
+			subResult._fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
+			XmlInputStreamFormatter<utf8> formatter(
+				MemoryMappedInputStream(subResult._fileData.GetData()));
+			formatter._allowCharacterData = true;
+
+			subResult._name = identifier.AsString();
+			subResult._doc = std::make_shared<ColladaConversion::DocumentScaffold>();
+			subResult._doc->Parse(formatter);
+
+			subResult._resolveContext = ::ColladaConversion::URIResolveContext(subResult._doc);
+
+			PreparedAnimationFile animFile(subResult);
+
+			result->_animationSet.MergeAnimation(
+				animFile._animationSet, MakeFileNameSplitter(filePath).File().AsString(), 
+				animFile._curves, result->_curves);
+		}
+
+		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_AnimationSet, "Animations"});
+		return result;
+	}
+
+	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(StringSection<::Assets::ResChar> identifier)
+	{
+#pragma comment(linker, "/EXPORT:CreateCompileOperation=" __FUNCDNAME__)
+		if (identifier.size() > 6 && XlEqStringI(MakeStringSection(identifier.end()-6, identifier.end()), "alldae")) {
+			return CreateMergedAnimSetCompileOperation(MakeStringSection(identifier.begin(), identifier.end()-6));
+		} else {
+			return CreateNormalCompileOperation(identifier);
+		}
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static uint64_t s_knownAssetTypes[] = { Type_Model, Type_RawMat, Type_Skeleton, Type_AnimationSet };
+	static uint64_t s_animSetAssetTypes[] = { Type_AnimationSet };
 
 	class CompilerDesc : public ::Assets::ICompilerDesc
 	{
 	public:
 		const char*			Description() const { return "Compiler and converter for Collada asset files"; }
 
-		virtual unsigned	FileKindCount() const { return 1; }
+		virtual unsigned	FileKindCount() const { return 2; }
 		virtual FileKind	GetFileKind(unsigned index) const
 		{
-			assert(index==0);
-			return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset" };
+			assert(index==0 || index == 1);
+			if (index == 0)
+				return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset" };
+
+			return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*[\\/]alldae)", "All collada animations in a directory" };
 		}
 
 		CompilerDesc() {}

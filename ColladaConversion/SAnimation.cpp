@@ -367,7 +367,8 @@ namespace ColladaConversion
             const auto inTangentBytes = BitsPerPixel(inTangentFormat)/8;
             const auto elementBytes = positionBytes + inTangentBytes+ BitsPerPixel(outTangentFormat)/8;
 
-            auto keyBlock = std::make_unique<uint8[]>(elementBytes * keyCount);
+            SerializableVector<uint8> keyBlock;
+			keyBlock.resize(elementBytes * keyCount);
             auto inTangentsOffsetBytes = positionBytes;
             auto outTangentsOffsetBytes = inTangentsOffsetBytes + inTangentBytes;
 
@@ -400,7 +401,7 @@ namespace ColladaConversion
                 if (!fieldCount) continue;
 
                 LoadSource(
-                    (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset),
+                    (float*)PtrAdd(keyBlock.data(), sizeof(float) * fieldOffset),
                     (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
                     ch._outputSource);
 
@@ -415,7 +416,7 @@ namespace ColladaConversion
                         Log(Warning) << "Tangents expressed in XY format in animation curve. Ignoring Y part." << std::endl;
 
                     LoadSource(
-                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + inTangentsOffsetBytes),
+                        (float*)PtrAdd(keyBlock.data(), sizeof(float) * fieldOffset + inTangentsOffsetBytes),
                         (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
                         ch._inTangentsSource, ch._inTangentsSource->FindAccessorForTechnique()->GetStride()-1);
                 }
@@ -425,7 +426,7 @@ namespace ColladaConversion
                         Log(Warning) << "Tangents expressed in XY format in animation curve. Ignoring Y part." << std::endl;
 
                     LoadSource(
-                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + outTangentsOffsetBytes),
+                        (float*)PtrAdd(keyBlock.data(), sizeof(float) * fieldOffset + outTangentsOffsetBytes),
                         (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
                         ch._outTangentsSource, ch._outTangentsSource->FindAccessorForTechnique()->GetStride()-1);
                 }
@@ -435,9 +436,10 @@ namespace ColladaConversion
                 //          array. If they are not the same, it means the key frames for
                 //          different fields are in different places. That would cause a lot
                 //          of problems.
-            auto inputTimeBlock = std::make_unique<float[]>(keyCount);
+            SerializableVector<float> inputTimeBlock;
+			inputTimeBlock.resize(keyCount);
             LoadSource(
-                inputTimeBlock.get(),
+                inputTimeBlock.data(),
                 1, keyCount, 1, 
                 firstChannel._inputSource, 
                 firstChannel._inputSource->FindAccessorForTechnique()->GetStride()-1);
@@ -457,8 +459,8 @@ namespace ColladaConversion
 				keyDataDesc._flags |= RenderCore::Assets::CurveKeyDataDesc::Flags::HasOutTangent;
 			}
 			RenderCore::Assets::RawAnimationCurve curve(
-                DynamicArray<float>(std::move(inputTimeBlock), size_t(keyCount)),
-                DynamicArray<uint8>(std::move(keyBlock), elementBytes * keyCount),
+                std::move(inputTimeBlock),
+                std::move(keyBlock),
 				keyDataDesc, interpolationType);
             result._curves.emplace_back(UnboundAnimation::Curve(
                 i->first, std::move(curve), samplerType, 0));
