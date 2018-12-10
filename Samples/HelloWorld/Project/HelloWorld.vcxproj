@@ -69,13 +69,16 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\..\Shared\SampleRig.cpp" />
     <ClCompile Include="..\BasicScene.cpp" />
     <ClCompile Include="..\HelloWorld.cpp" />
     <ClCompile Include="..\PostSceneRender.cpp" />
     <ClCompile Include="..\WinAPI\WindowStartup.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\..\Shared\SampleRig.h" />
     <ClInclude Include="..\BasicScene.h" />
+    <ClInclude Include="..\HelloWorld.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Assets\Project\Assets.vcxproj">
