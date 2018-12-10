@@ -46,4 +46,10 @@ namespace GUILayer
 		ConsoleRig::CrossModule* _crossModule;
         int _creationThreadId;
     };
+
+	class RenderTargetWrapper
+	{
+	public:
+		std::shared_ptr<RenderCore::IResource> _renderTarget;
+	};
 }

@@ -8,7 +8,7 @@
 
 #include "../../RenderCore/IThreadContext_Forward.h"
 
-namespace GUILayer { class NativeEngineDevice; }
+namespace GUILayer { class NativeEngineDevice; class RenderTargetWrapper; }
 namespace ToolsRig { class IManipulator; class VisCameraSettings; }
 namespace SceneEngine { class LightingParserContext; class IntersectionTestContext; class IntersectionTestScene; class PlacementsEditor; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; class ParsingContext; class Material;  } }
@@ -16,6 +16,7 @@ namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
 namespace Assets { class DirectorySearchRules; }
 namespace ConsoleRig { class IProgress; class GlobalServices; }
 
+#pragma make_public(GUILayer::RenderTargetWrapper)
 #pragma make_public(GUILayer::NativeEngineDevice)
 #pragma make_public(ToolsRig::IManipulator)
 #pragma make_public(ToolsRig::VisCameraSettings)

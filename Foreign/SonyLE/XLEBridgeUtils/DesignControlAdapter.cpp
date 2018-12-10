@@ -26,6 +26,8 @@ using namespace Sce::Atf::Applications;
 using namespace Sce::Atf::Dom;
 using namespace Sce::Atf::VectorMath;
 
+namespace GUILayer { class RenderTargetWrapper; }
+
 namespace XLEBridgeUtils
 {
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -41,8 +43,9 @@ namespace XLEBridgeUtils
     private ref class DesignControlAdapterOverlay : public GUILayer::IOverlaySystem
     {
     public:
-        virtual void RenderToScene(
-            RenderCore::IThreadContext& device, 
+        virtual void Render(
+            RenderCore::IThreadContext& device,
+			const GUILayer::RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override
         {
             auto context = gcnew GUILayer::SimpleRenderingContext(&device, RetainedResources, &parserContext);
@@ -55,11 +58,6 @@ namespace XLEBridgeUtils
                 delete context;
             }
         }
-
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parserContext) override {}
-        virtual void SetActivationState(bool) override {}
 
         event RenderCallback^ OnRender;
         property GUILayer::RetainedRenderResources^ RetainedResources;

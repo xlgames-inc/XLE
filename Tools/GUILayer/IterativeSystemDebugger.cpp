@@ -43,7 +43,7 @@ namespace GUILayer
     public:
         virtual void Render(
             RenderCore::IThreadContext& device, 
-			const RenderCore::IResourcePtr& renderTarget,
+			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         ErosionOverlay(
@@ -87,10 +87,10 @@ namespace GUILayer
 
     void ErosionOverlay::Render(
         RenderCore::IThreadContext& threadContext,
-		const RenderCore::IResourcePtr& renderTarget,
+		const RenderTargetWrapper& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget._renderTarget, parserContext);
         Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
         SetGlobalTransform(threadContext, parserContext, worldDims);
 
@@ -284,7 +284,7 @@ namespace GUILayer
     public:
         virtual void Render(
             RenderCore::IThreadContext& device, 
-			const RenderCore::IResourcePtr& renderTarget,
+			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         using RenderFn = std::function<void(
@@ -319,12 +319,12 @@ namespace GUILayer
 
     void CFDOverlay::Render(
         RenderCore::IThreadContext& threadContext,
-		const RenderCore::IResourcePtr& renderTarget,
+		const RenderTargetWrapper& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (!(*_renderFn)) return;
 
-		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget._renderTarget, parserContext);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
         SetGlobalTransform(threadContext, parserContext, worldDims);
 

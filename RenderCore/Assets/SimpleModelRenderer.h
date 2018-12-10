@@ -54,6 +54,10 @@ namespace RenderCore { namespace Assets
 			const std::shared_ptr<ModelScaffold>& modelScaffold,
 			const std::shared_ptr<MaterialScaffold>& materialScaffold,
 			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {});
+		~SimpleModelRenderer();
+
+		SimpleModelRenderer& operator=(const SimpleModelRenderer&) = delete;
+		SimpleModelRenderer(const SimpleModelRenderer&) = delete;
 		
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,

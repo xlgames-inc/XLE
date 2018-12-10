@@ -232,7 +232,7 @@ namespace GUILayer
     public:
         void Render(
             RenderCore::IThreadContext& threadContext,
-			const std::shared_ptr<RenderCore::IResource>& renderTarget,
+			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         EditorSceneOverlay(
@@ -252,7 +252,7 @@ namespace GUILayer
     
     void EditorSceneOverlay::Render(
         RenderCore::IThreadContext& threadContext,
-		const std::shared_ptr<RenderCore::IResource>& renderTarget,
+		const RenderTargetWrapper& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (_sceneParser.get()) {
@@ -277,7 +277,7 @@ namespace GUILayer
             }
             
             SceneEngine::LightingParser_ExecuteScene(
-                threadContext, renderTarget, parserContext, *_sceneParser.get(), 
+                threadContext, renderTarget._renderTarget, parserContext, *_sceneParser.get(), 
                 _sceneParser->GetCameraDesc(), qualSettings);
         }
 

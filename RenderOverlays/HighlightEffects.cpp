@@ -207,10 +207,16 @@ namespace RenderOverlays
 			RenderCore::Techniques::AttachmentSemantics::ColorLDR,
 			AsAttachmentDesc(namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()));
 		AttachmentName n_depth = ~0u;
-		if (doDepthTest)
-			n_depth = fbDescFrag.DefineAttachment(
-				RenderCore::Techniques::AttachmentSemantics::MultisampleDepth,
-				AsAttachmentDesc(namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth)->GetDesc()));
+		if (doDepthTest) {
+			AttachmentDesc depthAttachment;
+			auto* existingDepthAttachment = namedRes.GetBoundResource(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth).get();
+			if (existingDepthAttachment) {
+				depthAttachment = AsAttachmentDesc(existingDepthAttachment->GetDesc());
+			} else {
+				depthAttachment._format = Format::D24_UNORM_S8_UINT;
+			}
+			n_depth = fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth, depthAttachment);
+		}
 
 		SubpassDesc subpass0;
 		subpass0.AppendOutput(n_offscreen, LoadStore::Clear, LoadStore::Retain);

@@ -35,7 +35,7 @@ namespace GUILayer
 
     void MaterialVisLayer::Render(
         RenderCore::IThreadContext& context,
-		const std::shared_ptr<RenderCore::IResource>& renderTarget,
+		const RenderTargetWrapper& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
 		if (_nativeVisSettingsDirty) {
@@ -58,7 +58,7 @@ namespace GUILayer
 		ToolsRig::VisLightingParserDelegate lightingParserDelegate(_envSettings.GetNativePtr());
 
         ToolsRig::MaterialVisLayer::Draw(
-			context, renderTarget, parserContext, 
+			context, renderTarget._renderTarget, parserContext, 
 			AsNative(_settings->Lighting), 
 			*scene, lightingParserDelegate,
 			AsCameraDesc(*_settings->Camera->GetUnderlying()));

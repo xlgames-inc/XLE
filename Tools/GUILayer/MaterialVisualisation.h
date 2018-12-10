@@ -63,7 +63,7 @@ namespace GUILayer
     public:
         virtual void Render(
             RenderCore::IThreadContext& context,
-			const std::shared_ptr<RenderCore::IResource>& renderTarget,
+			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         void SetConfig(

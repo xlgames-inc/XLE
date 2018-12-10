@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "NativeEngineDevice.h"
 #include <memory>
 
 namespace RenderCore { class IThreadContext; class IResource; }
@@ -28,7 +29,7 @@ namespace GUILayer
 
         virtual void Render(
             RenderCore::IThreadContext& threadContext, 
-			const std::shared_ptr<RenderCore::IResource>& renderTarget,
+			const RenderTargetWrapper& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) = 0; 
 		virtual void SetActivationState(bool newState) {}
 

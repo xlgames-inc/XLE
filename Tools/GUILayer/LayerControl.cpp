@@ -235,7 +235,7 @@ namespace GUILayer
 				const RenderCore::IResourcePtr& renderTarget,
                 RenderCore::Techniques::ParsingContext& parserContext)
             {
-                _managedOverlay->Render(device, renderTarget, parserContext);
+				_managedOverlay->Render(device, RenderTargetWrapper{renderTarget}, parserContext);
             }
 
             void SetActivationState(bool newState)

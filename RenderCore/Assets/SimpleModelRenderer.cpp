@@ -469,6 +469,8 @@ namespace RenderCore { namespace Assets
 		_usi->BindConstantBuffer(1, {Techniques::ObjectCB::DrawCallProperties});
 	}
 
+	SimpleModelRenderer::~SimpleModelRenderer() {}
+
 	struct DeformConstructionFuture
 	{
 	public:
