@@ -47,7 +47,6 @@ namespace RenderCore { namespace Techniques
             unsigned		_vertexStride = 0u;
             uint64_t		_vertexElementsHash = 0ull;
             unsigned		_vbOffset = 0u;
-            unsigned		_dynVBEnd = 0u;
             unsigned		_instanceStepDataRate = 0u;
         };
         VertexStream        _vertexStreams[4];

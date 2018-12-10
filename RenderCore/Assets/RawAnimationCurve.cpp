@@ -192,7 +192,8 @@ namespace RenderCore { namespace Assets
 		if (key == timeMarkers.end())
 			return decomp(keyData.begin());
 
-		--key;	// (back one, to the first key that is smaller)
+		if (key != timeMarkers.begin())	// (this can happen when evalTime is exactly equal to the first key, often 0.f)
+			--key;	// (back one, to the first key that is smaller)
 		auto keyIndex = key-timeMarkers.begin();
 		auto alpha = LerpParameter(key[0], key[1], evalTime);
 		auto keyCount = keyData.size() / keyDataDesc._elementStride;

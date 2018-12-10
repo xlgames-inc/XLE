@@ -53,6 +53,7 @@
     <ClCompile Include="..\Assets\LocalCompiledShaderSource.cpp" />
     <ClCompile Include="..\Assets\SimpleModelDeform.cpp" />
     <ClCompile Include="..\Assets\SimpleModelRenderer.cpp" />
+    <ClCompile Include="..\Assets\SkinDeformer.cpp" />
     <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\Assets\TransformationCommands.cpp" />
     <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp" />
@@ -81,6 +82,7 @@
     <ClInclude Include="..\Assets\SimpleModelDeform.h" />
     <ClInclude Include="..\Assets\SimpleModelRenderer.h" />
     <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
+    <ClInclude Include="..\Assets\SkinDeformer.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
     <ClInclude Include="..\GeoProc\GeometryAlgorithm.h" />
     <ClInclude Include="..\GeoProc\GeoProcUtil.h" />

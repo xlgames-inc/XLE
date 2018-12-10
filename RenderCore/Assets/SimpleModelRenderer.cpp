@@ -242,6 +242,14 @@ namespace RenderCore { namespace Assets
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	struct SimpleModelRenderer::DeformOp
+	{
+		std::shared_ptr<IDeformOperation> _deformOp;
+		unsigned _dynVBBegin = 0, _dynVBEnd = 0;
+		unsigned _stride = 0;
+		std::vector<MiniInputElementDesc> _elements;
+	};
+
 	void SimpleModelRenderer::GenerateDeformBuffer(IThreadContext& context)
 	{
 		if (!_dynVB) return;
@@ -266,6 +274,9 @@ namespace RenderCore { namespace Assets
 		}
 		((Metal::Buffer*)_dynVB.get())->Unmap(metalContext);
 	}
+
+	unsigned SimpleModelRenderer::DeformOperationCount() const { return (unsigned)_deformOps.size(); }
+	IDeformOperation& SimpleModelRenderer::DeformOperation(unsigned idx) { return *_deformOps[idx]._deformOp; } 
 
 	static bool IsSorted(IteratorRange<const uint64_t*> suppressedElements)
 	{
@@ -310,6 +321,56 @@ namespace RenderCore { namespace Assets
 
 	const ::Assets::DepValPtr& SimpleModelRenderer::GetDependencyValidation() { return _modelScaffold->GetDependencyValidation(); }
 
+	struct NascentDeformStream
+	{
+		RenderCore::Techniques::DrawableGeo::VertexStream _vStream;
+		SimpleModelRenderer::DeformOp _deformOp;
+		std::vector<uint64_t> _suppressedElements;
+	};
+
+	static NascentDeformStream BuildSuppressedElements(
+		IteratorRange<const DeformOperationInstantiation*> deformAttachments,
+		unsigned geoId,
+		unsigned vertexCount,
+		unsigned& dynVBIterator)
+	{
+		// Calculate which elements are suppressed by the deform operations
+		// We can only support a single deform operation per geo
+		const DeformOperationInstantiation* deformAttachment = nullptr;
+		for (const auto& def:deformAttachments)
+			if (def._geoId == geoId) {
+				assert(!deformAttachment);
+				deformAttachment = &def;
+			}
+
+		if (!deformAttachment) return {};
+
+		NascentDeformStream result;
+		result._suppressedElements = { deformAttachment->_suppressElements.begin(), deformAttachment->_suppressElements.end() };
+		std::sort(result._suppressedElements.begin(), result._suppressedElements.end());
+		result._suppressedElements.erase(
+			std::unique(result._suppressedElements.begin(), result._suppressedElements.end()),
+			result._suppressedElements.end());
+
+		result._vStream._vertexElements = deformAttachment->_generatedElements;
+		result._vStream._vertexElementsHash = 
+			Hash64(
+				AsPointer(result._vStream._vertexElements.begin()), 
+				AsPointer(result._vStream._vertexElements.end()));
+		result._vStream._vertexStride = CalculateVertexStride(MakeIteratorRange(result._vStream._vertexElements));
+		result._vStream._vbOffset = dynVBIterator;
+
+		// register the deform operation
+		result._deformOp._deformOp = deformAttachment->_operation;
+		result._deformOp._stride = result._vStream._vertexStride;
+		result._deformOp._elements = result._vStream._vertexElements;
+		result._deformOp._dynVBBegin = dynVBIterator;
+		dynVBIterator += result._vStream._vertexStride * vertexCount;
+		result._deformOp._dynVBEnd = dynVBIterator;
+
+		return result;
+	}
+
 	SimpleModelRenderer::SimpleModelRenderer(
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
@@ -338,49 +399,19 @@ namespace RenderCore { namespace Assets
 		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._geoCount; ++geo) {
 			const auto& rg = modelScaffold->ImmutableData()._geos[geo];
 
-			// Calculate which elements are suppressed by the deform operations
-			// We can only support a single deform operation per geo
-			const DeformOperationInstantiation* deformAttachment = nullptr;
-			for (const auto& def:deformAttachments)
-				if (def._geoId == geo) {
-					assert(!deformAttachment);
-					deformAttachment = &def;
-				}
-					
-			std::vector<uint64_t> suppressedElements;
-			if (deformAttachment)
-				suppressedElements = { deformAttachment->_suppressElements.begin(), deformAttachment->_suppressElements.end() };
-			std::sort(suppressedElements.begin(), suppressedElements.end());
-			suppressedElements.erase(
-				std::unique(suppressedElements.begin(), suppressedElements.end()),
-				suppressedElements.end());
+			unsigned vertexCount = rg._vb._size / rg._vb._ia._vertexStride;
+			auto deform = BuildSuppressedElements(deformAttachments, geo, vertexCount, dynVBIterator);
 
 			// Build the main non-deformed vertex stream
 			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
-			drawableGeo->_vertexStreams[0] = MakeVertexStream(*modelScaffold, rg._vb, MakeIteratorRange(suppressedElements));
+			drawableGeo->_vertexStreams[0] = MakeVertexStream(*modelScaffold, rg._vb, MakeIteratorRange(deform._suppressedElements));
 			drawableGeo->_vertexStreamCount = 1;
 
 			// Attach those vertex streams that come from the deform operation
-			if (deformAttachment) {
-				auto& vStream = drawableGeo->_vertexStreams[1];
+			if (deform._deformOp._deformOp) {
+				drawableGeo->_vertexStreams[drawableGeo->_vertexStreamCount] = std::move(deform._vStream);
 				++drawableGeo->_vertexStreamCount;
-				vStream._vertexElements = deformAttachment->_generatedElements;
-				vStream._vertexElementsHash = 
-					Hash64(
-						AsPointer(vStream._vertexElements.begin()), 
-						AsPointer(vStream._vertexElements.end()));
-				vStream._vertexStride = CalculateVertexStride(MakeIteratorRange(vStream._vertexElements));
-
-				// register the deform operation
-				unsigned vertexCount = rg._vb._size;
-				DeformOp deformOp;
-				deformOp._deformOp = deformAttachment->_operation;
-				deformOp._stride = vStream._vertexStride;
-				deformOp._elements = vStream._vertexElements;
-				deformOp._dynVBBegin = dynVBIterator;
-				dynVBIterator += vStream._vertexStride * vertexCount;
-				deformOp._dynVBEnd = dynVBIterator;
-				_deformOps.emplace_back(std::move(deformOp));
+				_deformOps.emplace_back(std::move(deform._deformOp));
 			}
 
 			drawableGeo->_ib = LoadIndexBuffer(*modelScaffold, rg._ib);
@@ -388,6 +419,32 @@ namespace RenderCore { namespace Assets
 			_geos.push_back(std::move(drawableGeo));
 		}
 
+		_boundSkinnedControllers.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
+		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._boundSkinnedControllerCount; ++geo) {
+			const auto& rg = modelScaffold->ImmutableData()._boundSkinnedControllers[geo];
+
+			unsigned vertexCount = rg._vb._size / rg._vb._ia._vertexStride;
+			auto deform = BuildSuppressedElements(deformAttachments, geo + (unsigned)modelScaffold->ImmutableData()._geoCount, vertexCount, dynVBIterator);
+
+			// Build the main non-deformed vertex stream
+			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
+			drawableGeo->_vertexStreams[0] = MakeVertexStream(*modelScaffold, rg._vb, MakeIteratorRange(deform._suppressedElements));
+			drawableGeo->_vertexStreams[1] = MakeVertexStream(*modelScaffold, rg._animatedVertexElements, MakeIteratorRange(deform._suppressedElements));
+			drawableGeo->_vertexStreamCount = 2;
+
+			// Attach those vertex streams that come from the deform operation
+			if (deform._deformOp._deformOp) {
+				drawableGeo->_vertexStreams[drawableGeo->_vertexStreamCount] = std::move(deform._vStream);
+				++drawableGeo->_vertexStreamCount;
+				_deformOps.emplace_back(std::move(deform._deformOp));
+			}
+
+			drawableGeo->_ib = LoadIndexBuffer(*modelScaffold, rg._ib);
+			drawableGeo->_ibFormat = rg._ib._format;
+			_boundSkinnedControllers.push_back(std::move(drawableGeo));
+		}
+
+		// Create the dynamic VB and assign it to all of the slots it needs to go to
 		if (dynVBIterator) {
 			_dynVB = RenderCore::Assets::Services::GetDevice().CreateResource(
 				CreateDesc(
@@ -397,22 +454,14 @@ namespace RenderCore { namespace Assets
 					"ModelRendererDynVB"));
 
 			for (auto&g:_geos)
-				if (g->_vertexStreamCount > 1 && !g->_vertexStreams[1]._resource)
-					g->_vertexStreams[1]._resource = _dynVB;
-		}
+				for (unsigned s=0; s<g->_vertexStreamCount; ++s)
+					if (!g->_vertexStreams[s]._resource)
+						g->_vertexStreams[s]._resource = _dynVB;
 
-		_boundSkinnedControllers.reserve(modelScaffold->ImmutableData()._boundSkinnedControllerCount);
-		for (unsigned geo=0; geo<modelScaffold->ImmutableData()._boundSkinnedControllerCount; ++geo) {
-			const auto& rg = modelScaffold->ImmutableData()._boundSkinnedControllers[geo];
-
-			auto drawableGeo = std::make_shared<Techniques::DrawableGeo>();
-			drawableGeo->_vertexStreams[0] = MakeVertexStream(*modelScaffold, rg._vb);
-			drawableGeo->_vertexStreams[1] = MakeVertexStream(*modelScaffold, rg._animatedVertexElements);
-			drawableGeo->_vertexStreamCount = 2;
-
-			drawableGeo->_ib = LoadIndexBuffer(*modelScaffold, rg._ib);
-			drawableGeo->_ibFormat = rg._ib._format;
-			_boundSkinnedControllers.push_back(std::move(drawableGeo));
+			for (auto&g:_boundSkinnedControllers)
+				for (unsigned s=0; s<g->_vertexStreamCount; ++s)
+					if (!g->_vertexStreams[s]._resource)
+						g->_vertexStreams[s]._resource = _dynVB;
 		}
 
 		_usi = std::make_shared<UniformsStreamInterface>();

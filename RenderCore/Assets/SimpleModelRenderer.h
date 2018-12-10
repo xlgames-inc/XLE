@@ -46,8 +46,8 @@ namespace RenderCore { namespace Assets
 			const std::shared_ptr<IPreDrawDelegate>& delegate) const;
 
 		void GenerateDeformBuffer(IThreadContext& context);
-		unsigned DeformOperationCount() const { return (unsigned)_deformOps.size(); }
-		IDeformOperation& DeformOperation(unsigned idx) { return *_deformOps[idx]._deformOp; } 
+		unsigned DeformOperationCount() const;
+		IDeformOperation& DeformOperation(unsigned idx);
 		const ::Assets::DepValPtr& GetDependencyValidation();
 
 		SimpleModelRenderer(
@@ -65,6 +65,7 @@ namespace RenderCore { namespace Assets
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
 			StringSection<::Assets::ResChar> modelScaffoldName);
 
+		struct DeformOp;
 	private:
 		std::shared_ptr<ModelScaffold> _modelScaffold;
 		std::shared_ptr<MaterialScaffold> _materialScaffold;
@@ -79,13 +80,6 @@ namespace RenderCore { namespace Assets
 
 		std::shared_ptr<UniformsStreamInterface> _usi;
 
-		struct DeformOp
-		{
-			std::shared_ptr<IDeformOperation> _deformOp;
-			unsigned _dynVBBegin, _dynVBEnd;
-			unsigned _stride;
-			std::vector<MiniInputElementDesc> _elements;
-		};
 		std::vector<DeformOp> _deformOps;
 
 		std::shared_ptr<IResource> _dynVB;
