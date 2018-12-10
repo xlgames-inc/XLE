@@ -22,8 +22,13 @@ namespace Sample
 
 		virtual void OnUpdate(float deltaTime) override;
 		virtual void OnStartup(const SampleGlobals& globals) override;
+
+		virtual std::shared_ptr<IInputListener> GetInputListener();
 	private:
 		std::shared_ptr<SceneEngine::IScene> _scene;
 		std::shared_ptr<SampleLightingDelegate> _lightingDelegate;
+
+		class InputListener;
+		std::shared_ptr<InputListener> _inputListener;
 	};
 }

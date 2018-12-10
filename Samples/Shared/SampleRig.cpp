@@ -29,9 +29,6 @@
 
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetSetManager.h"
-#include "../../Assets/IFileSystem.h"
-#include "../../Assets/OSFileSystem.h"
-#include "../../Assets/MountingTree.h"
 
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
@@ -55,8 +52,6 @@ namespace Sample
 
 	void ExecuteSample(const std::shared_ptr<ISampleOverlay>& sampleOverlay)
     {
-		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
-
 		SampleGlobals sampleGlobals;
 
             // We need to startup some basic objects:
@@ -121,7 +116,8 @@ namespace Sample
             Log(Verbose) << "Setup input" << std::endl;
             sampleGlobals._mainInputHander = std::make_shared<PlatformRig::MainInputHandler>();
             sampleGlobals._mainInputHander->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
-            sampleGlobals._mainInputHander->AddListener(frameRig.GetDebugScreensOverlaySystem()->GetInputListener());
+            sampleGlobals._mainInputHander->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
+			sampleGlobals._mainInputHander->AddListener(frameRig.GetDebugScreensOverlaySystem()->GetInputListener());
             window.GetInputTranslator().AddListener(sampleGlobals._mainInputHander);
 
             Log(Verbose) << "Setup frame rig and rendering context" << std::endl;

@@ -26,9 +26,7 @@ namespace RenderCore { namespace Assets
 		
 		SkinDeformer(
 			const RenderCore::Assets::ModelScaffold& modelScaffold,
-			unsigned geoId,
-			StringSection<> skeleton,
-			StringSection<> animationSet);
+			unsigned geoId);
 		~SkinDeformer();
 
 		static void Register();

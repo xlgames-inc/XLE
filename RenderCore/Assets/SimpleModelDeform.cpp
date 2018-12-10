@@ -12,14 +12,19 @@ namespace RenderCore { namespace Assets
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold) -> InstantiationSet
 	{
 		auto* colon = XlFindChar(initializer, ':');
-		if (!colon) return {};
+		auto* afterColon = initializer.end();
+		if (colon) {
+			afterColon = colon+1;
+		} else {
+			colon = initializer.end();
+		}
 
 		auto hash = Hash64(initializer.begin(), colon);
 		auto i = LowerBound(_instantiationFunctions, hash);
 		if (i==_instantiationFunctions.end() || i->first != hash)
 			return {};
 
-		return (i->second)(MakeStringSection(colon+1, initializer.end()), modelScaffold);
+		return (i->second)(MakeStringSection(afterColon, initializer.end()), modelScaffold);
 	}
 
 	void DeformOperationFactory::RegisterDeformOperation(StringSection<> name, InitiationFunction&& fn)

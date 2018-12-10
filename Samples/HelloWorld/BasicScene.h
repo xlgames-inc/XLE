@@ -32,8 +32,6 @@ namespace Sample
 	class SampleLightingDelegate : public SceneEngine::ILightingParserDelegate
 	{
 	public:
-		RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-
         unsigned GetShadowProjectionCount() const override;
         SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(
 			unsigned index, 
@@ -54,6 +52,8 @@ namespace Sample
     protected:
         float _time;
     };
+
+	RenderCore::Techniques::CameraDesc CalculateCameraDesc(Float2 rotations, float zoomFactor, float time);
 
 }
 

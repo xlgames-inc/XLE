@@ -7,6 +7,9 @@
 #include "../HelloWorld.h"
 #include "../../Shared/SampleRig.h"
 #include "../../../PlatformRig/AllocationProfiler.h"
+#include "../../../Assets/IFileSystem.h"
+#include "../../../Assets/OSFileSystem.h"
+#include "../../../Assets/MountingTree.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
 #include "../../../ConsoleRig/AttachablePtr.h"
@@ -42,6 +45,7 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 	services->LoadDefaultPlugins();
 
     TRY {
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
         Sample::ExecuteSample(std::make_shared<Sample::HelloWorldOverlay>());
     } CATCH (const std::exception& e) {
         XlOutputDebugString("Hit top-level exception: ");

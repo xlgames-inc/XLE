@@ -23,17 +23,19 @@
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Math/Geometry.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
 
 #include "../../RenderCore/Techniques/BasicDelegates.h"
+#include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Assets/SkinDeformer.h"
+#include "../../RenderCore/Assets/SimpleModelDeform.h"
 
 namespace Sample
 {
-    const float SunDirectionAngle = .33f;
-
     class BasicSceneParser::Model
     {
     public:
@@ -43,6 +45,7 @@ namespace Sample
             unsigned techniqueIndex);
 
 		void RenderOpaque_SimpleModelRenderer(
+			RenderCore::IThreadContext& context, 
             SceneEngine::SceneExecuteContext& executeContext);
 
         Model();
@@ -52,6 +55,8 @@ namespace Sample
         mutable std::unique_ptr<FixedFunctionModel::ModelRenderer> _modelRenderer;
 
 		::Assets::FuturePtr<RenderCore::Assets::SimpleModelRenderer> _simpleModelRenderer;
+
+		RenderCore::Assets::DeformOperationFactory _depOpFactory;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -60,7 +65,7 @@ namespace Sample
         RenderCore::IThreadContext& context, 
 		SceneEngine::SceneExecuteContext& executeContext) const
     {
-        _model->RenderOpaque_SimpleModelRenderer(executeContext);
+        _model->RenderOpaque_SimpleModelRenderer(context, executeContext);
     }
 
 	BasicSceneParser::BasicSceneParser()
@@ -78,8 +83,11 @@ namespace Sample
         _sharedStateSet = std::make_unique<FixedFunctionModel::SharedStateSet>(
             RenderCore::Assets::Services::GetTechniqueConfigDirs());
 
+		RenderCore::Assets::SkinDeformer::Register();
 		_simpleModelRenderer = ::Assets::MakeAsset<RenderCore::Assets::SimpleModelRenderer>(
-			"game/model/galleon/galleon.dae");
+			"game/model/character/skin.dae",
+			"game/model/character/skin.dae",
+			"skin");
     }
 
     BasicSceneParser::Model::~Model()
@@ -206,39 +214,63 @@ namespace Sample
 	}
 
 	void BasicSceneParser::Model::RenderOpaque_SimpleModelRenderer(
+		RenderCore::IThreadContext& context, 
         SceneEngine::SceneExecuteContext& executeContext)
     {
 		auto renderer = _simpleModelRenderer->TryActualize();
 		if (!renderer) return;
 
-		RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
-		for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
-			pkts[c] = executeContext.GetDrawablesPacket(0, RenderCore::Techniques::BatchFilter(c));
+		{
+			auto& skeletonScaffold = ::Assets::GetAsset<RenderCore::Assets::SkeletonScaffold>(
+				"game/model/character/skin.dae");
+			auto& skeletonMachine = skeletonScaffold.GetTransformationMachine();
+
+			auto& animScaffold = ::Assets::GetAsset<RenderCore::Assets::AnimationSetScaffold>(
+				"game/model/character/animations/alldae");
+			auto& animData = animScaffold.ImmutableData();
+
+			RenderCore::Assets::AnimationSetBinding animSetToSkeletonBinding(
+				animData._animationSet.GetOutputInterface(), 
+				skeletonMachine.GetInputInterface());
+
+			auto animation = Hash64("run");
+			auto foundAnimation = animData._animationSet.FindAnimation(animation);
+
+			static float time = 0.f;
+			time += 1.0f / 60.f;
+
+			RenderCore::Assets::AnimationState animState(
+				std::fmod(time, foundAnimation._endTime), animation);
+			auto params = animData._animationSet.BuildTransformationParameterSet(
+				animState,
+				skeletonMachine, animSetToSkeletonBinding,
+				animData._curves, animData._curvesCount);
+
+			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine.GetOutputMatrixCount());
+			skeletonMachine.GenerateOutputTransforms(
+				skeletonMachineOutput.data(), (unsigned)skeletonMachineOutput.size(),
+				&params);
+
+			for (unsigned c=0; c<renderer->DeformOperationCount(); ++c) {
+				auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&renderer->DeformOperation(c));
+				if (!skinDeformOp) continue;
+				skinDeformOp->FeedInSkeletonMachineResults(
+					MakeIteratorRange(skeletonMachineOutput),
+					skeletonMachine.GetOutputInterface());
+			}
+			renderer->GenerateDeformBuffer(context);
+		}
+
+		for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
+			RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+			for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
+				pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
 		
-		renderer->BuildDrawables(MakeIteratorRange(pkts));
+			renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>());
+		}
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    RenderCore::Techniques::CameraDesc SampleLightingDelegate::GetCameraDesc() const 
-    { 
-            //  The scene parser provides some global rendering properties
-            //  to the lighting parser. 
-            //
-            //  The simplest example of this is the camera properties.
-            //  This function just returns the properties the main camera
-            //  that should be used to render this scene.
-        RenderCore::Techniques::CameraDesc result;
-        static const auto camDist = 50.f;
-        const auto camHeight = 7.5f;
-        const auto secondsPerRotation = 40.f;
-        const auto rotationSpeed = -gPI * 2.f / secondsPerRotation;
-        Float3 cameraForward(XlCos(_time * rotationSpeed), XlSin(_time * rotationSpeed), 0.f);
-        Float3 cameraPosition = -camDist * cameraForward + Float3(0.f, 0.f, camHeight);
-        result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
-        result._farClip = 1000.f;
-        return result;
-    }
 
     unsigned SampleLightingDelegate::GetLightCount() const 
     {
@@ -255,14 +287,9 @@ namespace Sample
         static SceneEngine::LightDesc dummy;
         dummy._cutoffRange = 10000.f;
         dummy._shape = SceneEngine::LightDesc::Directional;
-
-            // sun direction based on angle in the sky
-        Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
-        Float2 sunRotationAxis(-sunDirectionOfMovement[1], sunDirectionOfMovement[0]);
-        dummy._position = 
-            Normalize(TransformDirectionVector(
-                MakeRotationMatrix(Expand(sunRotationAxis, 0.f), SunDirectionAngle), Float3(0.f, 0.f, 1.f)));
-
+		dummy._position = SphericalToCartesian(Float3(35.f * gPI / 180.0f, 35.0f * gPI / 180.0f, 1.0f));
+		dummy._diffuseColor = Float3{64.f, 64.0f, 64.0f};
+		dummy._specularColor = Float3{64.f, 64.0f, 64.0f};
         return dummy;
     }
 
@@ -293,8 +320,8 @@ namespace Sample
         toneMapSettings._sceneKey = 0.16f;
         toneMapSettings._luminanceMin = 0.f;
         toneMapSettings._luminanceMax = 20.f;
-        toneMapSettings._whitepoint = 3.f;
-        toneMapSettings._bloomThreshold = 5.f;
+        toneMapSettings._whitepoint = 1.f;
+        toneMapSettings._bloomThreshold = 2.f;
         toneMapSettings._bloomColor = Float3(1.f,1.f,1.f);
         return toneMapSettings;
     }
@@ -324,9 +351,11 @@ namespace Sample
             throw ::Exceptions::BasicLabel("Bad shadow frustum index");
         }
 
+		auto settings = PlatformRig::DefaultShadowFrustumSettings();
+		settings._dsSlopeScaledBias = 5;
         return PlatformRig::CalculateDefaultShadowCascades(
             GetLightDesc(index), index, mainSceneProjectionDesc,
-            PlatformRig::DefaultShadowFrustumSettings());
+            settings);
     }
 
     float SampleLightingDelegate::GetTimeValue() const      
@@ -348,5 +377,40 @@ namespace Sample
     {}
 
 
+	RenderCore::Techniques::CameraDesc CalculateCameraDesc(Float2 rotations, float zoomFactor, float time)
+    { 
+            //  The scene parser provides some global rendering properties
+            //  to the lighting parser. 
+            //
+            //  The simplest example of this is the camera properties.
+            //  This function just returns the properties the main camera
+            //  that should be used to render this scene.
+		const bool fixedRotation = false;
+		if (fixedRotation) {
+			RenderCore::Techniques::CameraDesc result;
+			const auto camDist = 50.f;
+			const auto camHeight = 7.5f;
+			const auto secondsPerRotation = 40.f;
+			const auto rotationSpeed = -gPI * 2.f / secondsPerRotation;
+			Float3 cameraForward(XlCos(time * rotationSpeed), XlSin(time * rotationSpeed), 0.f);
+			Float3 cameraPosition = -camDist * cameraForward + Float3(0.f, 0.f, camHeight);
+			result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
+			result._farClip = 1000.f;
+			return result;
+		} else {
+			RenderCore::Techniques::CameraDesc result;
+			const auto camDist = 5.f;
+			const auto camHeight = 0.75f;
+			Float3 cameraPosition = SphericalToCartesian(Float3{rotations[0], rotations[1], camDist});
+			cameraPosition[1] += camHeight;
+			Float3 cameraForward = -Normalize(cameraPosition);
+			result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
+			result._farClip = 1000.f;
+
+			float f = Clamp(std::log(zoomFactor * gE - zoomFactor + 1.0f), 0.f, 1.0f);
+			result._verticalFieldOfView = LinearInterpolate(80.f * gPI / 360.f, 2.f * gPI / 360.f, f);
+			return result;
+		}
+    }
 }
 

@@ -108,9 +108,7 @@ namespace RenderCore { namespace Assets
 
 	SkinDeformer::SkinDeformer(
 		const RenderCore::Assets::ModelScaffold& modelScaffold,
-		unsigned geoId,
-		StringSection<> skeleton,
-		StringSection<> animationSet)
+		unsigned geoId)
 	{
 		auto& immData = modelScaffold.ImmutableData();
 		assert(geoId < immData._boundSkinnedControllerCount);
@@ -155,8 +153,8 @@ namespace RenderCore { namespace Assets
 		StringSection<> initializer,
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold)
 	{
-		auto sep = std::find(initializer.begin(), initializer.end(), ',');
-		assert(sep != initializer.end());
+		// auto sep = std::find(initializer.begin(), initializer.end(), ',');
+		// assert(sep != initializer.end());
 
 		auto positionEle = Hash64("POSITION");
 		auto weightsEle = Hash64("WEIGHTS");
@@ -164,13 +162,14 @@ namespace RenderCore { namespace Assets
 		std::vector<RenderCore::Assets::DeformOperationInstantiation> result;
 		auto& immData = modelScaffold->ImmutableData();
 		for (unsigned c=0; c<immData._boundSkinnedControllerCount; ++c) {
+
+			// skeleton & anim set:
+			//			StringSection<>(initializer.begin(), sep),
+			//			StringSection<>(sep+1, initializer.end()
+
 			result.push_back(
-				RenderCore::Assets::DeformOperationInstantiation{
-					std::make_shared<SkinDeformer>(
-						*modelScaffold,
-						c,
-						StringSection<>(initializer.begin(), sep),
-						StringSection<>(sep+1, initializer.end())),
+				RenderCore::Assets::DeformOperationInstantiation {
+					std::make_shared<SkinDeformer>(*modelScaffold, c),
 					unsigned(immData._geoCount) + c,
 					{MiniInputElementDesc{positionEle, Format::R32G32B32_FLOAT}},
 					{positionEle, weightsEle, jointIndicesEle}
