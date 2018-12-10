@@ -6,10 +6,14 @@
 
 #pragma once
 
+#include "../RenderCore/ResourceDesc.h"
+#include "../RenderCore/Metal/Forward.h"
+#include "../Math/Vector.h"
 #include <vector>
+#include <memory>
 
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
-namespace RenderCore { class IThreadContext; }
+namespace RenderCore { class IThreadContext; class IResource; }
 namespace RenderCore { class TextureViewDesc; }
 
 namespace SceneEngine
@@ -34,7 +38,7 @@ namespace SceneEngine
 
         using SRV = RenderCore::Metal::ShaderResourceView;
         SRV      GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;
-		RenderCore::IResourcePtr GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
+		std::shared_ptr<RenderCore::IResource> GetResource(RenderCore::Techniques::ParsingContext& context, uint64_t semantic) const;
 
 		UInt2		GetDimensions() const;
 		unsigned    GetSamplingCount() const;

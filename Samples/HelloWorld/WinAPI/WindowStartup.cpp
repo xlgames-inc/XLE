@@ -42,7 +42,6 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
 
     auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>();
     Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
-	services->LoadDefaultPlugins();
 
     TRY {
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));

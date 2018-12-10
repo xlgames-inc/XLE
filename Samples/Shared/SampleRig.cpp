@@ -74,6 +74,8 @@ namespace Sample
         auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
         auto renderAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(sampleGlobals._renderDevice);
 
+		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
+
             //  Tie in the window handler so we get presentation chain resizes, and give our
             //  window a title
         window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(sampleGlobals._presentationChain));

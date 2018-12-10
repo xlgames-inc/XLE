@@ -312,6 +312,10 @@ namespace RenderOverlays
 
     void ImmediateOverlayContext::ReleaseState() 
     {
+		TRY {
+            Flush();
+        } CATCH(...) {
+        } CATCH_END
     }
 
     struct ReciprocalViewportDimensions
