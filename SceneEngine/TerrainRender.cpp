@@ -229,16 +229,16 @@ namespace SceneEngine
             InputElementDesc("INTERSECTION", 0, Format::R32G32B32A32_FLOAT)
         };
 
-        const char* gs = "";
+        const char* gs = "null";
         if (desc._mode == TerrainRenderingContext::Mode_RayTest) {
-            ps = "";
+            ps = "null";
             unsigned strides = sizeof(float)*4;
             MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
                 MetalStubs::GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
             gs = "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             definesBuffer << ";TERRAIN_NORMAL=" << unsigned(desc._vegetationAlignToTerrainUp);
-            ps = "";
+            ps = "null";
             gs = "xleres/Vegetation/InstanceSpawn.gsh:main:gs_*";
         } else if (desc._drawWireframe) {
             gs = "xleres/solidwireframe.gsh:main:gs_*";

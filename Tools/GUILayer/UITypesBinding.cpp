@@ -791,9 +791,14 @@ namespace GUILayer
         for (const auto& i : records) {
 			if (i._state != ::Assets::AssetState::Invalid) continue;
 
-			std::string logStr(
-				(const char*)AsPointer(i._actualizationLog->begin()),
-				(const char*)AsPointer(i._actualizationLog->end()));
+			std::string logStr;
+			if (i._actualizationLog && !i._actualizationLog->empty()) {
+				logStr = std::string(
+					(const char*)AsPointer(i._actualizationLog->begin()),
+					(const char*)AsPointer(i._actualizationLog->end()));
+			} else {
+				logStr = "<<no actualization log>>";
+			}
 
             result->Add(gcnew Tuple<String^, String^>(
                 clix::marshalString<clix::E_UTF8>(i._initializer),

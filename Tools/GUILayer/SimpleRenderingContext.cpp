@@ -122,13 +122,12 @@ namespace GUILayer
             using namespace RenderCore;
             const auto techniqueIndex = 0u;
 
-            static ParameterBox materialParameters({std::make_pair((const utf8*)"MAT_SKIP_LIGHTING_SCALE", "1")});
             FixedFunctionModel::ShaderVariationSet material(
                 vf._inputLayout,
                 {Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants},
-                materialParameters);
+				{});
 
-            auto variation = material.FindVariation(parsingContext, techniqueIndex, "illum.tech");
+            auto variation = material.FindVariation(parsingContext, techniqueIndex, "unlit.tech");
             if (variation._shader._shaderProgram == nullptr) {
                 return false; // we can't render because we couldn't resolve a good shader variation
             }
@@ -221,7 +220,7 @@ namespace GUILayer
 				"simplecontext_vb"),
 			[data](SubResourceId subres) {
 				assert(subres._arrayLayer == 0 && subres._mip == 0);
-				return SubResourceInitData{  };
+				return SubResourceInitData{ data };
 			});
 	}
 
@@ -235,7 +234,7 @@ namespace GUILayer
 				"simplecontext_ib"),
 			[data](SubResourceId subres) {
 				assert(subres._arrayLayer == 0 && subres._mip == 0);
-				return SubResourceInitData{  };
+				return SubResourceInitData{ data };
 			});
 	}
 

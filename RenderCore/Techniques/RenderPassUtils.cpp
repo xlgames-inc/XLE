@@ -16,7 +16,7 @@ namespace RenderCore { namespace Techniques
         ParsingContext& parserContext)
 	{
 		SubpassDesc subpass;
-		subpass.AppendOutput(0, LoadStore::Retain);
+		subpass.AppendOutput(0);
 		FrameBufferDesc::Attachment attachment { 
 			AttachmentSemantics::ColorLDR,
 			AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::ColorLDR)->GetDesc())
@@ -39,5 +39,31 @@ namespace RenderCore { namespace Techniques
 	{
 		parserContext.GetNamedResources().Bind(AttachmentSemantics::ColorLDR, presentationTarget);
 		return RenderPassToPresentationTarget(context, parserContext);
+	}
+
+	RenderPassInstance RenderPassToPresentationTargetWithDepthStencil(
+		IThreadContext& context,
+		const std::shared_ptr<RenderCore::IResource>& presentationTarget,
+        ParsingContext& parserContext)
+	{
+		auto boundDepth = parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::MultisampleDepth);
+		if (!boundDepth) {
+			return RenderPassToPresentationTarget(context, presentationTarget, parserContext);
+		}
+
+		SubpassDesc subpass;
+		subpass.AppendOutput(0);
+		subpass._depthStencil = AttachmentViewDesc { 1, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } };
+		FrameBufferDesc::Attachment colorAttachment { AttachmentSemantics::ColorLDR, AsAttachmentDesc(presentationTarget->GetDesc()) };
+		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, AsAttachmentDesc(boundDepth->GetDesc()) };
+
+		FrameBufferDesc fbDesc {
+			std::vector<FrameBufferDesc::Attachment>{colorAttachment, depthAttachment},
+			std::vector<SubpassDesc>{std::move(subpass)}
+		};
+        return RenderPassInstance(
+            context, fbDesc,
+			parserContext.GetFrameBufferPool(),
+            parserContext.GetNamedResources());
 	}
 }}

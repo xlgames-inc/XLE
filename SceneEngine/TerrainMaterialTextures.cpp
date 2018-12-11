@@ -537,8 +537,10 @@ namespace SceneEngine
         _srv[Diffuse] = Metal::ShaderResourceView(diffuseTextureArray->GetUnderlying());
         _srv[Normal] = Metal::ShaderResourceView(normalTextureArray->GetUnderlying());
         _srv[Roughness] = Metal::ShaderResourceView(roughnessTextureArray->GetUnderlying());
-        _texturingConstants = MakeMetalCB(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
-        _procTexContsBuffer = MakeMetalCB(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
+		if (!texturingConstants.empty())
+			_texturingConstants = MakeMetalCB(AsPointer(texturingConstants.cbegin()), texturingConstants.size());
+		if (!procTextureConstants.empty())
+			_procTexContsBuffer = MakeMetalCB(AsPointer(procTextureConstants.cbegin()), procTextureConstants.size());
 
         _textureArray[Diffuse] = std::move(diffuseTextureArray);
         _textureArray[Normal] = std::move(normalTextureArray);

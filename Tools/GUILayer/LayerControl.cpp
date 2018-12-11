@@ -32,6 +32,7 @@
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../FixedFunctionModel/ModelCache.h"
@@ -231,11 +232,12 @@ namespace GUILayer
             }
 
             void Render(
-                RenderCore::IThreadContext& device,
+                RenderCore::IThreadContext& threadContext,
 				const RenderCore::IResourcePtr& renderTarget,
                 RenderCore::Techniques::ParsingContext& parserContext)
             {
-				_managedOverlay->Render(device, RenderTargetWrapper{renderTarget}, parserContext);
+				auto rpi = RenderCore::Techniques::RenderPassToPresentationTargetWithDepthStencil(threadContext, renderTarget, parserContext);
+				_managedOverlay->Render(threadContext, RenderTargetWrapper{renderTarget}, parserContext);
             }
 
             void SetActivationState(bool newState)

@@ -21,4 +21,9 @@ namespace RenderCore { namespace Techniques
 		IThreadContext& context,
 		const std::shared_ptr<RenderCore::IResource>& presentationTarget,
         ParsingContext& parserContext);
+
+	RenderPassInstance RenderPassToPresentationTargetWithDepthStencil(
+		IThreadContext& context,
+		const std::shared_ptr<RenderCore::IResource>& presentationTarget,
+        ParsingContext& parserContext);
 }}

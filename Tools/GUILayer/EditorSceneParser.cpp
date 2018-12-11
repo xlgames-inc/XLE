@@ -38,74 +38,48 @@
 namespace GUILayer
 {
     using namespace SceneEngine;
-    using EnvironmentSettings = PlatformRig::EnvironmentSettings;
-
-    class EditorSceneParser : public SceneEngine::IScene, public PlatformRig::BasicLightingParserDelegate
-    {
-    public:
-        RenderCore::Techniques::CameraDesc GetCameraDesc() const { return AsCameraDesc(*_camera); }
-
-        using DeviceContext = RenderCore::Metal::DeviceContext;
-        using LightingParserContext = SceneEngine::LightingParserContext;
-
-        void ExecuteScene(
-            RenderCore::IThreadContext& context, 
-			RenderCore::Techniques::ParsingContext& parserContext,
-            LightingParserContext& lightingParserContext, 
-            RenderCore::Techniques::BatchFilter batchFilter,
-            PreparedScene& preparedPackets,
-            unsigned techniqueIndex) const;
-        void PrepareScene(
-            RenderCore::IThreadContext& context, 
-			RenderCore::Techniques::ParsingContext& parserContext,
-            PreparedScene& preparedPackets) const;
-
-		virtual void ExecuteScene(
-            RenderCore::IThreadContext& threadContext,
-			SceneExecuteContext& executeContext) const;
-
-        float GetTimeValue() const;
-        void PrepareEnvironmentalSettings(const char envSettings[]);
-        std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> GetLightingPlugins();
-
-        void RenderShadowForHiddenPlacements(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext) const;
-
-        EditorSceneParser(
-            std::shared_ptr<EditorScene> editorScene,
-            std::shared_ptr<ToolsRig::VisCameraSettings> camera);
-        ~EditorSceneParser();
-    protected:
-        std::shared_ptr<EditorScene> _editorScene;
-        std::shared_ptr<ToolsRig::VisCameraSettings> _camera;
-
-        EnvironmentSettings _activeEnvSettings;
-        const EnvironmentSettings& GetEnvSettings() const { return _activeEnvSettings; }
-    };
-
+ 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class EditorScenePlugin : public SceneEngine::ILightingParserPlugin
+    {
+	public:
+		virtual void OnPreScenePrepare(
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const override;
+
+		virtual void OnPostSceneRender(
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const override;
+
+		EditorScenePlugin(const std::shared_ptr<EditorScene>& editorScene);
+		~EditorScenePlugin();
+	protected:
+		std::shared_ptr<EditorScene> _editorScene;
+	};
 
     static ISurfaceHeightsProvider* GetSurfaceHeights(EditorScene& scene)
     {
         return scene._terrainManager ? scene._terrainManager->GetHeightsProvider().get() : nullptr;
     }
 
-    void EditorSceneParser::ExecuteScene(
+    void EditorScenePlugin::OnPostSceneRender(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		LightingParserContext& lightingParserContext, 
         RenderCore::Techniques::BatchFilter batchFilter,
-        PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
+		auto& preparedPackets = *lightingParserContext._preparedScene;
+
         using BF = RenderCore::Techniques::BatchFilter;
         auto& scene = *_editorScene;
 
         auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
-        if (1) { // parseSettings._toggles & SceneParseSettings::Toggles::Terrain && scene._terrainManager) {
+        if (scene._terrainManager) { // parseSettings._toggles & SceneParseSettings::Toggles::Terrain
             if (batchFilter == BF::General) {
                 CATCH_ASSETS_BEGIN
-                    scene._terrainManager->Render(context, parserContext, this, preparedPackets, techniqueIndex);
+                    scene._terrainManager->Render(context, parserContext, lightingParserContext._delegate, preparedPackets, techniqueIndex);
                 CATCH_ASSETS_END(parserContext)
             }
         }
@@ -144,11 +118,13 @@ namespace GUILayer
         }
     }
 
-    void EditorSceneParser::PrepareScene(
+    void EditorScenePlugin::OnPreScenePrepare(
         RenderCore::IThreadContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext, 
-        PreparedScene& preparedPackets) const
+        LightingParserContext& lightingParserContext) const
     {
+		auto& preparedPackets = *lightingParserContext._preparedScene;
+
         auto& scene = *_editorScene;
         if (scene._terrainManager) {
             scene._terrainManager->Prepare(context, parserContext, preparedPackets);
@@ -156,27 +132,31 @@ namespace GUILayer
         }
     }
 
-	void EditorSceneParser::ExecuteScene(
-        RenderCore::IThreadContext& threadContext,
-		SceneExecuteContext& executeContext) const
+	EditorScenePlugin::EditorScenePlugin(const std::shared_ptr<EditorScene>& editorScene)
+	: _editorScene(editorScene)
+	{}
+		
+	EditorScenePlugin::~EditorScenePlugin() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class EditorLightingParserDelegate : public PlatformRig::BasicLightingParserDelegate
 	{
-		assert(0);	// unimplemented
-	}
+	public:
+		float GetTimeValue() const;
+        void PrepareEnvironmentalSettings(const char envSettings[]);
 
-    void EditorSceneParser::RenderShadowForHiddenPlacements(
-        RenderCore::IThreadContext& context, 
-        RenderCore::Techniques::ParsingContext& parserContext) const
-    {
-        ToolsRig::Placements_RenderHighlight(
-            context, parserContext, 
-            *_editorScene->_placementsManager->GetRenderer(), 
-            *_editorScene->_placementsCellsHidden,
-            nullptr, nullptr);
-    }
+		EditorLightingParserDelegate(const std::shared_ptr<EditorScene>& editorScene);
+		~EditorLightingParserDelegate();
+	protected:
+		std::shared_ptr<EditorScene> _editorScene;
+		PlatformRig::EnvironmentSettings _activeEnvSettings;
+        const PlatformRig::EnvironmentSettings& GetEnvSettings() const { return _activeEnvSettings; }
+	};
 
-    float EditorSceneParser::GetTimeValue() const { return _editorScene->_currentTime; }
+    float EditorLightingParserDelegate::GetTimeValue() const { return _editorScene->_currentTime; }
 
-    void EditorSceneParser::PrepareEnvironmentalSettings(const char envSettings[])
+    void EditorLightingParserDelegate::PrepareEnvironmentalSettings(const char envSettings[])
     {
         for (const auto& i:_editorScene->_prepareSteps)
             i();
@@ -205,27 +185,41 @@ namespace GUILayer
         }
     }
 
-	std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> EditorSceneParser::GetLightingPlugins()
-    {
-		std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> result;
-		auto vegetationPlugin = _editorScene->_vegetationSpawnManager->GetParserPlugin();
-		if (vegetationPlugin)
-			result.push_back(vegetationPlugin);
-        result.push_back(_editorScene->_volumeFogManager->GetParserPlugin());
-		return result;
-    }
+	EditorLightingParserDelegate::EditorLightingParserDelegate(const std::shared_ptr<EditorScene>& editorScene)
+	: _editorScene(editorScene)
+	{
+		_activeEnvSettings = PlatformRig::DefaultEnvironmentSettings();
+	}
 
-    EditorSceneParser::EditorSceneParser(
-        std::shared_ptr<EditorScene> editorScene,
-        std::shared_ptr<ToolsRig::VisCameraSettings> camera)
-        : _editorScene(std::move(editorScene))
-        , _camera(std::move(camera))
-    {
-        _activeEnvSettings = PlatformRig::DefaultEnvironmentSettings();
-    }
-    EditorSceneParser::~EditorSceneParser() {}
+	EditorLightingParserDelegate::~EditorLightingParserDelegate() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class EditorSceneParser : public SceneEngine::IScene
+    {
+    public:
+		virtual void ExecuteScene(
+            RenderCore::IThreadContext& threadContext,
+			SceneExecuteContext& executeContext) const;
+
+        EditorSceneParser(const std::shared_ptr<EditorScene>& editorScene);
+        ~EditorSceneParser();
+    protected:
+        std::shared_ptr<EditorScene> _editorScene;
+    };
+
+	void EditorSceneParser::ExecuteScene(
+        RenderCore::IThreadContext& threadContext,
+		SceneExecuteContext& executeContext) const
+	{
+	}
+
+    EditorSceneParser::EditorSceneParser(const std::shared_ptr<EditorScene>& editorScene)
+    : _editorScene(editorScene)
+    {}
+    EditorSceneParser::~EditorSceneParser() {}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////
 
     public ref class EditorSceneOverlay : public IOverlaySystem
     {
@@ -236,14 +230,16 @@ namespace GUILayer
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         EditorSceneOverlay(
-            std::shared_ptr<EditorSceneParser> sceneParser,
+            const std::shared_ptr<EditorScene>& sceneParser,
+			const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings,
-            std::shared_ptr<SceneEngine::PlacementCellSet> placementCells,
-            std::shared_ptr<SceneEngine::PlacementCellSet> placementCellsHidden,
-            std::shared_ptr<SceneEngine::PlacementsRenderer> _placementsRenderer);
+            const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCells,
+            const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCellsHidden,
+            const std::shared_ptr<SceneEngine::PlacementsRenderer>& placementsRenderer);
         ~EditorSceneOverlay();
     protected:
-        clix::shared_ptr<EditorSceneParser> _sceneParser;
+        clix::shared_ptr<EditorScene> _scene;
+		clix::shared_ptr<ToolsRig::VisCameraSettings> _camera;
         EditorSceneRenderSettings^ _renderSettings;
         clix::shared_ptr<SceneEngine::PlacementCellSet> _placementCells;
         clix::shared_ptr<SceneEngine::PlacementCellSet> _placementCellsHidden;
@@ -255,30 +251,42 @@ namespace GUILayer
 		const RenderTargetWrapper& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-        if (_sceneParser.get()) {
-            _sceneParser->PrepareEnvironmentalSettings(
+        if (_scene.get()) {
+			EditorSceneParser sceneParser(_scene.GetNativePtr());
+			EditorLightingParserDelegate lightingDelegate(_scene.GetNativePtr());
+
+            lightingDelegate.PrepareEnvironmentalSettings(
                 clix::marshalString<clix::E_UTF8>(_renderSettings->_activeEnvironmentSettings).c_str());
 
-			auto lightingPlugins = _sceneParser->GetLightingPlugins();
+			std::vector<std::shared_ptr<SceneEngine::ILightingParserPlugin>> lightingPlugins;
+			lightingPlugins.push_back(
+				std::make_shared<EditorScenePlugin>(_scene.GetNativePtr()));
+			auto vegetationPlugin = _scene->_vegetationSpawnManager->GetParserPlugin();
+			if (vegetationPlugin)
+				lightingPlugins.push_back(vegetationPlugin);
+			lightingPlugins.push_back(_scene->_volumeFogManager->GetParserPlugin());
+
 			auto qualSettings = SceneEngine::RenderSceneSettings{
 				(::ConsoleRig::Detail::FindTweakable("LightingModel", 0) == 0)
 					? RenderSceneSettings::LightingModel::Deferred 
 					: RenderSceneSettings::LightingModel::Forward,
-				_sceneParser.get(),
+				&lightingDelegate,
 				MakeIteratorRange(lightingPlugins)};
+
+			auto camera = ToolsRig::AsCameraDesc(*_camera.get());
 
             auto& screenshot = ::ConsoleRig::Detail::FindTweakable("Screenshot", 0);
             if (screenshot) {
                 PlatformRig::TiledScreenshot(
                     threadContext, parserContext,
-                    *_sceneParser.get(), _sceneParser->GetCameraDesc(),
+                    sceneParser, camera,
                     qualSettings, UInt2(screenshot, screenshot));
                 screenshot = 0;
             }
             
             SceneEngine::LightingParser_ExecuteScene(
-                threadContext, renderTarget._renderTarget, parserContext, *_sceneParser.get(), 
-                _sceneParser->GetCameraDesc(), qualSettings);
+                threadContext, renderTarget._renderTarget, parserContext, sceneParser, 
+                camera, qualSettings);
         }
 
         if (_renderSettings->_selection && _renderSettings->_selection->_nativePlacements->size() > 0) {
@@ -301,30 +309,34 @@ namespace GUILayer
     }
 
     EditorSceneOverlay::EditorSceneOverlay(
-        std::shared_ptr<EditorSceneParser> sceneParser,
+        const std::shared_ptr<EditorScene>& sceneParser,
+		const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
         EditorSceneRenderSettings^ renderSettings,
-        std::shared_ptr<SceneEngine::PlacementCellSet> placementCells,
-        std::shared_ptr<SceneEngine::PlacementCellSet> placementCellsHidden,
-        std::shared_ptr<SceneEngine::PlacementsRenderer> placementsRenderer)
+        const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCells,
+        const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCellsHidden,
+        const std::shared_ptr<SceneEngine::PlacementsRenderer>& placementsRenderer)
     {
-        _sceneParser = std::move(sceneParser);
+        _scene = sceneParser;
+		_camera = camera;
         _renderSettings = renderSettings;
-        _placementCells = std::move(placementCells);
-        _placementCellsHidden = std::move(placementCellsHidden);
-        _placementsRenderer = std::move(placementsRenderer);
+        _placementCells = placementCells;
+        _placementCellsHidden = placementCellsHidden;
+        _placementsRenderer = placementsRenderer;
     }
+
     EditorSceneOverlay::~EditorSceneOverlay() {}
 
 
     namespace Internal
     {
         IOverlaySystem^ CreateOverlaySystem(
-            std::shared_ptr<EditorScene> scene, 
-            std::shared_ptr<ToolsRig::VisCameraSettings> camera, 
+            const std::shared_ptr<EditorScene>& scene, 
+            const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings)
         {
             return gcnew EditorSceneOverlay(
-                std::make_shared<EditorSceneParser>(scene, std::move(camera)), 
+                scene, 
+				camera,
                 renderSettings, scene->_placementsCells, scene->_placementsCellsHidden,
                 scene->_placementsManager->GetRenderer());
         }

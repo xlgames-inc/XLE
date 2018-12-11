@@ -173,19 +173,19 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const = 0;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const;
 
         virtual void OnLightingResolvePrepare(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			LightingResolveContext&) const = 0;
+			LightingResolveContext&) const;
 
         virtual void OnPostSceneRender(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const = 0;
+			RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const;
 
         virtual void InitBasicLightEnvironment(
             RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
-			ShaderLightDesc::BasicEnvironment& env) const = 0;
+			ShaderLightDesc::BasicEnvironment& env) const;
 
 		virtual ~ILightingParserPlugin();
     };

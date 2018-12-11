@@ -552,8 +552,8 @@ namespace GUILayer
     namespace Internal
     {
         IOverlaySystem^ CreateOverlaySystem(
-            std::shared_ptr<EditorScene> scene, 
-            std::shared_ptr<ToolsRig::VisCameraSettings> camera, 
+            const std::shared_ptr<EditorScene>& scene, 
+            const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings);
     }
 

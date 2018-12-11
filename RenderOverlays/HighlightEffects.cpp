@@ -220,7 +220,7 @@ namespace RenderOverlays
 
 		SubpassDesc subpass0;
 		subpass0.AppendOutput(n_offscreen, LoadStore::Clear, LoadStore::Retain);
-		subpass0.SetDepthStencil(n_depth);
+		subpass0._depthStencil = AttachmentViewDesc { n_depth, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } };
 		fbDescFrag.AddSubpass(std::move(subpass0));
 
 		SubpassDesc subpass1;
@@ -239,25 +239,26 @@ namespace RenderOverlays
     {
         auto& srv = *_pimpl->_rpi.GetSRV(0);
         assert(srv.IsGood());
-        if (!srv.IsGood()) return;
 
         _pimpl->_rpi.NextSubpass();
 
-        static Float3 highlightColO(1.5f, 1.35f, .7f);
-        static unsigned overlayColO = 1;
+        if (srv.IsGood()) {
+			static Float3 highlightColO(1.5f, 1.35f, .7f);
+			static unsigned overlayColO = 1;
 
-        outlineColor = highlightColO;
-        overlayColor = overlayColO;
+			outlineColor = highlightColO;
+			overlayColor = overlayColO;
 
-        auto metalContext = Metal::DeviceContext::Get(threadContext);
+			auto metalContext = Metal::DeviceContext::Get(threadContext);
 
-        HighlightByStencilSettings settings;
-        settings._outlineColor = outlineColor;
-        for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
-            settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
-        ExecuteHighlightByStencil(
-            *metalContext, srv, 
-            settings, false);
+			HighlightByStencilSettings settings;
+			settings._outlineColor = outlineColor;
+			for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
+				settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
+			ExecuteHighlightByStencil(
+				*metalContext, srv, 
+				settings, false);
+		}
 
         _pimpl->_rpi.End();
     }
@@ -269,22 +270,23 @@ namespace RenderOverlays
 
         auto& srv = *_pimpl->_rpi.GetSRV(0);
         assert(srv.IsGood());
-        if (!srv.IsGood()) return;
-
         _pimpl->_rpi.NextSubpass();
-        auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
 
-        struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
-		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
+		if (srv.IsGood()) {
+			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+			metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
 
-        auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-        shaders._drawHighlightUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
-        metalContext.Bind(*shaders._drawHighlight);
-        metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        metalContext.Bind(Techniques::CommonResources()._dssDisable);
-        metalContext.Bind(Topology::TriangleStrip);
-        metalContext.Draw(4);
+			struct Constants { Float3 _color; unsigned _dummy; } constants = { outlineColor, 0 };
+			ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
+
+			auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+			shaders._drawHighlightUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
+			metalContext.Bind(*shaders._drawHighlight);
+			metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
+			metalContext.Bind(Techniques::CommonResources()._dssDisable);
+			metalContext.Bind(Topology::TriangleStrip);
+			metalContext.Draw(4);
+		}
 
         _pimpl->_rpi.End();
     }
@@ -293,25 +295,26 @@ namespace RenderOverlays
     {
         auto& srv = *_pimpl->_rpi.GetSRV(0);
         assert(srv.IsGood());
-        if (srv.IsGood()) return;
+        _pimpl->_rpi.NextSubpass();
 
             //  now we can render these objects over the main image, 
             //  using some filtering
 
-        _pimpl->_rpi.NextSubpass();
-        auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
+        if (srv.IsGood()) {
+			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+			metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(srv));
 
-        struct Constants { Float4 _shadowColor; } constants = { shadowColor };
-		ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
+			struct Constants { Float4 _shadowColor; } constants = { shadowColor };
+			ConstantBufferView cbvs[] = { MakeSharedPkt(constants) };
 
-        auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
-        shaders._drawShadowUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
-        metalContext.Bind(*shaders._drawShadow);
-        metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
-        metalContext.Bind(Techniques::CommonResources()._dssDisable);
-        metalContext.Bind(Topology::TriangleStrip);
-        metalContext.Draw(4);
+			auto& shaders = ConsoleRig::FindCachedBoxDep<HighlightShaders>(HighlightShaders::Desc());
+			shaders._drawShadowUniforms.Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
+			metalContext.Bind(*shaders._drawShadow);
+			metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
+			metalContext.Bind(Techniques::CommonResources()._dssDisable);
+			metalContext.Bind(Topology::TriangleStrip);
+			metalContext.Draw(4);
+		}
 
         _pimpl->_rpi.End();
     }

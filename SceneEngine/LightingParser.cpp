@@ -100,6 +100,9 @@ namespace SceneEngine
 		lightingParserContext._gbufferType = enableParametersBuffer?1:2;
         LightingParser_SetGlobalTransform(threadContext, parsingContext, mainSceneProjection);
 
+		PreparedScene preparedScene;
+		lightingParserContext._preparedScene = &preparedScene;
+
 		auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 		ReturnToSteadyState(metalContext);
 		CATCH_ASSETS_BEGIN
@@ -181,15 +184,23 @@ namespace SceneEngine
 			MakeIteratorRange(fragments),
 			UInt2(targetTextureDesc._width, targetTextureDesc._height));
 
-		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
-		lightingParserContext._mainTargets._samplingCount = 1;
-		for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c)
-			lightingParserContext._mainTargets._namedTargetsMapping.push_back({merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), c});
-
 		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 		Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources());
 		metalContext.Bind(
 			Metal::ViewportDesc(0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)));
+
+
+		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
+		lightingParserContext._mainTargets._samplingCount = 1;
+		for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c) {
+			lightingParserContext._mainTargets._namedTargetsMapping.push_back({merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), c});
+
+			// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
+			if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)
+				parsingContext.GetNamedResources().Bind(
+					RenderCore::Techniques::AttachmentSemantics::MultisampleDepth,
+					rpi.GetResource(c));
+		}
 
 		for (unsigned c=0; c<renderSteps.size(); ++c) {
 			CATCH_ASSETS_BEGIN
@@ -423,6 +434,19 @@ namespace SceneEngine
 	IViewDelegate::~IViewDelegate() {}
 	std::shared_ptr<IViewDelegate> IRenderStep::CreateViewDelegate() { return nullptr; }
 	IRenderStep::~IRenderStep() {}
+
+
+	void ILightingParserPlugin::OnPreScenePrepare(
+		RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&) const {}
+    void ILightingParserPlugin::OnLightingResolvePrepare(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+		LightingResolveContext&) const {}
+    void ILightingParserPlugin::OnPostSceneRender(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+		RenderCore::Techniques::BatchFilter filter, unsigned techniqueIndex) const {}
+    void ILightingParserPlugin::InitBasicLightEnvironment(
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+		ShaderLightDesc::BasicEnvironment& env) const {}
 	ILightingParserPlugin::~ILightingParserPlugin() {}
 
 }

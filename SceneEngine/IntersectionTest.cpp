@@ -88,7 +88,7 @@ namespace SceneEngine
             //  We need to invoke the render for the given object
             //  now. Afterwards we can query the buffers for the result
         placementsRenderer.RenderFiltered(
-            metalContext, parsingContext, RenderCore::Techniques::TechniqueIndex::DepthOnly,
+            metalContext, parsingContext, RenderCore::Techniques::TechniqueIndex::RayTest,		// <-- ray test technique is no longer required with the new drawable delegate based intersection system. But placements don't support that yet
             cellSet, &object, &object+1);
         return stateContext.GetResults();
     }

@@ -834,8 +834,8 @@ namespace FixedFunctionModel
         assert(_texturesPerMaterial <= dimof(srvs));
         for (unsigned c=0; c<_texturesPerMaterial; c++) {
             auto t = _boundTextures[resourcesIndex * _texturesPerMaterial + c];
-			auto a = t->TryActualize();
-            srvs[c] = a?(&a->GetShaderResource()):nullptr;
+			auto a = t ? t->TryActualize() : nullptr;
+            srvs[c] = a ? (&a->GetShaderResource()) : nullptr;
         }
 
 		assert(_constantBuffers[constantsIndex].IsGood());
