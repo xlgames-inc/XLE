@@ -10,33 +10,8 @@
 
 namespace SceneEngine { namespace MetalStubs
 {
-	class GeometryShader
-	{
-	public:
-		class StreamOutputInitializers
-		{
-		public:
-			const RenderCore::InputElementDesc* _outputElements;
-			unsigned _outputElementCount;
-			const unsigned* _outputBufferStrides;
-			unsigned _outputBufferCount;
-
-			StreamOutputInitializers(
-				const RenderCore::InputElementDesc outputElements[], unsigned outputElementCount,
-				const unsigned outputBufferStrides[], unsigned outputBufferCount)
-				: _outputElements(outputElements), _outputElementCount(outputElementCount)
-				, _outputBufferStrides(outputBufferStrides), _outputBufferCount(outputBufferCount)
-			{}
-			StreamOutputInitializers()
-				: _outputElements(nullptr), _outputElementCount(0)
-				, _outputBufferStrides(nullptr), _outputBufferCount(0)
-			{}
-		};
-
-		static void SetDefaultStreamOutputInitializers(const StreamOutputInitializers&);
-		static StreamOutputInitializers GetDefaultStreamOutputInitializers();
-	};
-
+	void SetDefaultStreamOutputInitializers(const RenderCore::StreamOutputInitializers&);
+	RenderCore::StreamOutputInitializers GetDefaultStreamOutputInitializers();
 
 	void BindSO(RenderCore::Metal::DeviceContext&, RenderCore::IResource& res, unsigned offset=0);
 	void UnbindSO(RenderCore::Metal::DeviceContext&);

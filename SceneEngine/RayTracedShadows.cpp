@@ -161,7 +161,7 @@ namespace SceneEngine
         GPUAnnotation anno(threadContext, "Prepare-RTShadows");
 
         auto& box = ConsoleRig::FindCachedBox2<RTShadowsBox>(256, 256, 1024*1024, 32, 64*1024);
-        auto oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
+        auto oldSO = MetalStubs::GetDefaultStreamOutputInitializers();
         
         static const InputElementDesc soVertex[] = 
         {
@@ -186,8 +186,8 @@ namespace SceneEngine
         const unsigned bufferCount = 1;
         unsigned strides[] = { 52 };
         unsigned offsets[] = { 0 };
-        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
-            MetalStubs::GeometryShader::StreamOutputInitializers(soVertex, dimof(soVertex), strides, 1));
+        MetalStubs::SetDefaultStreamOutputInitializers(
+			StreamOutputInitializers{MakeIteratorRange(soVertex), MakeIteratorRange(strides)});
 
         static_assert(bufferCount == dimof(strides), "Stream output buffer count mismatch");
         static_assert(bufferCount == dimof(offsets), "Stream output buffer count mismatch");
@@ -249,7 +249,7 @@ namespace SceneEngine
         CATCH_ASSETS_END(parserContext)
 
         MetalStubs::UnbindSO(metalContext);
-        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
+        MetalStubs::SetDefaultStreamOutputInitializers(oldSO);
 
             // We have the list of triangles. Let's render then into the final
             // grid buffer viewport. This should create a list of triangles for

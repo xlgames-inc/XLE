@@ -366,6 +366,8 @@ namespace RenderCore { namespace Metal_DX11
 		});
 	}
 
+	StreamOutputInitializers g_defaultStreamOutputInitializers = {};
+
 	void ShaderProgram::ConstructToFuture(
 		::Assets::AssetFuture<ShaderProgram>& future,
 		StringSection<::Assets::ResChar> vsName,
@@ -409,7 +411,7 @@ namespace RenderCore { namespace Metal_DX11
 				return true;
 			}
 
-			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
+			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual, g_defaultStreamOutputInitializers);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
 			return false;
 		});

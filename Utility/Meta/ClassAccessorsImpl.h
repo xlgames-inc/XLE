@@ -84,13 +84,13 @@ namespace Utility
                 return (type.*ptrToMember)[arrayIndex]; 
             }
 
-        #define DefaultGetArray(InType, Member)                                                                             \
-            [](const InType& t, size_t index)                                                                               \
+        #define DefaultGetArray(InType, Member, Idx)                                                                        \
+            [](const InType& t)																								\
             {                                                                                                               \
                 using namespace Utility::Internal;                                                                          \
                 using ArrayType = decltype(std::declval<const InType>().*(&InType::Member));                                \
                 using ElementType = MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type;     \
-                return DefaultGetArrayImp<ElementType>(t, index, &InType::Member, sizeof(ArrayType) / sizeof(ElementType)); \
+                return DefaultGetArrayImp<ElementType>(t, Idx, &InType::Member, sizeof(ArrayType) / sizeof(ElementType));	\
             }                                                                                                               \
             /**/
 
@@ -104,14 +104,14 @@ namespace Utility
                 (type.*ptrToMember)[arrayIndex] = value;
             }
 
-        #define DefaultSetArray(InType, Member)                                                                                             \
-            [](InType& t, size_t index, Utility::Internal::MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type value)           \
+        #define DefaultSetArray(InType, Member, Idx)                                                                                        \
+            [](InType& t, Utility::Internal::MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type value)           \
             {                                                                                                                               \
                 using namespace Utility::Internal;                                                                                          \
                 using ArrayType = decltype(std::declval<const InType>().*(&InType::Member));                                                \
                 using ElementType = MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type;                     \
                 return DefaultSetArrayImp<ElementType>(                                                                                     \
-                    t, index, &InType::Member, sizeof(ArrayType) / sizeof(ElementType),                                                     \
+                    t, Idx, &InType::Member, sizeof(ArrayType) / sizeof(ElementType),														\
                     std::forward<ElementType>(value));                                                                                      \
             }                                                                                                                               \
             /**/

@@ -194,6 +194,16 @@ namespace SceneEngine
         }
     }
 
+	static UniformsStreamInterface MakeUniformsStreamInterface()
+	{
+		UniformsStreamInterface usi;
+		usi.BindConstantBuffer(0, {Hash64("LocalTransform")});
+		usi.BindConstantBuffer(1, {Hash64("TileBuffer")});
+		usi.BindShaderResource(0, Hash64("GradTexture"));	// for noise calculation
+		usi.BindShaderResource(0, Hash64("PermTexture"));	// for noise calculation
+		return usi;
+	}
+
     TerrainRenderingResources::TerrainRenderingResources(const Desc& desc)
     {
         const bool isTextured = true;
@@ -233,8 +243,8 @@ namespace SceneEngine
         if (desc._mode == TerrainRenderingContext::Mode_RayTest) {
             ps = "null";
             unsigned strides = sizeof(float)*4;
-            MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
-                MetalStubs::GeometryShader::StreamOutputInitializers(eles, dimof(eles), &strides, 1));
+            MetalStubs::SetDefaultStreamOutputInitializers(
+				StreamOutputInitializers{MakeIteratorRange(eles), MakeIteratorRange(&strides, &strides+1)});
             gs = "xleres/objects/terrain/TerrainIntersection.sh:gs_intersectiontest:gs_*";
         } else if (desc._mode == TerrainRenderingContext::Mode_VegetationPrepare) {
             definesBuffer << ";TERRAIN_NORMAL=" << unsigned(desc._vegetationAlignToTerrainUp);
@@ -253,18 +263,19 @@ namespace SceneEngine
                 "xleres/objects/terrain/GeoGenerator.sh:ds_main:ds_*",
                 definesBuffer.get());
         } CATCH (...) {
-            MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(MetalStubs::GeometryShader::StreamOutputInitializers());
+			MetalStubs::SetDefaultStreamOutputInitializers(StreamOutputInitializers{});
             throw;
         } CATCH_END
 
         if (desc._mode == TerrainRenderingContext::Mode_RayTest) {
-            MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(MetalStubs::GeometryShader::StreamOutputInitializers());
+			MetalStubs::SetDefaultStreamOutputInitializers(StreamOutputInitializers{});
         }
 
         BoundUniforms boundUniforms(
 			*shaderProgram,
 			Metal::PipelineLayoutConfig{},
-			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
+			Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+			MakeUniformsStreamInterface());
 
         if (shaderProgram->DynamicLinkingEnabled()) {
             _dynLinkage = BoundClassInterfaces(*shaderProgram);
@@ -283,6 +294,10 @@ namespace SceneEngine
 
     void        TerrainRenderingContext::EnterState(DeviceContext& context, Techniques::ParsingContext& parserContext, const TerrainMaterialTextures& texturing, UInt2 elementSize, Mode mode)
     {
+		auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
+		ConstantBufferView cbvs[] = { &_localTransformConstantsBuffer, &_tileConstantsBuffer };
+		const ShaderResourceView* srvs[] = { &perlinNoiseRes._gradShaderResource, &perlinNoiseRes._permShaderResource };
+
         _dynamicTessellation = Tweakable("TerrainDynamicTessellation", true);
         if (_dynamicTessellation) {
             const auto doExtraSmoothing = Tweakable("TerrainExtraSmoothing", false);
@@ -305,6 +320,8 @@ namespace SceneEngine
             }
             context.Bind(Topology::PatchList4);
             box._boundUniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+			box._boundUniforms.Apply(context, 1, 
+				UniformsStream { MakeIteratorRange(cbvs), UniformsStream::MakeResources(MakeIteratorRange(srvs)) });
 
                 //  when using dynamic tessellation, the basic geometry should just be
                 //  a quad. We'll use a vertex generator shader.
@@ -332,8 +349,11 @@ namespace SceneEngine
             BoundUniforms uniforms(
 				*shaderProgram,
 				Metal::PipelineLayoutConfig{},
-				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface());
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				MakeUniformsStreamInterface());
             uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+			uniforms.Apply(context, 1, 
+				UniformsStream { MakeIteratorRange(cbvs), UniformsStream::MakeResources(MakeIteratorRange(srvs)) });
 
             auto& simplePatchBox = ConsoleRig::FindCachedBox<SimplePatchBox>(
                 SimplePatchBox::Desc(elementSize[0], elementSize[1], true));
@@ -346,21 +366,7 @@ namespace SceneEngine
         context.UnbindInputLayout();
             ////-////-/====/-////-////
 
-        auto& perlinNoiseRes = ConsoleRig::FindCachedBox<PerlinNoiseResources>(PerlinNoiseResources::Desc());
-        context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-        context.GetNumericUniforms(ShaderStage::Domain).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-        context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(8, _tileConstantsBuffer));
-        context.GetNumericUniforms(ShaderStage::Domain).Bind(MakeResourceList(8, _tileConstantsBuffer));
-        context.GetNumericUniforms(ShaderStage::Hull).Bind(MakeResourceList(8, _tileConstantsBuffer));
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(8, _tileConstantsBuffer));
-        context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(1, _localTransformConstantsBuffer));
-        context.GetNumericUniforms(ShaderStage::Domain).Bind(MakeResourceList(1, _localTransformConstantsBuffer));
-
         context.Bind(Techniques::CommonResources()._dssReadWrite);
-
-        if (mode == Mode_VegetationPrepare) {
-            context.GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(8, _tileConstantsBuffer));
-        }
     }
 
     void    TerrainRenderingContext::ExitState(DeviceContext& context, RenderCore::Techniques::ParsingContext& )

@@ -7,16 +7,29 @@
 #include "../RenderCore/DX11/Metal/Buffer.h"
 #include "../RenderCore/DX11/Metal/IncludeDX11.h"
 
+#if GFXAPI_ACTIVE == GFXAPI_DX11
+	namespace RenderCore { namespace Metal_DX11
+	{
+		extern StreamOutputInitializers g_defaultStreamOutputInitializers;
+	}}
+#endif
 
 namespace SceneEngine { namespace MetalStubs
 {
-	void GeometryShader::SetDefaultStreamOutputInitializers(const StreamOutputInitializers&)
+	void SetDefaultStreamOutputInitializers(const RenderCore::StreamOutputInitializers& so)
 	{
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			RenderCore::Metal_DX11::g_defaultStreamOutputInitializers = so;
+		#endif
 	}
 
-	GeometryShader::StreamOutputInitializers GeometryShader::GetDefaultStreamOutputInitializers()
+	RenderCore::StreamOutputInitializers GetDefaultStreamOutputInitializers()
 	{
-		return GeometryShader::StreamOutputInitializers{};
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			return RenderCore::Metal_DX11::g_defaultStreamOutputInitializers;
+		#else
+			return GeometryShader::StreamOutputInitializers{};
+		#endif
 	}
 
 	void UnbindSO(RenderCore::Metal::DeviceContext& devContext)
