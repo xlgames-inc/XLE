@@ -1285,7 +1285,7 @@ namespace RenderCore { namespace Techniques
             // The AttachmentNames in FrameBufferDescFragment are just indices into the attachment
             // list -- so we must ensure that we insert in order, and without gaps
             assert(a._name == result._attachments.size());
-            FrameBufferDescFragment::Attachment r { a._firstReadSemantic, a._lastWriteSemantic, a._desc };
+            FrameBufferDescFragment::Attachment r { a._firstReadSemantic, a._containsDataForSemantic, a._desc };
             result._attachments.push_back(r);
         }
 
@@ -1311,12 +1311,104 @@ namespace RenderCore { namespace Techniques
             debugInfo << "Final subpasses" << std::endl;
             for (unsigned c=0; c<result._subpasses.size(); ++c)
                 debugInfo << StreamIndent(4) << "[" << c << "] " << result._subpasses[c] << std::endl;
+            debugInfo << "Interface summary" << std::endl;
+            for (unsigned c=0; c<finalResult._inputAttachments.size(); ++c)
+                debugInfo << StreamIndent(4) << "Input [" << c << "] 0x" << std::hex << finalResult._inputAttachments[c]._semantic << std::dec << " (" << finalResult._inputAttachments[c]._desc << ")" << std::endl;
+            for (unsigned c=0; c<finalResult._outputAttachments.size(); ++c)
+                debugInfo << StreamIndent(4) << "Output [" << c << "] 0x" << std::hex << finalResult._outputAttachments[c]._semantic << std::dec << " (" << finalResult._outputAttachments[c]._desc << ")" << std::endl;
             debugInfo << "MergeFragments() finished." << std::endl;
             finalResult._log = debugInfo.str();
         #endif
         
         return finalResult;
     }
+
+
+    static RenderCore::AttachmentViewDesc RemapAttachmentView(
+        const RenderCore::AttachmentViewDesc& input,
+        const RenderCore::Techniques::FrameBufferDescFragment& srcFragment,
+        RenderCore::Techniques::FrameBufferDescFragment& dstFragment,
+        std::vector<std::pair<RenderCore::AttachmentName, RenderCore::AttachmentName>>& remapping)
+    {
+        if (input._resourceName == ~0u) return input;
+
+        auto existing = LowerBound(remapping, input._resourceName);
+        if (existing == remapping.end() || existing->first != input._resourceName) {
+            auto semantic = srcFragment._attachments[input._resourceName].GetInputSemanticBinding();
+            auto newName = dstFragment.DefineAttachment(
+                semantic,
+                srcFragment._attachments[input._resourceName]._desc);
+            existing = remapping.insert(existing, {input._resourceName, newName});
+        }
+
+        auto result = input;
+        result._resourceName = existing->second;
+        return result;
+    }
+
+    bool CanBeSimplified(
+        const RenderCore::Techniques::FrameBufferDescFragment& inputFragment,
+        IteratorRange<const RenderCore::Techniques::PreregisteredAttachment*> systemAttachments)
+    {
+        TRY
+        {
+            using namespace RenderCore;
+            using Fragment = Techniques::FrameBufferDescFragment;
+            std::vector<Fragment> testFragments;
+            // Create a separate fragment for each subpass
+            for (const auto&subpass:inputFragment._subpasses) {
+                std::vector<std::pair<AttachmentName, AttachmentName>> remapping;
+                Fragment separatedFragment;
+                RenderCore::SubpassDesc remappedSubpass;
+                for (const auto&a:subpass._output) remappedSubpass._output.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
+                remappedSubpass._depthStencil = RemapAttachmentView(remappedSubpass._depthStencil, inputFragment, separatedFragment, remapping);
+                for (const auto&a:subpass._input) remappedSubpass._input.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
+                for (const auto&a:subpass._preserve) remappedSubpass._preserve.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
+                for (const auto&a:subpass._resolve) remappedSubpass._resolve.push_back(RemapAttachmentView(a, inputFragment, separatedFragment, remapping));
+                #if defined(_DEBUG)
+                    remappedSubpass.SetName(subpass._name);
+                #endif
+                separatedFragment.AddSubpass(std::move(remappedSubpass));
+                testFragments.emplace_back(std::move(separatedFragment));
+            }
+            auto collapsed = RenderCore::Techniques::MergeFragments(
+                systemAttachments, MakeIteratorRange(testFragments));
+            assert(collapsed._mergedFragment._attachments.size() <= inputFragment._attachments.size());
+            if (collapsed._mergedFragment._attachments.size() < inputFragment._attachments.size()) {
+                return true;
+            }
+            return false;
+        } CATCH(const std::exception& e) {
+            Log(Warning) << "Error during AnalyzeFragment while processing render step: " << e.what() << std::endl;
+        } CATCH_END
+        return false;
+    }
+
+    void MergeInOutputs(
+        std::vector<PreregisteredAttachment>& workingSystemAttachments,
+        const FrameBufferDescFragment& fragment)
+    {
+        for (const auto& fragAttachment:fragment._attachments) {
+            if (fragAttachment.GetOutputSemanticBinding() == 0) continue;
+            bool foundExisting = false;
+            for (auto&dstAttachment:workingSystemAttachments)
+                if (dstAttachment._semantic == fragAttachment.GetOutputSemanticBinding()) {
+                    dstAttachment._state = PreregisteredAttachment::State::Initialized;
+                    dstAttachment._stencilState = PreregisteredAttachment::State::Initialized;
+                    // dstAttachment._desc = fragAttachment._desc;
+                    foundExisting = true;
+                    break;
+                }
+            if (!foundExisting) {
+                workingSystemAttachments.push_back({
+                    fragAttachment.GetOutputSemanticBinding(),
+                    fragAttachment._desc,
+                    PreregisteredAttachment::State::Initialized,
+                    PreregisteredAttachment::State::Initialized});
+            }
+        }
+    }
+
 
 }}
 
