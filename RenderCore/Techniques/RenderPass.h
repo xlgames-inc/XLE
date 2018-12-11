@@ -248,6 +248,29 @@ namespace RenderCore { namespace Techniques
         AttachmentName RemapToRPI(unsigned inputAttachmentSlot) const;
     };
 
+
+    /// <summary>Tests to see if the attachment usage of the given fragment can be optimized</summary>
+    /// Sometimes of the number of attachments used by a fragment can be reduced by reusing
+    /// an existing attachment, instead of defining a new one. The common "ping-pong" rendering
+    /// pattern is an example of this (in this pattern we reuse 2 attachments for many subpasses,
+    /// instead of defining new attachments for each sub pass.
+    ///
+    /// If there are cases this like that, this function can detect them. Returns true iff there are
+    /// optimizations detected.
+    ///
+    /// Internally, it calls MergeFragments, and to get some context on the solution it found,
+    /// you can look at the "_log" member of the calculated MergeFragmentsResult.
+    ///
+    /// MergeInOutputs can be used to chain multiple calls to this function by merging in the
+    /// outputs from each subsequent fragment into the systemAttachments array.
+    bool CanBeSimplified(
+        const FrameBufferDescFragment& inputFragment,
+        IteratorRange<const PreregisteredAttachment*> systemAttachments);
+
+    void MergeInOutputs(
+        std::vector<PreregisteredAttachment>& workingSystemAttachments,
+        const FrameBufferDescFragment& fragment);
+
 }}
 
 
