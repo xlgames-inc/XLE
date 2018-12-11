@@ -19,6 +19,7 @@
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
 #include "../Utility/Streams/FileUtils.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../Utility/ParameterBox.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -121,10 +122,9 @@ namespace FixedFunctionModel
         if (n == rawShaderNames.end()) {
                 // We must also resolve the full filename for this shader.
                 // Shaders are referenced relative to a few fixed directories.
-            ::Assets::ResChar resName[MaxPath];
-            XlCopyString(resName, shaderName);
-            XlCatString(resName, ".tech");
-            _pimpl->_shaderSearchDirs.ResolveFile(resName, dimof(resName), resName);
+            assert(XlEqStringI(MakeFileNameSplitter(shaderName).Extension(), "tech"));
+			::Assets::ResChar resName[MaxPath];
+            _pimpl->_shaderSearchDirs.ResolveFile(resName, dimof(resName), shaderName);
             
             rawShaderNames.push_back(hash);
             _pimpl->_resolvedTechniqueConfigs.push_back(resName);

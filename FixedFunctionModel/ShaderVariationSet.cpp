@@ -9,6 +9,7 @@
 #include "../RenderCore/Techniques/TechniqueUtils.h"
 #include "../RenderCore/Types.h"
 #include "../Assets/Assets.h"
+#include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringFormat.h"
 
 namespace FixedFunctionModel
@@ -62,11 +63,9 @@ namespace FixedFunctionModel
 		
 		const auto& searchDirs = RenderCore::Assets::Services::GetTechniqueConfigDirs();
 
-		assert(!XlFindStringI(techniqueConfig, ".tech"));
+		assert(XlEqStringI(MakeFileNameSplitter(techniqueConfig).Extension(), "tech"));
 		::Assets::ResChar resName[MaxPath];
-		XlCopyString(resName, techniqueConfig);
-		XlCatString(resName, ".tech");
-		searchDirs.ResolveFile(resName, dimof(resName), resName);
+		searchDirs.ResolveFile(resName, dimof(resName), techniqueConfig);
 
         auto& techConfig = ::Assets::GetAssetDep<Techniques::ResolvedTechniqueShaders>(MakeStringSection(resName));
 

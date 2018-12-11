@@ -389,7 +389,7 @@ namespace ToolsRig
     {
         auto& visBox = ConsoleRig::FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
 
-		const auto* baseTechnique = "xleres/techniques/illum";
+		const auto* baseTechnique = "xleres/techniques/illum.tech";
 		if (Tweakable("DrawMarkers", true)) {
 
 			auto fallbackShader = visBox._material.FindVariation(parserContext, techniqueIndex, baseTechnique); 
@@ -410,9 +410,9 @@ namespace ToolsRig
 			}
 
 			if (!_areaLightAnnotation.empty()) {
-				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight"); 
-				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight"); 
-				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight");
+				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
+				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
+				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech");
 				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
 					auto objects = _objects->FindEntitiesOfType(a->_typeId);
 					for (const auto&o : objects) {
@@ -436,7 +436,7 @@ namespace ToolsRig
 
 		}
 
-        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "meshmarker");
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "meshmarker.tech");
         if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);

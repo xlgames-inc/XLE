@@ -37,7 +37,7 @@ namespace SceneEngine
 {
     using namespace RenderCore;
 
-    static const ::Assets::ResChar s_techniqueConfig[] = "xleres/techniques/cloudvolume";
+    static const ::Assets::ResChar s_techniqueConfig[] = "xleres/techniques/cloudvolume.tech";
 
     class DualContourRenderer::Pimpl
     {
@@ -336,7 +336,7 @@ namespace SceneEngine
 
 			auto& metalContext = *Metal::DeviceContext::Get(context);
 
-            auto shader = material.FindVariation(parserContext, techniqueIndex, "illum");
+            auto shader = material.FindVariation(parserContext, techniqueIndex, "illum.tech");
             if (shader._shader._shaderProgram) {
 				shader._shader.ApplyUniforms(metalContext, 0, parserContext.GetGlobalUniformsStream());
 				ConstantBufferView cbvs[] = {

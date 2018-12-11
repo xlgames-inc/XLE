@@ -238,7 +238,7 @@ namespace FixedFunctionModel
                 // fill in the details for all of the material references we found
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 auto* matData = matScaffold.GetMaterial(i->first);
-                const ::Assets::ResChar* shaderName = (matData && matData->_techniqueConfig[0]) ? matData->_techniqueConfig : "illum";
+                const ::Assets::ResChar* shaderName = (matData && matData->_techniqueConfig[0]) ? matData->_techniqueConfig : "illum.tech";
                 i->second._shaderName = sharedStateSet.InsertTechniqueConfig(shaderName);
                 i->second._texturesIndex = (unsigned)std::distance(materialResources.begin(), i);
             }

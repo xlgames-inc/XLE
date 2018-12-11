@@ -280,7 +280,7 @@ namespace ToolsRig
 
             auto shader = box._materialGenCylinder.FindVariation(
                 parserContext, Techniques::TechniqueIndex::Forward, 
-                "xleres/ui/objgen/arealight");
+                "xleres/ui/objgen/arealight.tech");
             
             if (shader._shader._shaderProgram) {
                 auto& metalContext = *Metal::DeviceContext::Get(threadContext);
