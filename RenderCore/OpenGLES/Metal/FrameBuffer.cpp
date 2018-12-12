@@ -65,13 +65,19 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
     
-    static bool HasClear(LoadStore loadStoreFlags)
+    static bool HasPrimaryClear(LoadStore loadStoreFlags)
     {
         return loadStoreFlags == LoadStore::Clear
-            || loadStoreFlags == LoadStore::DontCare_ClearStencil
-            || loadStoreFlags == LoadStore::Retain_ClearStencil
             || loadStoreFlags == LoadStore::Clear_ClearStencil
             || loadStoreFlags == LoadStore::Clear_RetainStencil
+            ;
+    }
+
+    static bool HasClear(LoadStore loadStoreFlags)
+    {
+        return HasPrimaryClear(loadStoreFlags)
+            || loadStoreFlags == LoadStore::DontCare_ClearStencil
+            || loadStoreFlags == LoadStore::Retain_ClearStencil
             ;
     }
 
@@ -100,7 +106,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
 				sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
-                if (HasClear(attachmentView._loadFromPreviousPhase)) {
+                if (HasPrimaryClear(attachmentView._loadFromPreviousPhase)) {
 				    sp._rtvLoad[r] = LoadStore::Clear;
                     sp._rtvClearValue[r] = clearValueIterator++;
                 } else {
@@ -284,12 +290,27 @@ namespace RenderCore { namespace Metal_OpenGLES
                     if (s._rtvs[rtv].GetResource() && s._rtvs[rtv].GetResource()->GetDesc()._type == ResourceDesc::Type::Texture) {
                         formatComponentType = GetComponentType(s._rtvs[rtv].GetResource()->GetDesc()._textureDesc._format);
                     }
+
+                    float defClear[] = {0.f, 0.f, 0.f, 1.0f};
+                    unsigned defClearUInt[] = {0, 0, 0, 0};
+                    signed defClearSInt[] = {0, 0, 0, 0};
+
                     switch (formatComponentType) {
                     case FormatComponentType::UInt:
-                        glClearBufferuiv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._uint);
+                        {
+                            const unsigned* clear = defClearUInt;
+                            if (s._rtvClearValue[rtv] < clearValues.size())
+                                clear = clearValues[s._rtvClearValue[rtv]]._uint;
+                            glClearBufferuiv(GL_COLOR, rtv, clear);
+                        }
                         break;
                     case FormatComponentType::SInt:
-                        glClearBufferiv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._int);
+                        {
+                            const signed* clear = defClearSInt;
+                            if (s._rtvClearValue[rtv] < clearValues.size())
+                                clear = clearValues[s._rtvClearValue[rtv]]._int;
+                            glClearBufferiv(GL_COLOR, rtv, clear);
+                        }
                         break;
                     case FormatComponentType::UNorm:
                     case FormatComponentType::SNorm:
@@ -299,18 +320,28 @@ namespace RenderCore { namespace Metal_OpenGLES
                     case FormatComponentType::Exponential:
                     case FormatComponentType::UnsignedFloat16:
                     case FormatComponentType::SignedFloat16:
-                        glClearBufferfv(GL_COLOR, rtv, clearValues[s._rtvClearValue[rtv]]._float);
+                        {
+                            const float* clear = defClear;
+                            if (s._rtvClearValue[rtv] < clearValues.size())
+                                clear = clearValues[s._rtvClearValue[rtv]]._float;
+                            glClearBufferfv(GL_COLOR, rtv, clear);
+                        }
                         break;
                     }
                 }
             }
 
+            float depthClear = 1.0f; GLint stencilClear = 0;
             if (clearDepth && clearStencil) {
-                glClearBufferfi(GL_DEPTH_STENCIL, 0, clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+                if (s._dsvClearValue < clearValues.size()) {
+                    depthClear = clearValues[s._dsvClearValue]._depthStencil._depth;
+                    stencilClear = clearValues[s._dsvClearValue]._depthStencil._stencil;
+                }
+                glClearBufferfi(GL_DEPTH_STENCIL, 0, depthClear, stencilClear);
             } else if (clearDepth) {
-                glClearBufferfv(GL_DEPTH, 0, &clearValues[s._dsvClearValue]._depthStencil._depth);
+                glClearBufferfv(GL_DEPTH, 0, &depthClear);
             } else if (clearStencil)  {
-                glClearBufferiv(GL_STENCIL, 0, (const GLint*)&clearValues[s._dsvClearValue]._depthStencil._stencil);
+                glClearBufferiv(GL_STENCIL, 0, &stencilClear);
             }
         } else {
             assert(s._rtvCount <= 1);
@@ -318,16 +349,25 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             unsigned clearBits = 0;
             if (clearColor) {
-                const float* clear = clearValues[s._rtvClearValue[0]]._float;
+                float defClear[] = {0.f, 0.f, 0.f, 1.0f};
+                const float* clear = defClear;
+                if (s._rtvClearValue[0] < clearValues.size())
+                    clear = clearValues[s._rtvClearValue[0]]._float;
                 glClearColor(clear[0], clear[1], clear[2], clear[3]);
                 clearBits |= GL_COLOR_BUFFER_BIT;
             }
             if (clearDepth) {
-                glClearDepthf(clearValues[s._dsvClearValue]._depthStencil._depth);
+                float clear = 1.0f;
+                if (s._dsvClearValue < clearValues.size())
+                    clear = clearValues[s._dsvClearValue]._depthStencil._depth;
+                glClearDepthf(clear);
                 clearBits |= GL_DEPTH_BUFFER_BIT;
             }
             if (clearStencil) {
-                glClearStencil(clearValues[s._dsvClearValue]._depthStencil._stencil);
+                unsigned clear = 0;
+                if (s._dsvClearValue < clearValues.size())
+                    clear = clearValues[s._dsvClearValue]._depthStencil._stencil;
+                glClearStencil(clear);
                 clearBits |= GL_STENCIL_BUFFER_BIT;
             }
 

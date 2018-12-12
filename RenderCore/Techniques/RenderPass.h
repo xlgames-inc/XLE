@@ -201,8 +201,8 @@ namespace RenderCore { namespace Techniques
     public:
         FrameBufferDescFragment _mergedFragment;
         std::vector<FrameBufferFragmentMapping> _remapping;
-        std::vector<FrameBufferDesc::Attachment> _inputAttachments;
-        std::vector<FrameBufferDesc::Attachment> _outputAttachments;
+        std::vector<std::pair<uint64_t, AttachmentName>> _inputAttachments;
+        std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
         std::string _log;
     };
 
