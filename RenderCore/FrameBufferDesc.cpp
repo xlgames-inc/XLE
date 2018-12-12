@@ -48,6 +48,22 @@ namespace RenderCore
         };
     }
 
+    const char* AsString(LoadStore input)
+    {
+        switch (input) {
+        case LoadStore::DontCare: return "DontCare";
+        case LoadStore::Retain: return "Retain";
+        case LoadStore::Clear: return "Clear";
+        case LoadStore::DontCare_RetainStencil: return "DontCare_RetainStencil";
+        case LoadStore::Retain_RetainStencil: return "Retain_RetainStencil";
+        case LoadStore::Clear_RetainStencil: return "Clear_RetainStencil";
+        case LoadStore::DontCare_ClearStencil: return "DontCare_ClearStencil";
+        case LoadStore::Retain_ClearStencil: return "Retain_ClearStencil";
+        case LoadStore::Clear_ClearStencil: return "Clear_ClearStencil";
+        default: return "<<unknown>>";
+        }
+    }
+
 	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc)
 	{
 		TextureViewDesc result = viewDesc;
