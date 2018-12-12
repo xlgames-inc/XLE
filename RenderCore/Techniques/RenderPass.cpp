@@ -562,18 +562,17 @@ namespace RenderCore { namespace Techniques
             bool foundMatch = false;
             if (r._semantic) {
                 for (unsigned q=0; q<_pimpl->_semanticAttachments.size(); ++q) {
-                    if (r._semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q]) {
-                        if (MatchRequest(r._desc, _pimpl->_semanticAttachments[q]._desc, _pimpl->_props)
-                            && _pimpl->_semanticAttachments[q]._resource) {
-                            consumedSemantic[q] = true;
-                            foundMatch = true;
-                            result.push_back(q | (1u<<31u));
-                            break;
-                        } else {
-                            Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << r._semantic << std::dec << ") does not match the request for this semantic. The bound attachment will be ignored. Request: "
+                    if (r._semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
+                        if (!MatchRequest(r._desc, _pimpl->_semanticAttachments[q]._desc, _pimpl->_props)) {
+                            Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << r._semantic << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
                                 << r._desc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
                                 << std::endl;
                         }
+
+                        consumedSemantic[q] = true;
+                        foundMatch = true;
+                        result.push_back(q | (1u<<31u));
+                        break;
                     }
                 }
                 if (foundMatch) continue;
@@ -629,16 +628,11 @@ namespace RenderCore { namespace Techniques
 
     void AttachmentPool::Unbind(const IResource& resource)
     {
-        auto existingBinding = std::find_if(
-            _pimpl->_semanticAttachments.begin(),
-            _pimpl->_semanticAttachments.end(),
-            [&resource](const Pimpl::SemanticAttachment& a) {
-                return a._resource.get() == &resource;
-            });
-        if (existingBinding != _pimpl->_semanticAttachments.end()) {
-            if (existingBinding->_resource)
-                _pimpl->_srvPool.Erase(*existingBinding->_resource);
-            existingBinding->_resource = nullptr;
+        for (auto& binding:_pimpl->_semanticAttachments) {
+            if (binding._resource.get() == &resource) {
+                _pimpl->_srvPool.Erase(*binding._resource);
+                binding._resource = nullptr;
+            }
         }
     }
 
@@ -1296,9 +1290,9 @@ namespace RenderCore { namespace Techniques
         for (auto& a:workingAttachments) {
             if (a._name == ~0u) continue;
             if (a._firstReadSemantic)
-                finalResult._inputAttachments.push_back({a._firstReadSemantic, a._desc});
+                finalResult._inputAttachments.push_back({a._firstReadSemantic, a._name});
             if (a._containsDataForSemantic)
-                finalResult._outputAttachments.push_back({a._containsDataForSemantic, a._desc});
+                finalResult._outputAttachments.push_back({a._containsDataForSemantic, a._name});
         }
 
         #if defined(_DEBUG)
@@ -1313,9 +1307,9 @@ namespace RenderCore { namespace Techniques
                 debugInfo << StreamIndent(4) << "[" << c << "] " << result._subpasses[c] << std::endl;
             debugInfo << "Interface summary" << std::endl;
             for (unsigned c=0; c<finalResult._inputAttachments.size(); ++c)
-                debugInfo << StreamIndent(4) << "Input [" << c << "] 0x" << std::hex << finalResult._inputAttachments[c]._semantic << std::dec << " (" << finalResult._inputAttachments[c]._desc << ")" << std::endl;
+                debugInfo << StreamIndent(4) << "Input [" << c << "] 0x" << std::hex << finalResult._inputAttachments[c].first << std::dec << " " << finalResult._inputAttachments[c].second << " (" << finalResult._mergedFragment._attachments[finalResult._inputAttachments[c].second]._desc << ")" << std::endl;
             for (unsigned c=0; c<finalResult._outputAttachments.size(); ++c)
-                debugInfo << StreamIndent(4) << "Output [" << c << "] 0x" << std::hex << finalResult._outputAttachments[c]._semantic << std::dec << " (" << finalResult._outputAttachments[c]._desc << ")" << std::endl;
+                debugInfo << StreamIndent(4) << "Output [" << c << "] 0x" << std::hex << finalResult._outputAttachments[c].first << std::dec << " " << finalResult._outputAttachments[c].second << " (" << finalResult._mergedFragment._attachments[finalResult._outputAttachments[c].second]._desc << ")" << std::endl;
             debugInfo << "MergeFragments() finished." << std::endl;
             finalResult._log = debugInfo.str();
         #endif

@@ -23,6 +23,8 @@ namespace RenderCore
 		DontCare_ClearStencil, Retain_ClearStencil, Clear_ClearStencil
 	};
 
+    const char* AsString(LoadStore);
+
     /// <summary>Attachments are part of a frame buffer, and typically represent a rendering surface</summary>
     /// This description object can define an attachment. Typically the attachment is defined in terms of
     /// some global frame buffer properties (such as output dimensions and sample count).
