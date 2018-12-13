@@ -64,6 +64,7 @@ namespace RenderCore { namespace Techniques
     public:
         void Bind(uint64_t semantic, const IResourcePtr& resource);
         void Unbind(const IResource& resource);
+        void UnbindAll();
 		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
 
         std::vector<AttachmentName> Request(IteratorRange<const FrameBufferDesc::Attachment*> requests);
@@ -268,6 +269,8 @@ namespace RenderCore { namespace Techniques
     void MergeInOutputs(
         std::vector<PreregisteredAttachment>& workingSystemAttachments,
         const FrameBufferDescFragment& fragment);
+
+    bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions);
 
 }}
 
