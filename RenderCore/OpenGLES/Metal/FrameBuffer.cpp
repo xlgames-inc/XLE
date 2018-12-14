@@ -200,19 +200,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
-            if (factory.GetFeatureSet() & FeatureSet::GLES300) {
-                glDrawBuffers(sp._rtvCount, drawBuffers);
-            } else {
-                #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
-                    // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
-                    if (sp._rtvCount == 0) {
-                        glDrawBuffer(GL_NONE);
-                        glReadBuffer(GL_NONE);
-                    } else {
-                        glDrawBuffer(GL_COLOR_ATTACHMENT0);
-                        glReadBuffer(GL_COLOR_ATTACHMENT0);
-                    }
-                #endif
+            glDrawBuffers(sp._rtvCount, drawBuffers);
+
+            if (factory.GetFeatureSet() & FeatureSet::GL4) {
+                // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
+                if (sp._rtvCount == 0) {
+                    glDrawBuffer(GL_NONE);
+                    glReadBuffer(GL_NONE);
+                } else {
+                    glReadBuffer(GL_COLOR_ATTACHMENT0);
+                }
             }
 
             #if defined(_DEBUG)
@@ -269,7 +266,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
         // For ES2, we have to drop back to the older API
-        bool useNewClearAPI = context.GetFeatureSet() & FeatureSet::GLES300;
+        bool useNewClearAPI = context.GetFeatureSet() & (FeatureSet::GLES300 | FeatureSet::GL4);
         if (!fbZeroHack && useNewClearAPI) {
             for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
                 auto attachmentIdx = s._rtvs[rtv];

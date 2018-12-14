@@ -20,7 +20,7 @@ namespace RenderCore { namespace ImplOpenGLES
 {
     static Metal_OpenGLES::FeatureSet::BitField GetFeatureSet()
     {
-        Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200;
+        Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::GL4;
 
         const char* extensionsString = (const char*)glGetString(GL_EXTENSIONS);
         if (extensionsString) {
