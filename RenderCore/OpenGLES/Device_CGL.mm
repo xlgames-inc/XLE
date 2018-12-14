@@ -173,11 +173,9 @@ namespace RenderCore { namespace ImplOpenGLES
             /*CGLPixelFormatAttribute*/
             unsigned pixelAttrs[] = {
                 kCGLPFADoubleBuffer,
-                // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
+                kCGLPFAAccelerated,
                 kCGLPFAColorSize, 24,
                 kCGLPFAAlphaSize, 8,
-                kCGLPFABackingStore, 0,
-                kCGLPFAAccelerated, 1,
                 kCGLPFADepthSize, 24,
                 kCGLPFAStencilSize, 8,
                 0,
