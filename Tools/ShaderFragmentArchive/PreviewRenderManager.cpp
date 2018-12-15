@@ -23,8 +23,6 @@
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/DeviceContext.h"
-#include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 
@@ -34,6 +32,8 @@
 
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/IArtifact.h"
+#include "../../Assets/CompileAndAsyncManager.h"
+#include "../../Assets/AssetSetManager.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/PtrUtils.h"
@@ -216,49 +216,24 @@ namespace ShaderPatcherLayer
 
         const int width = std::max(0, int(size->Width));
         const int height = std::max(0, int(size->Height));
+		auto& context = *_pimpl->_device->GetImmediateContext();
+		auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
 
-        const unsigned maxTargets = 4;
-        targetToVisualize = std::min(targetToVisualize, maxTargets-1);
+		// We have to pump some services, or assets will never complete loading/compiling
+		::Assets::Services::GetAsyncMan().Update();
+		::Assets::GetAssetSetManager().OnFrameBarrier();
+		uploads.Update(context, false);
 
-        auto& uploads = RenderCore::Assets::Services::GetBufferUploads();
-        intrusive_ptr<BufferUploads::ResourceLocator> targets[maxTargets];
-        for (unsigned c=0; c<(targetToVisualize+1); ++c)
-            targets[c] = uploads.Transaction_Immediate(
-                CreateDesc(
-                    BindFlag::RenderTarget,
-                    0, GPUAccess::Write,
-                    TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM_SRGB),
-                    "PreviewBuilderTarget"));
-
-        auto depthBuffer = uploads.Transaction_Immediate(
-            CreateDesc(
-                BindFlag::DepthStencil,
+		auto target = _pimpl->_device->CreateResource(
+			CreateDesc(
+                BindFlag::RenderTarget,
                 0, GPUAccess::Write,
-                TextureDesc::Plain2D(width, height, Format::D24_UNORM_S8_UINT),
-                "PreviewBuilderDepthBuffer"));
-
-        auto context = _pimpl->_device->GetImmediateContext();
-        auto& metalContext = *Metal::DeviceContext::Get(*context);
-        float clearColor[] = { 0.05f, 0.05f, 0.2f, 1.f };
-
-        Metal::RenderTargetView rtvs[maxTargets];
-        for (unsigned c=0; c<(targetToVisualize+1); ++c) {
-            rtvs[c] = Metal::RenderTargetView(targets[c]->GetUnderlying());
-            metalContext.Clear(rtvs[c], clearColor);
-        }
-
-        Metal::DepthStencilView dsv(depthBuffer->GetUnderlying());
-        metalContext.Clear(dsv, Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0x0);
-        RenderCore::ResourceList<Metal::RenderTargetView, maxTargets> rtvList(
-            std::initializer_list<Metal::RenderTargetView>(rtvs, ArrayEnd(rtvs)));
-        metalContext.Bind(rtvList, &dsv);
-
-        metalContext.Bind(Metal::ViewportDesc(0.f, 0.f, float(width), float(height), 0.f, 1.f));
+                TextureDesc::Plain2D(width, height, Format::R8G8B8A8_UNORM_SRGB),
+                "PreviewBuilderTarget"));
 
 		RenderCore::Techniques::AttachmentPool attachmentPool;
 		RenderCore::Techniques::FrameBufferPool frameBufferPool;
 		attachmentPool.Bind(FrameBufferProperties{(unsigned)width, (unsigned)height, TextureSamples::Create()});
-		attachmentPool.Bind(0, targets[0]->GetUnderlying());
 
             ////////////
 
@@ -297,9 +272,15 @@ namespace ShaderPatcherLayer
 		visSettings->_previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 		visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
 		visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
-		visSettings->_techniqueDelegate = std::make_shared<TechniqueDelegate>(_pimpl->_shaderSource, previewConfig, pretransformed);
 
-        auto result = DrawPreview(*context, *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool, visSettings);
+		auto envSettings = std::make_shared<ToolsRig::VisEnvSettings>();
+		envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
+
+		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
+		parserContext.SetTechniqueDelegate(std::make_shared<TechniqueDelegate>(_pimpl->_shaderSource, previewConfig, pretransformed));
+		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
+		// to the lighting parser.
+        auto result = DrawPreview(context, target, parserContext, visSettings, envSettings, ToolsRig::DrawPreviewLightingType::Direct);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {
             return GenerateErrorBitmap(result.second.c_str(), size);
         } else if (result.first == ToolsRig::DrawPreviewResult::Pending) {
@@ -308,7 +289,7 @@ namespace ShaderPatcherLayer
 
             ////////////
 
-        auto readback = uploads.Resource_ReadBack(*targets[targetToVisualize]);
+		auto readback = uploads.Resource_ReadBack(BufferUploads::ResourceLocator{std::move(target)});
         if (readback && readback->GetDataSize()) {
             using System::Drawing::Bitmap;
             using namespace System::Drawing;

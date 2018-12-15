@@ -235,7 +235,7 @@ namespace FixedFunctionModel
         } else {
             const auto& states = _pimpl->_renderStateSets[renderStateSetIndex.Value()];
             auto newlyCompiled = _pimpl->_currentStateResolver->Resolve(
-                states, *_pimpl->_environment, context._techniqueIndex);
+                states, context._techniqueIndex);
             compiled = &_pimpl->_compiledStates.insert(
                 i, std::make_pair(hash, std::move(newlyCompiled)))->second;
         }

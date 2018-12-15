@@ -29,7 +29,7 @@ namespace GUILayer
         case MaterialVisSettings::LightingType::Forward:
             return ToolsRig::DrawPreviewLightingType::Forward;
         default:
-            return ToolsRig::DrawPreviewLightingType::NoLightingParser;
+            return ToolsRig::DrawPreviewLightingType::Direct;
         }
     }
 

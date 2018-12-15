@@ -41,6 +41,12 @@ namespace SceneEngine
 		}
 	};
 
+	static void ForwardLightingModel_Render(
+        IThreadContext& threadContext,
+		Techniques::ParsingContext& parsingContext,
+        LightingParserContext& lightingParserContext,
+		ViewDelegate_Forward& executedScene);
+
 	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_Forward::GetInterface() const
 	{
 		return _forward;
@@ -49,6 +55,17 @@ namespace SceneEngine
 	std::shared_ptr<IViewDelegate> RenderStep_Forward::CreateViewDelegate()
 	{
 		return std::make_shared<ViewDelegate_Forward>();
+	}
+
+	void RenderStep_Forward::Execute(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		RenderCore::Techniques::RenderPassFragment& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		assert(viewDelegate);
+		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDelegate_Forward*>(viewDelegate));
 	}
 
 	RenderStep_Forward::RenderStep_Forward(bool precisionTargets)
@@ -79,7 +96,52 @@ namespace SceneEngine
 
 	RenderStep_Forward::~RenderStep_Forward() {}
 
-	
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	const RenderCore::Techniques::FrameBufferDescFragment& RenderStep_Direct::GetInterface() const
+	{
+		return _direct;
+	}
+
+	std::shared_ptr<IViewDelegate> RenderStep_Direct::CreateViewDelegate()
+	{
+		return std::make_shared<ViewDelegate_Forward>();
+	}
+
+	void RenderStep_Direct::Execute(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		RenderCore::Techniques::RenderPassFragment& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		assert(viewDelegate);
+		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDelegate_Forward*>(viewDelegate));
+	}
+
+	RenderStep_Direct::RenderStep_Direct()
+	{
+		AttachmentDesc msDepthDesc =
+            {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,		// ,
+                TextureViewDesc::Aspect::DepthStencil,
+				AttachmentDesc::DimensionsMode::OutputRelative, 
+                AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil };
+
+        auto output = _direct.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
+		auto depth = _direct.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth, msDepthDesc);
+
+		_direct.AddSubpass(
+			SubpassDesc {
+				std::vector<AttachmentViewDesc> {
+					{ output, LoadStore::Clear, LoadStore::Retain },
+				},
+				{depth, LoadStore::Clear_ClearStencil, LoadStore::Retain}
+			});
+	}
+
+	RenderStep_Direct::~RenderStep_Direct() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static void ForwardLightingModel_Render(
         IThreadContext& threadContext,
@@ -179,16 +241,5 @@ namespace SceneEngine
         }
 #endif
     }
-
-	void RenderStep_Forward::Execute(
-		RenderCore::IThreadContext& threadContext,
-		RenderCore::Techniques::ParsingContext& parsingContext,
-		LightingParserContext& lightingParserContext,
-		RenderCore::Techniques::RenderPassFragment& rpi,
-		IViewDelegate* viewDelegate)
-	{
-		assert(viewDelegate);
-		ForwardLightingModel_Render(threadContext, parsingContext, lightingParserContext, *checked_cast<ViewDelegate_Forward*>(viewDelegate));
-	}
 
 }

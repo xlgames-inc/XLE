@@ -137,7 +137,6 @@ namespace RenderCore { namespace Techniques
         /// These should be combined together to generate the low level state objects.
         virtual CompiledRenderStateSet Resolve(
             const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) = 0;
         virtual uint64 GetHash() = 0;
         virtual ~IRenderStateDelegate();

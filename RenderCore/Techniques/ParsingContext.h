@@ -24,6 +24,8 @@ namespace RenderCore { namespace Techniques
 {
     class TechniqueContext;
     class IRenderStateDelegate;
+	class ITechniqueDelegate;
+	class IMaterialDelegate;
     class AttachmentPool;
 	class FrameBufferPool;
     
@@ -50,10 +52,15 @@ namespace RenderCore { namespace Techniques
 		ParameterBox&			GetSubframeShaderSelectors()		{ return _subframeShaderSelectors; }
 		UniformsStream			GetGlobalUniformsStream() const;
         
-        std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(
-            const std::shared_ptr<IRenderStateDelegate>& stateSetResolver);
+        std::shared_ptr<IRenderStateDelegate> SetRenderStateDelegate(const std::shared_ptr<IRenderStateDelegate>& stateSetDelegate);
         const std::shared_ptr<IRenderStateDelegate>& GetRenderStateDelegate()            { return _renderStateDelegate; }
-        const std::shared_ptr<Utility::ParameterBox>& GetRenderStateDelegateParameters();
+
+		std::shared_ptr<ITechniqueDelegate> SetTechniqueDelegate(const std::shared_ptr<ITechniqueDelegate>& techniqueDelegate);
+        const std::shared_ptr<ITechniqueDelegate>& GetTechniqueDelegate()            { return _techniqueDelegate; }
+
+		std::shared_ptr<IMaterialDelegate> SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate);
+        const std::shared_ptr<IMaterialDelegate>& GetMaterialDelegate()            { return _materialDelegate; }
+
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
 
@@ -98,7 +105,10 @@ namespace RenderCore { namespace Techniques
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
         AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
+
         std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
+		std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;
+		std::shared_ptr<IMaterialDelegate>			_materialDelegate;
 
 		ParameterBox								_subframeShaderSelectors;
 

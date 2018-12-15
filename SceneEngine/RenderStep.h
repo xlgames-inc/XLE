@@ -61,6 +61,24 @@ namespace SceneEngine
 		RenderCore::Techniques::FrameBufferDescFragment _forward;
 	};
 
+	class RenderStep_Direct : public IRenderStep
+	{
+	public:
+		std::shared_ptr<IViewDelegate> CreateViewDelegate();
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const;
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_Direct();
+		~RenderStep_Direct();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _direct;
+	};
+
 	class RenderStep_GBuffer : public IRenderStep
 	{
 	public:

@@ -189,7 +189,7 @@ namespace ToolsRig
 
             // Render the model onto our cube map surface
         {
-            auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
+			auto captureMarker = sharedStates.CaptureState(threadContext, parserContext.GetRenderStateDelegate(), {});
             TRY {
                 FixedFunctionModel::DelayedDrawCallSet delayedDraws(typeid(ModelRenderer).hash_code());
                 renderer.Prepare(

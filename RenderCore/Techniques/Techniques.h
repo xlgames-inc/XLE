@@ -90,7 +90,6 @@ namespace RenderCore { namespace Techniques
     {
     public:
         ParameterBox							_globalEnvironmentState;
-        std::shared_ptr<ParameterBox>			_renderStateDelegateParameters;
         std::shared_ptr<IRenderStateDelegate>	_defaultRenderStateDelegate;
 
         TechniqueContext();

@@ -68,8 +68,10 @@ namespace SceneEngine
 		SceneExecuteContext executeContext;
 		if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred) {
 			mainSceneRenderStep = std::make_shared<RenderStep_GBuffer>(enableParametersBuffer?1:2, precisionTargets);
-		} else {
+		} else if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Forward) {
 			mainSceneRenderStep = std::make_shared<RenderStep_Forward>(precisionTargets);
+		} else {
+			mainSceneRenderStep = std::make_shared<RenderStep_Direct>();
 		}
 
 		executeContext.AddView(
@@ -158,9 +160,13 @@ namespace SceneEngine
 
 		std::vector<std::shared_ptr<IRenderStep>> renderSteps;
 		renderSteps.push_back(mainSceneRenderStep);
-		if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred)
-			renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
-		renderSteps.push_back(std::make_shared<RenderStep_ResolveHDR>());
+
+		// In direct mode, we rendered directly to the presentation target, so we cannot resolve lighting or tonemap
+		if (renderSettings._lightingModel != RenderSceneSettings::LightingModel::Direct) {
+			if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred)
+				renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
+			renderSteps.push_back(std::make_shared<RenderStep_ResolveHDR>());
+		}
 
 		std::vector<Techniques::FrameBufferDescFragment> fragments;
 		for (unsigned c=0; c<renderSteps.size(); ++c)
@@ -168,9 +174,9 @@ namespace SceneEngine
 		
 		parsingContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 		parsingContext.GetNamedResources().Bind(
-			RenderCore::FrameBufferProperties{
+			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
-				TextureSamples::Create((uint8_t)renderSettings._samplingCount, (uint8_t)renderSettings._samplingQuality)});
+				TextureSamples::Create((uint8_t)renderSettings._samplingCount, (uint8_t)renderSettings._samplingQuality) } );
 
 		Techniques::PreregisteredAttachment preregistered[] = {
 			Techniques::PreregisteredAttachment {
@@ -186,9 +192,7 @@ namespace SceneEngine
 
 		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 		Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources());
-		metalContext.Bind(
-			Metal::ViewportDesc(0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)));
-
+		metalContext.Bind(Metal::ViewportDesc{0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)});
 
 		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
 		lightingParserContext._mainTargets._samplingCount = 1;

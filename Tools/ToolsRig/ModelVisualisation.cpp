@@ -111,7 +111,7 @@ namespace ToolsRig
 
             FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
             if (_sharedStateSet)
-                captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
+				captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), {});
 
             using namespace RenderCore;
             Metal::ConstantBuffer drawCallIndexBuffer(
@@ -421,7 +421,7 @@ namespace ToolsRig
 
 					FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
 					if (model._sharedStateSet)
-						captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
+						captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), {});
 
 					const auto techniqueIndex = Techniques::TechniqueIndex::VisWireframe;
 
@@ -439,7 +439,7 @@ namespace ToolsRig
 
 					FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
 					if (model._sharedStateSet)
-						captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
+						captureMarker = model._sharedStateSet->CaptureState(context, parserContext.GetRenderStateDelegate(), {});
 
 					const auto techniqueIndex = Techniques::TechniqueIndex::VisNormals;
 

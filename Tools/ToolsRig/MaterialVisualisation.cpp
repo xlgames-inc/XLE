@@ -274,7 +274,7 @@ namespace ToolsRig
 		case DrawPreviewLightingType::Forward:
 			return SceneEngine::RenderSceneSettings::LightingModel::Forward;
 		default:
-		case DrawPreviewLightingType::NoLightingParser:
+		case DrawPreviewLightingType::Direct:
 			return SceneEngine::RenderSceneSettings::LightingModel::Direct;
 		}
 	}
@@ -351,7 +351,8 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
 		const std::shared_ptr<MaterialVisSettings>& visObject,
-		const std::shared_ptr<VisEnvSettings>& envSettings)
+		const std::shared_ptr<VisEnvSettings>& envSettings,
+		DrawPreviewLightingType lightingType)
     {
         using namespace ToolsRig;
 
@@ -374,18 +375,16 @@ namespace ToolsRig
 
             bool result = ToolsRig::MaterialVisLayer::Draw(
                 context, renderTarget, parserContext, 
-                DrawPreviewLightingType::Deferred, 
+                lightingType, 
 				scene, lightingParserDelegate,
 				AsCameraDesc(*visObject->_camera));
             if (parserContext.HasInvalidAssets())
 				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
 			if (parserContext.HasErrorString())
 				return std::make_pair(DrawPreviewResult::Error, parserContext._stringHelpers->_errorString);
+            if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult::Pending, std::string());
 			if (result)
                 return std::make_pair(DrawPreviewResult::Success, std::string());
-
-            if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult::Pending, std::string());
-			
         }
         catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
         catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }

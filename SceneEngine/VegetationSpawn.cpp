@@ -666,7 +666,7 @@ namespace SceneEngine
 
         auto& sharedStates = _pimpl->_modelCache->GetSharedStateSet();
         auto captureMarker = sharedStates.CaptureState(
-            context, parserContext.GetRenderStateDelegate(), parserContext.GetRenderStateDelegateParameters());
+			context, parserContext.GetRenderStateDelegate(), {});
         auto& state = parserContext.GetSubframeShaderSelectors();
         state.SetParameter(u("SPAWNED_INSTANCE"), 1);
         state.SetParameter(u("GEO_INSTANCE_ALIGN_UP"), unsigned(_pimpl->_resources->_alignToTerrainUp));

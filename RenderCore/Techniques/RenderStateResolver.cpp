@@ -39,7 +39,6 @@ namespace RenderCore { namespace Techniques
     public:
         auto Resolve(
             const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
 			return CompiledRenderStateSet { Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states) };
@@ -56,7 +55,6 @@ namespace RenderCore { namespace Techniques
     public:
         auto Resolve(
             const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
             bool deferredDecal = 
@@ -78,7 +76,6 @@ namespace RenderCore { namespace Techniques
     public:
         auto Resolve(
             const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
             CompiledRenderStateSet result;
@@ -101,7 +98,6 @@ namespace RenderCore { namespace Techniques
     public:
         auto Resolve(
             const RenderStateSet& states, 
-            const Utility::ParameterBox& globalStates,
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
                 // When rendering the shadows, most states are constant.

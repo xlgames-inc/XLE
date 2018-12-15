@@ -47,14 +47,15 @@ namespace ToolsRig
         Success
     };
 
-	enum class DrawPreviewLightingType { Deferred, Forward, NoLightingParser };
+	enum class DrawPreviewLightingType { Deferred, Forward, Direct };
 
 	std::pair<DrawPreviewResult, std::string> DrawPreview(
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
 		const std::shared_ptr<MaterialVisSettings>& visObject,
-		const std::shared_ptr<VisEnvSettings>& envSettings);
+		const std::shared_ptr<VisEnvSettings>& envSettings,
+		DrawPreviewLightingType lightingType = DrawPreviewLightingType::Deferred);
 
 	std::shared_ptr<SceneEngine::IScene> CreateScene(const std::shared_ptr<MaterialVisSettings>& visObject);
 

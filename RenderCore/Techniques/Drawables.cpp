@@ -36,8 +36,6 @@ namespace RenderCore { namespace Techniques
 		shaderSelectors[Techniques::ShaderSelectors::Source::Runtime] = &parserContext.GetSubframeShaderSelectors();
 		shaderSelectors[Techniques::ShaderSelectors::Source::GlobalEnvironment] = &parserContext.GetTechniqueContext()._globalEnvironmentState;
 
-		ParameterBox globalRenderStates;
-
 		UniformsStreamInterface sequencerInterface;
 		std::vector<ConstantBufferView> sequencerCbvs;
 		std::vector<Metal::ShaderResourceView> sequencerSrvs;
@@ -90,7 +88,7 @@ namespace RenderCore { namespace Techniques
 			//////////////////////////////////////////////////////////////////////////////
 
 			if (sequencerTechnique._renderStateDelegate) {
-				auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._stateSet, globalRenderStates, techniqueIndex);
+				auto resolvedStates = sequencerTechnique._renderStateDelegate->Resolve(material._stateSet, techniqueIndex);
 				metalContext.Bind(resolvedStates._blendState);
 				metalContext.Bind(resolvedStates._rasterizerState);
 			}
