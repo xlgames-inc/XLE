@@ -53,9 +53,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         switch (faceWinding) {
             case FaceWinding::CCW: return MTLWindingCounterClockwise;
             case FaceWinding::CW: return MTLWindingClockwise;
-            default:
-                assert(0);
-                return MTLWindingCounterClockwise;
+            default: assert(0); return MTLWindingCounterClockwise;
         }
     }
 
@@ -106,6 +104,35 @@ namespace RenderCore { namespace Metal_AppleMetal
             case MTLArgumentTypeSampler:    return ReflectionInformation::MappingType::Sampler;
             default: assert(0);             return ReflectionInformation::MappingType::Unknown;
             // ignoring MTLArgumentTypeThreadgroupMemory
+        }
+    }
+
+    static MTLBlendFactor AsMTLBlendFactor(Blend blend)
+    {
+        switch (blend) {
+            case Blend::Zero: return MTLBlendFactorZero;
+            case Blend::One: return MTLBlendFactorOne;
+            case Blend::SrcColor: return MTLBlendFactorSourceColor;
+            case Blend::InvSrcColor: return MTLBlendFactorOneMinusSourceColor;
+            case Blend::DestColor: return MTLBlendFactorDestinationColor;
+            case Blend::InvDestColor: return MTLBlendFactorOneMinusDestinationColor;
+            case Blend::SrcAlpha: return MTLBlendFactorSourceAlpha;
+            case Blend::InvSrcAlpha: return MTLBlendFactorOneMinusSourceAlpha;
+            case Blend::DestAlpha: return MTLBlendFactorDestinationAlpha;
+            case Blend::InvDestAlpha: return MTLBlendFactorOneMinusDestinationAlpha;
+            default: assert(0); return MTLBlendFactorOne;
+        }
+    }
+
+    static MTLBlendOperation AsMTLBlendOperation(BlendOp op)
+    {
+        switch (op) {
+            case BlendOp::Add: return MTLBlendOperationAdd;
+            case BlendOp::Subtract: return MTLBlendOperationSubtract;
+            case BlendOp::RevSubtract: return MTLBlendOperationReverseSubtract;
+            case BlendOp::Min: return MTLBlendOperationMin;
+            case BlendOp::Max: return MTLBlendOperationMax;
+            default: assert(0); return MTLBlendOperationAdd;
         }
     }
 
@@ -167,6 +194,8 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint32_t _boundFragmentBuffers = 0u;
         uint32_t _boundFragmentTextures = 0u;
         uint32_t _boundFragmentSamplers = 0u;
+
+        CapturedStates _capturedStates;
     };
 
     void GraphicsPipeline::Bind(const IndexBufferView& IB)
@@ -192,13 +221,31 @@ namespace RenderCore { namespace Metal_AppleMetal
         [_pimpl->_pipelineDescriptor setFragmentFunction:shaderProgram._ff.get()];
     }
 
-    void GraphicsPipeline::Bind(const BlendState& blender)
+    void GraphicsPipeline::Bind(const AttachmentBlendDesc& desc)
     {
         assert(_pimpl->_pipelineDescriptor);
-        /* KenD -- Metal TODO -- Configure MTLRenderPipelineColorAttachmentDescriptor
-         * Set blend state on color attachments of MTLRenderPipelineDescriptor.
-         * See "Configuring Blending in a Render Pipeline Attachment Descriptor"
-         */
+        /* Metal TODO -- may need to support more than the first color attachment */
+        if (_pimpl->_pipelineDescriptor.get().colorAttachments[0].pixelFormat == MTLPixelFormatInvalid) {
+            /* A color attachment may not be bound - for example, if only depth attachment is bound -
+             * so there's no need to set up blending.
+             */
+            return;
+        }
+
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].blendingEnabled = desc._blendEnable;
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].rgbBlendOperation = AsMTLBlendOperation(desc._colorBlendOp);
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].alphaBlendOperation = AsMTLBlendOperation(desc._alphaBlendOp);
+
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceRGBBlendFactor = AsMTLBlendFactor(desc._srcColorBlendFactor);
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].sourceAlphaBlendFactor = AsMTLBlendFactor(desc._srcAlphaBlendFactor);
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationRGBBlendFactor = AsMTLBlendFactor(desc._dstColorBlendFactor);
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationAlphaBlendFactor = AsMTLBlendFactor(desc._dstAlphaBlendFactor);
+
+        _pimpl->_pipelineDescriptor.get().colorAttachments[0].writeMask =
+        ((desc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
+        ((desc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
+        ((desc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
+        ((desc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
     }
 
     void GraphicsPipeline::Bind(const RasterizationDesc& desc)
@@ -211,8 +258,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         }
     }
 
+    static DepthStencilDesc s_activeDepthStencilDesc;
     void GraphicsPipeline::Bind(const DepthStencilDesc& desc)
     {
+        s_activeDepthStencilDesc = desc;
         /* KenD -- Metal TODO -- depth/stencil states are expensive to construct; cache them */
         assert(_pimpl->_device);
         assert(_pimpl->_commandEncoder);
@@ -249,6 +298,11 @@ namespace RenderCore { namespace Metal_AppleMetal
         [frontStencilDesc release];
         [backStencilDesc release];
         [mtlDesc release];
+    }
+
+    DepthStencilDesc GraphicsPipeline::ActiveDepthStencilDesc()
+    {
+        return s_activeDepthStencilDesc;
     }
 
     void GraphicsPipeline::Bind(const ViewportDesc& viewport)
@@ -581,10 +635,15 @@ namespace RenderCore { namespace Metal_AppleMetal
          * the pixel formats of the associated attachments' textures in the MTLRenderPassDescriptor. */
         auto* renderPipelineDescriptor = _pimpl->_pipelineDescriptor.get();
         /* There is a maximum of 8 color attachments, defined by MTLRenderPipelineColorAttachmentDescriptor */
+        /* Metal TODO -- for now, when binding the attachmentBlendDesc, we only alter the first color attachment;
+         * we may need to support more than the first color attachment */
         const unsigned maxColorAttachments = 8u;
         for (unsigned i=0; i<maxColorAttachments; ++i) {
             MTLRenderPassColorAttachmentDescriptor* renderPassColorAttachmentDesc = renderPassDescriptor.colorAttachments[i];
             if (renderPassColorAttachmentDesc.texture) {
+                if (i > 0) {
+                    assert(0); // If this assert hits, we need to support more color attachments (such as multiple render target methods)
+                }
                 renderPipelineDescriptor.colorAttachments[i].pixelFormat = renderPassColorAttachmentDesc.texture.pixelFormat;
             }
         }
@@ -639,15 +698,20 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_commandBuffer = nullptr;
     }
 
+    id<MTLCommandBuffer>            GraphicsPipeline::RetrieveCommandBuffer()
+    {
+        return _pimpl->_commandBuffer;
+    }
+
     void            GraphicsPipeline::PushDebugGroup(const char annotationName[])
     {
-        assert(_pimpl->_commandEncoder);
+        //assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder pushDebugGroup:[NSString stringWithCString:annotationName encoding:NSUTF8StringEncoding]];
     }
 
     void            GraphicsPipeline::PopDebugGroup()
     {
-        assert(_pimpl->_commandEncoder);
+        //assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder popDebugGroup];
     }
 
@@ -660,6 +724,14 @@ namespace RenderCore { namespace Metal_AppleMetal
     }
 
     GraphicsPipeline::~GraphicsPipeline()
+    {
+    }
+
+    CapturedStates* GraphicsPipeline::GetCapturedStates() { return &_pimpl->_capturedStates; }
+    void        GraphicsPipeline::BeginStateCapture(CapturedStates& capturedStates)
+    {
+    }
+    void        GraphicsPipeline::EndStateCapture()
     {
     }
 

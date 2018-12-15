@@ -61,6 +61,36 @@ namespace RenderCore { namespace Metal_OpenGLES
         RenderCore::CompareOp _comparison = RenderCore::CompareOp::Never;
     };
 
+    namespace ColorWriteMask
+    {
+        enum Channels
+        {
+            Red     = (1<<0),
+            Green   = (1<<1),
+            Blue    = (1<<2),
+            Alpha   = (1<<3)
+        };
+        using BitField = unsigned;
+
+        const BitField All = (Red | Green | Blue | Alpha);
+        const BitField None = 0;
+    };
+
+    /**
+     * Similar to MTLRenderPipelineColorAttachmentDescriptor or D3D12_RENDER_TARGET_BLEND_DESC or VkPipelineColorBlendAttachmentState
+     */
+    class AttachmentBlendDesc {
+    public:
+        bool _blendEnable;
+        RenderCore::Blend _srcColorBlendFactor;
+        RenderCore::Blend _dstColorBlendFactor;
+        RenderCore::BlendOp _colorBlendOp;
+        RenderCore::Blend _srcAlphaBlendFactor;
+        RenderCore::Blend _dstAlphaBlendFactor;
+        RenderCore::BlendOp _alphaBlendOp;
+        ColorWriteMask::BitField _writeMask;
+    };
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class Resource;

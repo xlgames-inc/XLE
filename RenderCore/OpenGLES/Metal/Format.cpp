@@ -545,6 +545,27 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    Blend AsBlend(GLenum blend)
+    {
+        switch (blend)
+        {
+        case GL_ZERO: return Blend::Zero;
+        case GL_ONE: return Blend::One;
+
+        case GL_SRC_COLOR: return Blend::SrcColor;
+        case GL_ONE_MINUS_SRC_COLOR: return Blend::InvSrcColor;
+        case GL_DST_COLOR: return Blend::DestColor;
+        case GL_ONE_MINUS_DST_COLOR: return Blend::InvDestColor;
+
+        case GL_SRC_ALPHA: return Blend::SrcAlpha;
+        case GL_ONE_MINUS_SRC_ALPHA: return Blend::InvSrcAlpha;
+        case GL_DST_ALPHA: return Blend::DestAlpha;
+        case GL_ONE_MINUS_DST_ALPHA: return Blend::InvDestAlpha;
+
+        default: return Blend::Zero;
+        }
+    }
+
     GLenum AsGLenum(CullMode cullMode)
     {
         // GL_FRONT_AND_BACK can't be returned from this function (because doesn't seem useful)
@@ -597,6 +618,18 @@ namespace RenderCore { namespace Metal_OpenGLES
         case GL_INCR_WRAP: return StencilOp::Increase;
         case GL_DECR_WRAP: return StencilOp::Decrease;
         default: return StencilOp::Keep;
+        }
+    }
+
+    GLenum AsGLenum(BlendOp blendOp)
+    {
+        switch (blendOp) {
+            case BlendOp::Add: return GL_FUNC_ADD;
+            case BlendOp::Subtract: return GL_FUNC_SUBTRACT;
+            case BlendOp::RevSubtract: return GL_FUNC_REVERSE_SUBTRACT;
+            case BlendOp::Min: return GL_MIN;
+            case BlendOp::Max: return GL_MAX;
+            default: return GL_INVALID_ENUM;
         }
     }
 

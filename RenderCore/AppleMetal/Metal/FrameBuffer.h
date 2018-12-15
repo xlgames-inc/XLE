@@ -24,7 +24,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
 
         /* TODO -- Metal equivalent */ //OpenGL::FrameBuffer* GetSubpassUnderlyingFramebuffer(unsigned subpassIndex);
-        unsigned GetSubpassCount() const { return _subpassCount; }
+        unsigned GetSubpassCount() const { return (unsigned)_subpasses.size(); }
 
         FrameBuffer(
             ObjectFactory& factory,
@@ -34,7 +34,6 @@ namespace RenderCore { namespace Metal_AppleMetal
         ~FrameBuffer();
     private:
         static const unsigned s_maxMRTs = 4u;
-        static const unsigned s_maxSubpasses = 4u;
 
         class Subpass
         {
@@ -50,32 +49,7 @@ namespace RenderCore { namespace Metal_AppleMetal
             unsigned _dsvClearValue;
 #endif
         };
-        Subpass     _subpasses[s_maxSubpasses];
-        unsigned    _subpassCount;
-    };
-
-    /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
-    /// Client code typically just wants to define the size and formats of frame buffers, without
-    /// manually retaining and managing the objects themselves. It's a result of typical usage patterns
-    /// of RenderPassInstance.
-    ///
-    /// This helper class allows client code to simply declare what it needs and the actual management
-    /// of the device objects will be handled within the cache.
-    class FrameBufferPool
-    {
-    public:
-        std::shared_ptr<FrameBuffer> BuildFrameBuffer(
-            ObjectFactory& factory,
-            const FrameBufferDesc& desc,
-            const FrameBufferProperties& props,
-            const INamedAttachments& namedResources,
-            uint64 hashName);
-
-        FrameBufferPool();
-        ~FrameBufferPool();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
+        std::vector<Subpass> _subpasses;
     };
 
     void BeginRenderPass(
@@ -88,4 +62,5 @@ namespace RenderCore { namespace Metal_AppleMetal
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndSubpass(DeviceContext& context);
     void EndRenderPass(DeviceContext& context);
+    unsigned GetCurrentSubpassIndex(DeviceContext& context);
 }}

@@ -74,6 +74,11 @@ namespace RenderCore { namespace Metal_AppleMetal
             }
 
             textureDesc.pixelFormat = AsMTLPixelFormat(desc._textureDesc._format);
+            if (textureDesc.pixelFormat == MTLPixelFormatInvalid) {
+                // Some formats, like three-byte formats, cannot be handled
+                [textureDesc release];
+                return;
+            }
             assert(textureDesc.pixelFormat != MTLPixelFormatInvalid);
 
             textureDesc.width = desc._textureDesc._width;
