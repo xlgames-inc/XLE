@@ -346,6 +346,7 @@ extern "C" ConnectionId Connection_Register(const void* ctx, GraphId gid, Connec
 		ng._graph.Add({
 			ShaderPatcher::NodeId_Constant, ng._literalConnectors[right & ~0xf0000000u],
 			ng._connectors[left].nodeId, ng._connectors[left]._name});
+		return (ConnectionId)ng._graph.GetConnections().size()-1;
 	} else {
 		if (right >= ng._connectors.size())
 			return ~0u;
@@ -353,9 +354,18 @@ extern "C" ConnectionId Connection_Register(const void* ctx, GraphId gid, Connec
 		ng._graph.Add({
 			ng._connectors[right].nodeId, ng._connectors[right]._name,
 			ng._connectors[left].nodeId, ng._connectors[left]._name});
+		return (ConnectionId)ng._graph.GetConnections().size()-1;
 	}
+}
 
-	return ~0u;
+extern "C" void Connection_SetCondition(const void* ctx, GraphId gid, ConnectionId connection, const char condition[])
+{
+	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+
+	if (connection >= ng._graph.GetConnections().size())
+		return;
+
+	ng._graph.GetConnections()[connection]._condition = condition;
 }
 
 extern "C" void Node_Name(const void* ctx, GraphId gid, NodeId id, const char name[])

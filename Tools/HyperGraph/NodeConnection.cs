@@ -34,10 +34,10 @@ namespace HyperGraph
 	{
 		public event EventHandler<NodeConnectionEventArgs>	DoubleClick;
 
-		public NodeConnector	From	{ get; set; }
-		public NodeConnector	To		{ get; set; }
-		public string			Name	{ get; set; }
-		public object			Tag		{ get; set; }
+		public NodeConnector	From    { get; set; }
+		public NodeConnector	To      { get; set; }
+		public string			Text    { get; set; }
+		public object			Tag     { get; set; }
 		
 		internal RenderState	state;
 		internal RectangleF		bounds;

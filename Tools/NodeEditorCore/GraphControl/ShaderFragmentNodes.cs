@@ -718,7 +718,7 @@ namespace NodeEditorCore
                         result += " <-> " + t.GetNameText() + " in " + t.Node.Title;
                     }
                     else
-                        result += " <-> " + c.Name;
+                        result += " <-> " + c.Text;
                 }
 
                 return result;

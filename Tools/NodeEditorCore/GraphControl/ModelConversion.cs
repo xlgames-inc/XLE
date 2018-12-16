@@ -228,7 +228,7 @@ namespace NodeEditorCore
                     if (connection.From == null && dstNode != null)
                     {
                         // this is a direct constant connection. It connects the value either to a constant value, or some named variable
-                        var match = System.Text.RegularExpressions.Regex.Match(connection.Name, "<(.*)>");
+                        var match = System.Text.RegularExpressions.Regex.Match(connection.Text, "<(.*)>(?: if \\((.*)\\))?");
                         if (match.Success)
                         {
                             var parameterName = match.Groups[1].Value;
@@ -248,24 +248,36 @@ namespace NodeEditorCore
                                         Direction = ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In
                                     });
                             }
+                            string condition = "";
+                            if (match.Groups.Count > 2) { condition = match.Groups[2].Value; }
                             resultSubGraph.Graph.Connections.Add(
                                 new ShaderPatcherLayer.Connection
                                 {
                                     OutputNodeID = dstNode.Id,
                                     OutputParameterName = ((ShaderFragmentNodeConnector)connection.To).Name,
                                     InputNodeID = ShaderPatcherLayer.Node.NodeId_Interface,
-                                    InputParameterName = parameterName
+                                    InputParameterName = parameterName,
+                                    Condition = condition
                                 });
                         }
                         else
                         {
+                            var paramName = connection.Text;
+                            string condition = "";
+                            match = System.Text.RegularExpressions.Regex.Match(connection.Text, "(.*)(?: if \\((.*)\\))?");
+                            if (match.Groups.Count > 2)
+                            {
+                                paramName = match.Groups[1].Value;
+                                condition = match.Groups[2].Value;
+                            }
                             resultSubGraph.Graph.Connections.Add(
                                 new ShaderPatcherLayer.Connection
                                 {
                                     OutputNodeID = dstNode.Id,
                                     OutputParameterName = ((ShaderFragmentNodeConnector)connection.To).Name,
                                     InputNodeID = ShaderPatcherLayer.Node.NodeId_Constant,
-                                    InputParameterName = connection.Name
+                                    InputParameterName = paramName,
+                                    Condition = condition
                                 });
                         }
                     }
@@ -279,8 +291,9 @@ namespace NodeEditorCore
                                     OutputNodeID = ShaderPatcherLayer.Node.NodeId_Interface,
                                     OutputParameterName = outputParam.Name,
                                     InputNodeID = srcNode.Id,
-                                    InputParameterName = ((ShaderFragmentNodeConnector)connection.From).Name
-                                });
+                                    InputParameterName = ((ShaderFragmentNodeConnector)connection.From).Name,
+                                    Condition = connection.Text
+                            });
                     }
                     else if (dstNode != null && connection.From is ShaderFragmentInterfaceParameterItem)
                     {
@@ -292,8 +305,9 @@ namespace NodeEditorCore
                                     OutputNodeID = dstNode.Id,
                                     OutputParameterName = ((ShaderFragmentNodeConnector)connection.To).Name,
                                     InputNodeID = ShaderPatcherLayer.Node.NodeId_Interface,
-                                    InputParameterName = inputParam.Name
-                                });
+                                    InputParameterName = inputParam.Name,
+                                    Condition = connection.Text
+                            });
                     }
                     else if (dstNode != null && srcNode != null)
                     {
@@ -303,7 +317,8 @@ namespace NodeEditorCore
                                     OutputNodeID = dstNode.Id,
                                     OutputParameterName = ((ShaderFragmentNodeConnector)connection.To).Name,
                                     InputNodeID = srcNode.Id,
-                                    InputParameterName = ((ShaderFragmentNodeConnector)connection.From).Name
+                                    InputParameterName = ((ShaderFragmentNodeConnector)connection.From).Name,
+                                    Condition = connection.Text
                                 });
                     }
                 }
@@ -458,7 +473,7 @@ namespace NodeEditorCore
                             (item) => (item is ShaderFragmentNodeConnector && ((ShaderFragmentNodeConnector)item).Name.Equals(c.OutputParameterName)),
                             () => new ShaderFragmentNodeConnector(c.OutputParameterName, defaultTypeName));
 
-                        graph.Connect(inputItem, outputItem);
+                        graph.Connect(inputItem, outputItem, c.Condition);
                     }
                     else if (foundOutput && c.InputNodeID == ShaderPatcherLayer.Node.NodeId_Constant)
                     {
@@ -471,7 +486,9 @@ namespace NodeEditorCore
 
                         var connection = new NodeConnection();
                         connection.To = outputItem;
-                        connection.Name = c.InputParameterName;
+                        connection.Text = c.InputParameterName;
+                        if (!string.IsNullOrEmpty(c.Condition))
+                            connection.Text += " if (" + c.Condition + ")";
                         node.AddConnection(connection);
                     }
                     else if (foundOutput && c.InputNodeID == ShaderPatcherLayer.Node.NodeId_Interface)
@@ -488,7 +505,9 @@ namespace NodeEditorCore
                         {
                             var connection = new NodeConnection();
                             connection.To = dstItem;
-                            connection.Name = "<" + c.InputParameterName + ">";
+                            connection.Text = "<" + c.InputParameterName + ">";
+                            if (!string.IsNullOrEmpty(c.Condition))
+                                connection.Text += " if (" + c.Condition + ")";
                             nodeIdToControlNode[c.OutputNodeID].AddConnection(connection);
                         }
                         else
@@ -505,7 +524,7 @@ namespace NodeEditorCore
                                 },
                                 () => new ShaderFragmentInterfaceParameterItem(c.InputParameterName, defaultTypeName) { Direction = InterfaceDirection.In });
 
-                            graph.Connect(srcItem, dstItem);
+                            graph.Connect(srcItem, dstItem, c.Condition);
                         }
                     }
                     else if (foundInput && c.OutputNodeID == ShaderPatcherLayer.Node.NodeId_Interface)
@@ -528,7 +547,7 @@ namespace NodeEditorCore
                             },
                             () => new ShaderFragmentInterfaceParameterItem(c.OutputParameterName, defaultTypeName) { Direction = InterfaceDirection.Out });
 
-                        graph.Connect(srcItem, dstItem);
+                        graph.Connect(srcItem, dstItem, c.Condition);
                     }
                 }
             }

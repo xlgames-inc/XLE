@@ -49,6 +49,7 @@ namespace ShaderPatcher
         std::string			_inputParameterName;
 		NodeId				_outputNodeId;
         std::string			_outputParameterName;
+		std::string			_condition;
 
         NodeId              InputNodeId() const				{ return _inputNodeId; }
         const std::string&  InputParameterName() const		{ return _inputParameterName; }
@@ -63,6 +64,9 @@ namespace ShaderPatcher
     public:
         IteratorRange<const Node*>			GetNodes() const			{ return MakeIteratorRange(_nodes); }
         IteratorRange<const Connection*>	GetConnections() const		{ return MakeIteratorRange(_connections); }
+
+		IteratorRange<Node*>				GetNodes()			{ return MakeIteratorRange(_nodes); }
+        IteratorRange<Connection*>			GetConnections()	{ return MakeIteratorRange(_connections); }
 
         void			Add(Node&&);
         void			Add(Connection&&);

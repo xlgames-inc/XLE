@@ -787,7 +787,17 @@ namespace HyperGraph
 				{
 					var selection = BuildNodeSelection();
 
-					var element_node = element as Node;
+                    var element_nodeitem = element as NodeItem;
+                    if (element_nodeitem != null)
+                    {
+                        if (!element_nodeitem.OnStartDrag(transformed_location, out originalLocation))
+                        {
+                            element = element_nodeitem.Node;
+                            originalLocation = transformed_location;
+                        }
+                    }
+
+                    var element_node = element as Node;
 					if (element_node != null)
 					{
                         switch (Control.ModifierKeys)
@@ -871,18 +881,6 @@ namespace HyperGraph
                                         SetFlag(otherConnector, RenderState.Incompatible, true);
                                     }
                                 }
-                            }
-                        }
-                    }
-                    else
-                    {
-                        var item = element as NodeItem;
-                        if (item != null)
-                        {
-                            if (!item.OnStartDrag(transformed_location, out originalLocation))
-                            {
-                                element = item.Node;
-                                originalLocation = transformed_location;
                             }
                         }
                     }

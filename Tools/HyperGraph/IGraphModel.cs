@@ -69,7 +69,7 @@ namespace HyperGraph
         bool AddSubGraph(Node subGraph);
         void InvokeMiscChange(bool rebuildShaders);
 
-        NodeConnection Connect(NodeConnector from, NodeConnector to, string name = "");
+        NodeConnection Connect(NodeConnector from, NodeConnector to, string text = "");
         bool Disconnect(NodeConnection connection);
         bool DisconnectAll(Node node);
         bool ConnectionIsAllowed(NodeConnector from, NodeConnector to);

@@ -47,6 +47,7 @@ namespace ShaderPatcherLayer
         [DataMember] String^       InputParameterName;
 		[DataMember] UInt32        OutputNodeID;
         [DataMember] String^       OutputParameterName;
+		[DataMember] String^       Condition;
     };
 
         ///////////////////////////////////////////////////////////////

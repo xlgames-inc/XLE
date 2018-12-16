@@ -648,21 +648,33 @@ namespace HyperGraph
 
             float leftBorder = widths[1] + 256, rightBorder = widths[0] + 256;
 
-            if (minX >= maxX || minY >= maxY)
+            if (minX < maxX && minY < maxY)
             {
+                maxX = Math.Max(minX + 128, maxX);
+                maxY = Math.Max(minY + 32, maxY);
+                minY -= 32;
+                maxY += 32;
+
+                minY -= LayoutItemsHorizontally(
+                    graphics, node.TopItems,
+                    minX, maxX, minY,
+                    HorizontalItemLayoutSide.AboveAnchor);
+            }
+            else
+            {
+                // We didn't find any valid internal nodes. Fallback to
+                // default size, and maintain the same current top-left position
                 minX = node.Location.X + leftBorder;
                 minY = node.Location.Y;
+
+                maxX = Math.Max(minX + 128, maxX);
+                maxY = Math.Max(minY + 256, maxY);
+
+                LayoutItemsHorizontally(
+                    graphics, node.TopItems,
+                    minX, maxX, minY,
+                    HorizontalItemLayoutSide.BelowAnchor);
             }
-
-            maxX = Math.Max(minX + 128, maxX);
-            maxY = Math.Max(minY + 32, maxY);
-            minY -= 32;
-            maxY += 32;
-
-            minY -= LayoutItemsHorizontally(
-                graphics, node.TopItems,
-                minX, maxX, minY,
-                HorizontalItemLayoutSide.AboveAnchor);
 
             node.Location = new PointF(minX - leftBorder, minY);
             node.bounds = new RectangleF(
@@ -715,10 +727,10 @@ namespace HyperGraph
                         }
 
                         if (showLabels &&
-                            !string.IsNullOrWhiteSpace(connection.Name))
+                            !string.IsNullOrWhiteSpace(connection.Text))
                         {
                             var center = new PointF(centerX, centerY);
-                            RenderLabel(graphics, connection, connection.Name, center, connection.state);
+                            RenderLabel(graphics, connection, connection.Text, center, connection.state);
                         }
                     }
                     else if (to!=null || from!=null)
@@ -726,14 +738,14 @@ namespace HyperGraph
                         //  this is a basic connection. It just connects one connector to a 
                         //  static string value (either a variable name or constant value)
                         //      Draw a small arrow from the connection label to the connector
-                        if (!string.IsNullOrWhiteSpace(connection.Name) && !to.Node.Collapsed)
+                        if (!string.IsNullOrWhiteSpace(connection.Text) && !to.Node.Collapsed)
                         {
                             PointF center;
                             if (to != null) center = pt2;
                             else if (from != null) center = pt1;
                             else center = new PointF();
                             center.X -= 16;
-                            RenderLabel(graphics, connection, "= " + connection.Name, center, connection.state);
+                            RenderLabel(graphics, connection, "= " + connection.Text, center, connection.state);
                         }
                     }
 				}

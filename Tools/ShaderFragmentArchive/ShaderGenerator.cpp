@@ -161,7 +161,8 @@ namespace ShaderPatcherLayer
     {
         return ShaderPatcher::Connection{
             connection->InputNodeID, marshalString<E_UTF8>(connection->InputParameterName),
-			connection->OutputNodeID, marshalString<E_UTF8>(connection->OutputParameterName)};
+			connection->OutputNodeID, marshalString<E_UTF8>(connection->OutputParameterName),
+			marshalString<E_UTF8>(connection->Condition)};
     }
     
     ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative(ConversionContext& context)
@@ -202,6 +203,7 @@ namespace ShaderPatcherLayer
 		result->OutputParameterName = marshalString<E_UTF8>(connection.OutputParameterName());
 		result->InputNodeID = connection.InputNodeId();
 		result->InputParameterName = marshalString<E_UTF8>(connection.InputParameterName());
+		result->Condition = marshalString<E_UTF8>(connection._condition);
 		return result;
     }
 

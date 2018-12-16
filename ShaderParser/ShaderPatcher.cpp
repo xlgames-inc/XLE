@@ -1141,6 +1141,33 @@ namespace ShaderPatcher
 		const NodeGraph& graph,
 		const NodeGraphSignature& interf,
 		NodeId nodeId,
+		std::unordered_map<NodeId, std::string>& instantiatedNodes);
+
+	static void GenerateConnectionInstantiation(
+		std::ostream& result,
+		const NodeGraph& graph,
+		const NodeGraphSignature& interf,
+		const Connection& connection,
+		std::unordered_map<NodeId, std::string>& instantiatedNodes)
+	{
+		result << connection.OutputParameterName() << ":";
+
+		if (connection.InputNodeId() == NodeId_Interface) {
+			result << connection.InputParameterName();
+		} else if (connection.InputNodeId() == NodeId_Constant) {
+			result << "\"" << connection.InputParameterName() << "\"";
+		} else {
+			GenerateGraphSyntaxInstantiation(result, graph, interf, connection.InputNodeId(), instantiatedNodes);
+			if (!XlEqString(MakeStringSection(connection.InputParameterName()), MakeStringSection(ParameterName_NodeInstantiation)))
+				result << "." << connection.InputParameterName();
+		}
+	}
+
+	static void GenerateGraphSyntaxInstantiation(
+		std::ostream& result,
+		const NodeGraph& graph,
+		const NodeGraphSignature& interf,
+		NodeId nodeId,
 		std::unordered_map<NodeId, std::string>& instantiatedNodes)
 	{
 		auto instantiation = instantiatedNodes.find(nodeId);
@@ -1160,20 +1187,10 @@ namespace ShaderPatcher
 			bool atLeastOneParam = false;
 			for (const auto&i:graph.GetConnections()) {
 				if (i.OutputNodeId() != nodeId) continue;
+				if (!i._condition.empty()) continue;
 				if (atLeastOneParam) result << ", ";
 				atLeastOneParam = true;
-
-				result << i.OutputParameterName() << ":";
-
-				if (i.InputNodeId() == NodeId_Interface) {
-					result << i.InputParameterName();
-				} else if (i.InputNodeId() == NodeId_Constant) {
-					result << "\"" << i.InputParameterName() << "\"";
-				} else {
-					GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
-					if (!XlEqString(MakeStringSection(i.InputParameterName()), MakeStringSection(ParameterName_NodeInstantiation)))
-						result << "." << i.InputParameterName();
-				}
+				GenerateConnectionInstantiation(result, graph, interf, i, instantiatedNodes);
 			}
 		} else {
 			result << "(";
@@ -1255,6 +1272,15 @@ namespace ShaderPatcher
 			result << "\treturn ";
 			GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
 			result << "." << i.InputParameterName() << ";" << std::endl;
+		}
+
+		for (const auto&connection:graph.GetConnections()) {
+			if (connection._condition.empty()) continue;
+
+			result << "\tif \"" << connection._condition << "\"" << std::endl;
+			result << "\t\t" << instantiatedNodes[connection.OutputNodeId()] << ".";
+			GenerateConnectionInstantiation(result, graph, interf, connection, instantiatedNodes);
+			result << ";" << std::endl;
 		}
 
 		result << "}" << std::endl;

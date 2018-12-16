@@ -30,6 +30,7 @@ tokens
 	RCONNECTION_PARTIAL_INSTANTIATION;
 	RETURN_CONNECTION;
 	OUTPUT_CONNECTION;
+	CONDITIONAL_CONNECTION;
 
 	ATTRIBUTE_TABLE_NAME;
 	ATTRIBUTE_TABLE;
@@ -97,7 +98,7 @@ signatureParameter
 
 signatureParameters
 	: '(' parameters += signatureParameter (',' parameters += signatureParameter)* ')' -> $parameters*
-	| '(' ')'
+	| '(' ')' ->
 	;
 
 implementsQualifier
@@ -143,6 +144,7 @@ graphStatement
 	:	nodeDeclaration ';'? -> nodeDeclaration
 	|	capturesDeclaration ';'? -> capturesDeclaration
 	|	connection ';'? -> connection
+	|   'if' c=StringLiteral cnct=connection ';'? -> ^(CONDITIONAL_CONNECTION $c $cnct)
 	;
 
 attributeDeclaration

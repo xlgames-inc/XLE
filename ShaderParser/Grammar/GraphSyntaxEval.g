@@ -45,6 +45,7 @@ options
 	ConnectorId IdentifierConnector_Register(const void*, GraphId gid, IdentifierAndScope identifierAndScope);
 	ConnectorId PartialInstantiationConnector_Register(const void* ctx, GraphId gid, NodeId node);
 	ConnectionId Connection_Register(const void*, GraphId gid, ConnectorId left, ConnectorId right);
+	void Connection_SetCondition(const void* ctx, GraphId gid, ConnectionId connection, const char condition[]);
 
 	void Node_Name(const void*, GraphId, NodeId, const char name[]);
 	NodeId Node_Find(const void*, GraphId, const char name[]);
@@ -112,16 +113,16 @@ implementsQualifier[GraphSignatureId sigId]
 	;
 
 graphSignature returns [GraphSignatureAndName graphSig = (GraphSignatureAndName){~0u, NULL}]
-	: ^(GRAPH_SIGNATURE 
+	: ^(GRAPH_SIGNATURE
 		{
 			$graphSig._sigId = GraphSignature_Register(ctx);
 		}
 
-		n=identifier returnType=identifier 
+		n=identifier returnType=identifier
 		{
 			$graphSig._name = n;
 			if (strcmp(returnType, "void") != 0)
-				GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType); 
+				GraphSignature_ReturnType(ctx, $graphSig._sigId, returnType);
 		}
 
 		implementsQualifier[$graphSig._sigId]?
@@ -203,21 +204,28 @@ capturesDeclaration scope { GraphSignatureId sigId; }
 		cid=identifier
 		atn=optionalAttributeTableName
 		graphParameter[$capturesDeclaration::sigId]*)
-
-		{ Captures_Register(ctx, $graphDefinition::graphId, cid, $capturesDeclaration::sigId, atn); }
+		{ 
+			Captures_Register(ctx, $graphDefinition::graphId, cid, $capturesDeclaration::sigId, atn); 
+		}
 	;
 
 graphStatement
 	: connection
 	| ^(NODE_DECL nid=identifier n=rnode) { Node_Name(ctx, $graphDefinition::graphId, n, nid); }
 	| capturesDeclaration
+	| ^(CONDITIONAL_CONNECTION StringLiteral c=connection)
+		{
+			char* s = StripQuotesBrackets((const char*)$StringLiteral.text->chars);
+			Connection_SetCondition(ctx, $graphDefinition::graphId, c, s);
+			free(s);
+		}
 	;
 
 graphDefinition returns [GraphId result = ~0u;] scope { GraphId graphId; }
 	: ^(GRAPH_DEFINITION
-		sig=graphSignature 
-		{ 
-			$result = Graph_Register(ctx, sig._name, sig._sigId); 
+		sig=graphSignature
+		{
+			$result = Graph_Register(ctx, sig._name, sig._sigId);
 			$graphDefinition::graphId = $result;
 		}
 
@@ -235,10 +243,10 @@ attributeTableDefinition returns [AttributeTableId result = ~0u;]
 	;
 
 toplevel
-	: ^(IMPORT alias=identifier source=stringLiteral) 
-		{ 
+	: ^(IMPORT alias=identifier source=stringLiteral)
+		{
 			char* stripped = StripQuotesBrackets(source);
-			Import_Register(ctx, alias, stripped); 
+			Import_Register(ctx, alias, stripped);
 			free(stripped);
 		}
 	| graphDefinition
@@ -247,5 +255,3 @@ toplevel
 
 entrypoint : toplevel* ;
 	
-
-

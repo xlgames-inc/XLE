@@ -251,7 +251,7 @@ namespace HyperGraph
             return connector.Node.InputConnectors.Contains(connector);
         }
 
-        public NodeConnection Connect(NodeConnector from, NodeConnector to, string name)
+        public NodeConnection Connect(NodeConnector from, NodeConnector to, string text)
         {
             if (!IsInputConnector(to))
             {
@@ -283,7 +283,7 @@ namespace HyperGraph
             var connection = new NodeConnection();
             connection.From = from;
             connection.To = to;
-            connection.Name = name;
+            connection.Text = text;
 
             if (from != null)
                 from.Node.AddConnection(connection);

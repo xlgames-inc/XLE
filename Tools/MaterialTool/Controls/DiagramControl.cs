@@ -76,7 +76,7 @@ namespace MaterialTool.Controls
             graphAdapter.SmallGridStep = 20F;
             graphAdapter.LargeStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(90)))), ((int)(((byte)(90)))), ((int)(((byte)(90)))));
             graphAdapter.SmallStepGridColor = System.Drawing.Color.FromArgb(((int)(((byte)(80)))), ((int)(((byte)(80)))), ((int)(((byte)(80)))));
-            graphAdapter.ShowLabels = false;
+            graphAdapter.ShowLabels = true;
             graphAdapter.Model = context.ViewModel;
             graphAdapter.Selection = context.DiagramSelection; 
             graphAdapter.Context = context;

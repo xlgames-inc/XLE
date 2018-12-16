@@ -83,7 +83,7 @@ namespace NodeEditorCore
         private string GetSimpleConnection(NodeConnector connector)
         {
             //  look for an existing simple connection attached to this connector
-            return connector.Node.Connections.Where(x => x.To == connector && x.From == null).Select(x => x.Name).FirstOrDefault();
+            return connector.Node.Connections.Where(x => x.To == connector && x.From == null).Select(x => x.Text).FirstOrDefault();
         }
 
         private void EditSimpleConnection(NodeConnector connector)
@@ -103,7 +103,7 @@ namespace NodeEditorCore
                             // empty dialog text means we want to disconnect any existing connections
                             if (dialog.InputText.Length > 0)
                             {
-                                i.Name = dialog.InputText;
+                                i.Text = dialog.InputText;
                             }
                             else
                             {
