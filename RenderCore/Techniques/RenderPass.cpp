@@ -20,6 +20,7 @@
 #include <cmath>
 #include <sstream>
 #include <iostream>
+#include <unordered_map>
 
 namespace RenderCore
 {
