@@ -19,13 +19,28 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         if (desc.colorAttachments[0].texture && desc.colorAttachments[0].loadAction == MTLLoadActionClear) {
             const float* clear = clearValues[clearValueIterator++]._float;
-            desc.colorAttachments[0].clearColor = MTLClearColorMake(clear[0], clear[1], clear[2], clear[3]);
+            /* Metal HACK -- hacky workaround to prevent running out of clear values; OpenGL implementation has been updated and Metal implementation needs to be updated as well */
+            if (!clear) {
+                desc.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
+            } else {
+                desc.colorAttachments[0].clearColor = MTLClearColorMake(clear[0], clear[1], clear[2], clear[3]);
+            }
         }
         if (desc.depthAttachment.texture && desc.depthAttachment.loadAction == MTLLoadActionClear) {
-            desc.depthAttachment.clearDepth = clearValues[clearValueIterator]._depthStencil._depth;
+            /* Metal HACK -- hacky workaround to prevent running out of clear values */
+            if (clearValues.empty()) {
+                desc.depthAttachment.clearDepth = 1.0f;
+            } else {
+                desc.depthAttachment.clearDepth = clearValues[clearValueIterator]._depthStencil._depth;
+            }
         }
         if (desc.stencilAttachment.texture && desc.stencilAttachment.loadAction == MTLLoadActionClear) {
-            desc.stencilAttachment.clearStencil = clearValues[clearValueIterator]._depthStencil._stencil;
+            /* Metal HACK -- hacky workaround to prevent running out of clear values */
+            if (clearValues.empty()) {
+                desc.stencilAttachment.clearStencil = 0;
+            } else {
+                desc.stencilAttachment.clearStencil = clearValues[clearValueIterator]._depthStencil._stencil;
+            }
         }
 
         /* Each subpass of the frame will have a RenderCommandEncoder with a different render pass descriptor. */
