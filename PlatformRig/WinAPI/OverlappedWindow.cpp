@@ -234,7 +234,7 @@ namespace PlatformRig
 
     void OverlappedWindow::SetTitle(const char titleText[])
     {
-        SetWindowText(_pimpl->_hwnd, titleText);
+        SetWindowTextA(_pimpl->_hwnd, titleText);
     }
 
     InputTranslator& OverlappedWindow::GetInputTranslator()

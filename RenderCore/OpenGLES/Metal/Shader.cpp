@@ -22,6 +22,7 @@
 
 #include <iostream>
 #include <regex>
+#include <cctype>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

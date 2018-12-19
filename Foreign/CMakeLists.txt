@@ -2,7 +2,8 @@ file(GLOB LuaSrc "Lua/src/*.c" "Lua/src/*.h")
 file(GLOB HashSrc "Hash/*.cpp" "Hash/*.h")
 file(GLOB AntlrSrc "Antlr-3.4/libantlr3c-3.4/src/*.c")
 file(GLOB FmtSrc "fmt/*.cc")
-BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${AntlrSrc};${FmtSrc}")
+set(StackWalkerSrc "StackWalker/StackWalker.cpp")
+BasicLibrary(ForeignMisc "${LuaSrc};${HashSrc};${AntlrSrc};${FmtSrc};${StackWalkerSrc}")
 
 add_subdirectory("FreeType")
 

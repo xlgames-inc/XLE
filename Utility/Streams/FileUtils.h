@@ -10,18 +10,12 @@
 #include "../../Core/Exceptions.h"
 #include "../../Core/Types.h"
 #include "../StringUtils.h" // for StringSection
+#include "../Optional.h"
 #include <memory>       // for std::unique_ptr
 
 #include <vector>
 #include <string>
 #include <functional>
-
-#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
-	#include <optional>
-#else
-     #include <experimental/optional>
-     namespace std { template <typename T> using optional = experimental::optional<T>; }
-#endif
 
 namespace Utility 
 {

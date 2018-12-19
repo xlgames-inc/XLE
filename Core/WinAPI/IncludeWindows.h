@@ -15,6 +15,7 @@
 #pragma push_macro("ERROR")
 #define WIN32_LEAN_AND_MEAN
 #define WIN32_EXTRA_LEAN
+#define NOMINMAX
 #define STRICT              // (note; if you get a compile error here, it means windows.h is being included from somewhere else (eg, TBB or DirectX)
 #include <windows.h>
 #undef max

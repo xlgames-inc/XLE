@@ -1,3 +1,6 @@
 [submodule "Foreign/simpleopt"]
 	path = Foreign/simpleopt
 	url = git@github.com:brofield/simpleopt.git
+[submodule "Foreign/optional-lite"]
+	path = Foreign/optional-lite
+	url = git@github.com:martinmoene/optional-lite
