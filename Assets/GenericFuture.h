@@ -5,14 +5,9 @@
 #pragma once
 
 #include "AssetsCore.h"
+#include "../Utility/Optional.h"
 #include "../Core/Prefix.h"     // (for DEBUG_ONLY)
 
-#if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
-    #include <optional>
-#else
-     #include <experimental/optional>
-     namespace std { template <typename T> using optional = experimental::optional<T>; }
-#endif
 #include <chrono>
 
 namespace Assets

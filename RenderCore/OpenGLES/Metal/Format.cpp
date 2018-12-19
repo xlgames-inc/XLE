@@ -7,6 +7,7 @@
 #include "Format.h"
 #include "../../../Utility/ParameterBox.h"
 #include "IncludeGLES.h"
+#include <tuple>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

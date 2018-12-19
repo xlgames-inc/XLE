@@ -10,6 +10,7 @@
 #include <memory>
 #include <vector>
 #include <assert.h>
+#include <stddef.h>     // (for ptrdiff_t)
 
 #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
 
@@ -188,10 +189,6 @@
 namespace Utility
 {
             /////////////////////////////////////////////////////////////////////////////
-#ifdef __MINGW32__
-    using std::ptrdiff_t;
-#endif
-
 
     template <typename Type>
         Type * PtrAdd( Type * input, ptrdiff_t offset )  { return (Type*)( size_t(input) + offset ); }

@@ -134,21 +134,21 @@
                     return old;
                 }
 
-                force_inline void* ExchangePointer(void* volatile* target, void* newValue)    
+                T1(Type) force_inline Type* ExchangePointer(Type* volatile* target, Type* newValue)    
                 { 
-                    if (constant_expression<sizeof(void*) == 4>::result()) {
-                        return (void*)Exchange((Value volatile*)target, (Value)newValue);
+                    if (constant_expression<sizeof(Type*) == 4>::result()) {
+                        return (Type*)Exchange((Value volatile*)target, (Value)newValue);
                     } else {
-                        return (void*)Exchange64((Value64 volatile*)target, (Value64)newValue);
+                        return (Type*)Exchange64((Value64 volatile*)target, (Value64)newValue);
                     }
                 }
 
-                force_inline void* CompareExchangePointer(void* volatile* target, void* newValue, void* comparisonValue)      
+                T1(Type) force_inline Type* CompareExchangePointer(Type* volatile* target, Type* newValue, Type* comparisonValue)      
                 { 
-                    if (constant_expression<sizeof(void*) == 4>::result()) {
-                        return (void*)CompareExchange((Value volatile*)target, (Value)newValue, (Value)comparisonValue);
+                    if (constant_expression<sizeof(Type*) == 4>::result()) {
+                        return (Type*)CompareExchange((Value volatile*)target, (Value)newValue, (Value)comparisonValue);
                     } else {
-                        return (void*)CompareExchange64((Value64 volatile*)target, (Value64)newValue, (Value)comparisonValue);
+                        return (Type*)CompareExchange64((Value64 volatile*)target, (Value64)newValue, (Value)comparisonValue);
                     }
                 }
             #endif

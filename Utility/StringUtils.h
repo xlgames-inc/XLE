@@ -12,6 +12,7 @@
 #include "PtrUtils.h"	// for AsPointer
 #include <string>
 #include <cstring>
+#include <algorithm>
 #include <assert.h>
 
 #if REDIRECT_CLIB_WITH_PREPROCESSOR

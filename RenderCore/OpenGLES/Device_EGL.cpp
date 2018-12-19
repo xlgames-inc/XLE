@@ -9,10 +9,10 @@
 #include "../Format.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
+#include "../../Utility/Optional.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <assert.h>
-#include <experimental/optional>
 #include "Metal/IncludeGLES.h"
 
 namespace RenderCore { namespace ImplOpenGLES
@@ -49,7 +49,7 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::experimental::optional<EGLConfig> TryGetEGLSharedConfig(EGLDisplay display)
+    static std::optional<EGLConfig> TryGetEGLSharedConfig(EGLDisplay display)
     {
         EGLint renderableTypesToCheck[] = {
             EGL_OPENGL_ES3_BIT, EGL_OPENGL_ES2_BIT
@@ -158,7 +158,7 @@ namespace RenderCore { namespace ImplOpenGLES
         return {};
     }
 
-    static std::experimental::optional<std::pair<EGLConfig, EGLConfig>> TryGetEGLSurfaceConfig(
+    static std::optional<std::pair<EGLConfig, EGLConfig>> TryGetEGLSurfaceConfig(
         EGLDisplay display, const PresentationChainDesc& desc)
     {
         // Try to select the right configuration to use, based on some basic configuration
