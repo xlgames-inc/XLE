@@ -137,26 +137,27 @@ namespace ShaderFragmentArchive
             //      we're mostly just marshaling the data into a format
             //      that suits us.
             //
-        Name = System::IO::Path::GetFileNameWithoutExtension(sourceFile);
         Functions = gcnew List<Function^>();
         ParameterStructs = gcnew List<ParameterStruct^>();
 
-		auto nativeFilename = clix::marshalString<clix::E_UTF8>(sourceFile);
+		std::string nativeFilename;
 
 		size_t size = 0;
         std::unique_ptr<uint8[]> file;
         try
         {
-
+			Name = System::IO::Path::GetFileNameWithoutExtension(sourceFile);
+			nativeFilename = clix::marshalString<clix::E_UTF8>(sourceFile);
             file = ::Assets::TryLoadFileAsMemoryBlock(nativeFilename, &size);
-
         } catch (System::IO::IOException^) {
 
                 //      Hit an exception! Most likely, the file just doesn't
                 //      exist.
             ExceptionString = "Failed while opening file";
 
-        }
+        } catch (System::ArgumentException^) {
+			ExceptionString = "Failed while opening file (probably bad filename)";
+		}
             
         if (file && size != 0) {
 

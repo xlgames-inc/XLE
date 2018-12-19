@@ -63,6 +63,8 @@ namespace HyperGraph
 			}
 		}
 
+        public override bool OnStartDrag(PointF location, out PointF original_location) { original_location = location; return true; }
+
         public override ElementType ElementType      { get { return ElementType.Connector; } }
     }
 }

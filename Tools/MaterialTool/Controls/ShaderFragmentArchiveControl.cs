@@ -149,7 +149,7 @@ namespace MaterialTool.Controls
                                 if (fn != null)
                                 {
                                     this.DoDragDrop(
-                                        _nodeCreator.CreateNode(fn, archiveName),
+                                        _nodeCreator.CreateNode(fn.Signature, archiveName),
                                         DragDropEffects.Copy);
                                 }
                             }

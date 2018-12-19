@@ -157,6 +157,18 @@ namespace NodeEditorCore
             }
         }
 
+        private void EditConnectionCondition(NodeConnection connection)
+        {
+            using (var fm = new TextEditForm() { InputText = connection.Text })
+            {
+                var result = fm.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    connection.Text = fm.InputText;
+                }
+            }
+        }
+
         private bool IsInputConnector(NodeConnector connector)
         {
             return connector.Node.InputItems.Contains(connector);
@@ -266,6 +278,17 @@ namespace NodeEditorCore
                         e.Cancel = false;
                     }
                 }
+            }
+            else if (e.Element is NodeConnection)
+            {
+                var menu = new ContextMenuStrip();
+
+                var editItem = new ToolStripMenuItem() { Text = "Set Condition" };
+                editItem.Click += (object o, EventArgs a) => { EditConnectionCondition(e.Element as NodeConnection); };
+                menu.Items.Add(editItem);
+
+                menu.Show(e.Position);
+                e.Cancel = false;
             }
             else
             {

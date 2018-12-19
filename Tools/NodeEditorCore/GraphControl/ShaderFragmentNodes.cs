@@ -22,7 +22,7 @@ namespace NodeEditorCore
 
     public interface IShaderFragmentNodeCreator
     {
-        Node CreateNode(ShaderFragmentArchive.Function fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
+        Node CreateNode(ShaderPatcherLayer.NodeGraphSignature fn, String archiveName, ShaderPatcherLayer.PreviewSettings previewSettings = null);
         Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
         Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
         Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
@@ -528,9 +528,9 @@ namespace NodeEditorCore
             return archiveName;
         }
 
-        public Node CreateNode(ShaderFragmentArchive.Function fn, string archiveName, ShaderPatcherLayer.PreviewSettings previewSettings)
+        public Node CreateNode(ShaderPatcherLayer.NodeGraphSignature signature, string archiveName, ShaderPatcherLayer.PreviewSettings previewSettings)
         {
-            var node = new Node { Title = (fn != null) ? fn.Name : VisibleName(archiveName) };
+            var node = new Node { Title = VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName);
             node.Layout = Node.LayoutType.Rectangular;
 
@@ -574,16 +574,31 @@ namespace NodeEditorCore
             outputToVisualize.TextChanged +=
                 (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
 
-            if (fn != null)
+            if (signature != null)
             {
-                foreach (var param in fn.Signature.Parameters)
+                foreach (var param in signature.Parameters)
                 {
                     bool isInput = param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In;
                     node.AddItem(
                         new ShaderFragmentNodeConnector(param.Name, param.Type),
                         ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out));
                 }
+
+                foreach (var param in signature.TemplateParameters)
+                {
+                    var type = "graph";
+                    if (!string.IsNullOrEmpty(param.Restriction))
+                        type = "graph<" + param.Restriction + ">";
+                    node.AddItem(
+                        new ShaderFragmentNodeConnector(param.Name, type),
+                        ShaderFragmentNodeConnector.GetDirectionalColumn(InterfaceDirection.In));
+                }
             }
+
+            node.AddItem(
+                new ShaderFragmentNodeConnector("<instantiation>", "graph"),
+                ShaderFragmentNodeConnector.GetDirectionalColumn(InterfaceDirection.Out));
+
             return node;
         }
 

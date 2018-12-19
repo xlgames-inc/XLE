@@ -564,8 +564,10 @@ namespace HyperGraph
                     if (item != null && (acceptElement == null || acceptElement(item)))
                         return item;
 
-                    if (acceptElement == null || acceptElement(subGraph))
-                    return subGraph;
+                    // We don't ever really need to hit test against the subgraph itself
+                    // (and it causes problems, such as when drag-selecting within the subgraph area)
+                    // if (acceptElement == null || acceptElement(subGraph))
+                    // return subGraph;
                 }
             }
 
@@ -793,8 +795,8 @@ namespace HyperGraph
                         if (!element_nodeitem.OnStartDrag(transformed_location, out originalLocation))
                         {
                             element = element_nodeitem.Node;
-                            originalLocation = transformed_location;
                         }
+                        originalLocation = transformed_location;
                     }
 
                     var element_node = element as Node;

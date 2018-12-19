@@ -237,9 +237,22 @@ namespace NodeEditorCore
                             {
                                 var parameterType = "auto";
                                 var fn = _shaderFragments.GetFunction(dstNode.ArchiveName, result.GetSearchRules());
-                                var param = fn.Signature.Parameters.Where(x => string.Compare(x.Name, ((ShaderFragmentNodeConnector)connection.To).Name) == 0).FirstOrDefault();
-                                if (param != null)
-                                    parameterType = param.Type;
+                                if (fn!=null)
+                                {
+                                    var param = fn.Signature.Parameters.Where(x => string.Compare(x.Name, ((ShaderFragmentNodeConnector)connection.To).Name) == 0).FirstOrDefault();
+                                    if (param != null)
+                                    {
+                                        parameterType = param.Type;
+                                    }
+                                    else
+                                    {
+                                        var templ = fn.Signature.TemplateParameters.Where(x => string.Compare(x.Name, ((ShaderFragmentNodeConnector)connection.To).Name) == 0).FirstOrDefault();
+                                        if (templ != null)
+                                        {
+                                            parameterType = "graph";
+                                        }
+                                    }
+                                }
                                 resultSubGraph.Signature.Parameters.Add(
                                     new ShaderPatcherLayer.NodeGraphSignature.Parameter
                                     {
@@ -355,6 +368,16 @@ namespace NodeEditorCore
             return previewSettings;
         }
 
+        private ShaderPatcherLayer.NodeGraphSignature FindSignature(ShaderPatcherLayer.NodeGraphFile graphFile, String name)
+        {
+            ShaderPatcherLayer.NodeGraphFile.SubGraph sg;
+            if (graphFile.SubGraphs.TryGetValue(name, out sg)) {
+                return sg.Signature;
+            }
+            var fn = _shaderFragments.GetFunction(name, graphFile.GetSearchRules());
+            return (fn != null) ? fn.Signature : null;
+        }
+
         public void AddToHyperGraph(ShaderPatcherLayer.NodeGraphFile graphFile, HyperGraph.IGraphModel graph)
         {
                 //
@@ -410,8 +433,8 @@ namespace NodeEditorCore
                             if (templatedName.Success)
                                 finalFnName = templatedName.Groups[2].Value;
 
-                            var fn = _shaderFragments.GetFunction(finalFnName, graphFile.GetSearchRules());
-                            newNode = _nodeCreator.CreateNode(fn, n.FragmentArchiveName, MakePreviewSettingsFromAttributeTable(attributeTable));
+                            var sig = FindSignature(graphFile, finalFnName);
+                            newNode = _nodeCreator.CreateNode(sig, n.FragmentArchiveName, MakePreviewSettingsFromAttributeTable(attributeTable));
                         }
                         else
                         {

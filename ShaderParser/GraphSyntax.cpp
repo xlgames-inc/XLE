@@ -89,7 +89,7 @@ namespace ShaderPatcher
 		auto* ast = BuildAST(*psr);
 		if (!ast) Throw(::Exceptions::BasicLabel("Could not build AST from graph syntax input"));
 
-		StructureDescription(std::cout, ast);
+		// StructureDescription(std::cout, ast);
 
 		AntlrPtr<struct ANTLR3_COMMON_TREE_NODE_STREAM_struct> nodes = antlr3CommonTreeNodeStreamNewTree(ast, ANTLR3_SIZE_HINT);
 		AntlrPtr<struct GraphSyntaxEval_Ctx_struct> evalTree = GraphSyntaxEvalNew(nodes);
