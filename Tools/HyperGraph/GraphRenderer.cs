@@ -139,7 +139,8 @@ namespace HyperGraph
             }
 		}
 
-		internal static Pen BorderPen = new Pen(Color.FromArgb(200, 200, 200));
+		internal static Pen BorderPen = new Pen(Color.FromArgb(96, 96, 96));
+        internal static Pen ConnectionBorderPen = new Pen(Color.FromArgb(96, 96, 96)) { Width = 0.5f };
 
         internal static Brush DraggingBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
@@ -151,7 +152,9 @@ namespace HyperGraph
 
         internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
         internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
-        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(128, 128, 128)) { DashStyle = DashStyle.Dash, Width = 2 };
+        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(128, 128, 128)) { DashStyle = DashStyle.Dash, Width = 1 };
+
+        internal static Pen SubGraphOutline = new Pen(Color.FromArgb(164, 164, 164)) { Width = 6 };
 
         enum ConnectorType { Input, Output };
 
@@ -204,7 +207,7 @@ namespace HyperGraph
                 using (var path = MakePathForConnector(bounds, state, type, out statusRect, out clientRect))
                 {
                     graphics.FillPath(((state & RenderState.Hover)!=0) ? HoverBrush : NormalBrush , path);
-                    graphics.DrawPath(BorderPen, path);
+                    graphics.DrawPath(ConnectionBorderPen, path);
                     graphics.FillEllipse(brush, statusRect);
 
                     if (connector!=null)
@@ -603,7 +606,7 @@ namespace HyperGraph
                 path.AddArc(left, bottom - cornerSize, cornerSize, cornerSize, 90, 90);
                 path.CloseFigure();
 
-                graphics.DrawPath(DottedPen, path);
+                graphics.DrawPath(SubGraphOutline, path);
             }
 
             foreach (var item in node.ItemsForDock(Node.Dock.Input))
@@ -655,7 +658,7 @@ namespace HyperGraph
                 minY -= 32;
                 maxY += 32;
 
-                minY -= LayoutItemsHorizontally(
+                minY -= 8 + LayoutItemsHorizontally(
                     graphics, node.TopItems,
                     minX, maxX, minY,
                     HorizontalItemLayoutSide.AboveAnchor);
@@ -721,7 +724,7 @@ namespace HyperGraph
                             using (var brush = new SolidBrush(GetArrowLineColor(connection.state | RenderState.Connected)))
                             {
                                 graphics.FillPath(brush, path);
-                                graphics.DrawPath(BorderPen, path);
+                                graphics.DrawPath(ConnectionBorderPen, path);
                             }
                             connection.bounds = path.GetBounds();
                         }
@@ -799,7 +802,7 @@ namespace HyperGraph
 
 		static Color GetArrowLineColor(RenderState state)
 		{
-			if ((state & (RenderState.Hover | RenderState.Dragging)) != 0)
+            if ((state & (RenderState.Hover | RenderState.Dragging)) != 0)
 			{
 				if ((state & RenderState.Incompatible) != 0)
 				{
@@ -827,10 +830,6 @@ namespace HyperGraph
             {
                 return Color.LightSkyBlue;
             } else
-			if ((state & RenderState.Connected) != 0)
-			{
-                return Color.SteelBlue;
-			} else
 				return Color.LightGray;
 		}
 		
@@ -1027,7 +1026,7 @@ namespace HyperGraph
 				using (var brush = new SolidBrush(GetArrowLineColor(state)))
 				{
 					graphics.FillPath(brush, path);
-                    graphics.DrawPath(BorderPen, path);
+                    graphics.DrawPath(ConnectionBorderPen, path);
 				}
 			}
 		}
