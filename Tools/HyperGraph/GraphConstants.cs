@@ -39,7 +39,8 @@ namespace HyperGraph
         public const int BottomHeight           = 2;
         public const int TopHeightCollapsed     = 6;
         public const int BottomHeightCollapsed  = 6;
-        public const int CornerSize             = 4; 
+        public const int CornerSize             = 4;
+        public const int SubGraphCornerSize     = 64;
         public const int ConnectorCornerSize    = 12;
 		public const int ConnectorWidth			= 128;
         public const int ConnectorWidthCollapsed= 8;

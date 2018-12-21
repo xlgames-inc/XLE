@@ -8,12 +8,15 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.ComponentModel.Composition;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
 
 namespace MaterialTool
 {
+    [Export(typeof(DiagramEditingContext))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
     public class DiagramEditingContext :
         IEnumerableContext
         , IInstancingContext
@@ -30,19 +33,39 @@ namespace MaterialTool
         public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
         public NodeEditorCore.IDiagramDocument Document { get { return _containingDocument; } }
         public HyperGraph.IGraphModel ViewModel { get { return _containingDocument.ViewModel; } }
-
-        public DiagramEditingContext(DiagramDocument containingDocument)
+        public DiagramDocument ContainingDocument
         {
-            _containingDocument = containingDocument;
+            set {
+                if (_containingDocument != null)
+                {
+                    _containingDocument.ViewModel.NodeAdded -= model_NodeAdded;
+                    _containingDocument.ViewModel.NodeRemoved -= model_NodeRemoved;
+                    _containingDocument.ViewModel.ConnectionAdded -= model_ConnectionAdded;
+                    _containingDocument.ViewModel.ConnectionRemoved -= model_ConnectionRemoved;
+                }
 
-            ViewModel.NodeAdded += model_NodeAdded;
-            ViewModel.NodeRemoved += model_NodeRemoved;
-            ViewModel.ConnectionAdded += model_ConnectionAdded;
-            ViewModel.ConnectionRemoved += model_ConnectionRemoved;
+                _containingDocument = value;
 
+                if (_containingDocument != null)
+                {
+                    ViewModel.NodeAdded += model_NodeAdded;
+                    ViewModel.NodeRemoved += model_NodeRemoved;
+                    ViewModel.ConnectionAdded += model_ConnectionAdded;
+                    ViewModel.ConnectionRemoved += model_ConnectionRemoved;
+                }
+            }
+        }
+
+        public DiagramEditingContext()
+        {
             _selection = new HyperGraph.GraphSelection();
             _selection.SelectionChanging +=_selection_SelectionChanging;
             _selection.SelectionChanged += _selection_SelectionChanged;
+        }
+
+        ~DiagramEditingContext()
+        {
+            ContainingDocument = null;  // (remove callbacks)
         }
 
         #region ISelectionContext Member
@@ -271,7 +294,7 @@ namespace MaterialTool
         }
         #endregion
 
-        public NodeEditorCore.IShaderFragmentNodeCreator NodeFactory;
+        [Import] public NodeEditorCore.IShaderFragmentNodeCreator NodeFactory;
         private DiagramDocument _containingDocument;
 
         private static Color s_zeroColor = new Color();

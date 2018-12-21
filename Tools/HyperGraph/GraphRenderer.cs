@@ -149,6 +149,7 @@ namespace HyperGraph
         internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
                                                             Color.FromArgb(120, 120, 120),  Color.FromArgb(96, 96, 96));
         internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+        internal static Brush NullAreaBrush = new HatchBrush(HatchStyle.ForwardDiagonal, Color.FromArgb(128, 192, 192, 192), Color.FromArgb(0, 96, 96, 96));
 
         internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
         internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
@@ -275,6 +276,32 @@ namespace HyperGraph
 		public static void Render(Graphics graphics, IGraphModel model, bool showLabels, object context)
 		{
 			var skipConnections = new HashSet<NodeConnection>();
+
+            using (Region myRegion = graphics.Clip.Clone())
+            {
+                foreach (var node in model.SubGraphs)
+                {
+                    var cornerSize = GraphConstants.SubGraphCornerSize;
+                    var left = node.bounds.Location.X;
+                    var top = node.bounds.Location.Y;
+                    var right = node.bounds.Location.X + node.bounds.Size.Width;
+                    var bottom = node.bounds.Location.Y + node.bounds.Size.Height;
+
+                    using (var path = new GraphicsPath(FillMode.Winding))
+                    {
+                        path.AddArc(left, top, cornerSize, cornerSize, 180, 90);
+                        path.AddArc(right - cornerSize, top, cornerSize, cornerSize, 270, 90);
+
+                        path.AddArc(right - cornerSize, bottom - cornerSize, cornerSize, cornerSize, 0, 90);
+                        path.AddArc(left, bottom - cornerSize, cornerSize, cornerSize, 90, 90);
+                        path.CloseFigure();
+
+                        myRegion.Exclude(path);
+                    }
+                }
+
+                graphics.FillRegion(NullAreaBrush, myRegion);
+            }
 
             foreach (var node in model.SubGraphs.Reverse<Node>())
             {
@@ -591,7 +618,7 @@ namespace HyperGraph
             var size = node.bounds.Size;
             var position = node.bounds.Location;
 
-            var cornerSize = GraphConstants.CornerSize;
+            var cornerSize = GraphConstants.SubGraphCornerSize;
             var left = position.X;
             var top = position.Y;
             var right = position.X + size.Width;
@@ -655,8 +682,8 @@ namespace HyperGraph
             {
                 maxX = Math.Max(minX + 128, maxX);
                 maxY = Math.Max(minY + 32, maxY);
-                minY -= 32;
-                maxY += 32;
+                minY -= 96;
+                maxY += 96;
 
                 minY -= 8 + LayoutItemsHorizontally(
                     graphics, node.TopItems,

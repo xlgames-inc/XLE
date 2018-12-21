@@ -112,12 +112,6 @@ namespace ShaderFragmentArchive
     ShaderFragmentChangeCallback::~ShaderFragmentChangeCallback()
     {}
 
-    static void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const utf8 filename[])
-    {
-		auto splitter = MakeFileNameSplitter(filename);
-        Utility::AttachFileSystemMonitor(splitter.DriveAndPath(), splitter.FileAndExtension(), validationIndex);
-    }
-
     void ShaderFragment::OnChange(Object^obj)
     {
         ++_changeMarker;
@@ -193,7 +187,7 @@ namespace ShaderFragmentArchive
 
         std::shared_ptr<ShaderFragmentChangeCallback> changeCallback(
             new ShaderFragmentChangeCallback(this, System::Threading::SynchronizationContext::Current));
-        RegisterFileDependency(changeCallback, (const utf8*)clix::marshalString<clix::E_UTF8>(sourceFile).c_str());
+		::Assets::MainFileSystem::TryMonitor(MakeStringSection(clix::marshalString<clix::E_UTF8>(sourceFile)), changeCallback);
         _fileChangeCallback = changeCallback;
     }
 

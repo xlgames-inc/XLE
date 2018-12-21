@@ -159,12 +159,50 @@ namespace HyperGraph
 
 		public void RemoveItem(NodeItem item)
 		{
+            for (int c = 0; c < connections.Count;)
+            {
+                if (connections[c].To == item)
+                {
+                    if (connections[c].From != null && connections[c].From.Node != null)
+                        connections[c].From.Node.RemoveConnection(connections[c]);
+                    connections.RemoveAt(c);
+                }
+                else if (connections[c].From == item)
+                {
+                    if (connections[c].To != null && connections[c].To.Node != null)
+                        connections[c].To.Node.RemoveConnection(connections[c]);
+                    connections.RemoveAt(c);
+                }
+                else
+                    ++c;
+            }
 			item.Node = null;
+
 			inputItems.Remove(item);
             topItems.Remove(item);
             centerItems.Remove(item);
             bottomItems.Remove(item);
             outputItems.Remove(item);
+        }
+
+        public void MoveItemToTop(NodeItem item)
+        {
+            List<List<NodeItem>> lists = new List<List<NodeItem>>
+            {
+                inputItems, topItems, centerItems, bottomItems, outputItems
+            };
+
+            bool foundSomewhere = false;
+            foreach (var list in lists)
+            {
+                if (list.Contains(item))
+                {
+                    list.Remove(item);
+                    list.Insert(0, item);
+                    foundSomewhere = true;
+                }
+            }
+            System.Diagnostics.Debug.Assert(foundSomewhere);
         }
 
         public void AddConnection(NodeConnection newConnection)

@@ -145,13 +145,9 @@ namespace MaterialTool.Controls
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
                             {
-                                var fn = _fragments.GetFunction(archiveName, null);
-                                if (fn != null)
-                                {
-                                    this.DoDragDrop(
-                                        _nodeCreator.CreateNode(fn.Signature, archiveName),
-                                        DragDropEffects.Copy);
-                                }
+                                this.DoDragDrop(
+                                    _nodeCreator.CreateProcedureNode(archiveName),
+                                    DragDropEffects.Copy);
                             }
                         }
                         else if (a.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)

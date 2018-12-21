@@ -146,7 +146,8 @@ namespace MaterialTool
             doc.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
             doc.GraphMetaData.PreviewModelFile = "game/model/galleon/galleon.dae";
 
-            var subgraphContext = new DiagramEditingContext(doc);
+            var subgraphContext = _exportProvider.GetExport<DiagramEditingContext>().Value;
+            subgraphContext.ContainingDocument = doc;
             var control = _exportProvider.GetExport<Controls.IGraphControl>().Value;
             control.SetContext(subgraphContext);
 

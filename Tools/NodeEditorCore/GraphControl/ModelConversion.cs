@@ -62,6 +62,10 @@ namespace NodeEditorCore
             };
         }
 
+        private static System.Text.RegularExpressions.Regex s_valueWithConditionMatch = new System.Text.RegularExpressions.Regex(@"(.*)(?: if \((.*)\))?");
+        private static System.Text.RegularExpressions.Regex s_angleBracketsWithConditionMatch = new System.Text.RegularExpressions.Regex(@"<(.*)>(?: if \((.*)\))?");
+        private static System.Text.RegularExpressions.Regex s_templatedNameMatch = new System.Text.RegularExpressions.Regex(@"(.*)<(.+)>");
+
             //
             //      Convert from the "ViewModel" to the "Model"
             //
@@ -137,21 +141,24 @@ namespace NodeEditorCore
                     {
                         resultNode.NodeType = ShaderPatcherLayer.Node.Type.Procedure;
 
-                        var templatedName = System.Text.RegularExpressions.Regex.Match(resultNode.FragmentArchiveName, "(.*)<(.+)>");
-                        if (templatedName.Success)
+                        if (((ShaderProcedureNodeTag)nTag).Type == ProcedureNodeType.TemplateParameter)
                         {
-                            var templateParam = new ShaderPatcherLayer.NodeGraphSignature.TemplateParameter
+                            var templatedName = s_templatedNameMatch.Match(resultNode.FragmentArchiveName);
+                            if (templatedName.Success)
                             {
-                                Name = templatedName.Groups[1].Value,
-                                Restriction = templatedName.Groups[2].Value
-                            };
-                            var existing = resultSubGraph.Signature.TemplateParameters.Where(x => String.Compare(x.Name, templateParam.Name) == 0).FirstOrDefault();
-                            if (existing == null)
-                            {
-                                resultSubGraph.Signature.TemplateParameters.Add(templateParam);
+                                var templateParam = new ShaderPatcherLayer.NodeGraphSignature.TemplateParameter
+                                {
+                                    Name = templatedName.Groups[1].Value,
+                                    Restriction = templatedName.Groups[2].Value
+                                };
+                                var existing = resultSubGraph.Signature.TemplateParameters.Where(x => String.Compare(x.Name, templateParam.Name) == 0).FirstOrDefault();
+                                if (existing == null)
+                                {
+                                    resultSubGraph.Signature.TemplateParameters.Add(templateParam);
+                                }
+                                else if (String.Compare(existing.Restriction, templateParam.Restriction) != 0)
+                                    throw new InvalidOperationException("Cannot create program because two template parameters with the same name disagree on restriction (parameter: " + templateParam.Name + " is restricted to both " + templateParam.Restriction + " and " + existing.Restriction);
                             }
-                            else if (String.Compare(existing.Restriction, templateParam.Restriction) != 0)
-                                throw new InvalidOperationException("Cannot create program because two template parameters with the same name disagree on restriction (parameter: " + templateParam.Name + " is restricted to both " + templateParam.Restriction + " and " + existing.Restriction);
                         }
                     }
                     else
@@ -228,7 +235,7 @@ namespace NodeEditorCore
                     if (connection.From == null && dstNode != null)
                     {
                         // this is a direct constant connection. It connects the value either to a constant value, or some named variable
-                        var match = System.Text.RegularExpressions.Regex.Match(connection.Text, "<(.*)>(?: if \\((.*)\\))?");
+                        var match = s_angleBracketsWithConditionMatch.Match(connection.Text);
                         if (match.Success)
                         {
                             var parameterName = match.Groups[1].Value;
@@ -236,23 +243,6 @@ namespace NodeEditorCore
                             if (existingParameter == null)
                             {
                                 var parameterType = "auto";
-                                var fn = _shaderFragments.GetFunction(dstNode.ArchiveName, result.GetSearchRules());
-                                if (fn!=null)
-                                {
-                                    var param = fn.Signature.Parameters.Where(x => string.Compare(x.Name, ((ShaderFragmentNodeConnector)connection.To).Name) == 0).FirstOrDefault();
-                                    if (param != null)
-                                    {
-                                        parameterType = param.Type;
-                                    }
-                                    else
-                                    {
-                                        var templ = fn.Signature.TemplateParameters.Where(x => string.Compare(x.Name, ((ShaderFragmentNodeConnector)connection.To).Name) == 0).FirstOrDefault();
-                                        if (templ != null)
-                                        {
-                                            parameterType = "graph";
-                                        }
-                                    }
-                                }
                                 resultSubGraph.Signature.Parameters.Add(
                                     new ShaderPatcherLayer.NodeGraphSignature.Parameter
                                     {
@@ -277,7 +267,7 @@ namespace NodeEditorCore
                         {
                             var paramName = connection.Text;
                             string condition = "";
-                            match = System.Text.RegularExpressions.Regex.Match(connection.Text, "(.*)(?: if \\((.*)\\))?");
+                            match = s_valueWithConditionMatch.Match(connection.Text);
                             if (match.Groups.Count > 2)
                             {
                                 paramName = match.Groups[1].Value;
@@ -368,14 +358,25 @@ namespace NodeEditorCore
             return previewSettings;
         }
 
-        private ShaderPatcherLayer.NodeGraphSignature FindSignature(ShaderPatcherLayer.NodeGraphFile graphFile, String name)
+        private bool IsInstantiationNode(ShaderPatcherLayer.NodeGraph graph, uint node)
         {
-            ShaderPatcherLayer.NodeGraphFile.SubGraph sg;
-            if (graphFile.SubGraphs.TryGetValue(name, out sg)) {
-                return sg.Signature;
+            // If there is an output connection called "<instantiation>" from this node, then we 
+            // consider it an instantation node. For these node types, we ignore all other outputs
+            foreach (var c in graph.Connections)
+                if (c.InputNodeID == node && string.Compare(c.InputParameterName, "<instantiation>", StringComparison.CurrentCultureIgnoreCase) == 0)
+                    return true;
+            return false;
+        }
+
+        static bool IsTemplateNode(ShaderPatcherLayer.NodeGraphSignature sig, string nodeArchiveName)
+        {
+            var match = s_templatedNameMatch.Match(nodeArchiveName);
+            if (match.Success)
+            {
+                var paramName = match.Groups[1].Value;
+                return sig.TemplateParameters.Where(x => string.Equals(x.Name, paramName)).FirstOrDefault() != null;
             }
-            var fn = _shaderFragments.GetFunction(name, graphFile.GetSearchRules());
-            return (fn != null) ? fn.Signature : null;
+            return false;
         }
 
         public void AddToHyperGraph(ShaderPatcherLayer.NodeGraphFile graphFile, HyperGraph.IGraphModel graph)
@@ -428,13 +429,16 @@ namespace NodeEditorCore
 
                         if (n.NodeType == ShaderPatcherLayer.Node.Type.Procedure)
                         {
-                            var finalFnName = n.FragmentArchiveName;
-                            var templatedName = System.Text.RegularExpressions.Regex.Match(n.FragmentArchiveName, "(.*)<(.+)>");
-                            if (templatedName.Success)
-                                finalFnName = templatedName.Groups[2].Value;
-
-                            var sig = FindSignature(graphFile, finalFnName);
-                            newNode = _nodeCreator.CreateNode(sig, n.FragmentArchiveName, MakePreviewSettingsFromAttributeTable(attributeTable));
+                            ProcedureNodeType nodeType = ProcedureNodeType.Normal;
+                            if (IsInstantiationNode(inputSubGraph.Value.Graph, n.NodeId))
+                            {
+                                nodeType = ProcedureNodeType.Instantiation;
+                            }
+                            else if (IsTemplateNode(inputSubGraph.Value.Signature, n.FragmentArchiveName))
+                            {
+                                nodeType = ProcedureNodeType.TemplateParameter;
+                            }
+                            newNode = _nodeCreator.CreateProcedureNode(n.FragmentArchiveName, nodeType, MakePreviewSettingsFromAttributeTable(attributeTable));
                         }
                         else
                         {
@@ -573,6 +577,10 @@ namespace NodeEditorCore
                         graph.Connect(srcItem, dstItem, c.Condition);
                     }
                 }
+
+                // Finally, update each node to match the current state of the functions, etc, in the shader files
+                foreach (var n in graph.Nodes)
+                    _nodeCreator.UpdateProcedureNode(n);
             }
         }
 
@@ -589,9 +597,6 @@ namespace NodeEditorCore
             node.AddItem(newItem, dock);
             return newItem;
         }
-
-        [Import]
-        ShaderFragmentArchive.Archive _shaderFragments;
 
         [Import]
         IShaderFragmentNodeCreator _nodeCreator;

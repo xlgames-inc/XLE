@@ -24,14 +24,15 @@ namespace NodeEditorCore
             // But, then again, maybe even HyperGraph.GraphControl could be split into several
             // small pieces using the ATF AdaptableControl type stuff...?
             _components = new System.ComponentModel.Container();
-            _nodeMenu = CreateNodeMenu();
             _createSubGraphMenu = CreateSubGraphMenu();
             _emptySpaceMenu = CreateEmptySpaceMenu();
             ConnectorDoubleClick += OnConnectorDoubleClick;
             ShowElementMenu += OnShowElementMenu;
         }
 
-        private ContextMenuStrip CreateNodeMenu()
+        private System.Collections.Generic.List<ToolStripMenuItem> _extraNodeMenuItems = new System.Collections.Generic.List<ToolStripMenuItem>();
+
+        private ContextMenuStrip CreateNodeMenu(ProcedureNodeType type)
         {
             var refreshToolStripMenuItem = new ToolStripMenuItem() { Text = "Refresh" };
             refreshToolStripMenuItem.Click += new EventHandler(this.RefreshToolStripMenuItem_Click);
@@ -39,17 +40,42 @@ namespace NodeEditorCore
             var setArchiveName = new ToolStripMenuItem() { Text = "Set Archive Name" };
             setArchiveName.Click += SetArchiveName_Click;
 
-            return new ContextMenuStrip(this._components)
+            ContextMenuStrip result = new ContextMenuStrip(this._components)
                 {
                     Items = { refreshToolStripMenuItem, setArchiveName }
                 };
+
+            if (type != ProcedureNodeType.Instantiation)
+            {
+                var convert = new ToolStripMenuItem() { Text = "Convert to Instantiation Node" };
+                convert.Click += new EventHandler(this.OnConvertToInstantiationNode);
+                result.Items.Add(convert);
+            }
+
+            if (type != ProcedureNodeType.TemplateParameter)
+            {
+                var convert = new ToolStripMenuItem() { Text = "Convert to Template Parameter" };
+                convert.Click += new EventHandler(this.OnConvertToTemplateParameter);
+                result.Items.Add(convert);
+            }
+
+            if (type != ProcedureNodeType.Normal)
+            {
+                var convert = new ToolStripMenuItem() { Text = "Convert to Normal Node" };
+                convert.Click += new EventHandler(this.OnConvertToNormalNode);
+                result.Items.Add(convert);
+            }
+
+            foreach (var item in _extraNodeMenuItems)
+                result.Items.Add(item);
+            return result;
         }
 
         public void AddContextMenuItem(string text, System.EventHandler handler)
         {
             var item = new ToolStripMenuItem() { Text = text };
             item.Click += handler;
-            _nodeMenu.Items.Add(item);
+            _extraNodeMenuItems.Add(item);
         }
 
         private ContextMenuStrip CreateSubGraphMenu()
@@ -203,8 +229,9 @@ namespace NodeEditorCore
             if (e.Element is Node && ((Node)e.Element).Tag is ShaderProcedureNodeTag)
             {
                 var tag = (ShaderProcedureNodeTag)((Node)e.Element).Tag;
-                _nodeMenu.Tag = tag.Id;
-                _nodeMenu.Show(e.Position);
+                var menu = CreateNodeMenu(tag.Type);
+                menu.Tag = tag.Id;
+                menu.Show(e.Position);
                 e.Cancel = false;
             }
             else
@@ -356,8 +383,32 @@ namespace NodeEditorCore
 
         private void RefreshToolStripMenuItem_Click(object sender, EventArgs e)
         {
+            var n = GetNode(AttachedId(sender));
+            if (n != null) NodeFactory.UpdateProcedureNode(n);
+
             var p = GetPreviewItem(sender);
             if (p!=null) p.InvalidateShaderStructure();
+        }
+
+        private void OnConvertToInstantiationNode(object sender, EventArgs e)
+        {
+            var n = GetNode(AttachedId(sender));
+            if (n != null)
+                NodeFactory.SetProcedureNodeType(n, ProcedureNodeType.Instantiation);
+        }
+
+        private void OnConvertToTemplateParameter(object sender, EventArgs e)
+        {
+            var n = GetNode(AttachedId(sender));
+            if (n != null)
+                NodeFactory.SetProcedureNodeType(n, ProcedureNodeType.TemplateParameter);
+        }
+
+        private void OnConvertToNormalNode(object sender, EventArgs e)
+        {
+            var n = GetNode(AttachedId(sender));
+            if (n != null)
+                NodeFactory.SetProcedureNodeType(n, ProcedureNodeType.Normal);
         }
 
         private void SetArchiveName_Click(object sender, EventArgs e)
@@ -469,10 +520,8 @@ namespace NodeEditorCore
         public void Dispose()
         {
             if (_components != null) { _components.Dispose(); _components = null; }
-            if (_nodeMenu != null) { _nodeMenu.Dispose(); _nodeMenu = null; }
         }
 
-        private ContextMenuStrip _nodeMenu;
         private ContextMenuStrip _createSubGraphMenu;
         private ContextMenuStrip _emptySpaceMenu;
         private System.ComponentModel.Container _components;
