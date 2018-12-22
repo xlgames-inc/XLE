@@ -36,6 +36,16 @@ namespace ShaderPatcherLayer
         _nodes          = gcnew List<Node^>();
         _connections    = gcnew List<Connection^>();
     }
+
+	void NodeGraph::AddNode(Node^ node)
+	{
+		_nodes->Add(node);
+	}
+
+	void NodeGraph::AddConnection(Connection^ connection)
+	{
+		_connections->Add(connection);
+	}
 	
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -211,9 +221,9 @@ namespace ShaderPatcherLayer
 	{
 		NodeGraph^ result = gcnew NodeGraph;
 		for (const auto& n:input.GetNodes())
-			result->Nodes->Add(ShaderPatcherLayer::ConvertFromNative(n, context));
+			result->AddNode(ShaderPatcherLayer::ConvertFromNative(n, context));
 		for (const auto& c:input.GetConnections())
-			result->Connections->Add(ShaderPatcherLayer::ConvertFromNative(c));
+			result->AddConnection(ShaderPatcherLayer::ConvertFromNative(c));
 		return result;
 	}
 

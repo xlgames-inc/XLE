@@ -39,7 +39,7 @@ namespace NodeEditor
 		public ExampleForm(ExportProvider exportProvider)
 		{
             _shaderFragments = exportProvider.GetExport<ShaderFragmentArchive.Archive>().Value;
-            _nodeCreator = exportProvider.GetExport<NodeEditorCore.IShaderFragmentNodeCreator>().Value;
+            _nodeCreator = exportProvider.GetExport<NodeEditorCore.INodeFactory>().Value;
             _modelConversion = exportProvider.GetExport<NodeEditorCore.IModelConversion>().Value;
 
 			InitializeComponent();
@@ -98,7 +98,7 @@ namespace NodeEditor
         }
 
         private ShaderFragmentArchive.Archive _shaderFragments;
-        private NodeEditorCore.IShaderFragmentNodeCreator _nodeCreator;
+        private NodeEditorCore.INodeFactory _nodeCreator;
         private NodeEditorCore.IModelConversion _modelConversion;
         private HyperGraph.GraphControl _graphAdapter;
 

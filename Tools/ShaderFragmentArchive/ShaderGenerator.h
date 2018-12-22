@@ -22,7 +22,7 @@ namespace Assets { class DirectorySearchRules; }
 namespace ShaderPatcherLayer 
 {
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class Node
+    public ref class Node
     {
     public:
         enum class Type 
@@ -30,24 +30,24 @@ namespace ShaderPatcherLayer
             Procedure,
 			Captures
         };
-        [DataMember] String^       FragmentArchiveName;
-        [DataMember] UInt32        NodeId;
-        [DataMember] Type          NodeType;
-		[DataMember] String^	   AttributeTableName;
+        property String^       FragmentArchiveName;
+        property UInt32        NodeId;
+        property Type          NodeType;
+		property String^	   AttributeTableName;
 
 		static const UInt32 NodeId_Interface = (UInt32)-1;
 		static const UInt32 NodeId_Constant = (UInt32)-2;
     };
 
         ///////////////////////////////////////////////////////////////
-    [DataContract] public ref class Connection
+    public ref class Connection
     {
     public:
-        [DataMember] UInt32        InputNodeID;
-        [DataMember] String^       InputParameterName;
-		[DataMember] UInt32        OutputNodeID;
-        [DataMember] String^       OutputParameterName;
-		[DataMember] String^       Condition;
+        property UInt32        InputNodeID;
+        property String^       InputParameterName;
+		property UInt32        OutputNodeID;
+        property String^       OutputParameterName;
+		property String^       Condition;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -56,11 +56,11 @@ namespace ShaderPatcherLayer
 	public enum class PreviewGeometry { Chart, Plane2D, Box, Sphere, Model };
 	public enum class StateType { Normal, Collapsed };
 
-	[DataContract] public ref class PreviewSettings
+	public ref class PreviewSettings
 	{
 	public:
-		[DataMember] PreviewGeometry    Geometry;
-		[DataMember] String^            OutputToVisualize;
+		property PreviewGeometry    Geometry;
+		property String^            OutputToVisualize;
 
 		static String^ PreviewGeometryToString(PreviewGeometry geo);
 		static PreviewGeometry PreviewGeometryFromString(String^ input);
@@ -99,15 +99,11 @@ namespace ShaderPatcherLayer
     public ref class NodeGraph
     {
     public:
-        [DataMember] property List<Node^>^ Nodes
-        {
-            List<Node^>^ get() { if (!_nodes) { _nodes = gcnew List<Node^>(); } return _nodes; }
-        }
+        property IEnumerable<Node^>^ Nodes { IEnumerable<Node^>^ get() { return _nodes; } }
+        property IEnumerable<Connection^>^ Connections { IEnumerable<Connection^>^ get() { return _connections; } }
 
-        [DataMember] property List<Connection^>^ Connections
-        {
-            List<Connection^>^ get() { if (!_connections) { _connections = gcnew List<Connection^>(); } return _connections; }
-        }
+		void AddNode(Node^ node);
+		void AddConnection(Connection^ connection);
 
 		NodeGraph();
 

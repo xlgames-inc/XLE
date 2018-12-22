@@ -22,25 +22,6 @@ namespace NodeEditorCore
 
     public enum ProcedureNodeType { Normal, TemplateParameter, Instantiation };
 
-    public interface IShaderFragmentNodeCreator
-    {
-        Node CreateProcedureNode(String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, ShaderPatcherLayer.PreviewSettings previewSettings = null);
-        void SetProcedureNodeType(Node node, ProcedureNodeType type);
-        ProcedureNodeType GetProcedureNodeType(Node node);
-        void UpdateProcedureNode(Node node);        // update a node after -- for example -- the shader file changes on disk
-
-        Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
-
-        Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title);
-        Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type);
-
-        Node CreateSubGraph(String name, String implements);
-
-        Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
-        HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
-        string GetDescription(object item);
-    }
-
     public interface IDiagramDocument
     {
         ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
@@ -53,18 +34,36 @@ namespace NodeEditorCore
         IDiagramDocument Document { get; }
     }
 
+    public interface INodeFactory
+    {
+        Node CreateProcedureNode(ShaderPatcherLayer.NodeGraphFile diagramContext, String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, ShaderPatcherLayer.PreviewSettings previewSettings = null);
+        void SetProcedureNodeType(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
+        ProcedureNodeType GetProcedureNodeType(Node node);
+        void UpdateProcedureNode(ShaderPatcherLayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
+
+        Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
+        Node CreateSubGraph(String name, String implements);
+
+        HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
+        string GetDescription(object item);
+
+        // Utilities, etc
+        Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
+        bool IsInstantiationConnector(HyperGraph.NodeConnector connector);
+    }
+
     #region Node Items
 
-        //
+    //
     /////////////////////////////////////////////////////////////////////////////////////
-        //
-        //          ShaderFragmentNodeConnector
-        //
-        //      Node Item for the hypergraph that represents an input or output
-        //      of a shader graph node.
-        //  
-    
-    internal class ShaderFragmentNodeConnector : NodeConnector
+    //
+    //          ShaderFragmentNodeConnector
+    //
+    //      Node Item for the hypergraph that represents an input or output
+    //      of a shader graph node.
+    //  
+
+    public class ShaderFragmentNodeConnector : NodeConnector
     {
         public ShaderFragmentNodeConnector(string name, string type)
         {
@@ -180,7 +179,7 @@ namespace NodeEditorCore
         //      and displays it in a little preview
         //  
 
-    internal class ShaderFragmentPreviewItem : NodeItem 
+    public class ShaderFragmentPreviewItem : NodeItem 
     {
         public ShaderFragmentPreviewItem()
         {
@@ -330,7 +329,7 @@ namespace NodeEditorCore
         //      Checks node inputs and outputs for type compatibility
         //  
 
-    internal class ShaderFragmentNodeCompatibility : HyperGraph.Compatibility.ICompatibilityStrategy
+    public class ShaderFragmentNodeCompatibility : HyperGraph.Compatibility.ICompatibilityStrategy
     {
         public HyperGraph.Compatibility.ConnectionType CanConnect(NodeConnector from, NodeConnector to)
         {
@@ -372,7 +371,8 @@ namespace NodeEditorCore
             return HyperGraph.Compatibility.ConnectionType.Incompatible;
         }
     }
-    internal class ShaderFragmentAdaptableParameterConnector : ShaderFragmentNodeConnector
+
+    public class ShaderFragmentAdaptableParameterConnector : ShaderFragmentNodeConnector
     {
         public ShaderFragmentAdaptableParameterConnector(string name, string type) : base(name, type) { }
         public string Semantic { get; set; }
@@ -381,17 +381,17 @@ namespace NodeEditorCore
         internal override string GetTypeText() { return ": " + Semantic + " (" + ShortType + ")"; }
     }
 
-    internal class ShaderFragmentInterfaceParameterItem : ShaderFragmentAdaptableParameterConnector
+    public class ShaderFragmentInterfaceParameterItem : ShaderFragmentAdaptableParameterConnector
     {
         public ShaderFragmentInterfaceParameterItem(string name, string type) : base(name, type) { }
     }
 
-    internal class ShaderFragmentCaptureParameterItem : ShaderFragmentAdaptableParameterConnector
+    public class ShaderFragmentCaptureParameterItem : ShaderFragmentAdaptableParameterConnector
     {
         public ShaderFragmentCaptureParameterItem(string name, string type) : base(name, type) { }
     }
-    
-    internal class ShaderFragmentAddParameterItem : NodeItem
+
+    public class ShaderFragmentAddParameterItem : NodeItem
     {
         public delegate ShaderFragmentAdaptableParameterConnector ConnectorCreatorDelegate(string name, string type);
         public ConnectorCreatorDelegate ConnectorCreator;
@@ -448,7 +448,7 @@ namespace NodeEditorCore
     //          Creating nodes & tag tags
     //  
 
-    internal class ShaderFragmentNodeTag
+    public class ShaderFragmentNodeTag
     {
         public string ArchiveName { get; set; }
         public UInt32 Id { get; set; }
@@ -456,33 +456,22 @@ namespace NodeEditorCore
         private static UInt32 nodeAccumulatingId = 1;
     }
 
-    internal class ShaderProcedureNodeTag : ShaderFragmentNodeTag
+    public class ShaderProcedureNodeTag : ShaderFragmentNodeTag
     {
         public ProcedureNodeType Type { get; set; }
         public ShaderProcedureNodeTag(string archiveName) : base(archiveName) { Type = ProcedureNodeType.Normal; }
     }
 
-    internal class ShaderParameterNodeTag : ShaderFragmentNodeTag
-    {
-        public ShaderParameterNodeTag(string archiveName) : base(archiveName) {}
-    }
-
-    internal class ShaderCapturesNodeTag : ShaderFragmentNodeTag
+    public class ShaderCapturesNodeTag : ShaderFragmentNodeTag
     {
         public ShaderCapturesNodeTag(string captureGroupName) : base(captureGroupName) { }
     }
 
-    internal class ShaderInterfaceParameterNodeTag : ShaderFragmentNodeTag
-    {
-        public ShaderInterfaceParameterNodeTag() : base(String.Empty) {}
-        public InterfaceDirection Direction = InterfaceDirection.In;
-    }
+    public class ShaderSubGraphNodeTag { }
 
-    internal class ShaderSubGraphNodeTag { }
-
-    [Export(typeof(IShaderFragmentNodeCreator))]
+    [Export(typeof(INodeFactory))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ShaderFragmentNodeCreator : IShaderFragmentNodeCreator
+    public class ShaderFragmentNodeCreator : INodeFactory
     {
         internal static IDictionary<Enum, string> PreviewGeoNames;
         internal static IDictionary<Enum, string> ParamSourceTypeNames;
@@ -555,25 +544,25 @@ namespace NodeEditorCore
             }
         }
 
-        private ShaderPatcherLayer.NodeGraphSignature FindSignature(ShaderPatcherLayer.NodeGraphFile graphFile, String name)
+        private ShaderPatcherLayer.NodeGraphSignature FindSignature(ShaderPatcherLayer.NodeGraphFile documentContext, String name)
         {
             ShaderPatcherLayer.NodeGraphFile.SubGraph sg;
-            if (graphFile != null && graphFile.SubGraphs.TryGetValue(name, out sg))
+            if (documentContext != null && documentContext.SubGraphs.TryGetValue(name, out sg))
             {
                 return sg.Signature;
             }
-            var fn = _shaderFragments.GetFunction(name, (graphFile != null) ? graphFile.GetSearchRules() : null);
+            var fn = _shaderFragments.GetFunction(name, (documentContext != null) ? documentContext.GetSearchRules() : null);
             return (fn != null) ? fn.Signature : null;
         }
 
-        public Node CreateProcedureNode(string archiveName, ProcedureNodeType type, ShaderPatcherLayer.PreviewSettings previewSettings)
+        public Node CreateProcedureNode(ShaderPatcherLayer.NodeGraphFile diagramContext, string archiveName, ProcedureNodeType type, ShaderPatcherLayer.PreviewSettings previewSettings)
         {
             var node = new Node { Title = VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName) { Type = type };
             node.Layout = Node.LayoutType.Rectangular;
 
             SetProcedureNodeType_Internal(node, type, previewSettings);
-            UpdateProcedureNode(node);
+            UpdateProcedureNode(diagramContext, node);
             return node;
         }
 
@@ -637,10 +626,10 @@ namespace NodeEditorCore
             tag.Type = type;
         }
 
-        public void SetProcedureNodeType(Node node, ProcedureNodeType type)
+        public void SetProcedureNodeType(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type)
         {
             SetProcedureNodeType_Internal(node, type, null);
-            UpdateProcedureNode(node);
+            UpdateProcedureNode(diagramContext, node);
         }
 
         public ProcedureNodeType GetProcedureNodeType(Node node)
@@ -764,7 +753,7 @@ namespace NodeEditorCore
             // leave them there
         }
 
-        public void UpdateProcedureNode(Node node)
+        public void UpdateProcedureNode(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node)
         {
             ShaderProcedureNodeTag tag = node.Tag as ShaderProcedureNodeTag;
             if (tag == null) return;
@@ -778,7 +767,7 @@ namespace NodeEditorCore
             // to match that signature. We will reorder the connectors we find, and
             // any connectors we don't find will end up on the bottom of the list.
 
-            var signature = FindSignature(null, archiveNameForSignature);
+            var signature = FindSignature(diagramContext, archiveNameForSignature);
             if (signature != null)
             {
                 UpdateProcedureNodeDock(node, signature, InterfaceDirection.In);
@@ -820,7 +809,7 @@ namespace NodeEditorCore
                         var match = s_templatedNameMatch.Match(target.Type);
                         if (!match.Success) continue;
 
-                        var restrictionSig = FindSignature(null, match.Groups[1].Value);
+                        var restrictionSig = FindSignature(diagramContext, match.Groups[2].Value);
                         if (restrictionSig == null) continue;
 
                         HashSet<String> filtering = new HashSet<String>();
@@ -835,7 +824,7 @@ namespace NodeEditorCore
                     // We're left with every parameter that is in every connected 
                     if (foundAtLeastOne)
                     {
-                        foreach (var c in node.InputConnectors)
+                        foreach (var c in node.InputConnectors.ToList())    // (clone because doing erase operations below)
                         {
                             var conn = c as ShaderFragmentNodeConnector;
                             if (conn != null && filteredParams.Contains(conn.Name))
@@ -876,34 +865,6 @@ namespace NodeEditorCore
             }
         }
 
-        public Node CreateEmptyParameterNode(ParamSourceType sourceType, String archiveName, String title)
-        {
-            var node = new Node { Title = title };
-            node.Tag = new ShaderParameterNodeTag(archiveName);
-
-            var enumList = AsEnumList(sourceType, ParamSourceTypeNames);
-            var typeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
-            node.AddItem(typeSelection, Node.Dock.Center);
-            typeSelection.SelectionChanged += ParameterNodeTypeChanged;
-            return node;
-        }
-
-        public Node CreateParameterNode(ShaderFragmentArchive.ParameterStruct parameter, String archiveName, ParamSourceType type)
-        {
-            var node = CreateEmptyParameterNode(type, archiveName, (parameter != null) ? parameter.Name : VisibleName(archiveName));
-            if (parameter != null)
-            {
-                foreach (var param in parameter.Parameters)
-                {
-                    bool isInput = type != ParamSourceType.Output;
-                    node.AddItem(
-                        new ShaderFragmentNodeConnector(param.Name, param.Type),
-                        ShaderFragmentNodeConnector.GetDirectionalColumn(isInput ? InterfaceDirection.In : InterfaceDirection.Out));
-                }
-            }
-            return node;
-        }
-
         public Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters)
         {
             var node = new Node { Title = name };
@@ -920,16 +881,6 @@ namespace NodeEditorCore
                 new ShaderFragmentAddParameterItem { ConnectorCreator = (n, t) => new ShaderFragmentCaptureParameterItem(n, t) { Direction = InterfaceDirection.Out } }, 
                 Node.Dock.Output);
 
-            return node;
-        }
-
-        public Node CreateInterfaceNode(String title, InterfaceDirection direction)
-        {
-            var node = new Node { Title = title };
-            node.Tag = new ShaderInterfaceParameterNodeTag { Direction = direction };
-            node.AddItem(
-                new ShaderFragmentAddParameterItem { ConnectorCreator = (n, t) => new ShaderFragmentInterfaceParameterItem(n, t) { Direction = direction } }, 
-                Node.Dock.Center);
             return node;
         }
 
@@ -957,10 +908,16 @@ namespace NodeEditorCore
             return null;
         }
 
-        private bool IsInputConnector(NodeConnector connector)
+        public bool IsInstantiationConnector(HyperGraph.NodeConnector connector)
         {
-            return connector.Node.InputConnectors.Contains(connector);
+            if (connector is ShaderFragmentNodeConnector nodeConnector)
+            {
+                return string.Equals(nodeConnector.Name, "<instantiation>");
+            }
+            return false;
         }
+
+        private bool IsInputConnector(NodeConnector connector) => connector.Node.InputConnectors.Contains(connector);
 
         public string GetDescription(object o)
         {

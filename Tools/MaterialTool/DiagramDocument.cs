@@ -23,11 +23,17 @@ namespace MaterialTool
         public ShaderPatcherLayer.NodeGraphFile NodeGraphFile
         {
             get {
-                return _modelConversion.ToShaderPatcherLayer(ViewModel);
+                if ((ViewModel == null) || (_nodeGraphFileRepresentation != null && _nodeGraphFileRepresentationRevisionIndex == ViewModel.RevisionIndex))
+                {
+                    return _nodeGraphFileRepresentation;
+                }
+                _nodeGraphFileRepresentationRevisionIndex = ViewModel.RevisionIndex;
+                _nodeGraphFileRepresentation = ViewModel.Rebuild();
+                return _nodeGraphFileRepresentation;
             }
         }
 
-        public uint GlobalRevisionIndex { get { return ViewModel.GlobalRevisionIndex; } }
+        public uint GlobalRevisionIndex { get { return ViewModel.RevisionIndex; } }
 
         public void Save(Uri destination)
         {
@@ -47,20 +53,10 @@ namespace MaterialTool
 
         public void Load(Uri source)
         {
-            ShaderPatcherLayer.NodeGraphFile graphFile;
             ShaderPatcherLayer.NodeGraphMetaData graphMetaData;
-            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out graphFile, out graphMetaData);
-
+            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out _nodeGraphFileRepresentation, out graphMetaData);
             GraphMetaData = graphMetaData;
-            ViewModel = new HyperGraph.GraphModel();
-            ViewModel.CompatibilityStrategy = _exportProvider.GetExport<NodeEditorCore.IShaderFragmentNodeCreator>().Value.CreateCompatibilityStrategy();
-            _modelConversion.AddToHyperGraph(graphFile, ViewModel);
-
-            ViewModel.NodeAdded += model_NodeAdded;
-            ViewModel.NodeRemoved += model_NodeRemoved;
-            ViewModel.ConnectionAdded += model_ConnectionAdded;
-            ViewModel.ConnectionRemoved += model_ConnectionRemoved;
-            ViewModel.MiscChange += model_MiscChange;
+            _nodeGraphFileRepresentationRevisionIndex = 0;
         }
         #endregion
 
@@ -124,21 +120,15 @@ namespace MaterialTool
 
         #endregion
 
-        private void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e) { SetDirty(true); }
-        private void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e) { SetDirty(true); }
-        private void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e) { SetDirty(true); }
-        private void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e) { SetDirty(true); }
-        private void model_MiscChange(object sender, HyperGraph.MiscChangeEventArgs e) { SetDirty(true); }
+        public interface IViewModel
+        {
+            uint RevisionIndex { get; }
+            ShaderPatcherLayer.NodeGraphFile Rebuild();
+        }
 
-        public HyperGraph.IGraphModel ViewModel { get; private set; }
+        public IViewModel ViewModel { get; set; }
 
-        [Import]
-        private System.ComponentModel.Composition.Hosting.ExportProvider _exportProvider;
-
-        [Import]
-        private NodeEditorCore.IShaderFragmentNodeCreator _nodeFactory;
-
-        [Import]
-        private NodeEditorCore.IModelConversion _modelConversion;
+        private ShaderPatcherLayer.NodeGraphFile _nodeGraphFileRepresentation;
+        private uint _nodeGraphFileRepresentationRevisionIndex;
     }
 }

@@ -193,7 +193,7 @@ namespace NodeEditorCore
                         }
                     }
 
-                    resultSubGraph.Graph.Nodes.Add(resultNode);
+                    resultSubGraph.Graph.AddNode(resultNode);
 
                     var attributeTable = new Dictionary<string, string>();
                     attributeTable.Add("X", n.Location.X.ToString());
@@ -253,7 +253,7 @@ namespace NodeEditorCore
                             }
                             string condition = "";
                             if (match.Groups.Count > 2) { condition = match.Groups[2].Value; }
-                            resultSubGraph.Graph.Connections.Add(
+                            resultSubGraph.Graph.AddConnection(
                                 new ShaderPatcherLayer.Connection
                                 {
                                     OutputNodeID = dstNode.Id,
@@ -273,7 +273,7 @@ namespace NodeEditorCore
                                 paramName = match.Groups[1].Value;
                                 condition = match.Groups[2].Value;
                             }
-                            resultSubGraph.Graph.Connections.Add(
+                            resultSubGraph.Graph.AddConnection(
                                 new ShaderPatcherLayer.Connection
                                 {
                                     OutputNodeID = dstNode.Id,
@@ -288,7 +288,7 @@ namespace NodeEditorCore
                     {
                             // this is an output parameter.
                         var outputParam = (ShaderFragmentInterfaceParameterItem)connection.To;
-                        resultSubGraph.Graph.Connections.Add(
+                        resultSubGraph.Graph.AddConnection(
                             new ShaderPatcherLayer.Connection
                                 {
                                     OutputNodeID = ShaderPatcherLayer.Node.NodeId_Interface,
@@ -302,7 +302,7 @@ namespace NodeEditorCore
                     {
                         //  it's an input parameter.
                         var inputParam = (ShaderFragmentInterfaceParameterItem)connection.From;
-                        resultSubGraph.Graph.Connections.Add(
+                        resultSubGraph.Graph.AddConnection(
                             new ShaderPatcherLayer.Connection
                                 {
                                     OutputNodeID = dstNode.Id,
@@ -314,7 +314,7 @@ namespace NodeEditorCore
                     }
                     else if (dstNode != null && srcNode != null)
                     {
-                        resultSubGraph.Graph.Connections.Add(
+                        resultSubGraph.Graph.AddConnection(
                             new ShaderPatcherLayer.Connection()
                                 {
                                     OutputNodeID = dstNode.Id,
@@ -381,6 +381,7 @@ namespace NodeEditorCore
 
         public void AddToHyperGraph(ShaderPatcherLayer.NodeGraphFile graphFile, HyperGraph.IGraphModel graph)
         {
+
                 //
                 //      Convert from the "ShaderPatcherLayer" representation back to
                 //      our graph control nodes. 
@@ -438,7 +439,7 @@ namespace NodeEditorCore
                             {
                                 nodeType = ProcedureNodeType.TemplateParameter;
                             }
-                            newNode = _nodeCreator.CreateProcedureNode(n.FragmentArchiveName, nodeType, MakePreviewSettingsFromAttributeTable(attributeTable));
+                            newNode = _nodeCreator.CreateProcedureNode(graphFile, n.FragmentArchiveName, nodeType, MakePreviewSettingsFromAttributeTable(attributeTable));
                         }
                         else
                         {
@@ -580,7 +581,7 @@ namespace NodeEditorCore
 
                 // Finally, update each node to match the current state of the functions, etc, in the shader files
                 foreach (var n in graph.Nodes)
-                    _nodeCreator.UpdateProcedureNode(n);
+                    _nodeCreator.UpdateProcedureNode(graphFile, n);
             }
         }
 
@@ -599,6 +600,6 @@ namespace NodeEditorCore
         }
 
         [Import]
-        IShaderFragmentNodeCreator _nodeCreator;
+        INodeFactory _nodeCreator;
     }
 }

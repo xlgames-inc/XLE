@@ -146,24 +146,8 @@ namespace MaterialTool.Controls
                             if (archiveName != null && archiveName.Length > 0)
                             {
                                 this.DoDragDrop(
-                                    _nodeCreator.CreateProcedureNode(archiveName),
+                                    _nodeCreator.CreateProcedureNode(null, archiveName),
                                     DragDropEffects.Copy);
-                            }
-                        }
-                        else if (a.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)
-                        {
-                            var item = (NodeEditorCore.ShaderFragmentArchiveModel.ParameterStructItem)a.Tag;
-
-                            var archiveName = item.ArchiveName;
-                            if (archiveName != null && archiveName.Length > 0)
-                            {
-                                var fn = _fragments.GetParameterStruct(archiveName, null);
-                                if (fn != null)
-                                {
-                                    var node = _nodeCreator.CreateParameterNode(
-                                        fn, archiveName, ShaderFragmentArchive.Parameter.SourceType.Material);
-                                    this.DoDragDrop(node, DragDropEffects.Copy);
-                                }
                             }
                         }
                     }
@@ -176,9 +160,6 @@ namespace MaterialTool.Controls
         IControlHostService _controlHostService;
 
         [Import]
-        ShaderFragmentArchive.Archive _fragments;
-
-        [Import]
-        NodeEditorCore.IShaderFragmentNodeCreator _nodeCreator;
+        NodeEditorCore.INodeFactory _nodeCreator;
     }
 }
