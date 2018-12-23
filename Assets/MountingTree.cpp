@@ -23,6 +23,7 @@ namespace Assets
 			unsigned	_depth;	// number of different path sections combined into the hash value
 			std::shared_ptr<IFileSystem> _fileSystem;
 			MountID		_id;
+			SplitPath<utf8>	_mountPoint;
 		};
 
 		std::vector<Mount>	_mounts;	// ordered from highest to lowest priority
@@ -267,7 +268,8 @@ namespace Assets
 		
 		ScopedLock(_pimpl->_mountsLock);
 		MountID id = _pimpl->_changeId++;
-		_pimpl->_mounts.emplace_back(Pimpl::Mount{hash, split.GetSectionCount(), std::move(system), id});
+		auto sectionCount = split.GetSectionCount();
+		_pimpl->_mounts.emplace_back(Pimpl::Mount{hash, sectionCount, std::move(system), id, std::move(split)});
 		_pimpl->_hasAtLeastOneMount = true;
 		return id;
 	}
@@ -288,6 +290,44 @@ namespace Assets
 	void MountingTree::SetAbsolutePathMode(AbsolutePathMode newMode)
 	{
 		_pimpl->_absolutePathMode = newMode;
+	}
+
+	FileSystemWalker MountingTree::BeginWalk(StringSection<utf8> initialSubDirectory)
+	{
+		// Find each filesystem that matches the 
+		auto splitInitial = MakeSplitPath(initialSubDirectory);
+		std::vector<FileSystemWalker::StartingFS> result;
+		ScopedLock(_pimpl->_mountsLock);
+		for (const auto&mount:_pimpl->_mounts) {
+			auto searchingFs = std::dynamic_pointer_cast<ISearchableFileSystem>(mount._fileSystem);
+			if (!searchingFs) continue;
+
+			bool match = true;
+			auto minCount = std::min(mount._depth, splitInitial.GetSectionCount());
+			for (unsigned c=0; c<minCount; ++c)
+				if (HashFilenameAndPath(splitInitial.GetSections()[c]) != HashFilenameAndPath(mount._mountPoint.GetSections()[c])) {
+					match = false;
+					break;
+				}
+			if (!match) continue;
+
+			utf8 remainingPath[MaxPath];
+			if (splitInitial.GetSectionCount() > mount._depth) {
+				SplitPath<utf8>{
+					std::vector<SplitPath<utf8>::Section>{
+						&splitInitial.GetSections()[minCount],
+						splitInitial.GetSections().end()}}.Rebuild(remainingPath);
+				result.emplace_back(FileSystemWalker::StartingFS{{}, remainingPath, std::move(searchingFs)});
+			} else {
+				SplitPath<utf8>{
+					std::vector<SplitPath<utf8>::Section>{
+						&mount._mountPoint.GetSections()[minCount],
+						mount._mountPoint.GetSections().end()}}.Rebuild(remainingPath);
+				result.emplace_back(FileSystemWalker::StartingFS{remainingPath, {}, std::move(searchingFs)});
+			}
+		}
+
+		return result;
 	}
 
 	MountingTree::MountingTree(FilenameRules& rules)

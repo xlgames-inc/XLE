@@ -4,7 +4,9 @@
 
 #include "IFileSystem.h"
 #include "MountingTree.h"
+#include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/MemoryUtils.h"
 
 namespace Assets
 {
@@ -239,6 +241,11 @@ namespace Assets
 		return result;
 	}
 
+	FileSystemWalker MainFileSystem::BeginWalk(StringSection<utf8> initialSubDirectory)
+	{
+		return s_mainMountingTree->BeginWalk(initialSubDirectory);
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	const std::shared_ptr<MountingTree>& MainFileSystem::GetMountingTree() { return s_mainMountingTree; }
@@ -344,6 +351,221 @@ namespace Assets
 
 		return nullptr;
 	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class FileSystemWalker::Pimpl
+	{
+	public:
+		std::vector<StartingFS> _fileSystems;
+
+		struct SubFile
+		{
+			unsigned _filesystemIndex;
+			IFileSystem::Marker _marker;
+			FileDesc _desc;
+			uint64_t _naturalNameHash;
+		};
+		std::vector<SubFile> _files;
+
+		struct SubDirectory
+		{
+			std::basic_string<utf8> _name;
+			uint64_t _nameHash;
+			std::vector<unsigned> _filesystemIndices;
+		};
+		std::vector<SubDirectory> _directories;
+
+		bool _foundFiles = false;
+		bool _foundDirectories = false;
+
+		Pimpl(std::vector<StartingFS>&& fileSystems)
+		: _fileSystems(std::move(fileSystems)) {}
+
+		void FindFiles()
+		{
+			if (_foundFiles) return;
+			assert(_files.empty());
+
+			for (unsigned fsIdx=0; fsIdx<_fileSystems.size(); ++fsIdx) {
+				auto& fs = _fileSystems[fsIdx];
+				if (!fs._pendingDirectories.empty()) continue;
+
+				auto foundMarkers = fs._fs->FindFiles(MakeStringSection(fs._internalPoint), u(".*"));
+
+				auto* baseFS = dynamic_cast<IFileSystem*>(fs._fs.get());
+				assert(baseFS);
+				for (auto&m:foundMarkers) {
+					// The filesystem will give us it's internal "marker" representation of the filename
+					// But we're probably more interested in the natural name of the file; but we'll have
+					// to query that from the filesystem again
+					auto desc = baseFS->TryGetDesc(m);
+					if (desc._state != FileDesc::State::Normal) {
+						Log(Warning) << "Unexpected file state found while searching directory tree" << std::endl;
+						continue;
+					}
+
+					auto hash = HashFilenameAndPath(MakeStringSection(desc._naturalName));
+					auto existing = std::find_if(
+						_files.begin(), _files.end(),
+						[hash](const SubFile& file) { return file._naturalNameHash == hash; });
+
+					// When we multiple files with the same name, we'll always keep whichever we found
+					// first. Normally this should only happen when 2 different filesystems have a file
+					// with the same name, mounted at the same location.
+					if (existing == _files.end()) {
+						_files.emplace_back(SubFile{
+							fsIdx, std::move(m), 
+							std::move(desc), hash});
+					} else {
+						assert(existing->_filesystemIndex != fsIdx);
+					}
+				}
+			}
+
+			_foundFiles = true;
+		}
+
+		void FindDirectories()
+		{
+			if (_foundDirectories) return;
+			assert(_directories.empty());
+
+			for (unsigned fsIdx=0; fsIdx<_fileSystems.size(); ++fsIdx) {
+				auto& fs = _fileSystems[fsIdx];
+				if (!fs._pendingDirectories.empty()) {
+					auto splitPath = MakeSplitPath(fs._pendingDirectories);
+					auto dir = splitPath.GetSections()[0];
+					auto hash = HashFilenameAndPath(dir);
+					auto existing = std::find_if(
+						_directories.begin(), _directories.end(),
+						[hash](const SubDirectory& file) { return file._nameHash == hash; });
+					if (existing == _directories.end())
+						existing = _directories.emplace(existing, SubDirectory{dir.AsString(), hash});
+					existing->_filesystemIndices.push_back(fsIdx);
+					continue;
+				}
+
+				auto foundSubDirs = fs._fs->FindSubDirectories(MakeStringSection(fs._internalPoint));
+				for (auto&m:foundSubDirs) {
+					auto hash = HashFilenameAndPath(MakeStringSection(m));
+					auto existing = std::find_if(
+						_directories.begin(), _directories.end(),
+						[hash](const SubDirectory& file) { return file._nameHash == hash; });
+					if (existing == _directories.end())
+						existing = _directories.emplace(existing, SubDirectory{m, hash});
+					existing->_filesystemIndices.push_back(fsIdx);
+					continue;
+				}
+			}
+
+			_foundDirectories = true;
+		}
+	};
+
+	auto FileSystemWalker::begin_directories() const -> DirectoryIterator
+	{
+		_pimpl->FindDirectories();
+		return DirectoryIterator{this, 0};
+	}
+
+	auto FileSystemWalker::end_directories() const -> DirectoryIterator
+	{
+		_pimpl->FindDirectories();
+		return DirectoryIterator{this, (unsigned)_pimpl->_directories.size()};
+	}
+
+	auto FileSystemWalker::begin_files() const -> FileIterator
+	{
+		_pimpl->FindFiles();
+		return FileIterator{this, 0};
+	}
+
+	auto FileSystemWalker::end_files() const -> FileIterator
+	{
+		_pimpl->FindFiles();
+		return FileIterator{this, (unsigned)_pimpl->_files.size()};
+	}
+
+	FileSystemWalker FileSystemWalker::RecurseTo(const std::basic_string<utf8>& subDirectory) const
+	{
+		std::vector<StartingFS> nextStep;
+
+		auto hash = HashFilenameAndPath(MakeStringSection(subDirectory));
+
+		_pimpl->FindDirectories();
+		auto i = std::find_if(
+			_pimpl->_directories.begin(), _pimpl->_directories.end(),
+			[hash](const Pimpl::SubDirectory& file) { return file._nameHash == hash; });
+		if (i == _pimpl->_directories.end())
+			return {};
+
+		for (auto fsIdx:i->_filesystemIndices) {
+			auto& fs = _pimpl->_fileSystems[fsIdx];
+			if (!fs._pendingDirectories.empty()) {
+				auto splitPath = MakeSplitPath(fs._pendingDirectories);
+				assert(HashFilenameAndPath(splitPath.GetSection(0)) == hash);
+
+				// strip off the first part of the path name
+				auto sections = splitPath.GetSections();
+				utf8 newPending[MaxPath];
+				SplitPath<utf8>(std::vector<SplitPath<utf8>::Section>{&sections[1], sections.end()}).Rebuild(newPending);
+				nextStep.emplace_back(StartingFS{newPending, fs._internalPoint, fs._fs});
+			} else {
+				nextStep.emplace_back(StartingFS{{}, fs._internalPoint + u("/") + subDirectory, fs._fs});
+			}
+		}
+
+		return FileSystemWalker{std::move(nextStep)};
+	}
+
+	FileSystemWalker::FileSystemWalker()
+	{
+		_pimpl = std::make_unique<Pimpl>(std::vector<StartingFS>{});
+	}
+
+	FileSystemWalker::FileSystemWalker(std::vector<StartingFS>&& fileSystems)
+	{
+		_pimpl = std::make_unique<Pimpl>(std::move(fileSystems));
+	}
+
+	FileSystemWalker::~FileSystemWalker() {}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+	FileSystemWalker FileSystemWalker::DirectoryIterator::get() const
+	{
+		return _helper->RecurseTo(_helper->_pimpl->_directories[_idx]._name);
+	}
+
+	std::basic_string<utf8> FileSystemWalker::DirectoryIterator::Name() const
+	{
+		return _helper->_pimpl->_directories[_idx]._name;
+	}
+
+	FileSystemWalker::DirectoryIterator::DirectoryIterator(const FileSystemWalker* helper, unsigned idx)
+	: _helper(helper), _idx(idx)
+	{
+	}
+
+	auto FileSystemWalker::FileIterator::get() const -> Value
+	{
+		auto fsIdx = _helper->_pimpl->_files[_idx]._filesystemIndex;
+		return {
+			_helper->_pimpl->_files[_idx]._marker,
+			std::dynamic_pointer_cast<IFileSystem>(_helper->_pimpl->_fileSystems[fsIdx]._fs)};
+	}
+
+	FileDesc FileSystemWalker::FileIterator::Desc() const
+	{
+		return _helper->_pimpl->_files[_idx]._desc;
+	}
+
+	FileSystemWalker::FileIterator::FileIterator(const FileSystemWalker* helper, unsigned idx)
+	: _helper(helper), _idx(idx)
+	{
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	IFileInterface::~IFileInterface() {}
 	IFileSystem::~IFileSystem() {}

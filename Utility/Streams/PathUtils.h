@@ -163,6 +163,7 @@ namespace Utility
 		explicit SplitPath(const String& path);
 		explicit SplitPath(const CharType path[]);
         explicit SplitPath(Section path);
+		explicit SplitPath(std::vector<Section>&& sections);
         SplitPath();
         
         SplitPath(SplitPath&& moveFrom) never_throws;

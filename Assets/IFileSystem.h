@@ -83,7 +83,93 @@ namespace Assets
 		virtual std::vector<IFileSystem::Marker> FindFiles(
 			StringSection<utf8> baseDirectory,
 			StringSection<utf8> regexMatchPattern) = 0;
+		virtual std::vector<std::basic_string<utf8>> FindSubDirectories(
+			StringSection<utf8> baseDirectory) = 0;
 		virtual ~ISearchableFileSystem();
+	};
+
+	class FileSystemWalker
+	{
+	public:
+		class DirectoryIterator 
+		{
+		public:
+			FileSystemWalker get() const;
+			FileSystemWalker operator*() const { return get(); }
+			std::basic_string<utf8> Name() const;
+			friend bool operator==(const DirectoryIterator& lhs, const DirectoryIterator& rhs)
+			{
+				assert(lhs._helper == rhs._helper);
+				return lhs._idx == rhs._idx;
+			}
+			friend bool operator!=(const DirectoryIterator& lhs, const DirectoryIterator& rhs)
+			{
+				return !operator==(lhs, rhs);
+			}
+			void operator++() { ++_idx; }
+			void operator++(int) { ++_idx; }
+		private:
+			DirectoryIterator(const FileSystemWalker* helper, unsigned idx);
+			friend class FileSystemWalker;
+			const FileSystemWalker* _helper;
+			unsigned _idx;
+		};
+
+		class FileIterator
+		{
+		public:
+			struct Value
+			{
+				IFileSystem::Marker _marker;
+				std::shared_ptr<IFileSystem> _fs;
+			};
+			Value get() const;
+			Value operator*() const { return get(); }
+			FileDesc Desc() const;
+			friend bool operator==(const FileIterator& lhs, const FileIterator& rhs)
+			{
+				assert(lhs._helper == rhs._helper);
+				return lhs._idx == rhs._idx;
+			}
+			friend bool operator!=(const FileIterator& lhs, const FileIterator& rhs)
+			{
+				return !operator==(lhs, rhs);
+			}
+			void operator++() { ++_idx; }
+			void operator++(int) { ++_idx; }
+		private:
+			FileIterator(const FileSystemWalker* helper, unsigned idx);
+			friend class FileSystemWalker;
+			const FileSystemWalker* _helper;
+			unsigned _idx;
+		};
+		
+		DirectoryIterator begin_directories() const;
+		DirectoryIterator end_directories() const;
+
+		FileIterator begin_files() const;
+		FileIterator end_files() const;
+
+		FileSystemWalker RecurseTo(const std::basic_string<utf8>& subDirectory) const;
+
+		FileSystemWalker();
+		~FileSystemWalker();
+		FileSystemWalker(FileSystemWalker&&) = default;
+		FileSystemWalker& operator=(FileSystemWalker&&) = default;
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+
+		struct StartingFS
+		{
+			std::basic_string<utf8> _pendingDirectories;
+			std::basic_string<utf8> _internalPoint;
+			std::shared_ptr<ISearchableFileSystem> _fs;
+		};
+
+		FileSystemWalker(std::vector<StartingFS>&& fileSystems);
+
+		friend class MountingTree;
 	};
 
 	/// <summary>Description of a file object within a filesystem</summary>
@@ -154,6 +240,8 @@ namespace Assets
 		static IOReason	TryOpen(MemoryMappedFile& result, StringSection<utf16> filename, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
 		static IOReason	TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt);
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
+
+		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory);
 
 		static const std::shared_ptr<MountingTree>& GetMountingTree();
 		static void Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem);

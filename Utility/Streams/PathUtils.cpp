@@ -780,6 +780,13 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
     , _drive(drive)
 	{}
 
+	TC SplitPath<CharType>::SplitPath(std::vector<Section>&& sections)
+	: _sections(std::move(sections))
+	, _beginsWithSeparator(false)
+    , _endsWithSeparator(false)
+	{
+	}
+
     TC SplitPath<CharType>::~SplitPath() {}
 
     TC SplitPath<CharType>::SplitPath(SplitPath&& moveFrom) never_throws
