@@ -133,7 +133,7 @@ namespace MaterialTool
                 typeof(Controls.ShaderFragmentArchiveControl),
                 typeof(Controls.DiagramLister),
 
-                typeof(NodeEditorCore.ShaderFragmentArchiveModel),
+                typeof(ControlsLibrary.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
                 typeof(DiagramDocument),

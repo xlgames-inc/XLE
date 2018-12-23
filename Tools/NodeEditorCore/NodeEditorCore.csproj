@@ -83,7 +83,6 @@
       <DesignTime>True</DesignTime>
       <DependentUpon>Resources.resx</DependentUpon>
     </Compile>
-    <Compile Include="ShaderTree\ShaderFragmentArchiveModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Foreign\TreeViewAdv-1.7.0.0\Aga.Controls\Aga.Controls.csproj">
@@ -108,15 +107,6 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
-    <None Include="Resources\icon_triangle.png" />
-    <None Include="Resources\icon_hexagon.png" />
-    <None Include="Resources\icon_oval.png" />
-    <None Include="Resources\icon_circle.png" />
-    <None Include="Resources\icon_square.png" />
-    <None Include="Resources\icon_roundedrect.png" />
-    <None Include="Resources\icon_paper.png" />
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="GraphControl\InterfaceParameterControl.resx">
       <DependentUpon>InterfaceParameterControl.cs</DependentUpon>
     </EmbeddedResource>
@@ -126,6 +116,7 @@
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
