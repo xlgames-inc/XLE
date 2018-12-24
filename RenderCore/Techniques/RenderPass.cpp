@@ -35,7 +35,6 @@ namespace RenderCore
             << attachment._width << ", "
             << attachment._height << ", "
             << attachment._arrayLayerCount << ", "
-            << attachment._defaultAspect << ", "
             << unsigned(attachment._dimsMode)
             << ", 0x" << std::hex << attachment._flags << std::dec << "}";
         return str;
@@ -550,7 +549,14 @@ namespace RenderCore { namespace Techniques
             attach = &_pimpl->_attachments[attachName];
         }
         assert(attach);
-		auto completeView = CompleteTextureViewDesc(attach->_desc, window);
+		auto defaultAspect = TextureViewDesc::Aspect::ColorLinear;
+		auto formatComponents = GetComponents(attach->_desc._format);
+		if (formatComponents == FormatComponents::Depth || formatComponents == FormatComponents::DepthStencil) {
+			defaultAspect = TextureViewDesc::Aspect::Depth;	// can only choose depth or stencil -- so DepthStencil defaults to Depth
+		} else if (formatComponents == FormatComponents::Stencil) {
+			defaultAspect = TextureViewDesc::Aspect::Stencil;
+		}
+		auto completeView = CompleteTextureViewDesc(attach->_desc, window, defaultAspect);
 		return _pimpl->_srvPool.GetView(attach->_resource, completeView);
 	}
 
@@ -865,7 +871,6 @@ namespace RenderCore { namespace Techniques
         return
             ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && GetArrayCount(testAttachment) == GetArrayCount(request)
-            && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
 			&& DimsEqual(testAttachment, request, FrameBufferProperties{dimensions[0], dimensions[1]})
             && (testAttachment._flags & request._flags) == request._flags
             ;
@@ -1303,7 +1308,6 @@ namespace RenderCore { namespace Techniques
                         auto sameSemantic = defaultSemanticFormats.find(interfaceAttachment.GetOutputSemanticBinding());
                         if (sameSemantic != defaultSemanticFormats.end()) {
                             if (desc._format == Format::Unknown) desc._format = sameSemantic->second._format;
-                            if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->second._defaultAspect;
                         } else {
                             if (desc._format == Format::Unknown) {
                                 #if defined(_DEBUG)

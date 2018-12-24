@@ -16,7 +16,7 @@ namespace RenderCore { namespace Techniques
         ParsingContext& parserContext)
 	{
 		SubpassDesc subpass;
-		subpass.AppendOutput(0);
+		subpass._output.push_back( AttachmentViewDesc { 0, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
 		FrameBufferDesc::Attachment attachment { 
 			AttachmentSemantics::ColorLDR,
 			AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(AttachmentSemantics::ColorLDR)->GetDesc())
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Techniques
 		}
 
 		SubpassDesc subpass;
-		subpass.AppendOutput(0);
+		subpass._output.push_back( AttachmentViewDesc { 0, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::ColorSRGB } });
 		subpass._depthStencil = AttachmentViewDesc { 1, LoadStore::Retain, LoadStore::Retain, TextureViewDesc{ TextureViewDesc::Aspect::DepthStencil } };
 		FrameBufferDesc::Attachment colorAttachment { AttachmentSemantics::ColorLDR, AsAttachmentDesc(presentationTarget->GetDesc()) };
 		FrameBufferDesc::Attachment depthAttachment { AttachmentSemantics::MultisampleDepth, AsAttachmentDesc(boundDepth->GetDesc()) };

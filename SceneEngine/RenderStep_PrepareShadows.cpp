@@ -137,7 +137,6 @@ namespace SceneEngine
                 AsTypelessFormat(format),
 				float(dims[0]), float(dims[1]),
                 projectionCount,
-                TextureViewDesc::DepthStencil,
 				AttachmentDesc::DimensionsMode::Absolute, 
                 AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil });
 

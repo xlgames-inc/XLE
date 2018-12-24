@@ -39,7 +39,6 @@ namespace RenderCore
             desc._textureDesc._format,
             (float)desc._textureDesc._width, (float)desc._textureDesc._height,
             0u,
-            TextureViewDesc::UndefinedAspect,
             RenderCore::AttachmentDesc::DimensionsMode::Absolute,
               ((desc._bindFlags & BindFlag::RenderTarget) ? AttachmentDesc::Flags::RenderTarget : 0u)
             | ((desc._bindFlags & BindFlag::ShaderResource) ? AttachmentDesc::Flags::ShaderResource : 0u)
@@ -64,11 +63,11 @@ namespace RenderCore
         }
     }
 
-	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc)
+	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect)
 	{
 		TextureViewDesc result = viewDesc;
 		if (result._format._aspect == TextureViewDesc::Aspect::UndefinedAspect)
-			result._format._aspect = attachmentDesc._defaultAspect;
+			result._format._aspect = defaultAspect;
 		return result;
 	}
 

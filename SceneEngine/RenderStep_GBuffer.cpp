@@ -70,7 +70,6 @@ namespace SceneEngine
 			Techniques::AttachmentSemantics::MultisampleDepth,
             // Main multisampled depth stencil
             {   RenderCore::Format::D24_UNORM_S8_UINT, 1.f, 1.f, 0u,		// ,
-                TextureViewDesc::Aspect::DepthStencil,
 				AttachmentDesc::DimensionsMode::OutputRelative, 
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::DepthStencil });
 
@@ -86,7 +85,6 @@ namespace SceneEngine
 			Techniques::AttachmentSemantics::GBufferDiffuse,
             {   (!precisionTargets) ? Format::R8G8B8A8_UNORM_SRGB : Format::R32G32B32A32_FLOAT,
 				1.f, 1.f, 0u,
-                (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear,
 				AttachmentDesc::DimensionsMode::OutputRelative,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
 
@@ -94,7 +92,6 @@ namespace SceneEngine
 			Techniques::AttachmentSemantics::GBufferNormal,
             {   (!precisionTargets) ? Format::R8G8B8A8_SNORM : Format::R32G32B32A32_FLOAT,
 				1.f, 1.f, 0u,
-                TextureViewDesc::Aspect::ColorLinear,
 				AttachmentDesc::DimensionsMode::OutputRelative,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
 
@@ -102,7 +99,6 @@ namespace SceneEngine
 			Techniques::AttachmentSemantics::GBufferParameter,
             {   (!precisionTargets) ? Format::R8G8B8A8_UNORM : Format::R32G32B32A32_FLOAT,
 				1.f, 1.f, 0u,
-                TextureViewDesc::Aspect::ColorLinear,
 				AttachmentDesc::DimensionsMode::OutputRelative,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
 

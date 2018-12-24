@@ -200,7 +200,6 @@ namespace RenderOverlays
 		auto n_offscreen = fbDescFrag.DefineTemporaryAttachment(
 			AttachmentDesc {
 				Format::R8G8B8A8_UNORM, 1.f, 1.f, 0u,
-				TextureViewDesc::ColorLinear,
 				AttachmentDesc::DimensionsMode::OutputRelative, 
 				AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource });
 		auto n_mainColor = fbDescFrag.DefineAttachment(
