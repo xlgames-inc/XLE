@@ -11,7 +11,6 @@ namespace LevelEditorXLE
     public interface IXLEAssetService
     {
         string AsAssetName(Uri uri);
-        string StripExtension(string input);
         string GetBaseTextureName(string input);
         Uri GetBaseTextureName(Uri input);
     };
@@ -97,27 +96,6 @@ namespace LevelEditorXLE
             else
                 result = result.ToLower();
             return result;
-        }
-
-        public virtual string StripExtension(string input)
-        {
-            int dot = input.LastIndexOf('.');
-            int sep0 = input.LastIndexOf('/');
-            int sep1 = input.LastIndexOf('\\');
-            if (dot > 0 && dot > sep0 && dot > sep1)
-            {
-                    // don't remove the params (after ":") if they exist...
-                int param = input.IndexOf(':', dot);
-                if (param >= 0)
-                {
-                    return input.Substring(0, dot) + input.Substring(param);
-                }
-                else
-                {
-                    return input.Substring(0, dot);
-                }
-            }
-            return input;
         }
 
         public virtual string GetBaseTextureName(string input)

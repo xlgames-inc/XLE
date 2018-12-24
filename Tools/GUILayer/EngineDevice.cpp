@@ -95,6 +95,7 @@ namespace GUILayer
         _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
+		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
     }
 
     NativeEngineDevice::~NativeEngineDevice()

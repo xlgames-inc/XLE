@@ -77,6 +77,7 @@
     <ClCompile Include="..\MaterialLayer.cpp" />
     <ClCompile Include="..\DesignControlAdapter.cpp" />
     <ClCompile Include="..\PropertyDescriptorUtils.cpp" />
+    <ClCompile Include="..\ResourceFolderBridge.cpp" />
     <ClCompile Include="..\XLELayerUtils.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -116,6 +117,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\LevelEditorCore\LevelEditorCore.vs2010.csproj">
+      <Project>{8eaaa859-349e-4605-a0af-118017881212}</Project>
     </ProjectReference>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

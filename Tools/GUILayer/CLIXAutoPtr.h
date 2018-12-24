@@ -51,7 +51,9 @@ namespace clix
    
         !auto_ptr() /*throw()*/
         {
-            System::Diagnostics::Debugger::Log(0, "clix::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#if defined(_DEBUG)
+				System::Diagnostics::Debugger::Log(0, "clix::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#endif
             // delete p_;
             GUILayer::DelayedDeleteQueue::Add(System::IntPtr(p_), gcnew GUILayer::DeletionCallback(DeleteFn));
         }
@@ -167,7 +169,9 @@ namespace clix
 
         !shared_ptr() 
         {
-            System::Diagnostics::Debugger::Log(0, "clix::shared_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#if defined(_DEBUG)
+				System::Diagnostics::Debugger::Log(0, "clix::shared_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#endif
             // delete pPtr;
             GUILayer::DelayedDeleteQueue::Add(System::IntPtr(pPtr), gcnew GUILayer::DeletionCallback(DeleteFn));
         }

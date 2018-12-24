@@ -154,8 +154,8 @@ namespace Assets
 
 		FileSystemWalker();
 		~FileSystemWalker();
-		FileSystemWalker(FileSystemWalker&&) = default;
-		FileSystemWalker& operator=(FileSystemWalker&&) = default;
+		FileSystemWalker(FileSystemWalker&&);
+		FileSystemWalker& operator=(FileSystemWalker&&);
 	private:
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
@@ -241,7 +241,7 @@ namespace Assets
 		static IOReason	TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt);
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
-		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory);
+		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory = u(""));
 
 		static const std::shared_ptr<MountingTree>& GetMountingTree();
 		static void Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem);

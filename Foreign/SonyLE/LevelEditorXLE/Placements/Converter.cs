@@ -46,7 +46,7 @@ namespace LevelEditorXLE.Placements
                     {
                         var target = _resLister.ContextMenuTarget;
                         if (target == null) return false;
-                        var ext = System.IO.Path.GetExtension(target.LocalPath);
+                        var ext = System.IO.Path.GetExtension(target.IsAbsoluteUri ? target.LocalPath : target.OriginalString);
 
                         // we can only do this for model files, or model bookmarks
                         return IsModelExtension(ext) || IsModelBookmarkExtension(ext);
@@ -72,7 +72,7 @@ namespace LevelEditorXLE.Placements
                         // note --  we could use the IResourceService to do the type resolution here by
                         //          calling IResourceService.Load... However, if the load operation is
                         //          expensive, we might not always want to do it.
-                        var ext = System.IO.Path.GetExtension(target.LocalPath);
+                        var ext = System.IO.Path.GetExtension(target.IsAbsoluteUri ? target.LocalPath : target.OriginalString);
                         if (IsModelExtension(ext))
                         {
                             predicate = XLEPlacementObject.CreateSearchPredicate(target);

@@ -81,20 +81,21 @@ namespace Assets
 		// Our deferred constructor will wait for the completion of that compilation operation,
 		// and then construct the final asset from the result
 
-		auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
-		// std::basic_string<ResChar> init0 = initializers[0].AsString();
-
-		// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
-		// version number is bad). We could attempt to push this into a background thread, also
-
-		auto existingArtifact = marker->GetExistingAsset();
-		if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
-			bool doRecompile = false;
-			AutoConstructToFutureDirect(future, existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
-			if (!doRecompile) return;
-		}
-
 		TRY { 
+			auto marker = Internal::BeginCompileOperation(compileTypeCode, initializers, initializerCount);
+			// std::basic_string<ResChar> init0 = initializers[0].AsString();
+
+			// Attempt to load the existing asset immediately. In some cases we should fall back to a recompile (such as, if the
+			// version number is bad). We could attempt to push this into a background thread, also
+
+			auto existingArtifact = marker->GetExistingAsset();
+			if (existingArtifact && existingArtifact->GetDependencyValidation() && existingArtifact->GetDependencyValidation()->GetValidationIndex()==0) {
+				bool doRecompile = false;
+				auto asset = AutoConstructAsset<AssetType>(existingArtifact->GetBlob(), existingArtifact->GetDependencyValidation(), existingArtifact->GetRequestParameters());
+				future.SetAsset(std::move(asset), {});
+				if (!doRecompile) return;
+			}
+		
 			auto pendingCompile = marker->InvokeCompile();
 
 			// We must poll the compile operation every frame, and construct the asset when it is ready. Note that we're

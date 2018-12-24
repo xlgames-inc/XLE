@@ -6,7 +6,15 @@ using System.Text;
 using System.Xml;
 
 namespace LevelEditorCore
-{    
+{
+    public interface IOpaqueResourceFolder
+    {
+        IEnumerable<IOpaqueResourceFolder> Subfolders { get; }
+        IEnumerable<object> Resources { get; }
+        bool IsLeaf { get; }
+        string Name { get; }
+    }
+
     /// <summary>
     ///  Supported resourece (Asset) types.</summary>
     public static class ResourceTypes

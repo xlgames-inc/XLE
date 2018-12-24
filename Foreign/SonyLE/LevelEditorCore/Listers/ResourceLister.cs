@@ -32,7 +32,7 @@ namespace LevelEditorCore
         /// <summary>
         /// Sets the root resource folder, registers events and refreshes controls</summary>
         /// <param name="rootFolder">Resource folder</param>
-        public void SetRootFolder(IResourceFolder rootFolder)
+        public void SetRootFolder(IOpaqueResourceFolder rootFolder)
         {
 
             if (m_watcher == null)
@@ -432,7 +432,7 @@ namespace LevelEditorCore
 
         private void TreeSelectionChanged(object sender, EventArgs e)
         {
-            IResourceFolder selectedFolder = m_treeContext.LastSelected.As<IResourceFolder>();
+            IOpaqueResourceFolder selectedFolder = m_treeContext.LastSelected.As<IOpaqueResourceFolder>();
             if (selectedFolder != null)
             {
                 m_listContext.SelectedFolder = selectedFolder;
@@ -609,12 +609,15 @@ namespace LevelEditorCore
             m_thumbnailControl.Invalidate();
             if (m_treeContext != null)
             {
-                IResourceFolder currentAssetFolder = m_treeContext.GetLastSelected<IResourceFolder>();
+                IOpaqueResourceFolder currentAssetFolder = m_treeContext.GetLastSelected<IOpaqueResourceFolder>();
                 if (currentAssetFolder == null || !m_thumbnailControl.Visible)
                     return;
 
-                foreach (Uri resourceUri in currentAssetFolder.ResourceUris)
+                foreach (var resource in currentAssetFolder.Resources)
                 {
+                    Uri resourceUri = resource as Uri;
+                    if (resourceUri == null || !resourceUri.IsAbsoluteUri) continue;   // (can't call LocalPath on a relative Uri)
+
                     m_thumbnailService.ResolveThumbnail(resourceUri);
 
                     Bitmap tempThumbnail;
@@ -772,7 +775,7 @@ namespace LevelEditorCore
         #region private classes
         private class TreeViewContext : ITreeView, IItemView, IObservableContext, ISelectionContext
         {
-            public TreeViewContext(IResourceFolder rootFolder)
+            public TreeViewContext(IOpaqueResourceFolder rootFolder)
             {
                 m_rootFolder = rootFolder;
                 m_selection.Changing += TheSelectionChanging;
@@ -857,10 +860,10 @@ namespace LevelEditorCore
 
             public IEnumerable<object> GetChildren(object parent)
             {
-                IResourceFolder resourceFolder = parent.As<IResourceFolder>();
+                IOpaqueResourceFolder resourceFolder = parent.As<IOpaqueResourceFolder>();
                 if (resourceFolder != null)
                 {
-                    foreach (IResourceFolder childFolder in resourceFolder.Folders)
+                    foreach (IOpaqueResourceFolder childFolder in resourceFolder.Subfolders)
                         yield return childFolder;
                 }
             }
@@ -875,13 +878,13 @@ namespace LevelEditorCore
             /// <param name="info">Item info, to fill out</param>
             public virtual void GetInfo(object item, ItemInfo info)
             {
-                IResourceFolder resourceFolder = item.As<IResourceFolder>();
+                IOpaqueResourceFolder resourceFolder = item.As<IOpaqueResourceFolder>();
                 if (resourceFolder != null)
                 {
                     info.Label = resourceFolder.Name;
                     info.ImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.FolderImage);
-                    info.AllowLabelEdit = !resourceFolder.ReadOnlyName;
-                    info.IsLeaf = resourceFolder.Folders.Count == 0;
+                    info.AllowLabelEdit = false; //  !resourceFolder.ReadOnlyName;
+                    info.IsLeaf = resourceFolder.IsLeaf;
                 }
             }
             #endregion
@@ -925,7 +928,7 @@ namespace LevelEditorCore
 
             #endregion
 
-            public IResourceFolder RootFolder
+            public IOpaqueResourceFolder RootFolder
             {
                 get { return m_rootFolder; }
             }
@@ -942,7 +945,7 @@ namespace LevelEditorCore
             }
 
             private readonly AdaptableSelection<object> m_selection = new AdaptableSelection<object>();
-            private readonly IResourceFolder m_rootFolder;
+            private readonly IOpaqueResourceFolder m_rootFolder;
         }
         private class ListViewContext : IListView, IItemView, IObservableContext, ISelectionContext
         {
@@ -972,11 +975,11 @@ namespace LevelEditorCore
             {
                 get
                 {
-                    IResourceFolder resourceFolder = SelectedFolder;
+                    IOpaqueResourceFolder resourceFolder = SelectedFolder;
                     if (resourceFolder != null)
                     {
-                        foreach (Uri resourceUri in resourceFolder.ResourceUris)
-                            yield return resourceUri;
+                        foreach (object resource in resourceFolder.Resources)
+                            yield return resource;
                     }
                 }
             }
@@ -991,9 +994,11 @@ namespace LevelEditorCore
             /// <param name="info">Item info, to fill out</param>
             public virtual void GetInfo(object item, ItemInfo info)
             {
-                Uri resourceUri = (Uri)(item);
-                if (resourceUri != null)
+                Uri resourceUri = item as Uri;
+                if (resourceUri != null && resourceUri.IsAbsoluteUri)
                 {
+                    // note that we can't call LocalPath on a relative uri -- and therefore this is only valid for absolute uris
+
                     FileInfo fileInfo = new FileInfo(resourceUri.LocalPath);
 
                     info.Label = fileInfo.Name;
@@ -1023,10 +1028,22 @@ namespace LevelEditorCore
 
                     info.Properties = new object[] {
                         length,
-                        typeName, 
+                        typeName,
                         lastWriteTime
                     };
+                    return;
                 }
+
+                /*var desc = XLEBridgeUtils.Utils.GetDesc(item);
+                if (desc != null)
+                {
+                    info.Label = desc.NaturalName;
+                    info.Properties = new object[] {
+                        desc.SizeInBytes,
+                        "<native>",
+                        desc.ModificationTime
+                    };
+                }*/
             }
             #endregion
 
@@ -1128,7 +1145,7 @@ namespace LevelEditorCore
 
             #endregion
 
-            public IResourceFolder SelectedFolder
+            public IOpaqueResourceFolder SelectedFolder
             {
                 get { return m_selectedFolder; }
                 set
@@ -1149,7 +1166,7 @@ namespace LevelEditorCore
                 SelectionChanged.Raise(this, EventArgs.Empty);
             }
 
-            private IResourceFolder m_selectedFolder;
+            private IOpaqueResourceFolder m_selectedFolder;
             private readonly AdaptableSelection<object> m_selection = new AdaptableSelection<object>();
         }
         private class CustomListView : ListView

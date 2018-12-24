@@ -59,11 +59,12 @@ namespace LevelEditorXLE.AssetMan
             Uri resourceUri = _resourceLister.LastSelected;
             if (resourceUri == null) return;
 
-            var ext = Path.GetExtension(resourceUri.AbsolutePath);
+            string resourcePath = resourceUri.IsAbsoluteUri ? resourceUri.AbsolutePath : resourceUri.OriginalString;
+            var ext = Path.GetExtension(resourcePath);
             if (_fileExtensions.Where(x => string.Equals(x, ext, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() != null)
             {
                 // It's a model extension. Pass it through to the current settings object
-                var name = _assetService.StripExtension(_assetService.AsAssetName(resourceUri));
+                var name = _assetService.AsAssetName(resourceUri);
                 _settings.ModelName = name;
                 _settings.MaterialName = name;
                 _settings.Supplements = "";

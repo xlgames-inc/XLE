@@ -143,8 +143,7 @@ namespace LevelEditorXLE.Placements
             var resLister = sender as LevelEditorCore.ResourceLister;
             var resourceUri = resLister.LastSelected;
             if (resourceUri != null) {
-                _manipSettings._selectedModel = 
-                    _assetService.StripExtension(_assetService.AsAssetName(resourceUri));
+                _manipSettings._selectedModel = _assetService.AsAssetName(resourceUri);
                 _manipSettings._selectedMaterial = _manipSettings._selectedModel;
             }
         }

@@ -50,6 +50,16 @@ namespace XLEBridgeUtils
         static void DetachLibrary(GUILayer::EngineDevice^ device);
 
         static property GUILayer::EditorSceneManager^ GlobalSceneManager;
+
+		ref class FileDesc
+		{
+		public:
+			String^ NaturalName;
+			DateTime ModificationTime;
+			UInt64 SizeInBytes;
+		};
+		static FileDesc^ GetFileDesc(String^ file);
+		static FileDesc^ GetFileDesc(Uri^ file);
     };
 
     public ref class DomChangeInspector

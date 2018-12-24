@@ -512,7 +512,10 @@ namespace Assets
 				SplitPath<utf8>(std::vector<SplitPath<utf8>::Section>{&sections[1], sections.end()}).Rebuild(newPending);
 				nextStep.emplace_back(StartingFS{newPending, fs._internalPoint, fs._fs});
 			} else {
-				nextStep.emplace_back(StartingFS{{}, fs._internalPoint + u("/") + subDirectory, fs._fs});
+				auto newInternalPoint = fs._internalPoint;
+				if (!newInternalPoint.empty()) newInternalPoint += u("/");
+				newInternalPoint += subDirectory;
+				nextStep.emplace_back(StartingFS{{}, newInternalPoint, fs._fs});
 			}
 		}
 
@@ -530,6 +533,17 @@ namespace Assets
 	}
 
 	FileSystemWalker::~FileSystemWalker() {}
+
+	FileSystemWalker::FileSystemWalker(FileSystemWalker&& moveFrom)
+	: _pimpl(std::move(moveFrom._pimpl))
+	{
+	}
+	FileSystemWalker& FileSystemWalker::operator=(FileSystemWalker&& moveFrom)
+	{
+		_pimpl.reset();
+		_pimpl = std::move(moveFrom._pimpl);
+		return *this;
+	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 	FileSystemWalker FileSystemWalker::DirectoryIterator::get() const

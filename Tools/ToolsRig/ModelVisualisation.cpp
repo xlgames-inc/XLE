@@ -398,9 +398,11 @@ namespace ToolsRig
         RenderCore::Techniques::ParsingContext& parserContext)
     {
         using namespace RenderCore;
+		parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
 		if (_pimpl->_settings->_drawWireframe || !_pimpl->_settings->_drawNormals) {
+			AttachmentDesc colorLDRDesc = AsAttachmentDesc(renderTarget->GetDesc());
 			std::vector<FrameBufferDesc::Attachment> attachments {
-				{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+				{ Techniques::AttachmentSemantics::ColorLDR, colorLDRDesc },
 				{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
 			};
 			SubpassDesc mainPass;
