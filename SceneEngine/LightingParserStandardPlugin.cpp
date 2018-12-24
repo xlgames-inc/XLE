@@ -77,11 +77,15 @@ namespace SceneEngine
                                                     LightingResolveContext& resolveContext)
    {
         if (Tweakable("DoScreenSpaceReflections", false)) {
+			bool precisionTargets = Tweakable("PrecisionTargets", false);
+			auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
             auto& mainTargets = lightingParserContext.GetMainTargets();
             resolveContext._screenSpaceReflectionsResult = ScreenSpaceReflections_BuildTextures(
                 metalContext, parserContext,
                 unsigned(mainTargets.GetDimensions()[0]), unsigned(mainTargets.GetDimensions()[1]), resolveContext.UseMsaaSamplers(),
-                mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter),
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse, {diffuseAspect}), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter),
                 mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth),
 				lightingParserContext._delegate->GetGlobalLightingDesc());
         }

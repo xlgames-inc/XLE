@@ -146,7 +146,8 @@ namespace SceneEngine
         LightingParserContext& lightingParserContext, 
         LightingResolveResources& resolveRes,
 		Techniques::RenderPassFragment& rpi,
-        bool doSampleFrequencyOptimisation)
+        bool doSampleFrequencyOptimisation,
+		bool precisionTargets)
     {
         const unsigned samplingCount = lightingParserContext._sampleCount;
 
@@ -168,9 +169,10 @@ namespace SceneEngine
 			TextureDesc::Dimensionality::Undefined, 
 			TextureViewDesc::Flags::JustDepth};
 
+		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(
 			MakeResourceList(
-				*rpi.GetInputAttachmentSRV(0), // IMainTargets::GBufferDiffuse),
+				*rpi.GetInputAttachmentSRV(0, {diffuseAspect}), // IMainTargets::GBufferDiffuse),
 				*rpi.GetInputAttachmentSRV(1), // IMainTargets::GBufferNormals),
 				*rpi.GetInputAttachmentSRV(2), // IMainTargets::GBufferParameters),
 				Metal::ShaderResourceView(), 
@@ -297,7 +299,7 @@ namespace SceneEngine
         const unsigned samplingCount = lightingParserContext.GetMainTargets().GetSamplingCount();
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
-        // bool precisionTargets = Tweakable("PrecisionTargets", false);
+        bool precisionTargets = Tweakable("PrecisionTargets", false);
         // auto sampling = TextureSamples::Create(
         //     uint8(std::max(mainTargets.GetQualitySettings()._samplingCount, 1u)), 
         //     uint8(mainTargets.GetQualitySettings()._samplingQuality));
@@ -396,7 +398,7 @@ namespace SceneEngine
             rpi.NextSubpass();      // (in the second subpass the depth buffer is only used for stencil)
 
             // set light resolve state (note that we have to bind the depth buffer as a shader input here)
-            SetupStateForDeferredLightingResolve(metalContext, lightingParserContext, resolveRes, rpi, doSampleFrequencyOptimisation);
+            SetupStateForDeferredLightingResolve(metalContext, lightingParserContext, resolveRes, rpi, doSampleFrequencyOptimisation, precisionTargets);
             auto resourceBindRes = LightingParser_BindLightResolveResources(metalContext, parsingContext, delegate);
             MetalStubs::GetGlobalNumericUniforms(metalContext, ShaderStage::Pixel).Bind(MakeResourceList(4, resolveRes._shadowComparisonSampler, resolveRes._shadowDepthSampler));
             metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, lightingResolveContext._ambientOcclusionResult));
@@ -521,7 +523,7 @@ namespace SceneEngine
                     context.Bind(Techniques::CommonResources()._blendOneSrcAlpha);
                     context.Bind(Techniques::CommonResources()._dssDisable);
                     context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(
-                        mainTargets.GetSRV(IMainTargets::GBufferDiffuse),
+						mainTargets.GetSRV(IMainTargets::GBufferDiffuse, {diffuseAspect}),
                         mainTargets.GetSRV(IMainTargets::GBufferNormals),
                         mainTargets.GetSRV(IMainTargets::GBufferParameters),
                         Metal::ShaderResourceView(), 
@@ -700,7 +702,7 @@ namespace SceneEngine
 		AttachmentDesc lightResolveAttachmentDesc =
 			{	(!precisionTargets) ? Format::R16G16B16A16_FLOAT : Format::R32G32B32A32_FLOAT,
 				1.f, 1.f, 0u,
-				TextureViewDesc::Aspect::ColorLinear,AttachmentDesc::DimensionsMode::OutputRelative,
+				AttachmentDesc::DimensionsMode::OutputRelative,
 				AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget };
 		auto lightResolveTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR, lightResolveAttachmentDesc);
 		auto depthTarget = _fragment.DefineAttachment(Techniques::AttachmentSemantics::MultisampleDepth);
@@ -724,24 +726,27 @@ namespace SceneEngine
 			// In the second subpass, the depth buffer is bound as stencil-only (so we can read the depth values as shader inputs)
 		SubpassDesc secondSubpass {
 			{AttachmentViewDesc { lightResolveTarget, LoadStore::Retain, LoadStore::Retain } }, 
-			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::DontCare, justStencilWindow } };
+			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justStencilWindow } };
+		auto gbufferStore = LoadStore::Retain;	// (technically only need retain when we're going to use these for debugging)
+		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
 		secondSubpass._input.push_back(
 			AttachmentViewDesc {
 				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferDiffuse),
-				LoadStore::Retain, LoadStore::DontCare
+				LoadStore::Retain, gbufferStore,
+				{diffuseAspect}
 			});
 		secondSubpass._input.push_back(
 			AttachmentViewDesc {
 				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferNormal),
-				LoadStore::Retain, LoadStore::DontCare
+				LoadStore::Retain, gbufferStore
 			});
 		secondSubpass._input.push_back(
 			AttachmentViewDesc {
 				_fragment.DefineAttachment(Techniques::AttachmentSemantics::GBufferParameter),
-				LoadStore::Retain, LoadStore::DontCare
+				LoadStore::Retain, gbufferStore
 			});
 		secondSubpass._input.push_back(
-			AttachmentViewDesc { depthTarget, LoadStore::Retain, LoadStore::DontCare, justDepthWindow });
+			AttachmentViewDesc { depthTarget, LoadStore::Retain_RetainStencil, LoadStore::Retain_RetainStencil, justDepthWindow });
 
 		_fragment.AddSubpass(std::move(firstSubpass));
 		_fragment.AddSubpass(std::move(secondSubpass));

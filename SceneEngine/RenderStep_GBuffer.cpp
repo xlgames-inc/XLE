@@ -102,12 +102,14 @@ namespace SceneEngine
 				AttachmentDesc::DimensionsMode::OutputRelative,
                 AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::ShaderResource | AttachmentDesc::Flags::RenderTarget });
 
+		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
+
         if (gbufferType == 1) {
 
 			_createGBuffer.AddSubpass(
 				SubpassDesc {
 					std::vector<AttachmentViewDesc> {
-						{ diffuse, LoadStore::Clear, LoadStore::Retain },
+						{ diffuse, LoadStore::Clear, LoadStore::Retain, {diffuseAspect} },
 						{ normal, LoadStore::Clear, LoadStore::Retain },
 						{ parameter, LoadStore::Clear, LoadStore::Retain }
 					},
@@ -119,7 +121,7 @@ namespace SceneEngine
 			_createGBuffer.AddSubpass(
 				SubpassDesc {
 					std::vector<AttachmentViewDesc> {
-						{ diffuse, LoadStore::DontCare, LoadStore::Retain },
+						{ diffuse, LoadStore::DontCare, LoadStore::Retain, {diffuseAspect} },
 						{ normal, LoadStore::DontCare, LoadStore::Retain },
 					},
 					{msDepth, LoadStore::Clear_ClearStencil, LoadStore::Retain}

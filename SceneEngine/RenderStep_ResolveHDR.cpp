@@ -27,7 +27,7 @@ namespace SceneEngine
 		auto ldrOutput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorLDR);
 
 		SubpassDesc subpass;
-		subpass._output.push_back({ ldrOutput, LoadStore::DontCare, LoadStore::Retain });
+		subpass._output.push_back({ ldrOutput, LoadStore::DontCare, LoadStore::Retain, {TextureViewDesc::Aspect::ColorSRGB} });
 		subpass._input.push_back({ hdrInput, LoadStore::Retain_RetainStencil, LoadStore::DontCare });
 		_fragment.AddSubpass(std::move(subpass));
 	}
@@ -111,10 +111,10 @@ namespace SceneEngine
 
 		auto* targetDesc = rpi.GetOutputAttachmentDesc(0);
 		assert(targetDesc);
-		bool hardwareSRGBEnabled = 
-				(targetDesc->_defaultAspect == TextureViewDesc::ColorSRGB)
-			||	(HasLinearAndSRGBFormats(targetDesc->_format) && AsSRGBFormat(targetDesc->_format) == targetDesc->_format)
-			;
+		// This parameter should be tied to whether the texture view for the output texture has SRGB enabled
+		// or not (ie, the hardware is writing out SRGB, rather than linear colors).
+		// We're always writing to SRGB enabled output view currently
+		bool hardwareSRGBEnabled = true;
         ToneMap_Execute(
             threadContext, parsingContext, luminanceResult, toneMapSettings, 
 			hardwareSRGBEnabled,

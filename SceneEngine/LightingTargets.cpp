@@ -568,9 +568,12 @@ namespace SceneEngine
             context.Bind(debuggingShader);
         }
 
+		bool precisionTargets = Tweakable("PrecisionTargets", false);
+		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
+
         context.GetNumericUniforms(ShaderStage::Pixel).Bind(
 			MakeResourceList(5, 
-				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse, {diffuseAspect}), 
 				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), 
 				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter), 
 				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth)));

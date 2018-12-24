@@ -30,6 +30,7 @@
 #include "../RenderCore/IAnnotator.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
+#include "../ConsoleRig/Console.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/FunctionUtils.h"
 
@@ -312,7 +313,14 @@ namespace SceneEngine
         context.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr); // (unbind depth)
 #endif
 
-        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(5, mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter), mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth)));
+		bool precisionTargets = Tweakable("PrecisionTargets", false);
+		auto diffuseAspect = (!precisionTargets) ? TextureViewDesc::Aspect::ColorSRGB : TextureViewDesc::Aspect::ColorLinear;
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(
+			MakeResourceList(5, 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferDiffuse, {diffuseAspect}), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferNormal), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::GBufferParameter), 
+				mainTargets.GetSRV(parserContext, Techniques::AttachmentSemantics::MultisampleDepth)));
         const bool useMsaaSamplers = lightingParserContext._sampleCount > 1;
 
         StringMeld<256> defines;
