@@ -593,7 +593,7 @@ namespace RenderCore { namespace Techniques
     {
         return
             GetArrayCount(lhs) == GetArrayCount(rhs)
-            && (lhs._format == rhs._format || lhs._format == Format::Unknown || rhs._format == Format::Unknown)
+            && (AsTypelessFormat(lhs._format) == AsTypelessFormat(rhs._format) || lhs._format == Format::Unknown || rhs._format == Format::Unknown)
             && DimsEqual(lhs, rhs, props)
             ;
     }
@@ -697,6 +697,7 @@ namespace RenderCore { namespace Techniques
         }
 
         existingBinding->_desc = AsAttachmentDesc(resource->GetDesc());
+		assert(existingBinding->_desc._format != Format::Unknown);
         existingBinding->_resource = resource;
     }
 

@@ -141,7 +141,7 @@ namespace RenderCore { namespace Techniques
     {
             // parse initialiser for flags
 		auto splitter = MakeFileNameSplitter(initializer);
-        DecodedInitializer init(splitter.Parameters());
+        DecodedInitializer init(splitter);
 
 		assert(!splitter.File().IsEmpty());
 

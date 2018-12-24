@@ -35,6 +35,7 @@
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/BasicDelegates.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/ObjectFactory.h"
@@ -285,7 +286,7 @@ namespace ToolsRig
     };
 
     void ModelVisLayer::Render(
-        RenderCore::IThreadContext& context,
+        RenderCore::IThreadContext& threadContext,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
@@ -332,16 +333,22 @@ namespace ToolsRig
         auto& screenshot = Tweakable("Screenshot", 0);
         if (screenshot) {
             PlatformRig::TiledScreenshot(
-                context, parserContext,
+                threadContext, parserContext,
                 sceneParser, AsCameraDesc(*_pimpl->_settings->_camera),
                 qualSettings, UInt2(screenshot, screenshot));
             screenshot = 0;
         }
 
-        LightingParser_ExecuteScene(
-            context, renderTarget, parserContext, 
+        auto lightingParserContext = LightingParser_ExecuteScene(
+            threadContext, renderTarget, parserContext, 
 			sceneParser, AsCameraDesc(*_pimpl->_settings->_camera),
             qualSettings);
+
+		// Draw debugging overlays -- 
+		{
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+			SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
+		}
     }
 
     void ModelVisLayer::SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings)
