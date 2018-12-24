@@ -287,6 +287,17 @@ namespace Assets
 		_pimpl->_hasAtLeastOneMount = !_pimpl->_mounts.empty();
 	}
 
+	IFileSystem* MountingTree::GetMountedFileSystem(MountID mountId)
+	{
+		ScopedLock(_pimpl->_mountsLock);
+		auto i = std::find_if(
+			_pimpl->_mounts.begin(), _pimpl->_mounts.end(),
+			[mountId](const Pimpl::Mount& m) { return m._id == mountId; });
+		if (i != _pimpl->_mounts.end())
+			return i->_fileSystem.get();
+		return nullptr;
+	}
+
 	void MountingTree::SetAbsolutePathMode(AbsolutePathMode newMode)
 	{
 		_pimpl->_absolutePathMode = newMode;
@@ -317,13 +328,13 @@ namespace Assets
 					std::vector<SplitPath<utf8>::Section>{
 						&splitInitial.GetSections()[minCount],
 						splitInitial.GetSections().end()}}.Rebuild(remainingPath);
-				result.emplace_back(FileSystemWalker::StartingFS{{}, remainingPath, std::move(searchingFs)});
+				result.emplace_back(FileSystemWalker::StartingFS{{}, remainingPath, std::move(searchingFs), mount._id});	// (note that we use the mount id as the filesystem ie, due to behaviour in MainFileSystem::GetFileSystem)
 			} else {
 				SplitPath<utf8>{
 					std::vector<SplitPath<utf8>::Section>{
 						&mount._mountPoint.GetSections()[minCount],
 						mount._mountPoint.GetSections().end()}}.Rebuild(remainingPath);
-				result.emplace_back(FileSystemWalker::StartingFS{remainingPath, {}, std::move(searchingFs)});
+				result.emplace_back(FileSystemWalker::StartingFS{remainingPath, {}, std::move(searchingFs), mount._id});
 			}
 		}
 

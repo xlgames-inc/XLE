@@ -27,7 +27,7 @@ namespace RenderingInterop
                 // it will switch back and forth between relative and absolute
                 // filenames.
             IResource resource = null;
-            string fileName = uri.LocalPath;
+            string fileName = uri.IsAbsoluteUri ? uri.LocalPath : uri.OriginalString;
 
             if (fileName.Substring(fileName.Length-6) == "<model")
             {

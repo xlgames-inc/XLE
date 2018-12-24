@@ -56,15 +56,13 @@ namespace LevelEditorXLE.AssetMan
 
         private void resourceLister_SelectionChanged(object sender, EventArgs e)
         {
-            Uri resourceUri = _resourceLister.LastSelected;
-            if (resourceUri == null) return;
+            var resourceDesc = _resourceLister.LastSelected;
+            if (!resourceDesc.HasValue) return;
 
-            string resourcePath = resourceUri.IsAbsoluteUri ? resourceUri.AbsolutePath : resourceUri.OriginalString;
-            var ext = Path.GetExtension(resourcePath);
-            if (_fileExtensions.Where(x => string.Equals(x, ext, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() != null)
+            if ((resourceDesc.Value.Types & (uint)ResourceTypeFlags.Model) != 0)
             {
                 // It's a model extension. Pass it through to the current settings object
-                var name = _assetService.AsAssetName(resourceUri);
+                var name = _assetService.AsAssetName(resourceDesc.Value);
                 _settings.ModelName = name;
                 _settings.MaterialName = name;
                 _settings.Supplements = "";

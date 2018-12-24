@@ -2,8 +2,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.ComponentModel.Composition;
 using System.Text;
 using System.Xml;
+using System.IO;
 
 namespace LevelEditorCore
 {
@@ -13,6 +15,74 @@ namespace LevelEditorCore
         IEnumerable<object> Resources { get; }
         bool IsLeaf { get; }
         string Name { get; }
+    }
+
+    [Flags]
+    public enum ResourceTypeFlags : uint
+    {
+        Model = 1 << 0,
+        Animation = 1 << 1,
+        Material = 1 << 2,
+        Texture = 1 << 3,
+        Skeleton = 1 << 4,
+    }
+
+    public struct ResourceDesc
+    {
+        public string ShortName;
+        public string NaturalName;
+        public string Filesystem;
+        public UInt64 SizeInBytes;
+        public uint Types;                  // ResourceTypeFlags
+        public DateTime ModificationTime;
+    };
+
+    public interface IResourceQueryService
+    {
+        ResourceDesc? GetDesc(object identifier);
+    }
+
+    [Export(typeof(IResourceQueryService))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class ResourceQueryService : IResourceQueryService
+    {
+        public virtual ResourceDesc? GetDesc(object identifier)
+        {
+            Uri resourceUri = identifier as Uri;
+            if (resourceUri != null && resourceUri.IsAbsoluteUri)
+            {
+                // note that we can't call LocalPath on a relative uri -- and therefore this is only valid for absolute uris
+
+                FileInfo fileInfo = new FileInfo(resourceUri.LocalPath);
+
+                Sce.Atf.Shell32.SHFILEINFO shfi = new Sce.Atf.Shell32.SHFILEINFO();
+                uint flags = Sce.Atf.Shell32.SHGFI_TYPENAME | Sce.Atf.Shell32.SHGFI_USEFILEATTRIBUTES;
+                Sce.Atf.Shell32.SHGetFileInfo(fileInfo.FullName,
+                    Sce.Atf.Shell32.FILE_ATTRIBUTE_NORMAL,
+                    ref shfi,
+                    (uint)System.Runtime.InteropServices.Marshal.SizeOf(shfi),
+                    flags);
+
+                ResourceDesc result;
+                string typeName = shfi.szTypeName;
+                result.NaturalName = resourceUri.LocalPath;
+                result.ShortName = Path.GetFileName(result.NaturalName);
+                result.Filesystem = "RawFS";
+                result.Types = 0;
+                try
+                {
+                    result.SizeInBytes = (ulong)fileInfo.Length;
+                    result.ModificationTime = fileInfo.LastWriteTime;
+                }
+                catch (IOException)
+                {
+                    result.SizeInBytes = 0;
+                    result.ModificationTime = new DateTime();
+                }
+                return result;
+            }
+            return null;
+        }
     }
 
     /// <summary>

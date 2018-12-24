@@ -21,6 +21,8 @@ namespace Assets
 	class IFileInterface;
 	using IFileMonitor = Utility::OnChangeCallback;
 	using Blob = std::shared_ptr<std::vector<uint8_t>>;
+	using FileSystemId = unsigned;
+	static const FileSystemId FileSystemId_Invalid = ~0u;
 
 	static const FileShareMode::BitField FileShareMode_Default = FileShareMode::Read;
 
@@ -121,7 +123,7 @@ namespace Assets
 			struct Value
 			{
 				IFileSystem::Marker _marker;
-				std::shared_ptr<IFileSystem> _fs;
+				FileSystemId _fs;
 			};
 			Value get() const;
 			Value operator*() const { return get(); }
@@ -165,6 +167,7 @@ namespace Assets
 			std::basic_string<utf8> _pendingDirectories;
 			std::basic_string<utf8> _internalPoint;
 			std::shared_ptr<ISearchableFileSystem> _fs;
+			FileSystemId _fsId = FileSystemId_Invalid;
 		};
 
 		FileSystemWalker(std::vector<StartingFS>&& fileSystems);
@@ -241,12 +244,13 @@ namespace Assets
 		static IOReason	TryMonitor(StringSection<utf16> filename, const std::shared_ptr<IFileMonitor>& evnt);
 		static FileDesc	TryGetDesc(StringSection<utf16> filename);
 
+		static IFileSystem* GetFileSystem(FileSystemId id);
+
 		static FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory = u(""));
 
 		static const std::shared_ptr<MountingTree>& GetMountingTree();
 		static void Init(const std::shared_ptr<MountingTree>& mountingTree, const std::shared_ptr<IFileSystem>& defaultFileSystem);
         static void Shutdown();
-
 
 		static IOReason	TryOpen(std::unique_ptr<IFileInterface>& result, StringSection<char> filename, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default)
 			{ return TryOpen(result, MakeStringSection((const utf8*)filename.begin(), (const utf8*)filename.end()), openMode, shareMode); }

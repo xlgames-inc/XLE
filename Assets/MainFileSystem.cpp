@@ -241,6 +241,11 @@ namespace Assets
 		return result;
 	}
 
+	IFileSystem* MainFileSystem::GetFileSystem(FileSystemId id)
+	{
+		return s_mainMountingTree->GetMountedFileSystem(id);		// in all current cases the FileSystemId overlaps with the MountId in s_mainMountingTree
+	}
+
 	FileSystemWalker MainFileSystem::BeginWalk(StringSection<utf8> initialSubDirectory)
 	{
 		return s_mainMountingTree->BeginWalk(initialSubDirectory);
@@ -510,12 +515,12 @@ namespace Assets
 				auto sections = splitPath.GetSections();
 				utf8 newPending[MaxPath];
 				SplitPath<utf8>(std::vector<SplitPath<utf8>::Section>{&sections[1], sections.end()}).Rebuild(newPending);
-				nextStep.emplace_back(StartingFS{newPending, fs._internalPoint, fs._fs});
+				nextStep.emplace_back(StartingFS{newPending, fs._internalPoint, fs._fs, fs._fsId});
 			} else {
 				auto newInternalPoint = fs._internalPoint;
 				if (!newInternalPoint.empty()) newInternalPoint += u("/");
 				newInternalPoint += subDirectory;
-				nextStep.emplace_back(StartingFS{{}, newInternalPoint, fs._fs});
+				nextStep.emplace_back(StartingFS{{}, newInternalPoint, fs._fs, fs._fsId});
 			}
 		}
 
@@ -566,7 +571,7 @@ namespace Assets
 		auto fsIdx = _helper->_pimpl->_files[_idx]._filesystemIndex;
 		return {
 			_helper->_pimpl->_files[_idx]._marker,
-			std::dynamic_pointer_cast<IFileSystem>(_helper->_pimpl->_fileSystems[fsIdx]._fs)};
+			_helper->_pimpl->_fileSystems[fsIdx]._fsId};
 	}
 
 	FileDesc FileSystemWalker::FileIterator::Desc() const

@@ -174,6 +174,23 @@ namespace Assets
 		Throw(::Exceptions::BasicLabel("Could not find compiler to prepare asset with type (0x%llx) and initializer (%s)", typeCode, (initializerCount > 0)?initializers[0].AsString().c_str():"<<none>>"));
 	}
 
+	std::vector<uint64_t> CompilerSet::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
+	{
+		std::vector<uint64_t> result;
+
+		ScopedLock(_pimpl->_compilersLock);
+		for (const auto&c:_pimpl->_compilers) {
+			auto types = c->GetTypesForAsset(initializers, initializerCount);
+			result.reserve(result.size() + types.size());
+			for (auto t:types) {
+				if (std::find(result.begin(), result.end(), t) == result.end())
+					result.push_back(t);
+			}
+		}
+
+		return result;
+	}
+
 	void CompilerSet::StallOnPendingOperations(bool cancelAll)
 	{
 		ScopedLock(_pimpl->_compilersLock);

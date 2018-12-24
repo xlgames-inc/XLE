@@ -266,6 +266,11 @@ namespace RenderCore { namespace Assets
         return std::make_shared<MatCompilerMarker>(materialFilename.AsString(), modelFilename.AsString(), *::Assets::Services::GetAsyncMan().GetIntermediateStore());
     }
 
+	std::vector<uint64_t> MaterialScaffoldCompiler::GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
 	void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) {}
 
 	MaterialScaffoldCompiler::MaterialScaffoldCompiler()

@@ -11,6 +11,7 @@ namespace LevelEditorXLE
     public interface IXLEAssetService
     {
         string AsAssetName(Uri uri);
+        string AsAssetName(LevelEditorCore.ResourceDesc desc);
         string GetBaseTextureName(string input);
         Uri GetBaseTextureName(Uri input);
     };
@@ -96,6 +97,11 @@ namespace LevelEditorXLE
             else
                 result = result.ToLower();
             return result;
+        }
+
+        public virtual string AsAssetName(LevelEditorCore.ResourceDesc desc)
+        {
+            return "data/" + desc.NaturalName;
         }
 
         public virtual string GetBaseTextureName(string input)

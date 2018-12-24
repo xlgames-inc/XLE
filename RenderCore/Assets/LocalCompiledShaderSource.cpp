@@ -507,6 +507,11 @@ namespace RenderCore { namespace Assets
         return std::make_shared<Marker>(initializers[0], shaderId, definesTable, *::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
+	std::vector<uint64_t> LocalCompiledShaderSource::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
         StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>

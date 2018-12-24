@@ -4,13 +4,18 @@
 
 #include "../../Tools/GUILayer/MarshalString.h"
 #include "../../Tools/GUILayer/CLIXAutoPtr.h"
+#include "../../../RenderCore/Assets/ModelScaffold.h"
+#include "../../../RenderCore/Assets/RawMaterial.h"
 #include "../../../Assets/IFileSystem.h"
+#include "../../../Assets/AssetServices.h"
+#include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/Streams/PathUtils.h"
 #include "../../../Utility/Conversion.h"
 
 using namespace System;
 using namespace System::Collections::Generic;
+using namespace System::ComponentModel::Composition;
 
 #pragma warning(disable:4505) // 'XLEBridgeUtils::Marshal': unreferenced local function has been removed)
 
@@ -111,15 +116,15 @@ namespace XLEBridgeUtils
 	{
 		auto result = gcnew List<Object^>();
 		for (auto i=_walker->begin_files(); i!=_walker->end_files(); ++i) {
-			// auto splitter = MakeFileNameSplitter(i.Desc()._naturalName);
-			// result->Add(gcnew Uri(Marshal(splitter.FileAndExtension())));
-			Uri^ newUri = nullptr;
-			auto marshaledName = Marshal(i.Desc()._naturalName);
-			if (Uri::TryCreate(marshaledName, UriKind::Relative, newUri)) {
-				result->Add(newUri);
-			} else {
-				Log(Warning) << "Could not create URI for the string: " << Conversion::Convert<std::string>(i.Desc()._naturalName) << std::endl;
+			auto markerAndFS = *i;
+			static_assert(sizeof(decltype(markerAndFS._marker)::value_type)==1, "Math here assumes markers are vectors of byte types");
+			auto res = gcnew array<uint8_t>(int(markerAndFS._marker.size() + sizeof(::Assets::FileSystemId)));
+			{
+				pin_ptr<uint8_t> pinnedBytes = &res[0];
+				*(::Assets::FileSystemId*)pinnedBytes = markerAndFS._fs;
+				memcpy(&pinnedBytes[sizeof(::Assets::FileSystemId)], markerAndFS._marker.data(), markerAndFS._marker.size());
 			}
+			result->Add(res);
 		}
 		return result;
 	}
@@ -148,6 +153,62 @@ namespace XLEBridgeUtils
 	{
 		delete _walker;
 	}
+
+	[Export(LevelEditorCore::IResourceQueryService::typeid)]
+    [PartCreationPolicy(CreationPolicy::Shared)]
+	public ref class ResourceQueryService : public LevelEditorCore::ResourceQueryService
+	{
+	public:
+		virtual Nullable<LevelEditorCore::ResourceDesc> GetDesc(System::Object^ input) override
+		{
+			array<byte>^ markerAndFS = dynamic_cast<array<byte>^>(input);
+			if (!markerAndFS) 
+				return LevelEditorCore::ResourceQueryService::GetDesc(input);
+
+			::Assets::IFileSystem::Marker marker;
+			::Assets::IFileSystem* fs = nullptr;
+			{
+				pin_ptr<uint8_t> pinnedBytes = &markerAndFS[0];
+				auto fsId = *(const ::Assets::FileSystemId*)pinnedBytes;
+				fs = ::Assets::MainFileSystem::GetFileSystem(fsId);
+				if (!fs)
+					return LevelEditorCore::ResourceQueryService::GetDesc(input);
+
+				auto markerSize = markerAndFS->Length - sizeof(::Assets::FileSystemId);
+				marker.resize(markerSize);
+				memcpy(marker.data(), &pinnedBytes[sizeof(::Assets::FileSystemId)], markerSize);
+			}
+
+			auto desc = fs->TryGetDesc(marker);
+			if (desc._state != ::Assets::FileDesc::State::Normal)
+				return LevelEditorCore::ResourceQueryService::GetDesc(input);
+
+			LevelEditorCore::ResourceDesc result;
+			result.NaturalName = Marshal(desc._naturalName);
+			auto naturalNameSplitter = MakeFileNameSplitter(desc._naturalName);
+			result.ShortName = Marshal(naturalNameSplitter.FileAndExtension());
+			result.ModificationTime = DateTime::FromFileTime(desc._modificationTime);
+			result.SizeInBytes = desc._size;
+			result.Filesystem = "IFileSystem";
+
+			// figure out what types we can compile this into
+			auto temp = naturalNameSplitter.FileAndExtension().Cast<char>();
+			auto types = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetTypesForAsset(&temp, 1);
+			result.Types = 0u;
+			for (auto t:types) {
+				if (t == RenderCore::Assets::ModelScaffold::CompileProcessType) {
+					result.Types |= (uint)LevelEditorCore::ResourceTypeFlags::Model;
+				} else if (t == RenderCore::Assets::AnimationSetScaffold::CompileProcessType) {
+					result.Types |= (uint)LevelEditorCore::ResourceTypeFlags::Animation;
+				} else if (t == RenderCore::Assets::SkeletonScaffold::CompileProcessType) {
+					result.Types |= (uint)LevelEditorCore::ResourceTypeFlags::Skeleton;
+				} else if (t == RenderCore::Assets::RawMatConfigurations::CompileProcessType) {
+					result.Types |= (uint)LevelEditorCore::ResourceTypeFlags::Material;
+				}
+			}
+			return result;
+		}
+	};
 
 
 }

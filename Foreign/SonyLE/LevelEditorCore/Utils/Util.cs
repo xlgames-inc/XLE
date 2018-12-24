@@ -120,7 +120,7 @@ namespace LevelEditorCore
                 {
                     foreach (string file in files)
                     {
-                        IResource resource = resourceService.Load(new Uri(file));
+                        IResource resource = resourceService.Load(new Uri(file, UriKind.Relative));
                         if (resource != null)
                             yield return resource; 
                     }

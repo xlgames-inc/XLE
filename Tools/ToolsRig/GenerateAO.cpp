@@ -921,6 +921,11 @@ namespace ToolsRig
         return std::make_shared<Marker>(modelFilename, materialFilename, typeCode, *::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
 
+	std::vector<uint64_t> AOSupplementCompiler::GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
     void AOSupplementCompiler::StallOnPendingOperations(bool)
     {
         // Any remaining queued PollingOp's in the async man will be 

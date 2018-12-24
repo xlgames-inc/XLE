@@ -12,6 +12,7 @@
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/AssetServices.h"
 #include "../../ConsoleRig/LogStartup.h"
 #include "../../ConsoleRig/GlobalServices.h"
 
@@ -123,27 +124,6 @@ namespace XLEBridgeUtils
         OnActiveContextChanged(sender);
     }
 
-	static String^ Marshal(const std::basic_string<utf8>& str)
-	{
-		return clix::detail::StringMarshaler<clix::detail::NetFromCxx>::marshalCxxString<clix::E_UTF8>(AsPointer(str.begin()), AsPointer(str.end()));
-	}
-
-	Utils::FileDesc^ Utils::GetFileDesc(String^ file)
-	{
-		auto desc = ::Assets::MainFileSystem::TryGetDesc(MakeStringSection(clix::marshalString<clix::E_UTF8>(file)).Cast<utf8>());
-		if (desc._state != ::Assets::FileDesc::State::Normal) return nullptr;
-		FileDesc^ result = gcnew FileDesc;
-		result->NaturalName = Marshal(desc._naturalName);
-		result->ModificationTime = DateTime::FromFileTime(desc._modificationTime);
-		result->SizeInBytes = desc._size;
-		return result;
-	}
-
-	Utils::FileDesc^ Utils::GetFileDesc(Uri^ file)
-	{
-		return GetFileDesc(file->OriginalString);
-	}
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if 0
@@ -237,15 +217,18 @@ namespace XLEBridgeUtils
 
 
 	ConsoleRig::AttachablePtr<::ConsoleRig::GlobalServices> s_attachRef;
+	ConsoleRig::AttachablePtr<::Assets::Services> s_attachRef1;
 
     void Utils::AttachLibrary(GUILayer::EngineDevice^ device)
     {
 		ConsoleRig::CrossModule::SetInstance(*device->GetNative().GetCrossModule());
 		s_attachRef = ConsoleRig::GetAttachablePtr<::ConsoleRig::GlobalServices>();
+		s_attachRef1 = ConsoleRig::GetAttachablePtr<::Assets::Services>();
     }
 
     void Utils::DetachLibrary(GUILayer::EngineDevice^ device)
     {
+		s_attachRef1.reset();
 		s_attachRef.reset();
 		ConsoleRig::CrossModule::ReleaseInstance();
     }

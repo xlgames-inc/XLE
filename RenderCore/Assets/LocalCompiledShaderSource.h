@@ -41,6 +41,7 @@ namespace RenderCore { namespace Assets
     public:
         std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
             uint64 typeCode, const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		std::vector<uint64_t> GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 
         std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 

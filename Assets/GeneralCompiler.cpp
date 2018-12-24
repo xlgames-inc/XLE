@@ -453,6 +453,14 @@ namespace Assets
         return std::make_shared<Marker>(initializers[0], typeCode, delegate, shared_from_this());
     }
 
+	std::vector<uint64_t> GeneralCompiler::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
+	{
+		for (const auto&d:_pimpl->_delegates)
+			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_extensionFilter))
+				return d->_assetTypes;
+		return {};
+	}
+
     void GeneralCompiler::StallOnPendingOperations(bool cancelAll)
     {
         {

@@ -18,15 +18,16 @@ namespace Assets
 {
 	class ICompileOperation;
 
-    class GeneralCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<GeneralCompiler>
+    class GeneralCompiler : public IAssetCompiler, public std::enable_shared_from_this<GeneralCompiler>
     {
     public:
-        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
+        std::shared_ptr<IArtifactCompileMarker> Prepare(
             uint64 typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+            const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
 		
-		using CompileOperationDelegate = std::function<std::shared_ptr<::Assets::ICompileOperation>(StringSection<>)>;
+		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(StringSection<>)>;
 
 		struct ExtensionAndDelegate
 		{
@@ -48,10 +49,10 @@ namespace Assets
         class Marker;
     };
 
-	::Assets::DirectorySearchRules DefaultLibrarySearchDirectories();
+	DirectorySearchRules DefaultLibrarySearchDirectories();
 
 	std::vector<GeneralCompiler::ExtensionAndDelegate> DiscoverCompileOperations(
 		StringSection<> librarySearch,
-		const ::Assets::DirectorySearchRules& searchRules = DefaultLibrarySearchDirectories());
+		const DirectorySearchRules& searchRules = DefaultLibrarySearchDirectories());
 }
 

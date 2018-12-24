@@ -80,6 +80,7 @@ namespace LevelEditorCore
 
             m_listContext = new ListViewContext();
             m_listContext.SelectionChanged += listSelectionContext_SelectionChanged;
+            m_listContext.ResourceQueryService = m_resourceQueryService;
             m_listViewAdapter.ListView = m_listContext;
 
             m_treeControlAdapter.Refresh(rootFolder);
@@ -201,23 +202,27 @@ namespace LevelEditorCore
         /// <summary>
         /// Gets Uri of last selected or null
         /// </summary>
-        public Uri LastSelected
+        public ResourceDesc? LastSelected
         {
-            get { return m_listContext.GetLastSelected<Uri>(); }
+            get {
+                object lastSelected = m_listContext.GetLastSelected<object>();
+                if (lastSelected == null) return null;
+                return m_resourceQueryService.GetDesc(lastSelected);
+            }
         }
 
-        public Uri ContextMenuTarget { get; private set; }
+        public string ContextMenuTarget { get; private set; }
 
         /// <summary>
         /// Gets selected items</summary>
-        public IEnumerable<Uri> Selection
+        public IEnumerable<object> Selection
         {
-            get { return m_listContext.GetSelection<Uri>(); }
+            get { return m_listContext.GetSelection<object>(); }
         }
 
         public interface ISubCommandClient : ICommandClient 
         {
-            IEnumerable<object> GetCommands(Uri focusUri);
+            IEnumerable<object> GetCommands(string focusUri);
         }
 
         [ImportMany(typeof(ISubCommandClient))]
@@ -482,14 +487,14 @@ namespace LevelEditorCore
 
             if (m_dragging)
             {
-                Uri hitItem = GetClickedItemUri(m_hitPoint);
+                string hitItem = GetClickedItemUri(m_hitPoint);
                 if (hitItem != null)
                 {
                     List<string> paths = new List<string>();
 
-                    foreach (Uri uri in GetSelectedItemUris())
+                    foreach (string uri in GetSelectedItemUris())
                     {
-                        paths.Add(uri.LocalPath);
+                        paths.Add(uri);
                     }
 
                     if (paths.Count > 0)
@@ -534,37 +539,39 @@ namespace LevelEditorCore
 
         // Gets an enumeration of all Uri tags of items selected in the specified control
         // or an empty enumeration if no items are selected
-        private IEnumerable<Uri> GetSelectedItemUris()
+        private IEnumerable<string> GetSelectedItemUris()
         {
             if (m_thumbnailControl.Visible)
             {
                 foreach (ThumbnailControlItem item in m_thumbnailControl.Selection)
                 {
-                    yield return item.Uri;
+                    yield return item.Uri.LocalPath;
                 }
             }
             else
             {
                 foreach (ListViewItem item in m_listView.SelectedItems)
                 {
-                    Uri uri = (Uri)item.Tag;
-                    yield return uri;
+                    var desc = m_resourceQueryService.GetDesc(item.Tag);
+                    if (desc.HasValue)
+                        yield return desc.Value.NaturalName;
                 }
             }
         }
 
-        private Uri GetClickedItemUri(Point point)
+        private string GetClickedItemUri(Point point)
         {
-            Uri resourceUri = null;
+            string resourceUri = null;
             if (m_thumbnailControl.Visible)
             {
                 ThumbnailControlItem item = m_thumbnailControl.PickThumbnail(point);
                 if (item != null)
-                    resourceUri = item.Uri;
+                    resourceUri = item.Uri.LocalPath;
             }
             else
             {
-                resourceUri = (Uri)m_listViewAdapter.GetItemAt(point);
+                var desc = m_resourceQueryService.GetDesc(m_listViewAdapter.GetItemAt(point));
+                resourceUri = desc.HasValue? desc.Value.NaturalName : null;
             }
 
             return resourceUri;
@@ -768,6 +775,9 @@ namespace LevelEditorCore
         [Import(AllowDefault = false)]
         private ThumbnailService m_thumbnailService;
 
+        [Import(AllowDefault = false)]
+        private IResourceQueryService m_resourceQueryService;
+
         private SynchronizationContext m_uiThreadContext;
 
         private FileSystemWatcher m_watcher;
@@ -850,7 +860,6 @@ namespace LevelEditorCore
 
             #endregion
 
-
             #region ITreeView Members
 
             public object Root
@@ -887,6 +896,7 @@ namespace LevelEditorCore
                     info.IsLeaf = resourceFolder.IsLeaf;
                 }
             }
+
             #endregion
 
             #region IObservableContext Members
@@ -955,7 +965,7 @@ namespace LevelEditorCore
                 m_selection.Changed += TheSelectionChanged;
             }
 
-
+            internal IResourceQueryService ResourceQueryService { get; set; }
 
             #region IListView Members
 
@@ -994,56 +1004,22 @@ namespace LevelEditorCore
             /// <param name="info">Item info, to fill out</param>
             public virtual void GetInfo(object item, ItemInfo info)
             {
-                Uri resourceUri = item as Uri;
-                if (resourceUri != null && resourceUri.IsAbsoluteUri)
+                var optDesc = ResourceQueryService.GetDesc(item);
+                if (optDesc.HasValue)
                 {
-                    // note that we can't call LocalPath on a relative uri -- and therefore this is only valid for absolute uris
-
-                    FileInfo fileInfo = new FileInfo(resourceUri.LocalPath);
-
-                    info.Label = fileInfo.Name;
+                    var desc = optDesc.Value;
+                    info.Label = desc.ShortName;
                     info.ImageIndex = info.GetImageList().Images.IndexOfKey(Sce.Atf.Resources.ResourceImage);
-
-                    Shell32.SHFILEINFO shfi = new Shell32.SHFILEINFO();
-                    uint flags = Shell32.SHGFI_TYPENAME | Shell32.SHGFI_USEFILEATTRIBUTES;
-                    Shell32.SHGetFileInfo(fileInfo.FullName,
-                        Shell32.FILE_ATTRIBUTE_NORMAL,
-                        ref shfi,
-                        (uint)System.Runtime.InteropServices.Marshal.SizeOf(shfi),
-                        flags);
-
-                    string typeName = shfi.szTypeName;
-                    long length;
-                    DateTime lastWriteTime;
-                    try
-                    {
-                        length = fileInfo.Length;
-                        lastWriteTime = fileInfo.LastWriteTime;
-                    }
-                    catch (IOException)
-                    {
-                        length = 0;
-                        lastWriteTime = new DateTime();
-                    }
-
-                    info.Properties = new object[] {
-                        length,
-                        typeName,
-                        lastWriteTime
-                    };
-                    return;
-                }
-
-                /*var desc = XLEBridgeUtils.Utils.GetDesc(item);
-                if (desc != null)
-                {
-                    info.Label = desc.NaturalName;
                     info.Properties = new object[] {
                         desc.SizeInBytes,
-                        "<native>",
+                        desc.Types.ToString(),
                         desc.ModificationTime
                     };
-                }*/
+                }
+                else
+                {
+                    info.Label = "<could not get info>";
+                }
             }
             #endregion
 

@@ -90,6 +90,7 @@ namespace ToolsRig
         std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
             uint64 typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		std::vector<uint64_t> GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
         void StallOnPendingOperations(bool cancelAll);
 
             // When using with placements, this hash value is referenced by the

@@ -14,6 +14,7 @@
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonBindings.h"
+#include "../Techniques/TechniqueMaterial.h"
 #include "../Types.h"
 #include "../ResourceDesc.h"
 #include "../IDevice.h"
@@ -166,6 +167,17 @@ namespace RenderCore { namespace Assets
 			DrawFn_SimpleModelStatic(metalContext, parserContext, drawable, boundUniforms, shader);
 	}
 
+	static Techniques::Material& GetDummyMaterial()
+	{
+		static Techniques::Material dummyMaterial;
+		static bool dummyMaterialIsInitialized = false;
+		if (!dummyMaterialIsInitialized) {
+			XlCopyString(dummyMaterial._techniqueConfig, "xleres/techniques/illum.tech");
+			dummyMaterialIsInitialized = true;
+		}
+		return dummyMaterial;
+	}
+
 	void SimpleModelRenderer::BuildDrawables(
 		IteratorRange<Techniques::DrawablesPacket** const> pkts,
 		const Float4x4& localToWorld,
@@ -189,6 +201,8 @@ namespace RenderCore { namespace Assets
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				if (!drawable._material)
+					drawable._material = &GetDummyMaterial();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
@@ -224,6 +238,8 @@ namespace RenderCore { namespace Assets
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._material = _materialScaffold->GetMaterial(materialGuid);
+				if (!drawable._material)
+					drawable._material = &GetDummyMaterial();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
