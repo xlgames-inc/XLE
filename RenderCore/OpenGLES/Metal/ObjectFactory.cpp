@@ -132,12 +132,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     
         template<> void Destroy<GlObject_Type::Texture>(RawGLHandle object)
         { 
-            (*GetGLWrappers()->DeleteTextures)(1, &object);
+            GL_WRAP(DeleteTextures)(1, &object);
         }
     
         template<> void Destroy<GlObject_Type::RenderBuffer>(RawGLHandle object)
         { 
-            (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
+            GL_WRAP(DeleteRenderbuffers)(1, &object);
         }
 
         template<> void Destroy<GlObject_Type::FrameBuffer>(RawGLHandle object)
@@ -147,7 +147,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     
         template<> void Destroy<GlObject_Type::Buffer>(RawGLHandle object)
         { 
-            (*GetGLWrappers()->DeleteBuffers)(1, (GLuint*)&object);
+            GL_WRAP(DeleteBuffers)(1, (GLuint*)&object);
         }
 
         template<> void Destroy<GlObject_Type::Resource>(RawGLHandle object)
@@ -159,13 +159,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                 //      Just check the type and 
                 //
             if (glIsTexture(object)) {
-                (*GetGLWrappers()->DeleteTextures)(1, &object);
+                GL_WRAP(DeleteTextures)(1, &object);
             } else if (glIsBuffer(object)) {
-                (*GetGLWrappers()->DeleteBuffers)(1, &object);
+                GL_WRAP(DeleteBuffers)(1, &object);
             } else if (glIsFramebuffer(object)) {
                 glDeleteFramebuffers(1, &object);
             } else if (glIsRenderbuffer(object)) {
-                (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
+                GL_WRAP(DeleteRenderbuffers)(1, &object);
             }
         }
 
