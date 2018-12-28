@@ -65,6 +65,7 @@ namespace ToolsRig
         std::string _materialName;
         std::string _supplements;
         unsigned _levelOfDetail;
+		std::string _animationFileName;
         std::string _envSettingsFile;
         std::shared_ptr<VisCameraSettings> _camera;
         bool _pendingCameraAlignToModel;

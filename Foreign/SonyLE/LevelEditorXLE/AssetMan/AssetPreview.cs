@@ -69,6 +69,13 @@ namespace LevelEditorXLE.AssetMan
                 _settings.ResetCamera = true;
                 _controls.Invalidate3DView();
             }
+
+            if ((resourceDesc.Value.Types & (uint)ResourceTypeFlags.Animation) != 0)
+            {
+                var name = _assetService.AsAssetName(resourceDesc.Value);
+                _settings.AnimationFileName = name;
+                _controls.Invalidate3DView();
+            }
         }
 
         [Import(AllowDefault = true)]

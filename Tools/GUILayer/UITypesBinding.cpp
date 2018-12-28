@@ -118,6 +118,15 @@ namespace GUILayer
         _object->_changeEvent.Trigger(); 
     }
 
+	void ModelVisSettings::AnimationFileName::set(String^ value)
+    {
+        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+        ::Assets::ResolvedAssetFile resName;
+        ::Assets::MakeAssetName(resName, nativeName.c_str());
+        _object->_animationFileName = resName._fn;
+        _object->_changeEvent.Trigger(); 
+    }
+
     void ModelVisSettings::LevelOfDetail::set(unsigned value)
     {
         _object->_levelOfDetail = value;

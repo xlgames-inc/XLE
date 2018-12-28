@@ -28,6 +28,8 @@
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/SimpleModelRenderer.h"
+#include "../../RenderCore/Assets/SimpleModelDeform.h"
+#include "../../RenderCore/Assets/SkinDeformer.h"
 #include "../../RenderCore/IThreadContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -53,6 +55,8 @@ namespace ToolsRig
 {
 	using RenderCore::Assets::ModelScaffold;
     using RenderCore::Assets::MaterialScaffold;
+	using RenderCore::Assets::AnimationSetScaffold;
+	using RenderCore::Assets::SkeletonScaffold;
     using RenderCore::Assets::SkeletonMachine;
 	using RenderCore::Assets::SimpleModelRenderer;
 
@@ -252,6 +256,38 @@ namespace ToolsRig
             RenderCore::IThreadContext& threadContext,
 			SceneEngine::SceneExecuteContext& executeContext) const override
 		{
+			if (_animationScaffold) {
+				auto skeletonMachine = GetSkeletonMachine();
+				assert(skeletonMachine);
+
+				auto& animData = _animationScaffold->ImmutableData();
+				auto foundAnimation = animData._animationSet.GetAnimations()[0];
+
+				static float time = 0.f;
+				time += 1.0f / 60.f;
+
+				RenderCore::Assets::AnimationState animState(
+					std::fmod(time, foundAnimation._endTime), foundAnimation._name);
+				auto params = animData._animationSet.BuildTransformationParameterSet(
+					animState,
+					*skeletonMachine, _animSetBinding,
+					animData._curves, animData._curvesCount);
+
+				std::vector<Float4x4> skeletonMachineOutput(skeletonMachine->GetOutputMatrixCount());
+				skeletonMachine->GenerateOutputTransforms(
+					skeletonMachineOutput.data(), (unsigned)skeletonMachineOutput.size(),
+					&params);
+
+				for (unsigned c=0; c<_renderer->DeformOperationCount(); ++c) {
+					auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&_renderer->DeformOperation(c));
+					if (!skinDeformOp) continue;
+					skinDeformOp->FeedInSkeletonMachineResults(
+						MakeIteratorRange(skeletonMachineOutput),
+						skeletonMachine->GetOutputInterface());
+				}
+				_renderer->GenerateDeformBuffer(threadContext);
+			}
+
 			for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
 				RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
 				for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
@@ -263,9 +299,27 @@ namespace ToolsRig
 
 		ModelSceneParser(
             const std::shared_ptr<ModelScaffold>& modelScaffold,
-			const std::shared_ptr<MaterialScaffold>& materialScaffold)
+			const std::shared_ptr<MaterialScaffold>& materialScaffold,
+			const std::shared_ptr<AnimationSetScaffold>& animationScaffold,
+			const std::shared_ptr<SkeletonScaffold>& skeletonScaffold)
         {
-			_renderer = std::make_shared<SimpleModelRenderer>(modelScaffold, materialScaffold);
+			if (!animationScaffold) {
+				_renderer = std::make_shared<SimpleModelRenderer>(modelScaffold, materialScaffold);
+			} else {
+				using namespace RenderCore::Assets;
+				auto deformOps = DeformOperationFactory::GetInstance().CreateDeformOperations(
+					"skin",
+					modelScaffold);
+				_renderer = std::make_shared<SimpleModelRenderer>(modelScaffold, materialScaffold, MakeIteratorRange(deformOps));
+				_animationScaffold = animationScaffold;
+				_skeletonScaffold = skeletonScaffold;
+				if (!_skeletonScaffold)
+					_modelScaffoldForEmbeddedSkeleton = modelScaffold;
+
+				_animSetBinding = RenderCore::Assets::AnimationSetBinding(
+					_animationScaffold->ImmutableData()._animationSet.GetOutputInterface(), 
+					GetSkeletonMachine()->GetInputInterface());
+			}
 			_preDrawDelegate = std::make_shared<StencilRefDelegate>();
         }
 
@@ -274,6 +328,21 @@ namespace ToolsRig
     protected:
 		std::shared_ptr<SimpleModelRenderer> _renderer;
 		std::shared_ptr<StencilRefDelegate> _preDrawDelegate;
+		std::shared_ptr<AnimationSetScaffold> _animationScaffold;
+
+		std::shared_ptr<ModelScaffold> _modelScaffoldForEmbeddedSkeleton;
+		std::shared_ptr<SkeletonScaffold> _skeletonScaffold;
+		RenderCore::Assets::AnimationSetBinding _animSetBinding;
+
+		const SkeletonMachine* GetSkeletonMachine() const
+		{
+			const SkeletonMachine* skeletonMachine = nullptr;
+			if (_skeletonScaffold) {
+				skeletonMachine = &_skeletonScaffold->GetTransformationMachine();
+			} else if (_modelScaffoldForEmbeddedSkeleton)
+				skeletonMachine = &_modelScaffoldForEmbeddedSkeleton->EmbeddedSkeleton();
+			return skeletonMachine;
+		}
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -301,6 +370,14 @@ namespace ToolsRig
 		if (!model || !material)
 			return;
 
+		std::shared_ptr<AnimationSetScaffold> animationScaffold;
+		std::shared_ptr<SkeletonScaffold> skeletonScaffold;
+		if (!_pimpl->_settings->_animationFileName.empty()) {
+			auto animationFuture = ::Assets::MakeAsset<AnimationSetScaffold>(_pimpl->_settings->_animationFileName);
+			animationFuture->StallWhilePending();
+			animationScaffold = animationFuture->TryActualize();
+		}
+
         if (_pimpl->_settings->_pendingCameraAlignToModel) {
                 // After the model is loaded, if we have a pending camera align,
                 // we should reset the camera to the match the model.
@@ -319,7 +396,7 @@ namespace ToolsRig
 		if (!envSettings)
 			envSettings = std::make_shared<VisEnvSettings>();
 
-        ModelSceneParser sceneParser(model, material);
+        ModelSceneParser sceneParser(model, material, animationScaffold, skeletonScaffold);
 		VisLightingParserDelegate lightingParserDelegate(envSettings);
 
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
@@ -406,6 +483,10 @@ namespace ToolsRig
     {
         using namespace RenderCore;
 		parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
+		
+		if (!parserContext.GetNamedResources().GetBoundResource(Techniques::AttachmentSemantics::MultisampleDepth))		// we need this attachment to continue
+			return;
+
 		if (_pimpl->_settings->_drawWireframe || !_pimpl->_settings->_drawNormals) {
 			AttachmentDesc colorLDRDesc = AsAttachmentDesc(renderTarget->GetDesc());
 			std::vector<FrameBufferDesc::Attachment> attachments {

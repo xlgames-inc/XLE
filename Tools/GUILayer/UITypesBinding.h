@@ -124,6 +124,19 @@ namespace GUILayer
             void set(unsigned value);
         }
 
+		[Category("Animation")]
+        [Description("Active animation file")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+        property System::String^ AnimationFileName
+        {
+            System::String^ get()
+            {
+                return clix::marshalString<clix::E_UTF8>(_object->_animationFileName);
+            }
+
+            void set(System::String^ value);
+        }
+
         [Category("Environment")]
         [Description("Environment settings name")]
         property System::String^ EnvSettingsFile

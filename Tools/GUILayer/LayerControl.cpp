@@ -182,24 +182,26 @@ namespace GUILayer
             _pimpl->_globalTechniqueContext);
 
         // AddDefaultCameraHandler(settings->Camera);
-        {
-            auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
-            manipulators->Register(
-                ToolsRig::ManipulatorStack::CameraManipulator,
-                ToolsRig::CreateCameraManipulator(settings->Camera->GetUnderlying()));
-            overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
-        }
+		{
+			auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
+			manipulators->Register(
+				ToolsRig::ManipulatorStack::CameraManipulator,
+				ToolsRig::CreateCameraManipulator(settings->Camera->GetUnderlying()));
+			overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
+		}
 
-		auto viewportDims = immContext->GetStateDesc()._viewportDimensions;
+		if (intersectionScene) {
+			auto viewportDims = immContext->GetStateDesc()._viewportDimensions;
 
-        using namespace std::placeholders;
-        overlaySet.AddSystem(
-            std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
-                mouseOver->GetUnderlying(),
-                immContext,
-                _pimpl->_globalTechniqueContext,
-                settings->Camera->GetUnderlying(), intersectionScene,
-                std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr(), viewportDims[0], viewportDims[1])));
+			using namespace std::placeholders;
+			overlaySet.AddSystem(
+				std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
+					mouseOver->GetUnderlying(),
+					immContext,
+					_pimpl->_globalTechniqueContext,
+					settings->Camera->GetUnderlying(), intersectionScene,
+					std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr(), viewportDims[0], viewportDims[1])));
+		}
     }
 
     VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources)
