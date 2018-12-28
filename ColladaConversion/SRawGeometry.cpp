@@ -1147,47 +1147,6 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template <int WeightCount>
-        class VertexWeightAttachment
-    {
-    public:
-        uint8       _weights[WeightCount];            // go straight to compressed 8 bit value
-        uint8       _jointIndex[WeightCount];
-    };
-
-    template <>
-        class VertexWeightAttachment<0>
-    {
-    };
-
-    template <int WeightCount>
-        class VertexWeightAttachmentBucket
-    {
-    public:
-        std::vector<uint16>                                 _vertexBindings;
-        std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
-    };
-
-    template<unsigned WeightCount> 
-        VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
-    {
-        VertexWeightAttachment<WeightCount> attachment;
-        std::fill(attachment._weights, &attachment._weights[dimof(attachment._weights)], 0);
-        std::fill(attachment._jointIndex, &attachment._jointIndex[dimof(attachment._jointIndex)], 0);
-		for (unsigned c=0; c<std::min(WeightCount, jointCount); ++c) {
-			attachment._weights[c] = weights[c];
-			attachment._jointIndex[c] = (uint8)joints[c];
-		}
-        return attachment;
-    }
-
-    template<> VertexWeightAttachment<0> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
-    {
-        return VertexWeightAttachment<0>();
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     auto Convert(   const SkinController& controller, 
                     const URIResolveContext& resolveContext,
                     const ImportConfiguration& cfg)

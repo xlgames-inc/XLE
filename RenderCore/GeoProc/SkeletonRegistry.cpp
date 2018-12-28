@@ -9,77 +9,60 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    class CompareId
-    {
-    public:
-        bool operator()(const SkeletonRegistry::ImportantNode& lhs, NascentObjectGuid rhs) const   { return lhs._id < rhs; }
-        bool operator()(NascentObjectGuid lhs, const SkeletonRegistry::ImportantNode& rhs) const   { return lhs < rhs._id; }
-        bool operator()(NascentObjectGuid lhs, NascentObjectGuid rhs) const                               { return lhs < rhs; }
-    };
 
-    bool SkeletonRegistry::IsImportant(NascentObjectGuid node) const
-    {
-        if (node == NascentObjectGuid()) return false;
-        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
-        return i != _importantNodes.end() && i->_id == node;
-    }
-
-    bool SkeletonRegistry::TryRegisterNode(NascentObjectGuid node, const char bindingName[])
-    {
-        if (node == NascentObjectGuid()) return false;
-        // look for other nodes bound to the same name
-        for(const auto&i:_importantNodes)
-            if (i._bindingName == bindingName)
-                return i._id == node;   // duplicate binding name applied to some other node
-
-        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
-        if (i != _importantNodes.end() && i->_id == node) {
-            if (i->_bindingName.empty()) {
-                i->_bindingName = bindingName;
-                return true;
-            }
-            return i->_bindingName == bindingName;    // return true only if it matches the previously registered name
-        }
-
-		_importantNodes.insert(i, ImportantNode{node, bindingName});
-        return true;
-    }
-
-	std::string SkeletonRegistry::GetBindingName(NascentObjectGuid node) const
+	std::string SkeletonRegistry::Skeleton::RegisterBindingName(NascentObjectGuid id, const std::string& defaultBindingName)
 	{
-		for(const auto&i:_importantNodes)
-			if (i._id == node) return i._bindingName;
-		return std::string();
+		// We can't have multiple binding names overlapping. So, if we hit a duplicate name, we must make the binding
+		// name unique somehow.
+		// The trick is, we don't want our new unique name to overlap with some node name that might be registered 
+		// later. Because some authoring tools will do similar kinds of things to encourage unique names, it's not
+		// unlikely to end up overlapping some other name
+		bool foundOverlappingName = false;
+		for (const auto&existing:_importantNodes) {
+			if (existing._id == id)
+				return existing._bindingName;
+			foundOverlappingName |= defaultBindingName == existing._bindingName;
+		}
+
+		std::string finalBindingName = defaultBindingName;
+		if (foundOverlappingName) {
+			unsigned uniqueIdx = 1;
+			for (;; ++uniqueIdx) {
+				finalBindingName = defaultBindingName + "[" + std::to_string(uniqueIdx) + "]";
+
+				bool foundOverlappingName2 = false;
+				for (const auto&existing:_importantNodes)
+					foundOverlappingName2 |= finalBindingName == existing._bindingName;
+
+				if (!foundOverlappingName2) break;
+			}
+		}
+	
+		_importantNodes.push_back({id, finalBindingName});
+		return finalBindingName;
 	}
 
-    auto    SkeletonRegistry::GetImportantNodes() const -> IteratorRange<const ImportantNode*>
-    {
-        return MakeIteratorRange(_importantNodes);
-    }
+	std::string SkeletonRegistry::Skeleton::GetBindingName(NascentObjectGuid id)
+	{
+		for (const auto&existing:_importantNodes)
+			if (existing._id == id)
+				return existing._bindingName;
+		return {};
+	}
 
-    auto SkeletonRegistry::GetNode(NascentObjectGuid node) const -> ImportantNode
-    {
-        auto i = std::lower_bound(_importantNodes.begin(), _importantNodes.end(), node, CompareId());
-        if (i != _importantNodes.end() && i->_id == node)
-            return *i;
-        return ImportantNode();
-    }
+	auto SkeletonRegistry::GetSkinningSkeleton(NascentObjectGuid skeletonRoot) -> Skeleton&
+	{
+		auto i = LowerBound(_skinningSkeletons, skeletonRoot);
+		if (i == _skinningSkeletons.end() || !(i->first == skeletonRoot))
+			i = _skinningSkeletons.insert(i, {skeletonRoot, {}});
+		return i->second;
+	}
 
-    void    SkeletonRegistry::MarkParameterAnimated(const std::string& paramName)
-    {
-        auto i = std::lower_bound(_markParameterAnimated.cbegin(), _markParameterAnimated.cend(), paramName);
-        if (i != _markParameterAnimated.cend() && (*i) == paramName) return;
-        _markParameterAnimated.insert(i, paramName);
-    }
+	SkeletonRegistry::SkeletonRegistry()
+	{}
 
-    bool    SkeletonRegistry::IsAnimated(const std::string& paramName) const
-    {
-        auto i = std::lower_bound(_markParameterAnimated.cbegin(), _markParameterAnimated.cend(), paramName);
-        return i != _markParameterAnimated.cend() && (*i) == paramName;
-    }
-
-    SkeletonRegistry::SkeletonRegistry() {}
-    SkeletonRegistry::~SkeletonRegistry() {}
+    SkeletonRegistry::~SkeletonRegistry()
+	{}
 
 }}}
 

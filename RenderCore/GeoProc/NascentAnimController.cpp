@@ -13,6 +13,7 @@
 #include "../Assets/AssetUtils.h"
 #include "../Format.h"
 #include "../Types.h"
+#include "../VertexUtil.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
@@ -515,6 +516,54 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         
 
 
+	void UnboundSkinController::RemapJoints(IteratorRange<const unsigned*> newJointIndices)
+	{
+		// Remap all of the joints through the given remapping indices
+		// Useful for removing redundant duplicates (etc)
+		assert(newJointIndices.size() == _jointNames.size());
+		assert(newJointIndices.size() == _inverseBindMatrices.size());
+
+		for (unsigned b=0; b<4; ++b) {
+			auto& bucket = _bucket[b];
+			if (!bucket._vertexBufferSize) continue;
+			auto ele = std::find_if(
+				bucket._vertexInputLayout.begin(), bucket._vertexInputLayout.end(),
+				[](const InputElementDesc& desc) { return desc._semanticName == "JOINTINDICES"; });
+			auto range = MakeVertexIteratorRange(
+				MakeIteratorRange(
+					PtrAdd(bucket._vertexBufferData.get(), ele->_alignedByteOffset),
+					PtrAdd(bucket._vertexBufferData.get(), bucket._vertexBufferSize)),
+				CalculateVertexStrideForSlot(MakeIteratorRange(bucket._vertexInputLayout), ele->_inputSlot),
+				ele->_nativeFormat);
+			auto componentCount = GetComponentCount(RenderCore::GetComponents(ele->_nativeFormat));
+			for (auto i=range.begin(); i<range.end(); ++i) {
+				auto data = (uint8_t*)(*i)._data.begin();
+				for (unsigned c=0; c<componentCount; ++c)
+					data[c] = (uint8_t)newJointIndices[data[c]];
+			}
+		}
+
+		unsigned maxOutputIndex = 0;
+		for (auto i:newJointIndices) maxOutputIndex = std::max(maxOutputIndex, i);
+
+		std::vector<std::string> newJointNames(maxOutputIndex+1);
+		DynamicArray<Float4x4>  newInverseBindMatrices {
+			std::make_unique<Float4x4[]>(maxOutputIndex+1),
+			maxOutputIndex+1
+		};
+
+		for (unsigned c=0; c<maxOutputIndex+1; ++c)
+			newInverseBindMatrices[c] = Identity<Float4x4>();
+
+		for (unsigned c=0; c<_jointNames.size(); ++c) {
+			assert(newJointNames[newJointIndices[c]].empty() || newJointNames[newJointIndices[c]] == _jointNames[c]);	// ensure that we haven't already mapped to this index
+			newJointNames[newJointIndices[c]] = _jointNames[c];
+			newInverseBindMatrices[newJointIndices[c]] = _inverseBindMatrices[c];
+		}
+
+		_jointNames = std::move(newJointNames);
+		_inverseBindMatrices = std::move(newInverseBindMatrices);
+	}
 
     UnboundSkinController::Bucket::Bucket() { _weightCount = 0; _vertexBufferSize = 0; }
     UnboundSkinController::Bucket::Bucket(Bucket&& moveFrom) never_throws
@@ -539,7 +588,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     UnboundSkinController::UnboundSkinController(   
         Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
         DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
-        std::vector<std::basic_string<utf8>>&& jointNames,
+        std::vector<std::string>&& jointNames,
         NascentObjectGuid sourceRef,
         std::vector<uint32>&& vertexPositionToBucketIndex)
     :       _inverseBindMatrices(std::forward<DynamicArray<Float4x4>>(inverseBindMatrices))

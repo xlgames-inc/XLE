@@ -80,6 +80,7 @@ namespace RenderCore { namespace Assets
 
         Animation               FindAnimation(uint64 animation) const;
         unsigned                FindParameter(uint64 parameterName) const;
+		IteratorRange<const Animation*> GetAnimations() const { return MakeIteratorRange(_animations, &_animations[_animationCount]); }
 
         const OutputInterface&  GetOutputInterface() const { return _outputInterface; }
 

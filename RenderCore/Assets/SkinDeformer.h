@@ -38,7 +38,8 @@ namespace RenderCore { namespace Assets
 		ModelCommandStream::InputInterface _jointInputInterface;
 
 		IteratorRange<const DrawCallDesc*> _preskinningDrawCalls;
-		IteratorRange<const Float4x4*> _inverseBindByBindShapeMatrices;
+		IteratorRange<const Float4x4*> _inverseBindMatrices;
+		Float4x4 _bindShapeMatrix;
 		IteratorRange<const uint16_t*> _jointMatrices;
 		std::vector<Float4x4> _skeletonMachineOutput;
 		SkeletonBinding _skeletonBinding;

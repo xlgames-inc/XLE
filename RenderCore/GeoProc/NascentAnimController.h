@@ -97,15 +97,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Bucket                  _bucket[4];      // 4, 2, 1, 0
         std::vector<uint32>     _positionIndexToBucketIndex;
 
-        std::vector<std::basic_string<utf8>> _jointNames;
+        std::vector<std::string> _jointNames;
         DynamicArray<Float4x4>  _inverseBindMatrices;
 
-        NascentObjectGuid _sourceRef;
+        NascentObjectGuid		_sourceRef;
 
-        UnboundSkinController(  
+		void RemapJoints(IteratorRange<const unsigned*> newIndices);
+
+        UnboundSkinController(
             Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
             DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
-            std::vector<std::basic_string<utf8>>&& jointNames,
+            std::vector<std::string>&& jointNames,
             NascentObjectGuid sourceRef,
             std::vector<uint32>&& vertexPositionToBucketIndex);
         UnboundSkinController(UnboundSkinController&& moveFrom) never_throws;
@@ -114,6 +116,45 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     private:
         UnboundSkinController& operator=(const UnboundSkinController& copyFrom);
     };
+
+	template <int WeightCount>
+        class VertexWeightAttachment
+    {
+    public:
+        uint8       _weights[WeightCount];            // go straight to compressed 8 bit value
+        uint8       _jointIndex[WeightCount];
+    };
+
+    template <>
+        class VertexWeightAttachment<0>
+    {
+    };
+
+    template <int WeightCount>
+        class VertexWeightAttachmentBucket
+    {
+    public:
+        std::vector<uint16>                                 _vertexBindings;
+        std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
+    };
+
+    template<unsigned WeightCount> 
+        VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
+    {
+        VertexWeightAttachment<WeightCount> attachment;
+        std::fill(attachment._weights, &attachment._weights[dimof(attachment._weights)], 0);
+        std::fill(attachment._jointIndex, &attachment._jointIndex[dimof(attachment._jointIndex)], 0);
+		for (unsigned c=0; c<std::min(WeightCount, jointCount); ++c) {
+			attachment._weights[c] = weights[c];
+			attachment._jointIndex[c] = (uint8)joints[c];
+		}
+        return attachment;
+    }
+
+    template<> inline VertexWeightAttachment<0> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
+    {
+        return VertexWeightAttachment<0>();
+    }
 
         ////////////////////////////////////////////////////////
 

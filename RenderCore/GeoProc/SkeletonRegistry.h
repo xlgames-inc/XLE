@@ -17,29 +17,34 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class SkeletonRegistry
     {
     public:
-        bool            IsImportant(NascentObjectGuid node) const;
-
-        class ImportantNode
+		class ImportantNode
         {
         public:
             NascentObjectGuid   _id;
             std::string			_bindingName;
         };
 
-        auto            GetImportantNodes() const -> IteratorRange<const ImportantNode*>;
-        ImportantNode   GetNode(NascentObjectGuid node) const;
-        
-        bool            TryRegisterNode(NascentObjectGuid node, const char bindingName[]);
-		std::string		GetBindingName(NascentObjectGuid node) const;
+		class Skeleton
+		{
+		public:
+			NascentObjectGuid _rootNode;
+			std::vector<ImportantNode> _importantNodes;
+			std::vector<std::string> _markParameterAnimated;
 
-        void            MarkParameterAnimated(const std::string& paramName);
-        bool            IsAnimated(const std::string& paramName) const;
+			std::string RegisterBindingName(NascentObjectGuid id, const std::string& defaultBindingName);
+			std::string GetBindingName(NascentObjectGuid id);
+		};
+
+		Skeleton& GetBasicStructure() { return _basicStructure; }
+		Skeleton& GetSkinningSkeleton(NascentObjectGuid skeletonRoot);
+
+		IteratorRange<const std::pair<NascentObjectGuid, Skeleton>*> GetSkinningSkeletons() const { return MakeIteratorRange(_skinningSkeletons); }
 
         SkeletonRegistry();
         ~SkeletonRegistry();
     protected:
-        std::vector<ImportantNode> _importantNodes;
-        std::vector<std::string> _markParameterAnimated;
+		Skeleton _basicStructure;
+		std::vector<std::pair<NascentObjectGuid, Skeleton>> _skinningSkeletons;
     };
 }}}
 
