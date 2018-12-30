@@ -755,10 +755,11 @@ namespace RenderCore { namespace Assets
 
     inline Float3 AsFloat3(const float input[])     { return Float3(input[0], input[1], input[2]); }
 
+	static const unsigned MaxSkeletonMachineDepth = 64;
+
     template<bool UseDebugIterator>
-        void GenerateOutputTransformsFree_Int(
-            Float4x4                                    result[],
-            size_t                                      resultCount,
+        void GenerateOutputTransforms_Int(
+            IteratorRange<Float4x4*>					result,
             const TransformationParameterSet*           parameterSet,
             IteratorRange<const uint32*>                commandStream,
             const std::function<void(const Float4x4&, const Float4x4&)>&     debugIterator)
@@ -768,14 +769,14 @@ namespace RenderCore { namespace Assets
             // transforms are just identity. Maybe there is a better
             // way to do this that would prevent having to write to this
             // array first...?
-        std::fill(result, &result[resultCount], Identity<Float4x4>());
+        std::fill(result.begin(), result.end(), Identity<Float4x4>());
 
             //
             //      Follow the commands in our command list, and output
             //      the resulting transformations.
             //
 
-        Float4x4 workingStack[64]; // (fairly large space on the stack)
+        Float4x4 workingStack[MaxSkeletonMachineDepth]; // (fairly large space on the stack)
         Float4x4* workingTransform = workingStack;
         *workingTransform = Identity<Float4x4>();
 
@@ -976,7 +977,7 @@ namespace RenderCore { namespace Assets
                     //
                 {
                     uint32 outputIndex = *i++;
-                    if (outputIndex < resultCount) {
+                    if (outputIndex < result.size()) {
                         result[outputIndex] = *workingTransform;
                         if (constant_expression<UseDebugIterator>::result())
                             debugIterator((workingTransform != workingStack) ? *(workingTransform-1) : Identity<Float4x4>(), *workingTransform);
@@ -990,7 +991,7 @@ namespace RenderCore { namespace Assets
                     uint32 outputIndex = *i++;
                     const Float4x4& transformMatrix = *reinterpret_cast<const Float4x4*>(AsPointer(i)); 
                     i += 16;
-                    if (outputIndex < resultCount) {
+                    if (outputIndex < result.size()) {
                         result[outputIndex] = Combine(transformMatrix, *workingTransform);
                         if (constant_expression<UseDebugIterator>::result())
                             debugIterator(*workingTransform, result[outputIndex]);
@@ -1004,7 +1005,7 @@ namespace RenderCore { namespace Assets
                     uint32 outputIndex = *i++;
                     uint32 parameterIndex = *i++;
                     if (parameterIndex < float4x4s.size()) {
-                        if (outputIndex < resultCount) {
+                        if (outputIndex < result.size()) {
                             result[outputIndex] = Combine(float4x4s[parameterIndex], *workingTransform);
                             if (constant_expression<UseDebugIterator>::result())
                                 debugIterator(*workingTransform, result[outputIndex]);
@@ -1022,29 +1023,134 @@ namespace RenderCore { namespace Assets
         }
     }
 
-
-    void GenerateOutputTransformsFree(
-        Float4x4                                    result[],
-        size_t                                      resultCount,
+    void GenerateOutputTransforms(
+        IteratorRange<Float4x4*>					result,
         const TransformationParameterSet*           parameterSet,
         IteratorRange<const uint32*>                commandStream)
     {
-        GenerateOutputTransformsFree_Int<false>(
-            result, resultCount, parameterSet, commandStream, 
+        GenerateOutputTransforms_Int<false>(
+            result, parameterSet, commandStream, 
             std::function<void(const Float4x4&, const Float4x4&)>());
     }
 
-    void GenerateOutputTransformsFree(
-        Float4x4                                    result[],
-        size_t                                      resultCount,
-        const TransformationParameterSet*           parameterSet,
-        IteratorRange<const uint32*>                commandStream,
-        const std::function<void(const Float4x4&, const Float4x4&)>&     debugIterator)
-    {
-        GenerateOutputTransformsFree_Int<true>(
-            result, resultCount, parameterSet, commandStream, debugIterator);
-    }
+	void CalculateParentPointers(
+		IteratorRange<uint32_t*>					result,
+		IteratorRange<const uint32_t*>				commandStream)
+	{
+		uint32_t workingStack[MaxSkeletonMachineDepth];
+        uint32_t* workingTransform = workingStack;
+        *workingTransform = ~0u;
+		for (auto&i:result) i = ~0u;
 
+		for (auto i=commandStream.cbegin(); i!=commandStream.cend();) {
+            auto commandIndex = *i++;
+            switch ((TransformStackCommand)commandIndex) {
+            case TransformStackCommand::PushLocalToWorld:
+                if ((workingTransform+1) >= &workingStack[dimof(workingStack)])
+                    Throw(::Exceptions::BasicLabel("Exceeded maximum stack depth in CalculateParentPointers"));
+
+                *(workingTransform+1) = *workingTransform;
+                ++workingTransform;
+                break;
+
+            case TransformStackCommand::PopLocalToWorld:
+                {
+                    auto popCount = *i++;
+                    if (workingTransform < workingStack+popCount)
+                        Throw(::Exceptions::BasicLabel("Stack underflow in CalculateParentPointers"));
+                    workingTransform -= popCount;
+                }
+                break;
+
+            case TransformStackCommand::TransformFloat4x4_Static:
+                i += 16;
+                break;
+
+            case TransformStackCommand::Translate_Static:
+                i += 3;
+                break;
+
+            case TransformStackCommand::RotateX_Static:
+                i++;
+                break;
+
+            case TransformStackCommand::Rotate_Static:
+                i += 4;
+                break;
+
+			case TransformStackCommand::RotateQuaternion_Static:
+				i += 4;
+				break;
+
+            case TransformStackCommand::UniformScale_Static:
+                i++;
+                break;
+
+            case TransformStackCommand::ArbitraryScale_Static:
+                i+=3;
+                break;
+
+            case TransformStackCommand::TransformFloat4x4_Parameter:
+            case TransformStackCommand::Translate_Parameter:
+            case TransformStackCommand::RotateX_Parameter:
+            case TransformStackCommand::RotateY_Parameter:
+            case TransformStackCommand::RotateZ_Parameter:
+            case TransformStackCommand::Rotate_Parameter:
+			case TransformStackCommand::RotateQuaternion_Parameter:
+            case TransformStackCommand::UniformScale_Parameter:
+            case TransformStackCommand::ArbitraryScale_Parameter:
+				++i;
+				break;
+
+            case TransformStackCommand::WriteOutputMatrix:
+                {
+                    uint32 outputIndex = *i++;
+                    if (outputIndex < result.size()) {
+						assert(result[outputIndex] == ~0u);		// if a given output marker is written to twice, we can end up here. It doesn't make much sense to do this, because only the last value written will be used (this applies both to this function and GenerateOutputTransforms)
+                        result[outputIndex] = *workingTransform;
+                    } else
+                        Log(Warning) << "Warning -- bad output matrix index (" << outputIndex << ")" << std::endl;
+
+					// We can't always distinquish siblings from children. If there are two siblings with identical
+					// transforms, we can end up mistaking it for a parent-child relationship here.
+					*workingTransform = outputIndex;
+                }
+                break;
+
+            case TransformStackCommand::TransformFloat4x4AndWrite_Static:
+                {
+                    uint32 outputIndex = *i++;
+                    i += 16;
+                    if (outputIndex < result.size()) {
+                        result[outputIndex] = *workingTransform;
+						*workingTransform = outputIndex;
+                    } else
+                        Log(Warning) << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Static (" << outputIndex << ")" << std::endl;
+					// The transformation we wrote doesn't affect the working transform. So we won't consider
+					// the marker we wrote as the new parent on the stack
+                }
+                break;
+
+            case TransformStackCommand::TransformFloat4x4AndWrite_Parameter:
+                {
+                    uint32 outputIndex = *i++;
+                    i++;
+                    if (outputIndex < result.size()) {
+                        result[outputIndex] = *workingTransform;
+						*workingTransform = outputIndex;
+                    } else
+                        Log(Warning) << "Warning -- bad output matrix index in TransformFloat4x4AndWrite_Parameter (" << outputIndex << ")" << std::endl;
+					// The transformation we wrote doesn't affect the working transform. So we won't consider
+					// the marker we wrote as the new parent on the stack
+                }
+                break;
+
+            case TransformStackCommand::Comment:
+                i+=64/4;
+                break;
+            }
+        }
+	}
 
         ///////////////////////////////////////////////////////
 
@@ -1127,7 +1233,7 @@ namespace RenderCore { namespace Assets
 
 			case TransformStackCommand::RotateQuaternion_Static:
                 {
-                    auto q = reinterpret_cast<const Quaternion*>(AsPointer(i));
+                    auto& q = *reinterpret_cast<const Quaternion*>(AsPointer(i));
                     stream << indentBuffer << "RotateQuaternion_Static (" << q[0] << ", " << q[1] << ", " << q[2] << ", " << q[3] << ")" << std::endl;
                     i += 4;
                 }
@@ -1265,6 +1371,17 @@ namespace RenderCore { namespace Assets
         }
     }
 
+	const char* AsString(AnimSamplerType value)
+	{
+		switch (value) {
+		case AnimSamplerType::Float1: return "Float1";
+		case AnimSamplerType::Float3: return "Float3";
+		case AnimSamplerType::Float4: return "Float4";
+		case AnimSamplerType::Quaternion: return "Quaternion";
+		case AnimSamplerType::Float4x4: return "Float4x4";
+		}
+		return "<<unknown>>";
+	}
 
 }}
 

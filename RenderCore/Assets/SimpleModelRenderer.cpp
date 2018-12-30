@@ -407,7 +407,7 @@ namespace RenderCore { namespace Assets
 
         _baseTransformCount = skeleton.GetOutputMatrixCount();
         _baseTransforms = std::make_unique<Float4x4[]>(_baseTransformCount);
-        skeleton.GenerateOutputTransforms(_baseTransforms.get(), _baseTransformCount, &skeleton.GetDefaultParameters());
+        skeleton.GenerateOutputTransforms(MakeIteratorRange(_baseTransforms.get(), _baseTransforms.get() + _baseTransformCount), &skeleton.GetDefaultParameters());
 
 		unsigned dynVBIterator = 0;
 

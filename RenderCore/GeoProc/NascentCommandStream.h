@@ -97,6 +97,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
             std::vector<Assets::RawAnimationCurve>& destinationCurves);
 
+		void	MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves);
+
+		friend std::ostream& StreamOperator(
+			std::ostream& stream, 
+			const NascentAnimationSet& transMachine);
+
         NascentAnimationSet();
         ~NascentAnimationSet();
         NascentAnimationSet(NascentAnimationSet&& moveFrom);

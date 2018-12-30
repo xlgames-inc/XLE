@@ -9,6 +9,7 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/StringUtils.h"
+#include "../../ConsoleRig/Log.h"
 #include "../../Core/Types.h"
 #include <vector>
 

@@ -142,6 +142,28 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             minTime, maxTime));
     }
 
+	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves)
+	{
+		// Make an Animation record that covers all of the curves registered.
+		// This is intended for cases where there's only a single animation within the NascentAnimationSet
+		float minTime = FLT_MAX, maxTime = -FLT_MAX;
+		for (auto i=_animationDrivers.cbegin(); i!=_animationDrivers.end(); ++i) {
+            if (i->_curveIndex >= curves.size()) continue;
+            const auto* animCurve = &curves[i->_curveIndex];
+            if (animCurve) {
+                float curveStart = animCurve->StartTime();
+                float curveEnd = animCurve->EndTime();
+                minTime = std::min(minTime, curveStart);
+                maxTime = std::max(maxTime, curveEnd);
+			}
+		}
+
+		_animations.push_back(Animation(name, 
+            (unsigned)0, (unsigned)_animationDrivers.size(), 
+            (unsigned)0, (unsigned)_constantDrivers.size(),
+            minTime, maxTime));
+	}
+
     void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         ::Serialize(serializer, unsigned(_curveIndex));
@@ -219,6 +241,36 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         serializer.SerializeSubBlock(MakeIteratorRange(parameterNameHashes.get(), &parameterNameHashes[_parameterInterfaceDefinition.size()]));
         serializer.SerializeValue(_parameterInterfaceDefinition.size());
     }
+
+	std::ostream& StreamOperator(
+		std::ostream& stream, 
+		const NascentAnimationSet& animSet)
+	{
+		// write out some metrics / debugging information
+		stream << "--- Output animation parameters (" << animSet._parameterInterfaceDefinition.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._parameterInterfaceDefinition.size(); ++c)
+			stream << "[" << c << "] " << animSet._parameterInterfaceDefinition[c] << std::endl;
+
+		stream << "--- Animations (" << animSet._animations.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._animations.size(); ++c) {
+			auto& anim = animSet._animations[c];
+			stream << "[" << c << "] " << anim._name << " " << anim._startTime << " to " << anim._endTime << std::endl;
+		}
+
+		stream << "--- Animations drivers (" << animSet._animationDrivers.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._animationDrivers.size(); ++c) {
+			auto& driver = animSet._animationDrivers[c];
+			stream << "[" << c << "] Curve index: " << driver._curveIndex << " Parameter index: " << driver._parameterIndex << " (" << animSet._parameterInterfaceDefinition[driver._parameterIndex] << ") with sampler: " << AsString(driver._samplerType) << " and sampler offset " << driver._samplerOffset << std::endl;
+		}
+
+		stream << "--- Constant drivers (" << animSet._constantDrivers.size() << ")" << std::endl;
+		for (unsigned c=0; c<animSet._constantDrivers.size(); ++c) {
+			auto& driver = animSet._constantDrivers[c];
+			stream << "[" << c << "] Parameter index: " << driver._parameterIndex << " (" << animSet._parameterInterfaceDefinition[driver._parameterIndex] << ") with sampler: " << AsString(driver._samplerType) << " and sampler offset " << driver._samplerOffset << std::endl;
+		}
+
+		return stream;
+	}
 
     NascentAnimationSet::NascentAnimationSet() {}
     NascentAnimationSet::~NascentAnimationSet() {}

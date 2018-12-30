@@ -8,6 +8,7 @@
 
 #include "../../Assets/BlockSerializer.h"
 #include "../../Math/Transformations.h"
+#include "../../Math/Quaternion.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/IteratorUtils.h"
 #include <vector>
@@ -63,6 +64,7 @@ namespace RenderCore { namespace Assets
     };
 
 	enum class AnimSamplerType { Float1, Float3, Float4, Float4x4, Quaternion };
+	const char* AsString(AnimSamplerType value);
 
             //////////////////////////////////////////////////////////
 
@@ -82,6 +84,7 @@ namespace RenderCore { namespace Assets
 		void Set(uint32 index, float);
 		void Set(uint32 index, Float3);
 		void Set(uint32 index, Float4);
+		void Set(uint32 index, Quaternion);
 		void Set(uint32 index, const Float4x4&);
             
         TransformationParameterSet();
@@ -101,18 +104,23 @@ namespace RenderCore { namespace Assets
 
         //////////////////////////////////////////////////////////
 
-    void GenerateOutputTransformsFree(
-        Float4x4                                    result[],
-        size_t                                      resultCount,
+    void GenerateOutputTransforms(
+        IteratorRange<Float4x4*>					result,
         const TransformationParameterSet*           parameterSet,
         IteratorRange<const uint32*>                commandStream);
 
-    void GenerateOutputTransformsFree(
-        Float4x4                                    result[],
-        size_t                                      resultCount,
-        const TransformationParameterSet*           parameterSet,
-        IteratorRange<const uint32*>                commandStream,
-        const std::function<void(const Float4x4&, const Float4x4&)>&     debugIterator);
+	/// <summary>For each output marker, calculate the immediate parent</summary>
+	/// The parent of a given marker is defines as the first marker we encounter if we traverse back through
+	/// the set of commands that affect the state of that given marker.
+	///
+	/// In effect, if the command stream is generated from a node hierarchy, then the parent will correspond
+	/// to the parent from that source hierarchy (barring optimizations that have been performed post conversion) 
+	/// This function writes out an array that is indexed by the child output marker index and contains the parent
+	/// output marker index (or ~0u if there is none)
+	///
+	void CalculateParentPointers(
+		IteratorRange<uint32_t*>					result,
+		IteratorRange<const uint32_t*>				commandStream);
 
     void TraceTransformationMachine(
         std::ostream&                   outputStream,

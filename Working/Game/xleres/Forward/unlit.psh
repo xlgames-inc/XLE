@@ -32,7 +32,7 @@ float4 main(VSOutput geo, SystemInputs sys) : SV_Target0
         result.a *= geo.colour.a;
     #endif
 
-    #if (OUTPUT_COLOUR==1)
+    #if (OUTPUT_COLOUR>=1)
         result.rgb *= geo.colour.rgb;
     #endif
 

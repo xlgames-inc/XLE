@@ -279,28 +279,20 @@ namespace RenderCore { namespace Assets
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     void SkeletonMachine::GenerateOutputTransforms(   
-        Float4x4 output[], unsigned outputCount,
+        IteratorRange<Float4x4*> output,
         const TransformationParameterSet*   parameterSet) const
     {
-        if (outputCount < _outputMatrixCount)
+        if (output.size() < _outputMatrixCount)
             Throw(::Exceptions::BasicLabel("Output buffer to SkeletonMachine::GenerateOutputTransforms is too small"));
-        GenerateOutputTransformsFree(
-            output, outputCount, parameterSet, 
+        RenderCore::Assets::GenerateOutputTransforms(
+            output, parameterSet, 
             MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
     }
 
-    void SkeletonMachine::GenerateOutputTransforms(   
-        Float4x4 output[], unsigned outputCount,
-        const TransformationParameterSet*   parameterSet,
-        const DebugIterator& debugIterator) const
-    {
-        if (outputCount < _outputMatrixCount)
-            Throw(::Exceptions::BasicLabel("Output buffer to SkeletonMachine::GenerateOutputTransforms is too small"));
-        GenerateOutputTransformsFree(
-            output, outputCount, parameterSet, 
-            MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize), 
-            debugIterator);
-    }
+	void SkeletonMachine::CalculateParentPointers(IteratorRange<unsigned*> output) const
+	{
+		RenderCore::Assets::CalculateParentPointers(output, MakeIteratorRange(_commandStream, _commandStream + _commandStreamSize));
+	}
 
     SkeletonMachine::SkeletonMachine()
     {
@@ -405,6 +397,16 @@ namespace RenderCore { namespace Assets
 	{
 		if (_float4Parameters.size() < (index+1)) _float4Parameters.resize(index+1, Zero<Float4>());
 		_float4Parameters[index] = p;
+	}
+
+	void TransformationParameterSet::Set(uint32 index, Quaternion q)
+	{
+		// note that packing here must agree with how we unpack in TransformationCommands.cpp
+		// The "Order" parameter we use with cml::quaternion is significant. Here, we're assuming
+		// "scalar_first" mode
+		static_assert(std::is_same_v<Quaternion::order_type, cml::scalar_first>, "Unexpected quaternion ordering");
+		Float4 float4Form { q.real(), q.imaginary()[0], q.imaginary()[1], q.imaginary()[2] };
+		Set(index, float4Form);
 	}
 
 	void TransformationParameterSet::Set(uint32 index, const Float4x4& p)

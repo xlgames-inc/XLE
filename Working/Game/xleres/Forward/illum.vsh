@@ -27,7 +27,7 @@ VSOutput main(VSInput input)
 		float3 worldNormal = LocalToWorldUnitVector(VSIn_GetLocalNormal(input));
 	#endif
 
-	#if OUTPUT_COLOUR==1
+	#if OUTPUT_COLOUR>=1
 		output.colour = VSIn_GetColour(input);
 	#endif
 

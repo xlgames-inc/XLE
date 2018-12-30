@@ -165,11 +165,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static void TraceMetrics(std::ostream& stream, const NascentSkeleton& skeleton)
-	{
-		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
-	}
-
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
 		const char name[], 
 		const NascentSkeleton& skeleton)
@@ -177,7 +172,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		auto block = ::Assets::SerializeToBlob(skeleton);
 
 		std::stringstream metricsStream;
-		TraceMetrics(metricsStream, skeleton);
+		StreamOperator(metricsStream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
 		auto metricsBlock = ::Assets::AsBlob(metricsStream);
 
 		return {
@@ -203,10 +198,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		auto block = ::Assets::AsBlob(serializer);
 
+		std::stringstream metricsStream;
+		StreamOperator(metricsStream, animationSet);
+		auto metricsBlock = ::Assets::AsBlob(metricsStream);
+
 		return {
 			::Assets::ICompileOperation::OperationResult{
 				RenderCore::Assets::ChunkType_AnimationSet, 0, name, 
-				std::move(block)}
+				std::move(block)},
+			::Assets::ICompileOperation::OperationResult{
+				RenderCore::Assets::ChunkType_Metrics, 0, "metrics", 
+				std::move(metricsBlock)}
 		};
 	}
 

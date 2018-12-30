@@ -10,6 +10,7 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/Streams/Serialization.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 
 namespace RenderCore { namespace Assets 
@@ -30,13 +31,10 @@ namespace RenderCore { namespace Assets
         unsigned                            GetOutputMatrixCount() const        { return _outputMatrixCount; }
         const TransformationParameterSet&   GetDefaultParameters() const        { return _defaultParameters; }
 
-        void GenerateOutputTransforms   (   Float4x4 output[], unsigned outputCount,
+        void GenerateOutputTransforms   (   IteratorRange<Float4x4*> output,
                                             const TransformationParameterSet*   parameterSet) const;
 
-        using DebugIterator = std::function<void(const Float4x4&, const Float4x4&)>;
-        void GenerateOutputTransforms   (   Float4x4 output[], unsigned outputCount,
-                                            const TransformationParameterSet*   parameterSet,
-                                            const DebugIterator& debugIterator) const;
+		void CalculateParentPointers(IteratorRange<unsigned*> output) const;
 
         class InputInterface
         {

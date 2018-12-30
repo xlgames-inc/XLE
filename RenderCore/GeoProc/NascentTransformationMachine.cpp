@@ -19,8 +19,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		const Assets::TransformationParameterSet&   parameterSet) const
 	{
 		std::unique_ptr<Float4x4[]> result = std::make_unique<Float4x4[]>(size_t(_outputMatrixCount));
-		GenerateOutputTransformsFree(
-			result.get(), _outputMatrixCount,
+		RenderCore::Assets::GenerateOutputTransforms(
+			MakeIteratorRange(result.get(), result.get() + _outputMatrixCount),
 			&parameterSet, 
 			MakeIteratorRange(_commandStream));
 		return result;
@@ -129,18 +129,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
 		bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
 	};
-
-	static const char* AsString(AnimSamplerType value)
-	{
-		switch (value) {
-		case AnimSamplerType::Float1: return "Float1";
-		case AnimSamplerType::Float3: return "Float3";
-		case AnimSamplerType::Float4: return "Float4";
-		case AnimSamplerType::Quaternion: return "Quaternion";
-		case AnimSamplerType::Float4x4: return "Float4x4";
-		}
-		return "<<unknown>>";
-	}
 
 	NascentSkeletonInterface::NascentSkeletonInterface()
 	: _lastReturnedOutputMatrixMarker(~unsigned(0)) {}
@@ -294,10 +282,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			{
 				using T = std::vector<AnimationParameterHashName>;
 				std::pair<const T*, AnimSamplerType> tables[] = {
-					std::make_pair(&interf._float1ParameterNames,      AnimSamplerType::Float1),
-					std::make_pair(&interf._float3ParameterNames,      AnimSamplerType::Float3),
-					std::make_pair(&interf._float4ParameterNames,      AnimSamplerType::Float4),
-					std::make_pair(&interf._float4x4ParameterNames,    AnimSamplerType::Float4x4)
+					std::make_pair(&interf._float1ParameterNames,		AnimSamplerType::Float1),
+					std::make_pair(&interf._float3ParameterNames,		AnimSamplerType::Float3),
+					std::make_pair(&interf._float4ParameterNames,		AnimSamplerType::Float4),
+					std::make_pair(&interf._float4x4ParameterNames,		AnimSamplerType::Float4x4),
+					std::make_pair(&interf._float4ParameterNames,		AnimSamplerType::Quaternion)
 				};
 
 				auto& names = *tables[unsigned(samplerType)].first;

@@ -155,6 +155,7 @@ namespace Assets
 		const IntermediateAssets::Store& store)
     {
 		store.MakeIntermediateName(destination, (unsigned)destinationSize, initializer);
+		XlCatString(destination, destinationSize, "-");
 		XlCatString(destination, destinationSize, postfix);
     }
 
@@ -262,7 +263,7 @@ namespace Assets
 		ResChar intermediateName[MaxPath];
 		MakeIntermediateName(
 			intermediateName, dimof(intermediateName),
-			Initializer(),  "-compileprod",
+			Initializer(),  "compileprod",
 			*c->_pimpl->_store);
 
 		size_t fileSize;
@@ -362,7 +363,7 @@ namespace Assets
 				ResChar compileProductsFile[MaxPath];
 				MakeIntermediateName(
 					compileProductsFile, dimof(compileProductsFile),
-					initializer,  "-compileprod",
+					initializer,  "compileprod",
 					*destinationStore);
 				BasicFile file;
 				if (MainFileSystem::TryOpen(file, compileProductsFile, "wb") == IFileSystem::IOReason::Success) {

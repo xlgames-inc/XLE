@@ -15,7 +15,7 @@ namespace FixedFunctionModel
         auto transformCount = transMachine.GetOutputMatrixCount();
         _transforms.resize(transformCount);
         transMachine.GenerateOutputTransforms(
-            AsPointer(_transforms.begin()), transformCount,
+            MakeIteratorRange(_transforms),
             paramSet ? paramSet : &transMachine.GetDefaultParameters());
 
         _binding = RenderCore::Assets::SkeletonBinding(

@@ -81,6 +81,9 @@
     <ClCompile Include="..\Assets\SkinDeformer.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
+    <ClCompile Include="..\Assets\VisualizationUtils.cpp">
+      <Filter>Assets\Model</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -160,6 +163,9 @@
     </ClInclude>
     <ClInclude Include="..\Assets\SkinDeformer.h">
       <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Assets\VisualizationUtils.h">
+      <Filter>Assets\Model</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>
