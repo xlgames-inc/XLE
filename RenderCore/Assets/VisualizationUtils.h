@@ -12,6 +12,14 @@ namespace RenderCore { namespace Techniques { class ParsingContext; } }
 namespace RenderCore { namespace Assets
 {
 	class SkeletonMachine;
+	class TransformationParameterSet;
+
+	void    RenderSkeleton(
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+		const SkeletonMachine& skeleton,
+		const TransformationParameterSet& params,
+		const Float4x4& localToWorld);
 
 	void    RenderSkeleton(
         IThreadContext& context, 

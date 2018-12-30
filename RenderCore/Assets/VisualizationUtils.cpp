@@ -67,6 +67,7 @@ namespace RenderCore { namespace Assets
         IThreadContext& context, 
         Techniques::ParsingContext& parserContext, 
 		const SkeletonMachine& skeleton,
+		const TransformationParameterSet& params,
 		const Float4x4& localToWorld)
     {
         auto& metalContext = *Metal::DeviceContext::Get(context);
@@ -84,8 +85,7 @@ namespace RenderCore { namespace Assets
         std::vector<Vertex_PC> workingVertices;
 
 		std::vector<Float4x4> outputMatrices(skeleton.GetOutputMatrixCount());
-		skeleton.GenerateOutputTransforms(
-            MakeIteratorRange(outputMatrices), &skeleton.GetDefaultParameters());
+		skeleton.GenerateOutputTransforms(MakeIteratorRange(outputMatrices), &params);
 
 		// Draw a sprite for each output matrix location
 		auto cameraRight = Normalize(ExtractRight_Cam(parserContext.GetProjectionDesc()._cameraToWorld));
@@ -152,4 +152,13 @@ namespace RenderCore { namespace Assets
         metalContext.Bind(Topology::TriangleList);
         metalContext.Draw((unsigned)workingVertices.size());
     }
+
+	void    RenderSkeleton(
+        IThreadContext& context, 
+        Techniques::ParsingContext& parserContext, 
+		const SkeletonMachine& skeleton,
+		const Float4x4& localToWorld)
+	{
+		RenderSkeleton(context, parserContext, skeleton, skeleton.GetDefaultParameters(), localToWorld);
+	}
 }}

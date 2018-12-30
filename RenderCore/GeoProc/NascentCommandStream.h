@@ -99,6 +99,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		void	MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves);
 
+		void	AddAnimation(
+			const std::string& name, 
+			unsigned driverBegin, unsigned driverEnd,
+			unsigned constantBegin, unsigned constantEnd,
+			float minTime, float maxTime);
+
+		IteratorRange<const AnimationDriver*> GetAnimationDrivers() const { return MakeIteratorRange(_animationDrivers); }
+		IteratorRange<const ConstantDriver*> GetConstantDrivers() const { return MakeIteratorRange(_constantDrivers); }
+
 		friend std::ostream& StreamOperator(
 			std::ostream& stream, 
 			const NascentAnimationSet& transMachine);

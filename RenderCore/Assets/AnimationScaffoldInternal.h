@@ -7,6 +7,7 @@
 #pragma once
 
 #include "TransformationCommands.h"
+#include "../Format.h"
 
 namespace RenderCore { namespace Assets
 {
@@ -39,8 +40,8 @@ namespace RenderCore { namespace Assets
         public:
             unsigned        _curveId;
             unsigned        _parameterIndex;
-            unsigned        _samplerOffset;
             AnimSamplerType _samplerType;
+			unsigned        _samplerOffset;
         };
 
         class ConstantDriver
@@ -48,8 +49,9 @@ namespace RenderCore { namespace Assets
         public:
             unsigned            _dataOffset;
             unsigned            _parameterIndex;
-            unsigned            _samplerOffset;
+			Format				_format;
             AnimSamplerType     _samplerType;
+			unsigned            _samplerOffset;
         };
 
         class OutputInterface

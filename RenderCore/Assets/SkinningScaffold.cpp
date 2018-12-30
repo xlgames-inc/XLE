@@ -11,6 +11,7 @@
 #include "AssetUtils.h"
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/DeferredConstruction.h"
+#include "../../Math/Quaternion.h"
 #include "../../ConsoleRig/Log.h"
 
 namespace RenderCore { namespace Assets
@@ -22,6 +23,8 @@ namespace RenderCore { namespace Assets
         }
 
     /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	Quaternion Decompress_36bit(const void* data);
 
     struct CompareAnimationName
     {
@@ -91,6 +94,13 @@ namespace RenderCore { namespace Assets
                         float1s[p._index] = curve.Calculate<Float4>(animState._time)[0];
                     }
                 }
+            } else if (driver._samplerType == AnimSamplerType::Quaternion) {
+                if (driver._curveId < curvesCount) {
+                    const RawAnimationCurve& curve = curves[driver._curveId];
+                    if (p._type == AnimSamplerType::Float4) {
+                        *(Quaternion*)&float4s[p._index] = curve.Calculate<Quaternion>(animState._time);
+                    }
+                }
             } else if (driver._samplerType == AnimSamplerType::Float3) {
                 if (driver._curveId < curvesCount) {
                     const RawAnimationCurve& curve = curves[driver._curveId];
@@ -138,6 +148,15 @@ namespace RenderCore { namespace Assets
                     float4s[p._index] = *(const Float4*)data;
                 } else if (p._type == AnimSamplerType::Float3) {
                     float3s[p._index] = Truncate(*(const Float4*)data);
+                }
+			} else if (driver._samplerType == AnimSamplerType::Quaternion) {
+                if (p._type == AnimSamplerType::Float4) {
+					if (driver._format == Format::R12G12B12A4_SNORM) {
+						*(Quaternion*)&float4s[p._index] = Decompress_36bit(data);
+					} else {
+						assert(driver._format == Format::R32G32B32A32_FLOAT);
+						float4s[p._index] = *(const Float4*)data;
+					}
                 }
             } else if (driver._samplerType == AnimSamplerType::Float3) {
                 assert(p._type == AnimSamplerType::Float3);

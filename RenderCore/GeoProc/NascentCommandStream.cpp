@@ -164,20 +164,33 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             minTime, maxTime));
 	}
 
+	void	NascentAnimationSet::AddAnimation(
+			const std::string& name, 
+			unsigned driverBegin, unsigned driverEnd,
+			unsigned constantBegin, unsigned constantEnd,
+			float minTime, float maxTime)
+	{
+		_animations.push_back(Animation(name, 
+            driverBegin, driverEnd, 
+            constantBegin, constantEnd,
+            minTime, maxTime));
+	}
+
     void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         ::Serialize(serializer, unsigned(_curveIndex));
         ::Serialize(serializer, _parameterIndex);
-        ::Serialize(serializer, _samplerOffset);
         ::Serialize(serializer, unsigned(_samplerType));
+		::Serialize(serializer, _samplerOffset);
     }
 
     void NascentAnimationSet::ConstantDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         ::Serialize(serializer, _dataOffset);
         ::Serialize(serializer, _parameterIndex);
-        ::Serialize(serializer, _samplerOffset);
-        ::Serialize(serializer, unsigned(_samplerType));
+        ::Serialize(serializer, unsigned(_format));
+		::Serialize(serializer, unsigned(_samplerType));
+		::Serialize(serializer, _samplerOffset);
     }
 
     struct AnimationDesc        // matches AnimationSet::Animation
