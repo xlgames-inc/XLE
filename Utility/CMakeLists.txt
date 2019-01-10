@@ -1,6 +1,7 @@
 
 file(GLOB Src "*.cpp")
 file(GLOB Headers "*.h")
+file(GLOB NetworkingSrc "Networking/*.cpp")
 file(GLOB StreamsSrc "Streams/*.cpp")
 file(GLOB ThreadingSrc "Threading/*.cpp")
 file(GLOB ProfilingSrc "Profiling/*.cpp")
@@ -11,6 +12,6 @@ else()
     file(GLOB LinuxSrc "Linux/*.cpp" "Streams/Linux/*.cpp")
 endif()
 
-BasicLibrary(Utility "${Src};${Headers};${StreamsSrc};${ThreadingSrc};${WinAPISrc};${ProfilingSrc};${MetaSrc};${LinuxSrc}")
+BasicLibrary(Utility "${Src};${Headers};${NetworkingSrc};${StreamsSrc};${ThreadingSrc};${WinAPISrc};${ProfilingSrc};${MetaSrc};${LinuxSrc}")
 
 include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})

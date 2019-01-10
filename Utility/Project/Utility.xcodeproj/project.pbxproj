@@ -113,6 +113,9 @@
 		8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */; };
 		8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D551EA688D1009BD9B0 /* UTFUtils.h */; };
 		8FD85DA11EA688D1009BD9B0 /* xl_snprintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */; };
+		AF74EB4021E6E336007C3A66 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF74EB3E21E6E336007C3A66 /* Socket.cpp */; };
+		AF74EB4121E6E336007C3A66 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF74EB3E21E6E336007C3A66 /* Socket.cpp */; };
+		AF74EB4221E6E336007C3A66 /* Socket.h in Headers */ = {isa = PBXBuildFile; fileRef = AF74EB3F21E6E336007C3A66 /* Socket.h */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXCopyFilesBuildPhase section */
@@ -211,6 +214,8 @@
 		8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UTFUtils.cpp; path = ../UTFUtils.cpp; sourceTree = "<group>"; };
 		8FD85D551EA688D1009BD9B0 /* UTFUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UTFUtils.h; path = ../UTFUtils.h; sourceTree = "<group>"; };
 		8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xl_snprintf.cpp; path = ../xl_snprintf.cpp; sourceTree = "<group>"; };
+		AF74EB3E21E6E336007C3A66 /* Socket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Socket.cpp; sourceTree = "<group>"; };
+		AF74EB3F21E6E336007C3A66 /* Socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Socket.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -247,6 +252,7 @@
 				8FD85CFF1EA68777009BD9B0 /* Config */,
 				8FD85D0B1EA688D1009BD9B0 /* Detail */,
 				8FD85D1A1EA688D1009BD9B0 /* Meta */,
+				AF74EB3D21E6E336007C3A66 /* Networking */,
 				8FD85CF91EA6872D009BD9B0 /* Products */,
 				8FD85D271EA688D1009BD9B0 /* Profiling */,
 				8FD85D2B1EA688D1009BD9B0 /* Streams */,
@@ -388,6 +394,16 @@
 			path = ../Threading;
 			sourceTree = "<group>";
 		};
+		AF74EB3D21E6E336007C3A66 /* Networking */ = {
+			isa = PBXGroup;
+			children = (
+				AF74EB3E21E6E336007C3A66 /* Socket.cpp */,
+				AF74EB3F21E6E336007C3A66 /* Socket.h */,
+			);
+			name = Networking;
+			path = ../Networking;
+			sourceTree = "<group>";
+		};
 		BE7DC0442065832E00685CE6 /* Linux */ = {
 			isa = PBXGroup;
 			children = (
@@ -426,6 +442,7 @@
 				8FD85D981EA688D1009BD9B0 /* LockFree.h in Headers */,
 				8FD85D821EA688D1009BD9B0 /* PathUtils.h in Headers */,
 				8FD85D5B1EA688D1009BD9B0 /* BitUtils.h in Headers */,
+				AF74EB4221E6E336007C3A66 /* Socket.h in Headers */,
 				8FD85D8F1EA688D1009BD9B0 /* StreamUtils.h in Headers */,
 				8FD85D6F1EA688D1009BD9B0 /* ClassAccessorsImpl.h in Headers */,
 				8FD85D6C1EA688D1009BD9B0 /* AccessorSerialize.h in Headers */,
@@ -538,6 +555,7 @@
 				8FA3F7BB1EDD17DE003EF623 /* ClassAccessors.cpp in Sources */,
 				8F2DB6282017F8CF009F52AB /* FileUtils_Linux.cpp in Sources */,
 				8FA3F7BC1EDD17DE003EF623 /* CPUProfiler.cpp in Sources */,
+				AF74EB4121E6E336007C3A66 /* Socket.cpp in Sources */,
 				8FA3F7BD1EDD17DE003EF623 /* Data.cpp in Sources */,
 				8FA3F7BE1EDD17DE003EF623 /* DataSerialize.cpp in Sources */,
 				8FA3F7C01EDD17DE003EF623 /* FileUtils_stdio.cpp in Sources */,
@@ -575,6 +593,7 @@
 				8FD85D6B1EA688D1009BD9B0 /* AccessorSerialize.cpp in Sources */,
 				8F2DB61D2017F858009F52AB /* FileUtils_Linux.cpp in Sources */,
 				8FD85D6D1EA688D1009BD9B0 /* ClassAccessors.cpp in Sources */,
+				AF74EB4021E6E336007C3A66 /* Socket.cpp in Sources */,
 				8FD85D931EA688D1009BD9B0 /* StringUtils.cpp in Sources */,
 				8FD85D861EA688D1009BD9B0 /* StreamDOM.cpp in Sources */,
 				8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */,
