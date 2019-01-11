@@ -208,7 +208,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                     glDrawBuffer(GL_NONE);
                     glReadBuffer(GL_NONE);
                 } else {
-                    glReadBuffer(GL_COLOR_ATTACHMENT0);
+                    // XTODO: currently there are situations where colorAttachmentIterator is 0. Is this expected?
+                    if (colorAttachmentIterator > 0) {
+                        glReadBuffer(GL_COLOR_ATTACHMENT0);
+                    }
                 }
             }
 
