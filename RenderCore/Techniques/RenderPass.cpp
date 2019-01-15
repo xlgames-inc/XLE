@@ -706,6 +706,36 @@ namespace RenderCore { namespace Techniques
         return _pimpl->_props;
     }
 
+    void AttachmentPool::ResetActualized()
+    {
+        // Reset all actualized attachments. They will get recreated on demand
+        for (auto&attach:_pimpl->_attachments)
+            attach._resource.reset();
+        _pimpl->_srvPool.Reset();
+    }
+
+    std::string AttachmentPool::GetMetrics() const
+    {
+        std::stringstream str;
+        size_t totalByteCount = 0;
+        str << "(" << _pimpl->_attachments.size() << ") attachments:" << std::endl;
+        for (unsigned c=0; c<_pimpl->_attachments.size(); ++c) {
+            auto& desc = _pimpl->_attachments[c]._desc;
+            str << "    [" << c << "] " << desc;
+            if (_pimpl->_attachments[c]._resource) {
+                totalByteCount += ByteCount(_pimpl->_attachments[c]._resource->GetDesc());
+                str << " (actualized)";
+            } else {
+                str << " (not actualized)";
+            }
+            str << std::endl;
+        }
+
+        str << "Total memory: (" << std::setprecision(4) << totalByteCount / (1024.f*1024.f) << "MiB)" << std::endl;
+        str << "ViewPool count: (" << _pimpl->_srvPool.GetMetrics()._viewCount << ")" << std::endl;
+        return str.str();
+    }
+
     AttachmentPool::AttachmentPool()
     {
         _pimpl = std::make_unique<Pimpl>();
@@ -1203,12 +1233,16 @@ namespace RenderCore { namespace Techniques
                             if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->second._defaultAspect;
                         } else {
                             if (desc._format == Format::Unknown) {
-                                debugInfo << "      * Could not resolve correct format for attachment: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
-                                for (const auto& att : workingAttachments)
-                                    debugInfo << att << std::endl;
-                                auto debugInfoStr = debugInfo.str();
-                                Log(Error) << "MergeFragments() failed. Details:" << std::endl << debugInfoStr << std::endl;
-                                Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request. Details:\n%s\n", debugInfoStr.c_str()));
+                                #if defined(_DEBUG)
+                                    debugInfo << "      * Could not resolve correct format for attachment: " << interfaceAttachment._desc << ". Semantic: 0x" << std::hex << interfaceAttachment.GetInputSemanticBinding() << std::dec << std::endl;
+                                    for (const auto& att : workingAttachments)
+                                        debugInfo << att << std::endl;
+                                    auto debugInfoStr = debugInfo.str();
+                                    Log(Error) << "MergeFragments() failed. Details:" << std::endl << debugInfoStr << std::endl;
+                                    Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request. Details:\n%s\n", debugInfoStr.c_str()));
+                                #else
+                                    Throw(::Exceptions::BasicLabel("Couldn't bind renderpass fragment input request"));
+                                #endif
                             }
                         }
 
