@@ -548,7 +548,7 @@ namespace RenderCore { namespace Techniques
     {
         return
             GetArrayCount(lhs) == GetArrayCount(rhs)
-            && lhs._format == rhs._format
+            && (lhs._format == rhs._format || lhs._format == Format::Unknown || rhs._format == Format::Unknown)
             && DimsEqual(lhs, rhs, props)
             ;
     }
@@ -569,6 +569,10 @@ namespace RenderCore { namespace Techniques
                 }
             }
         }
+
+        AttachmentDesc::Flags::BitField relevantFlags = ~0u;
+        if (_pimpl->_props._samples._sampleCount <= 1)
+            relevantFlags &= ~AttachmentDesc::Flags::Multisampled;
 
         std::vector<AttachmentName> result;
         for (const auto&r:requests) {
@@ -600,10 +604,17 @@ namespace RenderCore { namespace Techniques
             // We will go through and either find an existing buffer or create a new one
             for (unsigned q=0; q<_pimpl->_attachments.size(); ++q) {
                 if (MatchRequest(r._desc, _pimpl->_attachments[q]._desc, _pimpl->_props) && q < consumed.size() && !consumed[q]) {
-                    consumed[q] = true;
-                    result.push_back(q);
-                    foundMatch = true;
-                    break;
+                    // We must ensure that the attachment matches all of the flags in the request.
+                    // However, we can ignore the "multisampled" flag if FrameBufferProps doesn't have any
+                    // multisampling enabled
+                    auto requestFlags = r._desc._flags & relevantFlags;
+                    auto attachmentFlags = _pimpl->_attachments[q]._desc._flags;
+                    if ((attachmentFlags&requestFlags) == requestFlags) {
+                        consumed[q] = true;
+                        result.push_back(q);
+                        foundMatch = true;
+                        break;
+                    }
                 }
             }
 
