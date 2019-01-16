@@ -252,10 +252,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder setFrontFacingWinding:AsMTLenum(desc._frontFaceWinding)];
-
-        if (desc._cullMode != CullMode::None) {
-            [_pimpl->_commandEncoder setCullMode:AsMTLenum(desc._cullMode)];
-        }
+        [_pimpl->_commandEncoder setCullMode:AsMTLenum(desc._cullMode)];
     }
 
     static DepthStencilDesc s_activeDepthStencilDesc;
