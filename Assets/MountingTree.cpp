@@ -32,7 +32,7 @@ namespace Assets
 		AbsolutePathMode    _absolutePathMode;
 
 		Pimpl(const FilenameRules &rules) : _rules(rules), _hasAtLeastOneMount(false),
-		                                    _absolutePathMode(AbsolutePathMode::MountingTree) {}
+		                                    _absolutePathMode(AbsolutePathMode::RawOS) {}
 	};
 
 	template<typename CharType>
