@@ -210,6 +210,7 @@ namespace RenderCore { namespace ImplOpenGLES
         const bool useFakeBackbuffer = false;
         if (useFakeBackbuffer || (_backBufferDesc._bindFlags & BindFlag::ShaderResource)) {
             _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
+
             if (_backBufferDesc._bindFlags & BindFlag::ShaderResource) {
                 if (_backBufferDesc._textureDesc._samples._sampleCount > 1) {
                     Log(Error) << "Requested back buffer MSAA as well as readable main color buffer, MSAA samples is ignored" << std::endl;

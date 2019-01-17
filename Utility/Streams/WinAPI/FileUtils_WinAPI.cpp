@@ -125,7 +125,7 @@ namespace Utility
 			NULL,
 			dw,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			(LPTSTR) &lpMsgBuf,
+			(LPSTR) &lpMsgBuf,
 			0, NULL);
 
 			// FORMAT_MESSAGE_FROM_SYSTEM will typically give us a new line
@@ -162,7 +162,7 @@ namespace Utility
 			NULL,
 			dw,
 			MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
-			(LPTSTR) &lpMsgBuf,
+			(LPSTR) &lpMsgBuf,
 			0, NULL);
 
 		// FORMAT_MESSAGE_FROM_SYSTEM will typically give us a new line
@@ -413,7 +413,7 @@ namespace Utility
 		{
 			char buffer[MAX_PATH];
 			XlCopyString(buffer, filename);	// copy to get the null terminator
-			DWORD dwAttrib = GetFileAttributes(buffer);
+			DWORD dwAttrib = GetFileAttributesA(buffer);
 			return dwAttrib != INVALID_FILE_ATTRIBUTES && !(dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
 
@@ -421,7 +421,7 @@ namespace Utility
 		{
 			char buffer[MAX_PATH];
 			XlCopyString(buffer, filename);	// copy to get the null terminator
-			DWORD dwAttrib = GetFileAttributes(buffer);
+			DWORD dwAttrib = GetFileAttributesA(buffer);
 			return (dwAttrib != INVALID_FILE_ATTRIBUTES) && (dwAttrib & FILE_ATTRIBUTE_DIRECTORY);
 		}
 

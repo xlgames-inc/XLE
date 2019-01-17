@@ -5,6 +5,7 @@
 #pragma once
 
 #include "InputLayout.h"
+#include "State.h"
 #include "TextureView.h"
 #include "../../IDevice_Forward.h"
 #include "../../ResourceList.h"
@@ -25,7 +26,6 @@ namespace RenderCore { namespace Metal_AppleMetal
     class ConstantBuffer;
     class BoundInputLayout;
     class ShaderProgram;
-    class BlendState;
     class ViewportDesc;
 
     class RasterizationDesc;
@@ -42,6 +42,15 @@ namespace RenderCore { namespace Metal_AppleMetal
     };
 
     using CommandListPtr = intrusive_ptr<CommandList>;
+
+
+    class CapturedStates
+    {
+    public:
+        unsigned        _captureGUID = ~0u;
+
+        std::vector<std::pair<uint64_t, uint64_t>> _customBindings;
+    };
 
     class ReflectionInformation
     {
@@ -83,11 +92,13 @@ namespace RenderCore { namespace Metal_AppleMetal
         template<int Count> void BindVS(const ResourceList<ConstantBuffer, Count>& constantBuffers);
         void Bind(const ShaderProgram& shaderProgram);
 
-        void Bind(const BlendState& blender);
+        void Bind(const AttachmentBlendDesc& desc);
         void Bind(const RasterizationDesc& rasterizer);
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
         void Bind(const ViewportDesc& viewport);
+
+        DepthStencilDesc ActiveDepthStencilDesc();
 
         void Bind(MTLVertexDescriptor* descriptor);
 
@@ -108,6 +119,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void            HoldDevice(id<MTLDevice>);
         void            HoldCommandBuffer(id<MTLCommandBuffer>);
         void            ReleaseCommandBuffer();
+        id<MTLCommandBuffer>            RetrieveCommandBuffer();
         void            CreateRenderCommandEncoder(MTLRenderPassDescriptor* renderPassDescriptor);
         void            EndEncoding();
         void            DestroyRenderCommandEncoder();
@@ -119,6 +131,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         GraphicsPipeline(const GraphicsPipeline&) = delete;
         GraphicsPipeline& operator=(const GraphicsPipeline&) = delete;
         virtual ~GraphicsPipeline();
+
+        CapturedStates* GetCapturedStates();
+        void        BeginStateCapture(CapturedStates& capturedStates);
+        void        EndStateCapture();
 
     private:
         class Pimpl;

@@ -36,15 +36,34 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    #if defined(_DEBUG)
+        unsigned g_trackedResourceAllocation = ~0u;
+        GlObject_Type::Enum g_trackedResourceAllocationType = (GlObject_Type::Enum)~0u;
+        static void OnResourceAllocation(GlObject_Type::Enum type, unsigned count, const unsigned* resId)
+        {
+            for (unsigned c=0; c<count; ++c) {
+                if (resId[c] == g_trackedResourceAllocation && type == g_trackedResourceAllocationType) {
+                    Log(Warning) << "Triggered tracked resource allocation (id: " << resId[c] << ", typecode: " << (unsigned)type << ")" << std::endl;
+                }
+            }
+        }
+    #else
+        static void OnResourceAllocation(GlObject_Type::Enum, unsigned, const unsigned*) {}
+    #endif
+
     intrusive_ptr<GlObject<GlObject_Type::Shader> >             ObjectFactory::CreateShader(ShaderType::Enum type)
     {
-        auto obj =  (GlObject<GlObject_Type::Shader>*)(size_t)glCreateShader(AsGLShaderType(type));
+        unsigned resId = glCreateShader(AsGLShaderType(type));
+        OnResourceAllocation(GlObject_Type::Shader, 1, &resId);
+        auto obj =  (GlObject<GlObject_Type::Shader>*)(size_t)resId;
         return intrusive_ptr<GlObject<GlObject_Type::Shader>>(obj);
     }
 
     intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >      ObjectFactory::CreateShaderProgram()
     {
-        auto temp = (GlObject<GlObject_Type::ShaderProgram>*)(size_t)glCreateProgram();
+        unsigned resId = glCreateProgram();
+        OnResourceAllocation(GlObject_Type::ShaderProgram, 1, &resId);
+        auto temp = (GlObject<GlObject_Type::ShaderProgram>*)(size_t)resId;
         return intrusive_ptr<GlObject<GlObject_Type::ShaderProgram> >(temp);
     }
 
@@ -52,6 +71,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenTextures(1, &result);
+        OnResourceAllocation(GlObject_Type::Texture, 1, &result);
         auto temp = (GlObject<GlObject_Type::Texture>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::Texture> >(temp);
     }
@@ -60,6 +80,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenRenderbuffers(1, &result);
+        OnResourceAllocation(GlObject_Type::RenderBuffer, 1, &result);
         auto temp = (GlObject<GlObject_Type::RenderBuffer>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::RenderBuffer> >(temp);
     }
@@ -68,6 +89,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenFramebuffers(1, &result);
+        OnResourceAllocation(GlObject_Type::FrameBuffer, 1, &result);
         auto temp = (GlObject<GlObject_Type::FrameBuffer>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >(temp);
     }
@@ -76,6 +98,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         RawGLHandle result = RawGLHandle_Invalid;
         glGenBuffers(1, &result);
+        OnResourceAllocation(GlObject_Type::Buffer, 1, &result);
         auto temp = (GlObject<GlObject_Type::Buffer>*)(size_t)result;
         return intrusive_ptr<GlObject<GlObject_Type::Buffer> >(temp);
     }
@@ -85,6 +108,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         if (_featureSet & FeatureSet::GLES300) {
             RawGLHandle result = RawGLHandle_Invalid;
             glGenSamplers(1, &result);
+            OnResourceAllocation(GlObject_Type::Sampler, 1, &result);
             auto temp = (GlObject<GlObject_Type::Sampler>*)(size_t)result;
             return intrusive_ptr<GlObject<GlObject_Type::Sampler> >(temp);
         } else {
@@ -100,6 +124,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         } else if (_featureSet & FeatureSet::GLES300) {
             RawGLHandle result = RawGLHandle_Invalid;
             glGenVertexArrays(1, &result);
+            OnResourceAllocation(GlObject_Type::VAO, 1, &result);
             auto temp = (GlObject<GlObject_Type::VAO>*)(size_t)result;
             return intrusive_ptr<GlObject<GlObject_Type::VAO> >(temp);
         } else {
@@ -109,6 +134,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             #else
                 glGenVertexArraysOES(1, &result);
             #endif
+            OnResourceAllocation(GlObject_Type::VAO, 1, &result);
             auto temp = (GlObject<GlObject_Type::VAO>*)(size_t)result;
             return intrusive_ptr<GlObject<GlObject_Type::VAO> >(temp);
         }
@@ -132,12 +158,12 @@ namespace RenderCore { namespace Metal_OpenGLES
     
         template<> void Destroy<GlObject_Type::Texture>(RawGLHandle object)
         { 
-            (*GetGLWrappers()->DeleteTextures)(1, &object);
+            GL_WRAP(DeleteTextures)(1, &object);
         }
     
         template<> void Destroy<GlObject_Type::RenderBuffer>(RawGLHandle object)
         { 
-            (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
+            GL_WRAP(DeleteRenderbuffers)(1, &object);
         }
 
         template<> void Destroy<GlObject_Type::FrameBuffer>(RawGLHandle object)
@@ -147,7 +173,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     
         template<> void Destroy<GlObject_Type::Buffer>(RawGLHandle object)
         { 
-            (*GetGLWrappers()->DeleteBuffers)(1, (GLuint*)&object);
+            GL_WRAP(DeleteBuffers)(1, (GLuint*)&object);
         }
 
         template<> void Destroy<GlObject_Type::Resource>(RawGLHandle object)
@@ -159,13 +185,13 @@ namespace RenderCore { namespace Metal_OpenGLES
                 //      Just check the type and 
                 //
             if (glIsTexture(object)) {
-                (*GetGLWrappers()->DeleteTextures)(1, &object);
+                GL_WRAP(DeleteTextures)(1, &object);
             } else if (glIsBuffer(object)) {
-                (*GetGLWrappers()->DeleteBuffers)(1, &object);
+                GL_WRAP(DeleteBuffers)(1, &object);
             } else if (glIsFramebuffer(object)) {
                 glDeleteFramebuffers(1, &object);
             } else if (glIsRenderbuffer(object)) {
-                (*GetGLWrappers()->DeleteRenderbuffers)(1, &object);
+                GL_WRAP(DeleteRenderbuffers)(1, &object);
             }
         }
 
@@ -366,17 +392,13 @@ namespace RenderCore { namespace Metal_OpenGLES
     void ObjectFactory::ReportLeaks()
     {
         ScopedLock(_refCountTableLock);
-        Log(Warning) << "[OpenGL Leaks] " << _refCountTable.size() << " objects remain" << std::endl;
-        auto count=0u;
-        for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
-            auto typeAndId = SeparateRefCountId(i->first);
-            Log(Warning) << "  [" << count << "] Object (" << typeAndId.first << "," << typeAndId.second << ") has (" << i->second << ") refs" << std::endl;
-        }
-
-        for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
-            auto typeAndId = SeparateRefCountId(i->first);
-            Log(Warning) << "------ Object (" << typeAndId.first << "," << typeAndId.second << "): " << std::endl;
-            Log(Warning) << DescribeUnknownObject(typeAndId.second) << std::endl;
+        if (!_refCountTable.empty()) {
+            Log(Warning) << "[OpenGL Leaks] " << _refCountTable.size() << " objects remain" << std::endl;
+            auto count=0u;
+            for (auto i=_refCountTable.cbegin(); i!=_refCountTable.cend(); ++i, ++count) {
+                auto typeAndId = SeparateRefCountId(i->first);
+                Log(Warning) << "  [" << count << "] Object (" << typeAndId.second << ") has (" << i->second << ") refs (typecode " << typeAndId.first << ") [" << DescribeUnknownObject(typeAndId.second) << "]" << std::endl;
+            }
         }
     }
 

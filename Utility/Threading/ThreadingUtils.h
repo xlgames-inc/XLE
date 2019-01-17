@@ -136,7 +136,7 @@
 
                 T1(Type) force_inline Type* ExchangePointer(Type* volatile* target, Type* newValue)    
                 { 
-                    if (constant_expression<sizeof(void*) == 4>::result()) {
+                    if (constant_expression<sizeof(Type*) == 4>::result()) {
                         return (Type*)Exchange((Value volatile*)target, (Value)newValue);
                     } else {
                         return (Type*)Exchange64((Value64 volatile*)target, (Value64)newValue);
@@ -145,7 +145,7 @@
 
                 T1(Type) force_inline Type* CompareExchangePointer(Type* volatile* target, Type* newValue, Type* comparisonValue)      
                 { 
-                    if (constant_expression<sizeof(void*) == 4>::result()) {
+                    if (constant_expression<sizeof(Type*) == 4>::result()) {
                         return (Type*)CompareExchange((Value volatile*)target, (Value)newValue, (Value)comparisonValue);
                     } else {
                         return (Type*)CompareExchange64((Value64 volatile*)target, (Value64)newValue, (Value)comparisonValue);

@@ -174,6 +174,10 @@ namespace RenderCore
             #include "Metal/Detail/DXGICompatibleFormats.h"
         #undef _EXP
         case Format::D32_SFLOAT_S8_UINT: return 32 + 8;
+        case Format::R24G8_TYPELESS:
+        case Format::D24_UNORM_S8_UINT:
+        case Format::R24_UNORM_X8_TYPELESS:
+        case Format::X24_TYPELESS_G8_UINT: return 32;
         case Format::S8_UINT: return 8;
         case Format::Matrix4x4: return 16 * sizeof(float) * 8;
         case Format::Matrix3x4: return 12 * sizeof(float) * 8;

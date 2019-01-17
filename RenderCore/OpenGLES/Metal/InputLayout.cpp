@@ -25,6 +25,7 @@
 #include "IncludeGLES.h"
 #include <set>
 #include <unordered_set>
+#include <cctype>
 
 namespace RenderCore { namespace Metal_OpenGLES
 {

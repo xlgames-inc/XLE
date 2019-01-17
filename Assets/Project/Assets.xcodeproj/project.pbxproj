@@ -62,6 +62,7 @@
 		8F6A9E382017F13600B76C43 /* GenericFuture.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2D2017F13600B76C43 /* GenericFuture.h */; };
 		8F6A9E392017F13600B76C43 /* IAssetCompiler.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2E2017F13600B76C43 /* IAssetCompiler.h */; };
 		8F6A9E3A2017F13600B76C43 /* MemoryFile.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F6A9E2F2017F13600B76C43 /* MemoryFile.h */; };
+		8F976CDC21F0181900521650 /* AssetHeapLRU.h in Headers */ = {isa = PBXBuildFile; fileRef = 8F976CDB21F0181900521650 /* AssetHeapLRU.h */; };
 		8FA3F77C1EDD171E003EF623 /* ArchiveCache.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C1B1EA6B13E0074D6A4 /* ArchiveCache.cpp */; };
 		8FA3F77E1EDD171E003EF623 /* Assets.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C1D1EA6B13E0074D6A4 /* Assets.cpp */; };
 		8FA3F7811EDD171E003EF623 /* AssetServices.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8F044C201EA6B13E0074D6A4 /* AssetServices.cpp */; };
@@ -149,6 +150,7 @@
 		8F6A9E2D2017F13600B76C43 /* GenericFuture.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = GenericFuture.h; path = ../GenericFuture.h; sourceTree = "<group>"; };
 		8F6A9E2E2017F13600B76C43 /* IAssetCompiler.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = IAssetCompiler.h; path = ../IAssetCompiler.h; sourceTree = "<group>"; };
 		8F6A9E2F2017F13600B76C43 /* MemoryFile.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = MemoryFile.h; path = ../MemoryFile.h; sourceTree = "<group>"; };
+		8F976CDB21F0181900521650 /* AssetHeapLRU.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = AssetHeapLRU.h; path = ../AssetHeapLRU.h; sourceTree = "<group>"; };
 		8FA3F7731EDD16E3003EF623 /* libAssetsIOS.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; includeInIndex = 0; path = libAssetsIOS.a; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
@@ -177,6 +179,7 @@
 				8F044C1C1EA6B13E0074D6A4 /* ArchiveCache.h */,
 				8F6A9E292017F13500B76C43 /* AssetFuture.h */,
 				8F6A9E2A2017F13500B76C43 /* AssetHeap.h */,
+				8F976CDB21F0181900521650 /* AssetHeapLRU.h */,
 				8F044C1D1EA6B13E0074D6A4 /* Assets.cpp */,
 				8F044C1E1EA6B13E0074D6A4 /* Assets.h */,
 				8F044C1F1EA6B13E0074D6A4 /* AssetsCore.h */,
@@ -191,6 +194,8 @@
 				8F044C281EA6B13E0074D6A4 /* AssetUtils.cpp */,
 				8F044C291EA6B13E0074D6A4 /* AssetUtils.h */,
 				8F6A9E2B2017F13500B76C43 /* AsyncLoadOperation.h */,
+				8F4D371A2155ADB3001FD93E /* AsyncMarkerGroup.cpp */,
+				8F4D37192155ADB2001FD93E /* AsyncMarkerGroup.h */,
 				8F044C2C1EA6B13E0074D6A4 /* BlockSerializer.cpp */,
 				8F044C2D1EA6B13E0074D6A4 /* BlockSerializer.h */,
 				8F044C2E1EA6B13E0074D6A4 /* ChunkFile.cpp */,
@@ -277,6 +282,7 @@
 				8F044C5C1EA6B13E0074D6A4 /* BlockSerializer.h in Headers */,
 				8F044C4B1EA6B13E0074D6A4 /* ArchiveCache.h in Headers */,
 				8F6A9E322017F13600B76C43 /* NascentChunk.h in Headers */,
+				8F976CDC21F0181900521650 /* AssetHeapLRU.h in Headers */,
 				8F044C661EA6B13E0074D6A4 /* CompilerLibrary.h in Headers */,
 				8F044C601EA6B13E0074D6A4 /* ChunkFileContainer.h in Headers */,
 				8F6A9E382017F13600B76C43 /* GenericFuture.h in Headers */,

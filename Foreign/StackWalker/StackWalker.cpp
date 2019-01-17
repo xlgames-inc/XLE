@@ -86,6 +86,7 @@
 //                  * pass frameNum to OnCallStackEntry
 //
 #pragma warning(disable:4091)	// warning C4091: 'typedef ': ignored on left of '' when no variable is declared
+#define WIN32_LEAN_AND_MEAN
 #include <windows.h>
 #include <tchar.h>
 #include <stdio.h>
@@ -670,7 +671,7 @@ private:
       return FALSE;
     }
 
-    hMods = (HMODULE*) malloc(sizeof(HMODULE) * (TTBUFLEN / sizeof HMODULE));
+    hMods = (HMODULE*) malloc(sizeof(HMODULE) * (TTBUFLEN / sizeof(HMODULE)));
     tt = (char*) malloc(sizeof(char) * TTBUFLEN);
     tt2 = (char*) malloc(sizeof(char) * TTBUFLEN);
     if ( (hMods == NULL) || (tt == NULL) || (tt2 == NULL) )

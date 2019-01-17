@@ -49,8 +49,14 @@ namespace Utility
         LRUCacheInsertType Insert(uint64 hashName, std::shared_ptr<Type> object);
         std::shared_ptr<Type>& Get(uint64 hashName);
 
+        IteratorRange<const std::shared_ptr<Type>*> GetObjects() const { return MakeIteratorRange(_objects); }
+        unsigned GetCacheSize() const { return _cacheSize; }
+
         LRUCache(unsigned cacheSize);
         ~LRUCache();
+
+        LRUCache(LRUCache&& moveFrom) never_throws;
+        LRUCache& operator=(LRUCache&& moveFrom) never_throws;
     protected:
         std::vector<std::shared_ptr<Type>>   _objects;
         std::vector<std::pair<uint64, unsigned>> _lookupTable;
@@ -66,6 +72,7 @@ namespace Utility
         if (i != _lookupTable.cend() && i->first == hashName) {
                 // already here! But we should replace, this might be an update operation
             _objects[i->second] = object;
+            _queue.BringToFront(i->second);
             return LRUCacheInsertType::Update;
         }
 
@@ -124,6 +131,27 @@ namespace Utility
     template<typename Type>
         LRUCache<Type>::~LRUCache()
     {}
+
+    template<typename Type>
+        LRUCache<Type>::LRUCache(LRUCache<Type>&& moveFrom) never_throws
+    : _objects(std::move(moveFrom._objects))
+    , _lookupTable(std::move(moveFrom._lookupTable))
+    , _queue(std::move(moveFrom._queue))
+    , _cacheSize(moveFrom._cacheSize)
+    {
+        moveFrom._cacheSize = 0;
+    }
+
+    template<typename Type>
+        LRUCache<Type>& LRUCache<Type>::operator=(LRUCache<Type>&& moveFrom) never_throws
+    {
+        _objects = std::move(moveFrom._objects);
+        _lookupTable = std::move(moveFrom._lookupTable);
+        _queue = std::move(moveFrom._queue);
+        _cacheSize = moveFrom._cacheSize;
+        moveFrom._cacheSize = 0;
+        return *this;
+    }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

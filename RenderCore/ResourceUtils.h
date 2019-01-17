@@ -63,6 +63,13 @@ namespace RenderCore
 	public:
 		ViewType* GetView(const std::shared_ptr<IResource>& resource, const ViewDescType& view);
 		void Erase(IResource& res);
+        void Reset();
+
+        struct Metrics
+        {
+            unsigned _viewCount;
+        };
+        Metrics GetMetrics() const;
 
 	private:
 		struct Entry { std::shared_ptr<IResource> _resource; std::unique_ptr<ViewType> _view; };
@@ -97,4 +104,16 @@ namespace RenderCore
 				[rawRes](const std::pair<uint64, Entry>& p) { return p.second._resource.get() == rawRes; }),
 			_views.end());
 	}
+
+    template<typename ViewType, typename ViewDescType>
+        void ViewPool<ViewType, ViewDescType>::Reset()
+    {
+        _views.clear();
+    }
+
+    template<typename ViewType, typename ViewDescType>
+        auto ViewPool<ViewType, ViewDescType>::GetMetrics() const -> Metrics
+    {
+        return Metrics { (unsigned)_views.size() };
+    }
 }

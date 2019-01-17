@@ -76,6 +76,9 @@ namespace RenderCore { namespace Techniques
         auto GetResource(AttachmentName resName) const -> IResourcePtr;
         auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
 
+        void ResetActualized();
+        std::string GetMetrics() const;
+
         AttachmentPool();
         ~AttachmentPool();
     private:

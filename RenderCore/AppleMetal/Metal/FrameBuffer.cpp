@@ -11,10 +11,40 @@ namespace RenderCore { namespace Metal_AppleMetal
 {
     void FrameBuffer::BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const
     {
-        /* KenD -- Metal TODO -- modify attachment clear colors */
+        MTLRenderPassDescriptor* desc = _subpasses[subpassIndex]._renderPassDescriptor.get();
 
-        /* KenD -- each subpass of the frame will have a RenderCommandEncoder with a different render pass descriptor. */
-        context.CreateRenderCommandEncoder(_subpasses[subpassIndex]._renderPassDescriptor.get());
+        /* Metal TODO -- this is a partial implementation of clear colors; it works for a single color attachment
+         * and assumes that depth/stencil clear values are after color attachment clear values, if any */
+        unsigned clearValueIterator = 0;
+
+        if (desc.colorAttachments[0].texture && desc.colorAttachments[0].loadAction == MTLLoadActionClear) {
+            const float* clear = clearValues[clearValueIterator++]._float;
+            /* Metal HACK -- hacky workaround to prevent running out of clear values; OpenGL implementation has been updated and Metal implementation needs to be updated as well */
+            if (!clear) {
+                desc.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
+            } else {
+                desc.colorAttachments[0].clearColor = MTLClearColorMake(clear[0], clear[1], clear[2], clear[3]);
+            }
+        }
+        if (desc.depthAttachment.texture && desc.depthAttachment.loadAction == MTLLoadActionClear) {
+            /* Metal HACK -- hacky workaround to prevent running out of clear values */
+            if (clearValues.empty()) {
+                desc.depthAttachment.clearDepth = 1.0f;
+            } else {
+                desc.depthAttachment.clearDepth = clearValues[clearValueIterator]._depthStencil._depth;
+            }
+        }
+        if (desc.stencilAttachment.texture && desc.stencilAttachment.loadAction == MTLLoadActionClear) {
+            /* Metal HACK -- hacky workaround to prevent running out of clear values */
+            if (clearValues.empty()) {
+                desc.stencilAttachment.clearStencil = 0;
+            } else {
+                desc.stencilAttachment.clearStencil = clearValues[clearValueIterator]._depthStencil._stencil;
+            }
+        }
+
+        /* Each subpass of the frame will have a RenderCommandEncoder with a different render pass descriptor. */
+        context.CreateRenderCommandEncoder(desc);
     }
 
     MTLLoadAction NonStencilLoadActionFromRenderCore(RenderCore::LoadStore load)
@@ -96,7 +126,7 @@ namespace RenderCore { namespace Metal_AppleMetal
     {
         auto subpasses = fbDesc.GetSubpasses();
 
-        assert(subpasses.size() <= s_maxSubpasses);
+        _subpasses.resize(subpasses.size());
         for (unsigned p=0; p<(unsigned)subpasses.size(); ++p) {
             _subpasses[p]._renderPassDescriptor = TBC::OCPtr<MTLRenderPassDescriptor>(TBC::moveptr([[MTLRenderPassDescriptor alloc] init]));
             auto* desc = _subpasses[p]._renderPassDescriptor.get();
@@ -113,56 +143,38 @@ namespace RenderCore { namespace Metal_AppleMetal
                 desc.colorAttachments[o].texture = AsResource(resource).GetTexture();
                 desc.colorAttachments[o].loadAction = NonStencilLoadActionFromRenderCore(attachmentView._loadFromPreviousPhase);
                 desc.colorAttachments[o].storeAction = NonStencilStoreActionFromRenderCore(attachmentView._storeToNextPhase);
-                /* KenD -- Metal TODO -- alter clearColor when binding */
-                desc.colorAttachments[o].clearColor = MTLClearColorMake(0.8, 0.2, 0.2, 1.0);
+                // clearColor is set when binding subpass
             }
 
             if (spDesc._depthStencil._resourceName != ~0u) {
                 auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
                 if (!resource)
                     Throw(::Exceptions::BasicLabel("Could not find attachment texture for depth/stencil attachment in FrameBuffer::FrameBuffer"));
-                desc.depthAttachment.texture = AsResource(resource).GetTexture();
-                desc.depthAttachment.loadAction = NonStencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
-                desc.depthAttachment.storeAction = NonStencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
-                /* KenD -- Metal TODO -- alter clearDepth when binding */
-                desc.depthAttachment.clearDepth = 1.0;
 
-                desc.stencilAttachment.texture = AsResource(resource).GetTexture();
-                desc.stencilAttachment.loadAction = StencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
-                desc.stencilAttachment.storeAction = StencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
-                /* KenD -- Metal TODO -- alter clearStencil when binding */
-                desc.stencilAttachment.clearStencil = 0;
+                auto& res = AsResource(resource);
+                auto format = res.GetDesc()._textureDesc._format;
+                auto resolvedFormat = ResolveFormat(format, {}, FormatUsage::DSV);
+                auto components = GetComponents(resolvedFormat);
+
+                if (components == FormatComponents::Depth || components == FormatComponents::DepthStencil) {
+                    desc.depthAttachment.texture = res.GetTexture();
+                    desc.depthAttachment.loadAction = NonStencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
+                    desc.depthAttachment.storeAction = NonStencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
+                    // clearDepth is set when binding subpass
+                }
+
+                if (components == FormatComponents::Stencil || components == FormatComponents::DepthStencil) {
+                    desc.stencilAttachment.texture = res.GetTexture();
+                    desc.stencilAttachment.loadAction = StencilLoadActionFromRenderCore(spDesc._depthStencil._loadFromPreviousPhase);
+                    desc.stencilAttachment.storeAction = StencilStoreActionFromRenderCore(spDesc._depthStencil._storeToNextPhase);
+                    // clearStencil is set when binding subpass
+                }
             }
-
-            /* KenD -- Metal TODO -- verify load and store actions */
         }
     }
 
     FrameBuffer::FrameBuffer() {}
     FrameBuffer::~FrameBuffer() {}
-
-    class FrameBufferPool::Pimpl
-    {
-    };
-
-    std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-        ObjectFactory& factory,
-        const FrameBufferDesc& desc,
-        const FrameBufferProperties& props,
-        const INamedAttachments& namedResources,
-        uint64 hashName)
-    {
-        return std::make_shared<FrameBuffer>(factory, desc, namedResources);
-    }
-
-    FrameBufferPool::FrameBufferPool()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
-
-    FrameBufferPool::~FrameBufferPool()
-    {
-    }
 
     static unsigned s_nextSubpass = 0;
     static std::vector<ClearValue> s_clearValues;
@@ -180,13 +192,22 @@ namespace RenderCore { namespace Metal_AppleMetal
         BeginNextSubpass(context, frameBuffer);
     }
 
+    /* KenD -- I'd prefer not to have this check, but it keeps balance of
+     * creating/destroying the encoder when beginNextSubpass is called although
+     * there isn't another subpass descriptor.
+     */
+    static bool didBindSubpass = false;
+
     void BeginNextSubpass(
         DeviceContext& context,
         FrameBuffer& frameBuffer)
     {
         // Queue up the next render targets
         auto subpassIndex = s_nextSubpass;
-        frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
+        if (subpassIndex < frameBuffer.GetSubpassCount()) {
+            frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
+            didBindSubpass = true;
+        }
         ++s_nextSubpass;
     }
 
@@ -201,8 +222,11 @@ namespace RenderCore { namespace Metal_AppleMetal
 
     void EndSubpass(DeviceContext& context)
     {
-        context.EndEncoding();
-        context.DestroyRenderCommandEncoder();
+        if (didBindSubpass) {
+            context.EndEncoding();
+            context.DestroyRenderCommandEncoder();
+        }
+        didBindSubpass = false;
     }
 
     void EndRenderPass(DeviceContext& context)
@@ -211,4 +235,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
     }
+
+    unsigned GetCurrentSubpassIndex(DeviceContext& context)
+    {
+        return s_nextSubpass-1;
+    }
+
 }}

@@ -8,6 +8,7 @@
 
 #include "IteratorUtils.h"
 #include "PtrUtils.h"
+#include "Threading/Mutex.h"
 #include "../Core/Exceptions.h"
 #include "../Core/SelectConfiguration.h"
 #include <functional>

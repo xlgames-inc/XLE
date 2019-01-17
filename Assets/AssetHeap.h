@@ -19,6 +19,7 @@ namespace Assets
 		Blob		_actualizationLog; 
 		uint64_t	_typeCode;
 		uint64_t	_idInAssetHeap;
+        unsigned    _initializationCount = 0;
 	};
 
 	class IDefaultAssetHeap

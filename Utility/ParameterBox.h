@@ -153,6 +153,7 @@ namespace Utility
         uint64  GetParameterNamesHash() const;
         uint64  CalculateFilteredHashValue(const ParameterBox& source) const;
         bool    AreParameterNamesEqual(const ParameterBox& other) const;
+        IteratorRange<const void*> GetValueTable() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////
             //      M E R G I N G   &   I T E R A T O R                     //
