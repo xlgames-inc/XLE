@@ -205,7 +205,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (factory.GetFeatureSet() & FeatureSet::GL4) {
                 // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
                 if (sp._rtvCount == 0) {
-                    glDrawBuffer(GL_NONE);
+                    #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+                        glDrawBuffer(GL_NONE);
+                    #endif
                     glReadBuffer(GL_NONE);
                 } else {
                     // XTODO: currently there are situations where colorAttachmentIterator is 0. Is this expected?
