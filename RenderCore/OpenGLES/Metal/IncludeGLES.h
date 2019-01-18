@@ -12,6 +12,7 @@
     #include <OpenGL/glext.h>
 #elif PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
 	// Project Angle emulation layer
+	#define GL_GLEXT_PROTOTYPES 1
 	#include <GLES2/gl2.h>
 	#include <GLES2/gl2ext.h>
 	#include <GLES3/gl3.h>

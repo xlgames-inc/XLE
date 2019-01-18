@@ -253,7 +253,7 @@ void XlMoveFile(const utf8 destination[], const utf8 source[])
 
 const char* XlGetCommandLine()
 {
-    return GetCommandLine();
+    return GetCommandLineA();
 }
 
 #if 0

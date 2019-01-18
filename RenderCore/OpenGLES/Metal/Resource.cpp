@@ -128,7 +128,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 // upload data to opengl buffer...
                 glBindBuffer(bindTarget, _underlyingBuffer->AsRawGLHandle());
-                (*GetGLWrappers()->BufferData)(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
+                GL_WRAP(BufferData)(bindTarget, std::max((GLsizeiptr)initData._data.size(), (GLsizeiptr)desc._linearBufferDesc._sizeInBytes), initData._data.data(), usageMode);
 
                 if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0])
                     glLabelObjectEXT(GL_BUFFER_OBJECT_EXT, _underlyingBuffer->AsRawGLHandle(), 0, desc._name);
@@ -175,7 +175,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     glBindTexture(bindTarget, _underlyingTexture->AsRawGLHandle());
 
                     if (!initializer && useTexStorage) {
-                        (*GetGLWrappers()->TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                        GL_WRAP(TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
                     } else {
 
                         // If we're uploading a cubemap, we must iterate through all of the faces
@@ -205,14 +205,14 @@ namespace RenderCore { namespace Metal_OpenGLES
                                     auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
                                     auto subRes = initializer({m, f});
                                     if (fmt._type != 0) {
-                                        (*GetGLWrappers()->TexImage2D)(
+                                        GL_WRAP(TexImage2D)(
                                             faceBinding[f],
                                             m, fmt._internalFormat,
                                             mipWidth, mipHeight, 0,
                                             fmt._format, fmt._type,
                                             subRes._data.begin());
                                     } else {
-                                        (*GetGLWrappers()->CompressedTexImage2D)(
+                                        GL_WRAP(CompressedTexImage2D)(
                                             faceBinding[f],
                                             m, fmt._internalFormat,
                                             mipWidth, mipHeight, 0,
@@ -225,7 +225,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                                 for (unsigned m=0; m<desc._textureDesc._mipCount; ++m) {
                                     auto mipWidth  = std::max(desc._textureDesc._width >> m, 1u);
                                     auto mipHeight = std::max(desc._textureDesc._height >> m, 1u);
-                                    (*GetGLWrappers()->TexImage2D)(
+                                    GL_WRAP(TexImage2D)(
                                         faceBinding[f],
                                         m, fmt._internalFormat,
                                         mipWidth, mipHeight, 0,

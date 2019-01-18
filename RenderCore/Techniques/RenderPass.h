@@ -10,8 +10,8 @@
 #include "../FrameBufferDesc.h"
 #include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
+#include "../../Math/Vector.h"
 #include "../../Utility/IteratorUtils.h"
-#include "../../Core/Types.h"
 #include <memory>
 
 namespace RenderCore 
@@ -21,45 +21,20 @@ namespace RenderCore
     class TextureViewDesc;
     class TextureSamples;
     class FrameBufferProperties;
-    using AttachmentName = uint32;
+    using AttachmentName = uint32_t;
     class IResource;
     using IResourcePtr = std::shared_ptr<IResource>;
 }
 
 namespace RenderCore { namespace Techniques
 {
-////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class AttachmentPool
-    {
-    public:
-        void DefineAttachment(AttachmentName, const AttachmentDesc& request);
-        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
-
-        void Bind(AttachmentName, const IResourcePtr& resource);
-        void Unbind(AttachmentName);
-        IResourcePtr GetResource(AttachmentName resName) const;
-        Metal::ShaderResourceView* GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const;
-
-        void Bind(FrameBufferProperties props);
-        const FrameBufferProperties& GetFrameBufferProperties() const;
-        IteratorRange<const AttachmentDesc*> GetDescriptions() const;
-
-        AttachmentPool();
-        ~AttachmentPool();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FrameBufferDescFragment
     {
     public:
-        AttachmentName DefineAttachment(
-            uint64_t semantic,
-            const AttachmentDesc& request = {});
+        AttachmentName DefineAttachment(uint64_t semantic, const AttachmentDesc& request = {});
         AttachmentName DefineTemporaryAttachment(const AttachmentDesc& request) { return DefineAttachment(0, request); }
         void AddSubpass(SubpassDesc&& subpass);
 
@@ -68,21 +43,48 @@ namespace RenderCore { namespace Techniques
 
         struct Attachment
         {
-            uint64_t        _semantic;
+            uint64_t        _inputSemanticBinding;
+            uint64_t        _outputSemanticBinding;
             AttachmentDesc  _desc;
-        };
-        std::vector<std::pair<AttachmentName, Attachment>> _attachments;
-        std::vector<SubpassDesc>    _subpasses;
 
-    private:
-        unsigned _nextAttachment;
+            uint64_t GetInputSemanticBinding() const { return _inputSemanticBinding; }
+            uint64_t GetOutputSemanticBinding() const { return _outputSemanticBinding; }
+        };
+        std::vector<Attachment>     _attachments;
+        std::vector<SubpassDesc>    _subpasses;
     };
 
     FrameBufferDesc BuildFrameBufferDesc(
-        AttachmentPool& namedResources,
         FrameBufferDescFragment&& fragment);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class AttachmentPool
+    {
+    public:
+        void Bind(uint64_t semantic, const IResourcePtr& resource);
+        void Unbind(const IResource& resource);
+        void UnbindAll();
+		auto GetBoundResource(uint64_t semantic) -> IResourcePtr;
+
+        std::vector<AttachmentName> Request(IteratorRange<const FrameBufferDesc::Attachment*> requests);
+
+        void Bind(FrameBufferProperties props);
+        const FrameBufferProperties& GetFrameBufferProperties() const;
+
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetResource(AttachmentName resName) const -> IResourcePtr;
+        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+
+        void ResetActualized();
+        std::string GetMetrics() const;
+
+        AttachmentPool();
+        ~AttachmentPool();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
 
     class RenderPassBeginDesc
     {
@@ -110,7 +112,13 @@ namespace RenderCore { namespace Techniques
     class FrameBufferPool
     {
     public:
-        std::shared_ptr<Metal::FrameBuffer> BuildFrameBuffer(
+        class Result
+        {
+        public:
+            std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
+            IteratorRange<const AttachmentName*> _poolAttachmentsRemapping;
+        };
+        Result BuildFrameBuffer(
             Metal::ObjectFactory& factory,
             const FrameBufferDesc& desc,
             AttachmentPool& attachmentPool);
@@ -145,12 +153,18 @@ namespace RenderCore { namespace Techniques
         unsigned GetCurrentSubpassIndex() const;
 
         Metal::FrameBuffer& GetFrameBuffer() { return *_frameBuffer; }
+        const Metal::FrameBuffer& GetFrameBuffer() const { return *_frameBuffer; }
+
+        // The "AttachmentNames" here map onto the names used by the FrameBufferDesc used to initialize this RPI
+        auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
+        auto GetResource(AttachmentName resName) const -> IResourcePtr;
+        auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
 
         RenderPassInstance(
             IThreadContext& context,
-            const std::shared_ptr<Metal::FrameBuffer>& frameBuffer,
             const FrameBufferDesc& layout,
-            AttachmentPool& namedResources,
+            FrameBufferPool& frameBufferPool,
+            AttachmentPool& attachmentPool,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
 
         ~RenderPassInstance();
@@ -162,20 +176,20 @@ namespace RenderCore { namespace Techniques
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;
         Metal::DeviceContext* _attachedContext;
+        AttachmentPool* _attachmentPool;
+        std::vector<AttachmentName> _attachmentPoolRemapping;
     };
-
-    std::shared_ptr<INamedAttachments> MakeNamedAttachmentsWrapper(AttachmentPool& namedRes);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     struct PreregisteredAttachment
     {
     public:
-        AttachmentName _name;
         uint64_t _semantic;
         AttachmentDesc _desc;
         enum class State { Uninitialized, Initialized };
         State _state = State::Uninitialized;
+        State _stencilState = State::Uninitialized;
     };
 
     class FrameBufferFragmentMapping
@@ -186,12 +200,20 @@ namespace RenderCore { namespace Techniques
         unsigned _subpassCount;
     };
 
-    std::pair<FrameBufferDescFragment, std::vector<FrameBufferFragmentMapping>>
-        MergeFragments(
-            IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
-            IteratorRange<const FrameBufferDescFragment*> fragments,
-            char *logBuffer = nullptr,
-            size_t bufferLength = 0u);
+    class MergeFragmentsResult
+    {
+    public:
+        FrameBufferDescFragment _mergedFragment;
+        std::vector<FrameBufferFragmentMapping> _remapping;
+        std::vector<std::pair<uint64_t, AttachmentName>> _inputAttachments;
+        std::vector<std::pair<uint64_t, AttachmentName>> _outputAttachments;
+        std::string _log;
+    };
+
+    MergeFragmentsResult MergeFragments(
+        IteratorRange<const PreregisteredAttachment*> preregisteredAttachments,
+        IteratorRange<const FrameBufferDescFragment*> fragments,
+		UInt2 dimenionsForCompatibilityTests = UInt2(1024, 1024));
 
     /// <summary>Like RenderPassInstance, but works with a single fragment</summary>
     /// RenderPasses are often generated from many "fragments" -- which are merged together into a
@@ -203,25 +225,55 @@ namespace RenderCore { namespace Techniques
     class RenderPassFragment
     {
     public:
-        auto GetSRV(unsigned slot) const -> Metal::ShaderResourceView*;
-        AttachmentPool& GetAttachmentPool() const { return *_attachmentPool; }
+        const RenderPassInstance& GetRenderPassInstance() const { return *_rpi; }
+
+        // The indicies here refer to the slot of the input attachment
+        auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
+        auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
+        auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
 
         void NextSubpass();
 
         RenderPassFragment(
             RenderPassInstance& rpi,
-            const FrameBufferFragmentMapping& mapping,
-            AttachmentPool& attachmentPool);
-        ~RenderPassFragment();
+            const FrameBufferFragmentMapping& mapping);
+        RenderPassFragment();
+		~RenderPassFragment();
 
         RenderPassFragment(const RenderPassFragment&) = delete;
         RenderPassFragment& operator=(const RenderPassFragment&) = delete;
     private:
         RenderPassInstance* _rpi;
         const FrameBufferFragmentMapping* _mapping;
-        AttachmentPool* _attachmentPool;
         unsigned _currentPassIndex;
+
+        AttachmentName RemapToRPI(unsigned inputAttachmentSlot) const;
     };
+
+
+    /// <summary>Tests to see if the attachment usage of the given fragment can be optimized</summary>
+    /// Sometimes of the number of attachments used by a fragment can be reduced by reusing
+    /// an existing attachment, instead of defining a new one. The common "ping-pong" rendering
+    /// pattern is an example of this (in this pattern we reuse 2 attachments for many subpasses,
+    /// instead of defining new attachments for each sub pass.
+    ///
+    /// If there are cases this like that, this function can detect them. Returns true iff there are
+    /// optimizations detected.
+    ///
+    /// Internally, it calls MergeFragments, and to get some context on the solution it found,
+    /// you can look at the "_log" member of the calculated MergeFragmentsResult.
+    ///
+    /// MergeInOutputs can be used to chain multiple calls to this function by merging in the
+    /// outputs from each subsequent fragment into the systemAttachments array.
+    bool CanBeSimplified(
+        const FrameBufferDescFragment& inputFragment,
+        IteratorRange<const PreregisteredAttachment*> systemAttachments);
+
+    void MergeInOutputs(
+        std::vector<PreregisteredAttachment>& workingSystemAttachments,
+        const FrameBufferDescFragment& fragment);
+
+    bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions);
 
 }}
 

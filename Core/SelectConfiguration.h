@@ -21,26 +21,31 @@
 #define COMPILER_TYPE_CLANG      3
 
 #if defined(__clang__)
-
-    #define CLIBRARIES_ACTIVE   CLIBRARIES_LIBCPP
-    #define STL_ACTIVE          STL_LIBCPP
     #define COMPILER_ACTIVE     COMPILER_TYPE_CLANG
-
 #elif defined(__GNUC__)
-
-    #define CLIBRARIES_ACTIVE   CLIBRARIES_GCC
-    #define STL_ACTIVE          STL_GCC
     #define COMPILER_ACTIVE     COMPILER_TYPE_GCC
-
 #elif defined(_MSC_VER)
-
-    #define CLIBRARIES_ACTIVE   CLIBRARIES_MSVC
-    #define STL_ACTIVE          STL_MSVC
     #define COMPILER_ACTIVE     COMPILER_TYPE_MSVC
-
 #else
+    #error "Cannot determine current compiler type. Platform unsupported!"
+#endif
 
-    #error "Cannot determine C libraries and STL type. Platform unsupported!"
+#if defined(__cplusplus)
+
+    #include <ciso646>      // (for standard library detection)
+
+    #if (_LIBCPP_VERSION)
+        #define CLIBRARIES_ACTIVE   CLIBRARIES_LIBCPP
+        #define STL_ACTIVE          STL_LIBCPP
+    #elif defined(__GLIBCXX__)
+        #define CLIBRARIES_ACTIVE   CLIBRARIES_GCC
+        #define STL_ACTIVE          STL_GCC
+    #elif defined(_CPPLIB_VER)
+        #define CLIBRARIES_ACTIVE   CLIBRARIES_MSVC
+        #define STL_ACTIVE          STL_MSVC
+    #else
+        #error "Cannot determine C++ libraries and STL type. Platform unsupported!"
+    #endif
 
 #endif
 
@@ -62,12 +67,16 @@
 
     #if defined(__GXX_RTTI)
         #define FEATURE_RTTI    __GXX_RTTI
+    #elif defined(_CPPRTTI)   // (set when ms-compatibility mode is enabled in clang)
+        #define FEATURE_RTTI    1
     #else
         #define FEATURE_RTTI    0
     #endif
 
     #if defined(__EXCEPTIONS)
         #define FEATURE_EXCEPTIONS    __EXCEPTIONS
+    #elif defined(_CPPUNWIND)   // (set when ms-compatibility mode is enabled in clang)
+        #define FEATURE_EXCEPTIONS  1
     #else
         #define FEATURE_EXCEPTIONS    0
     #endif

@@ -23,6 +23,8 @@ namespace RenderCore
 		DontCare_ClearStencil, Retain_ClearStencil, Clear_ClearStencil
 	};
 
+    const char* AsString(LoadStore);
+
     /// <summary>Attachments are part of a frame buffer, and typically represent a rendering surface</summary>
     /// This description object can define an attachment. Typically the attachment is defined in terms of
     /// some global frame buffer properties (such as output dimensions and sample count).
@@ -73,7 +75,18 @@ namespace RenderCore
             result._flags = flags;
             return result;
         }
+
+        #if defined(_DEBUG)
+            mutable std::string _name = std::string();
+            inline AttachmentDesc&& SetName(const std::string& name) const { this->_name = name; return std::move(const_cast<AttachmentDesc&>(*this)); }
+            inline AttachmentDesc&& SetName(const std::string& name) { this->_name = name; return std::move(*this); }
+        #else
+            inline AttachmentDesc&& SetName(const std::string& name) const { return std::move(const_cast<AttachmentDesc&>(*this)); }
+            inline AttachmentDesc&& SetName(const std::string& name) { return std::move(*this); }
+        #endif
     };
+
+    AttachmentDesc AsAttachmentDesc(const ResourceDesc&);
 
     /// <summary>Defines which attachments are used during a subpass (and ordering)</summary>
     /// Input attachments are read by shader stages. Output attachments are for color data written
@@ -90,23 +103,60 @@ namespace RenderCore
 		std::vector<AttachmentViewDesc> _resolve = {};
 
 		static const AttachmentViewDesc Unused;
+
+        #if defined(_DEBUG)
+            mutable std::string _name = std::string();
+            inline SubpassDesc&& SetName(const std::string& name) const { this->_name = name; return std::move(const_cast<SubpassDesc&>(*this)); }
+            inline SubpassDesc&& SetName(const std::string& name) { this->_name = name; return std::move(*this); }
+        #else
+            inline SubpassDesc&& SetName(const std::string& name) const { return std::move(const_cast<SubpassDesc&>(*this)); }
+            inline SubpassDesc&& SetName(const std::string& name) { return std::move(*this); }
+        #endif
+
+        void AppendOutput(
+            AttachmentName attachment,
+            LoadStore loadOp = LoadStore::Retain,
+            LoadStore storeOp = LoadStore::Retain);
+
+        void AppendInput(
+            AttachmentName attachment,
+            LoadStore loadOp = LoadStore::Retain,
+            LoadStore storeOp = LoadStore::Retain);
+
+        void SetDepthStencil(
+            AttachmentName attachment,
+            LoadStore loadOp = LoadStore::Retain_RetainStencil,
+            LoadStore storeOp = LoadStore::Retain_RetainStencil);
+
+        void AppendOutput(const AttachmentViewDesc& view);
+        void AppendInput(const AttachmentViewDesc& view);
+        void SetDepthStencil(const AttachmentViewDesc& view);
     };
 
     class FrameBufferDesc
 	{
 	public:
         auto	GetSubpasses() const -> IteratorRange<const SubpassDesc*> { return MakeIteratorRange(_subpasses); }
-        uint64	GetHash() const { return _hash; }
 
-		FrameBufferDesc(IteratorRange<const SubpassDesc*> subpasses);
-		FrameBufferDesc(std::initializer_list<SubpassDesc> subpasses);
-		FrameBufferDesc(std::vector<SubpassDesc>&& subpasses);
+        struct Attachment
+        {
+            uint64_t        _semantic = 0;
+			AttachmentDesc  _desc = {};
+        };
+        auto    GetAttachments() const -> IteratorRange<const Attachment*> { return MakeIteratorRange(_attachments); }
+
+        uint64_t    GetHash() const { return _hash; }
+
+		FrameBufferDesc(
+            std::vector<Attachment>&& attachments,
+            std::vector<SubpassDesc>&& subpasses);
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
 	private:
+        std::vector<Attachment>         _attachments;
         std::vector<SubpassDesc>        _subpasses;
-        uint64                          _hash;
+        uint64_t                        _hash;
 	};
 
     class FrameBufferProperties
@@ -197,4 +247,99 @@ namespace RenderCore
         result._depthStencil._stencil = stencil;
         return result;
     }
+
+
+    /** <summary>Add a "output" attachment to the given subpass</summary>
+        This appends a given output attachment to the next available slot in the subpass.
+        "Output attachment" is another name for a render target. Ie, this is the texture we're going
+        to render onto.
+
+        We can select the load/store operations to use when we do this. This determines whether we care
+        about any previous contents in the buffer before this subpass, and whether we want to use the
+        contents in future subpasses.
+
+        For loadOp, we have these choices, all of which are commonly used:
+        - **DontCare** -- it means we will never read from the previous contents
+            of this buffer. The buffer will typically be filled with indeterminant noise. The subpass
+            should write to every pixel in the buffer and not use blending (otherwise we will pass
+            that noise down the pipeline). This is the most efficient option.
+        - **Clear** -- clear the buffer before we start rendering. Because we're clearing the buffer
+            entirely, anything written to it by previous subpasses will be lost.
+        - **Retain** -- this is the default, keep the contents from previous subpasses. This is the
+            least efficient (since the hardware has to reinitialize it's framebuffer memory).
+            It's typically required when we're not going to write to every pixel in the render buffer,
+            or when we want to use a blend mode to blend our output with something underneath.
+
+        For storeOp, we will almost always use Retain. We can use DontCare, but that just instructs the
+        system not to keep any of the data we write out.
+    */
+    inline void SubpassDesc::AppendOutput(AttachmentName attachment, LoadStore loadOp, LoadStore storeOp)
+    {
+        AttachmentViewDesc attachmentViewDesc = {};
+        attachmentViewDesc._resourceName = attachment;
+        attachmentViewDesc._loadFromPreviousPhase = loadOp;
+        attachmentViewDesc._storeToNextPhase = storeOp;
+        _output.push_back(attachmentViewDesc);
+    }
+
+    /** <summary>Add a "input" attachment to the given subpass</summary>
+        This appends an input attachment to the given subpass. An input attachment is another word
+        for a shader resource (or texture). They are attachments that have been written to by a previous
+        attachment, and that we're going to bind as a shader resource to read from in this subpass.
+
+        Note that the system doesn't automatically bind the attachment as a shader resource -- we still
+        have to do that manually. This is because we may need to specify some parameters when creating
+        the ShaderResourceView (which determines how the attachment is presented to the shader).
+        Typically this involves RenderCore::Techniques::RenderPassFragment::GetInputAttachmentSRV.
+
+        For loadOp, we will almost always use Retain. Technically we could use DontCare, but then we
+        would just be reading noise, which seems a bit redundant.
+
+        For storeOp, we have two options:
+        - **DontCare** -- this means that the contents of the attachment will be discarded after this
+            subpass. Typically this should be used when we know that will never need to read from the
+            attachment ever again. Note that there are many different ways to read from an attachment
+            -- as an input attachment, a resolve attachment, an "output" attachment, in a present operation
+            or even from a map/ReadPixels operation.
+        - **Retain** -- this means that we should keep the contents of the buffer, because it may be
+            used again after the subpass is complete.
+    */
+
+    inline void SubpassDesc::AppendInput(AttachmentName attachment, LoadStore loadOp, LoadStore storeOp)
+    {
+        AttachmentViewDesc attachmentViewDesc = {};
+        attachmentViewDesc._resourceName = attachment;
+        attachmentViewDesc._loadFromPreviousPhase = loadOp;
+        attachmentViewDesc._storeToNextPhase = storeOp;
+        _input.push_back(attachmentViewDesc);
+    }
+
+    /** <summary>Set the depth/stencil attachment for the given subpass</summary>
+        This sets the depth/stencil attachment. There can be only one attachment of this type,
+        so it will overwrite anything that was previously set.
+    */
+    inline void SubpassDesc::SetDepthStencil(AttachmentName attachment, LoadStore loadOp, LoadStore storeOp)
+    {
+        AttachmentViewDesc attachmentViewDesc = {};
+        attachmentViewDesc._resourceName = attachment;
+        attachmentViewDesc._loadFromPreviousPhase = loadOp;
+        attachmentViewDesc._storeToNextPhase = storeOp;
+        _depthStencil = attachmentViewDesc;
+    }
+
+    inline void SubpassDesc::AppendOutput(const AttachmentViewDesc& view)
+    {
+        _output.push_back(view);
+    }
+
+    inline void SubpassDesc::AppendInput(const AttachmentViewDesc& view)
+    {
+        _input.push_back(view);
+    }
+
+    inline void SubpassDesc::SetDepthStencil(const AttachmentViewDesc& view)
+    {
+        _depthStencil = view;
+    }
+
 }
