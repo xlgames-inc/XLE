@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "CompletionThreadPool.h"
+#include "ThreadLocalPtr.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/SystemUtils.h"
 #include "../../Core/Exceptions.h"
@@ -12,8 +13,6 @@
 
 namespace Utility
 {
-    static thread_local std::function<void()> s_threadPoolYieldFunction;
-
     void CompletionThreadPool::EnqueueBasic(PendingTask&& task)
     {
         assert(IsGood());
@@ -36,7 +35,7 @@ namespace Utility
             _workerThreads.emplace_back(
                 [this]
                 {
-                    s_threadPoolYieldFunction = [this]() {
+                    SetYieldToPoolFunction([this]() {
                         bool gotTask = false;
                         std::function<void()> task;
 
@@ -78,7 +77,7 @@ namespace Utility
                                 Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
                             } CATCH_END
                         }
-                    };
+                    });
 
                     while (!this->_workerQuit) {
                         bool gotTask = false;
@@ -130,7 +129,7 @@ namespace Utility
                             false, XL_INFINITE, true);
                     }
 
-                    s_threadPoolYieldFunction = nullptr;
+                    SetYieldToPoolFunction(nullptr);
                 }
             );
     }
@@ -162,7 +161,7 @@ namespace Utility
             _workerThreads.emplace_back(
                 [this]
                 {
-                    s_threadPoolYieldFunction = [this]() {
+                    SetYieldToPoolFunction([this]() {
                         std::function<void()> task;
                         {
                             std::unique_lock<decltype(this->_pendingTaskLock)> autoLock(this->_pendingTaskLock);
@@ -189,7 +188,7 @@ namespace Utility
                         } CATCH(...) {
                             Log(Error) << "Suppressing unknown exception in thread pool thread." << std::endl;
                         } CATCH_END
-                    };
+                    });
 
                     for (;;) {
                         std::function<void()> task;
@@ -225,7 +224,7 @@ namespace Utility
                         } CATCH_END
                     }
 
-                    s_threadPoolYieldFunction = nullptr;
+                    SetYieldToPoolFunction(nullptr);
                 }
             );
     }
@@ -239,6 +238,26 @@ namespace Utility
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !FEATURE_THREAD_LOCAL_KEYWORD
+    static thread_local_ptr<std::function<void()>> s_threadPoolYieldFunction;
+
+    void YieldToPool()
+    {
+        auto* yieldFn = s_threadPoolYieldFunction.get();
+        if (yieldFn) {
+            (*yieldFn)();
+        } else {
+            Threading::YieldTimeSlice();
+        }
+    }
+
+    void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction)
+    {
+        s_threadPoolYieldFunction.allocate(yieldToPoolFunction);
+    }
+#else
+    static thread_local std::function<void()> s_threadPoolYieldFunction;
+
     void YieldToPool()
     {
         if (s_threadPoolYieldFunction) {
@@ -247,5 +266,13 @@ namespace Utility
             Threading::YieldTimeSlice();
         }
     }
+
+    void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction)
+    {
+        s_threadPoolYieldFunction = yieldToPoolFunction;
+    }
+
+#endif
+
 }
 

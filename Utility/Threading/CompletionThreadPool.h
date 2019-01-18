@@ -33,6 +33,7 @@ namespace Utility
      * When run on some other thread, it will just yield back to the OS.
     */
     void YieldToPool();
+    void SetYieldToPoolFunction(const std::function<void()>& yieldToPoolFunction);
 
     class CompletionThreadPool
     {

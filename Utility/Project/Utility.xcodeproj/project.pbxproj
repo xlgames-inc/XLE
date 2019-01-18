@@ -132,6 +132,7 @@
 
 /* Begin PBXFileReference section */
 		8F2DB61C2017F857009F52AB /* FileUtils_Linux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_Linux.cpp; sourceTree = "<group>"; };
+		8F305C6E21F137450036BE2B /* ThreadLocalPtr.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = ThreadLocalPtr.h; sourceTree = "<group>"; };
 		8F4DEE9720A8C9D5003EA5FE /* FileSystemMonitor_Linux.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileSystemMonitor_Linux.cpp; sourceTree = "<group>"; };
 		8F707BDC1EA6CAA400DEC600 /* System_Apple.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = System_Apple.cpp; sourceTree = "<group>"; };
 		8F707BEB1EA6CB6F00DEC600 /* FileUtils_stdio.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = FileUtils_stdio.cpp; sourceTree = "<group>"; };
@@ -389,6 +390,7 @@
 				8FD85D4E1EA688D1009BD9B0 /* ThreadingUtils.h */,
 				8FD85D4F1EA688D1009BD9B0 /* ThreadLibrary.h */,
 				8FD85D501EA688D1009BD9B0 /* ThreadObject.h */,
+				8F305C6E21F137450036BE2B /* ThreadLocalPtr.h */,
 			);
 			name = Threading;
 			path = ../Threading;
