@@ -44,6 +44,7 @@ namespace RenderCore { namespace ImplOpenGLES
         intrusive_ptr<OpenGL::FrameBuffer> _fakeBackBufferResolveFrameBuffer;
 
         void CreateUnderlyingContext(Metal_OpenGLES::ObjectFactory& objFactory);
+        void CreateUnderlyingBuffers(Metal_OpenGLES::ObjectFactory& objFactory);
 
         friend class ThreadContext;
     };

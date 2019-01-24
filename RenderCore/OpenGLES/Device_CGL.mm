@@ -203,6 +203,21 @@ namespace RenderCore { namespace ImplOpenGLES
             #pragma clang diagnostic pop
         }
 
+        CreateUnderlyingBuffers(objFactory);
+    }
+
+    void PresentationChain::CreateUnderlyingBuffers(Metal_OpenGLES::ObjectFactory& objFactory)
+    {
+        // the correct context must be bound
+        CGLSetCurrentContext(_nsContext.get().CGLContextObj);
+
+        // destroy all existing buffers before (re-)creating them
+        _backBufferResource.reset();
+        _fakeBackBuffer.reset();
+        _fakeBackBufferResolveBuffer.reset();
+        _fakeBackBufferFrameBuffer.reset();
+        _fakeBackBufferResolveFrameBuffer.reset();
+
         const bool useFakeBackbuffer = false;
         if (useFakeBackbuffer || (_backBufferDesc._bindFlags & BindFlag::ShaderResource)) {
             _fakeBackBuffer = std::make_shared<Metal_OpenGLES::Resource>(objFactory, _backBufferDesc);
@@ -258,7 +273,7 @@ namespace RenderCore { namespace ImplOpenGLES
         _desc->_height = _backBufferDesc._textureDesc._height;
 
         auto& objFactory = Metal_OpenGLES::GetObjectFactory(*_fakeBackBuffer);
-        CreateUnderlyingContext(objFactory);
+        CreateUnderlyingBuffers(objFactory);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
