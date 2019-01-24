@@ -237,7 +237,7 @@ namespace RenderCore
 
         PresentationChainDesc() : _width(0u), _height(0u), _format(Format(0)), _samples(TextureSamples::Create()), _bindFlags(BindFlag::RenderTarget) {}
 
-        PresentationChainDesc(unsigned width, unsigned height, Format format, TextureSamples samples = TextureSamples::Create(), BindFlag::BitField bindFlags = BindFlag::RenderTarget)
+        PresentationChainDesc(unsigned width, unsigned height, Format format = Format(0), TextureSamples samples = TextureSamples::Create(), BindFlag::BitField bindFlags = BindFlag::RenderTarget)
         : _width(width), _height(height), _format(format), _samples(samples), _bindFlags(bindFlags) {}
     };
 
