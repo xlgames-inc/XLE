@@ -272,8 +272,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
 
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
-        // For ES2 and GL4, we have to drop back to the older API
-        bool useNewClearAPI = context.GetFeatureSet() & (FeatureSet::GLES300);
+        // For ES2, we have to drop back to the older API
+        bool useNewClearAPI = context.GetFeatureSet() & (FeatureSet::GLES300 | FeatureSet::GL4);
         if (!fbZeroHack && useNewClearAPI) {
             for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
                 auto attachmentIdx = s._rtvs[rtv];
