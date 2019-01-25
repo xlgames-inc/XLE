@@ -273,6 +273,7 @@ namespace RenderCore { namespace ImplOpenGLES
         _desc->_height = _backBufferDesc._textureDesc._height;
 
         auto& objFactory = Metal_OpenGLES::GetObjectFactory(*_fakeBackBuffer);
+        CreateUnderlyingContext(objFactory); // This shouldn't be required, but Testbed on macOS renders to quarter resolution on 1x displays without it...
         CreateUnderlyingBuffers(objFactory);
     }
 
