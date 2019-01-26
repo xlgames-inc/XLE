@@ -32,7 +32,6 @@ namespace RenderCore { namespace Metal_OpenGLES
             ETC2TC      = (1<<4),
             ATITC       = (1<<5),
             LabelObject = (1<<6),
-            GL4         = (1<<7),
         };
         using BitField = unsigned;
     };

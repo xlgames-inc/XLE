@@ -20,7 +20,7 @@ namespace RenderCore { namespace ImplOpenGLES
 {
     static Metal_OpenGLES::FeatureSet::BitField GetFeatureSet()
     {
-        Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200 | Metal_OpenGLES::FeatureSet::GL4;
+        Metal_OpenGLES::FeatureSet::BitField featureSet = Metal_OpenGLES::FeatureSet::GLES200; // for now, fake with gles2 feature set
 
         const char* extensionsString = (const char*)glGetString(GL_EXTENSIONS);
         if (extensionsString) {
@@ -36,18 +36,28 @@ namespace RenderCore { namespace ImplOpenGLES
         return featureSet;
     }
 
+    static const CGLPixelFormatAttribute* GetPixelFormatAttributes()
+    {
+        static unsigned pixelAttrs[] = {
+            kCGLPFADoubleBuffer,
+            kCGLPFAAccelerated,
+            kCGLPFAClosestPolicy,
+            // kCGLPFAOpenGLProfile, kCGLOGLPVersion_GL4_Core, // TODO: one day!
+            kCGLPFAColorSize, 24,
+            kCGLPFAAlphaSize, 8,
+            kCGLPFADepthSize, 24,
+            kCGLPFAStencilSize, 8,
+            0,
+        };
+        return (const CGLPixelFormatAttribute*)pixelAttrs;
+    }
+
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
     Device::Device()
     {
-        /*CGLPixelFormatAttribute*/
-        unsigned pixelAttrs[] = {
-            // kCGLPFAOpenGLProfile, (int) kCGLOGLPVersion_GL4_Core,
-            0
-        };
-
         int virtualScreenCount;
-        auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &_mainPixelFormat, &virtualScreenCount);
+        auto error = CGLChoosePixelFormat(GetPixelFormatAttributes(), &_mainPixelFormat, &virtualScreenCount);
         assert(!error);
         assert(_mainPixelFormat);
         (void)virtualScreenCount;
@@ -170,20 +180,9 @@ namespace RenderCore { namespace ImplOpenGLES
         if ([objCObj isKindOfClass:NSOpenGLView.class]) {
             _nsContext = ((NSOpenGLView*)objCObj).openGLContext;
         } else {
-            /*CGLPixelFormatAttribute*/
-            unsigned pixelAttrs[] = {
-                kCGLPFADoubleBuffer,
-                kCGLPFAAccelerated,
-                kCGLPFAColorSize, 24,
-                kCGLPFAAlphaSize, 8,
-                kCGLPFADepthSize, 24,
-                kCGLPFAStencilSize, 8,
-                0,
-            };
-
             int virtualScreenCount;
             CGLPixelFormatObj pixelFormat;
-            auto error = CGLChoosePixelFormat((const CGLPixelFormatAttribute*)pixelAttrs, &pixelFormat, &virtualScreenCount);
+            auto error = CGLChoosePixelFormat(GetPixelFormatAttributes(), &pixelFormat, &virtualScreenCount);
             assert(!error);
             assert(pixelFormat);
             (void)virtualScreenCount;

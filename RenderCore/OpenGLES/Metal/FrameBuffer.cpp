@@ -164,7 +164,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto& res = *sp._rtvs[rtv].GetResource();
                 if (res.IsBackBuffer()) {
-                    #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+                    #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0) // i.e. desktop gl
                         drawBuffers[rtv] = GL_BACK_LEFT;
                     #else
                         drawBuffers[rtv] = GL_BACK;
@@ -211,16 +211,14 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
-            if (factory.GetFeatureSet() & (FeatureSet::GLES300 | FeatureSet::GL4)) {
+            #if !defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0) // i.e. desktop gl and gles3
                 glDrawBuffers(sp._rtvCount, drawBuffers);
-            }
+            #endif
 
-            if (factory.GetFeatureSet() & FeatureSet::GL4) {
+            #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0) // i.e. desktop gl
                 // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
                 if (sp._rtvCount == 0) {
-                    #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
-                        glDrawBuffer(GL_NONE);
-                    #endif
+                    glDrawBuffer(GL_NONE);
                     glReadBuffer(GL_NONE);
                 } else {
                     // XTODO: currently there are situations where colorAttachmentIterator is 0. Is this expected?
@@ -228,7 +226,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                         glReadBuffer(GL_COLOR_ATTACHMENT0);
                     }
                 }
-            }
+            #endif
 
             #if defined(_DEBUG)
                 GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -283,8 +281,8 @@ namespace RenderCore { namespace Metal_OpenGLES
         #endif
 
         // OpenGLES3 has glClearBuffer... functions that can clear specific targets.
-        // For ES2, we have to drop back to the older API
-        bool useNewClearAPI = context.GetFeatureSet() & (FeatureSet::GLES300 | FeatureSet::GL4);
+        // For ES2 and GL2, we have to drop back to the older API
+        bool useNewClearAPI = context.GetFeatureSet() & FeatureSet::GLES300;
         if (!fbZeroHack && useNewClearAPI) {
             for (unsigned rtv=0; rtv<s._rtvCount; ++rtv) {
                 auto attachmentIdx = s._rtvs[rtv];
