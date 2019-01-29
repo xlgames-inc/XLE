@@ -1,6 +1,7 @@
 #include "../FileUtils.h"
 #include "../PathUtils.h"
 #include <sys/stat.h>
+#include <glob.h>
 
 namespace Utility 
 {
@@ -87,8 +88,17 @@ namespace Utility
 
 		std::vector<std::string> FindFiles(const std::string& searchPath, FindFilesFilter::BitField filter)
 		{
-			assert(0);
-            	return {};
+            std::vector<std::string> fileList;
+
+            glob_t globbuf;
+            glob(searchPath.c_str(), GLOB_TILDE, NULL, &globbuf);
+            for (int i=0; i<globbuf.gl_pathc; ++i)
+                fileList.push_back(globbuf.gl_pathv[i]);
+
+            if (globbuf.gl_pathc > 0)
+                globfree(&globbuf);
+
+            return fileList;
 		}
 
 		static std::vector<std::string> FindAllDirectories(const std::string& rootDirectory)
