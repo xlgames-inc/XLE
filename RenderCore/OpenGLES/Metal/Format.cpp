@@ -350,9 +350,15 @@ namespace RenderCore { namespace Metal_OpenGLES
         case Format::A8_UNORM: return {GL_ALPHA, GL_UNSIGNED_BYTE, GL_ALPHA, FeatureSet::GLES200, FeatureSet::GLES300};
 
         case Format::R9G9B9E5_SHAREDEXP: return {GL_RGB, GL_UNSIGNED_INT_5_9_9_9_REV, GL_RGB9_E5, FeatureSet::GLES300, 0};
+#if defined(GL_ES_VERSION_3_0)
         case Format::B5G6R5_UNORM: return {GL_RGB, GL_UNSIGNED_SHORT_5_6_5, GL_RGB565, FeatureSet::GLES200, FeatureSet::GLES200};
         case Format::B5G5R5A1_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, GL_RGB5_A1, FeatureSet::GLES200, FeatureSet::GLES200};
         case Format::R4G4B4A4_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGBA4, FeatureSet::GLES200, FeatureSet::GLES200};
+#else
+        case Format::B5G6R5_UNORM: return {GL_RGB, GL_UNSIGNED_SHORT_5_6_5, GL_RGB, FeatureSet::GLES200, FeatureSet::GLES200};
+        case Format::B5G5R5A1_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_5_5_5_1, GL_RGB, FeatureSet::GLES200, FeatureSet::GLES200};
+        case Format::R4G4B4A4_UNORM: return {GL_RGBA, GL_UNSIGNED_SHORT_4_4_4_4, GL_RGB, FeatureSet::GLES200, FeatureSet::GLES200};
+#endif
 
         case Format::D24_UNORM_S8_UINT: return {GL_DEPTH_STENCIL, GL_UNSIGNED_INT_24_8, GL_DEPTH24_STENCIL8, FeatureSet::GLES300, FeatureSet::GLES300};
         case Format::D32_SFLOAT_S8_UINT: return {GL_DEPTH_STENCIL, GL_FLOAT_32_UNSIGNED_INT_24_8_REV, GL_DEPTH32F_STENCIL8, FeatureSet::GLES300, FeatureSet::GLES300};
