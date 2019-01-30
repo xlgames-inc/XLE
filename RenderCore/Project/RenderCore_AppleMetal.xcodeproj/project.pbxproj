@@ -65,7 +65,7 @@
 		8F46A0A8202140270003948C /* Shader.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Shader.h; sourceTree = "<group>"; };
 		8F46A0A9202140270003948C /* DeviceContext.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = DeviceContext.cpp; sourceTree = "<group>"; };
 		8F46A0AA202140270003948C /* PipelineLayout.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = PipelineLayout.cpp; sourceTree = "<group>"; };
-		8F46A0AB202140270003948C /* State.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = State.cpp; sourceTree = "<group>"; };
+		8F46A0AB202140270003948C /* State.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = State.cpp; sourceTree = "<group>"; };
 		8F46A0AC202140280003948C /* Resource.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Resource.h; sourceTree = "<group>"; };
 		8F46A0AD202140280003948C /* PipelineLayout.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = PipelineLayout.h; sourceTree = "<group>"; };
 		8F46A0AE202140280003948C /* Buffer.cpp */ = {isa = PBXFileReference; explicitFileType = sourcecode.cpp.objcpp; fileEncoding = 4; path = Buffer.cpp; sourceTree = "<group>"; };

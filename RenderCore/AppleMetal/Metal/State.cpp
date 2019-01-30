@@ -3,6 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "State.h"
+#include "DeviceContext.h"
 
 namespace RenderCore { namespace Metal_AppleMetal
 {
@@ -20,9 +21,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(0);
     }
 
-    ViewportDesc::ViewportDesc(DeviceContext& viewport)
+    ViewportDesc::ViewportDesc(DeviceContext& devContext)
     {
-        assert(0);
+        *this = devContext.GetViewport();
     }
     
 }}

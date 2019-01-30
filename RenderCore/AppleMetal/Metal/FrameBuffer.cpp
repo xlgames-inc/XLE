@@ -18,28 +18,25 @@ namespace RenderCore { namespace Metal_AppleMetal
         unsigned clearValueIterator = 0;
 
         if (desc.colorAttachments[0].texture && desc.colorAttachments[0].loadAction == MTLLoadActionClear) {
-            const float* clear = clearValues[clearValueIterator++]._float;
-            /* Metal HACK -- hacky workaround to prevent running out of clear values; OpenGL implementation has been updated and Metal implementation needs to be updated as well */
-            if (!clear) {
-                desc.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
-            } else {
+            if (clearValueIterator < clearValues.size()) {
+                auto* clear = clearValues[clearValueIterator]._float;
                 desc.colorAttachments[0].clearColor = MTLClearColorMake(clear[0], clear[1], clear[2], clear[3]);
+            } else {
+                desc.colorAttachments[0].clearColor = MTLClearColorMake(0.0, 0.0, 0.0, 1.0);
             }
         }
         if (desc.depthAttachment.texture && desc.depthAttachment.loadAction == MTLLoadActionClear) {
-            /* Metal HACK -- hacky workaround to prevent running out of clear values */
-            if (clearValues.empty()) {
-                desc.depthAttachment.clearDepth = 1.0f;
-            } else {
+            if (clearValueIterator < clearValues.size()) {
                 desc.depthAttachment.clearDepth = clearValues[clearValueIterator]._depthStencil._depth;
+            } else {
+                desc.depthAttachment.clearDepth = 1.0f;
             }
         }
         if (desc.stencilAttachment.texture && desc.stencilAttachment.loadAction == MTLLoadActionClear) {
-            /* Metal HACK -- hacky workaround to prevent running out of clear values */
-            if (clearValues.empty()) {
-                desc.stencilAttachment.clearStencil = 0;
-            } else {
+            if (clearValueIterator < clearValues.size()) {
                 desc.stencilAttachment.clearStencil = clearValues[clearValueIterator]._depthStencil._stencil;
+            } else {
+                desc.stencilAttachment.clearStencil = 0;
             }
         }
 
@@ -128,7 +125,7 @@ namespace RenderCore { namespace Metal_AppleMetal
 
         _subpasses.resize(subpasses.size());
         for (unsigned p=0; p<(unsigned)subpasses.size(); ++p) {
-            _subpasses[p]._renderPassDescriptor = TBC::OCPtr<MTLRenderPassDescriptor>(TBC::moveptr([[MTLRenderPassDescriptor alloc] init]));
+            _subpasses[p]._renderPassDescriptor = TBC::moveptr([[MTLRenderPassDescriptor alloc] init]);
             auto* desc = _subpasses[p]._renderPassDescriptor.get();
             const auto& spDesc = subpasses[p];
             const unsigned maxColorAttachments = 4u;

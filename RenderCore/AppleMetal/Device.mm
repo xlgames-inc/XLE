@@ -106,7 +106,10 @@ namespace RenderCore { namespace ImplAppleMetal
     : _device(device)
     , _commandBuffer(commandBuffer)
     {
-        assert(0);
+        _devContext = std::make_shared<Metal_AppleMetal::DeviceContext>();
+
+        // KenD -- needed a way for the device context to access the MTLDevice
+        _devContext->HoldDevice(device->GetUnderlying());
     }
 
     ThreadContext::~ThreadContext() {

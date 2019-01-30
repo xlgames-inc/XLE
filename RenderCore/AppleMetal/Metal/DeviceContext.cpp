@@ -316,6 +316,18 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_viewport = vp;
     }
 
+    ViewportDesc GraphicsPipeline::GetViewport()
+    {
+        ViewportDesc viewport;
+        viewport.TopLeftX = _pimpl->_viewport.originX;
+        viewport.TopLeftY = _pimpl->_viewport.originY;
+        viewport.Width = _pimpl->_viewport.width;
+        viewport.Height = _pimpl->_viewport.height;
+        viewport.MinDepth = _pimpl->_viewport.znear;
+        viewport.MaxDepth = _pimpl->_viewport.zfar;
+        return viewport;
+    }
+
     void GraphicsPipeline::Bind(MTLVertexDescriptor* descriptor)
     {
         // KenD -- the vertex descriptor isn't necessary if the vertex function does not have an input argument declared [[stage_in]] */

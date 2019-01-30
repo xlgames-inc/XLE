@@ -97,6 +97,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         void Bind(const DepthStencilDesc& depthStencil);
         void Bind(Topology topology);
         void Bind(const ViewportDesc& viewport);
+        ViewportDesc GetViewport();
 
         DepthStencilDesc ActiveDepthStencilDesc();
 

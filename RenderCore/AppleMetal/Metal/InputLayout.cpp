@@ -19,6 +19,7 @@
 #include "../../../Utility/PtrUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
 #include <map>
+#include <exception>
 
 #include "IncludeAppleMetal.h"
 
@@ -47,12 +48,6 @@ namespace RenderCore { namespace Metal_AppleMetal
             context.Bind(buffer, vbv._offset, i, GraphicsPipeline::ShaderTarget::Vertex);
             ++i;
         }
-    }
-
-    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
-    {
-        // KenD -- Currently skipping InputElementDesc implementation and only supporting MiniInputElementDesc
-        assert(0);
     }
 
     /* KenD -- cleanup TODO -- this was copied from LightWeightModel */
@@ -162,9 +157,9 @@ namespace RenderCore { namespace Metal_AppleMetal
                      * That's okay - the shader is relatively simple compared to the vertex.
                      * However, it is a problem if the shader expects an attribute that is not provided by the input.
                      */
-#if DEBUG
-                    //PrintMissingVertexAttribute(e._semanticHash);
-#endif
+                    #if DEBUG
+                        //PrintMissingVertexAttribute(e._semanticHash);
+                    #endif
                     continue;
                 }
 
@@ -181,6 +176,82 @@ namespace RenderCore { namespace Metal_AppleMetal
             } else {
                 desc.layouts[l].stepFunction = MTLVertexStepFunctionPerInstance;
                 desc.layouts[l].stepRate = layouts[l]._instanceStepDataRate;
+            }
+        }
+    }
+
+    BoundInputLayout::BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& program)
+    {
+        id<MTLFunction> vf = program._vf.get();
+
+        // Create a MTLVertexDescriptor to describe the input format for vertices
+        _vertexDescriptor = TBC::OCPtr<MTLVertexDescriptor>(TBC::moveptr([[MTLVertexDescriptor alloc] init]));
+        auto* desc = _vertexDescriptor.get();
+
+        unsigned maxSlot = 0;
+        for (const auto& e:layout)
+            maxSlot = std::max(maxSlot, e._inputSlot);
+
+        // Populate MTLVertexAttributeDescriptorArray
+        for (unsigned slot=0; slot<maxSlot+1; ++slot) {
+            unsigned workingStride = 0;
+
+            unsigned inputDataRate = ~unsigned(0x0);
+            unsigned inputStepFunction = ~unsigned(0x0);
+
+            for (const auto& e:layout) {
+                if (e._inputSlot != slot) continue;
+
+                unsigned alignedOffset = e._alignedByteOffset;
+                if (alignedOffset == ~unsigned(0x0)) {
+                    alignedOffset = workingStride;
+                }
+
+                std::string numberedSemantic = e._semanticName + std::to_string(e._semanticIndex);
+                MTLVertexAttribute* matchingAttribute = nullptr;
+                for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
+                    if (XlEqString(numberedSemantic, vertexAttribute.name.UTF8String)) {
+                        matchingAttribute = vertexAttribute;
+                        break;
+                    }
+                }
+
+                if (e._semanticIndex == 0 && !matchingAttribute) {
+                    for (MTLVertexAttribute* vertexAttribute in vf.vertexAttributes) {
+                        if (XlEqString(e._semanticName, vertexAttribute.name.UTF8String)) {
+                            matchingAttribute = vertexAttribute;
+                            break;
+                        }
+                    }
+                }
+
+                if (matchingAttribute) {
+                    auto attributeLoc = matchingAttribute.attributeIndex;
+                    desc.attributes[attributeLoc].bufferIndex = e._inputSlot;
+                    desc.attributes[attributeLoc].format = AsMTLVertexFormat(e._nativeFormat);
+                    desc.attributes[attributeLoc].offset = e._alignedByteOffset;
+                }
+
+                workingStride = alignedOffset + BitsPerPixel(e._nativeFormat);
+
+                if (inputDataRate != ~unsigned(0x0) && e._instanceDataStepRate != inputDataRate)
+                    Throw(std::runtime_error("Cannot create InputLayout because step rate not consistant across input slot"));
+                if (inputStepFunction != ~unsigned(0x0) && unsigned(e._inputSlotClass) != inputStepFunction)
+                    Throw(std::runtime_error("Cannot create InputLayout because step function not consistant across input slot"));
+                inputDataRate = e._instanceDataStepRate;
+                inputStepFunction = (unsigned)e._inputSlotClass;
+            }
+
+            if (inputDataRate == ~unsigned(0x0) && inputStepFunction == ~unsigned(0x0))
+                continue;
+
+            // Populate MTLVertexBufferLayoutDescriptorArray
+            desc.layouts[slot].stride = CalculateVertexStrideForSlot(layout, slot);
+            if (inputStepFunction == (unsigned)InputDataRate::PerVertex) {
+                desc.layouts[slot].stepFunction = MTLVertexStepFunctionPerVertex;
+            } else {
+                desc.layouts[slot].stepFunction = MTLVertexStepFunctionPerInstance;
+                desc.layouts[slot].stepRate = inputDataRate;
             }
         }
     }
