@@ -211,7 +211,12 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(bindingPoint, res, viewWindow);
             }
 
-            #if !defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0) // i.e. desktop gl and gles3
+            #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
+                // Don't call glDrawBuffers on GLES2
+                if (factory.GetFeatureSet() & FeatureSet::GLES300) {
+                    glDrawBuffers(sp._rtvCount, drawBuffers);
+                }
+            #else
                 glDrawBuffers(sp._rtvCount, drawBuffers);
             #endif
 
