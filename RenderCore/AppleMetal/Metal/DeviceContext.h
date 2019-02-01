@@ -100,6 +100,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         ViewportDesc GetViewport();
 
         DepthStencilDesc ActiveDepthStencilDesc();
+        void SetRasterSampleCount(unsigned sampleCount);
 
         void Bind(MTLVertexDescriptor* descriptor);
 

@@ -26,7 +26,7 @@ namespace RenderCore
 {
     inline std::ostream& operator<<(std::ostream& str, const AttachmentDesc& attachment)
     {
-        str << "AttachmentDesc {"
+        str << "AttachmentDesc { "
             #if defined(_DEBUG)
                 << (!attachment._name.empty()?attachment._name:std::string("<<no name>>")) << ", "
             #endif
@@ -36,7 +36,7 @@ namespace RenderCore
             << attachment._arrayLayerCount << ", "
             << attachment._defaultAspect << ", "
             << unsigned(attachment._dimsMode)
-            << ", 0x" << std::hex << attachment._flags << std::dec << "}";
+            << ", 0x" << std::hex << attachment._flags << std::dec << " }";
         return str;
     }
 
@@ -56,7 +56,9 @@ namespace RenderCore
         for (unsigned c=0; c<subpass._preserve.size(); ++c) { if (c!=0) str << ", "; str << subpass._preserve[c]._resourceName; }
         str << "], resolve [";
         for (unsigned c=0; c<subpass._resolve.size(); ++c) { if (c!=0) str << ", "; str << subpass._resolve[c]._resourceName; }
-        str << "] }";
+        str << "], resolveDepthStencil: ";
+        if (subpass._depthStencilResolve._resourceName != ~0u) { str << subpass._depthStencilResolve._resourceName << " }"; }
+        else { str << "<<none>> }"; }
         return str;
     }
 }
@@ -144,13 +146,13 @@ namespace RenderCore { namespace Techniques
 
     void RenderPassInstance::NextSubpass()
     {
-        Metal::EndSubpass(*_attachedContext);
+        Metal::EndSubpass(*_attachedContext, *_frameBuffer);
         Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
     }
 
     void RenderPassInstance::End()
     {
-        Metal::EndSubpass(*_attachedContext);
+        Metal::EndSubpass(*_attachedContext, *_frameBuffer);
         Metal::EndRenderPass(*_attachedContext);
     }
     
@@ -821,10 +823,18 @@ namespace RenderCore { namespace Techniques
             std::move(fragment._subpasses) };
     }
 
+    static bool FormatCompatible(Format lhs, Format rhs)
+    {
+        if (lhs == rhs) return true;
+        auto    lhsTypeless = AsTypelessFormat(lhs),
+                rhsTypeless = AsTypelessFormat(rhs);
+        return lhsTypeless == rhsTypeless;
+    }
+
     bool IsCompatible(const AttachmentDesc& testAttachment, const AttachmentDesc& request, UInt2 dimensions)
     {
         return
-            ( (testAttachment._format == request._format) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
+            ( (FormatCompatible(testAttachment._format, request._format)) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && GetArrayCount(testAttachment) == GetArrayCount(request)
             && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
 			&& DimsEqual(testAttachment, request, FrameBufferProperties{dimensions[0], dimensions[1]})
@@ -886,6 +896,13 @@ namespace RenderCore { namespace Techniques
                 if (HasRetain(a._storeToNextPhase))
                     result |= DirectionFlags::RetainAfterLoad;
             }
+        for (const auto&a:p._resolve)
+            if (a._resourceName == attachment) {
+                result |= DirectionFlags::Reference | DirectionFlags::Store;
+            }
+        if (p._depthStencilResolve._resourceName == attachment) {
+            result |= DirectionFlags::Reference | DirectionFlags::Store;
+        }
         return result;
     }
 

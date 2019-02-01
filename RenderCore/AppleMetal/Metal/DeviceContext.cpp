@@ -242,10 +242,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         _pimpl->_pipelineDescriptor.get().colorAttachments[0].destinationAlphaBlendFactor = AsMTLBlendFactor(desc._dstAlphaBlendFactor);
 
         _pimpl->_pipelineDescriptor.get().colorAttachments[0].writeMask =
-        ((desc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
-        ((desc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
-        ((desc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
-        ((desc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
+            ((desc._writeMask & ColorWriteMask::Red)    ? MTLColorWriteMaskRed   : 0) |
+            ((desc._writeMask & ColorWriteMask::Green)  ? MTLColorWriteMaskGreen : 0) |
+            ((desc._writeMask & ColorWriteMask::Blue)   ? MTLColorWriteMaskBlue  : 0) |
+            ((desc._writeMask & ColorWriteMask::Alpha)  ? MTLColorWriteMaskAlpha : 0);
     }
 
     void GraphicsPipeline::Bind(const RasterizationDesc& desc)
@@ -253,6 +253,12 @@ namespace RenderCore { namespace Metal_AppleMetal
         assert(_pimpl->_commandEncoder);
         [_pimpl->_commandEncoder setFrontFacingWinding:AsMTLenum(desc._frontFaceWinding)];
         [_pimpl->_commandEncoder setCullMode:AsMTLenum(desc._cullMode)];
+    }
+
+    void GraphicsPipeline::SetRasterSampleCount(unsigned sampleCount)
+    {
+        assert(_pimpl->_pipelineDescriptor);
+        _pimpl->_pipelineDescriptor.get().rasterSampleCount = std::max(1u, sampleCount);
     }
 
     static DepthStencilDesc s_activeDepthStencilDesc;

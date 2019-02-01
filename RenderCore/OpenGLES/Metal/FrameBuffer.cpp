@@ -16,6 +16,7 @@
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../Core/Exceptions.h"
+#include <sstream>
 
 #include "IncludeGLES.h"
 
@@ -81,6 +82,39 @@ namespace RenderCore { namespace Metal_OpenGLES
             ;
     }
 
+    static unsigned GetDepthStencilBindingPoint(Resource& res, const TextureViewDesc& viewWindow)
+    {
+        // select either GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH_ATTACHMENT or GL_STENCIL_ATTACHMENT
+        // depending on the type of resource & the view window
+        GLenum bindingPoint = GL_DEPTH_STENCIL_ATTACHMENT;
+        assert(res.GetDesc()._type == ResourceDesc::Type::Texture);
+        auto fmt = res.GetDesc()._textureDesc._format;
+        auto components = GetComponents(viewWindow._format._explicitFormat != Format::Unknown ? viewWindow._format._explicitFormat : fmt);
+
+        switch (components) {
+        case FormatComponents::Depth:
+            bindingPoint = GL_DEPTH_ATTACHMENT;
+            break;
+
+        case FormatComponents::Stencil:
+            bindingPoint = GL_STENCIL_ATTACHMENT;
+            break;
+
+        default:
+            {
+                auto aspect = viewWindow._format._aspect;
+                if (aspect == TextureViewDesc::Aspect::Depth) {
+                    bindingPoint = GL_DEPTH_ATTACHMENT;
+                } else if (aspect == TextureViewDesc::Aspect::Stencil) {
+                    bindingPoint = GL_STENCIL_ATTACHMENT;
+                }
+                assert(!(viewWindow._flags & TextureViewDesc::Flags::JustDepth));
+                assert(!(viewWindow._flags & TextureViewDesc::Flags::JustStencil));
+            }
+        }
+        return bindingPoint;
+    }
+
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -94,18 +128,22 @@ namespace RenderCore { namespace Metal_OpenGLES
 		ViewPool<RenderTargetView> rtvPool;
         ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
+        DEBUG_ONLY(std::stringstream debuggingOutput;)
         
         _subpasses.resize(subpasses.size());
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
 			const auto& spDesc = subpasses[c];
 			auto& sp = _subpasses[c];
 			sp._rtvCount = (unsigned)std::min(spDesc._output.size(), dimof(Subpass::_rtvs));
+            sp._resolveFlags = 0;
+            sp._resolveWidth = sp._resolveHeight = 0;
 			for (unsigned r = 0; r<sp._rtvCount; ++r) {
 				const auto& attachmentView = spDesc._output[r];
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-				sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
+
+                sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
                 if (HasPrimaryClear(attachmentView._loadFromPreviousPhase)) {
 				    sp._rtvLoad[r] = LoadStore::Clear;
                     sp._rtvClearValue[r] = clearValueIterator++;
@@ -113,6 +151,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                     sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
                     sp._rtvClearValue[r] = ~0u;
                 }
+
+                #if defined(_DEBUG)
+                    debuggingOutput << "RTV [" << r << "] Resource: " << resource->GetDesc() << ", Load: " << AsString(sp._rtvLoad[r]);
+                    if (sp._rtvs[r].GetResource()->GetTexture()) {
+                        debuggingOutput << " (texture: " << sp._rtvs[r].GetResource()->GetTexture().get() << ")";
+                    } else {
+                        debuggingOutput << " (rendertarget: " << sp._rtvs[r].GetResource()->GetRenderBuffer().get() << ")";
+                    }
+                    debuggingOutput << std::endl;
+                #endif
 			}
 
             sp._dsvHasDepth = sp._dsvHasStencil = false;
@@ -121,13 +169,24 @@ namespace RenderCore { namespace Metal_OpenGLES
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
 				if (!resource)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
+
+                sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				sp._dsvClearValue = HasClear(sp._dsvLoad) ? (clearValueIterator++) : ~0u;
                 auto resolvedFormat = ResolveFormat(sp._dsv.GetResource()->GetDesc()._textureDesc._format, sp._dsv._window._format, FormatUsage::DSV);
                 auto components = GetComponents(resolvedFormat);
                 sp._dsvHasDepth = (components == FormatComponents::Depth) || (components == FormatComponents::DepthStencil);
                 sp._dsvHasStencil = (components == FormatComponents::Stencil) || (components == FormatComponents::DepthStencil);
+
+                #if defined(_DEBUG)
+                    debuggingOutput << "DSV: Resource: " << resource->GetDesc() << ", Load: " << AsString(sp._dsvLoad);
+                    if (sp._dsv.GetResource()->GetTexture()) {
+                        debuggingOutput << " (texture: " << sp._dsv.GetResource()->GetTexture().get() << ")";
+                    } else {
+                        debuggingOutput << " (rendertarget: " << sp._dsv.GetResource()->GetRenderBuffer().get() << ")";
+                    }
+                    debuggingOutput << std::endl;
+                #endif
 			}
 
             GLenum drawBuffers[dimof(Subpass::_rtvs)] = { GL_NONE, GL_NONE, GL_NONE, GL_NONE };
@@ -154,6 +213,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (bindingToBackbuffer) {
                 sp._frameBuffer = intrusive_ptr<GlObject<GlObject_Type::FrameBuffer> >(0);
                 glBindFramebuffer(GL_FRAMEBUFFER, 0);
+                DEBUG_ONLY(debuggingOutput << "Default GL back buffer" << std::endl;)
             } else {
                 sp._frameBuffer = factory.CreateFrameBuffer();
                 glBindFramebuffer(GL_FRAMEBUFFER, sp._frameBuffer->AsRawGLHandle());
@@ -178,37 +238,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (!bindingToBackbuffer && sp._dsv.IsGood()) {
                 auto& res = *sp._dsv.GetResource();
                 const auto& viewWindow = sp._dsv._window;
-
-                // select either GL_DEPTH_STENCIL_ATTACHMENT, GL_DEPTH_ATTACHMENT or GL_STENCIL_ATTACHMENT
-                // depending on the type of resource & the view window
-                GLenum bindingPoint = GL_DEPTH_STENCIL_ATTACHMENT;
-                assert(res.GetDesc()._type == ResourceDesc::Type::Texture);
-                auto fmt = res.GetDesc()._textureDesc._format;
-                auto components = GetComponents(viewWindow._format._explicitFormat != Format::Unknown ? viewWindow._format._explicitFormat : fmt);
-
-                switch (components) {
-                case FormatComponents::Depth:
-                    bindingPoint = GL_DEPTH_ATTACHMENT;
-                    break;
-
-                case FormatComponents::Stencil:
-                    bindingPoint = GL_STENCIL_ATTACHMENT;
-                    break;
-
-                default:
-                    {
-                        auto aspect = viewWindow._format._aspect;
-                        if (aspect == TextureViewDesc::Aspect::Depth) {
-                            bindingPoint = GL_DEPTH_ATTACHMENT;
-                        } else if (aspect == TextureViewDesc::Aspect::Stencil) {
-                            bindingPoint = GL_STENCIL_ATTACHMENT;
-                        }
-                        assert(!(viewWindow._flags & TextureViewDesc::Flags::JustDepth));
-                        assert(!(viewWindow._flags & TextureViewDesc::Flags::JustStencil));
-                    }
-                }
-
-                BindToFramebuffer(bindingPoint, res, viewWindow);
+                BindToFramebuffer(GetDepthStencilBindingPoint(res, viewWindow), res, viewWindow);
             }
 
             #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
@@ -235,8 +265,56 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             #if defined(_DEBUG)
                 GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
-                assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+                if (validationFlag != GL_FRAMEBUFFER_COMPLETE) {
+                    Log(Warning) << "Frame buffer failed with debugging output: " << debuggingOutput.str() << std::endl;
+                    assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+                }
             #endif
+
+            // Construct the "resolve" frame buffer
+            if (!spDesc._resolve.empty() || spDesc._depthStencilResolve._resourceName != ~0u) {
+                sp._resolveTarget = factory.CreateFrameBuffer();
+                glBindFramebuffer(GL_FRAMEBUFFER, sp._resolveTarget->AsRawGLHandle());
+
+                for (unsigned c=0; c<spDesc._resolve.size(); ++c) {
+                    const auto& attachmentView = spDesc._resolve[c];
+                    auto resource = namedResources.GetResource(attachmentView._resourceName);
+                    if (!resource)
+                        Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
+
+                    BindToFramebuffer(
+                        GL_COLOR_ATTACHMENT0 + c,
+                        *(Resource*)resource->QueryInterface(typeid(Resource).hash_code()),
+                        attachmentView._window);
+                    drawBuffers[c] = GL_COLOR_ATTACHMENT0 + c;
+                    sp._resolveFlags |= GL_COLOR_BUFFER_BIT;
+
+                    auto desc = resource->GetDesc();
+                    sp._resolveWidth = desc._textureDesc._width;
+                    sp._resolveHeight = desc._textureDesc._height;
+                }
+                glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers);
+
+                if (spDesc._depthStencilResolve._resourceName != ~0) {
+                    const auto& attachmentView = spDesc._depthStencilResolve;
+                    auto resource = namedResources.GetResource(attachmentView._resourceName);
+                    if (!resource)
+                        Throw(::Exceptions::BasicLabel("Could not find attachment resource for resolve in FrameBuffer::FrameBuffer"));
+
+                    auto& res = *(Resource*)resource->QueryInterface(typeid(Resource).hash_code());
+                    BindToFramebuffer(GetDepthStencilBindingPoint(res, attachmentView._window), res, attachmentView._window);
+                    sp._resolveFlags |= GL_DEPTH_BUFFER_BIT | GL_STENCIL_BUFFER_BIT;
+
+                    auto desc = resource->GetDesc();
+                    sp._resolveWidth = desc._textureDesc._width;
+                    sp._resolveHeight = desc._textureDesc._height;
+                }
+
+                #if defined(_DEBUG)
+                    validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
+                    assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
+                #endif
+            }
         }
     }
 
@@ -401,9 +479,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 || s._dsvLoad == LoadStore::DontCare_ClearStencil;
         } else if (s._dsvHasStencil) {
             invalidateStencil |=
-                       s._dsvLoad == LoadStore::DontCare
-                    || s._dsvLoad == LoadStore::Retain
-                    || s._dsvLoad == LoadStore::Clear;
+                   s._dsvLoad == LoadStore::DontCare
+                || s._dsvLoad == LoadStore::Retain
+                || s._dsvLoad == LoadStore::Clear;
         }
 
         if (fbZeroHack) {
@@ -429,6 +507,32 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
     }
 
+    void FrameBuffer::FinishSubpass(DeviceContext& context, unsigned subpassIndex) const
+    {
+        if (subpassIndex >= (unsigned)_subpasses.size()) return;
+
+        const auto& spDesc = _subpasses[subpassIndex];
+        if (spDesc._resolveTarget) {
+            unsigned width = spDesc._resolveWidth, height = spDesc._resolveHeight;
+            glBindFramebuffer(GL_READ_FRAMEBUFFER, spDesc._frameBuffer->AsRawGLHandle());
+            glBindFramebuffer(GL_DRAW_FRAMEBUFFER, spDesc._resolveTarget->AsRawGLHandle());
+            glBlitFramebuffer(
+                0, 0, width, height,
+                0, 0, width, height,
+                spDesc._resolveFlags, GL_NEAREST);
+
+            GLenum invalidateAttachments[2];
+            unsigned invalidateAttachmentCount = 0;
+            if (spDesc._resolveFlags & GL_COLOR_BUFFER_BIT) {
+                invalidateAttachments[invalidateAttachmentCount++] = GL_COLOR_ATTACHMENT0;
+            } else if (spDesc._resolveFlags & GL_DEPTH_BUFFER_BIT) {
+                invalidateAttachments[invalidateAttachmentCount++] = GL_DEPTH_ATTACHMENT;
+            }
+
+            glInvalidateFramebuffer(GL_READ_FRAMEBUFFER, invalidateAttachmentCount, invalidateAttachments);
+        }
+    }
+
     OpenGL::FrameBuffer* FrameBuffer::GetSubpassUnderlyingFramebuffer(unsigned subpassIndex)
     {
         assert(subpassIndex < _subpasses.size());
@@ -448,6 +552,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
     static unsigned s_nextSubpass = 0;
     static std::vector<ClearValue> s_clearValues;
+    static bool didBindSubpass = false;
 
     void BeginRenderPass(
         DeviceContext& context,
@@ -468,13 +573,19 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         // Queue up the next render targets
         auto subpassIndex = s_nextSubpass;
-        if (subpassIndex < frameBuffer.GetSubpassCount())
+        if (subpassIndex < frameBuffer.GetSubpassCount()) {
             frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
+            didBindSubpass = true;
+        }
         ++s_nextSubpass;
     }
 
-    void EndSubpass(DeviceContext& context)
+    void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer)
     {
+        if (didBindSubpass && s_nextSubpass != 0 && (s_nextSubpass-1) < frameBuffer.GetSubpassCount()) {
+            frameBuffer.FinishSubpass(context, s_nextSubpass-1);
+        }
+        didBindSubpass = false;
     }
 
     void EndRenderPass(DeviceContext& context)

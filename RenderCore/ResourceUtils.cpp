@@ -278,4 +278,43 @@ namespace RenderCore
 
         return result;
     }
+
+    static const char* AsString(TextureDesc::Dimensionality dims)
+    {
+        switch (dims) {
+        case TextureDesc::Dimensionality::Undefined: return "Undefined";
+        case TextureDesc::Dimensionality::T1D: return "T1D";
+        case TextureDesc::Dimensionality::T2D: return "T2D";
+        case TextureDesc::Dimensionality::T3D: return "T3D";
+        case TextureDesc::Dimensionality::CubeMap: return "CubeMap";
+        }
+        return "<<undefined>>";
+    }
+
+    std::ostream& operator<<(std::ostream& strm, const TextureDesc& textureDesc)
+    {
+        strm << textureDesc._width << " x " << textureDesc._height << " x " << textureDesc._depth;
+        strm << ", " << AsString(textureDesc._format);
+        strm << " (" << AsString(textureDesc._dimensionality) << ") Mips: " << (unsigned)textureDesc._mipCount;
+        strm << ", ArrayCount: " << textureDesc._arrayCount << ", SampleCount: " << (unsigned)textureDesc._samples._sampleCount;
+        return strm;
+    }
+
+    std::ostream& operator<<(std::ostream& strm, const ResourceDesc& resDesc)
+    {
+        if (resDesc._type == ResourceDesc::Type::LinearBuffer) {
+            strm << "LinearBuffer (" << resDesc._name << ") size: " << resDesc._linearBufferDesc._sizeInBytes / 1024.f << "KiB";
+            strm << ", BindFlags: " << resDesc._bindFlags;
+            strm << ", CPUAccess: " << resDesc._cpuAccess;
+            strm << ", GPUAccess: " << resDesc._gpuAccess;
+            strm << ", AllocationRules: " << resDesc._allocationRules;
+        } else if (resDesc._type == ResourceDesc::Type::Texture) {
+            strm << "Texture (" << resDesc._name << ") [" << resDesc._textureDesc << "]";
+            strm << ", BindFlags: " << resDesc._bindFlags;
+            strm << ", CPUAccess: " << resDesc._cpuAccess;
+            strm << ", GPUAccess: " << resDesc._gpuAccess;
+            strm << ", AllocationRules: " << resDesc._allocationRules;
+        }
+        return strm;
+    }
 }

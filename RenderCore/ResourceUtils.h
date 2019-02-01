@@ -10,6 +10,7 @@
 #include "Types_Forward.h"
 #include "../Utility/MemoryUtils.h"
 #include <memory>
+#include <iostream>
 
 namespace RenderCore
 {
@@ -116,4 +117,6 @@ namespace RenderCore
     {
         return Metrics { (unsigned)_views.size() };
     }
+
+    std::ostream& operator<<(std::ostream& strm, const ResourceDesc&);
 }

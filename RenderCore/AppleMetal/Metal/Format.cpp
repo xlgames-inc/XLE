@@ -66,9 +66,10 @@ namespace RenderCore { namespace Metal_AppleMetal
 
             case Format::R9G9B9E5_SHAREDEXP: return MTLPixelFormatRGB9E5Float;
             case Format::D32_SFLOAT_S8_UINT: return MTLPixelFormatDepth32Float_Stencil8;
-            case Format::R8G8B8A8_UNORM_SRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
 
+            case Format::R8G8B8A8_UNORM_SRGB: return MTLPixelFormatRGBA8Unorm_sRGB;
             case Format::B8G8R8A8_UNORM: return MTLPixelFormatBGRA8Unorm;
+            case Format::B8G8R8A8_UNORM_SRGB: return MTLPixelFormatBGRA8Unorm_sRGB;
 
             //////////// missing formats ////////////
             case Format::R32G32B32_FLOAT:
@@ -226,6 +227,9 @@ namespace RenderCore { namespace Metal_AppleMetal
 
             case MTLPixelFormatRGB9E5Float: return Format::R9G9B9E5_SHAREDEXP;
             case MTLPixelFormatDepth32Float_Stencil8: return Format::D32_SFLOAT_S8_UINT;
+
+            case MTLPixelFormatBGRA8Unorm: return Format::B8G8R8A8_UNORM;
+            case MTLPixelFormatBGRA8Unorm_sRGB: return Format::B8G8R8A8_UNORM_SRGB;
             case MTLPixelFormatRGBA8Unorm_sRGB: return Format::R8G8B8A8_UNORM_SRGB;
 
 #if 0
@@ -264,8 +268,6 @@ namespace RenderCore { namespace Metal_AppleMetal
             case Format::RGBA_PVRTC2_4BPP_UNORM_SRGB:
             case Format::RGB_ETC1_UNORM_SRGB:
 #endif
-
-            case MTLPixelFormatBGRA8Unorm: return Format::B8G8R8A8_UNORM;
 
             default: break;
         }

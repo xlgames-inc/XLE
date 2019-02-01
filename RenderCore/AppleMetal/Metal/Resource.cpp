@@ -61,10 +61,22 @@ namespace RenderCore { namespace Metal_AppleMetal
             if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
                 assert(desc._textureDesc._height == 1);
                 assert(desc._textureDesc._arrayCount <= 1);
-                textureDesc.textureType = MTLTextureType1D;
+                if (desc._textureDesc._arrayCount > 1) {
+                    textureDesc.textureType = MTLTextureType1DArray;
+                } else {
+                    textureDesc.textureType = MTLTextureType1D;
+                }
             } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T2D) {
                 assert(desc._textureDesc._arrayCount <= 1);
-                textureDesc.textureType = MTLTextureType2D;
+                if (desc._textureDesc._arrayCount > 1) {
+                    assert(desc._textureDesc._samples._sampleCount <= 1); // MTLTextureType2DMultisampleArray is not supported in IOS
+                    textureDesc.textureType = MTLTextureType2DArray;
+                } else {
+                    if (desc._textureDesc._samples._sampleCount > 1) {
+                        textureDesc.textureType = MTLTextureType2DMultisample;
+                    } else
+                        textureDesc.textureType = MTLTextureType2D;
+                }
             } else if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T3D) {
                 assert(desc._textureDesc._arrayCount <= 1);
                 textureDesc.textureType = MTLTextureType3D;
@@ -89,7 +101,11 @@ namespace RenderCore { namespace Metal_AppleMetal
             textureDesc.sampleCount = desc._textureDesc._samples._sampleCount;
             // In Metal, arrayLength is only set for arrays.  For non-arrays, arrayLength must be 1.
             // That is, the RenderCore arrayCount is not the same as the Metal arrayLength.
-            textureDesc.arrayLength = 1;
+            if (textureDesc.textureType != MTLTextureTypeCube) {
+                textureDesc.arrayLength = (desc._textureDesc._arrayCount > 1) ? desc._textureDesc._arrayCount : 1;
+            } else {
+                textureDesc.arrayLength = 1;
+            }
 
             // KenD -- leaving unset for now
             // textureDesc.resourceOptions / compare to allocationRules in ResourceDesc

@@ -101,6 +101,7 @@ namespace RenderCore
 		std::vector<AttachmentViewDesc> _input = {};
 		std::vector<AttachmentViewDesc> _preserve = {};
 		std::vector<AttachmentViewDesc> _resolve = {};
+        AttachmentViewDesc _depthStencilResolve = Unused;
 
 		static const AttachmentViewDesc Unused;
 

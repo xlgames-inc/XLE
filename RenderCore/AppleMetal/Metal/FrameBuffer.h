@@ -48,6 +48,8 @@ namespace RenderCore { namespace Metal_AppleMetal
             unsigned _rtvClearValue[s_maxMRTs];
             unsigned _dsvClearValue;
 #endif
+
+            unsigned _rasterCount;
         };
         std::vector<Subpass> _subpasses;
     };
@@ -60,7 +62,7 @@ namespace RenderCore { namespace Metal_AppleMetal
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
-    void EndSubpass(DeviceContext& context);
+    void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndRenderPass(DeviceContext& context);
     unsigned GetCurrentSubpassIndex(DeviceContext& context);
 }}

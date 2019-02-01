@@ -21,6 +21,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 	{
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+        void FinishSubpass(DeviceContext& context, unsigned subpassIndex) const;
 
         OpenGL::FrameBuffer* GetSubpassUnderlyingFramebuffer(unsigned subpassIndex);
         const OpenGL::FrameBuffer* GetSubpassUnderlyingFramebuffer(unsigned subpassIndex) const;
@@ -49,6 +50,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             bool _dsvHasDepth, _dsvHasStencil;
 
             intrusive_ptr<OpenGL::FrameBuffer> _frameBuffer;
+            intrusive_ptr<OpenGL::FrameBuffer> _resolveTarget;
+            unsigned _resolveFlags;
+            unsigned _resolveWidth, _resolveHeight;
         };
         std::vector<Subpass> _subpasses;
 	};
@@ -61,7 +65,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
-    void EndSubpass(DeviceContext& context);
+    void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
     void EndRenderPass(DeviceContext& context);
     unsigned GetCurrentSubpassIndex(DeviceContext& context);
 
