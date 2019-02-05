@@ -5,15 +5,18 @@
 #include "Socket.h"
 
 #include <stdlib.h>
-#include <netinet/in.h>
-#include <arpa/inet.h>
-#include <unistd.h>
 #include <exception>
 
+#pragma clang diagnostic ignored "-Winvalid-token-paste"
+
 #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+    #include "../../Core/WinAPI/IncludeWindows.h"
     #include <winsock2.h>
     #include <ws2tcpip.h>
 #else
+    #include <netinet/in.h>
+    #include <arpa/inet.h>
+    #include <unistd.h>
     #include <sys/socket.h>
 #endif
 
@@ -23,34 +26,6 @@
 
 namespace
 {
-    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-        // https://stackoverflow.com/a/20817001
-        // TODO: move to apportable?
-        static int inet_pton(int af, const char *src, void *dst)
-        {
-            struct sockaddr_storage ss;
-            int size = sizeof(ss);
-            char src_copy[INET6_ADDRSTRLEN+1];
-
-            ZeroMemory(&ss, sizeof(ss));
-            /* stupid non-const API */
-            strncpy (src_copy, src, INET6_ADDRSTRLEN+1);
-            src_copy[INET6_ADDRSTRLEN] = 0;
-
-            if (WSAStringToAddress(src_copy, af, NULL, (struct sockaddr *)&ss, &size) == 0) {
-                switch(af) {
-                    case AF_INET:
-                        *(struct in_addr *)dst = ((struct sockaddr_in *)&ss)->sin_addr;
-                        return 1;
-                    case AF_INET6:
-                        *(struct in6_addr *)dst = ((struct sockaddr_in6 *)&ss)->sin6_addr;
-                        return 1;
-                }
-            }
-            return 0;
-        }
-    #endif
-
     struct sockaddr_in CreateSocketAddress(const char *address, const uint16_t port)
     {
         struct sockaddr_in serverAddr;
@@ -83,6 +58,18 @@ namespace
 
 namespace Utility { namespace Networking
 {
+    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
+        void closesocket(int fd)
+        {
+            ::closesocket(fd);
+        }
+    #else
+        void closesocket(int fd)
+        {
+            ::close(fd);
+        }
+    #endif
+
     SocketConnection::SocketConnection(const std::string &address, const uint16_t port)
     {
         EnsureNetworkingInitialized();
@@ -94,7 +81,7 @@ namespace Utility { namespace Networking
         }
 
         if (connect(_fd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-            close(_fd);
+            closesocket(_fd);
             Throw(SocketException(SocketException::ErrorCode::bad_connection));
         }
     }
@@ -102,7 +89,7 @@ namespace Utility { namespace Networking
     SocketConnection::SocketConnection(int socket) : _fd(socket) {}
 
     SocketConnection::~SocketConnection() {
-        close(_fd);
+        closesocket(_fd);
     }
 
     bytes SocketConnection::Read(const uint32_t count)
@@ -157,7 +144,7 @@ namespace Utility { namespace Networking
             // When connections are interrupted, the addres:port pair might noy be available to be used right away.
             // This flag allows us to create another socket with the same address right away.
             if (setsockopt(_fd, SOL_SOCKET, SO_REUSEADDR, (const char *)&enable, sizeof(enable)) < 0) {
-                close(_fd);
+                closesocket(_fd);
                 Throw(SocketException(SocketException::ErrorCode::bad_creation));
             }
 
@@ -167,25 +154,25 @@ namespace Utility { namespace Networking
                 // worked well on desktop, however. To learn more, search for SIGPIPE in:
                 // https://developer.apple.com/library/archive/documentation/NetworkingInternetWeb/Conceptual/NetworkingOverview/CommonPitfalls/CommonPitfalls.html#//apple_ref/doc/uid/TP40010220-CH4-SW11
                 if (setsockopt(_fd, SOL_SOCKET, SO_NOSIGPIPE, &enable, sizeof(enable)) < 0) {
-                    close(_fd);
+                    closesocket(_fd);
                     Throw(SocketException(SocketException::ErrorCode::bad_creation));
                 }
             #endif
         }
 
         if (bind(_fd, (struct sockaddr *)&serverAddr, sizeof(serverAddr)) < 0) {
-            close(_fd);
+            closesocket(_fd);
             Throw(SocketException(SocketException::ErrorCode::bad_creation));
         }
         if (listen(_fd, 5) < 0) {
-            close(_fd);
+            closesocket(_fd);
             Throw(SocketException(SocketException::ErrorCode::bad_creation));
         }
     }
 
     SocketServer::~SocketServer()
     {
-        close(_fd);
+        closesocket(_fd);
     }
 
     std::unique_ptr<SocketConnection> SocketServer::Listen()
