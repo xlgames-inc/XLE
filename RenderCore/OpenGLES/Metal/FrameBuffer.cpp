@@ -115,6 +115,27 @@ namespace RenderCore { namespace Metal_OpenGLES
         return bindingPoint;
     }
 
+    static const char* CheckFramebufferStatusToString(GLenum value)
+    {
+        switch (value) {
+        case GL_FRAMEBUFFER_COMPLETE: return "complete";
+        case GL_FRAMEBUFFER_UNDEFINED: return "undefined";
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "incomplete-attachment";
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "incomplete-missing-attachment";
+        case GL_FRAMEBUFFER_UNSUPPORTED: return "unsupported";
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "incomplete-multisample";
+        
+        // Desktop GL problems
+        #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "incomplete-layer-targets";
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "incomplete-draw-buffer";
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "incomplete-read-buffer";
+        #endif
+        }
+
+        return "<<error>>";
+    }
+
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -266,7 +287,12 @@ namespace RenderCore { namespace Metal_OpenGLES
             #if defined(_DEBUG)
                 GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
                 if (validationFlag != GL_FRAMEBUFFER_COMPLETE) {
-                    Log(Warning) << "Frame buffer failed with debugging output: " << debuggingOutput.str() << std::endl;
+                    // See documentation in https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glCheckFramebufferStatus.xhtml
+                    // and https://www.khronos.org/registry/OpenGL-Refpages/es3.0/html/glCheckFramebufferStatus.xhtml
+                    // Possible problems if you hit this point:
+                    //  * in opengl, when mutlisampling is enabled, all buffers must either be renderbuffers 
+                    //    or textures. You can't have a mixture of the two
+                    Log(Warning) << "Frame buffer failed (" << CheckFramebufferStatusToString(validationFlag) << ") with debugging output: " << std::endl << debuggingOutput.str() << std::endl;
                     assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
                 }
             #endif
