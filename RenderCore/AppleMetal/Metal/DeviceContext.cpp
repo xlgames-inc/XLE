@@ -16,6 +16,9 @@
 #include <assert.h>
 #include "IncludeAppleMetal.h"
 
+#include <map>
+#define CACHE_RENDER_PIPELINE_STATE 0
+
 namespace RenderCore { namespace Metal_AppleMetal
 {
     static const Resource& AsResource(const IResource* rp)
@@ -162,6 +165,10 @@ namespace RenderCore { namespace Metal_AppleMetal
          * Metal TODO -- management of RenderPipelineStates needs to be improved regarding caching
          */
         std::vector<std::pair<uint64_t, ReflectionInformation>> _reflectionInformation;
+
+#if CACHE_RENDER_PIPELINE_STATE
+        std::map<uint64_t, TBC::OCPtr<id>> _pipelineStateCache; // MTLRenderPipelineState
+#endif
 
         /* Debug functions */
         void ClearTextureBindings()
@@ -547,15 +554,31 @@ namespace RenderCore { namespace Metal_AppleMetal
         // At this point, the MTLPipelineDescriptor should be fully set up for what will be encoded next.
 
         NSError* error = NULL;
+#if CACHE_RENDER_PIPELINE_STATE
+        /* Metal TODO -- finalize caching of render pipeline states by defining an appropriate hash function for pipeline descriptors */
+        id<MTLRenderPipelineState> pipelineState = nil;
+        uint64_t pipelineDescriptorHash = [_pimpl->_pipelineDescriptor hash];
+        auto it = _pimpl->_pipelineStateCache.find(pipelineDescriptorHash);
+        if (it != _pimpl->_pipelineStateCache.end()) {
+            pipelineState = [it->second retain];
+        }
+        if (!pipelineState) {
+            pipelineState = [_pimpl->_device newRenderPipelineStateWithDescriptor:_pimpl->_pipelineDescriptor
+                                                                            error:&error];
+            if (pipelineState) {
+                _pimpl->_pipelineStateCache[pipelineDescriptorHash] = pipelineState;
+            }
+        }
+#else
         id<MTLRenderPipelineState> pipelineState = [_pimpl->_device newRenderPipelineStateWithDescriptor:_pimpl->_pipelineDescriptor
                                                                                                    error:&error];
+#endif
         if (error) {
             Log(Error) << "Failed to create render pipeline state: " << [[error description] UTF8String] << std::endl;
         }
         assert(!error);
         [_pimpl->_commandEncoder setRenderPipelineState:pipelineState];
         [pipelineState release];
-        /* KenD -- Metal TODO -- cache the RenderPipelineState so it can be reused */
 
         /* Metal TODO -- non-rasterized passes, multisampling */
     }
