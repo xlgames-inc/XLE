@@ -213,7 +213,7 @@ namespace RenderCore { namespace ImplAppleMetal
         _desc->_height *= 2.0;
 
         auto* metalLayer = (CAMetalLayer*)view.layer;
-        metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm;
+        metalLayer.pixelFormat = MTLPixelFormatBGRA8Unorm; /* Metal TODO -- Currently fixed to using LDR format */
         metalLayer.framebufferOnly = YES;
         metalLayer.drawableSize = CGSizeMake(_desc->_width, _desc->_height);
         metalLayer.device = device;
