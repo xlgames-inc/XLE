@@ -279,7 +279,12 @@ namespace ConsoleRig
             if (cfgs) {
                 for (const auto&t:_pimpl->_activeTargets)
                     t.second._target->SetConfiguration(cfgs->ResolveConfig(t.second._id));
-            } // else reset to default?
+            } else {
+                Error.SetConfiguration(MessageTargetConfiguration{});
+                Warning.SetConfiguration(MessageTargetConfiguration{});
+                Debug.SetConfiguration(MessageTargetConfiguration{});
+                Verbose.SetConfiguration(MessageTargetConfiguration{ std::string(), 0, MessageTargetConfiguration::Sink::Console });
+            }
         #endif
     }
 
