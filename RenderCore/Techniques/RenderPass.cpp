@@ -1190,11 +1190,17 @@ namespace RenderCore { namespace Techniques
                             newState._desc._flags |= AttachmentDesc::Flags::ShaderResource;
 
                         newState._shouldReceiveDataForSemantic = compat->_shouldReceiveDataForSemantic;
-                        if (!newState._firstReadSemantic && compat->_isPredefinedAttachment)    // (we only really care about first read for predefined attachments)
+                        if (!newState._firstReadSemantic && compat->_isPredefinedAttachment) {    // (we only really care about first read for predefined attachments)
                             newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
-                        if (lastUseDirection & (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad))) {
+                        } else {
+                            newState._firstReadSemantic = 0;
+                        }
+                        if (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) {
                             newState._containsDataForSemantic =  interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
+                        } else {
+                            newState._containsDataForSemantic = 0;
+                            newState._lastWriteSemantic = 0;
                         }
                         newState._isPredefinedAttachment = false;
                         newState._name = reboundName;
