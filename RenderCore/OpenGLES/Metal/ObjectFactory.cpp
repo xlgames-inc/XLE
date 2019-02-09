@@ -22,8 +22,6 @@ namespace RenderCore { namespace Metal_OpenGLES
     signed  IndexedGLType_AddRef(RawGLHandle object) never_throws;
     signed  IndexedGLType_Release(RawGLHandle object) never_throws;
 
-    void DestroyGLESCachedShaders();
-
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     static unsigned AsGLShaderType(ShaderType::Enum type)
@@ -412,7 +410,10 @@ namespace RenderCore { namespace Metal_OpenGLES
     {
         assert(s_objectFactory_instance == this);
 
-        DestroyGLESCachedShaders();
+        {
+            ScopedLock(_compiledShadersLock);
+            decltype(_compiledShaders)().swap(_compiledShaders);
+        }
 
         #if defined(_DEBUG)
             ReportLeaks();

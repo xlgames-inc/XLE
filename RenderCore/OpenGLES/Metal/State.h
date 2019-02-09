@@ -126,6 +126,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         intrusive_ptr<OpenGL::Sampler> _prebuiltSamplerNoMipmaps;
 
         unsigned _guid;
+        bool _gles300Factory;
     };
 
     class BlendState
