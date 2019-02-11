@@ -357,6 +357,13 @@ namespace Assets
 		return nullptr;
 	}
 
+	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs)
+	{
+		std::vector<FileSystemWalker::StartingFS> startingFS;
+		startingFS.push_back({{}, {}, fs, 0});
+		return FileSystemWalker(std::move(startingFS));
+	}
+
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class FileSystemWalker::Pimpl

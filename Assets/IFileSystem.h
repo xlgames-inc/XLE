@@ -173,6 +173,7 @@ namespace Assets
 		FileSystemWalker(std::vector<StartingFS>&& fileSystems);
 
 		friend class MountingTree;
+		friend FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
 	};
 
 	/// <summary>Description of a file object within a filesystem</summary>
@@ -275,6 +276,7 @@ namespace Assets
 	T2(CharType, FileObject) IFileSystem::IOReason TryOpen(FileObject& result, IFileSystem& fs, StringSection<CharType> fn, uint64 size, const char openMode[], FileShareMode::BitField shareMode=FileShareMode_Default);
 	T1(CharType) IFileSystem::IOReason TryMonitor(IFileSystem& fs, StringSection<CharType> fn, const std::shared_ptr<IFileMonitor>& evnt);
 	T1(CharType) FileDesc TryGetDesc(IFileSystem& fs, StringSection<CharType> fn);
+	FileSystemWalker BeginWalk(const std::shared_ptr<ISearchableFileSystem>& fs);
 
 	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock(StringSection<char> sourceFileName, size_t* sizeResult = nullptr);
 	Blob TryLoadFileAsBlob(StringSection<char> sourceFileName);
