@@ -343,33 +343,40 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
         SceneEngine::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font)
+	{
+		if (parserContext._stringHelpers->_quickMetrics[0])
+			DrawString(context, font, parserContext._stringHelpers->_quickMetrics);
+	}
+
+	void DrawString(   
+        RenderCore::IThreadContext& context, 
+		const std::shared_ptr<RenderOverlays::Font>& font,
+		StringSection<> string)
     {
-        if (parserContext._stringHelpers->_quickMetrics[0]) {
-            auto metalContext = Metal::DeviceContext::Get(context);
-            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
+        auto& metalContext = *Metal::DeviceContext::Get(context);
+        metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
 
-            using namespace RenderOverlays;
-            TextStyle style;
-            Float2 textPosition(16.f, 150.f);
-            float lineHeight = font->GetFontProperties()._lineHeight;
-            const auto alignment = TextAlignment::TopLeft;
-            const unsigned colour = 0xffcfcfcfu;
+        using namespace RenderOverlays;
+        TextStyle style;
+        Float2 textPosition(16.f, 150.f);
+        float lineHeight = font->GetFontProperties()._lineHeight;
+        const auto alignment = TextAlignment::TopLeft;
+        const unsigned colour = 0xffcfcfcfu;
 
-            auto i = parserContext._stringHelpers->_quickMetrics;
-            for (;;) {
-                while (*i && (*i == '\n' || *i == '\r')) ++i;
-                auto* start = i;
-                while (*i && *i != '\n' && *i != '\r') ++i;
-                if (start == i) break;
+        auto i = string.begin(), end = string.end();
+        for (;;) {
+            while (i != end && (*i == '\n' || *i == '\r')) ++i;
+            auto* start = i;
+            while (i != end && *i != '\n' && *i != '\r') ++i;
+            if (start == i) break;
 
-                UCS4Buffer<512> text2(start, i);
-                Float2 alignedPosition = AlignText(*font, Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2.get());
-                Draw(
-                    context, *font, style,
-					alignedPosition[0], alignedPosition[1], text2.get(),
-                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
-                textPosition[1] += lineHeight;
-            }
+            UCS4Buffer<512> text2(start, i);
+            Float2 alignedPosition = AlignText(*font, Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2.get());
+            Draw(
+                context, *font, style,
+				alignedPosition[0], alignedPosition[1], text2.get(),
+                0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
+            textPosition[1] += lineHeight;
         }
     }
 

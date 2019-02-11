@@ -285,7 +285,7 @@ namespace ToolsRig
         RenderCore::Techniques::ParsingContext& parserContext,
         DrawPreviewLightingType lightingType,
 		SceneEngine::IScene& sceneParser,
-		SceneEngine::ILightingParserDelegate& lightingParserDelegate,
+		const SceneEngine::ILightingParserDelegate& lightingParserDelegate,
 		const RenderCore::Techniques::CameraDesc& cameraDesc)
     {
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
@@ -369,7 +369,9 @@ namespace ToolsRig
             }
 
 			MaterialVisualizationScene scene(visObject);
-			VisLightingParserDelegate lightingParserDelegate(envSettings);
+			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings->_envConfigFile);
+			future->StallWhilePending();
+			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(future->Actualize());
 
 			scene.PrepareScene();
 

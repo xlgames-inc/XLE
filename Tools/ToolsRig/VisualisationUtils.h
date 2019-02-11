@@ -38,33 +38,17 @@ namespace ToolsRig
         float verticalFieldOfView, 
         const std::pair<Float3, Float3>& boxIn);
 
-    class VisEnvSettings
+	RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
+
+	class VisEnvSettings
     {
-    public:
-        PlatformRig::EnvironmentSettings _activeSetting;
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
+	public:
+		std::string _envConfigFile;
 
-        VisEnvSettings();
-        VisEnvSettings(StringSection<::Assets::ResChar> filename);
-        ~VisEnvSettings();
-    protected:
-        ::Assets::DepValPtr _depVal;
-    };
-
-    RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings);
-
-    class VisLightingParserDelegate : public PlatformRig::BasicLightingParserDelegate
-    {
-    public:
-        float GetTimeValue() const;
-
-        VisLightingParserDelegate(
-            const std::shared_ptr<VisEnvSettings>& envSettings);
-        ~VisLightingParserDelegate();
-    protected:
-        std::shared_ptr<VisEnvSettings> _envSettings;
-        virtual const PlatformRig::EnvironmentSettings& GetEnvSettings() const;
-    };
+		VisEnvSettings();
+		VisEnvSettings(const std::string& envConfigFile);
+		~VisEnvSettings();
+	};
 
     inline VisCameraSettings::VisCameraSettings()
     {

@@ -161,13 +161,16 @@ namespace GUILayer
 
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
     {
-        auto visLayer = std::make_unique<ToolsRig::ModelVisLayer>(
-            settings->GetUnderlying());
+        auto visLayer = std::make_shared<ToolsRig::ModelVisLayer>();
+		visLayer->Set(*settings->GetUnderlying());
+		visLayer->Set(ToolsRig::VisEnvSettings{});
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
-        overlaySet.AddSystem(std::move(visLayer));
+        overlaySet.AddSystem(visLayer);
         overlaySet.AddSystem(
             std::make_shared<ToolsRig::VisualisationOverlay>(
-                settings->GetUnderlying(), resources->_visCache.GetNativePtr(), 
+                settings->GetUnderlying(), 
+				std::make_shared<ToolsRig::VisOverlaySettings>(),
+				resources->_visCache.GetNativePtr(), 
                 mouseOver ? mouseOver->GetUnderlying() : nullptr));
 
         auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
@@ -186,7 +189,7 @@ namespace GUILayer
 			auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
-				ToolsRig::CreateCameraManipulator(settings->Camera->GetUnderlying()));
+				ToolsRig::CreateCameraManipulator(visLayer->GetCamera()));
 			overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
 		}
 
@@ -199,7 +202,7 @@ namespace GUILayer
 					mouseOver->GetUnderlying(),
 					immContext,
 					_pimpl->_globalTechniqueContext,
-					settings->Camera->GetUnderlying(), intersectionScene,
+					visLayer->GetCamera(), intersectionScene,
 					std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr(), viewportDims[0], viewportDims[1])));
 		}
     }

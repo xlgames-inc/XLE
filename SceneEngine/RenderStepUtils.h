@@ -79,7 +79,7 @@ namespace SceneEngine
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
         RenderCore::Metal::DeviceContext& context,
 		RenderCore::Techniques::ParsingContext& parserContext,
-        ILightingParserDelegate& delegate);
+        const ILightingParserDelegate& delegate);
 
 	void LightingParser_SetGlobalTransform(
         RenderCore::IThreadContext& context, 

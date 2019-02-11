@@ -8,6 +8,7 @@
 #include "LocalCompiledShaderSource.h"
 #include "MaterialCompiler.h"
 #include "MaterialScaffold.h"   // just for MaterialScaffold::CompileProcessType
+#include "SkinDeformer.h"
 #include "../IDevice.h"
 #include "../Init.h"
 #include "../ShaderService.h"
@@ -51,6 +52,9 @@ namespace RenderCore { namespace Assets
             // Setup required compilers.
             //  * material scaffold compiler
         asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<RenderCore::Assets::MaterialScaffoldCompiler>());
+
+		_deformOpsFactory = std::make_unique<RenderCore::Assets::DeformOperationFactory>();
+		RenderCore::Assets::SkinDeformer::Register();
     }
 
     Services::~Services()

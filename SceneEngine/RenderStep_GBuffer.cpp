@@ -241,7 +241,7 @@ namespace SceneEngine
 	void LightingParser_PreTranslucency(
         IThreadContext& context, 
         Techniques::ParsingContext& parserContext,
-        ILightingParserDelegate& delegate,
+        const ILightingParserDelegate& delegate,
         const Metal::ShaderResourceView& depthsSRV)
     {
         GPUAnnotation anno(context, "PreTranslucency");
@@ -271,7 +271,7 @@ namespace SceneEngine
     void LightingParser_PostGBufferEffects(    
         IThreadContext& context, 
 		Techniques::ParsingContext& parserContext,
-        ILightingParserDelegate& delegate,
+        const ILightingParserDelegate& delegate,
         const Metal::ShaderResourceView& depthsSRV,
         const Metal::ShaderResourceView& normalsSRV)
     {

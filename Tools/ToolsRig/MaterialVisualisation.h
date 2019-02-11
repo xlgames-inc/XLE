@@ -85,7 +85,7 @@ namespace ToolsRig
 			RenderCore::Techniques::ParsingContext& parserContext,
             DrawPreviewLightingType lightingType,
 			SceneEngine::IScene& sceneParser,
-			SceneEngine::ILightingParserDelegate& lightingParserDelegate,
+			const SceneEngine::ILightingParserDelegate& lightingParserDelegate,
 			const RenderCore::Techniques::CameraDesc& cameraDesc);
     protected:
         class Pimpl;

@@ -44,7 +44,7 @@ namespace SceneEngine
     static LightingParserContext LightingParser_SetupContext(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
-        ILightingParserDelegate& delegate,
+        const ILightingParserDelegate& delegate,
 		const RenderSceneSettings& qualitySettings,
         unsigned samplingPassIndex = 0, unsigned samplingPassCount = 1);
 
@@ -273,7 +273,7 @@ namespace SceneEngine
 	static LightingParserContext LightingParser_SetupContext(
         RenderCore::IThreadContext& context, 
 		RenderCore::Techniques::ParsingContext& parsingContext,
-        ILightingParserDelegate& delegate,
+        const ILightingParserDelegate& delegate,
 		const RenderSceneSettings& qualitySettings,
         unsigned samplingPassIndex, unsigned samplingPassCount)
     {

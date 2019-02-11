@@ -17,6 +17,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
 #include "../../RenderOverlays/HighlightEffects.h"
@@ -46,6 +47,7 @@
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/ResourceBox.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/HeapUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -193,8 +195,13 @@ namespace ToolsRig
 		{
 		}
 
+		VisCameraSettings AlignCamera()
+		{
+			return AlignCameraToBoundingBox(40.f, _boundingBox);
+		}
+
 		FixedFunctionModelSceneParser(
-			const ModelVisSettings& settings,
+			const VisOverlaySettings& settings,
 			ModelRenderer& model, const std::pair<Float3, Float3>& boundingBox, SharedStateSet& sharedStateSet,
 			const ModelScaffold* modelScaffold = nullptr)
 		: _model(&model), _boundingBox(boundingBox), _sharedStateSet(&sharedStateSet)
@@ -211,19 +218,18 @@ namespace ToolsRig
 		SharedStateSet* _sharedStateSet;
 		std::pair<Float3, Float3> _boundingBox;
 
-		const ModelVisSettings* _settings;
+		const VisOverlaySettings* _settings;
 		const ModelScaffold* _modelScaffold;
 		DelayedDrawCallSet _delayedDrawCalls;
 	};
 
-	std::unique_ptr<SceneEngine::IScene> CreateModelScene(const ModelCacheModel& model)
+	/*std::unique_ptr<SceneEngine::IScene> CreateModelScene(const ModelCacheModel& model)
     {
         ModelVisSettings settings;
-        *settings._camera = AlignCameraToBoundingBox(40.f, model._boundingBox);
         return std::make_unique<FixedFunctionModelSceneParser>(
             settings,
             *model._renderer, model._boundingBox, *model._sharedStateSet);
-    }
+    }*/
 
 	class StencilRefDelegate : public SimpleModelRenderer::IPreDrawDelegate
 	{
@@ -256,10 +262,12 @@ namespace ToolsRig
             RenderCore::IThreadContext& threadContext,
 			SceneEngine::SceneExecuteContext& executeContext) const override
 		{
-			if (_animationScaffold) {
-				auto skeletonMachine = GetSkeletonMachine();
-				assert(skeletonMachine);
+			auto skeletonMachine = GetSkeletonMachine();
+			assert(skeletonMachine);
 
+			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine->GetOutputMatrixCount());
+
+			if (_animationScaffold) {
 				auto& animData = _animationScaffold->ImmutableData();
 				auto foundAnimation = animData._animationSet.GetAnimations()[0];
 
@@ -273,20 +281,23 @@ namespace ToolsRig
 					*skeletonMachine, _animSetBinding,
 					animData._curves, animData._curvesCount);
 
-				std::vector<Float4x4> skeletonMachineOutput(skeletonMachine->GetOutputMatrixCount());
 				skeletonMachine->GenerateOutputTransforms(
-					skeletonMachineOutput.data(), (unsigned)skeletonMachineOutput.size(),
+					MakeIteratorRange(skeletonMachineOutput),
 					&params);
-
-				for (unsigned c=0; c<_renderer->DeformOperationCount(); ++c) {
-					auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&_renderer->DeformOperation(c));
-					if (!skinDeformOp) continue;
-					skinDeformOp->FeedInSkeletonMachineResults(
-						MakeIteratorRange(skeletonMachineOutput),
-						skeletonMachine->GetOutputInterface());
-				}
-				_renderer->GenerateDeformBuffer(threadContext);
+			} else {
+				skeletonMachine->GenerateOutputTransforms(
+					MakeIteratorRange(skeletonMachineOutput),
+					&skeletonMachine->GetDefaultParameters());
 			}
+
+			for (unsigned c=0; c<_renderer->DeformOperationCount(); ++c) {
+				auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&_renderer->DeformOperation(c));
+				if (!skinDeformOp) continue;
+				skinDeformOp->FeedInSkeletonMachineResults(
+					MakeIteratorRange(skeletonMachineOutput),
+					skeletonMachine->GetOutputInterface());
+			}
+			_renderer->GenerateDeformBuffer(threadContext);
 
 			for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
 				RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
@@ -297,42 +308,123 @@ namespace ToolsRig
 			}
 		}
 
+		std::pair<Float3, Float3> GetBoundingBox() const { return _renderer->GetModelScaffold()->GetStaticBoundingBox(); }
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ModelSceneParser>& future,
+			const ModelVisSettings& settings)
+		{
+			auto rendererFuture = ::Assets::MakeAsset<SimpleModelRenderer>(settings._modelName, settings._materialName, "skin");
+
+			::Assets::FuturePtr<AnimationSetScaffold> animationSetFuture;
+			::Assets::FuturePtr<SkeletonScaffold> skeletonFuture;
+
+			if (!settings._animationFileName.empty())
+				animationSetFuture = ::Assets::MakeAsset<AnimationSetScaffold>(settings._animationFileName);
+
+			if (!settings._skeletonFileName.empty())
+				skeletonFuture = ::Assets::MakeAsset<SkeletonScaffold>(settings._skeletonFileName);
+
+			future.SetPollingFunction(
+				[rendererFuture, animationSetFuture, skeletonFuture](::Assets::AssetFuture<ModelSceneParser>& thatFuture) -> bool {
+
+					bool stillPending = false;
+					auto rendererActual = rendererFuture->TryActualize();
+					if (!rendererActual) {
+						auto state = rendererFuture->GetAssetState();
+						if (state == ::Assets::AssetState::Invalid) {
+							std::stringstream str;
+							str << "SimpleModelRenderer failed to actualize: ";
+							const auto& actLog = rendererFuture->GetActualizationLog();
+							str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
+							thatFuture.SetInvalidAsset(rendererFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
+							return false;
+						}
+						stillPending = true;
+					}
+
+					std::shared_ptr<AnimationSetScaffold> animationSetActual;
+					std::shared_ptr<SkeletonScaffold> skeletonActual;
+
+					if (animationSetFuture) {
+						animationSetActual = animationSetFuture->TryActualize();
+						if (!animationSetActual) {
+							auto state = animationSetFuture->GetAssetState();
+							if (state == ::Assets::AssetState::Invalid) {
+								std::stringstream str;
+								str << "AnimationSet failed to actualize: ";
+								const auto& actLog = animationSetFuture->GetActualizationLog();
+								str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
+								thatFuture.SetInvalidAsset(animationSetFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
+								return false;
+							}
+							stillPending = true;
+						}
+					}
+
+					if (skeletonFuture) {
+						skeletonActual = skeletonFuture->TryActualize();
+						if (!skeletonFuture) {
+							auto state = skeletonFuture->GetAssetState();
+							if (state == ::Assets::AssetState::Invalid) {
+								std::stringstream str;
+								str << "Skeleton failed to actualize: ";
+								const auto& actLog = skeletonFuture->GetActualizationLog();
+								str << (actLog ? ::Assets::AsString(actLog) : std::string("<<no log>>"));
+								thatFuture.SetInvalidAsset(skeletonFuture->GetDependencyValidation(), ::Assets::AsBlob(str.str()));
+								return false;
+							}
+							stillPending = true;
+						}
+					}
+
+					if (stillPending)
+						return true;
+
+					auto newModel = std::make_shared<ModelSceneParser>(rendererActual, animationSetActual, skeletonActual);
+					thatFuture.SetAsset(std::move(newModel), {});
+					return false;
+				});
+		}
+
 		ModelSceneParser(
-            const std::shared_ptr<ModelScaffold>& modelScaffold,
-			const std::shared_ptr<MaterialScaffold>& materialScaffold,
+			const std::shared_ptr<SimpleModelRenderer>& renderer,
 			const std::shared_ptr<AnimationSetScaffold>& animationScaffold,
 			const std::shared_ptr<SkeletonScaffold>& skeletonScaffold)
-        {
-			if (!animationScaffold) {
-				_renderer = std::make_shared<SimpleModelRenderer>(modelScaffold, materialScaffold);
-			} else {
-				using namespace RenderCore::Assets;
-				auto deformOps = DeformOperationFactory::GetInstance().CreateDeformOperations(
-					"skin",
-					modelScaffold);
-				_renderer = std::make_shared<SimpleModelRenderer>(modelScaffold, materialScaffold, MakeIteratorRange(deformOps));
-				_animationScaffold = animationScaffold;
-				_skeletonScaffold = skeletonScaffold;
-				if (!_skeletonScaffold)
-					_modelScaffoldForEmbeddedSkeleton = modelScaffold;
+		: _renderer(renderer), _animationScaffold(animationScaffold), _skeletonScaffold(skeletonScaffold)
+		{
+			if (!_skeletonScaffold)
+				_modelScaffoldForEmbeddedSkeleton = _renderer->GetModelScaffold();
 
+			if (_animationScaffold) {
 				_animSetBinding = RenderCore::Assets::AnimationSetBinding(
 					_animationScaffold->ImmutableData()._animationSet.GetOutputInterface(), 
 					GetSkeletonMachine()->GetInputInterface());
 			}
 			_preDrawDelegate = std::make_shared<StencilRefDelegate>();
+
+			_depVal = std::make_shared<::Assets::DependencyValidation>();
+			::Assets::RegisterAssetDependency(_depVal, _renderer->GetDependencyValidation());
+			if (_animationScaffold)
+				::Assets::RegisterAssetDependency(_depVal, _animationScaffold->GetDependencyValidation());
+			if (_skeletonScaffold)
+				::Assets::RegisterAssetDependency(_depVal, _skeletonScaffold->GetDependencyValidation());
         }
 
         ~ModelSceneParser() {}
 
-    protected:
-		std::shared_ptr<SimpleModelRenderer> _renderer;
-		std::shared_ptr<StencilRefDelegate> _preDrawDelegate;
-		std::shared_ptr<AnimationSetScaffold> _animationScaffold;
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
-		std::shared_ptr<ModelScaffold> _modelScaffoldForEmbeddedSkeleton;
-		std::shared_ptr<SkeletonScaffold> _skeletonScaffold;
-		RenderCore::Assets::AnimationSetBinding _animSetBinding;
+    protected:
+		std::shared_ptr<SimpleModelRenderer>		_renderer;
+		std::shared_ptr<StencilRefDelegate>			_preDrawDelegate;
+		std::shared_ptr<AnimationSetScaffold>		_animationScaffold;
+
+		std::shared_ptr<ModelScaffold>				_modelScaffoldForEmbeddedSkeleton;
+		std::shared_ptr<SkeletonScaffold>			_skeletonScaffold;
+		RenderCore::Assets::AnimationSetBinding		_animSetBinding;
+
+		::Assets::DepValPtr					_depVal;
 
 		const SkeletonMachine* GetSkeletonMachine() const
 		{
@@ -350,8 +442,30 @@ namespace ToolsRig
     class ModelVisLayer::Pimpl
     {
     public:
-        std::shared_ptr<ModelVisSettings> _settings;
-        std::shared_ptr<VisEnvSettings> _envSettings;
+		std::shared_ptr<ModelSceneParser> _scene;
+		std::shared_ptr<PlatformRig::EnvironmentSettings> _envSettings;
+
+        ::Assets::FuturePtr<ModelSceneParser> _sceneFuture;
+		::Assets::FuturePtr<PlatformRig::EnvironmentSettings> _envSettingsFuture;
+		
+		std::string _sceneErrorMessage;
+
+		std::shared_ptr<VisCameraSettings> _camera;
+    };
+
+	class UsefulFonts
+    {
+    public:
+        class Desc {};
+
+		std::shared_ptr<RenderOverlays::Font> _defaultFont0;
+		std::shared_ptr<RenderOverlays::Font> _defaultFont1;
+
+        UsefulFonts(const Desc&)
+        {
+            _defaultFont0 = RenderOverlays::GetX2Font("Raleway", 18);
+            _defaultFont1 = RenderOverlays::GetX2Font("Vera", 18);
+        }
     };
 
     void ModelVisLayer::Render(
@@ -361,43 +475,41 @@ namespace ToolsRig
     {
         using namespace SceneEngine;
 
-		auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(_pimpl->_settings->_modelName);
-		modelFuture->StallWhilePending();
-		auto model = modelFuture->TryActualize();
-		auto materialFuture = ::Assets::MakeAsset<MaterialScaffold>(_pimpl->_settings->_materialName, _pimpl->_settings->_modelName);
-		materialFuture->StallWhilePending();
-		auto material = materialFuture->TryActualize();
-		if (!model || !material)
-			return;
-
-		std::shared_ptr<AnimationSetScaffold> animationScaffold;
-		std::shared_ptr<SkeletonScaffold> skeletonScaffold;
-		if (!_pimpl->_settings->_animationFileName.empty()) {
-			auto animationFuture = ::Assets::MakeAsset<AnimationSetScaffold>(_pimpl->_settings->_animationFileName);
-			animationFuture->StallWhilePending();
-			animationScaffold = animationFuture->TryActualize();
-		}
-
-        if (_pimpl->_settings->_pendingCameraAlignToModel) {
-                // After the model is loaded, if we have a pending camera align,
+		if (_pimpl->_sceneFuture) {
+			auto newActualized = _pimpl->_sceneFuture->TryActualize();
+			if (newActualized) {
+				// After the model is loaded, if we have a pending camera align,
                 // we should reset the camera to the match the model.
                 // We also need to trigger the change event after we make a change...
-            *_pimpl->_settings->_camera = AlignCameraToBoundingBox(
-                _pimpl->_settings->_camera->_verticalFieldOfView,
-                model->GetStaticBoundingBox());
-            _pimpl->_settings->_pendingCameraAlignToModel = false;
-            _pimpl->_settings->_changeEvent.Trigger();
-        }
+				*_pimpl->_camera = AlignCameraToBoundingBox(
+					_pimpl->_camera->_verticalFieldOfView,
+					newActualized->GetBoundingBox());
+				// _pimpl->_settings->_changeEvent.Trigger();
 
-        auto envSettings = _pimpl->_envSettings;
-        if (!envSettings)
-            envSettings = ::Assets::MakeAsset<VisEnvSettings>(
-                MakeStringSection(_pimpl->_settings->_envSettingsFile))->TryActualize();
-		if (!envSettings)
-			envSettings = std::make_shared<VisEnvSettings>();
+				_pimpl->_scene = newActualized;
+				_pimpl->_sceneFuture = nullptr;
+				_pimpl->_sceneErrorMessage = {};
+			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				_pimpl->_sceneErrorMessage = ::Assets::AsString(_pimpl->_sceneFuture->GetActualizationLog());
+				_pimpl->_scene = nullptr;
+				_pimpl->_sceneFuture = nullptr;
+			}
+		}
 
-        ModelSceneParser sceneParser(model, material, animationScaffold, skeletonScaffold);
-		VisLightingParserDelegate lightingParserDelegate(envSettings);
+		if (_pimpl->_envSettingsFuture) {
+			auto newActualized = _pimpl->_envSettingsFuture->TryActualize();
+			if (newActualized) {
+				_pimpl->_envSettings = newActualized;
+				_pimpl->_envSettingsFuture = nullptr;
+			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				_pimpl->_envSettings = nullptr;
+				_pimpl->_envSettingsFuture = nullptr;
+			}
+		}
+
+		if (!_pimpl->_envSettings) return;
+
+		PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
 
 		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
 			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
@@ -407,36 +519,55 @@ namespace ToolsRig
 			&lightingParserDelegate,
 			MakeIteratorRange(lightingPlugins)};
 
-        auto& screenshot = Tweakable("Screenshot", 0);
-        if (screenshot) {
-            PlatformRig::TiledScreenshot(
-                threadContext, parserContext,
-                sceneParser, AsCameraDesc(*_pimpl->_settings->_camera),
-                qualSettings, UInt2(screenshot, screenshot));
-            screenshot = 0;
-        }
+		if (_pimpl->_scene) {
+			auto& screenshot = Tweakable("Screenshot", 0);
+			if (screenshot) {
+				PlatformRig::TiledScreenshot(
+					threadContext, parserContext,
+					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
+					qualSettings, UInt2(screenshot, screenshot));
+				screenshot = 0;
+			}
 
-        auto lightingParserContext = LightingParser_ExecuteScene(
-            threadContext, renderTarget, parserContext, 
-			sceneParser, AsCameraDesc(*_pimpl->_settings->_camera),
-            qualSettings);
+			auto lightingParserContext = LightingParser_ExecuteScene(
+				threadContext, renderTarget, parserContext, 
+				*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
+				qualSettings);
 
-		// Draw debugging overlays -- 
-		{
+			// Draw debugging overlays -- 
+			{
+				auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+				SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
+			}
+		}
+
+		if (!_pimpl->_sceneErrorMessage.empty()) {
 			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-			SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
+			SceneEngine::DrawString(threadContext, ConsoleRig::FindCachedBox<UsefulFonts>(UsefulFonts::Desc{})._defaultFont1, _pimpl->_sceneErrorMessage);
 		}
     }
 
-    void ModelVisLayer::SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings)
+    void ModelVisLayer::Set(const VisEnvSettings& envSettings)
     {
-        _pimpl->_envSettings = envSettings;
+		_pimpl->_envSettingsFuture = std::make_shared<::Assets::AssetFuture<PlatformRig::EnvironmentSettings>>("VisualizationEnvironment");
+		::Assets::AutoConstructToFuture(*_pimpl->_envSettingsFuture, envSettings._envConfigFile);
     }
 
-    ModelVisLayer::ModelVisLayer(std::shared_ptr<ModelVisSettings> settings)
+	void ModelVisLayer::Set(const ModelVisSettings& settings)
+	{
+		_pimpl->_sceneFuture = std::make_shared<::Assets::AssetFuture<ModelSceneParser>>("ModelVisualization");
+		::Assets::AutoConstructToFuture(*_pimpl->_sceneFuture, settings);
+	}
+
+	const std::shared_ptr<VisCameraSettings>& ModelVisLayer::GetCamera()
+	{
+		return _pimpl->_camera;
+	}
+	
+    ModelVisLayer::ModelVisLayer()
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = std::move(settings);
+		_pimpl->_camera = std::make_shared<VisCameraSettings>();
     }
 
     ModelVisLayer::~ModelVisLayer() {}
@@ -447,7 +578,8 @@ namespace ToolsRig
     {
     public:
         std::shared_ptr<ModelCache> _cache;
-        std::shared_ptr<ModelVisSettings> _settings;
+        std::shared_ptr<ModelVisSettings> _modelSettings;
+		std::shared_ptr<VisOverlaySettings> _settings;
         std::shared_ptr<VisMouseOver> _mouseOver;
     };
 
@@ -506,7 +638,7 @@ namespace ToolsRig
 			if (_pimpl->_settings->_drawWireframe) {
 
 				CATCH_ASSETS_BEGIN
-					auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
+					auto model = GetModel(*_pimpl->_cache, *_pimpl->_modelSettings);
 					assert(model._renderer && model._sharedStateSet);
 
 					FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
@@ -524,7 +656,7 @@ namespace ToolsRig
 			if (_pimpl->_settings->_drawNormals) {
 
 				CATCH_ASSETS_BEGIN
-					auto model = GetModel(*_pimpl->_cache, *_pimpl->_settings);
+					auto model = GetModel(*_pimpl->_cache, *_pimpl->_modelSettings);
 					assert(model._renderer && model._sharedStateSet);
 
 					FixedFunctionModel::SharedStateSet::CaptureMarker captureMarker;
@@ -574,11 +706,13 @@ namespace ToolsRig
 
     VisualisationOverlay::VisualisationOverlay(
         std::shared_ptr<ModelVisSettings> settings,
+		std::shared_ptr<VisOverlaySettings> overlaySettings,
         std::shared_ptr<ModelCache> cache,
         std::shared_ptr<VisMouseOver> mouseOver)
     {
         _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_settings = std::move(settings);
+        _pimpl->_settings = std::move(overlaySettings);
+		_pimpl->_modelSettings = std::move(settings);
         _pimpl->_cache = std::move(cache);
         _pimpl->_mouseOver = std::move(mouseOver);
     }
@@ -813,16 +947,12 @@ namespace ToolsRig
     {
         _modelName = "game/model/galleon/galleon.dae";
         _materialName = "game/model/galleon/galleon.material";
-        _envSettingsFile = "defaultenv.txt:environment";
-        _levelOfDetail = 0;
-        _pendingCameraAlignToModel = true;
-        _doHighlightWireframe = false;
-        _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());
-        _highlightRayWidth = 0.f;
-        _colourByMaterial = 0;
-        _camera = std::make_shared<VisCameraSettings>();
-        _drawNormals = false;
-        _drawWireframe = false;
+
+		// _modelName = "data/meshes/actors/dragon/character assets/alduin.nif";
+		// _materialName = "data/meshes/actors/dragon/character assets/alduin.nif";
+		// _animationFileName = "data/meshes/actors/dragon/animations/special_alduindeathagony.hkx";
+
+        // _envSettingsFile = "defaultenv.txt:environment";
     }
 
 }

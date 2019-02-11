@@ -66,21 +66,23 @@ namespace ToolsRig
         std::string _supplements;
         unsigned _levelOfDetail;
 		std::string _animationFileName;
-        std::string _envSettingsFile;
-        std::shared_ptr<VisCameraSettings> _camera;
-        bool _pendingCameraAlignToModel;
+		std::string _skeletonFileName;
+        // std::string _envSettingsFile;
+        // bool _pendingCameraAlignToModel;
 
-        bool _doHighlightWireframe;
-        std::pair<Float3, Float3> _highlightRay;
-        float _highlightRayWidth;
+		ModelVisSettings();
+	};
 
-        unsigned _colourByMaterial;
-        bool _drawNormals;
-        bool _drawWireframe;
+	class VisOverlaySettings
+	{
+	public:
+        bool _doHighlightWireframe = false;
+        std::pair<Float3, Float3> _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());
+        float _highlightRayWidth = 1.f;
 
-        ChangeEvent _changeEvent;
-
-        ModelVisSettings();
+        unsigned _colourByMaterial = false;
+        bool _drawNormals = false;
+        bool _drawWireframe = false;
     };
 
     class VisMouseOver
@@ -107,10 +109,12 @@ namespace ToolsRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
-        void SetEnvironment(std::shared_ptr<VisEnvSettings> envSettings);
+        void Set(const VisEnvSettings& envSettings);
+		void Set(const ModelVisSettings& settings);
 
-        ModelVisLayer(
-            std::shared_ptr<ModelVisSettings> settings);
+		const std::shared_ptr<VisCameraSettings>& GetCamera();
+
+        ModelVisLayer();
         ~ModelVisLayer();
     protected:
         class Pimpl;
@@ -130,6 +134,7 @@ namespace ToolsRig
 
         VisualisationOverlay(
             std::shared_ptr<ModelVisSettings> settings,
+			std::shared_ptr<VisOverlaySettings> overlaySettings,
 			std::shared_ptr<FixedFunctionModel::ModelCache> cache,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();
@@ -165,7 +170,7 @@ namespace ToolsRig
         OverlayFn _overlayFn;
     };
 
-    std::unique_ptr<SceneEngine::IScene> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
+    // std::unique_ptr<SceneEngine::IScene> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
         StringSection<> modelName, StringSection<> materialName);
 }

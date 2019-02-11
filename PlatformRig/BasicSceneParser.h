@@ -77,8 +77,21 @@ namespace PlatformRig
         auto        GetGlobalLightingDesc() const -> SceneEngine::GlobalLightingDesc;
         auto        GetToneMapSettings() const -> SceneEngine::ToneMapSettings;
 
+		float		GetTimeValue() const;
+
+		BasicLightingParserDelegate(
+			const std::shared_ptr<EnvironmentSettings>& envSettings);
+		~BasicLightingParserDelegate();
+
+		static void ConstructToFuture(
+			::Assets::AssetFuture<BasicLightingParserDelegate>& future,
+			StringSection<::Assets::ResChar> envSettingFileName);
+
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _envSettings->GetDependencyValidation(); }
+
     protected:
-        virtual const EnvironmentSettings&  GetEnvSettings() const = 0;
+        const EnvironmentSettings&  GetEnvSettings() const;
+		std::shared_ptr<EnvironmentSettings>	_envSettings;
     };
 
     SceneEngine::LightDesc          DefaultDominantLight();

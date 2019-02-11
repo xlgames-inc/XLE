@@ -147,6 +147,10 @@ namespace SceneEngine
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font);
+	void DrawString(   
+        RenderCore::IThreadContext& context, 
+		const std::shared_ptr<RenderOverlays::Font>& font,
+		StringSection<> string);
 
     class FormatStack
     {

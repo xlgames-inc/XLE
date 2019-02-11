@@ -70,11 +70,11 @@ namespace GUILayer
     InvalidatePropertyGrid::InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked) : _linked(linked) {}
     InvalidatePropertyGrid::~InvalidatePropertyGrid() {}
 
-    void ModelVisSettings::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
+    /*void ModelVisSettings::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
     {
         _object->_changeEvent._callbacks.push_back(
             std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
-    }
+    }*/
 
     ModelVisSettings^ ModelVisSettings::CreateDefault()
     {
@@ -97,8 +97,7 @@ namespace GUILayer
         XlCatString(resName._fn, dimof(resName._fn), ".material");
         _object->_materialName = resName._fn;
 
-        _object->_pendingCameraAlignToModel = true; 
-        _object->_changeEvent.Trigger(); 
+		NotifyPropertyChanged("ModelName");
     }
 
     void ModelVisSettings::MaterialName::set(String^ value)
@@ -109,13 +108,13 @@ namespace GUILayer
         ::Assets::ResolvedAssetFile resName;
         ::Assets::MakeAssetName(resName, nativeName.c_str());
         _object->_materialName = resName._fn;
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("MaterialName");
     }
 
     void ModelVisSettings::Supplements::set(String^ value)
     {
         _object->_supplements = clix::marshalString<clix::E_UTF8>(value);
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("Supplements");
     }
 
 	void ModelVisSettings::AnimationFileName::set(String^ value)
@@ -124,20 +123,34 @@ namespace GUILayer
         ::Assets::ResolvedAssetFile resName;
         ::Assets::MakeAssetName(resName, nativeName.c_str());
         _object->_animationFileName = resName._fn;
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("AnimationFileName");
+    }
+
+	void ModelVisSettings::SkeletonFileName::set(String^ value)
+    {
+        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+        ::Assets::ResolvedAssetFile resName;
+        ::Assets::MakeAssetName(resName, nativeName.c_str());
+        _object->_skeletonFileName = resName._fn;
+        NotifyPropertyChanged("SkeletonFileName");
     }
 
     void ModelVisSettings::LevelOfDetail::set(unsigned value)
     {
         _object->_levelOfDetail = value;
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("LevelOfDetail");
     }
 
-    void ModelVisSettings::EnvSettingsFile::set(String^ value)
+    /*void ModelVisSettings::EnvSettingsFile::set(String^ value)
     {
         _object->_envSettingsFile = clix::marshalString<clix::E_UTF8>(value);
         _object->_changeEvent.Trigger(); 
-    }
+    }*/
+
+	void ModelVisSettings::NotifyPropertyChanged(System::String^ propertyName)
+    {
+        PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

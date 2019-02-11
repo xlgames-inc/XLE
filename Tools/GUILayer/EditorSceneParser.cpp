@@ -150,8 +150,6 @@ namespace GUILayer
 		~EditorLightingParserDelegate();
 	protected:
 		std::shared_ptr<EditorScene> _editorScene;
-		PlatformRig::EnvironmentSettings _activeEnvSettings;
-        const PlatformRig::EnvironmentSettings& GetEnvSettings() const { return _activeEnvSettings; }
 	};
 
     float EditorLightingParserDelegate::GetTimeValue() const { return _editorScene->_currentTime; }
@@ -177,18 +175,18 @@ namespace GUILayer
         }
 
         if (settings) {
-            _activeEnvSettings = BuildEnvironmentSettings(objs, *settings);
+            *_envSettings = BuildEnvironmentSettings(objs, *settings);
         } else {
-            _activeEnvSettings._lights.clear();
-            _activeEnvSettings._shadowProj.clear();
-            _activeEnvSettings._globalLightingDesc = PlatformRig::DefaultGlobalLightingDesc();
+            _envSettings->_lights.clear();
+            _envSettings->_shadowProj.clear();
+            _envSettings->_globalLightingDesc = PlatformRig::DefaultGlobalLightingDesc();
         }
     }
 
 	EditorLightingParserDelegate::EditorLightingParserDelegate(const std::shared_ptr<EditorScene>& editorScene)
-	: _editorScene(editorScene)
+	: BasicLightingParserDelegate(std::make_shared<PlatformRig::EnvironmentSettings>(PlatformRig::DefaultEnvironmentSettings()))
+	, _editorScene(editorScene)
 	{
-		_activeEnvSettings = PlatformRig::DefaultEnvironmentSettings();
 	}
 
 	EditorLightingParserDelegate::~EditorLightingParserDelegate() {}

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "BasicSceneParser.h"
+#include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
@@ -50,6 +51,49 @@ namespace PlatformRig
     {
         return GetEnvSettings()._toneMapSettings;
     }
+
+	float		BasicLightingParserDelegate::GetTimeValue() const
+	{
+		return 0.f;
+	}
+
+	void BasicLightingParserDelegate::ConstructToFuture(
+		::Assets::AssetFuture<BasicLightingParserDelegate>& future,
+		StringSection<::Assets::ResChar> envSettingFileName)
+	{
+		auto envSettingsFuture = ::Assets::MakeAsset<EnvironmentSettings>(envSettingFileName);
+
+		future.SetPollingFunction(
+			[envSettingsFuture](::Assets::AssetFuture<BasicLightingParserDelegate>& thatFuture) -> bool {
+
+			auto scaffoldActual = envSettingsFuture->TryActualize();
+			if (!scaffoldActual) {
+				auto state = envSettingsFuture->GetAssetState();
+				if (state == ::Assets::AssetState::Invalid) {
+					thatFuture.SetInvalidAsset(envSettingsFuture->GetDependencyValidation(), envSettingsFuture->GetActualizationLog());
+					return false;
+				}
+				return true;
+			}
+
+			auto newDelegate = std::make_shared<BasicLightingParserDelegate>(scaffoldActual);
+			thatFuture.SetAsset(std::move(newDelegate), {});
+			return false;
+		});
+	}
+
+	BasicLightingParserDelegate::BasicLightingParserDelegate(
+		const std::shared_ptr<EnvironmentSettings>& envSettings)
+	: _envSettings(envSettings)
+	{
+	}
+
+	BasicLightingParserDelegate::~BasicLightingParserDelegate() {}
+
+	const EnvironmentSettings&  BasicLightingParserDelegate::GetEnvSettings() const
+	{
+		return *_envSettings;
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

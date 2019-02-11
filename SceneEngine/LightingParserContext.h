@@ -50,7 +50,7 @@ namespace SceneEngine
     class LightingParserContext
     {
     public:
-		ILightingParserDelegate*	_delegate = nullptr;
+		const ILightingParserDelegate*	_delegate = nullptr;
 		PreparedScene*				_preparedScene = nullptr;
 		unsigned					_sampleCount = 0;
 		unsigned					_gbufferType = 0;

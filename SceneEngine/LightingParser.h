@@ -40,7 +40,7 @@ namespace SceneEngine
 
         LightingModel _lightingModel = LightingModel::Deferred;
 
-		ILightingParserDelegate* _lightingDelegate;
+		const ILightingParserDelegate* _lightingDelegate;
 		IteratorRange<const std::shared_ptr<ILightingParserPlugin>*> _lightingPlugins = {};
 
 		unsigned    _samplingCount = 1u;

@@ -17,6 +17,8 @@ namespace RenderCore { class ShaderService; }
 
 namespace RenderCore { namespace Assets
 {
+	class DeformOperationFactory;
+
     class Services
     {
     public:
@@ -43,6 +45,8 @@ namespace RenderCore { namespace Assets
         std::unique_ptr<ShaderService> _shaderService;
         ::Assets::DirectorySearchRules _techConfDirs;
         static Services* s_instance;
+
+		std::unique_ptr<DeformOperationFactory> _deformOpsFactory;
     };
 }}
 

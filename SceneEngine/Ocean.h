@@ -24,7 +24,7 @@ namespace SceneEngine
     void Ocean_Execute(
         RenderCore::IThreadContext& threadContext,
 		RenderCore::Techniques::ParsingContext& parserContext,
-        ILightingParserDelegate& lightingPaserContext,
+        const ILightingParserDelegate& lightingPaserContext,
         const DeepOceanSimSettings& settings,
         const OceanLightingSettings& lightingSettings,
         const RenderCore::Metal::ShaderResourceView& depthBufferSRV);

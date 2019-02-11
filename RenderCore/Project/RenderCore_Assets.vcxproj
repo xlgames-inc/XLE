@@ -56,7 +56,6 @@
     <ClCompile Include="..\Assets\SkinDeformer.cpp" />
     <ClCompile Include="..\Assets\SkinningScaffold.cpp" />
     <ClCompile Include="..\Assets\TransformationCommands.cpp" />
-    <ClCompile Include="..\Assets\VisualizationUtils.cpp" />
     <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp" />
     <ClCompile Include="..\GeoProc\GeoProcUtil.cpp" />
     <ClCompile Include="..\GeoProc\MeshDatabase.cpp" />
@@ -85,7 +84,6 @@
     <ClInclude Include="..\Assets\SkeletonScaffoldInternal.h" />
     <ClInclude Include="..\Assets\SkinDeformer.h" />
     <ClInclude Include="..\Assets\TransformationCommands.h" />
-    <ClInclude Include="..\Assets\VisualizationUtils.h" />
     <ClInclude Include="..\GeoProc\GeometryAlgorithm.h" />
     <ClInclude Include="..\GeoProc\GeoProcUtil.h" />
     <ClInclude Include="..\GeoProc\MeshDatabase.h" />

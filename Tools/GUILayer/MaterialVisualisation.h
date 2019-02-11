@@ -15,6 +15,8 @@
 
 using namespace System::Collections::Generic;
 
+namespace ToolsRig { class VisCameraSettings; }
+
 namespace GUILayer
 {
     public ref class MaterialVisSettings
@@ -27,21 +29,15 @@ namespace GUILayer
         property LightingType Lighting;
         property bool ResetCamera { void set(bool); }
 
-        property VisCameraSettings^ Camera
-        {
-            VisCameraSettings^ get() { return _camSettings; }
-        }
-
         static MaterialVisSettings^ CreateDefault();
 
         MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
         {
             _object = std::move(attached);
-            _camSettings = gcnew VisCameraSettings(_object->_camera);
 			Lighting = LightingType::NoLightingParser;
         }
 
-        ~MaterialVisSettings() { delete _camSettings; _object.reset(); }
+        ~MaterialVisSettings() { /*delete _camSettings;*/ _object.reset(); }
 
         !MaterialVisSettings()
         {
@@ -53,10 +49,10 @@ namespace GUILayer
 
     protected:
         clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;
-        VisCameraSettings^ _camSettings;
     };
 
     ref class EnvironmentSettingsSet;
+	ref class VisCameraSettings;
 
     public ref class MaterialVisLayer : public IOverlaySystem
     {
@@ -74,6 +70,8 @@ namespace GUILayer
             EnvironmentSettingsSet^ settingsSet,
             System::String^ name);
 
+		VisCameraSettings^ GetCamera();
+
         MaterialVisLayer(MaterialVisSettings^ settings);
         ~MaterialVisLayer();
         
@@ -84,6 +82,8 @@ namespace GUILayer
         uint64 _materialBinding;
         MaterialVisSettings^ _settings;
 		bool _nativeVisSettingsDirty;
+
+		VisCameraSettings^ _cameraSettings;
 
         void ChangeHandler(System::Object^ sender, System::EventArgs^ args);
         void ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args);

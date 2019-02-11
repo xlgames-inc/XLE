@@ -44,6 +44,8 @@ namespace RenderCore
 		Value operator*();
 		ConstValue operator->() const;
 		Value operator->();
+		ConstValue operator[](size_t idx) const;
+		Value operator[](size_t idx);
 
 		RenderCore::Format Format() const { return _format; }
 
@@ -103,6 +105,24 @@ namespace RenderCore
 	{ 
 		return Value { 
 			IteratorRange<void*>(_data.begin(), PtrAdd(_data.begin(), std::min(_data.size(), _stride))), 
+			_format}; 
+	}
+
+	inline auto VertexElementIterator::operator[](size_t idx) const -> ConstValue
+	{
+		return ConstValue { 
+			IteratorRange<void*>(
+				PtrAdd(_data.begin(), std::min(_data.size(), idx*_stride)),
+				PtrAdd(_data.begin(), std::min(_data.size(), (idx+1)*_stride))), 
+			_format}; 
+	}
+
+	inline auto VertexElementIterator::operator[](size_t idx) -> Value
+	{
+		return Value { 
+			IteratorRange<void*>(
+				PtrAdd(_data.begin(), std::min(_data.size(), idx*_stride)),
+				PtrAdd(_data.begin(), std::min(_data.size(), (idx+1)*_stride))), 
 			_format}; 
 	}
 

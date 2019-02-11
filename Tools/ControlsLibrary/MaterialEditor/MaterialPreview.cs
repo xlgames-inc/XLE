@@ -23,7 +23,7 @@ namespace ControlsLibrary.MaterialEditor
             visSettings = GUILayer.MaterialVisSettings.CreateDefault();
             visLayer = new GUILayer.MaterialVisLayer(visSettings);
             _preview.Underlying.AddSystem(visLayer);
-            _preview.Underlying.AddDefaultCameraHandler(visSettings.Camera);
+            _preview.Underlying.AddDefaultCameraHandler(visLayer.GetCamera());
 
             _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
             _geoType.SelectedItem = visSettings.Geometry;

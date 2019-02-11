@@ -27,7 +27,7 @@ namespace ModelViewer
             viewerControl.Underlying.SetupDefaultVis(visSettings, visMouseOver, visResources);
 
             viewSettings.SelectedObject = visSettings;
-            visSettings.AttachCallback(mouseOverDetails);
+            // visSettings.AttachCallback(mouseOverDetails);
 
             if (visMouseOver != null)
             {

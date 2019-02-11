@@ -65,34 +65,8 @@ namespace ToolsRig
         return result;
     }
 
-
-    float VisLightingParserDelegate::GetTimeValue() const { return 0.f; }
-
-    VisLightingParserDelegate::VisLightingParserDelegate(
-        const std::shared_ptr<VisEnvSettings>& envSettings)
-    : _envSettings(envSettings)
-    {}
-    VisLightingParserDelegate::~VisLightingParserDelegate() {}
-
-    const PlatformRig::EnvironmentSettings& VisLightingParserDelegate::GetEnvSettings() const { return _envSettings->_activeSetting; }
-
-    VisEnvSettings::VisEnvSettings()
-    {
-        _activeSetting = PlatformRig::DefaultEnvironmentSettings();
-        _depVal = std::make_shared<::Assets::DependencyValidation>();
-    }
-
-    VisEnvSettings::VisEnvSettings(StringSection<::Assets::ResChar> filename)
-    {
-        TRY {
-            _activeSetting = ::Assets::GetAssetDep<PlatformRig::EnvironmentSettings>(filename);
-            _depVal = std::make_shared<::Assets::DependencyValidation>();
-            ::Assets::RegisterFileDependency(_depVal, filename);
-        } CATCH (const ::Assets::Exceptions::InvalidAsset&) {
-            _activeSetting = PlatformRig::DefaultEnvironmentSettings();
-        } CATCH_END
-    }
-
-    VisEnvSettings::~VisEnvSettings() {}
+	VisEnvSettings::VisEnvSettings() : _envConfigFile("defaultenv.txt:environment") {}
+	VisEnvSettings::VisEnvSettings(const std::string& envConfigFile) : _envConfigFile(envConfigFile) {}
+	VisEnvSettings::~VisEnvSettings() {}
 }
 

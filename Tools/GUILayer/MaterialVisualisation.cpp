@@ -16,6 +16,7 @@
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetTraits.h"
 #include "../../Utility/StringFormat.h"
 
 namespace GUILayer
@@ -55,13 +56,14 @@ namespace GUILayer
 		}
 
 		auto scene = ToolsRig::CreateScene(_settings->GetUnderlyingPtr());
-		ToolsRig::VisLightingParserDelegate lightingParserDelegate(_envSettings.GetNativePtr());
+		auto future = ::Assets::AutoConstructAsset<PlatformRig::EnvironmentSettings>(_envSettings->_envConfigFile);
+		PlatformRig::BasicLightingParserDelegate lightingParserDelegate(std::move(future));
 
         ToolsRig::MaterialVisLayer::Draw(
 			context, renderTarget._renderTarget, parserContext, 
 			AsNative(_settings->Lighting), 
 			*scene, lightingParserDelegate,
-			AsCameraDesc(*_settings->Camera->GetUnderlying()));
+			AsCameraDesc(*_cameraSettings->GetUnderlying()));
     }
 
     void MaterialVisLayer::ChangeHandler(System::Object^ sender, System::EventArgs^ args)
@@ -111,8 +113,14 @@ namespace GUILayer
         EnvironmentSettingsSet^ settingsSet,
         System::String^ name)
     {
-        _envSettings->_activeSetting = settingsSet->GetSettings(name);
+        assert(0);
+			// = settingsSet->GetSettings(name);
     }
+
+	VisCameraSettings^ MaterialVisLayer::GetCamera()
+	{
+		return _cameraSettings;
+	}
 
     MaterialVisLayer::MaterialVisLayer(MaterialVisSettings^ settings)
     : _settings(settings)
@@ -122,10 +130,13 @@ namespace GUILayer
         _previewModel = "";
         _materialBinding = 0;
         _envSettings = std::make_shared<ToolsRig::VisEnvSettings>();
+		_cameraSettings = gcnew VisCameraSettings;
     }
 
     MaterialVisLayer::~MaterialVisLayer() 
     {
+		delete _cameraSettings;
+		_cameraSettings = nullptr;
         SetConfig(nullptr, "", 0);
     }
 

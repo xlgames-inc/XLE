@@ -137,6 +137,46 @@ namespace GUILayer
             void set(System::String^ value);
         }
 
+		[Category("Animation")]
+        [Description("Active skeleton file")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+        property System::String^ SkeletonFileName
+        {
+            System::String^ get()
+            {
+                return clix::marshalString<clix::E_UTF8>(_object->_skeletonFileName);
+            }
+
+            void set(System::String^ value);
+        }
+
+		ModelVisSettings(const std::shared_ptr<ToolsRig::ModelVisSettings>& attached)
+        {
+            _object = attached;
+        }
+
+        ModelVisSettings() 
+        {
+            _object = std::make_shared<ToolsRig::ModelVisSettings>();
+        }
+
+        ~ModelVisSettings() { _object.reset(); }
+
+		static ModelVisSettings^ CreateDefault();
+
+		virtual event PropertyChangedEventHandler^ PropertyChanged;
+		std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return _object.GetNativePtr(); }
+
+	protected:
+		clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
+
+		void NotifyPropertyChanged(System::String^ propertyName);
+	};
+
+	ref class VisOverlaySettings
+	{
+	public:
+		/*
         [Category("Environment")]
         [Description("Environment settings name")]
         property System::String^ EnvSettingsFile
@@ -207,26 +247,13 @@ namespace GUILayer
 
         void AttachCallback(System::Windows::Forms::PropertyGrid^ callback);
         std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return _object.GetNativePtr(); }
+		*/
 
-        ModelVisSettings(std::shared_ptr<ToolsRig::ModelVisSettings> attached)
-        {
-            _object = std::move(attached);
-            _camSettings = gcnew VisCameraSettings(_object->_camera);
-        }
-
-        ModelVisSettings() 
-        {
-            _object = std::make_shared<ToolsRig::ModelVisSettings>();
-            _camSettings = gcnew VisCameraSettings(_object->_camera);
-        }
-
-        ~ModelVisSettings() { delete _camSettings; _object.reset(); }
-
-        static ModelVisSettings^ CreateDefault();
+        VisOverlaySettings() {}
+        ~VisOverlaySettings() {}
 
     protected:
-        clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
-        VisCameraSettings^ _camSettings;
+        // VisCameraSettings^ _camSettings;
     };
 
     public ref class VisMouseOver
