@@ -8,6 +8,7 @@
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
+#include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
 {
@@ -79,6 +80,10 @@ namespace RenderCore { namespace Techniques
 
     ProjectionDesc::ProjectionDesc()
     {
+		if ((size_t(this) % 16) != 0) {
+            Throw(std::runtime_error("Expecting aligned type"));
+        }
+
         _worldToProjection = Identity<Float4x4>();
         _cameraToProjection = Identity<Float4x4>();
         _cameraToWorld = Identity<Float4x4>();
@@ -87,6 +92,16 @@ namespace RenderCore { namespace Techniques
         _nearClip = 0.f;
         _farClip = 0.f;
     }
+
+    void* ProjectionDesc::operator new(size_t size)
+	{
+		return XlMemAlign(size, 16);
+	}
+
+	void ProjectionDesc::operator delete(void* ptr)
+	{
+		XlMemAlignFree(ptr);
+	}
 
     GlobalTransformConstants BuildGlobalTransformConstants(const ProjectionDesc& projDesc)
     {

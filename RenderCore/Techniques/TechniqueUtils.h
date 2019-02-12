@@ -33,16 +33,9 @@ namespace RenderCore { namespace Techniques
         CameraDesc();
     };
 
-    class
-#if defined(__clang_major__) && __clang_major__ < 4
-    // Do not align; it appears that clang 3.9 optimizes the alignment request incorrectly,
-    // leading to a segfault when constructing the ProjectionDesc object.
-#else
     // Culling tests use an optimized implementation that takes advantage of
     // the fact that this structure is aligned.
-    alignas(16)
-#endif
-    ProjectionDesc
+    class alignas(16) ProjectionDesc
     {
     public:
         Float4x4        _worldToProjection;
@@ -54,6 +47,9 @@ namespace RenderCore { namespace Techniques
         float           _farClip;
 
         ProjectionDesc();
+
+        void* operator new(size_t);
+		void operator delete(void*);
     };
 
     class GlobalTransformConstants
