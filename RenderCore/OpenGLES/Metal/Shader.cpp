@@ -301,7 +301,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             hashCode = Hash64(shaderSourcePointers[c], PtrAdd(shaderSourcePointers[c], shaderSourceLengths[c]), hashCode);
         {
             ScopedLock(objectFactory._compiledShadersLock);
-            while (s_compiledShaders.find(hashCode) != s_compiledShaders.end())
+            while (objectFactory._compiledShaders.find(hashCode) != objectFactory._compiledShaders.end())
                 ++hashCode;     // uniquify this hash. There are some edge cases where we can end up compiling the same shader twice; it's better to tread safely here
             objectFactory._compiledShaders.emplace(std::make_pair(hashCode, std::move(newShader)));
         }
@@ -313,12 +313,12 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
         payload = std::shared_ptr<std::vector<uint8>>(
             new std::vector<uint8>(sizeof(OutputBlob)),
-            [](std::vector<uint8>* obj) {
+            [&objectFactory](std::vector<uint8>* obj) {
                 if (!obj) return;
                 OutputBlob& blob = *(OutputBlob*)obj->data();
                 {
-                    ScopedLock(s_compiledShadersLock);
-                    s_compiledShaders.erase(blob._hashCode);
+                    ScopedLock(objectFactory._compiledShadersLock);
+                    objectFactory._compiledShaders.erase(blob._hashCode);
                 }
                 delete obj;
             });

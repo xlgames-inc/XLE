@@ -6,6 +6,15 @@
 
 #if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 	#include <optional>
+#elif __has_include(<experimental/optional>)
+    #include <experimental/optional>
+    namespace std
+    {
+        // Expose the std::optional type. This is part of the C++17 standard, but only provided
+        // as part of the "std::experimental" namespace in our version of the C++ library
+        template <typename T>
+            using optional = std::experimental::optional<T>;
+    }
 #else
      #include "../Foreign/optional-lite/include/nonstd/optional.hpp"
      namespace std

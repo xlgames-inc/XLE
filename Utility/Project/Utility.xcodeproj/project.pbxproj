@@ -113,6 +113,7 @@
 		8FD85D9F1EA688D1009BD9B0 /* UTFUtils.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */; };
 		8FD85DA01EA688D1009BD9B0 /* UTFUtils.h in Headers */ = {isa = PBXBuildFile; fileRef = 8FD85D551EA688D1009BD9B0 /* UTFUtils.h */; };
 		8FD85DA11EA688D1009BD9B0 /* xl_snprintf.cpp in Sources */ = {isa = PBXBuildFile; fileRef = 8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */; };
+		AF4C599122123F7600FC8444 /* Optional.h in Headers */ = {isa = PBXBuildFile; fileRef = AF4C599022123F7600FC8444 /* Optional.h */; };
 		AF74EB4021E6E336007C3A66 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF74EB3E21E6E336007C3A66 /* Socket.cpp */; };
 		AF74EB4121E6E336007C3A66 /* Socket.cpp in Sources */ = {isa = PBXBuildFile; fileRef = AF74EB3E21E6E336007C3A66 /* Socket.cpp */; };
 		AF74EB4221E6E336007C3A66 /* Socket.h in Headers */ = {isa = PBXBuildFile; fileRef = AF74EB3F21E6E336007C3A66 /* Socket.h */; };
@@ -215,6 +216,7 @@
 		8FD85D541EA688D1009BD9B0 /* UTFUtils.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = UTFUtils.cpp; path = ../UTFUtils.cpp; sourceTree = "<group>"; };
 		8FD85D551EA688D1009BD9B0 /* UTFUtils.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = UTFUtils.h; path = ../UTFUtils.h; sourceTree = "<group>"; };
 		8FD85D561EA688D1009BD9B0 /* xl_snprintf.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; name = xl_snprintf.cpp; path = ../xl_snprintf.cpp; sourceTree = "<group>"; };
+		AF4C599022123F7600FC8444 /* Optional.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; name = Optional.h; path = ../Optional.h; sourceTree = "<group>"; };
 		AF74EB3E21E6E336007C3A66 /* Socket.cpp */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.cpp.cpp; path = Socket.cpp; sourceTree = "<group>"; };
 		AF74EB3F21E6E336007C3A66 /* Socket.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = Socket.h; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -280,6 +282,7 @@
 				8FD85D211EA688D1009BD9B0 /* MiniHeap.h */,
 				8FD85D221EA688D1009BD9B0 /* MiscImplementation.cpp */,
 				8FD85D231EA688D1009BD9B0 /* Mixins.h */,
+				AF4C599022123F7600FC8444 /* Optional.h */,
 				8FD85D241EA688D1009BD9B0 /* ParameterBox.cpp */,
 				8FD85D251EA688D1009BD9B0 /* ParameterBox.h */,
 				8FD85D261EA688D1009BD9B0 /* ParameterPackUtils.h */,
@@ -461,6 +464,7 @@
 				8FD85D781EA688D1009BD9B0 /* CPUProfiler.h in Headers */,
 				8FD85D801EA688D1009BD9B0 /* FileUtils.h in Headers */,
 				8FD85D6E1EA688D1009BD9B0 /* ClassAccessors.h in Headers */,
+				AF4C599122123F7600FC8444 /* Optional.h in Headers */,
 				8FD85D5E1EA688D1009BD9B0 /* API.h in Headers */,
 				8FD85D9B1EA688D1009BD9B0 /* ThreadLibrary.h in Headers */,
 				8FD85D941EA688D1009BD9B0 /* StringUtils.h in Headers */,
