@@ -126,9 +126,13 @@ namespace RenderCore { namespace Metal_OpenGLES
         case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "incomplete-multisample";
         
         // Desktop GL problems
-        #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0)
+        #if defined(GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)
             case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "incomplete-layer-targets";
+        #endif
+        #if defined(GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER)
             case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "incomplete-draw-buffer";
+        #endif
+        #if defined(GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER)
             case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "incomplete-read-buffer";
         #endif
         }
