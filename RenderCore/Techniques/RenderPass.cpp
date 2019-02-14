@@ -1168,8 +1168,7 @@ namespace RenderCore { namespace Techniques
                         newState._state = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
                         newState._stencilState = (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) ? PreregisteredAttachment::State::Initialized : PreregisteredAttachment::State::Uninitialized;
 
-                        if (!newState._firstReadSemantic)
-                            newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
+                        newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
                         if (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) {
                             newState._containsDataForSemantic = interfaceAttachment.GetOutputSemanticBinding();
                             newState._lastWriteSemantic = interfaceAttachment.GetOutputSemanticBinding();
@@ -1192,8 +1191,6 @@ namespace RenderCore { namespace Techniques
                         newState._shouldReceiveDataForSemantic = compat->_shouldReceiveDataForSemantic;
                         if (!newState._firstReadSemantic && compat->_isPredefinedAttachment) {    // (we only really care about first read for predefined attachments)
                             newState._firstReadSemantic = interfaceAttachment.GetInputSemanticBinding();
-                        } else {
-                            newState._firstReadSemantic = 0;
                         }
                         if (lastUseDirection & (DirectionFlags::Store|DirectionFlags::RetainAfterLoad)) {
                             newState._containsDataForSemantic =  interfaceAttachment.GetOutputSemanticBinding();
