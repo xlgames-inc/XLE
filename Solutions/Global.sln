@@ -134,6 +134,8 @@ Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution 
 EndProject
 Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "FixedFunctionModel", "..\FixedFunctionModel\Project\FixedFunctionModel.vcxproj", "{BE4B2816-52BA-4A12-AC28-D338DA574CD2}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "NativeModelViewer", "..\Samples\NativeModelViewer\Project\NativeModelViewer.vcxproj", "{591F95DE-0196-4223-997E-B47EE796BE4F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Tegra-Android = Debug|Tegra-Android
@@ -850,6 +852,21 @@ Global
 		{BE4B2816-52BA-4A12-AC28-D338DA574CD2}.Release|Win32.Build.0 = Release-DX11|Win32
 		{BE4B2816-52BA-4A12-AC28-D338DA574CD2}.Release|x64.ActiveCfg = Release-DX11|x64
 		{BE4B2816-52BA-4A12-AC28-D338DA574CD2}.Release|x64.Build.0 = Release-DX11|x64
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Debug|Tegra-Android.ActiveCfg = Debug|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Debug|Win32.ActiveCfg = Debug|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Debug|Win32.Build.0 = Debug|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Debug|x64.ActiveCfg = Debug|x64
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Debug|x64.Build.0 = Debug|x64
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Profile|Tegra-Android.ActiveCfg = Profile|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Profile|Win32.ActiveCfg = Profile|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Profile|Win32.Build.0 = Profile|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Profile|x64.ActiveCfg = Profile|x64
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Profile|x64.Build.0 = Profile|x64
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Release|Tegra-Android.ActiveCfg = Release|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Release|Win32.ActiveCfg = Release|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Release|Win32.Build.0 = Release|Win32
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Release|x64.ActiveCfg = Release|x64
+		{591F95DE-0196-4223-997E-B47EE796BE4F}.Release|x64.Build.0 = Release|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
@@ -900,6 +917,7 @@ Global
 		{B7525B97-9195-416A-8019-ED7F239CF3E8} = {DF1932BF-7E8D-4EDA-90DA-91AA55C394EE}
 		{BD081CBB-A7CD-47F3-A6A2-C72B72611326} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{BE4B2816-52BA-4A12-AC28-D338DA574CD2} = {DF1932BF-7E8D-4EDA-90DA-91AA55C394EE}
+		{591F95DE-0196-4223-997E-B47EE796BE4F} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E4188857-D548-409C-BFE2-EA2791107CCD}
