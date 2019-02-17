@@ -82,6 +82,7 @@
     </ProjectReference>
   </ItemGroup>
   <ItemGroup>
+    <ClCompile Include="..\animationvisualization.cpp" />
     <ClCompile Include="..\DebuggingDisplay.cpp" />
     <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\Font.cpp" />
@@ -101,6 +102,7 @@
     <ClCompile Include="..\FontRendering.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\animationvisualization.h" />
     <ClInclude Include="..\DebuggingDisplay.h" />
     <ClInclude Include="..\DebugHotKeys.h" />
     <ClInclude Include="..\FontRectanglePacking.h" />

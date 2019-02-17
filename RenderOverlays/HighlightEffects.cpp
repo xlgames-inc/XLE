@@ -107,7 +107,7 @@ namespace RenderOverlays
     {
 		std::vector<FrameBufferDesc::Attachment> attachments {
 			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parsingContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
-			{ 0, Format::D24_UNORM_S8_UINT }
+			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
 		};
 		SubpassDesc mainPass;
 		mainPass.SetName("VisualisationOverlay");
@@ -213,6 +213,7 @@ namespace RenderOverlays
 				depthAttachment = AsAttachmentDesc(existingDepthAttachment->GetDesc());
 			} else {
 				depthAttachment._format = Format::D24_UNORM_S8_UINT;
+				depthAttachment._flags = AttachmentDesc::Flags::DepthStencil | AttachmentDesc::Flags::ShaderResource;
 			}
 			n_depth = fbDescFrag.DefineAttachment(RenderCore::Techniques::AttachmentSemantics::MultisampleDepth, depthAttachment);
 		}
@@ -248,14 +249,14 @@ namespace RenderOverlays
 			outlineColor = highlightColO;
 			overlayColor = overlayColO;
 
-			auto metalContext = Metal::DeviceContext::Get(threadContext);
+			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
 
 			HighlightByStencilSettings settings;
 			settings._outlineColor = outlineColor;
 			for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); ++c)
 				settings._stencilToMarkerMap[c] = UInt4(overlayColor, overlayColor, overlayColor, overlayColor);
 			ExecuteHighlightByStencil(
-				*metalContext, srv, 
+				metalContext, srv, 
 				settings, false);
 		}
 

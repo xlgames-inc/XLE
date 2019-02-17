@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "../../RenderCore/Assets/SimpleModelRenderer.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../Assets/AssetsCore.h"
 #include "../../Utility/StringUtils.h"
 #include <functional>
 #include <memory>
@@ -32,6 +34,8 @@ namespace RenderCore { namespace Techniques
     class ParsingContext;
 }}
 
+namespace RenderOverlays { namespace DebuggingDisplay { struct Rect; }}
+
 namespace SceneEngine { class IntersectionTestScene; class IScene; }
 namespace RenderOverlays { class IOverlayContext; }
 namespace Utility { class OnChangeCallback; }
@@ -45,7 +49,7 @@ namespace ToolsRig
     {
     public:
         std::vector<std::shared_ptr<Utility::OnChangeCallback>> _callbacks;
-        void Trigger();
+        void Invoke();
         ~ChangeEvent();
     };
 
@@ -67,8 +71,6 @@ namespace ToolsRig
         unsigned _levelOfDetail;
 		std::string _animationFileName;
 		std::string _skeletonFileName;
-        // std::string _envSettingsFile;
-        // bool _pendingCameraAlignToModel;
 
 		ModelVisSettings();
 	};
@@ -77,9 +79,6 @@ namespace ToolsRig
 	{
 	public:
         bool _doHighlightWireframe = false;
-        std::pair<Float3, Float3> _highlightRay = std::make_pair(Zero<Float3>(), Zero<Float3>());
-        float _highlightRayWidth = 1.f;
-
         unsigned _colourByMaterial = false;
         bool _drawNormals = false;
         bool _drawWireframe = false;
@@ -88,18 +87,25 @@ namespace ToolsRig
     class VisMouseOver
     {
     public:
-        bool _hasMouseOver;
-        Float3 _intersectionPt;
-        unsigned _drawCallIndex;
-        uint64 _materialGuid;
+        bool _hasMouseOver = false;
+        Float3 _intersectionPt = Zero<Float3>();
+        unsigned _drawCallIndex = 0u;
+        uint64 _materialGuid = 0;
 
         ChangeEvent _changeEvent;
-
-        VisMouseOver() 
-            : _hasMouseOver(false), _intersectionPt(Zero<Float3>())
-            , _drawCallIndex(0), _materialGuid(0)
-            {}
     };
+
+	class IVisContent
+	{
+	public:
+		virtual std::string GetModelName() const = 0;
+		virtual std::string GetMaterialName() const = 0;
+		virtual std::pair<Float3, Float3> GetBoundingBox() const = 0;
+		virtual std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>&) = 0;
+		virtual ~IVisContent();
+	};
+
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const ModelVisSettings& settings);
 
     class ModelVisLayer : public PlatformRig::IOverlaySystem
     {
@@ -110,7 +116,7 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& parserContext) override;
 
         void Set(const VisEnvSettings& envSettings);
-		void Set(const ModelVisSettings& settings);
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 
@@ -121,7 +127,7 @@ namespace ToolsRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    class VisualisationOverlay : public PlatformRig::IOverlaySystem
+	class VisualisationOverlay : public PlatformRig::IOverlaySystem
     {
     public:
         virtual std::shared_ptr<IInputListener> GetInputListener();
@@ -132,16 +138,19 @@ namespace ToolsRig
             RenderCore::Techniques::ParsingContext& parserContext);
         virtual void SetActivationState(bool newState);
 
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+		void Set(const std::shared_ptr<VisCameraSettings>&);
+
         VisualisationOverlay(
-            std::shared_ptr<ModelVisSettings> settings,
 			std::shared_ptr<VisOverlaySettings> overlaySettings,
-			std::shared_ptr<FixedFunctionModel::ModelCache> cache,
             std::shared_ptr<VisMouseOver> mouseOver);
         ~VisualisationOverlay();
     protected:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+	class MouseOverTrackingListener;
 
     class MouseOverTrackingOverlay : public PlatformRig::IOverlaySystem
     {
@@ -153,25 +162,30 @@ namespace ToolsRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
 
-        using OverlayFn = std::function<void(RenderOverlays::IOverlayContext&, const ToolsRig::VisMouseOver&)>;
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+
+        using OverlayFn = std::function<
+			void(
+				RenderOverlays::IOverlayContext&,
+				const RenderOverlays::DebuggingDisplay::Rect&,
+				const ToolsRig::VisMouseOver&, 
+				const SceneEngine::IScene& scene)>;
 
         MouseOverTrackingOverlay(
-            std::shared_ptr<VisMouseOver> mouseOver,
-            std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext,
-            std::shared_ptr<VisCameraSettings> camera,
-            std::shared_ptr<SceneEngine::IntersectionTestScene> scene,
+            const std::shared_ptr<VisMouseOver>& mouseOver,
+            const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+            const std::shared_ptr<VisCameraSettings>& camera,
             OverlayFn&& overlayFn);
         ~MouseOverTrackingOverlay();
     protected:
-        std::shared_ptr<IInputListener> _inputListener;
+        std::shared_ptr<MouseOverTrackingListener> _inputListener;
         std::shared_ptr<VisCameraSettings> _camera;
         std::shared_ptr<VisMouseOver> _mouseOver;
         OverlayFn _overlayFn;
     };
 
-    // std::unique_ptr<SceneEngine::IScene> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
+    /*std::unique_ptr<SceneEngine::IScene> CreateModelScene(const FixedFunctionModel::ModelCacheModel& model);
     std::shared_ptr<SceneEngine::IntersectionTestScene> CreateModelIntersectionScene(
-        StringSection<> modelName, StringSection<> materialName);
+        StringSection<> modelName, StringSection<> materialName);*/
 }
 

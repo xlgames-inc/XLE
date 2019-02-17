@@ -432,6 +432,43 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class BasicViewDelegate : public SceneEngine::IViewDelegate
+	{
+	public:
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(RenderCore::Techniques::BatchFilter batch)
+		{
+			return (batch == RenderCore::Techniques::BatchFilter::General) ? &_pkt : nullptr;
+		}
+
+		RenderCore::Techniques::DrawablesPacket _pkt;
+	};
+
+	void ExecuteSceneRaw(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+		const RenderCore::Techniques::SequencerTechnique& sequencerTechnique,
+		unsigned techniqueIndex,
+		const SceneView& view,
+		IScene& scene)
+	{
+		using namespace RenderCore;
+		SceneExecuteContext sceneExeContext;
+		auto viewDelegate = std::make_shared<BasicViewDelegate>();
+		sceneExeContext.AddView(view, viewDelegate);
+		scene.ExecuteScene(threadContext, sceneExeContext);
+
+		auto begin = viewDelegate->_pkt._drawables.begin();
+		auto end = viewDelegate->_pkt._drawables.end();
+
+		for (auto d=begin; d!=end; ++d)
+			Techniques::Draw(
+				threadContext, parserContext, 
+				techniqueIndex,
+				sequencerTechnique, 
+				*(Techniques::Drawable*)d.get());
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     IScene::~IScene() {}
 	ILightingParserDelegate::~ILightingParserDelegate() {}

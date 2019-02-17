@@ -326,8 +326,10 @@ namespace SceneEngine
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(
         const RenderCore::Techniques::CameraDesc& sceneCamera,
-        Int2 screenCoord, UInt2 viewportDims)
+        Int2 screenCoord, UInt2 viewMins, UInt2 viewMaxs)
     {
+		UInt2 viewportDims = viewMaxs - viewMins;
+		assert(viewportDims[0] > 0 && viewportDims[1] > 0);	// expecting a non-empty viewport here, otherwise we'll get a divide by zero below
         auto worldToProjection = CalculateWorldToProjection(sceneCamera, viewportDims[0] / float(viewportDims[1]));
 
         Float3 frustumCorners[8];
@@ -337,12 +339,12 @@ namespace SceneEngine
         return BuildRayUnderCursor(
             screenCoord, frustumCorners, cameraPosition, 
             sceneCamera._nearClip, sceneCamera._farClip,
-            std::make_pair(Float2(0.f, 0.f), Float2(float(viewportDims[0]), float(viewportDims[1]))));
+            std::make_pair(viewMins, viewMaxs));
     }
 
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {
-        return CalculateWorldSpaceRay(GetCameraDesc(), screenCoord, GetViewportSize());
+		return CalculateWorldSpaceRay(GetCameraDesc(), screenCoord, UInt2{0, 0}, GetViewportSize());
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const

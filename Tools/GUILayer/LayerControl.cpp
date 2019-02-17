@@ -135,19 +135,19 @@ namespace GUILayer
 
     static void RenderTrackingOverlay(
         RenderOverlays::IOverlayContext& context,
-        const ToolsRig::VisMouseOver& mouseOver,
-        std::shared_ptr<ToolsRig::ModelVisSettings> modelSettings,
-        std::shared_ptr<FixedFunctionModel::ModelCache> modelCache,
-		unsigned viewportWidth, unsigned viewportHeight)
+		const RenderOverlays::DebuggingDisplay::Rect& viewport,
+		const ToolsRig::VisMouseOver& mouseOver, 
+		const SceneEngine::IScene& scene)
     {
         using namespace RenderOverlays::DebuggingDisplay;
 
         auto textHeight = (int)RenderOverlays::GetDefaultFont()->GetFontProperties()._lineHeight;
-        String^ matName = VisMouseOver::DescriptiveMaterialName(
-            VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));
+        String^ matName = /*VisMouseOver::DescriptiveMaterialName(
+            VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));*/
+			"matName";
         DrawText(
             &context,
-            Rect(Coord2(3, viewportHeight -textHeight-3), Coord2(viewportWidth-3, viewportHeight -3)),
+            Rect(Coord2(viewport._topLeft[0]+3, viewport._bottomRight[1]-textHeight-3), Coord2(viewport._bottomRight[0]-3, viewport._bottomRight[1]-3)),
             nullptr, RenderOverlays::ColorB(0xffafafaf),
             StringMeld<512>() 
                 << "Material: {Color:7f3faf}" << clix::marshalString<clix::E_UTF8>(matName)
@@ -162,48 +162,46 @@ namespace GUILayer
     void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
     {
         auto visLayer = std::make_shared<ToolsRig::ModelVisLayer>();
-		visLayer->Set(*settings->GetUnderlying());
+		auto scene = ToolsRig::MakeScene(*settings->GetUnderlying());
+		visLayer->Set(scene);
 		visLayer->Set(ToolsRig::VisEnvSettings{});
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
         overlaySet.AddSystem(visLayer);
-        overlaySet.AddSystem(
+        /*overlaySet.AddSystem(
             std::make_shared<ToolsRig::VisualisationOverlay>(
                 settings->GetUnderlying(), 
 				std::make_shared<ToolsRig::VisOverlaySettings>(),
 				resources->_visCache.GetNativePtr(), 
-                mouseOver ? mouseOver->GetUnderlying() : nullptr));
+                mouseOver ? mouseOver->GetUnderlying() : nullptr));*/
 
-        auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
+		/*{
+			auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
 
-        auto intersectionScene = ToolsRig::CreateModelIntersectionScene(
-			MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->ModelName)),
-			MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->MaterialName)));
-        auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-            immContext,
-            RenderCore::Techniques::CameraDesc(), 
-            GetWindowRig().GetPresentationChain()->GetDesc(),
-            _pimpl->_globalTechniqueContext);
+			auto intersectionScene = ToolsRig::CreateModelIntersectionScene(
+				MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->ModelName)),
+				MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->MaterialName)));
+			auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
+				immContext,
+				RenderCore::Techniques::CameraDesc(), 
+				GetWindowRig().GetPresentationChain()->GetDesc(),
+				_pimpl->_globalTechniqueContext);
 
-        // AddDefaultCameraHandler(settings->Camera);
+			// AddDefaultCameraHandler(settings->Camera);
+			{
+				auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
+				manipulators->Register(
+					ToolsRig::ManipulatorStack::CameraManipulator,
+					ToolsRig::CreateCameraManipulator(visLayer->GetCamera()));
+				overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
+			}
+		}*/
+
 		{
-			auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
-			manipulators->Register(
-				ToolsRig::ManipulatorStack::CameraManipulator,
-				ToolsRig::CreateCameraManipulator(visLayer->GetCamera()));
-			overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
-		}
-
-		if (intersectionScene) {
-			auto viewportDims = immContext->GetStateDesc()._viewportDimensions;
-
-			using namespace std::placeholders;
-			overlaySet.AddSystem(
-				std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
-					mouseOver->GetUnderlying(),
-					immContext,
-					_pimpl->_globalTechniqueContext,
-					visLayer->GetCamera(), intersectionScene,
-					std::bind(&RenderTrackingOverlay, _1, _2, settings->GetUnderlying(), resources->_visCache.GetNativePtr(), viewportDims[0], viewportDims[1])));
+			auto trackingOverlay = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
+				mouseOver->GetUnderlying(), _pimpl->_globalTechniqueContext,
+				visLayer->GetCamera(), &RenderTrackingOverlay);
+			trackingOverlay->Set(scene);
+			overlaySet.AddSystem(trackingOverlay);
 		}
     }
 

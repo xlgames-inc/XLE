@@ -63,5 +63,13 @@ namespace SceneEngine
 		virtual ~IScene();
 	};
 
+	void ExecuteSceneRaw(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+		const RenderCore::Techniques::SequencerTechnique& sequencerTechnique,
+		unsigned techniqueIndex,
+		const SceneView& view,
+		IScene& scene);
+
 }
 
