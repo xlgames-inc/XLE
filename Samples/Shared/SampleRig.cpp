@@ -70,6 +70,7 @@ namespace Sample
             sampleGlobals._renderDevice->CreatePresentationChain(
                 window.GetUnderlyingHandle(), 
 				RenderCore::PresentationChainDesc{unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1])});
+		RenderCore::Techniques::SetThreadContext(sampleGlobals._renderDevice->GetImmediateContext());
 
         auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(0);
         auto renderAssetServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(sampleGlobals._renderDevice);

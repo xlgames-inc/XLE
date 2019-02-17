@@ -90,6 +90,7 @@ namespace GUILayer
 
         _renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
+		RenderCore::Techniques::SetThreadContext(_immediateContext);
 
         _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
         _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);

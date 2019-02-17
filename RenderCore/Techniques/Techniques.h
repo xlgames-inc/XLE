@@ -13,7 +13,7 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { class UniformsStreamInterface; }
+namespace RenderCore { class UniformsStreamInterface; class IThreadContext; }
 
 namespace RenderCore { namespace Techniques
 {
@@ -103,6 +103,9 @@ namespace RenderCore { namespace Techniques
     };
 
 	UnderlyingAPI GetTargetAPI();
+
+	std::shared_ptr<IThreadContext> GetThreadContext();
+	void SetThreadContext(const std::shared_ptr<IThreadContext>&);
 
 }}
 

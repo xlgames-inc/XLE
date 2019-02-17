@@ -94,6 +94,7 @@ namespace Sample
             _rDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
             _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
 				RenderCore::PresentationChainDesc{unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1])});
+			RenderCore::Techniques::SetThreadContext(_rDevice->GetImmediateContext());
 
             _assetServices = std::make_unique<::Assets::Services>(0);
 			_assetServices->AttachCurrentModule();

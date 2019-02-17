@@ -572,5 +572,16 @@ namespace RenderCore { namespace Techniques
         #endif
     }
 
+	static thread_local std::weak_ptr<IThreadContext> s_mainThreadContext;
+	std::shared_ptr<IThreadContext> GetThreadContext()
+	{
+		return s_mainThreadContext.lock();
+	}
+
+	void SetThreadContext(const std::shared_ptr<IThreadContext>& threadContext)
+	{
+		s_mainThreadContext = threadContext;
+	}
+
 }}
 
