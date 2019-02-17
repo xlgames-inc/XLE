@@ -79,7 +79,7 @@ namespace ToolsRig
             if (!&hitTestContext || !&hitTestScene) return false;
 
             auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
-                AsCameraDesc(*_visCameraSettings), evnt._mousePosition, hitTestContext.GetViewportSize());
+				AsCameraDesc(*_visCameraSettings), evnt._mousePosition, UInt2{0, 0}, hitTestContext.GetViewportSize());
 
             auto intr = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
             if (intr._type != 0) {
@@ -199,7 +199,9 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    bool    ManipulatorStack::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    ManipulatorStack::OnInputEvent(
+		const RenderOverlays::DebuggingDisplay::InputContext& context,
+		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
         if (evnt.IsPress_MButton() || evnt.IsRelease_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) || evnt._wheelDelta) {

@@ -25,7 +25,9 @@ namespace PlatformRig { namespace Camera
     class CameraInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
         void    Commit(float dt);
         
         CameraInputHandler(

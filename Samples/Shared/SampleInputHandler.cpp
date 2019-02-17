@@ -14,6 +14,7 @@
 namespace Sample
 {
     bool SampleInputHandler::OnInputEvent(
+		const RenderOverlays::DebuggingDisplay::InputContext& context,
         const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         using namespace RenderOverlays::DebuggingDisplay;

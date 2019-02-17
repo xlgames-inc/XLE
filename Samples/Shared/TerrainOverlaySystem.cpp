@@ -42,10 +42,12 @@ namespace Sample
             return shared_from_this();
         }
 
-        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        bool OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
         {
-            return  _screens->OnInputEvent(evnt)
-                ||  _manipInputListener->OnInputEvent(evnt);
+            return  _screens->OnInputEvent(context, evnt)
+                ||  _manipInputListener->OnInputEvent(context, evnt);
         }
 
         void RenderToScene(

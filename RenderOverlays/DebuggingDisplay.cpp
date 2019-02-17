@@ -837,7 +837,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     InteractableId  InteractableId_Make(StringSection<char> name)   { return Hash64(name.begin(), name.end()); }
     KeyId           KeyId_Make(StringSection<char> name)            { return Hash32(name.begin(), name.end()); }
 
-    bool DebugScreensSystem::OnInputEvent(const InputSnapshot& evnt)
+    bool DebugScreensSystem::OnInputEvent(const InputContext& context, const InputSnapshot& evnt)
     {
         bool consumedEvent      = false;
         _currentMouseHeld       = evnt._mouseButtonsDown;

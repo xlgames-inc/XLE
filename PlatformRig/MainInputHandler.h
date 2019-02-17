@@ -15,7 +15,9 @@ namespace PlatformRig
     class MainInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
         void    AddListener(std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> listener);
 
         MainInputHandler();
@@ -27,7 +29,9 @@ namespace PlatformRig
     class DebugScreensInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
 
         DebugScreensInputHandler(std::shared_ptr<RenderOverlays::DebuggingDisplay::DebugScreensSystem> debugScreens);
         ~DebugScreensInputHandler();

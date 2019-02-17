@@ -18,7 +18,9 @@ namespace Sample
     class SampleInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
-        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
 
         SampleInputHandler(
             std::shared_ptr<PlatformRig::Camera::ICameraAttach> playerCharacter, 

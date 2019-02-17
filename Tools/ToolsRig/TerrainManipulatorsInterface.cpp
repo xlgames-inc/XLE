@@ -25,13 +25,17 @@ namespace ToolsRig
     class ManipulatorsInterface::InputListener : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
-        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
         InputListener(std::shared_ptr<ManipulatorsInterface> parent);
     private:
         std::weak_ptr<ManipulatorsInterface> _parent;
     };
 
-    bool    ManipulatorsInterface::InputListener::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    ManipulatorsInterface::InputListener::OnInputEvent(
+		const RenderOverlays::DebuggingDisplay::InputContext& context,
+		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         auto p = _parent.lock();
         if (p) {

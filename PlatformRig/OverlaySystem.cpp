@@ -24,7 +24,9 @@ namespace PlatformRig
     class OverlaySystemSwitch::InputListener : public IInputListener
     {
     public:
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        virtual bool    OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
         {
             using namespace RenderOverlays::DebuggingDisplay;
             static const KeyId shiftKey = KeyId_Make("shift");
@@ -55,7 +57,7 @@ namespace PlatformRig
 
                     //  if we have an active overlay system, we always consume all input!
                     //  Nothing gets through to the next level
-                _parent->_childSystems[_parent->_activeChildIndex].second->GetInputListener()->OnInputEvent(evnt);
+                _parent->_childSystems[_parent->_activeChildIndex].second->GetInputListener()->OnInputEvent(context, evnt);
                 return true;
             }
 
@@ -108,12 +110,14 @@ namespace PlatformRig
     class OverlaySystemSet::InputListener : public IInputListener
     {
     public:
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        virtual bool    OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
         {
             using namespace RenderOverlays::DebuggingDisplay;
             for (auto i=_parent->_childSystems.begin(); i!=_parent->_childSystems.end(); ++i) {
                 auto listener = (*i)->GetInputListener();
-                if (listener && listener->OnInputEvent(evnt)) {
+                if (listener && listener->OnInputEvent(context, evnt)) {
                     return true;
                 }
             }

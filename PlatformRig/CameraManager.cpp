@@ -175,7 +175,9 @@ namespace PlatformRig { namespace Camera
         camera._cameraToWorld = cameraToWorld;
     }
 
-    bool    CameraInputHandler::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    CameraInputHandler::OnInputEvent(
+		const RenderOverlays::DebuggingDisplay::InputContext& context, 
+		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
     {
         _accumulatedState.Accumulate(evnt, _prevAccumulatedState);
         return false;

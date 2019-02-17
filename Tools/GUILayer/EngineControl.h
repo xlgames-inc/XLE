@@ -12,6 +12,7 @@
 #include <memory>
 
 namespace PlatformRig { class InputTranslator; }
+namespace RenderOverlays { namespace DebuggingDisplay { class InputContext; }}
 
 using namespace System::Drawing;
 
@@ -49,6 +50,9 @@ namespace GUILayer
 
     private:
         clix::auto_ptr<EngineControlPimpl> _pimpl;
+
+
+		RenderOverlays::DebuggingDisplay::InputContext MakeInputContext(System::Windows::Forms::Control^ control);
     };
 
     class EngineControlPimpl

@@ -171,11 +171,20 @@ namespace RenderOverlays { namespace DebuggingDisplay
         void    Reset();
     };
 
+	class InputContext
+	{
+	public:
+		Coord2 _viewMins = Coord2{0, 0};
+		Coord2 _viewMaxs = Coord2{0, 0};
+	};
+
     ///////////////////////////////////////////////////////////////////////////////////
     class IInputListener
     {
     public:
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt) = 0;
+        virtual bool    OnInputEvent(
+			const InputContext& context,
+			const InputSnapshot& evnt) = 0;
         virtual ~IInputListener();
     };
 
@@ -325,7 +334,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     class DebugScreensSystem : public IInputListener
     {
     public:
-        bool        OnInputEvent(const InputSnapshot& evnt);
+        bool        OnInputEvent(const InputContext& context, const InputSnapshot& evnt);
         void        Render(IOverlayContext& overlayContext, const Rect& viewport);
         bool        IsAnythingVisible();
         

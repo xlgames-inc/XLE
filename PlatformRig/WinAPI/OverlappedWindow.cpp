@@ -6,6 +6,7 @@
 
 #include "../OverlappedWindow.h"
 #include "../InputTranslator.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/MemoryUtils.h"
@@ -64,6 +65,16 @@ namespace PlatformRig
         Pimpl() : _hwnd(HWND(INVALID_HANDLE_VALUE)), _activated(false) {}
     };
 
+	RenderOverlays::DebuggingDisplay::InputContext MakeInputContext(HWND hwnd)
+	{
+		RECT clientRect;
+		GetClientRect(hwnd, &clientRect);
+		return {
+			RenderOverlays::DebuggingDisplay::Coord2{clientRect.left, clientRect.top},
+			RenderOverlays::DebuggingDisplay::Coord2{clientRect.right, clientRect.bottom}
+		};
+	}
+
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
         switch (msg) {
@@ -102,38 +113,38 @@ namespace PlatformRig
                 switch (msg) {
                 case WM_ACTIVATE:
                     pimpl->_activated = wparam != WA_INACTIVE;
-					if (inputTrans) inputTrans->OnFocusChange();
+					if (inputTrans) inputTrans->OnFocusChange(MakeInputContext(hwnd));
                     break;
 
                 case WM_MOUSEMOVE:
                     if (pimpl->_activated && inputTrans)
-                        inputTrans->OnMouseMove(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
+                        inputTrans->OnMouseMove(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
                     break;
 
-                case WM_LBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, true); }    break;
-                case WM_RBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, true); }    break;
-                case WM_MBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, true); }    break;
+                case WM_LBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, true); }    break;
+                case WM_RBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, true); }    break;
+                case WM_MBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, true); }    break;
 
-                case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, false); }   break;
-                case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, false); }   break;
-                case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, false); }   break;
+                case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, false); }   break;
+                case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, false); }   break;
+                case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, false); }   break;
 
-                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0); }   break;
-                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1); }   break;
-                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2); }   break;
+                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0); }   break;
+                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1); }   break;
+                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2); }   break;
 
-                case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
+                case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(MakeInputContext(hwnd), GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
 
                 case WM_SYSKEYDOWN:
                 case WM_SYSKEYUP:
                 case WM_KEYDOWN:
                 case WM_KEYUP:
-                    if (inputTrans) { inputTrans->OnKeyChange((unsigned)wparam, (msg==WM_KEYDOWN) || (msg==WM_SYSKEYDOWN)); }
+                    if (inputTrans) { inputTrans->OnKeyChange(MakeInputContext(hwnd), (unsigned)wparam, (msg==WM_KEYDOWN) || (msg==WM_SYSKEYDOWN)); }
                     if (msg==WM_SYSKEYUP || msg==WM_SYSKEYDOWN) return true;        // (suppress default windows behaviour for these system keys)
                     break;
 
                 case WM_CHAR:
-                    if (inputTrans) { inputTrans->OnChar((ucs2)wparam); }
+                    if (inputTrans) { inputTrans->OnChar(MakeInputContext(hwnd), (ucs2)wparam); }
                     break;
 
                 case WM_SIZE:

@@ -22,7 +22,9 @@ namespace ToolsRig
     class ManipulatorStack : public RenderOverlays::DebuggingDisplay::IInputListener
     {
     public:
-        bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
         void    Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator);
 
         static const uint64 CameraManipulator = 256;

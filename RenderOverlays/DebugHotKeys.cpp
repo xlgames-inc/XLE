@@ -24,7 +24,7 @@ namespace RenderOverlays
     class HotKeyInputHandler : public DebuggingDisplay::IInputListener
     {
     public:
-        bool    OnInputEvent(const DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(const DebuggingDisplay::InputContext& context, const DebuggingDisplay::InputSnapshot& evnt);
 
         HotKeyInputHandler(const ::Assets::rstring& filename) : _filename(filename) {}
     protected:
@@ -62,7 +62,7 @@ namespace RenderOverlays
             if (!executeString.IsEmpty()) {
                 auto keyName = attrib.Name();
                 auto p = std::make_pair(
-                    RenderOverlays::DebuggingDisplay::KeyId_Make(
+                    DebuggingDisplay::KeyId_Make(
                         StringSection<char>((const char*)keyName.begin(), (const char*)keyName.end())),
                     Conversion::Convert<std::string>(executeString.AsString()));
                 _table.push_back(p);
@@ -73,7 +73,7 @@ namespace RenderOverlays
     }
     TableOfKeys::~TableOfKeys() {}
 
-    bool    HotKeyInputHandler::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    HotKeyInputHandler::OnInputEvent(const DebuggingDisplay::InputContext& context, const DebuggingDisplay::InputSnapshot& evnt)
     {
         using namespace RenderOverlays::DebuggingDisplay;
     
