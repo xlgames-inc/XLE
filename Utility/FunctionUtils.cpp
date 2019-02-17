@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "FunctionUtils.h"
+#include <iostream>
 
 namespace Utility
 {
@@ -114,6 +115,29 @@ namespace Utility
 
         return true;
     }
+
+	void VariantFunctions::InvalidateCurrentModule()
+	{
+		InvalidateModule(GetCurrentModuleId());
+	}
+
+	void VariantFunctions::InvalidateModule(size_t moduleId)
+	{
+		for (;;) {
+			bool madeAChange = false;
+			for (const auto&fn:_fns) {
+				if (fn.second._moduleId == moduleId) {
+					#if defined(_DEBUG)
+						std::cout << "Variant function (0x" << std::hex << fn.first << std::dec << ") was not unregistered before it's module was unloaded. Removing now." << std::endl;
+					#endif
+					Remove(fn.first);
+					madeAChange = true;
+					break;
+				}
+			}
+			if (!madeAChange) break;
+		}
+	}
 
     VariantFunctions::VariantFunctions() {}
     VariantFunctions::~VariantFunctions()
