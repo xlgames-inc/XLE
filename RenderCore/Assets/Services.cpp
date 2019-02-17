@@ -62,6 +62,7 @@ namespace RenderCore { namespace Assets
             // attempt to flush out all background operations current being performed
         auto& asyncMan = ::Assets::Services::GetAsyncMan();
         asyncMan.GetIntermediateCompilers().StallOnPendingOperations(true);
+		ShutdownModelCompilers();
 
         if (_bufferUploads) {
             _bufferUploads.reset();
@@ -71,16 +72,26 @@ namespace RenderCore { namespace Assets
 
     void Services::InitModelCompilers()
     {
+		if (_modelCompilers) return;		// (already loaded)
+
             // attach the collada compilers to the assert services
             // this is optional -- not all applications will need these compilers
 		auto compileOps = ::Assets::DiscoverCompileOperations("*Conversion.dll");
 		if (compileOps.empty()) return;
 
-		auto compiler = std::make_shared<::Assets::GeneralCompiler>(
+		_modelCompilers = std::make_shared<::Assets::GeneralCompiler>(
 			MakeIteratorRange(compileOps),
 			::Assets::Services::GetAsyncMan().GetIntermediateStore());
-		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(compiler);
+		::Assets::Services::GetAsyncMan().GetIntermediateCompilers().AddCompiler(_modelCompilers);
     }
+
+	void Services::ShutdownModelCompilers()
+	{
+		if (_modelCompilers) {
+			::Assets::Services::GetAsyncMan().GetIntermediateCompilers().RemoveCompiler(*_modelCompilers);
+			_modelCompilers.reset();
+		}
+	}
 
     void Services::AttachCurrentModule()
     {

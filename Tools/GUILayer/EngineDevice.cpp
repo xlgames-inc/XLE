@@ -100,6 +100,7 @@ namespace GUILayer
 
     NativeEngineDevice::~NativeEngineDevice()
     {
+		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
 		_divAssets.reset();
         _renderAssetsServices.reset();
         _assetServices.reset();

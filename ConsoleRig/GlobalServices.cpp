@@ -136,12 +136,15 @@ namespace ConsoleRig
             // this will throw an exception if no module has successfully initialised
             // logging
         auto& serv = CrossModule::GetInstance()._services;
-        if (serv.Call<ModuleId>(Fn_ConsoleMainModule) == GetCurrentModuleId()) {
+		ModuleId mainModuleId = 0;
+        if (serv.TryCall(Fn_ConsoleMainModule, mainModuleId) && mainModuleId == GetCurrentModuleId()) {
             serv.Remove(Fn_GetConsole);
             serv.Remove(Fn_ConsoleMainModule);
-        } else {
-            Console::SetInstance(nullptr);
         }
+
+		serv.InvalidateCurrentModule();
+
+		Console::SetInstance(nullptr);
 
 		ResourceBoxes_Shutdown();
 		DebugUtil_Shutdown();
@@ -189,6 +192,11 @@ namespace ConsoleRig
 	{
 		if (!_pimpl->_pluginSet)
 			_pimpl->_pluginSet = std::make_unique<PluginSet>();
+	}
+
+	void GlobalServices::UnloadDefaultPlugins()
+	{
+		_pimpl->_pluginSet.reset();
 	}
 
     void GlobalServices::AttachCurrentModule()

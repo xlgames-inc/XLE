@@ -14,6 +14,7 @@
 #include <memory>
 
 namespace RenderCore { class ShaderService; }
+namespace Assets { class IAssetCompiler; }
 
 namespace RenderCore { namespace Assets
 {
@@ -28,6 +29,7 @@ namespace RenderCore { namespace Assets
         static const ::Assets::DirectorySearchRules& GetTechniqueConfigDirs() { return s_instance->_techConfDirs; }
 
         void InitModelCompilers();
+		void ShutdownModelCompilers();
 
         Services(const std::shared_ptr<RenderCore::IDevice>& device);
         ~Services();
@@ -47,6 +49,7 @@ namespace RenderCore { namespace Assets
         static Services* s_instance;
 
 		std::unique_ptr<DeformOperationFactory> _deformOpsFactory;
+		std::shared_ptr<::Assets::IAssetCompiler> _modelCompilers;
     };
 }}
 

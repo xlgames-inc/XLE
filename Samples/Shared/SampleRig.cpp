@@ -150,6 +150,7 @@ namespace Sample
             //  an unhandled exception)
             //  Before we go too far, though, let's log a list of active assets.
         Log(Verbose) << "Starting shutdown" << std::endl;
+		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
         // assetServices->GetAssetSets().LogReport();
         RenderCore::Metal::DeviceContext::PrepareForDestruction(sampleGlobals._renderDevice.get(), sampleGlobals._presentationChain.get());
 
