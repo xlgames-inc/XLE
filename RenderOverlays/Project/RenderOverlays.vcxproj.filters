@@ -30,6 +30,7 @@
     <ClCompile Include="..\FontRectanglePacking.cpp" />
     <ClCompile Include="..\OverlayPrimitives.cpp" />
     <ClCompile Include="..\FontRendering.cpp" />
+    <ClCompile Include="..\animationvisualization.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DebuggingDisplay.h" />
@@ -62,6 +63,7 @@
     <ClInclude Include="..\HighlightEffects.h" />
     <ClInclude Include="..\FontRectanglePacking.h" />
     <ClInclude Include="..\OverlayPrimitives.h" />
+    <ClInclude Include="..\animationvisualization.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Overlays">

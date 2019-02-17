@@ -91,11 +91,8 @@ int main(int argc, char *argv[])
     ConsoleRig::StartupConfig cfg("shaderscan");
     cfg._setWorkingDir = false;
     cfg._redirectCout = false;
-    ConsoleRig::GlobalServices services(cfg);
-
-	::Assets::Services assetServices;
-    ConsoleRig::GlobalServices::GetCrossModule().Publish(assetServices);
-    assetServices.AttachCurrentModule();
+    auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
+	auto assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>();
 
     TRY {
 		ShaderScan::TestGraphSyntax();

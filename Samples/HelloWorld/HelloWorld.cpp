@@ -19,7 +19,7 @@ namespace Sample
 	class HelloWorldOverlay::InputListener : public RenderOverlays::DebuggingDisplay::IInputListener
 	{
 	public:
-		bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+		bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputContext& context, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
 		{
 			_zoomFactor += evnt._wheelDelta / (16.f * 180.f);
 			_zoomFactor = std::max(0.0f, _zoomFactor);

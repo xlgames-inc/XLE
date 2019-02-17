@@ -55,8 +55,6 @@ namespace Sample
         mutable std::unique_ptr<FixedFunctionModel::ModelRenderer> _modelRenderer;
 
 		::Assets::FuturePtr<RenderCore::Assets::SimpleModelRenderer> _simpleModelRenderer;
-
-		RenderCore::Assets::DeformOperationFactory _depOpFactory;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
