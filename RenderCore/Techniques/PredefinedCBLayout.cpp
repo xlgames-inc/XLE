@@ -94,7 +94,7 @@ namespace RenderCore { namespace Techniques
 
                     // HLSL adds padding so that vectors don't straddle 16 byte boundaries!
                     // let's detect that case, and add padding as necessary
-                if (FloorToMultiplePow2(e._offset, 16) != FloorToMultiplePow2(e._offset + std::min(16u, e._type.GetSize()) - 1, 16)) {
+                if (FloorToMultiplePow2(cbIterator, 16) != FloorToMultiplePow2(cbIterator + std::min(16u, e._type.GetSize()) - 1, 16)) {
                     cbIterator = CeilToMultiplePow2(cbIterator, 16);
                 }
 
