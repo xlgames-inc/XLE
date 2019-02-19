@@ -16,6 +16,8 @@ namespace RenderCore { class CompiledShaderByteCode; class IDevice; }
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    class ShaderProgramCapturedState;
+
     class ShaderProgram
     {
     public:
@@ -29,6 +31,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         ShaderProgram(ObjectFactory& factory, const CompiledShaderByteCode& vs, const CompiledShaderByteCode& fs);
         ~ShaderProgram();
+
+        mutable std::shared_ptr<ShaderProgramCapturedState> _capturedState;
 
         friend std::ostream& operator<<(std::ostream&, const ShaderProgram&);
     private:

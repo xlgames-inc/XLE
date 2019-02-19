@@ -80,6 +80,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class ShaderProgramCapturedState;
+
     class BoundUniforms
     {
     public:
@@ -107,14 +109,32 @@ namespace RenderCore { namespace Metal_OpenGLES
 
         BoundUniforms(BoundUniforms&& moveFrom) never_throws;
         BoundUniforms& operator=(BoundUniforms&& moveFrom) never_throws;
+
+        static unsigned s_uniformSetAccumulator;
+        static unsigned s_redundantUniformSetAccumulator;
+        static bool s_doRedundantUniformSetReduction;
     private:
-        struct CB { unsigned _stream, _slot; SetUniformCommandGroup _commandGroup; DEBUG_ONLY(std::string _name;) };
+        struct CB
+        {
+            unsigned _stream, _slot;
+            SetUniformCommandGroup _commandGroup;
+            unsigned _capturedStateIndex;
+            DEBUG_ONLY(std::string _name;)
+        };
         std::vector<CB> _cbs;
-        struct SRV { unsigned _stream, _slot; unsigned _textureUnit; GLenum _dimensionality; DEBUG_ONLY(std::string _name;) };
+        struct SRV
+        {
+            unsigned _stream, _slot;
+            unsigned _textureUnit;
+            GLenum _dimensionality;
+            DEBUG_ONLY(std::string _name;)
+        };
         std::vector<SRV> _srvs;
 
         SetUniformCommandGroup  _textureAssignmentCommands;
         std::vector<uint8_t>    _textureAssignmentByteData;
+
+        std::shared_ptr<ShaderProgramCapturedState> _capturedState;
     };
 
 }}

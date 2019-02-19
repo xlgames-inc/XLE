@@ -427,6 +427,41 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    class ShaderProgramCapturedState
+    {
+    public:
+        struct CB
+        {
+            uint64_t _cbNameHash;
+            uint64_t _boundContents;
+            unsigned _deviceContextCaptureGUID;
+        };
+        std::vector<CB> _cbs;
+
+        unsigned GetCBIndex(uint64_t hashName)
+        {
+            auto i = std::find_if(
+                _cbs.begin(), _cbs.end(),
+                [hashName](const CB& cb) { return cb._cbNameHash == hashName; });
+            if (i == _cbs.end()) return ~0u;
+            return (unsigned)std::distance(_cbs.begin(), i);
+        }
+
+        ShaderProgramCapturedState(const ShaderIntrospection& introspection)
+        {
+            _cbs.reserve(introspection.GetStructs().size());
+            for (const auto&s:introspection.GetStructs()) {
+                _cbs.push_back(CB{s.first, 0, 0});
+            }
+        }
+    };
+
+////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    unsigned BoundUniforms::s_uniformSetAccumulator = 0;
+    unsigned BoundUniforms::s_redundantUniformSetAccumulator = 0;
+    bool BoundUniforms::s_doRedundantUniformSetReduction = true;
+
     void BoundUniforms::Apply(
         DeviceContext& context,
         unsigned streamIdx,
@@ -442,11 +477,25 @@ namespace RenderCore { namespace Metal_OpenGLES
             const auto& cbv = stream._constantBuffers[cb._slot];
             const auto& pkt = cbv._packet;
             if (pkt.size() != 0) {
-                Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
+                auto hash = pkt.GetHash();
+                assert(cb._capturedStateIndex < _capturedState->_cbs.size());
+                auto& capturedState = _capturedState->_cbs[cb._capturedStateIndex];
+                bool redundantSet = false;
+                if (hash != 0 && context.GetCapturedStates() && s_doRedundantUniformSetReduction) {
+                    redundantSet = capturedState._boundContents == hash && capturedState._deviceContextCaptureGUID == context.GetCapturedStates()->_captureGUID;
+                    capturedState._boundContents = hash;
+                    capturedState._deviceContextCaptureGUID = context.GetCapturedStates()->_captureGUID;
+                }
+                if (!redundantSet) {
+                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, MakeIteratorRange(pkt.begin(), pkt.end()));
+                } else {
+                    s_redundantUniformSetAccumulator += (unsigned)cb._commandGroup._commands.size();
+                }
             } else {
                 const auto pkt2 = ((Resource*)cbv._prebuiltBuffer)->GetConstantBuffer();
-                if (pkt2.size() != 0)
-                    Bind(context, cb._commandGroup, pkt2);
+                if (pkt2.size() != 0) {
+                    s_uniformSetAccumulator += Bind(context, cb._commandGroup, pkt2);
+                }
             }
         }
 
@@ -563,6 +612,10 @@ namespace RenderCore { namespace Metal_OpenGLES
         for (auto&v:_boundResourceSlots) v = 0u;
 
         auto introspection = ShaderIntrospection(shader);
+        _capturedState = shader._capturedState;
+        if (!_capturedState) {
+            _capturedState = shader._capturedState = std::make_shared<ShaderProgramCapturedState>(introspection);
+        }
 
         unsigned textureUnitAccumulator = 0;
 
@@ -601,7 +654,8 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                 auto cmdGroup = introspection.MakeBinding(binding._hashName, MakeIteratorRange(binding._elements));
                 if (!cmdGroup._commands.empty()) {
-                    _cbs.emplace_back(CB{(unsigned)s, slot, std::move(cmdGroup)
+                    _cbs.emplace_back(CB{(unsigned)s, slot, std::move(cmdGroup),
+                        _capturedState->GetCBIndex(binding._hashName)
                         #if defined(EXTRA_INPUT_LAYOUT_PROPERTIES)
                             , cmdGroup._name
                         #endif
@@ -737,6 +791,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     #if defined(_DEBUG)
     , _unboundUniforms(std::move(moveFrom._unboundUniforms))
     #endif
+    , _capturedState(std::move(moveFrom._capturedState))
     {
         for (unsigned c=0; c<dimof(_boundUniformBufferSlots); ++c) {
             _boundUniformBufferSlots[c] = moveFrom._boundUniformBufferSlots[c];
@@ -761,6 +816,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         #if defined(_DEBUG)
             _unboundUniforms = std::move(moveFrom._unboundUniforms);
         #endif
+        _capturedState = std::move(moveFrom._capturedState);
         return *this;
     }
 
