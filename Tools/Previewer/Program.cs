@@ -54,28 +54,28 @@ namespace Previewer
             var catalog = new TypeCatalog(
 
                 typeof(SettingsService),                // persistent settings and user preferences dialog
-                                                        // typeof(StatusService),                  // status bar at bottom of main Form
+                // typeof(StatusService),                  // status bar at bottom of main Form
                 typeof(CommandService),                 // handles commands in menus and toolbars
                 typeof(ControlHostService),             // docking control host
                 typeof(WindowLayoutService),            // multiple window layout support
                 typeof(WindowLayoutServiceCommands),    // window layout commands
-                                                        // typeof(AtfUsageLogger),                 // logs computer info to an ATF server
-                                                        // typeof(CrashLogger),                    // logs unhandled exceptions to an ATF server
-                                                        // typeof(UnhandledExceptionService),      // catches unhandled exceptions, displays info, and gives user a chance to save
+                // typeof(AtfUsageLogger),                 // logs computer info to an ATF server
+                // typeof(CrashLogger),                    // logs unhandled exceptions to an ATF server
+                // typeof(UnhandledExceptionService),      // catches unhandled exceptions, displays info, and gives user a chance to save
                 typeof(FileDialogService),              // standard Windows file dialogs
 
                 typeof(DocumentRegistry),               // central document registry with change notification
-                typeof(AutoDocumentService),            // opens documents from last session, or creates a new document, on startup
-                typeof(RecentDocumentCommands),         // standard recent document commands in File menu
-                typeof(StandardFileCommands),           // standard File menu commands for New, Open, Save, SaveAs, Close
+                // typeof(AutoDocumentService),            // opens documents from last session, or creates a new document, on startup
+                // typeof(RecentDocumentCommands),         // standard recent document commands in File menu
+                // typeof(StandardFileCommands),           // standard File menu commands for New, Open, Save, SaveAs, Close
                 typeof(MainWindowTitleService),         // tracks document changes and updates main form title
                 typeof(TabbedControlSelector),          // enable ctrl-tab selection of documents and controls within the app
                 typeof(HelpAboutCommand),               // Help -> About command
 
                 typeof(ContextRegistry),                // central context registry with change notification
                 typeof(StandardFileExitCommand),        // standard File exit menu command
-                                                        // typeof(StandardEditCommands),           // standard Edit menu commands for copy/paste
-                                                        // typeof(StandardEditHistoryCommands),    // standard Edit menu commands for undo/redo
+                // typeof(StandardEditCommands),           // standard Edit menu commands for copy/paste
+                // typeof(StandardEditHistoryCommands),    // standard Edit menu commands for undo/redo
                 typeof(StandardSelectionCommands),      // standard Edit menu selection commands
                 // typeof(StandardLayoutCommands),         // standard Format menu layout commands
                 // typeof(StandardViewCommands),           // standard View menu commands
@@ -111,9 +111,13 @@ namespace Previewer
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
-                // typeof(ControlsLibraryExt.ModelView.ActiveModelView),
+                typeof(ControlsLibraryExt.ModelView.PreviewerControl),
+                typeof(ControlsLibraryExt.ModelView.PreviewerContext),
+                typeof(ControlsLibraryExt.ModelView.PreviewerCommands),
 
-                typeof(ActiveMaterialContext)
+                typeof(ActiveMaterialContext),
+                typeof(Previewer),
+                typeof(GlobalPreviewerCommands)
             );
 
             // enable use of the system clipboard
@@ -149,29 +153,11 @@ namespace Previewer
             container.InitializeAll();
 
             // if there is a model filename on the command line, we will load it into our viewer
+            var initialPreviewer = container.GetExport<Previewer>().Value.OpenPreviewWindow();
+            initialPreviewer.ModelSettings = GUILayer.ModelVisSettings.CreateDefault();
             if (args != null && args.Length > 0)
             {
                 var a = args[0];
-                if (string.Equals(System.IO.Path.GetExtension(a), ".dae", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Insert a delegate to be executed after the AutoDocumentService has run. That is attached
-                    // to the "Loaded" event in the main form, also -- so this should occur afterwards
-                    // This way we can pop our window to the top, after the auto load documents appear
-                    mainForm.Loaded += delegate (object o, EventArgs eventArgs)
-                    {
-                        var modelView = container.GetExport<ControlsLibraryExt.ModelView.ActiveModelView>().Value;
-                        if (modelView != null)
-                        {
-                            modelView.LoadFromCommandLine(a);
-
-                            var hostService = container.GetExport<IControlHostService>().Value;
-                            if (hostService != null)
-                                hostService.Show(modelView.Control);
-
-                            // unfortunately we can't suppress the autoload documents stuff from here!
-                        }
-                    };
-                }
             }
 
             Application.Run(mainForm);
