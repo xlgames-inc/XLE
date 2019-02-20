@@ -70,12 +70,6 @@ namespace GUILayer
     InvalidatePropertyGrid::InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked) : _linked(linked) {}
     InvalidatePropertyGrid::~InvalidatePropertyGrid() {}
 
-    /*void ModelVisSettings::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
-    {
-        _object->_changeEvent._callbacks.push_back(
-            std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
-    }*/
-
     ModelVisSettings^ ModelVisSettings::CreateDefault()
     {
         auto attached = std::make_shared<ToolsRig::ModelVisSettings>();
@@ -141,6 +135,12 @@ namespace GUILayer
         NotifyPropertyChanged("LevelOfDetail");
     }
 
+	/*void ModelVisSettings::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
+    {
+        _object->_changeEvent._callbacks.push_back(
+            std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
+    }*/
+
     /*void ModelVisSettings::EnvSettingsFile::set(String^ value)
     {
         _object->_envSettingsFile = clix::marshalString<clix::E_UTF8>(value);
@@ -150,6 +150,28 @@ namespace GUILayer
 	void ModelVisSettings::NotifyPropertyChanged(System::String^ propertyName)
     {
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	std::shared_ptr<ToolsRig::VisOverlaySettings> VisOverlaySettings::ConvertToNative()
+	{
+		auto result = std::make_shared<ToolsRig::VisOverlaySettings>();
+		result->_colourByMaterial = (unsigned)ColourByMaterial;
+		result->_skeletonMode = (unsigned)SkeletonMode;
+		result->_drawWireframe = DrawWireframe;
+		result->_drawNormals = DrawNormals;
+		return result;
+	}
+
+	VisOverlaySettings^ VisOverlaySettings::ConvertFromNative(const ToolsRig::VisOverlaySettings& input)
+	{
+		VisOverlaySettings^ result = gcnew VisOverlaySettings;
+		result->ColourByMaterial = (ColourByMaterialType)input._colourByMaterial;
+		result->SkeletonMode = (SkeletonModes)input._skeletonMode;
+		result->DrawWireframe = input._drawWireframe;
+		result->DrawNormals = input._drawNormals;
+		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -198,16 +220,15 @@ namespace GUILayer
     System::String^ VisMouseOver::FullMaterialName::get()
     {
         if (_object->_hasMouseOver)
-            return BuildFullMaterialName(*_modelSettings.get(), *_modelCache.get(), _object->_materialGuid);
+            return BuildFullMaterialName(*_modelSettings.get(), _object->_materialGuid);
         return nullptr;
     }
 
     String^ VisMouseOver::BuildFullMaterialName(
         const ToolsRig::ModelVisSettings& modelSettings,
-        FixedFunctionModel::ModelCache& modelCache,
         uint64 materialGuid)
     {
-        auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
+        /*auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
         if (scaffolds._material) {
             TRY {
                 auto nativeName = scaffolds._material->GetMaterialName(materialGuid);
@@ -216,7 +237,7 @@ namespace GUILayer
             }
             CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
             CATCH_END
-        }
+        }*/
         return "<<unknown>>";
     }
 
@@ -249,12 +270,10 @@ namespace GUILayer
 
     VisMouseOver::VisMouseOver(
         std::shared_ptr<ToolsRig::VisMouseOver> attached,
-        std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-        std::shared_ptr<FixedFunctionModel::ModelCache> cache)
+        std::shared_ptr<ToolsRig::ModelVisSettings> settings)
     {
         _object = std::move(attached);
         _modelSettings = std::move(settings);
-        _modelCache = std::move(cache);
     }
 
     VisMouseOver::VisMouseOver()
@@ -266,7 +285,6 @@ namespace GUILayer
     { 
         _object.reset(); 
         _modelSettings.reset(); 
-        _modelCache.reset(); 
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

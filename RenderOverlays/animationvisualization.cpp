@@ -74,7 +74,8 @@ namespace RenderOverlays
         Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
 		const RenderCore::Assets::TransformationParameterSet& params,
-		const Float4x4& localToWorld)
+		const Float4x4& localToWorld, 
+		bool drawBoneNames)
     {
         auto& metalContext = *Metal::DeviceContext::Get(context);
 		auto& box = ConsoleRig::FindCachedBoxDep2<SkeletonPreviewResourceBox>();
@@ -158,8 +159,7 @@ namespace RenderOverlays
         metalContext.Bind(Topology::TriangleList);
         metalContext.Draw((unsigned)workingVertices.size());
 
-		const bool drawLabels = true;
-		if (drawLabels) {
+		if (drawBoneNames) {
 			RenderOverlays::ImmediateOverlayContext overlayContext(context);
             overlayContext.CaptureState();
 
@@ -193,8 +193,9 @@ namespace RenderOverlays
         IThreadContext& context, 
         Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
-		const Float4x4& localToWorld)
+		const Float4x4& localToWorld,
+		bool drawBoneNames)
 	{
-		RenderSkeleton(context, parserContext, skeleton, skeleton.GetDefaultParameters(), localToWorld);
+		RenderSkeleton(context, parserContext, skeleton, skeleton.GetDefaultParameters(), localToWorld, drawBoneNames);
 	}
 }

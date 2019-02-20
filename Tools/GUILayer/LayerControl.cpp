@@ -82,140 +82,14 @@ namespace GUILayer
         return result;
     }
 
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class InputLayer : public PlatformRig::IOverlaySystem
+	void LayerControl::OnResize()
     {
-    public:
-        std::shared_ptr<IInputListener> GetInputListener();
-
-        void Render(
-            RenderCore::IThreadContext& context,
-			const RenderCore::IResourcePtr& renderTarget,
-            RenderCore::Techniques::ParsingContext& parserContext); 
-
-        InputLayer(std::shared_ptr<IInputListener> listener);
-        ~InputLayer();
-    protected:
-        std::shared_ptr<IInputListener> _listener;
-    };
-
-    auto InputLayer::GetInputListener() -> std::shared_ptr<IInputListener>
-    {
-        return _listener;
-    }
-
-    void InputLayer::Render(
-        RenderCore::IThreadContext&,
-		const RenderCore::IResourcePtr&,
-		RenderCore::Techniques::ParsingContext&) {}
-
-    InputLayer::InputLayer(std::shared_ptr<IInputListener> listener) : _listener(listener) {}
-    InputLayer::~InputLayer() {}
+		// We must reset the framebuffer in order to dump references to the presentation chain on DX (because it's going to be resized along with the window)
+		_pimpl->_frameBufferPool->Reset();
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     
-    public ref class VisResources
-    {
-    public:
-        clix::shared_ptr<FixedFunctionModel::ModelCache> _visCache;
-
-        VisResources();
-        ~VisResources();
-        !VisResources();
-    };
-
-    VisResources::VisResources()
-    {
-        _visCache = std::make_shared<FixedFunctionModel::ModelCache>();
-    }
-
-    VisResources::~VisResources() {}
-    VisResources::!VisResources() { /* System::Diagnostics::Debug::Assert(false, "Non deterministic delete of VisResources"); */ }
-
-    static void RenderTrackingOverlay(
-        RenderOverlays::IOverlayContext& context,
-		const RenderOverlays::DebuggingDisplay::Rect& viewport,
-		const ToolsRig::VisMouseOver& mouseOver, 
-		const SceneEngine::IScene& scene)
-    {
-        using namespace RenderOverlays::DebuggingDisplay;
-
-        auto textHeight = (int)RenderOverlays::GetDefaultFont()->GetFontProperties()._lineHeight;
-        String^ matName = /*VisMouseOver::DescriptiveMaterialName(
-            VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));*/
-			"matName";
-        DrawText(
-            &context,
-            Rect(Coord2(viewport._topLeft[0]+3, viewport._bottomRight[1]-textHeight-3), Coord2(viewport._bottomRight[0]-3, viewport._bottomRight[1]-3)),
-            nullptr, RenderOverlays::ColorB(0xffafafaf),
-            StringMeld<512>() 
-                << "Material: {Color:7f3faf}" << clix::marshalString<clix::E_UTF8>(matName)
-                << "{Color:afafaf}, Draw call: " << mouseOver._drawCallIndex
-                << std::setprecision(4)
-                << ", (" << mouseOver._intersectionPt[0]
-                << ", "  << mouseOver._intersectionPt[1]
-                << ", "  << mouseOver._intersectionPt[2]
-                << ")");
-    }
-
-    void LayerControl::SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources)
-    {
-        auto visLayer = std::make_shared<ToolsRig::ModelVisLayer>();
-		auto scene = ToolsRig::MakeScene(*settings->GetUnderlying());
-		visLayer->Set(scene);
-		visLayer->Set(ToolsRig::VisEnvSettings{});
-        auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
-        overlaySet.AddSystem(visLayer);
-        /*overlaySet.AddSystem(
-            std::make_shared<ToolsRig::VisualisationOverlay>(
-                settings->GetUnderlying(), 
-				std::make_shared<ToolsRig::VisOverlaySettings>(),
-				resources->_visCache.GetNativePtr(), 
-                mouseOver ? mouseOver->GetUnderlying() : nullptr));*/
-
-		/*{
-			auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
-
-			auto intersectionScene = ToolsRig::CreateModelIntersectionScene(
-				MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->ModelName)),
-				MakeStringSection(clix::marshalString<clix::E_UTF8>(settings->MaterialName)));
-			auto intersectionContext = std::make_shared<SceneEngine::IntersectionTestContext>(
-				immContext,
-				RenderCore::Techniques::CameraDesc(), 
-				GetWindowRig().GetPresentationChain()->GetDesc(),
-				_pimpl->_globalTechniqueContext);
-
-			// AddDefaultCameraHandler(settings->Camera);
-			{
-				auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>(intersectionContext, intersectionScene);
-				manipulators->Register(
-					ToolsRig::ManipulatorStack::CameraManipulator,
-					ToolsRig::CreateCameraManipulator(visLayer->GetCamera()));
-				overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
-			}
-		}*/
-
-		{
-			auto trackingOverlay = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
-				mouseOver->GetUnderlying(), _pimpl->_globalTechniqueContext,
-				visLayer->GetCamera(), &RenderTrackingOverlay);
-			trackingOverlay->Set(scene);
-			overlaySet.AddSystem(trackingOverlay);
-		}
-    }
-
-    VisMouseOver^ LayerControl::CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources)
-    {
-        return gcnew VisMouseOver(
-            std::make_shared<ToolsRig::VisMouseOver>(), settings->GetUnderlying(), resources->_visCache.GetNativePtr());
-    }
-
-    VisResources^ LayerControl::CreateVisResources()
-    {
-        return gcnew VisResources();
-    }
-
     void LayerControl::SetUpdateAsyncMan(bool updateAsyncMan)
     {
         GetWindowRig().GetFrameRig().SetUpdateAsyncMan(updateAsyncMan);
@@ -265,13 +139,13 @@ namespace GUILayer
     void LayerControl::AddDefaultCameraHandler(VisCameraSettings^ settings)
     {
             // create an input listener that feeds into a stack of manipulators
-        auto manipulators = std::make_unique<ToolsRig::ManipulatorStack>();
+        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>();
         manipulators->Register(
             ToolsRig::ManipulatorStack::CameraManipulator,
             ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));
 
         auto& overlaySet = *GetWindowRig().GetFrameRig().GetMainOverlaySystem();
-        overlaySet.AddSystem(std::make_shared<InputLayer>(std::move(manipulators)));
+        overlaySet.AddSystem(ToolsRig::MakeLayerForInput(manipulators));
     }
 
     TechniqueContextWrapper^ LayerControl::GetTechniqueContext()
@@ -297,7 +171,7 @@ namespace GUILayer
 
     LayerControl::!LayerControl()
     {
-        // System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
+        System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
     }
 }
 

@@ -25,10 +25,6 @@ namespace GUILayer
     public ref class LayerControl : public EngineControl
     {
     public:
-        void SetupDefaultVis(ModelVisSettings^ settings, VisMouseOver^ mouseOver, VisResources^ resources);
-        VisMouseOver^ CreateVisMouseOver(ModelVisSettings^ settings, VisResources^ resources);
-        VisResources^ CreateVisResources();
-
         void AddDefaultCameraHandler(VisCameraSettings^);
         void AddSystem(IOverlaySystem^ overlay);
         void SetUpdateAsyncMan(bool updateAsyncMan);
@@ -43,6 +39,7 @@ namespace GUILayer
         TechniqueContextWrapper^ _techContextWrapper;
 
         virtual bool Render(RenderCore::IThreadContext&, IWindowRig&) override;
+		virtual void OnResize() override;
     };
 
     class LayerControlPimpl 

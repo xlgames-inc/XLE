@@ -17,11 +17,13 @@ namespace RenderOverlays
         RenderCore::Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
 		const RenderCore::Assets::TransformationParameterSet& params,
-		const Float4x4& localToWorld);
+		const Float4x4& localToWorld,
+		bool drawBoneNames = false);
 
 	void    RenderSkeleton(
         RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
 		const RenderCore::Assets::SkeletonMachine& skeleton,
-		const Float4x4& localToWorld);
+		const Float4x4& localToWorld,
+		bool drawBoneNames = false);
 }

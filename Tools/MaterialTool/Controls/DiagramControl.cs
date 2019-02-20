@@ -76,7 +76,7 @@ namespace MaterialTool.Controls
 
         public void SetContext(DiagramEditingContext context)
         {
-            var existingContext = context as ISelectionContext;
+            var existingContext = ContextAs<ISelectionContext>();
             if (existingContext != null)
                 existingContext.SelectionChanged -= Context_SelectionChanged;
 

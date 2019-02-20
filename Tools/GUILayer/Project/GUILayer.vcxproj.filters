@@ -54,6 +54,9 @@
       <Filter>LevelEditor</Filter>
     </ClCompile>
     <ClCompile Include="..\Exceptions.cpp" />
+    <ClCompile Include="..\VisLayerController.cpp">
+      <Filter>Vis</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -118,6 +121,9 @@
       <Filter>LevelEditor</Filter>
     </ClInclude>
     <ClInclude Include="..\Exceptions.h" />
+    <ClInclude Include="..\VisLayerController.h">
+      <Filter>Vis</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">

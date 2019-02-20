@@ -8,7 +8,10 @@
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
+#include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -26,6 +29,28 @@ namespace GUILayer
         ::Assets::MakeAssetName(resName, nativeName.c_str());
 		return clix::marshalString<clix::E_UTF8>(resName._fn);
 	}
+
+	static System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ ToManaged(
+		IteratorRange<const std::pair<std::string, std::string>*> range)
+	{
+		auto result = gcnew System::Collections::Generic::List<Utils::AssetExtension^>();
+		for (const auto&i:range) {
+			auto ext = gcnew Utils::AssetExtension();
+			ext->Extension = clix::marshalString<clix::E_UTF8>(i.first);
+			ext->Description = clix::marshalString<clix::E_UTF8>(i.second);
+			result->Add(ext);
+		}
+		return result;
+	}
+
+	System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ Utils::GetModelExtensions()
+	{
+		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
+			RenderCore::Assets::ModelScaffold::CompileProcessType);
+		return ToManaged(MakeIteratorRange(exts));
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     TechniqueContextWrapper::TechniqueContextWrapper(
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)

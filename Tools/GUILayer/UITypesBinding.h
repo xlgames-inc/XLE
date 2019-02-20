@@ -20,6 +20,7 @@ using namespace System::Collections::Generic;
 
 namespace RenderCore { namespace Assets { class RawMaterial; } }
 namespace RenderCore { namespace Techniques { class Material; } }
+namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; }
 
 namespace GUILayer
 {
@@ -165,7 +166,7 @@ namespace GUILayer
 		static ModelVisSettings^ CreateDefault();
 
 		virtual event PropertyChangedEventHandler^ PropertyChanged;
-		std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return _object.GetNativePtr(); }
+		const std::shared_ptr<ToolsRig::ModelVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
 
 	protected:
 		clix::shared_ptr<ToolsRig::ModelVisSettings> _object;
@@ -173,87 +174,34 @@ namespace GUILayer
 		void NotifyPropertyChanged(System::String^ propertyName);
 	};
 
-	ref class VisOverlaySettings
+	public ref class VisOverlaySettings
 	{
 	public:
-		/*
-        [Category("Environment")]
-        [Description("Environment settings name")]
-        property System::String^ EnvSettingsFile
-        {
-            System::String^ get()
-            {
-                return clix::marshalString<clix::E_UTF8>(_object->_envSettingsFile);
-            }
-
-            void set(System::String^ value);
-        }
+        // [Category("Environment")]
+        // [Description("Environment settings name")]
+        // property System::String^ EnvSettingsFile;
 
         enum class ColourByMaterialType { None, All, MouseOver };
+		enum class SkeletonModes { None, Render, BoneNames };
 
         [Category("Visualisation")]
         [Description("Highlight material divisions")]
-        property ColourByMaterialType ColourByMaterial
-        {
-            ColourByMaterialType get() { return (ColourByMaterialType)_object->_colourByMaterial; }
-            void set(ColourByMaterialType value)
-            {
-                _object->_colourByMaterial = unsigned(value); 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
+        property ColourByMaterialType ColourByMaterial;
 
-        [Category("Visualisation")]
-        [Description("Reset camera to match the object")]
-        property bool ResetCamera
-        {
-            bool get() { return _object->_pendingCameraAlignToModel; }
-            void set(bool value)
-            {
-                _object->_pendingCameraAlignToModel = value; 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
+		[Category("Visualisation")]
+        [Description("Mode for skeleton visualization")]
+        property SkeletonModes SkeletonMode;
 
         [Category("Visualisation")]
         [Description("Draw Normals, tangents and bitangents")]
-        property bool DrawNormals
-        {
-            bool get() { return _object->_drawNormals; }
-            void set(bool value)
-            {
-                _object->_drawNormals = value; 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
+        property bool DrawNormals;
 
         [Category("Visualisation")]
         [Description("Draw wireframe")]
-        property bool DrawWireframe
-        {
-            bool get() { return _object->_drawWireframe; }
-            void set(bool value)
-            {
-                _object->_drawWireframe = value; 
-                _object->_changeEvent.Trigger(); 
-            }
-        }
+        property bool DrawWireframe;
 
-        [Browsable(false)]
-        property VisCameraSettings^ Camera
-        {
-            VisCameraSettings^ get() { return _camSettings; }
-        }
-
-        void AttachCallback(System::Windows::Forms::PropertyGrid^ callback);
-        std::shared_ptr<ToolsRig::ModelVisSettings> GetUnderlying() { return _object.GetNativePtr(); }
-		*/
-
-        VisOverlaySettings() {}
-        ~VisOverlaySettings() {}
-
-    protected:
-        // VisCameraSettings^ _camSettings;
+		std::shared_ptr<ToolsRig::VisOverlaySettings> ConvertToNative();
+		static VisOverlaySettings^ ConvertFromNative(const ToolsRig::VisOverlaySettings& input);
     };
 
     public ref class VisMouseOver
@@ -276,25 +224,22 @@ namespace GUILayer
         [Browsable(false)] property uint64 MaterialBindingGuid { uint64 get(); }
 
         void AttachCallback(System::Windows::Forms::PropertyGrid^ callback);
-        std::shared_ptr<ToolsRig::VisMouseOver> GetUnderlying() { return _object.GetNativePtr(); }
+        const std::shared_ptr<ToolsRig::VisMouseOver>& GetUnderlying() { return _object.GetNativePtr(); }
 
         static System::String^ BuildFullMaterialName(
             const ToolsRig::ModelVisSettings& modelSettings,
-            FixedFunctionModel::ModelCache& modelCache,
             uint64 materialGuid);
         static System::String^ DescriptiveMaterialName(System::String^ fullName);
 
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
-            std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-            std::shared_ptr<FixedFunctionModel::ModelCache> cache);
+            std::shared_ptr<ToolsRig::ModelVisSettings> settings);
         VisMouseOver();
         ~VisMouseOver();
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
         clix::shared_ptr<ToolsRig::ModelVisSettings> _modelSettings;
-        clix::shared_ptr<FixedFunctionModel::ModelCache> _modelCache;
     };
 
     template<typename NameType, typename ValueType>

@@ -115,8 +115,7 @@ namespace ControlsLibrary.MaterialEditor
 
         private void _resetCamera_Click(object sender, EventArgs e)
         {
-            visSettings.ResetCamera = true;
-            _preview.Invalidate();
+            System.Diagnostics.Debug.Assert(false);
         }
     }
 }

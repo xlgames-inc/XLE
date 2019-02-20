@@ -31,6 +31,13 @@ namespace GUILayer
 	public:
 		static System::String^ MakeAssetName(System::String^ input);
 		static System::UInt64 HashID(System::String^ string);
+
+		ref struct AssetExtension
+		{
+			System::String^ Extension;
+			System::String^ Description;
+		};
+		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetModelExtensions();
 	};
 
     public ref class TechniqueContextWrapper

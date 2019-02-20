@@ -8,6 +8,7 @@
 #include "ExportedNativeTypes.h"
 #include "EditorInterfaceUtils.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/AssetUtils.h"

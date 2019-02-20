@@ -54,10 +54,10 @@ namespace Sample
 		AddSystem(visLayer);
 
 		auto mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
-		auto overlaySettings = std::make_shared<ToolsRig::VisOverlaySettings>();
-		overlaySettings->_colourByMaterial = 2;
-		overlaySettings->_drawNormals = true;
-		overlaySettings->_drawWireframe = false;
+		ToolsRig::VisOverlaySettings overlaySettings;
+		overlaySettings._colourByMaterial = 1;
+		overlaySettings._drawNormals = true;
+		overlaySettings._drawWireframe = false;
 
 		auto visOverlay = std::make_shared<ToolsRig::VisualisationOverlay>(
 			overlaySettings,

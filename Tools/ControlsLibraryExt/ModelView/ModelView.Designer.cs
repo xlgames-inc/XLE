@@ -6,7 +6,7 @@
 
 namespace ControlsLibraryExt.ModelView
 {
-    partial class ModelView
+    partial class PreviewerControl
     {
         /// <summary> 
         /// Required designer variable.
@@ -42,14 +42,14 @@ namespace ControlsLibraryExt.ModelView
             this._view.Size = new System.Drawing.Size(677, 506);
             this._view.TabIndex = 1;
             // 
-            // ModelView
+            // PreviewerControl
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            // this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
+            // this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this._view);
             this.Controls.Add(this._ctrls);
             this.Margin = new System.Windows.Forms.Padding(0);
-            this.Name = "ModelView";
+            this.Name = "PreviewerControl";
             this.Size = new System.Drawing.Size(677, 544);
             this.ResumeLayout(false);
 

@@ -7,6 +7,7 @@
 #pragma once
 
 #include "CLIXAutoPtr.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 #include "../../Core/Types.h"
 #include <vector>
 #include <utility>

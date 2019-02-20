@@ -50,6 +50,10 @@ namespace GUILayer
         return result;
     }
 
+	void EngineControl::OnResize()
+    {
+	}
+
 	RenderOverlays::DebuggingDisplay::InputContext EngineControl::MakeInputContext(System::Windows::Forms::Control^ control)
 	{
 		System::Drawing::Rectangle rect = control->ClientRectangle;
@@ -63,6 +67,7 @@ namespace GUILayer
     {
         auto ctrl = dynamic_cast<Control^>(sender);
         if (!ctrl) return;
+		OnResize();
         _pimpl->_windowRig->OnResize(ctrl->Size.Width, ctrl->Size.Height);
     }
 

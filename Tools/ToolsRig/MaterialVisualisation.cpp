@@ -12,6 +12,7 @@
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/SceneParser.h"
+#include "../../PlatformRig/BasicSceneParser.h"
 
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/Techniques.h"

@@ -129,10 +129,11 @@
         ~Geometry
             OUTPUT_WORLD_POSITION=1
             OUTPUT_NORMAL=1
-            OUTPUT_TANGENT_FRAME=1
             GEO_HAS_TANGENT_FRAME
             GEO_HAS_BITANGENT
             GEO_HAS_NORMAL
+        ~Material
+            RES_HAS_NormalsTexture
     VertexShader=xleres/forward/illum.vsh:main
     GeometryShader=xleres/vis/geowires.gsh:NormalsAndTangents
     PixelShader=xleres/basic.psh:PC

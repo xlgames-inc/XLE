@@ -6,11 +6,32 @@
 
 #include "VisualisationUtils.h"
 #include "../../SceneEngine/LightDesc.h"
+#include "../../SceneEngine/LightingParserContext.h"
+#include "../../SceneEngine/LightingParserStandardPlugin.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/RenderStep.h"
+#include "../../SceneEngine/RayVsModel.h"
+#include "../../SceneEngine/IntersectionTest.h"
+#include "../../PlatformRig/BasicSceneParser.h"
+#include "../../PlatformRig/Screenshot.h"
+#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../../RenderOverlays/OverlayContext.h"
+#include "../../RenderOverlays/HighlightEffects.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/CommonResources.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/BasicDelegates.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/Assets.h"
 #include "../../Math/Transformations.h"
+#include "../../ConsoleRig/Console.h"
+#include "../../ConsoleRig/Log.h"
 
 namespace ToolsRig
 {
@@ -68,5 +89,598 @@ namespace ToolsRig
 	VisEnvSettings::VisEnvSettings() : _envConfigFile("defaultenv.txt:environment") {}
 	VisEnvSettings::VisEnvSettings(const std::string& envConfigFile) : _envConfigFile(envConfigFile) {}
 	VisEnvSettings::~VisEnvSettings() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class ModelVisLayer::Pimpl
+    {
+    public:
+		std::shared_ptr<SceneEngine::IScene> _scene;
+        ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
+
+		std::shared_ptr<PlatformRig::EnvironmentSettings> _envSettings;
+		::Assets::FuturePtr<PlatformRig::EnvironmentSettings> _envSettingsFuture;
+		
+		std::string _sceneErrorMessage;
+		std::string _envSettingsErrorMessage;
+
+		std::shared_ptr<VisCameraSettings> _camera;
+    };
+
+    void ModelVisLayer::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        using namespace SceneEngine;
+
+		if (_pimpl->_sceneFuture) {
+			auto newActualized = _pimpl->_sceneFuture->TryActualize();
+			if (newActualized) {
+				// After the model is loaded, if we have a pending camera align,
+                // we should reset the camera to the match the model.
+                // We also need to trigger the change event after we make a change...
+				auto* visContent = dynamic_cast<IVisContent*>(newActualized.get());
+				if (visContent) {
+					*_pimpl->_camera = AlignCameraToBoundingBox(
+						_pimpl->_camera->_verticalFieldOfView,
+						visContent->GetBoundingBox());
+				}
+
+				_pimpl->_scene = newActualized;
+				_pimpl->_sceneFuture = nullptr;
+				_pimpl->_sceneErrorMessage = {};
+			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				_pimpl->_sceneErrorMessage = ::Assets::AsString(_pimpl->_sceneFuture->GetActualizationLog());
+				_pimpl->_scene = nullptr;
+				_pimpl->_sceneFuture = nullptr;
+			}
+		}
+
+		if (_pimpl->_envSettingsFuture) {
+			auto newActualized = _pimpl->_envSettingsFuture->TryActualize();
+			if (newActualized) {
+				_pimpl->_envSettings = newActualized;
+				_pimpl->_envSettingsFuture = nullptr;
+				_pimpl->_envSettingsErrorMessage = {};
+			} else if (_pimpl->_envSettingsFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				_pimpl->_envSettingsErrorMessage = ::Assets::AsString(_pimpl->_envSettingsFuture->GetActualizationLog());
+				_pimpl->_envSettings = nullptr;
+				_pimpl->_envSettingsFuture = nullptr;
+			}
+		}
+
+		if (_pimpl->_envSettings) {
+			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
+
+			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
+				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
+			};
+			auto qualSettings = SceneEngine::RenderSceneSettings{
+				SceneEngine::RenderSceneSettings::LightingModel::Deferred,
+				&lightingParserDelegate,
+				MakeIteratorRange(lightingPlugins)};
+
+			if (_pimpl->_scene) {
+				auto& screenshot = Tweakable("Screenshot", 0);
+				if (screenshot) {
+					PlatformRig::TiledScreenshot(
+						threadContext, parserContext,
+						*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
+						qualSettings, UInt2(screenshot, screenshot));
+					screenshot = 0;
+				}
+
+				auto lightingParserContext = LightingParser_ExecuteScene(
+					threadContext, renderTarget, parserContext, 
+					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
+					qualSettings);
+
+				// Draw debugging overlays -- 
+				{
+					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+					SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
+				}
+			}
+		}
+
+		if (!_pimpl->_sceneErrorMessage.empty() || !_pimpl->_envSettingsErrorMessage.empty()) {
+			auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+			if (!_pimpl->_sceneErrorMessage.empty())
+				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_sceneErrorMessage);
+			if (!_pimpl->_envSettingsErrorMessage.empty())
+				SceneEngine::DrawString(threadContext, RenderOverlays::GetDefaultFont(), _pimpl->_envSettingsErrorMessage);
+		}
+    }
+
+    void ModelVisLayer::Set(const VisEnvSettings& envSettings)
+    {
+		_pimpl->_envSettingsFuture = std::make_shared<::Assets::AssetFuture<PlatformRig::EnvironmentSettings>>("VisualizationEnvironment");
+		::Assets::AutoConstructToFuture(*_pimpl->_envSettingsFuture, envSettings._envConfigFile);
+    }
+
+	void ModelVisLayer::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+	{
+		_pimpl->_sceneFuture = scene;
+	}
+
+	const std::shared_ptr<VisCameraSettings>& ModelVisLayer::GetCamera()
+	{
+		return _pimpl->_camera;
+	}
+	
+    ModelVisLayer::ModelVisLayer()
+    {
+        _pimpl = std::make_unique<Pimpl>();
+		_pimpl->_camera = std::make_shared<VisCameraSettings>();
+    }
+
+    ModelVisLayer::~ModelVisLayer() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class StencilRefDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
+	{
+	public:
+		virtual bool OnDraw( 
+			RenderCore::Metal::DeviceContext& metalContext, RenderCore::Techniques::ParsingContext&,
+			const RenderCore::Techniques::Drawable&,
+			uint64_t materialGuid, unsigned drawCallIdx) override
+		{
+			using namespace RenderCore;
+			metalContext.Bind(_dss, drawCallIdx+1);
+			return true;
+		}
+
+		StencilRefDelegate()
+		: _dss(
+			true, true,
+			0xff, 0xff,
+			RenderCore::Metal::StencilMode::AlwaysWrite,
+			RenderCore::Metal::StencilMode::NoEffect)
+		{}
+	private:
+		RenderCore::Metal::DepthStencilState _dss;
+	};
+
+    class VisualisationOverlay::Pimpl
+    {
+    public:
+		VisOverlaySettings _settings;
+        std::shared_ptr<VisMouseOver> _mouseOver;
+		std::shared_ptr<VisCameraSettings> _cameraSettings;
+
+		std::shared_ptr<SceneEngine::IScene> _scene;
+        ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
+
+		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>		_materialDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>		_techniqueDelegate;
+		std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> _stencilPrimeDelegate;
+
+		Pimpl()
+		{
+			_techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+			_materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+			_stencilPrimeDelegate = std::make_shared<StencilRefDelegate>();
+		}
+    };
+
+    void VisualisationOverlay::Render(
+        RenderCore::IThreadContext& threadContext, 
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext)
+    {
+        using namespace RenderCore;
+		parserContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
+		
+		if (!parserContext.GetNamedResources().GetBoundResource(Techniques::AttachmentSemantics::MultisampleDepth))		// we need this attachment to continue
+			return;
+
+		if (_pimpl->_sceneFuture) {
+			auto newActualized = _pimpl->_sceneFuture->TryActualize();
+			if (newActualized) {
+				_pimpl->_scene = newActualized;
+				_pimpl->_sceneFuture = nullptr;
+			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
+				_pimpl->_scene = nullptr;
+				_pimpl->_sceneFuture = nullptr;
+			}
+		}
+
+		if (!_pimpl->_scene || !_pimpl->_cameraSettings) return;
+
+		RenderCore::Techniques::SequencerTechnique sequencerTechnique;
+		sequencerTechnique._techniqueDelegate = _pimpl->_techniqueDelegate;
+		sequencerTechnique._materialDelegate = _pimpl->_materialDelegate;
+		sequencerTechnique._renderStateDelegate = parserContext.GetRenderStateDelegate();
+
+		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
+		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
+			sequencerTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
+
+		auto cam = AsCameraDesc(*_pimpl->_cameraSettings);
+		SceneEngine::SceneView sceneView {
+			Techniques::BuildProjectionDesc(cam, UInt2(threadContext.GetStateDesc()._viewportDimensions[0], threadContext.GetStateDesc()._viewportDimensions[1])),
+			SceneEngine::SceneView::Type::Normal
+		};
+
+		bool doColorByMaterial = 
+			(_pimpl->_settings._colourByMaterial == 1)
+			|| (_pimpl->_settings._colourByMaterial == 2 && _pimpl->_mouseOver->_hasMouseOver);
+
+		if (_pimpl->_settings._drawWireframe || _pimpl->_settings._drawNormals || _pimpl->_settings._skeletonMode || doColorByMaterial) {
+			AttachmentDesc colorLDRDesc = AsAttachmentDesc(renderTarget->GetDesc());
+			std::vector<FrameBufferDesc::Attachment> attachments {
+				{ Techniques::AttachmentSemantics::ColorLDR, colorLDRDesc },
+				{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
+			};
+			SubpassDesc mainPass;
+			mainPass.SetName("VisualisationOverlay");
+			mainPass.AppendOutput(0);
+			mainPass.SetDepthStencil(1, LoadStore::Retain_ClearStencil);		// ensure stencil is cleared (but ok to keep depth)
+			FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
+			Techniques::RenderPassInstance rpi {
+				threadContext, fbDesc, 
+				parserContext.GetFrameBufferPool(),
+				parserContext.GetNamedResources() };
+
+			if (_pimpl->_settings._drawWireframe) {
+				CATCH_ASSETS_BEGIN
+					SceneEngine::ExecuteSceneRaw(
+						threadContext, parserContext, 
+						sequencerTechnique,
+						Techniques::TechniqueIndex::VisWireframe,
+						sceneView,
+						*_pimpl->_scene);
+				CATCH_ASSETS_END(parserContext)
+			}
+
+			if (_pimpl->_settings._drawNormals) {
+				CATCH_ASSETS_BEGIN
+					SceneEngine::ExecuteSceneRaw(
+						threadContext, parserContext, 
+						sequencerTechnique,
+						Techniques::TechniqueIndex::VisNormals,
+						sceneView,
+						*_pimpl->_scene);
+				CATCH_ASSETS_END(parserContext)
+			}
+
+			if (_pimpl->_settings._skeletonMode) {
+				auto* visContent = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+				if (visContent) {
+					CATCH_ASSETS_BEGIN
+						visContent->RenderSkeleton(
+							threadContext, parserContext,
+							_pimpl->_settings._skeletonMode == 2);
+					CATCH_ASSETS_END(parserContext)
+				}
+			}
+
+			if (doColorByMaterial) {
+				auto *visContent = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+				std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> oldDelegate;
+				if (visContent)
+					oldDelegate = visContent->SetPreDrawDelegate(_pimpl->_stencilPrimeDelegate);
+				CATCH_ASSETS_BEGIN
+					// Prime the stencil buffer with draw call indices
+					SceneEngine::ExecuteSceneRaw(
+						threadContext, parserContext, 
+						sequencerTechnique,
+						Techniques::TechniqueIndex::DepthOnly,
+						sceneView,
+						*_pimpl->_scene);
+				CATCH_ASSETS_END(parserContext)
+				if (visContent)
+					visContent->SetPreDrawDelegate(oldDelegate);
+			}
+		}
+
+		
+            //  Draw an overlay over the scene, 
+            //  containing debugging / profiling information
+        if (doColorByMaterial) {
+
+			CATCH_ASSETS_BEGIN
+                RenderOverlays::HighlightByStencilSettings settings;
+
+				// The highlight shader supports remapping the 8 bit stencil value to through an array
+				// to some other value. This is useful for ignoring bits or just making 2 different stencil
+				// buffer values mean the same thing. We don't need it right now though, we can just do a
+				// direct mapping here --
+				auto marker = _pimpl->_mouseOver->_drawCallIndex;
+				settings._highlightedMarker = UInt4(marker, marker, marker, marker);
+				settings._stencilToMarkerMap[0] = UInt4(~0u, ~0u, ~0u, ~0u);
+				for (unsigned c=1; c<dimof(settings._stencilToMarkerMap); c++)
+					settings._stencilToMarkerMap[c] = UInt4(c-1, c-1, c-1, c-1);
+
+                ExecuteHighlightByStencil(
+                    threadContext, parserContext, 
+                    settings, _pimpl->_settings._colourByMaterial==2);
+            CATCH_ASSETS_END(parserContext)
+        }
+    }
+
+	void VisualisationOverlay::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+	{
+		_pimpl->_sceneFuture = scene;
+	}
+
+	void VisualisationOverlay::Set(const std::shared_ptr<VisCameraSettings>& camera)
+	{
+		_pimpl->_cameraSettings = camera;
+	}
+
+	void VisualisationOverlay::Set(const VisOverlaySettings& overlaySettings)
+	{
+		_pimpl->_settings = overlaySettings;
+	}
+
+	const VisOverlaySettings& VisualisationOverlay::GetOverlaySettings() const
+	{
+		return _pimpl->_settings;
+	}
+
+    auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+    { return nullptr; }
+
+    void VisualisationOverlay::SetActivationState(bool) {}
+
+    VisualisationOverlay::VisualisationOverlay(
+		const VisOverlaySettings& overlaySettings,
+        std::shared_ptr<VisMouseOver> mouseOver)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_settings = overlaySettings;
+        _pimpl->_mouseOver = std::move(mouseOver);
+    }
+
+    VisualisationOverlay::~VisualisationOverlay() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static RenderCore::Techniques::SequencerTechnique MakeRayTestSequencerTechnique()
+	{
+		using namespace RenderCore;
+		Techniques::SequencerTechnique sequencer;
+		sequencer._techniqueDelegate = SceneEngine::CreateRayTestTechniqueDelegate();
+		sequencer._materialDelegate = std::make_shared<Techniques::MaterialDelegate_Basic>();
+
+		auto& techUSI = Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
+		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
+			sequencer._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<Techniques::GlobalCBDelegate>(c)));
+		return sequencer;
+	}
+
+	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
+		RenderCore::IThreadContext& threadContext,
+		const RenderCore::Techniques::TechniqueContext& techniqueContext,
+        std::pair<Float3, Float3> worldSpaceRay,
+		SceneEngine::IScene& scene,
+		const std::string& modelName, const std::string& materialName)
+	{
+		using namespace RenderCore;
+
+		Techniques::ParsingContext parserContext { techniqueContext };
+		
+		CATCH_ASSETS_BEGIN
+		
+        SceneEngine::ModelIntersectionStateContext stateContext {
+            SceneEngine::ModelIntersectionStateContext::RayTest,
+            threadContext, parserContext };
+        stateContext.SetRay(worldSpaceRay);
+
+		SceneEngine::ExecuteSceneRaw(
+			threadContext, parserContext, 
+			MakeRayTestSequencerTechnique(),
+			Techniques::TechniqueIndex::DepthOnly,
+			{RenderCore::Techniques::ProjectionDesc{}, SceneEngine::SceneView::Type::Other},
+			scene);
+
+        auto results = stateContext.GetResults();
+        if (!results.empty()) {
+            const auto& r = results[0];
+
+            SceneEngine::IIntersectionTester::Result result;
+            result._type = SceneEngine::IntersectionTestScene::Type::Extra;
+            result._worldSpaceCollision = 
+                worldSpaceRay.first + r._intersectionDepth * Normalize(worldSpaceRay.second - worldSpaceRay.first);
+            result._distance = r._intersectionDepth;
+            result._drawCallIndex = r._drawCallIndex;
+            result._materialGuid = r._materialGuid;
+            result._materialName = materialName;
+            result._modelName = modelName;
+
+            return result;
+        }
+
+		CATCH_ASSETS_END(parserContext)	// we can get pending/invalid assets here, which we can suppress
+
+		return {};
+    }
+
+	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::Techniques::TechniqueContext& techniqueContext,
+        std::pair<Float3, Float3> worldSpaceRay,
+		SceneEngine::IScene& scene)
+    {
+		std::string modelName = "Model", materialName = "Material";
+		auto* visContent = dynamic_cast<IVisContent*>(&scene);
+		if (visContent) {
+			modelName = visContent->GetModelName();
+			materialName = visContent->GetMaterialName();
+		}
+
+		return FirstRayIntersection(
+			threadContext, techniqueContext, worldSpaceRay,
+			scene,
+			modelName, materialName);
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    class MouseOverTrackingListener : public RenderOverlays::DebuggingDisplay::IInputListener
+    {
+    public:
+        bool OnInputEvent(
+			const RenderOverlays::DebuggingDisplay::InputContext& context,
+			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        {
+            using namespace SceneEngine;
+
+            auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
+				AsCameraDesc(*_camera), evnt._mousePosition, context._viewMins, context._viewMaxs);
+
+			SceneEngine::IScene* scene = nullptr;
+			if (_sceneFuture)
+				scene = _sceneFuture->TryActualize().get();
+			    
+            if (scene) {
+				auto intr = FirstRayIntersection(*RenderCore::Techniques::GetThreadContext(), *_techniqueContext, worldSpaceRay, *scene);
+				if (intr._type != 0) {
+					if (        intr._drawCallIndex != _mouseOver->_drawCallIndex
+							||  intr._materialGuid != _mouseOver->_materialGuid
+							||  !_mouseOver->_hasMouseOver) {
+
+						_mouseOver->_hasMouseOver = true;
+						_mouseOver->_drawCallIndex = intr._drawCallIndex;
+						_mouseOver->_materialGuid = intr._materialGuid;
+						_mouseOver->_changeEvent.Invoke();
+					}
+				} else {
+					if (_mouseOver->_hasMouseOver) {
+						_mouseOver->_hasMouseOver = false;
+						_mouseOver->_changeEvent.Invoke();
+					}
+				}
+			}
+
+            return false;
+        }
+
+		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+		{
+			_sceneFuture = scene;
+		}
+
+		const std::shared_ptr<SceneEngine::IScene>& GetScene()
+		{
+			return _sceneFuture->Actualize();
+		}
+
+        MouseOverTrackingListener(
+            const std::shared_ptr<VisMouseOver>& mouseOver,
+            const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+            const std::shared_ptr<VisCameraSettings>& camera)
+            : _mouseOver(std::move(mouseOver))
+            , _techniqueContext(std::move(techniqueContext))
+            , _camera(std::move(camera))
+        {}
+        MouseOverTrackingListener::~MouseOverTrackingListener() {}
+
+    protected:
+        std::shared_ptr<VisMouseOver> _mouseOver;
+        std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+        std::shared_ptr<VisCameraSettings> _camera;
+        
+        ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
+    };
+
+    auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+    {
+        return _inputListener;
+    }
+
+    void MouseOverTrackingOverlay::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parsingContext) 
+    {
+        if (!_mouseOver->_hasMouseOver || !_overlayFn) return;
+		auto scene = _inputListener->GetScene();
+		if (!scene) return;
+
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parsingContext);
+        using namespace RenderOverlays::DebuggingDisplay;
+        RenderOverlays::ImmediateOverlayContext overlays(
+            threadContext, &parsingContext.GetNamedResources(),
+            parsingContext.GetProjectionDesc());
+		overlays.CaptureState();
+		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+		Rect rect { Coord2{0, 0}, Coord2(viewportDims[0], viewportDims[1]) };
+        _overlayFn(overlays, rect, *_mouseOver, *scene);
+		overlays.ReleaseState();
+    }
+
+	void MouseOverTrackingOverlay::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
+	{
+		_inputListener->Set(scene);
+	}
+
+    MouseOverTrackingOverlay::MouseOverTrackingOverlay(
+        const std::shared_ptr<VisMouseOver>& mouseOver,
+        const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext,
+        const std::shared_ptr<VisCameraSettings>& camera,
+        OverlayFn&& overlayFn)
+    : _overlayFn(std::move(overlayFn))
+    {
+        _mouseOver = mouseOver;
+        _inputListener = std::make_shared<MouseOverTrackingListener>(
+            std::move(mouseOver),
+            std::move(techniqueContext), 
+            std::move(camera));
+    }
+
+    MouseOverTrackingOverlay::~MouseOverTrackingOverlay() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class InputLayer : public PlatformRig::IOverlaySystem
+    {
+    public:
+        std::shared_ptr<IInputListener> GetInputListener();
+
+        void Render(
+            RenderCore::IThreadContext& context,
+			const RenderCore::IResourcePtr& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext); 
+
+        InputLayer(std::shared_ptr<IInputListener> listener);
+        ~InputLayer();
+    protected:
+        std::shared_ptr<IInputListener> _listener;
+    };
+
+    auto InputLayer::GetInputListener() -> std::shared_ptr<IInputListener>
+    {
+        return _listener;
+    }
+
+    void InputLayer::Render(
+        RenderCore::IThreadContext&,
+		const RenderCore::IResourcePtr&,
+		RenderCore::Techniques::ParsingContext&) {}
+
+    InputLayer::InputLayer(std::shared_ptr<IInputListener> listener) : _listener(listener) {}
+    InputLayer::~InputLayer() {}
+
+	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(const std::shared_ptr<PlatformRig::IOverlaySystem::IInputListener>& listener)
+	{
+		return std::make_shared<InputLayer>(listener);
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    void ChangeEvent::Invoke() 
+    {
+        for (auto i=_callbacks.begin(); i!=_callbacks.end(); ++i) {
+            (*i)->OnChange();
+        }
+    }
+    ChangeEvent::~ChangeEvent() {}
+
+	IVisContent::~IVisContent() {}
+
 }
 

@@ -15,8 +15,9 @@ namespace ControlsLibraryExt.ModelView
         public CtrlStrip()
         {
             InitializeComponent();
-            _colByMaterial.DataSource = Enum.GetValues(typeof(GUILayer.ModelVisSettings.ColourByMaterialType));
+            _colByMaterial.DataSource = Enum.GetValues(typeof(GUILayer.VisOverlaySettings.ColourByMaterialType));
             _displayMode.DataSource = Enum.GetValues(typeof(DisplayMode));
+            _skeletonMode.DataSource = Enum.GetValues(typeof(SkeletonMode));
         }
 
         private enum DisplayMode
@@ -27,14 +28,29 @@ namespace ControlsLibraryExt.ModelView
             WireframeWithNormals
         };
 
-        public GUILayer.ModelVisSettings Object;
-
-        public event EventHandler OnChange;
-        
-        private void InvokeOnChange()
+        private enum SkeletonMode
         {
-            if (OnChange != null)
-                OnChange.Invoke(this, EventArgs.Empty);
+            NoSkeleton,
+            Skeleton,
+            BoneNames
+        };
+
+        public GUILayer.VisOverlaySettings OverlaySettings;
+        public GUILayer.ModelVisSettings ModelSettings;
+
+        public event EventHandler OverlaySettings_OnChange;
+        public event EventHandler ModelSettings_OnChange;
+
+        private void OverlaySettings_InvokeOnChange()
+        {
+            if (OverlaySettings_OnChange != null)
+                OverlaySettings_OnChange.Invoke(this, EventArgs.Empty);
+        }
+
+        private void ModelSettings_InvokeOnChange()
+        {
+            if (ModelSettings_OnChange != null)
+                ModelSettings_OnChange.Invoke(this, EventArgs.Empty);
         }
 
         private void SelectModel(object sender, EventArgs e)
@@ -45,7 +61,7 @@ namespace ControlsLibraryExt.ModelView
             // way to change the selected model
 
             var dropDownCtrl = new PropertyGrid();
-            dropDownCtrl.SelectedObject = Object;
+            dropDownCtrl.SelectedObject = ModelSettings;
             dropDownCtrl.ToolbarVisible = false;
             dropDownCtrl.HelpVisible = false;
 
@@ -60,23 +76,29 @@ namespace ControlsLibraryExt.ModelView
             toolHost.Size = new Size(512, 8 * dropDownCtrl.Font.Height);
 
             toolDrop.Show(this, PointToClient(MousePosition));
+            toolDrop.Closing += ToolDrop_Closing;
+        }
+
+        private void ToolDrop_Closing(object sender, ToolStripDropDownClosingEventArgs e)
+        {
+            ModelSettings_InvokeOnChange();
         }
 
         private void SelectColorByMaterial(object sender, EventArgs e)
         {
-            if (Object == null) return;
+            if (OverlaySettings == null) return;
 
-            GUILayer.ModelVisSettings.ColourByMaterialType v;
+            GUILayer.VisOverlaySettings.ColourByMaterialType v;
             if (Enum.TryParse(((ComboBox)sender).SelectedValue.ToString(), out v))
             {
-                Object.ColourByMaterial = v;
-                InvokeOnChange();
+                OverlaySettings.ColourByMaterial = v;
+                OverlaySettings_InvokeOnChange();
             }
         }
 
         private void SelectDisplayMode(object sender, EventArgs e)
         {
-            if (Object == null) return;
+            if (OverlaySettings == null) return;
 
             DisplayMode v;
             if (Enum.TryParse(((ComboBox)sender).SelectedValue.ToString(), out v))
@@ -84,20 +106,36 @@ namespace ControlsLibraryExt.ModelView
                 switch (v)
                 {
                 default:
-                case DisplayMode.Default: Object.DrawNormals = Object.DrawWireframe = false; break;
-                case DisplayMode.Wireframe: Object.DrawNormals = false;  Object.DrawWireframe = true; break;
-                case DisplayMode.Normals: Object.DrawNormals = true; Object.DrawWireframe = false; break;
-                case DisplayMode.WireframeWithNormals: Object.DrawNormals = true; Object.DrawWireframe = true; break;
+                case DisplayMode.Default: OverlaySettings.DrawNormals = OverlaySettings.DrawWireframe = false; break;
+                case DisplayMode.Wireframe: OverlaySettings.DrawNormals = false; OverlaySettings.DrawWireframe = true; break;
+                case DisplayMode.Normals: OverlaySettings.DrawNormals = true; OverlaySettings.DrawWireframe = false; break;
+                case DisplayMode.WireframeWithNormals: OverlaySettings.DrawNormals = true; OverlaySettings.DrawWireframe = true; break;
                 }
-                InvokeOnChange();
+                OverlaySettings_InvokeOnChange();
+            }
+        }
+
+        private void SelectSkeletonMode(object sender, EventArgs e)
+        {
+            if (OverlaySettings == null) return;
+
+            SkeletonMode v;
+            if (Enum.TryParse(((ComboBox)sender).SelectedValue.ToString(), out v))
+            {
+                switch (v)
+                {
+                    default:
+                    case SkeletonMode.NoSkeleton: OverlaySettings.SkeletonMode = GUILayer.VisOverlaySettings.SkeletonModes.None; break;
+                    case SkeletonMode.Skeleton: OverlaySettings.SkeletonMode = GUILayer.VisOverlaySettings.SkeletonModes.Render; break;
+                    case SkeletonMode.BoneNames: OverlaySettings.SkeletonMode = GUILayer.VisOverlaySettings.SkeletonModes.BoneNames; break;
+                }
+                OverlaySettings_InvokeOnChange();
             }
         }
 
         private void ResetCamClick(object sender, EventArgs e)
         {
-            if (Object == null) return;
-            Object.ResetCamera = true;
-            InvokeOnChange();
+            System.Diagnostics.Debug.Assert(false);
         }
     }
 }

@@ -38,6 +38,7 @@ namespace ControlsLibraryExt.ModelView
             this._resetCam = new System.Windows.Forms.Button();
             this._colByMaterial = new System.Windows.Forms.ComboBox();
             this._displayMode = new System.Windows.Forms.ComboBox();
+            this._skeletonMode = new System.Windows.Forms.ComboBox();
             this.SuspendLayout();
             // 
             // _selectModel
@@ -56,9 +57,9 @@ namespace ControlsLibraryExt.ModelView
             // 
             this._resetCam.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
             | System.Windows.Forms.AnchorStyles.Left)));
-            this._resetCam.Location = new System.Drawing.Point(453, 4);
+            this._resetCam.Location = new System.Drawing.Point(580, 4);
             this._resetCam.Name = "_resetCam";
-            this._resetCam.Size = new System.Drawing.Size(124, 23);
+            this._resetCam.Size = new System.Drawing.Size(124, 21);
             this._resetCam.TabIndex = 1;
             this._resetCam.Text = "Reset Cam";
             this._resetCam.UseVisualStyleBackColor = true;
@@ -88,16 +89,29 @@ namespace ControlsLibraryExt.ModelView
             this._displayMode.TabIndex = 3;
             this._displayMode.SelectedIndexChanged += new System.EventHandler(this.SelectDisplayMode);
             // 
+            // _skeletonMode
+            // 
+            this._skeletonMode.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Top | System.Windows.Forms.AnchorStyles.Bottom) 
+            | System.Windows.Forms.AnchorStyles.Left)));
+            this._skeletonMode.DropDownStyle = System.Windows.Forms.ComboBoxStyle.DropDownList;
+            this._skeletonMode.FormattingEnabled = true;
+            this._skeletonMode.Location = new System.Drawing.Point(453, 4);
+            this._skeletonMode.Name = "_skeletonMode";
+            this._skeletonMode.Size = new System.Drawing.Size(121, 21);
+            this._skeletonMode.TabIndex = 4;
+            this._skeletonMode.SelectedIndexChanged += new System.EventHandler(this.SelectSkeletonMode);
+            // 
             // CtrlStrip
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
+            this.Controls.Add(this._skeletonMode);
             this.Controls.Add(this._displayMode);
             this.Controls.Add(this._colByMaterial);
             this.Controls.Add(this._resetCam);
             this.Controls.Add(this._selectModel);
             this.Name = "CtrlStrip";
-            this.Size = new System.Drawing.Size(582, 32);
+            this.Size = new System.Drawing.Size(707, 32);
             this.ResumeLayout(false);
 
         }
@@ -108,5 +122,6 @@ namespace ControlsLibraryExt.ModelView
         private System.Windows.Forms.Button _resetCam;
         private System.Windows.Forms.ComboBox _colByMaterial;
         private System.Windows.Forms.ComboBox _displayMode;
+        private System.Windows.Forms.ComboBox _skeletonMode;
     }
 }
