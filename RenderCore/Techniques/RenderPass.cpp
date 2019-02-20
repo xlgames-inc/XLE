@@ -216,6 +216,13 @@ namespace RenderCore { namespace Techniques
         return nullptr;
     }
 
+	AttachmentName RenderPassInstance::RemapAttachmentName(AttachmentName resName) const
+	{
+		if (resName < _attachmentPoolRemapping.size())
+			return _attachmentPoolRemapping[resName];
+		return ~0u;
+	}
+
     class NamedAttachmentsWrapper : public INamedAttachments
     {
     public:

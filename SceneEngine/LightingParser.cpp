@@ -197,7 +197,11 @@ namespace SceneEngine
 		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
 		lightingParserContext._mainTargets._samplingCount = 1;
 		for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c) {
-			lightingParserContext._mainTargets._namedTargetsMapping.push_back({merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), c});
+			// Remap the name via the rpi, to get the appropriate resource inside the AttachmentPool
+			auto remappedName = rpi.RemapAttachmentName(c);
+			if (remappedName != ~0u)
+				lightingParserContext._mainTargets._namedTargetsMapping.push_back(
+					{merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), remappedName});
 
 			// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
 			if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)

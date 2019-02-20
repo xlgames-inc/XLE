@@ -159,6 +159,7 @@ namespace RenderCore { namespace Techniques
         auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
         auto GetResource(AttachmentName resName) const -> IResourcePtr;
         auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+		AttachmentName RemapAttachmentName(AttachmentName inputName) const;
 
         RenderPassInstance(
             IThreadContext& context,
