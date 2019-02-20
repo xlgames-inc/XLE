@@ -90,7 +90,6 @@
     <ClInclude Include="..\GeoProc\NascentAnimController.h" />
     <ClInclude Include="..\GeoProc\NascentCommandStream.h" />
     <ClInclude Include="..\GeoProc\NascentGeometryObjects.h" />
-    <ClInclude Include="..\GeoProc\NascentMaterial.h" />
     <ClInclude Include="..\GeoProc\NascentObjectGuid.h" />
     <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h" />
     <ClInclude Include="..\GeoProc\NascentRawGeometry.h" />

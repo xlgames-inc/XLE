@@ -73,6 +73,7 @@ namespace PlatformRig
         void SetActivationState(bool newState);
 
         void AddSystem(std::shared_ptr<IOverlaySystem> system);
+		void RemoveSystem(IOverlaySystem& system);
 
         OverlaySystemSet();
         ~OverlaySystemSet();

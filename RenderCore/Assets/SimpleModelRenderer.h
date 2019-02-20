@@ -50,6 +50,9 @@ namespace RenderCore { namespace Assets
 		IDeformOperation& DeformOperation(unsigned idx);
 		const ::Assets::DepValPtr& GetDependencyValidation();
 
+		const std::shared_ptr<ModelScaffold>& GetModelScaffold() const { return _modelScaffold; }
+		const std::shared_ptr<MaterialScaffold>& GetMaterialScaffold() const { return _materialScaffold; }
+
 		SimpleModelRenderer(
 			const std::shared_ptr<ModelScaffold>& modelScaffold,
 			const std::shared_ptr<MaterialScaffold>& materialScaffold,

@@ -451,8 +451,7 @@ namespace RenderCore { namespace Techniques
             TextureDesc::Plain2D(attachmentWidth, attachmentHeight, a._format, 1, uint16(a._arrayLayerCount)),
             "attachment");
 
-		// Prefer a "typeless" format when we create the actual resource
-		desc._textureDesc._format = AsTypelessFormat(desc._textureDesc._format);
+		desc._textureDesc._format = desc._textureDesc._format;
 
         if (a._flags & AttachmentDesc::Flags::Multisampled)
             desc._textureDesc._samples = props._samples;
@@ -549,6 +548,7 @@ namespace RenderCore { namespace Techniques
             attach = &_pimpl->_attachments[attachName];
         }
         assert(attach);
+		assert(attach->_resource);
 		auto defaultAspect = TextureViewDesc::Aspect::ColorLinear;
 		auto formatComponents = GetComponents(attach->_desc._format);
 		if (formatComponents == FormatComponents::Depth || formatComponents == FormatComponents::DepthStencil) {
@@ -664,8 +664,12 @@ namespace RenderCore { namespace Techniques
             }
 
             if (!foundMatch) {
+				// Prefer "typeless" formats when creating the actual attachments
+				// This ensures that we can have complete freedom when we create views
+				auto typelessDesc = r._desc;
+				typelessDesc._format = AsTypelessFormat(typelessDesc._format);
                 _pimpl->_attachments.push_back(
-                    Pimpl::Attachment{nullptr, r._desc});
+                    Pimpl::Attachment{nullptr, typelessDesc});
                 result.push_back((unsigned)(_pimpl->_attachments.size()-1));
             }
         }

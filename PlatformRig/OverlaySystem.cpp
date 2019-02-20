@@ -155,6 +155,15 @@ namespace PlatformRig
             // todo -- do we need to call SetActivationState() here?
     }
 
+	void OverlaySystemSet::RemoveSystem(IOverlaySystem& system)
+    {
+		for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i)
+			if (i->get() == &system) {
+				_childSystems.erase(i);
+				return;
+			}
+	}
+
     OverlaySystemSet::OverlaySystemSet() 
     : _activeChildIndex(-1)
     {

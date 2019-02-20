@@ -154,14 +154,14 @@ namespace Utility
 
             // operator[] is only available on iterator range for types other than void*/const void*
             template<typename I=Iterator>
-                auto operator[](size_t index) const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value, decltype(*std::declval<I>())>::type
+                auto operator[](size_t index) const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value, decltype(*std::declval<const I>())>::type
                 { return this->first[index]; }
 
 #pragma GCC diagnostic push
 #pragma GCC diagnostic ignored "-Wvoid-ptr-dereference"
             template<typename I=Iterator>
                 auto data() const -> typename std::enable_if<!std::is_same<typename std::remove_const<I>::type, void*>::value,
-                    decltype(&(*std::declval<I>()))>::type
+                    decltype(&(*std::declval<const I>()))>::type
                 { return &(*this->first); }
 #pragma GCC diagnostic pop
 

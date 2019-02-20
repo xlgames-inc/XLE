@@ -232,7 +232,7 @@ namespace PlatformRig
             }
         }
 
-		parserContext.GetNamedResources().Unbind(*presentationTarget);
+		parserContext.GetNamedResources().UnbindAll();
 
         {
             CPUProfileEvent_Conditional pEvnt2("Present", cpuProfiler);
