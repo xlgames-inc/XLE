@@ -271,6 +271,11 @@ namespace RenderCore { namespace Assets
 		return {};
 	}
 
+	std::vector<std::pair<std::string, std::string>> MaterialScaffoldCompiler::GetExtensionsForType(uint64_t typeCode)
+	{
+		return {};
+	}
+
 	void MaterialScaffoldCompiler::StallOnPendingOperations(bool cancelAll) {}
 
 	MaterialScaffoldCompiler::MaterialScaffoldCompiler()

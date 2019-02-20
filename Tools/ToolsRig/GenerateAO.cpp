@@ -31,7 +31,6 @@
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/IFileSystem.h"
-#include "../../Assets/CompilerHelper.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/IntermediateAssets.h"
@@ -725,7 +724,13 @@ namespace ToolsRig
         std::shared_ptr<RenderCore::IThreadContext> _threadContext;
         std::unique_ptr<AoGen> _aoGen;
 
-        using CompileResult = ::Assets::CompilerHelper::CompileResult;
+		class CompileResult
+        {
+        public:
+            std::vector<::Assets::DependentFileState> _dependencies;
+            ::Assets::rstring _baseDir;
+        };
+
         CompileResult PerformCompile(
             StringSection<::Assets::ResChar> modelFilename, StringSection<::Assets::ResChar> materialFilename,
             StringSection<::Assets::ResChar> destinationFile);
@@ -922,6 +927,11 @@ namespace ToolsRig
     }
 
 	std::vector<uint64_t> AOSupplementCompiler::GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
+	std::vector<std::pair<std::string, std::string>> AOSupplementCompiler::GetExtensionsForType(uint64_t typeCode)
 	{
 		return {};
 	}

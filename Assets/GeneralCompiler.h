@@ -25,6 +25,7 @@ namespace Assets
             uint64 typeCode, 
             const StringSection<ResChar> initializers[], unsigned initializerCount);
 		std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
         void StallOnPendingOperations(bool cancelAll);
 		
 		using CompileOperationDelegate = std::function<std::shared_ptr<ICompileOperation>(StringSection<>)>;
@@ -32,8 +33,9 @@ namespace Assets
 		struct ExtensionAndDelegate
 		{
 			std::vector<uint64_t> _assetTypes;
-			std::regex _extensionFilter;
+			std::regex _regexFilter;
 			std::string _name;
+			std::string _extensionsForOpenDlg;
 			ConsoleRig::LibVersionDesc _srcVersion;
 			CompileOperationDelegate _delegate;
 		};

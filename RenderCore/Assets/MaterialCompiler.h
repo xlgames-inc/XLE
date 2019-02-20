@@ -19,6 +19,7 @@ namespace RenderCore { namespace Assets
             uint64_t typeCode, 
             const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
 		std::vector<uint64_t> GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
 		
 		void StallOnPendingOperations(bool cancelAll);
 

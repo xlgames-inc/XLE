@@ -26,6 +26,7 @@
 #include "../../Utility/SystemUtils.h"
 #include "../../Utility/Conversion.h"
 #include <regex>
+#include <set>
 
 namespace Assets 
 {
@@ -442,7 +443,7 @@ namespace Assets
 
 			// Find the compiler that can handle this asset type (just by looking at the extension)
 		for (const auto&d:_pimpl->_delegates) {
-			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_extensionFilter)) {
+			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter)) {
 				delegate = d;
 				break;
 			}
@@ -457,9 +458,26 @@ namespace Assets
 	std::vector<uint64_t> GeneralCompiler::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
 	{
 		for (const auto&d:_pimpl->_delegates)
-			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_extensionFilter))
+			if (std::regex_match(initializers[0].begin(), initializers[0].end(), d->_regexFilter))
 				return d->_assetTypes;
 		return {};
+	}
+
+	std::vector<std::pair<std::string, std::string>> GeneralCompiler::GetExtensionsForType(uint64_t typeCode)
+	{
+		std::vector<std::pair<std::string, std::string>> ext;
+		for (const auto&d:_pimpl->_delegates)
+			if (std::find(d->_assetTypes.begin(), d->_assetTypes.end(), typeCode) != d->_assetTypes.end()) {
+				auto i = d->_extensionsForOpenDlg.begin();
+				for (;;) {
+					while (i != d->_extensionsForOpenDlg.end() && *i == ',') ++i;
+					auto end = std::find(i, d->_extensionsForOpenDlg.end(), ',');
+					if (end == i) break;
+					ext.push_back(std::make_pair(std::string(i, end), d->_name));
+					i = end;
+				}
+			}
+		return ext;
 	}
 
     void GeneralCompiler::StallOnPendingOperations(bool cancelAll)
@@ -490,7 +508,13 @@ namespace Assets
 		CreateCompileOperationFn* _createCompileOpFunction;
 		std::shared_ptr<ConsoleRig::AttachableLibrary> _library;
 
-		struct Kind { std::vector<uint64_t> _assetTypes; std::string _identifierFilter; };
+		struct Kind 
+		{ 
+			std::vector<uint64_t> _assetTypes; 
+			std::string _identifierFilter; 
+			std::string _name;
+			std::string _extensionsForOpenDlg;
+		};
 		std::vector<Kind> _kinds;
 
 		CompilerLibrary(StringSection<> libraryName);
@@ -512,7 +536,9 @@ namespace Assets
 					auto kind = compilerDesc->GetFileKind(c);
 					_kinds.push_back({
 						std::vector<uint64_t>{kind._assetTypes.begin(), kind._assetTypes.end()},
-						std::string{kind._extension}});
+						std::string{kind._regexFilter},
+						std::string{kind._name},
+						std::string{kind._extensionsForOpenDlg}});
 				}
 			}
 		}
@@ -565,7 +591,8 @@ namespace Assets
 						GeneralCompiler::ExtensionAndDelegate {
 							kind._assetTypes,
 							std::regex{kind._identifierFilter, std::regex_constants::icase}, 
-							c,
+							kind._name + " (" + c + ")",
+							kind._extensionsForOpenDlg,
 							srcVersion,
 							[lib, fn](StringSection<> identifier) {
 								(void)lib; // hold strong reference to the library, so the DLL doesn't get unloaded

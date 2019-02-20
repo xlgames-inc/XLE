@@ -13,6 +13,9 @@
 #include "../Utility/PtrUtils.h"
 #include "../Core/SelectConfiguration.h"
 #include "../Core/Exceptions.h"
+#include <set>
+#include <string>
+#include <sstream>
 
 namespace Assets
 {
@@ -189,6 +192,19 @@ namespace Assets
 		}
 
 		return result;
+	}
+
+	std::vector<std::pair<std::string, std::string>> CompilerSet::GetExtensionsForType(uint64_t typeCode)
+	{
+		std::vector<std::pair<std::string, std::string>> ext;
+
+		ScopedLock(_pimpl->_compilersLock);
+		for (const auto&c:_pimpl->_compilers) {
+			auto types = c->GetExtensionsForType(typeCode);
+			ext.insert(ext.end(), types.begin(), types.end());
+		}
+
+		return ext;
 	}
 
 	void CompilerSet::StallOnPendingOperations(bool cancelAll)

@@ -40,6 +40,7 @@ namespace Assets
 		virtual std::shared_ptr<IArtifactCompileMarker> Prepare(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
 		virtual std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
+		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode) = 0;
 		virtual void StallOnPendingOperations(bool cancelAll) = 0;
 		virtual ~IAssetCompiler();
 	};
@@ -52,6 +53,7 @@ namespace Assets
 		std::shared_ptr<IArtifactCompileMarker> Prepare(
 			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
 		std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
 		void StallOnPendingOperations(bool cancelAll);
 
 		CompilerSet();

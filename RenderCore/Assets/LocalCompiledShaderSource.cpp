@@ -512,6 +512,11 @@ namespace RenderCore { namespace Assets
 		return {};
 	}
 
+	std::vector<std::pair<std::string, std::string>> LocalCompiledShaderSource::GetExtensionsForType(uint64_t typeCode)
+	{
+		return {};
+	}
+
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
         StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>

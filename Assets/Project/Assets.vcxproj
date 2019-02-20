@@ -60,7 +60,6 @@
     <ClInclude Include="..\ChunkFileContainer.h" />
     <ClInclude Include="..\CompilationThread.h" />
     <ClInclude Include="..\CompileAndAsyncManager.h" />
-    <ClInclude Include="..\CompilerHelper.h" />
     <ClInclude Include="..\ICompileOperation.h" />
     <ClInclude Include="..\ConfigFileContainer.h" />
     <ClInclude Include="..\DeferredConstruction.h" />

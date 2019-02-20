@@ -682,9 +682,9 @@ namespace ColladaConversion
 		{
 			assert(index==0 || index == 1);
 			if (index == 0)
-				return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset" };
+				return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset", "dae" };
 
-			return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*[\\/]alldae)", "All collada animations in a directory" };
+			return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*[\\/]alldae)", "All collada animations in a directory", "folder" };
 		}
 
 		CompilerDesc() {}

@@ -24,8 +24,9 @@ namespace Assets
 		{
 		public:
 			IteratorRange<const uint64_t*>	_assetTypes;
-			const ::Assets::ResChar*		_extension;
-			const char*						_name;
+			const ::Assets::ResChar*		_regexFilter = nullptr;
+			const char*						_name = nullptr;
+			const char*						_extensionsForOpenDlg = nullptr;		// comma separated list of extensions for file-open-dialog scenarios
 		};
 		virtual unsigned			FileKindCount() const = 0;
 		virtual FileKind			GetFileKind(unsigned index) const = 0;
