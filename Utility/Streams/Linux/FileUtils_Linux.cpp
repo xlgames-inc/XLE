@@ -1,7 +1,11 @@
 #include "../FileUtils.h"
 #include "../PathUtils.h"
 #include <sys/stat.h>
+
+// Sadly, Android does not include glob
+#if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
 #include <glob.h>
+#endif
 
 namespace Utility 
 {
@@ -90,6 +94,7 @@ namespace Utility
 		{
             std::vector<std::string> fileList;
 
+#if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
             glob_t globbuf;
             glob(searchPath.c_str(), GLOB_TILDE, NULL, &globbuf);
             for (int i=0; i<globbuf.gl_pathc; ++i)
@@ -97,6 +102,7 @@ namespace Utility
 
             if (globbuf.gl_pathc > 0)
                 globfree(&globbuf);
+#endif
 
             return fileList;
 		}
