@@ -6,7 +6,7 @@
 
 // IOS and OSX don't support the "thread_local" keyword, so we have to do it manually with
 // pthreads. It's a bit of extra boilerplate / busycode
-#if (PLATFORMOS_TARGET == PLATFORMOS_IOS) || (PLATFORMOS_TARGET ==  PLATFORMOS_OSX)
+#if (PLATFORMOS_TARGET == PLATFORMOS_IOS) || (PLATFORMOS_TARGET ==  PLATFORMOS_OSX) || (PLATFORMOS_TARGET == PLATFORMOS_ANDROID)
 
     #define FEATURE_THREAD_LOCAL_KEYWORD 0
 
