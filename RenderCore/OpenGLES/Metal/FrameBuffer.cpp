@@ -275,18 +275,16 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glDrawBuffers(sp._rtvCount, drawBuffers);
             #endif
 
-            #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0) // i.e. desktop gl
-                // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
-                if (sp._rtvCount == 0) {
-                    glDrawBuffer(GL_NONE);
-                    glReadBuffer(GL_NONE);
-                } else {
-                    // XTODO: currently there are situations where colorAttachmentIterator is 0. Is this expected?
-                    if (colorAttachmentIterator > 0) {
-                        glReadBuffer(GL_COLOR_ATTACHMENT0);
-                    }
-                }
+            // Ensure the glReadBuffer state to some reasonable value to prevent state leakage
+            // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
+            // But on GLES, it's only available in version 3.0
+            #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
+                bool setReadBufferState = (factory.GetFeatureSet() & FeatureSet::GLES300);
+            #else
+                bool setReadBufferState = true;
             #endif
+            if (setReadBufferState)
+                glReadBuffer((sp._rtvCount > 0) ? drawBuffers[0] : GL_NONE);
 
             #if defined(_DEBUG)
                 GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
