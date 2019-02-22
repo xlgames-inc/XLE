@@ -29,7 +29,7 @@ namespace PlatformRig { namespace Overlays
     class CumulativeStats
     {
     public:
-        float _m = 0.f, _S = 0.f;
+        float _m = 0.f, _s = 0.f;
         unsigned _n = 0;
 
         void Append(float value)
@@ -37,7 +37,7 @@ namespace PlatformRig { namespace Overlays
             auto prevMean = _m;
             ++_n;
             _m = _m + (value - _m) / float(_n);
-            _S = _S + (value - _m)*(value - prevMean);
+            _s = _s + (value - _m)*(value - prevMean);
         }
 
         float Mean() const { return _m; }
@@ -45,7 +45,7 @@ namespace PlatformRig { namespace Overlays
         {
             // Bessel's correction (https://en.wikipedia.org/wiki/Bessel%27s_correction)
             // not applied here
-            return std::sqrt(_S/float(_n));
+            return std::sqrt(_s/float(_n));
         }
         unsigned SampleCount() const { return _n; }
     };
