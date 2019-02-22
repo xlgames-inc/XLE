@@ -104,7 +104,6 @@ namespace Exceptions
     {
         std::vsnprintf(_buffer, dimof(_buffer), format, args);
     }
-#pragma clang diagnostic pop
 #pragma warning(pop)
 
     inline BasicLabel::BasicLabel(const BasicLabel& copyFrom) never_throws
