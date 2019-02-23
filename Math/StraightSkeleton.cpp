@@ -50,6 +50,18 @@ namespace XLEMath
 
     T1(T) auto IsFiniteNumber(T) -> typename std::enable_if<!std::is_floating_point<T>::value, bool>::type { return true; }
 
+    template<typename Primitive>
+        std::ostream& operator<<(std::ostream& str, const Vector2T<Primitive>& vert)
+        {
+            return str << vert[0] << ", " << vert[1];
+        }
+
+    template<typename Primitive>
+        std::ostream& operator<<(std::ostream& str, const Vector3T<Primitive>& vert)
+        {
+            return str << vert[0] << ", " << vert[1] << ", " << vert[2];
+        }
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -288,6 +300,12 @@ namespace XLEMath
 		unsigned _tail;		// (this is the fixed vertex)
 		unsigned _leftFace, _rightFace;
 	};
+
+    T1(Primitive) std::ostream& operator<<(std::ostream& str, const Vertex<Primitive>& vert)
+    {
+        str << "(pos: " << vert._position << ", vel: " << vert._velocity << ", initialTime: " << vert._initialTime << ", skeletonVertexId: " << vert._skeletonVertexId << ")";
+        return str;
+    }
 
 	T1(Primitive) auto PositionAtTime(const Vertex<Primitive>& v, Primitive time)
 		-> typename std::enable_if<!std::is_integral<Primitive>::value, Vector2T<Primitive>>::type
@@ -1034,6 +1052,10 @@ namespace XLEMath
 
 		StraightSkeleton<Primitive> CalculateSkeleton(Primitive maxTime);
 
+        #if defined(_DEBUG)
+            std::vector<Vector2T<Primitive>> _sourceLoop;
+        #endif
+
 	private:
 		void WriteWavefront(StraightSkeleton<Primitive>& dest, const WavefrontLoop& loop, Primitive time);
 		void AddEdgeForVertexPath(StraightSkeleton<Primitive>& dst, const WavefrontLoop& loop, unsigned v, unsigned finalVertId);
@@ -1145,7 +1167,16 @@ namespace XLEMath
 			const auto calcTime = std::max(std::max(std::max(vm1._initialTime, v0._initialTime), v1._initialTime), v2._initialTime);
 			auto collapse = CalculateEdgeCollapse_Offset(PositionAtTime(vm1, calcTime), PositionAtTime(v0, calcTime), PositionAtTime(v1, calcTime), PositionAtTime(v2, calcTime));
 			if (collapse[2] < Primitive(0)) continue;
-			assert(!IsFrozen(v0) && !IsFrozen(v1));
+
+            // Add a little bit of leeway on this check. We can sometimes find that edges are
+            // effectively already collapsed (or within a reasonable threshold for floating
+            // point creep)
+            // In these cases, it's ok if one of the vertices in already in a frozen state, because
+            // we don't actually need to move it any significant distance
+            if (collapse[2] > GetEpsilon<Primitive>()) {
+			    assert(!IsFrozen(v0) && !IsFrozen(v1));
+            }
+
 			auto collapseTime = collapse[2] + calcTime;
 			assert(collapseTime >= loop._lastEventTime);
 			if (collapseTime < (bestCollapseTime - GetEpsilon<Primitive>())) {
@@ -1257,6 +1288,10 @@ namespace XLEMath
 
 		result._loops.emplace_back(std::move(loop));
 		result._boundaryPointCount = vertices.size();
+
+        #if defined(_DEBUG)
+            result._sourceLoop.insert(result._sourceLoop.begin(), vertices.begin(), vertices.end());
+        #endif
 		return result;
 	}
 
@@ -1558,10 +1593,16 @@ namespace XLEMath
 				collisionPt += collapses[c]._collapsePt;
 				contributors += 1;
 
-				// at this point they should not be frozen (but they will all be frozen later)
+				// At this point they should not be frozen (but they will all be frozen later)
+                // We add a little bit of leeway for vertices that were frozen at the same time as
+                // the collapse event (at least within some reasonable threshold)
 				const auto& seg = loop._edges[collapses[c]._edge];
-				assert(!IsFrozen(_vertices[seg._tail]));
-				assert(!IsFrozen(_vertices[seg._head]));
+                if ((bestCollapseTime - _vertices[seg._tail]._initialTime) > GetEpsilon<Primitive>()) {
+				    assert(!IsFrozen(_vertices[seg._tail]));
+                }
+                if ((bestCollapseTime - _vertices[seg._head]._initialTime) > GetEpsilon<Primitive>()) {
+				    assert(!IsFrozen(_vertices[seg._head]));
+                }
 				(void)seg;
 			}
 			collisionPt /= Primitive(contributors);
@@ -1573,8 +1614,23 @@ namespace XLEMath
 					const auto& seg = loop._edges[collapses[c]._edge];
 					auto one = PositionAtTime(_vertices[seg._head], bestCollapseTime);
 					auto two = PositionAtTime(_vertices[seg._tail], bestCollapseTime);
-					assert(Equivalent(one, collisionPt, 1000*GetEpsilon<Primitive>()));
-					assert(Equivalent(two, collisionPt, 1000*GetEpsilon<Primitive>()));
+                    if (!IsFrozen(_vertices[seg._head])) {
+                        assert(Equivalent(one, collisionPt, 1000*GetEpsilon<Primitive>()));
+                    }
+                    if (!IsFrozen(_vertices[seg._tail])) {
+                        assert(Equivalent(two, collisionPt, 1000*GetEpsilon<Primitive>()));
+                    }
+
+                    /*
+                    std::cout << "Bad collision pt detected. Source loop:" << std::endl;
+                    std::cout << "[" << std::endl;
+                    for (auto v=_sourceLoop.begin(); v!=_sourceLoop.end(); ++v) {
+                        if (v!=_sourceLoop.begin())
+                            std::cout << "," << std::endl;
+                        std::cout << "\t{\"x\": " << (*v)[0] << ", \"y\": " << (*v)[1] << "}";
+                    }
+                    std::cout << std::endl << "]" << std::endl;
+                    */
 				}
 			#endif
 
