@@ -201,8 +201,6 @@ namespace Utility
         Iterator    at(size_t index) const;
         size_t      GetCount() const;
 
-		IteratorRange<const void*>	GetValueTable() const;
-
         ////////////////////////////////////////////////////////////////////////////////////////
             //      S E R I A L I S A T I O N                               //
         ////////////////////////////////////////////////////////////////////////////////////////

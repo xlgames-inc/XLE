@@ -14,7 +14,7 @@ using Sce.Atf;
 using Sce.Atf.Applications;
 using LevelEditorCore;
 
-using ModelView = ControlsLibraryExt.ModelView.ModelView;
+using PreviewerControl = ControlsLibraryExt.ModelView.PreviewerControl;
 
 namespace LevelEditorXLE.AssetMan
 {
@@ -30,7 +30,7 @@ namespace LevelEditorXLE.AssetMan
             _resourceLister.SelectionChanged += resourceLister_SelectionChanged;
 
             _settings = GUILayer.ModelVisSettings.CreateDefault();
-            _controls = new ModelView { Object = _settings, _activeMaterialContext = this._activeMaterialContext };
+            _controls = new PreviewerControl { Object = _settings, _activeMaterialContext = this._activeMaterialContext };
             _controlHostService.RegisterControl(
                 _controls,
                 new ControlInfo(
@@ -86,7 +86,7 @@ namespace LevelEditorXLE.AssetMan
 
         [Import(AllowDefault = true)]
         private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
-        private ModelView _controls;
+        private PreviewerControl _controls;
 
         private GUILayer.ModelVisSettings _settings;
 

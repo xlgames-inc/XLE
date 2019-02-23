@@ -40,24 +40,6 @@ namespace RenderCore
         return str;
     }
 
-namespace RenderCore
-{
-    inline std::ostream& operator<<(std::ostream& str, const AttachmentDesc& attachment)
-    {
-        str << "AttachmentDesc {"
-            #if defined(_DEBUG)
-                << (!attachment._name.empty()?attachment._name:std::string("<<no name>>")) << ", "
-            #endif
-            << AsString(attachment._format) << ", "
-            << attachment._width << ", "
-            << attachment._height << ", "
-            << attachment._arrayLayerCount << ", "
-            << attachment._defaultAspect << ", "
-            << unsigned(attachment._dimsMode)
-            << ", 0x" << std::hex << attachment._flags << std::dec << "}";
-        return str;
-    }
-
     inline std::ostream& operator<<(std::ostream& str, const SubpassDesc& subpass)
     {
         str << "SubpassDesc { "
@@ -1173,15 +1155,9 @@ namespace RenderCore { namespace Techniques
                 for (auto p = f->_subpasses.rbegin(); p != f->_subpasses.rend(); ++p) {
                     lastUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
                     if (lastUseDirection)
-
-                /*if (std::find(shaderResourceSemantics.begin(), shaderResourceSemantics.end(), interfaceAttachment._semantic) != shaderResourceSemantics.end()) {
-                }*/
-
-                DirectionFlags::BitField lastUseDirection = 0;
-                for (auto p = f->_subpasses.rbegin(); p != f->_subpasses.rend(); ++p) {
-                    lastUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
-                    if (lastUseDirection)
                         break;
+				}
+
                 if (firstUseDirection & DirectionFlags::Load) {
                     // We're expecting a buffer that already has some initialized contents. Look for
                     // something matching in our working attachments array
