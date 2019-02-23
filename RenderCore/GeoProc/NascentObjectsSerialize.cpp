@@ -26,7 +26,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 	static ::Assets::Blob SerializeSkin(
 		Serialization::NascentBlockSerializer& serializer, 
-		NascentGeometryObjects& objs)
+		const NascentGeometryObjects& objs)
 	{
 		auto result = std::make_shared<std::vector<uint8>>();
 		{
@@ -118,7 +118,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		StreamOperator(stream, skeleton.GetSkeletonMachine(), skeleton.GetInterface(), skeleton.GetDefaultParameters());
 	}
 
-	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(const char name[], NascentGeometryObjects& geoObjects, NascentModelCommandStream& cmdStream, NascentSkeleton& skeleton)
+	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(const std::string& name, const NascentGeometryObjects& geoObjects, const NascentModelCommandStream& cmdStream, const NascentSkeleton& skeleton)
 	{
 		Serialization::NascentBlockSerializer serializer;
 
@@ -166,7 +166,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
-		const char name[], 
+		const std::string& name,
 		const NascentSkeleton& skeleton)
 	{
 		auto block = ::Assets::SerializeToBlob(skeleton);
@@ -186,7 +186,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	}
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
-		const char name[],
+		const std::string& name,
 		const NascentAnimationSet& animationSet,
 		IteratorRange<const RenderCore::Assets::RawAnimationCurve*> curves)
 	{

@@ -62,6 +62,7 @@
     <ClCompile Include="..\GeoProc\NascentAnimController.cpp" />
     <ClCompile Include="..\GeoProc\NascentCommandStream.cpp" />
     <ClCompile Include="..\GeoProc\NascentGeometryObjects.cpp" />
+    <ClCompile Include="..\GeoProc\NascentModel.cpp" />
     <ClCompile Include="..\GeoProc\NascentObjectsSerialize.cpp" />
     <ClCompile Include="..\GeoProc\NascentRawGeometry.cpp" />
     <ClCompile Include="..\GeoProc\NascentTransformationMachine.cpp" />
@@ -90,6 +91,7 @@
     <ClInclude Include="..\GeoProc\NascentAnimController.h" />
     <ClInclude Include="..\GeoProc\NascentCommandStream.h" />
     <ClInclude Include="..\GeoProc\NascentGeometryObjects.h" />
+    <ClInclude Include="..\GeoProc\NascentModel.h" />
     <ClInclude Include="..\GeoProc\NascentObjectGuid.h" />
     <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h" />
     <ClInclude Include="..\GeoProc\NascentRawGeometry.h" />

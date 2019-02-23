@@ -28,9 +28,8 @@
 
 namespace ColladaConversion
 {
-    std::vector<std::basic_string<utf8>> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
+    std::vector<std::string> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
 
-    static std::string  SkeletonBindingName(const Node& node);
     static NascentObjectGuid   AsObjectGuid(const Node& node);
     static bool         IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
 
@@ -64,8 +63,46 @@ namespace ColladaConversion
         return LODDesc { 0, false, StringSection<utf8>() };
     }
 
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node)
+    {
+        auto nodeId = AsObjectGuid(node);
+        auto bindingName = SkeletonBindingName(node);
+
+		auto pushCount = PushTransformations(
+			skeleton.GetSkeletonMachine(),
+			skeleton.GetInterface(),
+			skeleton.GetDefaultParameters(),
+			node.GetFirstTransform(), bindingName.c_str(),
+			[](StringSection<>) { return true; });
+
+		uint32 outputMarker = ~0u;
+		if (skeleton.GetInterface().TryRegisterJointName(outputMarker, bindingName)) {
+			skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
+		} else {
+			Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", bindingName.c_str()));
+		}
+
+            // note -- also consider instance_nodes?
+
+        auto child = node.GetFirstChild();
+        while (child) {
+            BuildSkeleton(skeleton, child);
+            child = child.GetNextSibling();
+        }
+
+        skeleton.GetSkeletonMachine().Pop(pushCount);
+    }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static bool IsAnimated(
+		const RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs,
+		StringSection<> paramName)
+	{
+		return true;  // nodeRefs.IsAnimated(paramName)
+	}
 
     static void BuildSkeleton(
         NascentSkeleton& skeleton,
@@ -76,8 +113,7 @@ namespace ColladaConversion
         if (!fullSkeleton && !IsUseful(node, skeletonReferences)) return;
 
         auto nodeId = AsObjectGuid(node);
-        auto bindingName = skeletonReferences.GetNode(nodeId)._bindingName;
-        if (bindingName.empty()) bindingName = SkeletonBindingName(node);
+        auto bindingName = skeletonReferences.GetBasicStructure().RegisterBindingName(nodeId, SkeletonBindingName(node));
 
         auto pushCount = 0u;
         if (ignoreTransforms <= 0) {
@@ -89,17 +125,17 @@ namespace ColladaConversion
 				skeleton.GetInterface(),
 				skeleton.GetDefaultParameters(),
                 node.GetFirstTransform(), bindingName.c_str(),
-                skeletonReferences, fullSkeleton);
+				[&skeletonReferences, fullSkeleton](StringSection<> paramName) { return (fullSkeleton || IsAnimated(skeletonReferences, paramName)); });
         }
 
-        bool isReferenced = fullSkeleton || skeletonReferences.IsImportant(nodeId);
+        bool isReferenced = fullSkeleton || skeletonReferences.GetBasicStructure().IsImportant(nodeId);
         if (isReferenced) {
                 // (prevent a reference if the transformation machine is completely empty)
             if (!skeleton.GetSkeletonMachine().IsEmpty()) {
 				uint32 outputMarker = ~0u;
 				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(bindingName))) {
 					skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
-					skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
+					skeletonReferences.GetBasicStructure().RegisterBindingName(nodeId, bindingName);
 				} else {
 					Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", bindingName.c_str()));
 				}
@@ -196,7 +232,7 @@ namespace ColladaConversion
             // Note that if we get a resolve failure (or compile failure) then the
             // node will remain registered in the skeleton
         if (gotAttachment)
-            nodeRefs.TryRegisterNode(nodeAsGuid, SkeletonBindingName(node).c_str());
+            nodeRefs.GetBasicStructure().RegisterBindingName(nodeAsGuid, SkeletonBindingName(node).c_str());
 
         auto child = node.GetFirstChild();
         while (child) {
@@ -224,10 +260,10 @@ namespace ColladaConversion
                     for (auto& j:jointNames) {
                         auto compareSection = MakeStringSection(j);
                         Node node = skeleton.FindBreadthFirst(
-                            [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
+                            [&compareSection](const Node& compare) { return XlEqString(compare.GetSid().Cast<char>(), compareSection); });
 
                         if (node)
-                            nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
+                            nodeRefs.GetBasicStructure().RegisterBindingName(AsObjectGuid(node), SkeletonBindingName(node).c_str());
                     }
                 }
             }
@@ -277,6 +313,58 @@ namespace ColladaConversion
 
 
                 if (materialGuids[index] != invalidGuid && materialGuids[index] != newMaterialGuid) {
+
+                        // Some collada files can actually have multiple instance_material elements for
+                        // the same binding symbol. Let's throw an exception in this case (but only
+                        // if the bindings don't agree)
+                    Throw(::Exceptions::BasicLabel("Single material binding symbol is bound to multiple different materials in geometry instantiation"));
+                }
+
+                materialGuids[index] = newMaterialGuid;
+            }
+        }
+
+        return std::move(materialGuids);
+    }
+
+	auto BuildMaterialTableStrings(
+        IteratorRange<const InstanceGeometry::MaterialBinding*> bindings,
+        const std::vector<uint64>& rawGeoBindingSymbols,
+        const URIResolveContext& resolveContext)
+
+        -> std::vector<std::string>
+    {
+
+            //
+            //  For each material referenced in the raw geometry, try to 
+            //  match it with a material we've built during collada processing
+            //      We have to map it via the binding table in the InstanceGeometry
+            //
+                        
+        std::vector<std::string> materialGuids;
+        materialGuids.resize(rawGeoBindingSymbols.size());
+
+        for (auto b=bindings.begin(); b<bindings.end(); ++b) {
+            auto hashedSymbol = Hash64(b->_bindingSymbol._start, b->_bindingSymbol._end);
+
+            for (auto i=rawGeoBindingSymbols.cbegin(); i!=rawGeoBindingSymbols.cend(); ++i) {
+                if (*i != hashedSymbol) continue;
+            
+                auto index = std::distance(rawGeoBindingSymbols.cbegin(), i);
+
+                std::string newMaterialGuid;
+
+                GuidReference ref(b->_reference);
+                auto* file = resolveContext.FindFile(ref._fileHash);
+                if (file) {
+                    const auto* mat = file->FindMaterial(ref._id);
+                    if (mat) {
+                        newMaterialGuid = mat->_name.Cast<char>().AsString();
+                    }
+                }
+
+
+                if (!materialGuids[index].empty() && materialGuids[index] != newMaterialGuid) {
 
                         // Some collada files can actually have multiple instance_material elements for
                         // the same binding symbol. Let's throw an exception in this case (but only
@@ -369,7 +457,7 @@ namespace ColladaConversion
             
             auto compareSection = MakeStringSection(jointNames[c]);
             Node node = skeleton.FindBreadthFirst(
-                [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
+                [compareSection](const Node& compare) { return XlEqString(compare.GetSid().Cast<char>(), compareSection); });
 
             if (node) {
                 auto objectGuid = AsObjectGuid(node);
@@ -441,7 +529,7 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::string SkeletonBindingName(const Node& node)    
+    std::string SkeletonBindingName(const Node& node)
     {
             // Both "name" and "id" are optional. Let's prioritize "name"
             //  -- if it exists. If there is no name, we'll fall back to "id"
@@ -467,7 +555,7 @@ namespace ColladaConversion
 
     static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)
     {
-        if (skeletonReferences.IsImportant(AsObjectGuid(node))) return true;
+        if (skeletonReferences.GetBasicStructure().IsImportant(AsObjectGuid(node))) return true;
 
         auto child = node.GetFirstChild();
         while (child) {

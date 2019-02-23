@@ -65,8 +65,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class UnboundSkinController;
     class UnboundSkinControllerAndAttachedSkeleton;
     class NascentBoundSkinnedGeometry;
-    class ReferencedTexture;
-    class ReferencedMaterial;
 
         ////////////////////////////////////////////////////////
 

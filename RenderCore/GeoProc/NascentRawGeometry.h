@@ -15,44 +15,25 @@ namespace Serialization { class NascentBlockSerializer; }
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    using GeoInputAssembly = RenderCore::Assets::GeoInputAssembly;
-    using DrawCallDesc = RenderCore::Assets::DrawCallDesc;
-
-        ////////////////////////////////////////////////////////
-
     class NascentRawGeometry
     {
     public:
+        std::vector<uint8_t>		_vertices;
+        std::vector<uint8_t>		_indices;
+
+        GeoInputAssembly            _mainDrawInputAssembly;
+        Format                      _indexFormat = Format(0);
+        std::vector<DrawCallDesc>   _mainDrawCalls;
+        std::vector<uint64_t>		_matBindingSymbols;
+
+            //  Only required during processing
+        std::vector<uint32_t>		_unifiedVertexIndexToPositionIndex;
+
         void Serialize(
             Serialization::NascentBlockSerializer& outputSerializer, 
             std::vector<uint8>& largeResourcesBlock) const;
-
-        NascentRawGeometry(
-            DynamicArray<uint8>&& vb, DynamicArray<uint8>&& ib,
-            GeoInputAssembly&&              mainDrawInputAssembly,
-            Format                          indexFormat,
-            std::vector<DrawCallDesc>&&     mainDrawCalls,
-            DynamicArray<uint32>&&          unifiedVertexIndexToPositionIndex,
-            std::vector<uint64>&&           matBindingSymbols);
-        NascentRawGeometry(NascentRawGeometry&& moveFrom);
-        NascentRawGeometry& operator=(NascentRawGeometry&& moveFrom);
-        NascentRawGeometry();
-
-        DynamicArray<uint8>         _vertices;
-        DynamicArray<uint8>         _indices;
-
-        GeoInputAssembly            _mainDrawInputAssembly;
-        Format                      _indexFormat;
-        std::vector<DrawCallDesc>   _mainDrawCalls;
-        std::vector<uint64>         _matBindingSymbols;
-
-            //  Only required during processing
-        DynamicArray<uint32>        _unifiedVertexIndexToPositionIndex;
-
-        NascentRawGeometry(NascentRawGeometry&) = delete;
-        NascentRawGeometry& operator=(const NascentRawGeometry&) = delete;
-
-        friend std::ostream& StreamOperator(std::ostream&, const NascentRawGeometry&);
+		
+		friend std::ostream& StreamOperator(std::ostream&, const NascentRawGeometry&);
     };
 
 }}}

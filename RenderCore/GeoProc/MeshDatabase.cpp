@@ -141,7 +141,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     template<> Float3 GetVertex(const IVertexSourceData& sourceData, size_t index)
     {
         auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+        const auto* sourceStart = PtrAdd(sourceData.GetData().begin(), index * stride);
 
         float input[4];
         GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
@@ -151,7 +151,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     template<> Float2 GetVertex(const IVertexSourceData& sourceData, size_t index)
     {
         auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+        const auto* sourceStart = PtrAdd(sourceData.GetData().begin(), index * stride);
 
         float input[4];
         GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
@@ -161,7 +161,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     template<> Float4 GetVertex(const IVertexSourceData& sourceData, size_t index)
     {
         auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+        const auto* sourceStart = PtrAdd(sourceData.GetData().begin(), index * stride);
 
         float input[4];
         GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
@@ -171,7 +171,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     template<> float GetVertex(const IVertexSourceData& sourceData, size_t index)
     {
         auto stride = sourceData.GetStride();
-        const auto* sourceStart = PtrAdd(sourceData.GetData(), index * stride);
+        const auto* sourceStart = PtrAdd(sourceData.GetData().begin(), index * stride);
 
         float input[4];
         GetVertData(input, (const float*)sourceStart, BreakdownFormat(sourceData.GetFormat()), sourceData.GetProcessingFlags());
@@ -336,30 +336,30 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         auto stride = sourceData.GetStride();
         CopyVertexData(
             dst, dstFormat, dstStride, dstSize,
-            sourceData.GetData(), sourceData.GetFormat(), stride, sourceData.GetDataSize(),
+            sourceData.GetData().begin(), sourceData.GetFormat(), stride, sourceData.GetData().size(),
             (unsigned)_unifiedVertexCount, 
             stream.GetVertexMap(), sourceData.GetProcessingFlags());
     }
 
-    DynamicArray<uint8>  MeshDatabase::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const
+    std::vector<uint8_t>  MeshDatabase::BuildNativeVertexBuffer(const NativeVBLayout& outputLayout) const
     {
             //
             //      Write the data into the vertex buffer
             //
         auto size = outputLayout._vertexStride * _unifiedVertexCount;
-        auto finalVertexBuffer = std::make_unique<uint8[]>(size);
-        XlSetMemory(finalVertexBuffer.get(), 0, size);
+        std::vector<uint8_t> finalVertexBuffer(size);
+        XlSetMemory(finalVertexBuffer.data(), 0, size);
 
         for (unsigned elementIndex = 0; elementIndex <_streams.size(); ++elementIndex) {
             const auto& nativeElement     = outputLayout._elements[elementIndex];
             const auto& stream            = _streams[elementIndex];
             WriteStream(
-                stream, PtrAdd(finalVertexBuffer.get(), nativeElement._alignedByteOffset),
+                stream, PtrAdd(finalVertexBuffer.data(), nativeElement._alignedByteOffset),
                 nativeElement._nativeFormat, outputLayout._vertexStride,
                 size - nativeElement._alignedByteOffset);
         }
 
-        return DynamicArray<uint8>(std::move(finalVertexBuffer), size);
+        return finalVertexBuffer;
     }
 
     unsigned    MeshDatabase::AddStream(
@@ -480,7 +480,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //
 
         auto brkdn = BreakdownFormat(source.GetFormat());
-        if (!brkdn.second) return Format::Unknown;
+        if (!brkdn.second)
+            return source.GetFormat();
 
         if (source.GetFormatHint() & FormatHint::IsColor) {
             if (brkdn.second == 1)          return Format::R8_UNORM;
@@ -488,35 +489,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             else                            return Format::R8G8B8A8_UNORM;
         }
 
-        if (brkdn.first == VertexUtilComponentType::UNorm8) {
-                // consider also Metal::FindFormat
-            if (brkdn.second == 1)				return Format::R8_UNORM;
-            else if (brkdn.second == 2)			return Format::R8G8_UNORM;
-            else								return Format::R8G8B8A8_UNORM;
-		} else if (brkdn.first == VertexUtilComponentType::UNorm16) {
-			if (brkdn.second == 1)				return Format::R16_UNORM;
-			else if (brkdn.second == 2)			return Format::R16G16_UNORM;
-			else								return Format::R16G16B16A16_UNORM;
-		} else if (brkdn.first == VertexUtilComponentType::SNorm8) {
-			if (brkdn.second == 1)				return Format::R8_SNORM;
-			else if (brkdn.second == 2)			return Format::R8G8_SNORM;
-			else								return Format::R8G8B8A8_SNORM;
-		} else if (brkdn.first == VertexUtilComponentType::SNorm16) {
-			if (brkdn.second == 1)				return Format::R16_SNORM;
-			else if (brkdn.second == 2)			return Format::R16G16_SNORM;
-			else								return Format::R16G16B16A16_SNORM;
-		} else {
-            if (settings._use16BitFloats) {
-                if (brkdn.second == 1)          return Format::R16_FLOAT;
-                else if (brkdn.second == 2)     return Format::R16G16_FLOAT;
-                else                            return Format::R16G16B16A16_FLOAT;
-            } else {
-                if (brkdn.second == 1)          return Format::R32_FLOAT;
-                else if (brkdn.second == 2)     return Format::R32G32_FLOAT;
-                else if (brkdn.second == 3)     return Format::R32G32B32_FLOAT;
-                else                            return Format::R32G32B32A32_FLOAT;
-            }
+        // If we start with 32 bit floats here, we can decide to convert them to 16 bit
+        if (settings._use16BitFloats && brkdn.first == VertexUtilComponentType::Float32) {
+            if (brkdn.second == 1)          return Format::R16_FLOAT;
+            else if (brkdn.second == 2)     return Format::R16G16_FLOAT;
+            else                            return Format::R16G16B16A16_FLOAT;
         }
+
+        // If no conversion is necessary, try to retain the previous format
+        return source.GetFormat();
     }
 
     NativeVBLayout BuildDefaultLayout(MeshDatabase& mesh, const NativeVBSettings& settings)
@@ -563,8 +544,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class RawVertexSourceDataAdapter : public IVertexSourceData
     {
     public:
-        const void* GetData() const     { return AsPointer(_rawData.cbegin()); }
-        size_t GetDataSize() const      { return _rawData.size(); }
+        IteratorRange<const void*> GetData() const     { return MakeIteratorRange(_rawData); }
         size_t GetStride() const        { return _stride; } // RenderCore::Metal::BitsPerPixel(_fmt) / 8; }
         size_t GetCount() const         { return _count; } // GetDataSize() / GetStride(); }
 
@@ -637,7 +617,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         Float4 precisionMax(float(INT_MAX) * quantization[0], float(INT_MAX) * quantization[1], float(INT_MAX) * quantization[2], float(INT_MAX) * quantization[3]);
 
         for (unsigned c=0; c<sourceStream.GetCount(); ++c) {
-            const auto* sourceStart = PtrAdd(sourceStream.GetData(), c * stride);
+            const auto* sourceStart = PtrAdd(sourceStream.GetData().begin(), c * stride);
         
             float input[4];
             GetVertData(input, (const float*)sourceStart, fmtBrkdn, sourceStream.GetProcessingFlags());
@@ -708,11 +688,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				if (alreadyProcessedIdentical[ct0-c]) continue;
 
                 GetVertData(
-                    vert0, (const float*)PtrAdd(sourceStream.GetData(), ct0->second * stride), 
+                    vert0, (const float*)PtrAdd(sourceStream.GetData().begin(), ct0->second * stride), 
                     fmtBrkdn, sourceStream.GetProcessingFlags());
                 for (auto ct1=ct0+1; ct1<c2; ++ct1) {
                     GetVertData(
-                        vert1, (const float*)PtrAdd(sourceStream.GetData(), ct1->second * stride), 
+                        vert1, (const float*)PtrAdd(sourceStream.GetData().begin(), ct1->second * stride), 
                         fmtBrkdn, sourceStream.GetProcessingFlags());
 
                     auto off = Float4(vert1[0]-vert0[0], vert1[1]-vert0[1], vert1[2]-vert0[2], vert1[3]-vert0[3]);
@@ -753,7 +733,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         for (auto c=chainStart; c!=chainEnd; ++c) {
             float b[4];
             GetVertData(
-                b, (const float*)PtrAdd(sourceStream.GetData(), (*c) * stride), 
+                b, (const float*)PtrAdd(sourceStream.GetData().begin(), (*c) * stride), 
                 fmtBrkdn, sourceStream.GetProcessingFlags());
             for (unsigned q=0; q<dimof(ave); ++q)
                 ave[q] += b[q];
@@ -768,7 +748,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         for (auto c=chainStart; c!=chainEnd; ++c) {
             float b[4];
             GetVertData(
-                b, (const float*)PtrAdd(sourceStream.GetData(), (*c) * stride), 
+                b, (const float*)PtrAdd(sourceStream.GetData().begin(), (*c) * stride), 
                 fmtBrkdn, sourceStream.GetProcessingFlags());
             float dstSq = 0.f;
             for (unsigned q=0; q<dimof(ave); ++q) {
@@ -858,7 +838,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			if (chainBuffer.size() > 1) {
                 auto m = FindClosestToAverage(sourceStream, AsPointer(chainBuffer.cbegin()), AsPointer(chainBuffer.cend()));
 
-                const auto* sourceVertex = PtrAdd(sourceStream.GetData(), m * sourceStream.GetStride());
+                const auto* sourceVertex = PtrAdd(sourceStream.GetData().begin(), m * sourceStream.GetStride());
                 finalVB.insert(finalVB.end(), (const uint8*)sourceVertex, (const uint8*)PtrAdd(sourceVertex, vertexSize));
 
                     // the new median vertex will replace the first vertex in the chain
@@ -868,7 +848,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             } else {
                     // This vertex is not part of a chain.
                     // Just append to the finalVB
-                const auto* sourceVertex = PtrAdd(sourceStream.GetData(), c * sourceStream.GetStride());
+                const auto* sourceVertex = PtrAdd(sourceStream.GetData().begin(), c * sourceStream.GetStride());
                 finalVB.insert(finalVB.end(), (const uint8*)sourceVertex, (const uint8*)PtrAdd(sourceVertex, vertexSize));
                 oldOrderingToNewOrdering[c] = (unsigned)finalVBCount;
                 ++finalVBCount;
@@ -987,6 +967,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 ////////        ////////
         }
         return outputIterator/3;
+    }
+
+    IteratorRange<VertexElementIterator> MakeVertexIteratorRange(const IVertexSourceData& srcData)
+    {
+        return RenderCore::MakeVertexIteratorRangeConst(
+            srcData.GetData(), srcData.GetStride(), srcData.GetFormat());
     }
 
 }}}

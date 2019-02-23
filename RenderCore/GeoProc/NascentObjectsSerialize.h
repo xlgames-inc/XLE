@@ -17,17 +17,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	class NascentAnimationSet;
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(
-		const char name[], 
-		NascentGeometryObjects& geoObjects, 
-		NascentModelCommandStream& cmdStream, 
-		NascentSkeleton& skeleton);
+		const std::string& name,
+		const NascentGeometryObjects& geoObjects, 
+		const NascentModelCommandStream& cmdStream, 
+		const NascentSkeleton& skeleton);
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
-		const char name[], 
+		const std::string& name,
 		const NascentSkeleton& skeleton);
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
-		const char name[],
+		const std::string& name,
 		const NascentAnimationSet& animationSet,
 		IteratorRange<const RawAnimationCurve*> curves);
 }}}

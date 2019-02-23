@@ -14,55 +14,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    NascentRawGeometry::NascentRawGeometry(
-        DynamicArray<uint8>&&       vb,
-        DynamicArray<uint8>&&       ib,
-        GeoInputAssembly&&          mainDrawInputAssembly,
-        Format                      indexFormat,
-        std::vector<DrawCallDesc>&& mainDrawCalls,
-        DynamicArray<uint32>&&      unifiedVertexIndexToPositionIndex,
-        std::vector<uint64>&&       matBindingSymbols)
-    :       _vertices(std::forward<DynamicArray<uint8>>(vb))
-    ,       _indices(std::forward<DynamicArray<uint8>>(ib))
-    ,       _mainDrawCalls(std::forward<std::vector<DrawCallDesc>>(mainDrawCalls))
-    ,       _mainDrawInputAssembly(std::forward<GeoInputAssembly>(mainDrawInputAssembly))
-    ,       _indexFormat(indexFormat)
-    ,       _unifiedVertexIndexToPositionIndex(std::forward<DynamicArray<uint32>>(unifiedVertexIndexToPositionIndex))
-    ,       _matBindingSymbols(std::forward<std::vector<uint64>>(matBindingSymbols))
-    {
-    }
-
-    NascentRawGeometry::NascentRawGeometry(NascentRawGeometry&& moveFrom)
-    :       _vertices(std::move(moveFrom._vertices))
-    ,       _indices(std::move(moveFrom._indices))
-    ,       _mainDrawInputAssembly(std::move(moveFrom._mainDrawInputAssembly))
-    ,       _indexFormat(moveFrom._indexFormat)
-    ,       _mainDrawCalls(std::move(moveFrom._mainDrawCalls))
-    ,       _unifiedVertexIndexToPositionIndex(std::move(moveFrom._unifiedVertexIndexToPositionIndex))
-    ,       _matBindingSymbols(std::move(moveFrom._matBindingSymbols))
-    {
-    }
-
-    NascentRawGeometry& NascentRawGeometry::operator=(NascentRawGeometry&& moveFrom)
-    {
-        _vertices = std::move(moveFrom._vertices);
-        _indices = std::move(moveFrom._indices);
-        _mainDrawInputAssembly = std::move(moveFrom._mainDrawInputAssembly);
-        _indexFormat = moveFrom._indexFormat;
-        _mainDrawCalls = std::move(moveFrom._mainDrawCalls);
-        _unifiedVertexIndexToPositionIndex = std::move(moveFrom._unifiedVertexIndexToPositionIndex);
-        _matBindingSymbols = std::move(moveFrom._matBindingSymbols);
-        return *this;
-    }
-
-    NascentRawGeometry::NascentRawGeometry()
-    : _vertices(nullptr, 0)
-    , _indices(nullptr, 0)
-    , _unifiedVertexIndexToPositionIndex(nullptr, 0)
-    {
-        _indexFormat = Format(0);
-    }
-
     void NascentRawGeometry::Serialize(
         Serialization::NascentBlockSerializer& outputSerializer, 
         std::vector<uint8>& largeResourcesBlock) const

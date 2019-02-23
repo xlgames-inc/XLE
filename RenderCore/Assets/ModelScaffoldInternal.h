@@ -12,6 +12,7 @@
 #include "../../Assets/BlockSerializer.h"
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/StringUtils.h"
 #include "../../Core/Types.h"
 
 namespace RenderCore { class MiniInputElementDesc; }
@@ -95,6 +96,7 @@ namespace RenderCore { namespace Assets
         unsigned        _alignedByteOffset;
 
         VertexElement();
+		VertexElement(const char name[], unsigned semanticIndex, Format nativeFormat, unsigned offset);
         VertexElement(const VertexElement&) never_throws;
         VertexElement& operator=(const VertexElement&) never_throws;
     };
@@ -183,6 +185,15 @@ namespace RenderCore { namespace Assets
 	{
 		_nativeFormat = Format(0); _alignedByteOffset = 0; _semanticIndex = 0;
 		XlZeroMemory(_semanticName);
+	}
+
+	inline VertexElement::VertexElement(const char name[], unsigned semanticIndex, Format nativeFormat, unsigned offset)
+	{
+		XlZeroMemory(_semanticName);
+		XlCopyString(_semanticName, name);
+		_semanticIndex = semanticIndex;
+		_nativeFormat = nativeFormat;
+		_alignedByteOffset = offset;
 	}
 
 	inline VertexElement::VertexElement(const VertexElement& ele) never_throws

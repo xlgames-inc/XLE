@@ -74,6 +74,7 @@ namespace RenderCore { namespace Assets
             assert(transInputIndex < inputInterface._parameterCount);
             const SkeletonMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
+			assert(p._type != AnimSamplerType::Quaternion);	// a driver can have a quaternion sampler type, but not a parameter
 
             if (driver._samplerType == AnimSamplerType::Float4x4) {
                 if (driver._curveId < curvesCount) {
@@ -138,6 +139,7 @@ namespace RenderCore { namespace Assets
             assert(transInputIndex < inputInterface._parameterCount);
             const SkeletonMachine::InputInterface::Parameter& p 
                 = inputInterface._parameters[transInputIndex];
+			assert(p._type != AnimSamplerType::Quaternion);	// a driver can have a quaternion sampler type, but not a parameter
 
             const void* data    = PtrAdd(_constantData, driver._dataOffset);
             if (driver._samplerType == AnimSamplerType::Float4x4) {

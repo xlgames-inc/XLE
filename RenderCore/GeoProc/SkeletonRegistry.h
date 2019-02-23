@@ -33,9 +33,20 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 			std::string RegisterBindingName(NascentObjectGuid id, const std::string& defaultBindingName);
 			std::string GetBindingName(NascentObjectGuid id);
+
+			bool IsImportant(NascentObjectGuid id) const
+			{
+				auto i = std::find_if(
+					_importantNodes.begin(), _importantNodes.end(),
+					[id](const ImportantNode& node) {
+						return node._id == id;
+					});
+				return i != _importantNodes.end();
+			}
 		};
 
 		Skeleton& GetBasicStructure() { return _basicStructure; }
+		const Skeleton& GetBasicStructure() const { return _basicStructure; }
 		Skeleton& GetSkinningSkeleton(NascentObjectGuid skeletonRoot);
 
 		IteratorRange<const std::pair<NascentObjectGuid, Skeleton>*> GetSkinningSkeletons() const { return MakeIteratorRange(_skinningSkeletons); }

@@ -441,7 +441,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		NascentSkeleton& skeleton,
 		const SkeletonRegistry& registry)
 	{
-		for (const auto& nodeDesc:registry.GetImportantNodes()) {
+		for (const auto& nodeDesc:registry.GetBasicStructure()._importantNodes) {
 			uint32 outputMarker = 0u;
 			auto success = skeleton.GetInterface().TryRegisterJointName(
 				outputMarker, MakeStringSection(nodeDesc._bindingName));
@@ -454,7 +454,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		NascentModelCommandStream& stream,
 		const SkeletonRegistry& registry)
 	{
-		for (const auto& nodeDesc:registry.GetImportantNodes())
+		for (const auto& nodeDesc:registry.GetBasicStructure()._importantNodes)
 			stream.RegisterInputInterfaceMarker(nodeDesc._bindingName);
 	}
 }}}

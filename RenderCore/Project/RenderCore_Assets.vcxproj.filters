@@ -81,6 +81,9 @@
     <ClCompile Include="..\Assets\SkinDeformer.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentModel.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -108,9 +111,6 @@
       <Filter>Assets\Model</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentGeometryObjects.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeoProc\NascentMaterial.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h">
@@ -160,6 +160,9 @@
     </ClInclude>
     <ClInclude Include="..\Assets\SkinDeformer.h">
       <Filter>Assets\Anim</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentModel.h">
+      <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>
 </Project>

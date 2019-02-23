@@ -465,7 +465,7 @@ namespace ColladaConversion
             result._curves.emplace_back(UnboundAnimation::Curve(
                 i->first, std::move(curve), samplerType, 0));
             
-            nodeRefs.MarkParameterAnimated(i->first);
+            // nodeRefs.MarkParameterAnimated(i->first);
 
             i = i2;
         }

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "Scaffold.h"
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../RenderCore/GeoProc/NascentObjectGuid.h"
 #include "../Utility/StringUtils.h"
@@ -31,6 +32,8 @@ namespace ColladaConversion
         StringSection<utf8> rootNode,
         SkeletonRegistry& skeletonReferences,
         bool fullSkeleton);
+
+	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node);
 
 	struct InstantiatedGeo
 	{
@@ -77,4 +80,11 @@ namespace ColladaConversion
     private:
         void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);
     };
+
+	auto BuildMaterialTableStrings(
+        IteratorRange<const InstanceGeometry::MaterialBinding*> bindings, 
+        const std::vector<uint64_t>& rawGeoBindingSymbols,
+        const URIResolveContext& resolveContext) -> std::vector<std::string>;
+
+	std::string SkeletonBindingName(const Node& node);
 }

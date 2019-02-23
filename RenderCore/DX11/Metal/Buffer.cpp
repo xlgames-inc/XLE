@@ -74,6 +74,7 @@ namespace RenderCore { namespace Metal_DX11
 
 	static ResourceDesc BuildDesc(BindFlag::BitField bindingFlags, size_t byteCount, bool immutable=true)
     {
+		assert(byteCount!=0);
         return CreateDesc(
             bindingFlags,
             immutable ? 0 : CPUAccess::WriteDynamic,
@@ -84,6 +85,7 @@ namespace RenderCore { namespace Metal_DX11
 
     Buffer MakeVertexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
     {
+		assert(!data.empty());
         return Buffer(
             factory,
             BuildDesc(BindFlag::VertexBuffer, data.size(), true),
@@ -92,6 +94,7 @@ namespace RenderCore { namespace Metal_DX11
     
     Buffer MakeIndexBuffer(ObjectFactory& factory, IteratorRange<const void*> data)
     {
+		assert(!data.empty());
         return Buffer(
             factory,
             BuildDesc(BindFlag::IndexBuffer, data.size(), true),
@@ -100,6 +103,7 @@ namespace RenderCore { namespace Metal_DX11
 
     Buffer MakeConstantBuffer(ObjectFactory& factory, IteratorRange<const void*> data, bool immutable)
     {
+		assert(!data.empty());
         return Buffer(
             factory,
             BuildDesc(BindFlag::ConstantBuffer, data.size(), immutable),
@@ -108,6 +112,7 @@ namespace RenderCore { namespace Metal_DX11
 
 	Buffer MakeConstantBuffer(ObjectFactory& factory, size_t size)
 	{
+		assert(size!=0);
 		return Buffer(
             factory,
             BuildDesc(BindFlag::ConstantBuffer, size, false));

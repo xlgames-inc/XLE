@@ -37,13 +37,10 @@ namespace ColladaConversion
 
     const NativeVBSettings NativeSettings = { true };       // use 16 bit floats
 
-    ::Assets::Blob GetParseDataSource();
-
     class VertexSourceData : public IVertexSourceData
     {
     public:
-        const void* GetData() const;
-        size_t GetDataSize() const;
+        IteratorRange<const void*> GetData() const;
         Format GetFormat() const { return _dataFormat; }
         size_t GetStride() const { return _stride; }
         size_t GetCount() const { return _count; }
@@ -64,16 +61,12 @@ namespace ColladaConversion
         ::Assets::Blob _rawData;
     };
 
-    const void* VertexSourceData::GetData() const
+    IteratorRange<const void*> VertexSourceData::GetData() const
     {
-        return PtrAdd(AsPointer(_rawData->cbegin()), _offset);
+		return MakeIteratorRange(
+			PtrAdd(AsPointer(_rawData->cbegin()), _offset),
+			AsPointer(_rawData->cend()));
     }
-
-    size_t VertexSourceData::GetDataSize() const
-    {
-        return _rawData->size();
-    }
-
 
     VertexSourceData::VertexSourceData(const DataFlow::Source& source, ProcessingFlags::BitField processingFlags)
         : _processingFlags(processingFlags)
@@ -146,13 +139,17 @@ namespace ColladaConversion
         const auto npos = std::basic_string<utf8>::npos;
         if (semantic.find(u("TEXCOORD")) != npos || semantic.find(u("texcoord")) != npos) {
             return ProcessingFlags::TexCoordFlip;
-        } else if (semantic.find(u("TEXTANGENT")) != npos || semantic.find(u("textangent")) != npos) {
-            return ProcessingFlags::Renormalize;
-        } else if (semantic.find(u("TEXBITANGENT")) != npos || semantic.find(u("texbitangent")) != npos) {
-            return ProcessingFlags::Renormalize;
-        } /*else if (semantic.find(u("NORMAL")) != npos || semantic.find(u("normal")) != npos) {
-            return ProcessingFlags::Renormalize;
-        }*/
+        } 
+		const bool renormalize = false;
+		if (renormalize) {
+			if (semantic.find(u("TEXTANGENT")) != npos || semantic.find(u("textangent")) != npos) {
+				return ProcessingFlags::Renormalize;
+			} else if (semantic.find(u("TEXBITANGENT")) != npos || semantic.find(u("texbitangent")) != npos) {
+				return ProcessingFlags::Renormalize;
+			} else if (semantic.find(u("NORMAL")) != npos || semantic.find(u("normal")) != npos) {
+				return ProcessingFlags::Renormalize;
+			}
+		}
         return 0;
     }
     
@@ -331,26 +328,8 @@ namespace ColladaConversion
     {
     public:
         std::vector<unsigned>   _indexBuffer;
-        Topology				_topology;
-        uint64                  _materialBinding;
-
-        WorkingDrawOperation() : _topology((Topology)0), _materialBinding(0) {}
-        WorkingDrawOperation(WorkingDrawOperation&& moveFrom) never_throws
-        : _indexBuffer(std::move(moveFrom._indexBuffer))
-        , _topology(moveFrom._topology)
-        , _materialBinding(moveFrom._materialBinding)
-        {}
-
-        WorkingDrawOperation& operator=(WorkingDrawOperation&& moveFrom) never_throws
-        {
-            _indexBuffer = std::move(moveFrom._indexBuffer);
-            _topology = moveFrom._topology;
-            _materialBinding = moveFrom._materialBinding;
-            return *this;
-        }
-
-        WorkingDrawOperation(const WorkingDrawOperation&) = delete;
-        WorkingDrawOperation& operator=(const WorkingDrawOperation&) = delete;
+        Topology				_topology = (Topology)0;
+        Section					_materialBinding;
     };
 
     class WorkingPrimitive
@@ -398,7 +377,7 @@ namespace ColladaConversion
 
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
-        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._materialBinding = geoPrim.GetMaterialBinding();
         drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
@@ -470,7 +449,7 @@ namespace ColladaConversion
 
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
-        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._materialBinding = geoPrim.GetMaterialBinding();
         drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
@@ -539,61 +518,17 @@ namespace ColladaConversion
 
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
-        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._materialBinding = geoPrim.GetMaterialBinding();
         drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
 
-    NascentRawGeometry Convert(
+    static std::shared_ptr<MeshDatabase> BuildMeshDatabase(
+		std::vector<WorkingDrawOperation>& drawOperations,
         const MeshGeometry& mesh, 
-        const Float4x4& mergedTransform,
         const URIResolveContext& pubEles, 
         const ImportConfiguration& cfg)
     {
-            // some exports can have empty meshes -- ideally, we just want to ignore them
-        if (!mesh.GetPrimitivesCount()) {
-            Log(Warning) << "Geometry object with no primitives: " << mesh.GetName() << std::endl;
-            return NascentRawGeometry();
-        }
-
-            //
-            //      In Collada format, we have a separate index buffer per input
-            //      attribute. 
-            //
-            //      This actually looks like it works very well; some attributes 
-            //      have much higher sharing than others.
-            //
-            //      But for modern graphics hardware, we can only support a single
-            //      index buffer (and each vertex is a fixed combination of all
-            //      attributes). So during conversion we will switch to the GPU friendly
-            //      format (let's call this the "unified" vertex format).
-            //
-            //      We also need to convert from various input primitives to primitives
-            //      we can work with. 
-            //
-            //      Input primitives:
-            //          lines           -> line list
-            //          linestrips      -> line strip
-            //          polygons        -> triangle list
-            //          polylist        -> triangle list
-            //          triangles       -> triangle list
-            //          trifans         -> triangle fan (with terminator indices)
-            //          tristrips       -> triangle strip (with terminator indices)
-            //
-            //      Note that we should do some geometry optimisation after conversion
-            //      (because the raw output from our tools may not be optimal)
-            //
-            //      This entire mesh should collapse to a single vertex buffer and index
-            //      buffer. In some cases there may be an advantage to using multiple
-            //      vertex buffers (for example, if some primitives use fewer vertex 
-            //      attributes than others). Let's just ignore this for the moment.
-            //
-            //      Sometimes this geometry will use multiple different materials.
-            //      Even when this happens, we'll keep using the same VB/IB. We'll
-            //      just use separate draw commands for each material.
-            //  
-
-        std::vector<WorkingDrawOperation>  drawOperations;
         ComposingVertex composingVertex;
         composingVertex._cfg = &cfg;
 
@@ -691,7 +626,7 @@ namespace ColladaConversion
 
         if (!atLeastOneInput) {
             Log(Warning) << "Geometry object with no valid vertex inputs: " << mesh.GetName() << std::endl;
-            return NascentRawGeometry();
+            return nullptr;
         }
 
         composingVertex.FixBadSemanticIndicies();
@@ -724,7 +659,7 @@ namespace ColladaConversion
 
             // if we didn't end up with any valid draw calls, we need to return a blank object
         if (drawOperations.empty()) {
-            return NascentRawGeometry();
+            return nullptr;
         }
 
             //
@@ -742,6 +677,64 @@ namespace ColladaConversion
 
         auto database = BuildMeshDatabaseAdapter(composingVertex, composingUnified);
 
+		return database;
+	}
+
+	NascentRawGeometry Convert(
+        const MeshGeometry& mesh, 
+        const Float4x4& mergedTransform,
+        const URIResolveContext& pubEles, 
+        const ImportConfiguration& cfg)
+	{
+		            // some exports can have empty meshes -- ideally, we just want to ignore them
+        if (!mesh.GetPrimitivesCount()) {
+            Log(Warning) << "Geometry object with no primitives: " << mesh.GetName() << std::endl;
+            return NascentRawGeometry();
+        }
+
+            //
+            //      In Collada format, we have a separate index buffer per input
+            //      attribute. 
+            //
+            //      This actually looks like it works very well; some attributes 
+            //      have much higher sharing than others.
+            //
+            //      But for modern graphics hardware, we can only support a single
+            //      index buffer (and each vertex is a fixed combination of all
+            //      attributes). So during conversion we will switch to the GPU friendly
+            //      format (let's call this the "unified" vertex format).
+            //
+            //      We also need to convert from various input primitives to primitives
+            //      we can work with. 
+            //
+            //      Input primitives:
+            //          lines           -> line list
+            //          linestrips      -> line strip
+            //          polygons        -> triangle list
+            //          polylist        -> triangle list
+            //          triangles       -> triangle list
+            //          trifans         -> triangle fan (with terminator indices)
+            //          tristrips       -> triangle strip (with terminator indices)
+            //
+            //      Note that we should do some geometry optimisation after conversion
+            //      (because the raw output from our tools may not be optimal)
+            //
+            //      This entire mesh should collapse to a single vertex buffer and index
+            //      buffer. In some cases there may be an advantage to using multiple
+            //      vertex buffers (for example, if some primitives use fewer vertex 
+            //      attributes than others). Let's just ignore this for the moment.
+            //
+            //      Sometimes this geometry will use multiple different materials.
+            //      Even when this happens, we'll keep using the same VB/IB. We'll
+            //      just use separate draw commands for each material.
+            //  
+
+		std::vector<WorkingDrawOperation>  drawOperations;
+		auto database = BuildMeshDatabase(drawOperations, mesh, pubEles, cfg);
+		if (!database)
+			return {};
+
+
             //
             //      Write data into the index buffer. Note we can select 16 bit or 32 bit index buffer
             //      here. Most of the time 16 bit should be enough (but sometimes we need 32 bits)
@@ -752,20 +745,21 @@ namespace ColladaConversion
             //      The end result is 1 vertex buffer and 1 index buffer.
             //
 
-        std::vector<DrawCallDesc> finalDrawOperations;
+        std::vector<RenderCore::Assets::DrawCallDesc> finalDrawOperations;
         finalDrawOperations.reserve(drawOperations.size());
 
         std::set<uint64> matBindingSymbols;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i)
-            matBindingSymbols.insert(i->_materialBinding);
+            matBindingSymbols.insert(Hash64(i->_materialBinding.begin(), i->_materialBinding.end()));
 
         size_t finalIndexCount = 0;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
             assert(i->_topology == Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
+			auto matBinding = Hash64(i->_materialBinding.begin(), i->_materialBinding.end());
             finalDrawOperations.push_back(
-                DrawCallDesc{
+                RenderCore::Assets::DrawCallDesc{
                     (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 
-                    (unsigned)std::distance(matBindingSymbols.begin(), matBindingSymbols.find(i->_materialBinding)),
+                    (unsigned)std::distance(matBindingSymbols.begin(), matBindingSymbols.find(matBinding)),
 					i->_topology});
             finalIndexCount += i->_indexBuffer.size();
         }
@@ -850,15 +844,93 @@ namespace ColladaConversion
             //      Create the final RawGeometry object with all this stuff
             //
 
-        return NascentRawGeometry(
+        /*return NascentRawGeometry(
             std::move(nativeVB), 
             DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
             RenderCore::Assets::CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
             indexFormat,
             std::move(finalDrawOperations),
             DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->GetUnifiedVertexCount()),
-            std::vector<uint64>(matBindingSymbols.cbegin(), matBindingSymbols.cend()));
+            std::vector<uint64>(matBindingSymbols.cbegin(), matBindingSymbols.cend()));*/
+		assert(0);
+		return NascentRawGeometry{};
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ConvertedMeshGeometry Convert2(const MeshGeometry& mesh, const URIResolveContext& pubEles, const ImportConfiguration& cfg)
+	{
+		if (!mesh.GetPrimitivesCount()) {
+            Log(Warning) << "Geometry object with no primitives: " << mesh.GetName() << std::endl;
+			return {};
+        }
+
+		std::vector<WorkingDrawOperation> drawOperations;
+		auto database = BuildMeshDatabase(drawOperations, mesh, pubEles, cfg);
+		if (!database)
+			return {};
+
+		std::vector<RenderCore::Assets::GeoProc::NascentModel::DrawCallDesc> finalDrawOperations;
+		std::vector<uint64_t> materialBindingSymbols;
+        finalDrawOperations.reserve(drawOperations.size());
+		materialBindingSymbols.reserve(drawOperations.size());
+
+        size_t finalIndexCount = 0;
+        for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
+            assert(i->_topology == Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
+            finalDrawOperations.push_back({(unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), i->_topology});
+			materialBindingSymbols.push_back(Hash64(i->_materialBinding.begin(), i->_materialBinding.end()));
+            finalIndexCount += i->_indexBuffer.size();
+        }
+
+            //  \todo -- sort by material id?
+
+        Format indexFormat;
+        std::vector<uint8_t> finalIndexBuffer;
+                
+        if (finalIndexCount < 0xffff) {
+
+            size_t accumulatingIndexCount = 0;
+            indexFormat = Format::R16_UINT;
+            finalIndexBuffer.resize(finalIndexCount*sizeof(uint16_t));
+            for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
+                size_t count = i->_indexBuffer.size();
+                std::copy(
+                    i->_indexBuffer.begin(), i->_indexBuffer.end(),
+                    &((uint16*)finalIndexBuffer.data())[accumulatingIndexCount]);
+                accumulatingIndexCount += count;
+            }
+            assert(accumulatingIndexCount==finalIndexCount);
+
+        } else {
+
+            size_t accumulatingIndexCount = 0;
+            indexFormat = Format::R32_UINT;
+            finalIndexBuffer.resize(finalIndexCount*sizeof(uint32_t));
+            for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
+                size_t count = i->_indexBuffer.size();
+                std::copy(
+                    i->_indexBuffer.begin(), i->_indexBuffer.end(),
+                    &((uint32*)finalIndexBuffer.data())[accumulatingIndexCount]);
+                accumulatingIndexCount += count;
+            }
+            assert(accumulatingIndexCount==finalIndexCount);
+
+        }
+
+		auto vertexMapping = database->BuildUnifiedVertexIndexToPositionIndex();
+
+		return ConvertedMeshGeometry{
+			NascentModel::GeometryBlock {
+				database,
+				std::move(finalDrawOperations),
+				std::vector<unsigned>{vertexMapping.get(), &vertexMapping[database->GetUnifiedVertexCount()]},
+				std::move(finalIndexBuffer),
+				indexFormat
+			},
+			materialBindingSymbols
+		};
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -914,26 +986,26 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::vector<std::basic_string<utf8>> GetJointNames(
+    std::vector<std::string> GetJointNames(
         const SkinController& controller,
         const URIResolveContext& resolveContext)
     {
-        std::vector<std::basic_string<utf8>> result;
+        std::vector<std::string> result;
 
             // we're expecting an input called "JOINT" that contains the names of joints
             // These names should match the "sid" of nodes within the hierachy of nodes
             // beneath our "skeleton"
         auto jointInput = controller.GetJointInputs().FindInputBySemantic(u("JOINT"));
-        if (!jointInput) return std::vector<std::basic_string<utf8>>();
+		if (!jointInput) return {};
 
         auto* jointSource = FindElement(
             GuidReference(jointInput->_source), resolveContext, 
             &IDocScopeIdResolver::FindSource);
-        if (!jointSource) return std::vector<std::basic_string<utf8>>();
+		if (!jointSource) return {};
 
         if (    jointSource->GetType() != DataFlow::ArrayType::Name
             &&  jointSource->GetType() != DataFlow::ArrayType::SidRef)
-            return std::vector<std::basic_string<utf8>>();
+			return {};
 
         auto count = jointSource->GetCount();
         auto arrayData = jointSource->GetArrayData();
@@ -952,7 +1024,7 @@ namespace ColladaConversion
             auto* elementStart = i;
             while (i < arrayData._end && !IsWhitespace(*i)) ++i;
 
-            result.push_back(std::basic_string<utf8>(elementStart, i));
+            result.push_back(std::string((const char*)elementStart, (const char*)i));
             if (i == arrayData._end || elementIndex == count) break;
         }
 

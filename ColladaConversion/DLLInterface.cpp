@@ -12,13 +12,16 @@
 #include "SCommandStream.h"
 #include "SAnimation.h"
 #include "SCommandStream.h"
+#include "SRawGeometry.h"
 
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../RenderCore/GeoProc/NascentRawGeometry.h"
 #include "../RenderCore/GeoProc/NascentAnimController.h"
 #include "../RenderCore/GeoProc/NascentGeometryObjects.h"
 #include "../RenderCore/GeoProc/NascentObjectsSerialize.h"
+#include "../RenderCore/GeoProc/NascentModel.h"
 #include "../RenderCore/GeoProc/SkeletonRegistry.h"
+#include "../RenderCore/GeoProc/MeshDatabase.h"
 
 #include "../RenderCore/Assets/ModelImmutableData.h"      // just for RenderCore::Assets::SkeletonBinding
 #include "../RenderCore/Assets/AssetUtils.h"
@@ -40,6 +43,10 @@
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
 #include <memory>
+#include <map>
+#include <set>
+
+#pragma warning(disable:4505) // unreferenced local function has been removed
 
 namespace ColladaConversion
 {
@@ -166,7 +173,7 @@ namespace ColladaConversion
 				auto bindingHash = outputMatricesBindingValues[c];
 				NascentObjectGuid attachmentPoint;
 				bool foundAttachmentPoint = false;
-				for (auto&i:skeleReg.GetImportantNodes())
+				for (auto&i:skeleReg.GetBasicStructure()._importantNodes)
 					if (Hash64(i._bindingName) == bindingHash) {
 						foundAttachmentPoint = true;
 						attachmentPoint = i._id;
@@ -213,6 +220,86 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class ModelTransMachineOptimizer : public RenderCore::Assets::ITransformationMachineOptimizer
+    {
+    public:
+        bool CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const;
+        void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform);
+		IteratorRange<const Float4x4*> GetMergedOutputMatrices() const { return MakeIteratorRange(_mergedTransforms); }
+
+        // Float4x4 GetMergedOutputMatrix(const std::string& attachmentPoint) const;
+
+        ModelTransMachineOptimizer(
+			const NascentModel& model,
+			const std::vector<std::string>& bindingNameInterface);
+        ModelTransMachineOptimizer();
+        ~ModelTransMachineOptimizer();
+    protected:
+        std::vector<bool>			_canMergeIntoTransform;
+        std::vector<Float4x4>		_mergedTransforms;
+		std::vector<std::string>	_bindingNameInterface;
+    };
+
+    bool ModelTransMachineOptimizer::CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const
+    {
+        if (outputMatrixIndex < unsigned(_canMergeIntoTransform.size()))
+            return _canMergeIntoTransform[outputMatrixIndex];
+        return false;
+    }
+
+    void ModelTransMachineOptimizer::MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform)
+    {
+        assert(CanMergeIntoOutputMatrix(outputMatrixIndex));
+        _mergedTransforms[outputMatrixIndex] = Combine(
+            _mergedTransforms[outputMatrixIndex], transform);
+    }
+
+    /*Float4x4 ModelTransMachineOptimizer::GetMergedOutputMatrix(const std::string& attachmentPoint) const
+    {
+		auto i = std::find(_bindingNameInterface.begin(), _bindingNameInterface.end(), attachmentPoint);
+		if (i != _bindingNameInterface.end() && std::distance(_bindingNameInterface.begin(), i) < _mergedTransforms.size())
+            return _mergedTransforms[std::distance(_bindingNameInterface.begin(), i)];
+        return Identity<Float4x4>();
+    }*/
+
+    ModelTransMachineOptimizer::ModelTransMachineOptimizer(
+		const NascentModel& model,
+		const std::vector<std::string>& bindingNameInterface)
+	: _bindingNameInterface(bindingNameInterface)
+    {
+		auto outputMatrixCount = bindingNameInterface.size();
+        _canMergeIntoTransform.resize(outputMatrixCount, false);
+        _mergedTransforms.resize(outputMatrixCount, Identity<Float4x4>());
+
+        for (unsigned c=0; c<outputMatrixCount; ++c) {
+
+			bool skinAttached = false;
+			bool doublyAttachedObject = false;
+			bool atLeastOneAttached = false;
+			for (const auto&cmd:model.GetCommands())
+				if (cmd.second._localToModel == bindingNameInterface[c]) {
+					atLeastOneAttached = true;
+
+					// if we've got a skin controller attached, we can't do any merging
+					skinAttached |= cmd.second._skinControllerBlock != NascentObjectGuid{};
+
+					// find all of the meshes attached, and check if any are attached in
+					// multiple places
+					for (const auto&cmd2:model.GetCommands())
+						doublyAttachedObject |= cmd2.second._geometryBlock == cmd.second._geometryBlock && cmd2.second._localToModel != cmd.second._localToModel;
+				}
+
+            _canMergeIntoTransform[c] = atLeastOneAttached && !skinAttached && !doublyAttachedObject;
+        }
+    }
+
+    ModelTransMachineOptimizer::ModelTransMachineOptimizer() {}
+
+    ModelTransMachineOptimizer::~ModelTransMachineOptimizer()
+    {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
     class PreparedSkinFile
     {
     public:
@@ -220,11 +307,235 @@ namespace ColladaConversion
         NascentGeometryObjects _geoObjects;
         NascentSkeleton _skeleton;
 
+		std::vector<::Assets::ICompileOperation::OperationResult> _serializedResult;
+
         PreparedSkinFile(const ColladaCompileOp&, const VisualScene&, StringSection<utf8>);
     };
 
+	static NascentObjectGuid ConvertGeometryBlock(
+		NascentModel& model,
+		std::map<NascentObjectGuid, std::vector<uint64_t>>& geoBlockMatBindings,
+		Section reference,
+		const ::ColladaConversion::URIResolveContext& resolveContext,
+		const ImportConfiguration& cfg)
+	{
+		GuidReference refGuid(reference);
+
+		auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
+		if (!scaffoldGeo) {
+				// look for a skin controller instead... We will use the geometry object that is referenced
+				// by the controller
+			auto* scaffoldController = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindSkinController);
+			refGuid = GuidReference{scaffoldController->GetBaseMesh()};
+			scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
+		}
+
+		if (!scaffoldGeo)
+			Throw(::Exceptions::BasicLabel("Could not found geometry object to instantiate (%s)",
+				reference.AsString().c_str()));
+
+		NascentObjectGuid geoId(refGuid._id, refGuid._fileHash);
+		auto* existingGeometry = model.FindGeometryBlock(geoId);
+		if (!existingGeometry) {
+			auto convertedMesh = Convert2(*scaffoldGeo, resolveContext, cfg);
+			if (convertedMesh._geoBlock._drawCalls.empty()) {
+                    
+					// everything else should be empty as well...
+				assert(!convertedMesh._geoBlock._mesh || convertedMesh._geoBlock._mesh->GetUnifiedVertexCount() == 0);
+				assert(convertedMesh._geoBlock._indices.empty());
+				assert(convertedMesh._geoBlock._meshVertexIndexToSrcIndex.empty());
+                
+				Throw(::Exceptions::BasicLabel(
+					"Geometry object is empty (%s)", reference.AsString().c_str()));
+			}
+
+			model.Add(geoId, scaffoldGeo->GetName().Cast<char>().AsString(), std::move(convertedMesh._geoBlock));
+			geoBlockMatBindings.insert(std::make_pair(geoId, std::move(convertedMesh._matBindingSymbols)));
+		}
+
+		return geoId;
+	}
+
+	static void ConvertCommand(
+		NascentModel& model,
+		std::map<NascentObjectGuid, std::vector<uint64_t>>& geoBlockMatBindings,
+		const Node& attachedNode,
+		NascentObjectGuid geoId, NascentObjectGuid controllerId,
+		const std::string& localToModelBinding,
+		IteratorRange<const InstanceGeometry::MaterialBinding*> materialBindings,
+		const ::ColladaConversion::URIResolveContext& resolveContext)
+	{
+		auto mati = geoBlockMatBindings.find(geoId);
+		assert(mati != geoBlockMatBindings.end());
+
+		auto materials = BuildMaterialTableStrings(
+			materialBindings,
+			mati->second, resolveContext);
+
+		model.Add(
+			attachedNode.GetId().GetHash(),
+			attachedNode.GetName().Cast<char>().AsString(),
+			NascentModel::Command {
+				geoId, {},
+				localToModelBinding,
+				materials, 
+				0
+			});
+	}
+
     PreparedSkinFile::PreparedSkinFile(const ColladaCompileOp& input, const VisualScene& scene, StringSection<utf8> rootNode)
     {
+		SkeletonRegistry jointRefs;
+		ReferencedGeometries refGeos;
+        bool gatherSuccess = refGeos.Gather(scene.GetRootNode(), rootNode, jointRefs);
+		(void)gatherSuccess;
+
+		NascentModel model;
+
+		std::map<NascentObjectGuid, std::vector<uint64_t>> geoBlockMatBindings;
+
+		for (auto c:refGeos._meshes) {
+            TRY {
+				const auto& instGeo = scene.GetInstanceGeometry(c._objectIndex);
+				auto geoId = ConvertGeometryBlock(
+					model, geoBlockMatBindings,
+					instGeo._reference,
+					input._resolveContext, input._cfg);
+
+				auto localToModelBinding = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
+				ConvertCommand(
+					model, geoBlockMatBindings,
+					scene.GetInstanceGeometry_Attach(c._objectIndex),
+					geoId, {},
+					localToModelBinding, MakeIteratorRange(instGeo._matBindings),
+					input._resolveContext);
+            } CATCH(const std::exception& e) {
+                Log(Warning) << "Got exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << "). Exception details:" << std::endl;
+                Log(Warning) << e.what() << std::endl;
+            } CATCH(...) {
+                Log(Warning) << "Got unknown exception while instantiating geometry (" << scene.GetInstanceGeometry(c._objectIndex)._reference.AsString().c_str() << ")." << std::endl;
+            } CATCH_END
+        }
+
+		for (auto c:refGeos._skinControllers) {
+
+            const auto& instController = scene.GetInstanceController(c._objectIndex);
+			bool skinSuccessful = false;
+            TRY {
+				///////////////////
+
+				GuidReference controllerRef(instController._reference);
+				NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
+				auto* scaffoldController = FindElement(controllerRef, input._resolveContext, &IDocScopeIdResolver::FindSkinController);
+				if (!scaffoldController)
+					Throw(::Exceptions::BasicLabel("Could not find controller object to instantiate (%s)",
+						instController._reference.AsString().c_str()));
+
+				auto controller = Convert(*scaffoldController, input._resolveContext, input._cfg);
+				auto rawGeoGuid = controller._sourceRef;
+
+				model.Add(
+					controllerId, 
+					scaffoldController->GetName().Cast<char>().AsString(),
+					NascentModel::SkinControllerBlock {
+						std::make_shared<UnboundSkinController>(std::move(controller)),
+						instController.GetSkeleton().Cast<char>().AsString()
+					});
+
+				///////////////////
+
+				auto localToModelBinding = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
+				ConvertCommand(
+					model, geoBlockMatBindings,
+					scene.GetInstanceGeometry_Attach(c._objectIndex),
+					rawGeoGuid, controllerId,
+					localToModelBinding, MakeIteratorRange(instController._matBindings),
+					input._resolveContext);
+
+                skinSuccessful = true;
+            } CATCH(const std::exception& e) {
+                Log(Warning) << "Got exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:" << std::endl;
+                Log(Warning) << e.what() << std::endl;
+            } CATCH(...) {
+                Log(Warning) << "Got unknown exception while instantiating controller (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ")." << std::endl;
+            } CATCH_END
+
+            if (!skinSuccessful) {
+                    // if we failed to instantiate this object as a skinned controller,
+                    // we can try to fall back to a static geometry object. This fallback
+                    // can be required for some controller objects that use rigid animation
+                    //  -- they can have a skin controller with no joints (meaning at the 
+                    //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
+                Log(Warning) << "Could not instantiate controller as a skinned object. Falling back to rigid object." << std::endl;
+                TRY {
+					auto geoId = ConvertGeometryBlock(
+						model, geoBlockMatBindings,
+						instController._reference,
+						input._resolveContext, input._cfg);
+
+					auto localToModelBinding = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
+					ConvertCommand(
+						model, geoBlockMatBindings,
+						scene.GetInstanceGeometry_Attach(c._objectIndex),
+						geoId, {},
+						localToModelBinding, MakeIteratorRange(instController._matBindings),
+						input._resolveContext);
+                } CATCH(const std::exception& e) {
+                    Log(Warning) << "Got exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << "). Exception details:" << std::endl;
+                    Log(Warning) << e.what() << std::endl;
+                } CATCH(...) {
+                    Log(Warning) << "Got unknown exception while instantiating geometry (after controller failed) (" << scene.GetInstanceController(c._objectIndex)._reference.AsString().c_str() << ")." << std::endl;
+                } CATCH_END
+            }
+        }
+
+		auto modelSkeletonInterface = model.BuildSkeletonInterface();
+		NascentSkeleton embeddedSkeleton;
+
+		for (auto i=modelSkeletonInterface.begin(); i!=modelSkeletonInterface.end(); ++i) {
+			NascentSkeleton basicSkeleton;
+
+			if (i->first.empty()) {
+				unsigned topLevelPops = 0;
+				auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());
+				if (!Equivalent(coordinateTransform, Identity<Float4x4>(), 1e-5f)) {
+						// Push on the coordinate transform (if there is one)
+						// This should be optimised into other matrices (or even into
+						// the geometry) when we perform the skeleton optimisation steps.
+					topLevelPops = basicSkeleton.GetSkeletonMachine().PushTransformation(
+						coordinateTransform);
+				}
+
+				BuildSkeleton(basicSkeleton, scene.GetRootNode());
+				basicSkeleton.GetSkeletonMachine().Pop(topLevelPops);
+
+				const auto& skeleInterface = modelSkeletonInterface[std::string{}];
+				ModelTransMachineOptimizer optimizer(model, skeleInterface);
+				basicSkeleton.GetSkeletonMachine().Optimize(optimizer);
+
+				for (unsigned c=0; c<skeleInterface.size(); ++c) {
+					const auto& mat = optimizer.GetMergedOutputMatrices()[c];
+					if (!Equivalent(mat, Identity<Float4x4>(), 1e-3f))
+						model.ApplyTransform(skeleInterface[c], mat);
+				}
+
+				embeddedSkeleton = std::move(basicSkeleton);
+			} else {
+				auto node = scene.GetRootNode().FindBreadthFirst(
+					[i](const Node& node) {
+						return i->first == SkeletonBindingName(node);
+					});
+				if (!node) {
+					Throw(::Exceptions::BasicLabel("Could not find node for skeleton with binding name (%s)", i->first.c_str()));
+				}
+
+				BuildSkeleton(basicSkeleton, node);
+			}
+		}
+
+		_serializedResult = model.SerializeToChunks("model", embeddedSkeleton);
+
+#if 0
         SkeletonRegistry jointRefs;
 
         ReferencedGeometries refGeos;
@@ -289,7 +600,7 @@ namespace ColladaConversion
 
         for (auto c:refGeos._meshes) {
             TRY {
-				auto bindingName = jointRefs.GetBindingName(c._nodeGuid);
+				auto bindingName = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
 				assert(!bindingName.empty());
 				auto outputMatrixMarker = _cmdStream.RegisterInputInterfaceMarker(bindingName);
 
@@ -309,7 +620,7 @@ namespace ColladaConversion
 
         for (auto c:refGeos._skinControllers) {
 
-			auto bindingName = jointRefs.GetBindingName(c._nodeGuid);
+			auto bindingName = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
 			assert(!bindingName.empty());
 			auto outputMatrixMarker = _cmdStream.RegisterInputInterfaceMarker(bindingName);
 
@@ -321,7 +632,7 @@ namespace ColladaConversion
                         scene.GetInstanceController(c._objectIndex), input._resolveContext, 
 						[&jointRefs, cmdStream](const NascentObjectGuid& guid) -> unsigned
 						{
-							auto bindingName = jointRefs.GetBindingName(guid);
+							auto bindingName = jointRefs.GetBasicStructure().GetBindingName(guid);
 							return cmdStream->RegisterInputInterfaceMarker(bindingName);
 						},
                         _geoObjects, input._cfg);
@@ -360,6 +671,8 @@ namespace ColladaConversion
             // register the names so the skeleton and command stream can be bound together
         // RegisterNodeBindingNames(_skeleton, jointRefs);
         RegisterNodeBindingNames(_cmdStream, jointRefs);
+#endif
+
     }
 
     std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkin(const ColladaCompileOp& model, const char startingNode[])
@@ -374,9 +687,10 @@ namespace ColladaConversion
         PreparedSkinFile skinFile(model, *scene, startingNodeName);
 
             // Serialize the prepared skin file data to a BlockSerializer
-		return SerializeSkinToChunks(
+		/*return SerializeSkinToChunks(
 			model._name.c_str(),
-			skinFile._geoObjects, skinFile._cmdStream, skinFile._skeleton);
+			skinFile._geoObjects, skinFile._cmdStream, skinFile._skeleton);*/
+		return skinFile._serializedResult;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

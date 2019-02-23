@@ -74,6 +74,9 @@
     <ClCompile Include="..\..\RenderCore\Assets\MaterialScaffold.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentModel.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Scaffold.h">
@@ -149,6 +152,9 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentModel.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>

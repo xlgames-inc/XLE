@@ -54,7 +54,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			if (inst._localToWorldId < transforms.size())
 				localToWorld = transforms[inst._localToWorldId];
 
-			const void*         vertexBuffer = geo->_vertices.get();
+			const void*         vertexBuffer = geo->_vertices.data();
 			const unsigned      vertexStride = geo->_mainDrawInputAssembly._vertexStride;
 
 			auto positionDesc = FindPositionElement(

@@ -165,13 +165,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::unique_ptr<uint8[]> unanimatedVertexBuffer  = std::make_unique<uint8[]>(unanimatedVertexStride*unifiedVertexCount);
         std::unique_ptr<uint8[]> animatedVertexBuffer    = std::make_unique<uint8[]>(animatedVertexStride*unifiedVertexCount);
         CopyVertexElements( unanimatedVertexBuffer.get(),                   unanimatedVertexStride, 
-                            sourceGeo._vertices.get(),                      sourceGeo._mainDrawInputAssembly._vertexStride,
+                            sourceGeo._vertices.data(),                     sourceGeo._mainDrawInputAssembly._vertexStride,
                             AsPointer(unanimatedVertexLayout.begin()),      AsPointer(unanimatedVertexLayout.end()),
                             AsPointer(sourceGeo._mainDrawInputAssembly._elements.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._elements.end()),
                             AsPointer(unifiedVertexReordering.begin()),     AsPointer(unifiedVertexReordering.end()));
 
         CopyVertexElements( animatedVertexBuffer.get(),                     animatedVertexStride,
-                            sourceGeo._vertices.get(),                      sourceGeo._mainDrawInputAssembly._vertexStride,
+                            sourceGeo._vertices.data(),                     sourceGeo._mainDrawInputAssembly._vertexStride,
                             AsPointer(animatedVertexLayout.begin()),        AsPointer(animatedVertexLayout.end()),
                             AsPointer(sourceGeo._mainDrawInputAssembly._elements.begin()), AsPointer(sourceGeo._mainDrawInputAssembly._elements.end()),
                             AsPointer(unifiedVertexReordering.begin()),     AsPointer(unifiedVertexReordering.end()));
@@ -180,17 +180,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::unique_ptr<uint8[]> newIndexBuffer = std::make_unique<uint8[]>(sourceGeo._indices.size());
         if (sourceGeo._indexFormat == Format::R32_UINT) {
             std::transform(
-                (const uint32*)sourceGeo._indices.begin(), (const uint32*)sourceGeo._indices.end(),
+                (const uint32*)AsPointer(sourceGeo._indices.begin()), (const uint32*)AsPointer(sourceGeo._indices.end()),
                 (uint32*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint32 inputIndex) { return unifiedVertexReordering[inputIndex]; });
         } else if (sourceGeo._indexFormat == Format::R16_UINT) {
             std::transform(
-                (const uint16*)sourceGeo._indices.begin(), (const uint16*)sourceGeo._indices.end(),
+                (const uint16*)AsPointer(sourceGeo._indices.begin()), (const uint16*)AsPointer(sourceGeo._indices.end()),
                 (uint16*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint16 inputIndex) -> uint16 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xffff); return (uint16)result; });
         } else if (sourceGeo._indexFormat == Format::R8_UINT) {
             std::transform(
-                (const uint8*)sourceGeo._indices.begin(), (const uint8*)sourceGeo._indices.end(),
+                (const uint8*)AsPointer(sourceGeo._indices.begin()), (const uint8*)AsPointer(sourceGeo._indices.end()),
                 (uint8*)newIndexBuffer.get(),
                 [&unifiedVertexReordering](uint8 inputIndex) -> uint8 { auto result = unifiedVertexReordering[inputIndex]; assert(result <= 0xff); return (uint8)result; });
         } else {
