@@ -359,7 +359,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         result._skeletonBindingVertexStride = (unsigned)destinationWeightVertexStride;
         result._animatedVertexBufferSize = (unsigned)(animatedVertexStride*unifiedVertexCount);
 
-        result._inverseBindMatrices = DynamicArray<Float4x4>::Copy(controller._inverseBindMatrices);
+        result._inverseBindMatrices = controller._inverseBindMatrices;
         result._jointMatrices = std::move(jointMatrices);
         result._bindShapeMatrix = controller._bindShapeMatrix;
 
@@ -434,13 +434,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         outputSerializer.SerializeSubBlock(MakeIteratorRange(_inverseBindMatrices));
         outputSerializer.SerializeValue(_inverseBindMatrices.size());
 
-        DynamicArray<Float4x4> inverseBindByBindShape = DynamicArray<Float4x4>::Copy(_inverseBindMatrices);
+        std::vector<Float4x4> inverseBindByBindShape = _inverseBindMatrices;
         for (unsigned c=0; c<inverseBindByBindShape.size(); ++c) {
             inverseBindByBindShape[c] = Combine(
                 _bindShapeMatrix,
                 inverseBindByBindShape[c]);
         }
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(inverseBindByBindShape.cbegin(), inverseBindByBindShape.cend()));
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(inverseBindByBindShape));
         outputSerializer.SerializeValue(inverseBindByBindShape.size());
         outputSerializer.SerializeSubBlock(MakeIteratorRange(_jointMatrices));
         outputSerializer.SerializeValue(_jointMatrices.size());
@@ -462,7 +462,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     ,       _animatedVertexElements(std::forward<DynamicArray<uint8>>(animatedVertexElements))
     ,       _skeletonBinding(std::forward<DynamicArray<uint8>>(skeletonBinding))
     ,       _indices(std::forward<DynamicArray<uint8>>(indices))
-    ,       _inverseBindMatrices(nullptr, 0)
     ,       _jointMatrices(nullptr, 0)
     ,       _animatedVertexBufferSize(0)
     ,       _localBoundingBox(InvalidBoundingBox())
@@ -547,10 +546,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		for (auto i:newJointIndices) maxOutputIndex = std::max(maxOutputIndex, i);
 
 		std::vector<std::string> newJointNames(maxOutputIndex+1);
-		DynamicArray<Float4x4>  newInverseBindMatrices {
-			std::make_unique<Float4x4[]>(maxOutputIndex+1),
-			maxOutputIndex+1
-		};
+		std::vector<Float4x4>  newInverseBindMatrices { maxOutputIndex+1 };
 
 		for (unsigned c=0; c<maxOutputIndex+1; ++c)
 			newInverseBindMatrices[c] = Identity<Float4x4>();
@@ -587,11 +583,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     UnboundSkinController::UnboundSkinController(   
         Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
-        DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
+        std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
         std::vector<std::string>&& jointNames,
         NascentObjectGuid sourceRef,
         std::vector<uint32>&& vertexPositionToBucketIndex)
-    :       _inverseBindMatrices(std::forward<DynamicArray<Float4x4>>(inverseBindMatrices))
+    :       _inverseBindMatrices(std::move(inverseBindMatrices))
     ,       _bindShapeMatrix(bindShapeMatrix)
     ,       _positionIndexToBucketIndex(vertexPositionToBucketIndex)
     ,       _jointNames(jointNames)
@@ -625,6 +621,39 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _sourceRef = moveFrom._sourceRef;
         return *this;
     }
+
+	template<unsigned WeightCount>
+		void AccumulateJointUsage(
+			const VertexWeightAttachmentBucket<WeightCount>& bucket,
+			std::vector<unsigned>& accumulator)
+	{
+		assert(accumulator.size() >= 256);
+		for (const auto&w:bucket._weightAttachments) {
+			for (unsigned c=0; c<WeightCount; ++c) {
+				++accumulator[w._jointIndex[c]];
+			}
+		}
+	}
+
+	template<unsigned WeightCount>
+		void RemapJointIndices(
+			VertexWeightAttachmentBucket<WeightCount>& bucket,
+			IteratorRange<const unsigned*> remapping)
+	{
+		for (auto&w:bucket._weightAttachments) {
+			for (unsigned c=0; c<WeightCount; ++c) {
+				assert(w._jointIndex[c] < remapping.size());
+				w._jointIndex[c] = (uint8)remapping[w._jointIndex[c]];
+			}
+		}
+	}
+
+	template void AccumulateJointUsage(const VertexWeightAttachmentBucket<1>&, std::vector<unsigned>&);
+	template void AccumulateJointUsage(const VertexWeightAttachmentBucket<2>&, std::vector<unsigned>&);
+	template void AccumulateJointUsage(const VertexWeightAttachmentBucket<4>&, std::vector<unsigned>&);
+	template void RemapJointIndices(VertexWeightAttachmentBucket<1>&, IteratorRange<const unsigned*>);
+	template void RemapJointIndices(VertexWeightAttachmentBucket<2>&, IteratorRange<const unsigned*>);
+	template void RemapJointIndices(VertexWeightAttachmentBucket<4>&, IteratorRange<const unsigned*>);
 
 
     UnboundMorphController::UnboundMorphController()

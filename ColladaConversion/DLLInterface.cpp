@@ -227,17 +227,15 @@ namespace ColladaConversion
         void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform);
 		IteratorRange<const Float4x4*> GetMergedOutputMatrices() const { return MakeIteratorRange(_mergedTransforms); }
 
-        // Float4x4 GetMergedOutputMatrix(const std::string& attachmentPoint) const;
-
         ModelTransMachineOptimizer(
 			const NascentModel& model,
-			const std::vector<std::string>& bindingNameInterface);
+			IteratorRange<const std::pair<std::string, std::string>*> bindingNameInterface);
         ModelTransMachineOptimizer();
         ~ModelTransMachineOptimizer();
     protected:
         std::vector<bool>			_canMergeIntoTransform;
         std::vector<Float4x4>		_mergedTransforms;
-		std::vector<std::string>	_bindingNameInterface;
+		std::vector<std::pair<std::string, std::string>>	_bindingNameInterface;
     };
 
     bool ModelTransMachineOptimizer::CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const
@@ -254,18 +252,10 @@ namespace ColladaConversion
             _mergedTransforms[outputMatrixIndex], transform);
     }
 
-    /*Float4x4 ModelTransMachineOptimizer::GetMergedOutputMatrix(const std::string& attachmentPoint) const
-    {
-		auto i = std::find(_bindingNameInterface.begin(), _bindingNameInterface.end(), attachmentPoint);
-		if (i != _bindingNameInterface.end() && std::distance(_bindingNameInterface.begin(), i) < _mergedTransforms.size())
-            return _mergedTransforms[std::distance(_bindingNameInterface.begin(), i)];
-        return Identity<Float4x4>();
-    }*/
-
     ModelTransMachineOptimizer::ModelTransMachineOptimizer(
 		const NascentModel& model,
-		const std::vector<std::string>& bindingNameInterface)
-	: _bindingNameInterface(bindingNameInterface)
+		IteratorRange<const std::pair<std::string, std::string>*> bindingNameInterface)
+	: _bindingNameInterface(bindingNameInterface.begin(), bindingNameInterface.end())
     {
 		auto outputMatrixCount = bindingNameInterface.size();
         _canMergeIntoTransform.resize(outputMatrixCount, false);
@@ -273,11 +263,13 @@ namespace ColladaConversion
 
         for (unsigned c=0; c<outputMatrixCount; ++c) {
 
+			if (!bindingNameInterface[c].first.empty()) continue;
+
 			bool skinAttached = false;
 			bool doublyAttachedObject = false;
 			bool atLeastOneAttached = false;
 			for (const auto&cmd:model.GetCommands())
-				if (cmd.second._localToModel == bindingNameInterface[c]) {
+				if (cmd.second._localToModel == bindingNameInterface[c].second) {
 					atLeastOneAttached = true;
 
 					// if we've got a skin controller attached, we can't do any merging
@@ -376,7 +368,7 @@ namespace ColladaConversion
 			attachedNode.GetId().GetHash(),
 			attachedNode.GetName().Cast<char>().AsString(),
 			NascentModel::Command {
-				geoId, {},
+				geoId, controllerId,
 				localToModelBinding,
 				materials, 
 				0
@@ -394,9 +386,11 @@ namespace ColladaConversion
 
 		std::map<NascentObjectGuid, std::vector<uint64_t>> geoBlockMatBindings;
 
+		///////////////////
 		for (auto c:refGeos._meshes) {
             TRY {
 				const auto& instGeo = scene.GetInstanceGeometry(c._objectIndex);
+
 				auto geoId = ConvertGeometryBlock(
 					model, geoBlockMatBindings,
 					instGeo._reference,
@@ -417,12 +411,20 @@ namespace ColladaConversion
             } CATCH_END
         }
 
+		///////////////////
 		for (auto c:refGeos._skinControllers) {
-
             const auto& instController = scene.GetInstanceController(c._objectIndex);
+
+			NascentObjectGuid geoId;
+
 			bool skinSuccessful = false;
             TRY {
-				///////////////////
+				geoId = ConvertGeometryBlock(
+					model, geoBlockMatBindings,
+					instController._reference,
+					input._resolveContext, input._cfg);
+
+				//////////////////
 
 				GuidReference controllerRef(instController._reference);
 				NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
@@ -432,23 +434,23 @@ namespace ColladaConversion
 						instController._reference.AsString().c_str()));
 
 				auto controller = Convert(*scaffoldController, input._resolveContext, input._cfg);
-				auto rawGeoGuid = controller._sourceRef;
+				auto skeleName = instController.GetSkeleton().Cast<char>().AsString();
+				if (!skeleName.empty() && *skeleName.begin() == '#')
+					skeleName.erase(skeleName.begin());
 
 				model.Add(
 					controllerId, 
 					scaffoldController->GetName().Cast<char>().AsString(),
 					NascentModel::SkinControllerBlock {
 						std::make_shared<UnboundSkinController>(std::move(controller)),
-						instController.GetSkeleton().Cast<char>().AsString()
+						skeleName
 					});
-
-				///////////////////
 
 				auto localToModelBinding = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
 				ConvertCommand(
 					model, geoBlockMatBindings,
-					scene.GetInstanceGeometry_Attach(c._objectIndex),
-					rawGeoGuid, controllerId,
+					scene.GetInstanceController_Attach(c._objectIndex),
+					geoId, controllerId,
 					localToModelBinding, MakeIteratorRange(instController._matBindings),
 					input._resolveContext);
 
@@ -468,11 +470,6 @@ namespace ColladaConversion
                     //      only transform that can affect them is the parent node -- or maybe the skeleton root?)
                 Log(Warning) << "Could not instantiate controller as a skinned object. Falling back to rigid object." << std::endl;
                 TRY {
-					auto geoId = ConvertGeometryBlock(
-						model, geoBlockMatBindings,
-						instController._reference,
-						input._resolveContext, input._cfg);
-
 					auto localToModelBinding = jointRefs.GetBasicStructure().GetBindingName(c._nodeGuid);
 					ConvertCommand(
 						model, geoBlockMatBindings,
@@ -489,47 +486,62 @@ namespace ColladaConversion
             }
         }
 
-		auto modelSkeletonInterface = model.BuildSkeletonInterface();
+		std::set<std::string> skinningSkeletons;
+		for (const auto& skinController:model.GetSkinControllerBlocks())
+			skinningSkeletons.insert(skinController.second._skeleton);
+		skinningSkeletons.insert(std::string{});
+
 		NascentSkeleton embeddedSkeleton;
+		{
+			uint32 outputMarker = ~0u;
+			if (embeddedSkeleton.GetInterface().TryRegisterJointName(outputMarker, "", "root"))
+				embeddedSkeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
+		}
 
-		for (auto i=modelSkeletonInterface.begin(); i!=modelSkeletonInterface.end(); ++i) {
-			NascentSkeleton basicSkeleton;
-
-			if (i->first.empty()) {
+		for (const auto&skeletonName:skinningSkeletons) {
+			if (skeletonName.empty()) {
 				unsigned topLevelPops = 0;
 				auto coordinateTransform = BuildCoordinateTransform(input._doc->GetAssetDesc());
 				if (!Equivalent(coordinateTransform, Identity<Float4x4>(), 1e-5f)) {
 						// Push on the coordinate transform (if there is one)
 						// This should be optimised into other matrices (or even into
 						// the geometry) when we perform the skeleton optimisation steps.
-					topLevelPops = basicSkeleton.GetSkeletonMachine().PushTransformation(
+					topLevelPops = embeddedSkeleton.GetSkeletonMachine().PushTransformation(
 						coordinateTransform);
 				}
 
-				BuildSkeleton(basicSkeleton, scene.GetRootNode());
-				basicSkeleton.GetSkeletonMachine().Pop(topLevelPops);
-
-				const auto& skeleInterface = modelSkeletonInterface[std::string{}];
-				ModelTransMachineOptimizer optimizer(model, skeleInterface);
-				basicSkeleton.GetSkeletonMachine().Optimize(optimizer);
-
-				for (unsigned c=0; c<skeleInterface.size(); ++c) {
-					const auto& mat = optimizer.GetMergedOutputMatrices()[c];
-					if (!Equivalent(mat, Identity<Float4x4>(), 1e-3f))
-						model.ApplyTransform(skeleInterface[c], mat);
-				}
-
-				embeddedSkeleton = std::move(basicSkeleton);
+				BuildSkeleton(embeddedSkeleton, scene.GetRootNode());
+				embeddedSkeleton.GetSkeletonMachine().Pop(topLevelPops);
 			} else {
 				auto node = scene.GetRootNode().FindBreadthFirst(
-					[i](const Node& node) {
-						return i->first == SkeletonBindingName(node);
+					[skeletonName](const Node& node) {
+						auto nBindingName = SkeletonBindingName(node);
+						return skeletonName == nBindingName;
 					});
-				if (!node) {
-					Throw(::Exceptions::BasicLabel("Could not find node for skeleton with binding name (%s)", i->first.c_str()));
-				}
+				if (!node)
+					Throw(::Exceptions::BasicLabel("Could not find node for skeleton with binding name (%s)", skeletonName.c_str()));
 
-				BuildSkeleton(basicSkeleton, node);
+				BuildSkeleton(embeddedSkeleton, node, skeletonName);
+			}
+		}
+
+		{
+			auto filteringSkeleInterface = model.BuildSkeletonInterface();
+			filteringSkeleInterface.insert(filteringSkeleInterface.begin(), std::make_pair(std::string{}, "root"));
+			embeddedSkeleton.FilterOutputInterface(MakeIteratorRange(filteringSkeleInterface));
+		}
+
+		{
+			auto finalSkeleInterface = embeddedSkeleton.GetInterface().GetOutputInterface();
+			ModelTransMachineOptimizer optimizer(model, finalSkeleInterface);
+			embeddedSkeleton.GetSkeletonMachine().Optimize(optimizer);
+
+			for (unsigned c=0; c<finalSkeleInterface.size(); ++c) {
+				const auto& mat = optimizer.GetMergedOutputMatrices()[c];
+				if (!Equivalent(mat, Identity<Float4x4>(), 1e-3f)) {
+					assert(finalSkeleInterface[c].first.empty());	// this operation only makes sense for the basic structure skeleton
+					model.ApplyTransform(finalSkeleInterface[c].second, mat);
+				}
 			}
 		}
 

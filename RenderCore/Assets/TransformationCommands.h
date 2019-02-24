@@ -140,5 +140,9 @@ namespace RenderCore { namespace Assets
         IteratorRange<const uint32*> input,
         ITransformationMachineOptimizer& optimizer);
 
+	std::vector<uint32> RemapOutputMatrices(
+		IteratorRange<const uint32*> input,
+		IteratorRange<const unsigned*> outputMatrixMapping);
+
 }}
 

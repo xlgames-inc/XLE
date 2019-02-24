@@ -117,22 +117,28 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		_commandStream = std::move(optimized);
 	}
 
+	void	NascentSkeletonMachine::RemapOutputMatrices(IteratorRange<const unsigned*> outputMatrixMapping)
+	{
+		ResolvePendingPops();
+		_commandStream = RenderCore::Assets::RemapOutputMatrices(
+			MakeIteratorRange(_commandStream), 
+			outputMatrixMapping);
+	}
+
     NascentSkeletonMachine::NascentSkeletonMachine() : _pendingPops(0), _outputMatrixCount(0) {}
     NascentSkeletonMachine::~NascentSkeletonMachine() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class NascentSkeletonInterface::CompareJointName
+	/*class NascentSkeletonInterface::CompareJointName
 	{
 	public:
 		bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
 		bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
 		bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
-	};
+	};*/
 
-	NascentSkeletonInterface::NascentSkeletonInterface()
-	: _lastReturnedOutputMatrixMarker(~unsigned(0)) {}
-
+	NascentSkeletonInterface::NascentSkeletonInterface() {}
 	NascentSkeletonInterface::~NascentSkeletonInterface() {}
 
     template<> auto NascentSkeletonInterface::GetTables<float>()    -> std::vector<AnimationParameterHashName>& { return _float1ParameterNames; }
@@ -194,27 +200,23 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		//
 		//      Now, output interface...
 		//
-		std::vector<uint64> jointHashNames= GetOutputInterface();
+		auto jointHashNames = BuildHashedOutputInterface();
 		outputSerializer.SerializeSubBlock(MakeIteratorRange(jointHashNames));
 		outputSerializer.SerializeValue(jointHashNames.size());
 	}
 
-	std::vector<uint64> NascentSkeletonInterface::GetOutputInterface() const
+	void NascentSkeletonInterface::SetOutputInterface(IteratorRange<const JointTag*> jointNames)
 	{
-		ConsoleRig::DebuggerOnlyWarning("Transformation Machine output interface:\n");
-		std::vector<uint64> jointHashNames(_jointTags.size(), 0ull);
+		_jointTags.clear();
+		_jointTags.insert(_jointTags.end(), jointNames.begin(), jointNames.end());
+	}
 
-		for (auto i=_jointTags.begin(); i!=_jointTags.end(); ++i) {
-			auto outputMatrixIndex = (unsigned)std::distance(_jointTags.begin(), i);
-			if (outputMatrixIndex < jointHashNames.size()) {
-				ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", std::distance(_jointTags.begin(), i), i->_name.c_str());
-
-				assert(jointHashNames[outputMatrixIndex] == 0ull);
-				jointHashNames[outputMatrixIndex] = Hash64(AsPointer(i->_name.begin()), AsPointer(i->_name.end()));
-			}
-		}
-
-		return std::move(jointHashNames);
+	std::vector<uint64_t> NascentSkeletonInterface::BuildHashedOutputInterface() const
+	{
+		std::vector<uint64_t> hashedInterface;
+		hashedInterface.reserve(_jointTags.size());
+		for (const auto&j:_jointTags) hashedInterface.push_back(HashCombine(Hash64(j.first), Hash64(j.second)));
+		return hashedInterface;
 	}
 
 	std::ostream& StreamOperator(
@@ -266,7 +268,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		stream << " --- Output interface:" << std::endl;
 		for (auto i=interf._jointTags.begin(); i!=interf._jointTags.end(); ++i)
-			stream << "  [" << std::distance(interf._jointTags.begin(), i) << "] " << i->_name << ", Output transform index: (" << std::distance(interf._jointTags.begin(), i) << ")" << std::endl;
+			stream << "  [" << std::distance(interf._jointTags.begin(), i) << "] " << i->first << " : " << i->second << ", Output transform index: (" << std::distance(interf._jointTags.begin(), i) << ")" << std::endl;
 
 		stream << " --- Command stream:" << std::endl;
 		const auto& cmds = transMachine._commandStream;
@@ -275,7 +277,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			[&interf](unsigned outputMatrixIndex) -> std::string
 			{
 				if (outputMatrixIndex < interf._jointTags.size())
-					return interf._jointTags[outputMatrixIndex]._name;
+					return interf._jointTags[outputMatrixIndex].first + " : " + interf._jointTags[outputMatrixIndex].second;
 				return std::string();
 			},
 			[&interf](AnimSamplerType samplerType, unsigned parameterIndex) -> std::string
@@ -353,10 +355,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return ~AnimationParameterHashName(0x0);
     }
 
-    bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<char> name)
+    bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName)
     {
 		outputMarker = (uint32)_jointTags.size();
-		_jointTags.push_back({name.AsString()});	// (note -- not checking for duplicates)
+		_jointTags.push_back({skeletonName.AsString(), jointName.AsString()});	// (note -- not checking for duplicates)
         return true;
     }
 

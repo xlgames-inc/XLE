@@ -77,11 +77,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		void Add(NascentObjectGuid id, const std::string& name, SkinControllerBlock&& object);
 		void Add(NascentObjectGuid id, const std::string& name, Command&& object);
 
+		IteratorRange<const std::pair<Indexor,GeometryBlock>*> GetGeometryBlocks() const { return MakeIteratorRange(_geoBlocks); }
+		IteratorRange<const std::pair<Indexor,SkinControllerBlock>*> GetSkinControllerBlocks() const { return MakeIteratorRange(_skinBlocks); }
 		IteratorRange<const std::pair<Indexor,Command>*> GetCommands() const { return MakeIteratorRange(_commands); }
 
 		void ApplyTransform(const std::string& bindingPoint, const Float4x4& transform);
 
-		std::unordered_map<std::string, std::vector<std::string>> BuildSkeletonInterface();
+		std::vector<std::pair<std::string, std::string>> BuildSkeletonInterface();
 
 		std::vector<::Assets::ICompileOperation::OperationResult> SerializeToChunks(
 			const std::string& name,

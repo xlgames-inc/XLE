@@ -38,7 +38,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned                    _skeletonBindingVertexStride;
         unsigned                    _animatedVertexBufferSize;
 
-        DynamicArray<Float4x4>      _inverseBindMatrices;
+        std::vector<Float4x4>		_inverseBindMatrices;
         DynamicArray<uint16>        _jointMatrices;         // (uint16 or uint8 for this array)
         Float4x4                    _bindShapeMatrix;
             
@@ -90,21 +90,21 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             Bucket& operator=(const Bucket& copyFrom);
         };
 
-        Float4x4                _bindShapeMatrix;
+        Float4x4					_bindShapeMatrix;
 
-        Bucket                  _bucket[4];      // 4, 2, 1, 0
-        std::vector<uint32>     _positionIndexToBucketIndex;
+        Bucket						_bucket[4];      // 4, 2, 1, 0
+        std::vector<uint32>			_positionIndexToBucketIndex;
 
-        std::vector<std::string> _jointNames;
-        DynamicArray<Float4x4>  _inverseBindMatrices;
+        std::vector<std::string>	_jointNames;
+        std::vector<Float4x4>		_inverseBindMatrices;
 
-        NascentObjectGuid		_sourceRef;
+        NascentObjectGuid			_sourceRef;
 
 		void RemapJoints(IteratorRange<const unsigned*> newIndices);
 
         UnboundSkinController(
             Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0, 
-            DynamicArray<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
+            std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
             std::vector<std::string>&& jointNames,
             NascentObjectGuid sourceRef,
             std::vector<uint32>&& vertexPositionToBucketIndex);
@@ -153,6 +153,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
         return VertexWeightAttachment<0>();
     }
+
+	template<unsigned WeightCount>
+		void AccumulateJointUsage(
+			const VertexWeightAttachmentBucket<WeightCount>& bucket,
+			std::vector<unsigned>& accumulator);
+	template<unsigned WeightCount>
+		void RemapJointIndices(
+			VertexWeightAttachmentBucket<WeightCount>& bucket,
+			IteratorRange<const unsigned*> remapping);
 
         ////////////////////////////////////////////////////////
 

@@ -33,8 +33,9 @@ namespace ColladaConversion
         SkeletonRegistry& skeletonReferences,
         bool fullSkeleton);
 
-	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node);
+	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName = {});
 
+#if 0
 	struct InstantiatedGeo
 	{
 		unsigned _geoId;
@@ -56,6 +57,7 @@ namespace ColladaConversion
 		const JointToTransformMarker& jointToTransformMarker,
 		NascentGeometryObjects& objects,
         const ImportConfiguration& cfg);
+#endif
 
     class ReferencedGeometries
     {
@@ -72,10 +74,10 @@ namespace ColladaConversion
 
         bool Gather(const ::ColladaConversion::Node& sceneRoot, StringSection<utf8> rootNode, SkeletonRegistry& nodeRefs);
 
-        void FindSkinJoints(
+        /*void FindSkinJoints(
             const ::ColladaConversion::VisualScene& scene, 
             const ::ColladaConversion::URIResolveContext& resolveContext, 
-            SkeletonRegistry& nodeRefs);
+            SkeletonRegistry& nodeRefs);*/
 
     private:
         void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);

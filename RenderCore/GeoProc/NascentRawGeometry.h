@@ -24,7 +24,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         GeoInputAssembly            _mainDrawInputAssembly;
         Format                      _indexFormat = Format(0);
         std::vector<DrawCallDesc>   _mainDrawCalls;
-        std::vector<uint64_t>		_matBindingSymbols;
 
             //  Only required during processing
         std::vector<uint32_t>		_unifiedVertexIndexToPositionIndex;

@@ -9,6 +9,7 @@
 #include "../../Math/Vector.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/StringUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Core/Types.h"
 #include <vector>
@@ -54,6 +55,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         void    ResolvePendingPops();
 
         void    Optimize(ITransformationMachineOptimizer& optimizer);
+		void	RemapOutputMatrices(IteratorRange<const unsigned*> outputMatrixMapping);
 
         NascentSkeletonMachine();
         NascentSkeletonMachine(NascentSkeletonMachine&& machine) = default;
@@ -71,10 +73,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	class NascentSkeletonInterface
 	{
 	public:
-		T1(Type) bool	TryAddParameter(uint32& paramIndex, StringSection<char> paramName, AnimationParameterHashName hashName);
-		bool			TryRegisterJointName(uint32& outputMarker, StringSection<char> name);
+		T1(Type) bool	TryAddParameter(uint32& paramIndex, StringSection<> paramName, AnimationParameterHashName hashName);
+		bool			TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
 
-		std::vector<uint64>		GetOutputInterface() const;
+		using JointTag = std::pair<std::string, std::string>;
+		IteratorRange<const JointTag*>	GetOutputInterface() const { return MakeIteratorRange(_jointTags); }
+		void							SetOutputInterface(IteratorRange<const JointTag*> jointNames);
+
+		std::vector<uint64_t> BuildHashedOutputInterface() const;
 
 		template<typename Serializer>
 			void    Serialize(Serializer& outputSerializer) const;
@@ -98,16 +104,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		std::vector<std::pair<AnimationParameterHashName, std::string>>  _dehashTable;
 
-		class Joint
-		{
-		public:
-			std::string     _name;
-		};
-		std::vector<Joint> _jointTags;
-
-		class CompareJointName;
-
-		unsigned _lastReturnedOutputMatrixMarker;
+		std::vector<JointTag> _jointTags;
 
 		template<typename Type>
 			std::vector<AnimationParameterHashName>& GetTables();

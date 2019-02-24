@@ -6,6 +6,7 @@
 
 #include "TransformationCommands.h"
 #include "../../ConsoleRig/Log.h"
+#include <sstream>
 
 #pragma warning(disable:4127)
 #pragma warning(disable:4505)       // unreferenced function removed
@@ -71,6 +72,11 @@ namespace RenderCore { namespace Assets
         return 
                 (cmd >= TransformStackCommand::TransformFloat4x4_Static && cmd <= TransformStackCommand::ArbitraryScale_Static)
             ||  (cmd >= TransformStackCommand::TransformFloat4x4_Parameter && cmd <= TransformStackCommand::ArbitraryScale_Parameter);
+    }
+
+	static bool IsOutputCommand(TransformStackCommand cmd)
+    {
+        return (cmd >= TransformStackCommand::WriteOutputMatrix && cmd <= TransformStackCommand::TransformFloat4x4AndWrite_Parameter);
     }
 
     T1(Iterator) 
@@ -148,6 +154,64 @@ namespace RenderCore { namespace Assets
             i += 1 + CommandSize((TransformStackCommand)*i);
         }
     }
+
+	T1(Iterator) 
+        static bool HasFollowingOutputCommand(Iterator i, Iterator end)
+    {
+		signed pushDepth = 0;
+		for (;i<end && pushDepth >= 0;) {
+            auto cmd = TransformStackCommand(*i);
+            if (IsOutputCommand(cmd)) {
+                return true;
+            } else if (cmd == TransformStackCommand::PushLocalToWorld) {
+                ++pushDepth;
+            } else if (cmd == TransformStackCommand::PopLocalToWorld) {
+                auto popCount = *(i+1);
+                pushDepth -= popCount;
+            }
+
+            i += 1 + CommandSize((TransformStackCommand)*i);
+        }
+		return false;
+	}
+
+	static void RemoveRedundantTransformationCommands(std::vector<uint32>& cmdStream)
+	{
+			// For each transformation command we come across, scan forward to
+			// see if it's used as part of an WriteOutputMatrix operation
+			// If we don't encounter a WriteOutputMatrix, the transformation command
+			// can not have an affect on the output, so is therefore redundant
+		std::stringstream str;
+		str << " ---------- before RemoveRedundantTransformationCommands ------- " << std::endl;
+		TraceTransformationMachine(
+			str, 
+			MakeIteratorRange(cmdStream),
+			[](unsigned) { return std::string{}; },
+			[](AnimSamplerType, unsigned) { return std::string{}; });
+
+		for (auto i=cmdStream.begin(); i!=cmdStream.end();) {
+			auto nexti = i + 1 + CommandSize((TransformStackCommand)*i);
+			auto cmd = TransformStackCommand(*i);
+            if (IsTransformCommand(cmd)) {
+				if (!HasFollowingOutputCommand(nexti, cmdStream.end())) {
+					i = cmdStream.erase(i, nexti);
+					continue;
+				}
+			}
+
+			i = nexti;
+		}
+
+		str << " ---------- after RemoveRedundantTransformationCommands ------- " << std::endl;
+		TraceTransformationMachine(
+			str, 
+			MakeIteratorRange(cmdStream),
+			[](unsigned) { return std::string{}; },
+			[](AnimSamplerType, unsigned) { return std::string{}; });
+
+		auto debug = str.str();
+		(void)debug;
+	}
 
     enum MergeType { StaticTransform, OutputMatrix, Push, Pop, Blocker };
     static MergeType AsMergeType(TransformStackCommand cmd)
@@ -741,6 +805,7 @@ namespace RenderCore { namespace Assets
         // work). To make it easy, let's consider only one optimisation at a time.
 
         std::vector<uint32> result(input.cbegin(), input.cend());
+		RemoveRedundantTransformationCommands(result);
         RemoveRedundantPushes(result);
         MergeSequentialTransforms(result, optimizer);
         RemoveRedundantPushes(result);
@@ -1154,6 +1219,42 @@ namespace RenderCore { namespace Assets
 
         ///////////////////////////////////////////////////////
 
+	std::vector<uint32> RemapOutputMatrices(
+		IteratorRange<const uint32*> input,
+		IteratorRange<const unsigned*> outputMatrixMapping)
+	{
+		std::vector<uint32> result;
+		result.reserve(input.size());
+
+            // First, we just want to convert series of pop operations into
+            // a single pop.
+        for (auto i=input.begin(); i!=input.end();) {
+			auto nexti = i + 1 + CommandSize((TransformStackCommand)*i);
+            if (IsOutputCommand((TransformStackCommand)*i)) {
+				auto oldOutputMatrix = *(i+1);
+				unsigned newOutputMatrix = ~0u;
+				if (oldOutputMatrix < outputMatrixMapping.size())
+					newOutputMatrix = outputMatrixMapping[oldOutputMatrix];
+
+				if (newOutputMatrix != ~0u) {
+					// Write the command to the output, but with a modified output matrix
+					// in the second slot
+					result.push_back(*i);
+					result.push_back(newOutputMatrix);
+					result.insert(result.end(), i+2, nexti);
+				}
+                
+            } else {
+				result.insert(result.end(), i, nexti);
+            }
+			i = nexti;
+        }
+
+		return result;
+    }
+
+        ///////////////////////////////////////////////////////
+
     static void MakeIndentBuffer(char buffer[], unsigned bufferSize, signed identLevel)
     {
         std::fill(buffer, &buffer[std::min(std::max(0,identLevel*2), signed(bufferSize-1))], ' ');
@@ -1169,7 +1270,7 @@ namespace RenderCore { namespace Assets
         stream << "Transformation machine size: (" << (commandStream.size()) * sizeof(uint32) << ") bytes" << std::endl;
 
         char indentBuffer[32];
-        signed indentLevel = 2;
+        signed indentLevel = 1;
         MakeIndentBuffer(indentBuffer, dimof(indentBuffer), indentLevel);
 
         for (auto i=commandStream.begin(); i!=commandStream.end();) {

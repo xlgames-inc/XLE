@@ -28,7 +28,7 @@
 
 namespace ColladaConversion
 {
-    std::vector<std::string> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
+    // std::vector<std::string> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
 
     static NascentObjectGuid   AsObjectGuid(const Node& node);
     static bool         IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
@@ -65,7 +65,7 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node)
+	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName)
     {
         auto nodeId = AsObjectGuid(node);
         auto bindingName = SkeletonBindingName(node);
@@ -78,17 +78,17 @@ namespace ColladaConversion
 			[](StringSection<>) { return true; });
 
 		uint32 outputMarker = ~0u;
-		if (skeleton.GetInterface().TryRegisterJointName(outputMarker, bindingName)) {
+		if (skeleton.GetInterface().TryRegisterJointName(outputMarker, skeletonName, bindingName)) {
 			skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
 		} else {
-			Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", bindingName.c_str()));
+			Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s:%s)", skeletonName.AsString().c_str(), bindingName.c_str()));
 		}
 
             // note -- also consider instance_nodes?
 
         auto child = node.GetFirstChild();
         while (child) {
-            BuildSkeleton(skeleton, child);
+			BuildSkeleton(skeleton, child, skeletonName);
             child = child.GetNextSibling();
         }
 
@@ -133,7 +133,7 @@ namespace ColladaConversion
                 // (prevent a reference if the transformation machine is completely empty)
             if (!skeleton.GetSkeletonMachine().IsEmpty()) {
 				uint32 outputMarker = ~0u;
-				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(bindingName))) {
+				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, {}, MakeStringSection(bindingName))) {
 					skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
 					skeletonReferences.GetBasicStructure().RegisterBindingName(nodeId, bindingName);
 				} else {
@@ -243,6 +243,7 @@ namespace ColladaConversion
         }
     }
 
+#if 0
     void ReferencedGeometries::FindSkinJoints(
         const VisualScene& scene, 
         const URIResolveContext& resolveContext,
@@ -270,7 +271,7 @@ namespace ColladaConversion
         }
     }
 
-    static auto BuildMaterialTable(
+	static auto BuildMaterialTable(
         const InstanceGeometry::MaterialBinding* bindingStart, 
         const InstanceGeometry::MaterialBinding* bindingEnd,
         const std::vector<uint64>& rawGeoBindingSymbols,
@@ -326,6 +327,7 @@ namespace ColladaConversion
 
         return std::move(materialGuids);
     }
+#endif
 
 	auto BuildMaterialTableStrings(
         IteratorRange<const InstanceGeometry::MaterialBinding*> bindings,
@@ -379,6 +381,7 @@ namespace ColladaConversion
         return std::move(materialGuids);
     }
 
+#if 0
 	InstantiatedGeo InstantiateGeometry(
         const ::ColladaConversion::InstanceGeometry& instGeo,
         const URIResolveContext& resolveContext,
@@ -413,7 +416,6 @@ namespace ColladaConversion
                         // everything else should be empty as well...
                     assert(convertedMesh._vertices.empty());
                     assert(convertedMesh._indices.empty());
-                    assert(convertedMesh._matBindingSymbols.empty());
                     assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
                 
                     Throw(::Exceptions::BasicLabel(
@@ -425,9 +427,11 @@ namespace ColladaConversion
             }
         }
         
-        auto materials = BuildMaterialTable(
+        /*auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
-            objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
+            objects._rawGeos[geo].second._matBindingSymbols, resolveContext);*/
+		assert(0);
+		std::vector<NascentModelCommandStream::MaterialGuid> materials;
 
         return InstantiatedGeo{geo, std::move(materials)};
     }
@@ -513,9 +517,11 @@ namespace ColladaConversion
             }
         }
 
-        auto materials = BuildMaterialTable(
+        /*auto materials = BuildMaterialTable(
             AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
-            source->_matBindingSymbols, resolveContext);
+            source->_matBindingSymbols, resolveContext);*/
+		assert(0);
+		std::vector<NascentModelCommandStream::MaterialGuid> materials;
 
         objects._skinnedGeos.push_back(
             std::make_pair(
@@ -526,17 +532,23 @@ namespace ColladaConversion
 
 		return InstantiatedGeo{unsigned(objects._skinnedGeos.size()-1), std::move(materials)};
     }
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     std::string SkeletonBindingName(const Node& node)
     {
-            // Both "name" and "id" are optional. Let's prioritize "name"
-            //  -- if it exists. If there is no name, we'll fall back to "id"
-        if (node.GetName()._end > node.GetName()._start)
-            return ColladaConversion::AsString(node.GetName()); 
+            // Both "name" and "id" are optional.
+			// We must prioritize the id if it exists, so that the binding name
+			// matches up with the way collada builds the "JOINTS" array in skin
+			// controllers. Collada uses ids, rather than names, for that list.
+			// So we must match the same behaviour here, because this is used
+			// to populate a binding table to match the binding names from that
+			// joints array
         if (!node.GetId().IsEmpty())
             return ColladaConversion::AsString(node.GetId().GetOriginal());
+		if (node.GetName()._end > node.GetName()._start)
+            return ColladaConversion::AsString(node.GetName()); 
         return XlDynFormatString("Unnamed%i", (unsigned)node.GetIndex());
     }
 

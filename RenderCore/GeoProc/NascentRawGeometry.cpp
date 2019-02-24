@@ -54,12 +54,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         for(const auto& dc:geo._mainDrawCalls) {
             stream << "Draw [" << c++ << "] " << dc << std::endl;
         }
-        
-        stream << "Material binding: ";
-        for (size_t q=0; q<geo._matBindingSymbols.size(); ++q) {
-            if (q != 0) stream << ", ";
-            stream << geo._matBindingSymbols[q];
-        }
         stream << std::endl;
 
         return stream;

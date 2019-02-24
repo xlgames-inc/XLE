@@ -934,35 +934,37 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DynamicArray<Float4x4> GetInverseBindMatrices(
+    static std::vector<Float4x4> GetInverseBindMatrices(
         const SkinController& skinController,
-        const URIResolveContext& resolveContext)
+        const URIResolveContext& resolveContext,
+		IteratorRange<const unsigned*> remapping)
     {
         auto invBindInput = skinController.GetJointInputs().FindInputBySemantic(u("INV_BIND_MATRIX"));
-        if (!invBindInput) return DynamicArray<Float4x4>();
+		if (!invBindInput) return {};
 
         auto* invBindSource = FindElement(
             GuidReference(invBindInput->_source), resolveContext, 
             &IDocScopeIdResolver::FindSource);
-        if (!invBindSource) return DynamicArray<Float4x4>();
+		if (!invBindSource) return {};
 
         if (invBindSource->GetType() != DataFlow::ArrayType::Float)
-            return DynamicArray<Float4x4>();
+			return {};
 
         auto* commonAccessor = invBindSource->FindAccessorForTechnique();
-        if (!commonAccessor) return DynamicArray<Float4x4>();
+		if (!commonAccessor) return {};
 
         if (    commonAccessor->GetParamCount() != 1
             || !Is(commonAccessor->GetParam(0)._type, u("float4x4"))) {
             Log(Warning) << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation() << std::endl;
-            return DynamicArray<Float4x4>();
+			return {};
         }
 
         auto count = commonAccessor->GetCount();
         if (!count)
-            return DynamicArray<Float4x4>(nullptr, 0);
+			return {};
 
-        DynamicArray<Float4x4> result(std::make_unique<Float4x4[]>(count), count);
+		std::vector<Float4x4> result;
+		result.reserve(count);
 
             // parse in the array of raw floats
         auto rawFloatCount = invBindSource->GetCount();
@@ -971,24 +973,32 @@ namespace ColladaConversion
 
         for (unsigned c=0; c<count; ++c) {
             auto r = c * commonAccessor->GetStride();
+			Float4x4 transform;
             if ((r + 16) <= rawFloatCount) {
-                result[c] = MakeFloat4x4(
+                transform = MakeFloat4x4(
                     rawFloats[r+ 0], rawFloats[r+ 1], rawFloats[r+ 2], rawFloats[r+ 3],
                     rawFloats[r+ 4], rawFloats[r+ 5], rawFloats[r+ 6], rawFloats[r+ 7],
                     rawFloats[r+ 8], rawFloats[r+ 9], rawFloats[r+10], rawFloats[r+11],
                     rawFloats[r+12], rawFloats[r+13], rawFloats[r+14], rawFloats[r+15]);
             } else
-                result[c] = Identity<Float4x4>();
+                transform = Identity<Float4x4>();
+
+			if (c < remapping.size() && remapping[c] != ~0u) {
+				if (result.size() <= remapping[c])
+					result.resize(remapping[c]+1);
+				result[remapping[c]] = transform;
+			}
         }
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::vector<std::string> GetJointNames(
+    static std::vector<std::string> GetJointNames(
         const SkinController& controller,
-        const URIResolveContext& resolveContext)
+        const URIResolveContext& resolveContext,
+		IteratorRange<const unsigned*> remapping)
     {
         std::vector<std::string> result;
 
@@ -1024,11 +1034,17 @@ namespace ColladaConversion
             auto* elementStart = i;
             while (i < arrayData._end && !IsWhitespace(*i)) ++i;
 
-            result.push_back(std::string((const char*)elementStart, (const char*)i));
+			if (elementIndex < remapping.size() && remapping[elementIndex] != ~0u) {
+				if (result.size() <= remapping[elementIndex])
+					result.resize(remapping[elementIndex]+1);
+				result[remapping[elementIndex]] = std::string((const char*)elementStart, (const char*)i);
+			}
+            // result.push_back(std::string((const char*)elementStart, (const char*)i));
+			++elementIndex;
             if (i == arrayData._end || elementIndex == count) break;
         }
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -1364,6 +1380,26 @@ namespace ColladaConversion
                 bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             }
         }
+
+		std::vector<unsigned> jointUsage;
+		jointUsage.resize(256);
+		AccumulateJointUsage(bucket1, jointUsage);
+		AccumulateJointUsage(bucket2, jointUsage);
+		AccumulateJointUsage(bucket4, jointUsage);
+
+		std::vector<unsigned> jointIndexRemapping;
+		unsigned finalJointIndexCount = 0;
+		for (unsigned c=0; c<jointUsage.size(); ++c) {
+			if (jointUsage[c]) {
+				if (jointIndexRemapping.size() <= c)
+					jointIndexRemapping.resize(c+1, ~0u);
+				jointIndexRemapping[c] = finalJointIndexCount;
+				++finalJointIndexCount;
+			}
+		}
+		RemapJointIndices(bucket1, MakeIteratorRange(jointIndexRemapping));
+		RemapJointIndices(bucket2, MakeIteratorRange(jointIndexRemapping));
+		RemapJointIndices(bucket4, MakeIteratorRange(jointIndexRemapping));
             
         UnboundSkinController::Bucket b4;
         b4._vertexBindings = std::move(bucket4._vertexBindings);
@@ -1401,8 +1437,8 @@ namespace ColladaConversion
             XlCopyMemory(b0._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
         }
 
-        auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext);
-        auto jointNames = GetJointNames(controller, resolveContext);
+        auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
+        auto jointNames = GetJointNames(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
         GuidReference ref(controller.GetBaseMesh());
         return UnboundSkinController(
             std::move(b4), std::move(b2), std::move(b1), std::move(b0),

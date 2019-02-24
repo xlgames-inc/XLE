@@ -9,6 +9,7 @@
 #include "NascentTransformationMachine.h"
 #include "../RenderCore/Assets/TransformationCommands.h"		// (for TransformationParameterSet)
 #include <vector>
+#include <string>
 
 namespace Serialization { class NascentBlockSerializer; }
 namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
@@ -127,8 +128,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<uint8>              _constantData;
     };
 
-    size_t              SamplerSize(AnimSamplerType samplerType);
-
         //
         //      "NascentSkeleton" represents the skeleton information for an 
         //      object. Usually this is mostly just the transformation machine.
@@ -146,7 +145,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		TransformationParameterSet&         GetDefaultParameters()			{ return _defaultParameters; }
 		const TransformationParameterSet&   GetDefaultParameters() const	{ return _defaultParameters; }
 
-		void        Serialize(Serialization::NascentBlockSerializer& serializer) const;
+		void	FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> newOutputInterface);
+		void	Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
         NascentSkeleton();
         ~NascentSkeleton();
@@ -157,6 +157,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		NascentSkeletonInterface	_interface;
 		TransformationParameterSet	_defaultParameters;
     };
+
+	/*class NascentSkeletonFile
+	{
+	public:
+		NascentSkeleton&		GetBasicSkeleton() { return _basicSkeleton; }
+		NascentSkeleton&		GetSkinningSkeleton(const std::string& name) { return _skinningSkeletons[name]; }
+
+	private:
+		NascentSkeleton			_basicSkeleton;
+		std::unordered_map<std::string, NascentSkeleton> _skinningSkeletons;
+	};*/
 
         //
         //      "Model Command Stream" is the list of model elements
@@ -220,9 +231,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         bool IsEmpty() const { return _geometryInstances.empty() && _cameraInstances.empty() && _skinControllerInstances.empty(); }
         void Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        unsigned RegisterInputInterfaceMarker(const std::string& name);
+        unsigned RegisterInputInterfaceMarker(const std::string& skeletonName, const std::string& name);
 
-        std::vector<uint64> GetInputInterface() const;
+        std::vector<uint64_t> BuildHashedInputInterface() const;
         unsigned GetMaxLOD() const;
 
         NascentModelCommandStream();
@@ -237,16 +248,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         friend std::ostream& operator<<(std::ostream&, const NascentModelCommandStream&);
 
     private:
-        std::vector<uint64>			_inputInterface;
-		std::vector<std::string>	_inputInterfaceNames;
+        std::vector<std::pair<std::string, std::string>>	_inputInterfaceNames;
 
         NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
     
-	class NascentSkeleton;
+	// class NascentSkeleton;
 	class SkeletonRegistry;
-	void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
+	// void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
 	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
 }}}
 

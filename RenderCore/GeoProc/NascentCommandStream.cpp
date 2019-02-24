@@ -307,6 +307,20 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
+	void NascentSkeleton::FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> newOutputInterface)
+	{
+		auto oldOutputInterface =_interface.GetOutputInterface();
+
+		std::vector<unsigned> oldIndexToNew(oldOutputInterface.size(), ~0u);
+		for (unsigned c=0; c<oldOutputInterface.size(); c++) {
+			auto i = std::find(newOutputInterface.begin(), newOutputInterface.end(), oldOutputInterface[c]);
+			if (i!=newOutputInterface.end())
+				oldIndexToNew[c] = (unsigned)std::distance(newOutputInterface.begin(), i);
+		}
+
+		_skeletonMachine.RemapOutputMatrices(MakeIteratorRange(oldIndexToNew));
+		_interface.SetOutputInterface(newOutputInterface);
+	}
 
     void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
@@ -321,18 +335,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
-    unsigned NascentModelCommandStream::RegisterInputInterfaceMarker(const std::string& name)
+
+    unsigned NascentModelCommandStream::RegisterInputInterfaceMarker(const std::string& skeleton, const std::string& name)
     {
-		auto hash = Hash64(name);
-		auto existing = std::find(_inputInterface.begin(), _inputInterface.end(), hash);
-		if (existing != _inputInterface.end()) {
-			assert(_inputInterfaceNames[std::distance(_inputInterface.begin(), existing)] == name);
-			return (unsigned)std::distance(_inputInterface.begin(), existing);
+		auto j = std::make_pair(skeleton, name);
+		auto existing = std::find(_inputInterfaceNames.begin(), _inputInterfaceNames.end(), j);
+		if (existing != _inputInterfaceNames.end()) {
+			return (unsigned)std::distance(_inputInterfaceNames.begin(), existing);
 		}
 
         auto result = (unsigned)_inputInterfaceNames.size();
-		_inputInterface.push_back(hash);
-		_inputInterfaceNames.push_back(name);
+		_inputInterfaceNames.push_back({skeleton, name});
 		return result;
     }
 
@@ -384,12 +397,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             //      Turn our list of input matrices into hash values, and write out the
             //      run-time input interface definition...
             //
-        ConsoleRig::DebuggerOnlyWarning("Command stream input interface:\n");
-        serializer.SerializeSubBlock(MakeIteratorRange(_inputInterface));
-        serializer.SerializeValue(_inputInterface.size());
+		auto hashedInterface = BuildHashedInputInterface();
+        serializer.SerializeSubBlock(MakeIteratorRange(hashedInterface));
+        serializer.SerializeValue(hashedInterface.size());
     }
 
-    std::vector<uint64> NascentModelCommandStream::GetInputInterface() const { return _inputInterface; }
+	std::vector<uint64_t> NascentModelCommandStream::BuildHashedInputInterface() const
+	{
+		std::vector<uint64_t> hashedInterface;
+		hashedInterface.reserve(_inputInterfaceNames.size());
+		for (const auto&j:_inputInterfaceNames) hashedInterface.push_back(HashCombine(Hash64(j.first), Hash64(j.second)));
+		return hashedInterface;
+	}
 
     unsigned NascentModelCommandStream::GetMaxLOD() const
     {
@@ -433,7 +452,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         stream << " --- Input interface:" << std::endl;
         c=0;
         for (const auto& i:cmdStream._inputInterfaceNames)
-            stream << "  [" << c++ << "] " << i << std::endl;
+            stream << "  [" << c++ << "] " << i.first << " : " << i.second  << std::endl;
         return stream;
     }
 
@@ -444,12 +463,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		for (const auto& nodeDesc:registry.GetBasicStructure()._importantNodes) {
 			uint32 outputMarker = 0u;
 			auto success = skeleton.GetInterface().TryRegisterJointName(
-				outputMarker, MakeStringSection(nodeDesc._bindingName));
+				outputMarker, "", MakeStringSection(nodeDesc._bindingName));
 			if (!success)
 				Log(Warning) << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName << std::endl;
 		}
 	}
 
+	/*
 	void RegisterNodeBindingNames(
 		NascentModelCommandStream& stream,
 		const SkeletonRegistry& registry)
@@ -457,4 +477,5 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		for (const auto& nodeDesc:registry.GetBasicStructure()._importantNodes)
 			stream.RegisterInputInterfaceMarker(nodeDesc._bindingName);
 	}
+	*/
 }}}

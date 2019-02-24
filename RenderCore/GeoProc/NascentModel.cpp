@@ -68,32 +68,29 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				auto* geo = FindGeometryBlock(cmd.second._geometryBlock);
 				assert(geo);
 				Transform(*geo->_mesh, transform);
-				cmd.second._localToModel = "Unnamed0";
+				cmd.second._localToModel = "root";
 			}
 		}
 	}
 
-	std::unordered_map<std::string, std::vector<std::string>> NascentModel::BuildSkeletonInterface()
+	std::vector<std::pair<std::string, std::string>> NascentModel::BuildSkeletonInterface()
 	{
-		std::vector<std::string> bindingsForRootStructure;
+		std::vector<std::pair<std::string, std::string>> result;
 		for (const auto&cmd:_commands) {
-			auto i = std::find(bindingsForRootStructure.begin(), bindingsForRootStructure.end(), cmd.second._localToModel);
-			if (i == bindingsForRootStructure.end())
-				bindingsForRootStructure.push_back(cmd.second._localToModel);
+			auto j = std::make_pair(std::string{}, cmd.second._localToModel);
+			auto i = std::find(result.begin(), result.end(), j);
+			if (i == result.end())
+				result.push_back(j);
 		}
-
-		std::unordered_map<std::string, std::vector<std::string>> result;
-		result[std::string{}] = std::move(bindingsForRootStructure);
 
 		for (const auto&controller:_skinBlocks) {
-			auto& bindings = result[controller.second._skeleton];
 			for (const auto&joint:controller.second._controller->_jointNames) {
-				auto i = std::find(bindings.begin(), bindings.end(), joint);
-				if (i == bindings.end())
-					bindings.push_back(joint);
+				auto j = std::make_pair(controller.second._skeleton, joint);
+				auto i = std::find(result.begin(), result.end(), j);
+				if (i == result.end())
+					result.push_back(j);
 			}
 		}
-
 		return result;
 	}
 
@@ -119,18 +116,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         NativeVBLayout vbLayout = BuildDefaultLayout(*geoBlock._mesh, NativeSettings);
         auto nativeVB = geoBlock._mesh->BuildNativeVertexBuffer(vbLayout);
 
-		std::vector<uint64_t> matBindingSymbols;
 		std::vector<DrawCallDesc> drawCalls;
 		for (const auto&d:geoBlock._drawCalls) {
-			drawCalls.push_back(DrawCallDesc{d._firstIndex, d._indexCount, 0, (unsigned)matBindingSymbols.size(), d._topology});
-			matBindingSymbols.push_back(matBindingSymbols.size());
+			drawCalls.push_back(DrawCallDesc{d._firstIndex, d._indexCount, 0, (unsigned)drawCalls.size(), d._topology});
 		}
 
         return NascentRawGeometry {
             nativeVB, geoBlock._indices,
             RenderCore::Assets::CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
             geoBlock._indexFormat,
-			drawCalls, matBindingSymbols };
+			drawCalls,
+			geoBlock._meshVertexIndexToSrcIndex };
 	}
 
 	std::vector<::Assets::ICompileOperation::OperationResult> NascentModel::SerializeToChunks(const std::string& name, const NascentSkeleton& embeddedSkeleton)
@@ -155,13 +151,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					auto rawGeo = CompleteInstantiation(*geoBlock);
 					geoObjects._rawGeos.emplace_back(
 						std::make_pair(cmd.second._geometryBlock, std::move(rawGeo)));
-					i = geoObjects._rawGeos.end()-1;
+					i = geoObjects._rawGeos.end ()-1;
 				}
 
 				cmdStream.Add(
 					NascentModelCommandStream::GeometryInstance {
 						(unsigned)std::distance(geoObjects._rawGeos.begin(), i),
-						cmdStream.RegisterInputInterfaceMarker(cmd.second._localToModel),
+						cmdStream.RegisterInputInterfaceMarker({}, cmd.second._localToModel),
 						std::move(materialGuid),
 						cmd.second._levelOfDetail
 					});
@@ -170,10 +166,19 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					[&cmd](const std::pair<NascentObjectGuid, NascentBoundSkinnedGeometry>& p) { return p.first == cmd.second._skinControllerBlock; });
 				if (i == geoObjects._skinnedGeos.end()) {
 					auto rawGeo = CompleteInstantiation(*geoBlock);
+					DynamicArray<uint16> jointMatrices(
+						std::make_unique<uint16[]>(skinController->_controller->_jointNames.size()),
+						skinController->_controller->_jointNames.size());
+					for (unsigned c=0; c<skinController->_controller->_jointNames.size(); ++c) {
+						jointMatrices[c] = (uint16)cmdStream.RegisterInputInterfaceMarker(
+							skinController->_skeleton,
+							skinController->_controller->_jointNames[c]);
+					}
 					auto boundController = BindController(
 						rawGeo,
 						*skinController->_controller,
-						{}, "");
+						std::move(jointMatrices),
+						"");
 					geoObjects._skinnedGeos.emplace_back(
 						std::make_pair(cmd.second._skinControllerBlock, std::move(boundController)));
 					i = geoObjects._skinnedGeos.end()-1;
@@ -182,7 +187,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				cmdStream.Add(
 					NascentModelCommandStream::SkinControllerInstance {
 						(unsigned)std::distance(geoObjects._skinnedGeos.begin(), i),
-						cmdStream.RegisterInputInterfaceMarker(cmd.second._localToModel),
+						cmdStream.RegisterInputInterfaceMarker({}, cmd.second._localToModel),
 						std::move(materialGuid),
 						cmd.second._levelOfDetail
 					});
