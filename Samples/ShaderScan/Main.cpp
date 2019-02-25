@@ -108,8 +108,6 @@ int main(int argc, char *argv[])
         Log(Error) << e.what() << std::endl;
     } CATCH_END
 
-    ConsoleRig::GlobalServices::GetCrossModule().Withhold(assetServices);
-
     return 0;
 }
 

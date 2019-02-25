@@ -246,7 +246,7 @@ namespace Sample
 
 			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine.GetOutputMatrixCount());
 			skeletonMachine.GenerateOutputTransforms(
-				skeletonMachineOutput.data(), (unsigned)skeletonMachineOutput.size(),
+				MakeIteratorRange(skeletonMachineOutput),
 				&params);
 
 			for (unsigned c=0; c<renderer->DeformOperationCount(); ++c) {

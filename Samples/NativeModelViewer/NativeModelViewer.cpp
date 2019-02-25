@@ -6,6 +6,7 @@
 #include "../Shared/SampleRig.h"
 #include "../../Tools/ToolsRig/ModelVisualisation.h"
 #include "../../Tools/ToolsRig/VisualisationUtils.h"
+#include "../../Tools/ToolsRig/BasicManipulators.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../ConsoleRig/ResourceBox.h"
@@ -44,18 +45,18 @@ namespace Sample
 
 	void NativeModelViewerOverlay::OnStartup(const SampleGlobals& globals)
 	{
-		auto visLayer = std::make_shared<ToolsRig::ModelVisLayer>();
+		auto modelLayer = std::make_shared<ToolsRig::ModelVisLayer>();
 
 		ToolsRig::ModelVisSettings visSettings;
 			 
 		auto scene = ToolsRig::MakeScene(visSettings);
-		visLayer->Set(scene);
-		visLayer->Set(ToolsRig::VisEnvSettings{});
-		AddSystem(visLayer);
+		modelLayer->Set(scene);
+		modelLayer->Set(ToolsRig::VisEnvSettings{});
+		AddSystem(modelLayer);
 
 		auto mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
 		ToolsRig::VisOverlaySettings overlaySettings;
-		overlaySettings._colourByMaterial = 1;
+		overlaySettings._colourByMaterial = 2;
 		overlaySettings._drawNormals = true;
 		overlaySettings._drawWireframe = false;
 
@@ -63,14 +64,22 @@ namespace Sample
 			overlaySettings,
 			mouseOver);
 		visOverlay->Set(scene);
-		visOverlay->Set(visLayer->GetCamera());
+		visOverlay->Set(modelLayer->GetCamera());
 		AddSystem(visOverlay);
 
 		auto trackingOverlay = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
 			mouseOver, globals._techniqueContext,
-			visLayer->GetCamera(), &RenderTrackingOverlay);
+			modelLayer->GetCamera(), &RenderTrackingOverlay);
 		trackingOverlay->Set(scene);
 		AddSystem(trackingOverlay);
+
+		{
+			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(); // intersectionContext, intersectionScene);
+			manipulators->Register(
+				ToolsRig::ManipulatorStack::CameraManipulator,
+				ToolsRig::CreateCameraManipulator(modelLayer->GetCamera()));
+			AddSystem(ToolsRig::MakeLayerForInput(manipulators));
+		}
 	}
 
 	auto NativeModelViewerOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
