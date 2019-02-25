@@ -136,6 +136,13 @@ namespace RenderCore { namespace Assets
         virtual ~ITransformationMachineOptimizer();
     };
 
+	class TransformationMachineOptimizer_Null : public ITransformationMachineOptimizer
+	{
+	public:
+		bool CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const { return false; } 
+		void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform) {};
+	};
+
     std::vector<uint32> OptimizeTransformationMachine(
         IteratorRange<const uint32*> input,
         ITransformationMachineOptimizer& optimizer);

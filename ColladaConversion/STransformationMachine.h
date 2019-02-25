@@ -6,11 +6,10 @@
 
 #pragma once
 
-#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../Utility/StringUtils.h"
 #include <functional>
 
-namespace RenderCore { namespace Assets { namespace GeoProc { class NascentSkeletonMachine; class NascentSkeletonInterface; class SkeletonRegistry; }}}
+namespace RenderCore { namespace Assets { namespace GeoProc { class NascentSkeletonMachine; class NascentSkeletonInterface; }}}
 namespace RenderCore { namespace Assets { class TransformationParameterSet; }}
 
 namespace ColladaConversion
@@ -23,6 +22,4 @@ namespace ColladaConversion
 		const ::ColladaConversion::Transformation& transformations,
         const char nodeName[],
 		const std::function<bool(StringSection<>)>& predicate);
-        
-	// const RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs, bool assumeEverythingAnimated = false);
 }

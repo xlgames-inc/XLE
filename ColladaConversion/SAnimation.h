@@ -12,8 +12,6 @@
 #include <string>
 #include <vector>
 
-namespace RenderCore { namespace Assets { namespace GeoProc { class SkeletonRegistry; }}}
-
 namespace ColladaConversion
 {
 	class Animation; class URIResolveContext;
@@ -28,29 +26,6 @@ namespace ColladaConversion
             RenderCore::Assets::RawAnimationCurve   _curve;
 			RenderCore::Assets::AnimSamplerType _samplerType;
             unsigned                    _samplerOffset;
-
-            Curve(
-                const std::string parameterName, RenderCore::Assets::RawAnimationCurve&& curve,
-				RenderCore::Assets::AnimSamplerType samplerType,
-                unsigned samplerOffset)
-            : _parameterName(parameterName), _curve(std::move(curve))
-            , _samplerType(samplerType), _samplerOffset(samplerOffset) {}
-
-            Curve(Curve&& moveFrom) never_throws
-            : _curve(std::move(moveFrom._curve))
-            , _parameterName(moveFrom._parameterName)
-            , _samplerType(moveFrom._samplerType)
-            , _samplerOffset(moveFrom._samplerOffset)
-            {}
-
-            Curve& operator=(Curve&& moveFrom) never_throws
-            {
-                _parameterName = moveFrom._parameterName;
-                _curve = std::move(moveFrom._curve);
-                _samplerType = moveFrom._samplerType;
-                _samplerOffset = moveFrom._samplerOffset;
-                return *this;
-            }
         };
 
         std::vector<Curve> _curves;
@@ -58,7 +33,6 @@ namespace ColladaConversion
 
     UnboundAnimation Convert(
         const ::ColladaConversion::Animation& animation,
-        const ::ColladaConversion::URIResolveContext& resolveContext,
-        RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs);
+        const ::ColladaConversion::URIResolveContext& resolveContext);
 }
 

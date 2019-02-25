@@ -9,7 +9,6 @@
 #include "ScaffoldParsingUtil.h"            // just for AsString
 #include "../ConsoleRig/Log.h"
 #include "../RenderCore/GeoProc/NascentTransformationMachine.h"
-#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/Assets/TransformationCommands.h"
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"

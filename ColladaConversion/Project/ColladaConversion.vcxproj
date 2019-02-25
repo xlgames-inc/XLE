@@ -100,7 +100,6 @@
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentRawGeometry.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.cpp" />
-    <ClCompile Include="..\..\RenderCore\GeoProc\SkeletonRegistry.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionConfig.cpp" />
     <ClCompile Include="..\DLLInterface.cpp" />
@@ -128,7 +127,6 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentRawGeometry.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h" />
-    <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h" />
     <ClInclude Include="..\ConversionConfig.h" />
     <ClInclude Include="..\ScaffoldParsingUtil.h" />
     <ClInclude Include="..\SAnimation.h" />

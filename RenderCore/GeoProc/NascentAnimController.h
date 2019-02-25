@@ -8,7 +8,6 @@
 
 #include "NascentRawGeometry.h"
 #include "NascentObjectGuid.h"
-#include "SkeletonRegistry.h"
 #include "../RenderCore/Types.h"
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"

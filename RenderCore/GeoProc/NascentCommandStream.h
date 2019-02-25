@@ -253,11 +253,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
         NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
-    
-	// class NascentSkeleton;
-	class SkeletonRegistry;
-	// void RegisterNodeBindingNames(NascentModelCommandStream& stream, const SkeletonRegistry& registry);
-	void RegisterNodeBindingNames(NascentSkeleton& skeleton, const SkeletonRegistry& registry);
 }}}
 
 

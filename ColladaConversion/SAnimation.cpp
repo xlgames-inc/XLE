@@ -7,7 +7,6 @@
 #include "SAnimation.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
-#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
@@ -280,8 +279,7 @@ namespace ColladaConversion
 
     UnboundAnimation Convert(
         const Animation& animation, 
-        const URIResolveContext& resolveContext, 
-        RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs)
+        const URIResolveContext& resolveContext)
     {
         UnboundAnimation result;
 
@@ -462,11 +460,9 @@ namespace ColladaConversion
                 std::move(inputTimeBlock),
                 std::move(keyBlock),
 				keyDataDesc, interpolationType);
-            result._curves.emplace_back(UnboundAnimation::Curve(
-                i->first, std::move(curve), samplerType, 0));
+            result._curves.emplace_back(
+				UnboundAnimation::Curve { i->first, std::move(curve), samplerType, 0 } );
             
-            // nodeRefs.MarkParameterAnimated(i->first);
-
             i = i2;
         }
 

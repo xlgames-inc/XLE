@@ -66,7 +66,6 @@
     <ClCompile Include="..\GeoProc\NascentObjectsSerialize.cpp" />
     <ClCompile Include="..\GeoProc\NascentRawGeometry.cpp" />
     <ClCompile Include="..\GeoProc\NascentTransformationMachine.cpp" />
-    <ClCompile Include="..\GeoProc\SkeletonRegistry.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AnimationScaffoldInternal.h" />
@@ -96,7 +95,6 @@
     <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h" />
     <ClInclude Include="..\GeoProc\NascentRawGeometry.h" />
     <ClInclude Include="..\GeoProc\NascentTransformationMachine.h" />
-    <ClInclude Include="..\GeoProc\SkeletonRegistry.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\BufferUploads\Project\BufferUploads.vcxproj">

@@ -7,6 +7,7 @@
 #include "NascentObjectGuid.h"
 #include "../Format.h"
 #include "../Types.h"
+#include "../Assets/TransformationCommands.h"		// for ITransformationMachineOptimizer
 #include "../../Assets/ICompileOperation.h"
 #include "../../Math/Matrix.h"
 #include "../../Utility/UTFUtils.h"
@@ -14,7 +15,6 @@
 #include <memory>
 #include <string>
 #include <vector>
-#include <unordered_map>
 
 namespace RenderCore { namespace Assets { class DrawCallDesc; }}
 
@@ -83,7 +83,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		void ApplyTransform(const std::string& bindingPoint, const Float4x4& transform);
 
-		std::vector<std::pair<std::string, std::string>> BuildSkeletonInterface();
+		std::vector<std::pair<std::string, std::string>> BuildSkeletonInterface() const;
 
 		std::vector<::Assets::ICompileOperation::OperationResult> SerializeToChunks(
 			const std::string& name,
@@ -95,28 +95,23 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		std::vector<std::pair<Indexor,Command>>				_commands;
 	};
 
-	/*
-	class NascentSkeletonFile
-	{
-	public:
-		class Skeleton
-		{
-		public:
-			NascentObjectGuid _srcObject;
-			std::basic_string<utf8> _name;
-			std::shared_ptr<NascentSkeletonMachine> _machine;
+	class ModelTransMachineOptimizer : public ITransformationMachineOptimizer
+    {
+    public:
+        bool CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const;
+        void MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform);
+		IteratorRange<const Float4x4*> GetMergedOutputMatrices() const { return MakeIteratorRange(_mergedTransforms); }
 
-			struct InterfaceElement
-			{
-				NascentObjectGuid _srcObject;
-				std::basic_string<utf8> _name;
-			};
-			std::vector<InterfaceElement> _inputs;
-			std::vector<InterfaceElement> _outputs;
-		};
-
-		std::vector<Skeleton> _skeletons;
-	};
-	*/
+        ModelTransMachineOptimizer(
+			const NascentModel& model,
+			IteratorRange<const std::pair<std::string, std::string>*> bindingNameInterface);
+        ModelTransMachineOptimizer();
+        ~ModelTransMachineOptimizer();
+    protected:
+        std::vector<bool>			_canMergeIntoTransform;
+        std::vector<Float4x4>		_mergedTransforms;
+		std::vector<std::pair<std::string, std::string>>	_bindingNameInterface;
+    };
+	
 
 }}}

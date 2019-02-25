@@ -17,7 +17,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	class NascentSkeleton;
 	class NascentGeometryObjects;
 	class NascentModelCommandStream;
-	class SkeletonRegistry;
 }}}
 
 namespace ColladaConversion
@@ -26,62 +25,7 @@ namespace ColladaConversion
 	class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController;
     class ImportConfiguration;
 
-    void BuildSkeleton(
-        NascentSkeleton& skeleton,
-        const ::ColladaConversion::Node& sceneRoot,
-        StringSection<utf8> rootNode,
-        SkeletonRegistry& skeletonReferences,
-        bool fullSkeleton);
-
 	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName = {});
-
-#if 0
-	struct InstantiatedGeo
-	{
-		unsigned _geoId;
-		std::vector<NascentModelCommandStream::MaterialGuid> _materials;
-	};
-
-	InstantiatedGeo InstantiateGeometry(
-        const ::ColladaConversion::InstanceGeometry& instGeo,
-        const ::ColladaConversion::URIResolveContext& resolveContext,
-		const Float4x4& mergedTransform,
-        NascentGeometryObjects& objects,
-        const ImportConfiguration& cfg);
-
-	using JointToTransformMarker = std::function<unsigned(const NascentObjectGuid&)>;
-
-	InstantiatedGeo InstantiateController(
-        const ::ColladaConversion::InstanceController& instGeo,
-        const ::ColladaConversion::URIResolveContext& resolveContext,
-		const JointToTransformMarker& jointToTransformMarker,
-		NascentGeometryObjects& objects,
-        const ImportConfiguration& cfg);
-#endif
-
-    class ReferencedGeometries
-    {
-    public:
-        class AttachedObject
-        {
-        public:
-            NascentObjectGuid	_nodeGuid;
-            unsigned			_objectIndex;
-            unsigned			_levelOfDetail;
-        };
-        std::vector<AttachedObject>   _meshes;
-        std::vector<AttachedObject>   _skinControllers;
-
-        bool Gather(const ::ColladaConversion::Node& sceneRoot, StringSection<utf8> rootNode, SkeletonRegistry& nodeRefs);
-
-        /*void FindSkinJoints(
-            const ::ColladaConversion::VisualScene& scene, 
-            const ::ColladaConversion::URIResolveContext& resolveContext, 
-            SkeletonRegistry& nodeRefs);*/
-
-    private:
-        void Gather(const ::ColladaConversion::Node& node, SkeletonRegistry& nodeRefs, bool terminateOnLODNodes = false);
-    };
 
 	auto BuildMaterialTableStrings(
         IteratorRange<const InstanceGeometry::MaterialBinding*> bindings, 
@@ -89,4 +33,14 @@ namespace ColladaConversion
         const URIResolveContext& resolveContext) -> std::vector<std::string>;
 
 	std::string SkeletonBindingName(const Node& node);
+
+	struct LODDesc
+    {
+    public:
+        unsigned                _lod;
+        bool                    _isLODRoot;
+        StringSection<utf8>     _remainingName;
+    };
+
+    LODDesc GetLevelOfDetail(const ::ColladaConversion::Node& node);
 }

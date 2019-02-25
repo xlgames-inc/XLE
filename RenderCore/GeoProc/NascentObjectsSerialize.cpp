@@ -8,8 +8,6 @@
 #include "NascentRawGeometry.h"
 #include "NascentCommandStream.h"
 #include "NascentGeometryObjects.h"
-#include "SkeletonRegistry.h"
-// #include "SCommandStream.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/AssetsCore.h"
 #include "../Assets/NascentChunk.h"

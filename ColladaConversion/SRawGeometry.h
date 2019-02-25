@@ -24,9 +24,6 @@ namespace ColladaConversion
     class SkinController;
     class URIResolveContext;
 
-    auto Convert(const MeshGeometry& mesh, const Float4x4& mergedTransform, const URIResolveContext& pubEles, const ImportConfiguration& cfg)
-        -> RenderCore::Assets::GeoProc::NascentRawGeometry;
-
 	class ConvertedMeshGeometry
 	{
 	public:
@@ -34,7 +31,7 @@ namespace ColladaConversion
 		std::vector<uint64_t> _matBindingSymbols;
 	};
 
-	ConvertedMeshGeometry Convert2(const MeshGeometry& mesh, const URIResolveContext& pubEles, const ImportConfiguration& cfgs);
+	ConvertedMeshGeometry Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles, const ImportConfiguration& cfgs);
 
     auto Convert(const SkinController& controller, const URIResolveContext& pubEles, const ImportConfiguration& cfg)
         -> RenderCore::Assets::GeoProc::UnboundSkinController;

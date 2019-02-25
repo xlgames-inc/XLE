@@ -57,9 +57,6 @@
     <ClCompile Include="..\GeoProc\NascentCommandStream.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\GeoProc\SkeletonRegistry.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\GeoProc\GeometryAlgorithm.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
@@ -132,9 +129,6 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentObjectGuid.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeoProc\SkeletonRegistry.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\GeometryAlgorithm.h">

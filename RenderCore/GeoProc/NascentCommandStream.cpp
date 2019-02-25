@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NascentCommandStream.h"
-#include "SkeletonRegistry.h"
 #include "../Format.h"
 #include "../Assets/RawAnimationCurve.h"
 #include "../../Assets/BlockSerializer.h"
@@ -456,26 +455,4 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         return stream;
     }
 
-	void RegisterNodeBindingNames(
-		NascentSkeleton& skeleton,
-		const SkeletonRegistry& registry)
-	{
-		for (const auto& nodeDesc:registry.GetBasicStructure()._importantNodes) {
-			uint32 outputMarker = 0u;
-			auto success = skeleton.GetInterface().TryRegisterJointName(
-				outputMarker, "", MakeStringSection(nodeDesc._bindingName));
-			if (!success)
-				Log(Warning) << "Found possible duplicate joint name in transformation machine: " << nodeDesc._bindingName << std::endl;
-		}
-	}
-
-	/*
-	void RegisterNodeBindingNames(
-		NascentModelCommandStream& stream,
-		const SkeletonRegistry& registry)
-	{
-		for (const auto& nodeDesc:registry.GetBasicStructure()._importantNodes)
-			stream.RegisterInputInterfaceMarker(nodeDesc._bindingName);
-	}
-	*/
 }}}

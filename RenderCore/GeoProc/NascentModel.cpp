@@ -68,12 +68,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				auto* geo = FindGeometryBlock(cmd.second._geometryBlock);
 				assert(geo);
 				Transform(*geo->_mesh, transform);
-				cmd.second._localToModel = "root";
+				cmd.second._localToModel = "identity";
 			}
 		}
 	}
 
-	std::vector<std::pair<std::string, std::string>> NascentModel::BuildSkeletonInterface()
+	std::vector<std::pair<std::string, std::string>> NascentModel::BuildSkeletonInterface() const
 	{
 		std::vector<std::pair<std::string, std::string>> result;
 		for (const auto&cmd:_commands) {
@@ -196,5 +196,59 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		return SerializeSkinToChunks(name, geoObjects, cmdStream, embeddedSkeleton);
 	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	bool ModelTransMachineOptimizer::CanMergeIntoOutputMatrix(unsigned outputMatrixIndex) const
+    {
+        if (outputMatrixIndex < unsigned(_canMergeIntoTransform.size()))
+            return _canMergeIntoTransform[outputMatrixIndex];
+        return false;
+    }
+
+    void ModelTransMachineOptimizer::MergeIntoOutputMatrix(unsigned outputMatrixIndex, const Float4x4& transform)
+    {
+        assert(CanMergeIntoOutputMatrix(outputMatrixIndex));
+        _mergedTransforms[outputMatrixIndex] = Combine(
+            _mergedTransforms[outputMatrixIndex], transform);
+    }
+
+    ModelTransMachineOptimizer::ModelTransMachineOptimizer(
+		const NascentModel& model,
+		IteratorRange<const std::pair<std::string, std::string>*> bindingNameInterface)
+	: _bindingNameInterface(bindingNameInterface.begin(), bindingNameInterface.end())
+    {
+		auto outputMatrixCount = bindingNameInterface.size();
+        _canMergeIntoTransform.resize(outputMatrixCount, false);
+        _mergedTransforms.resize(outputMatrixCount, Identity<Float4x4>());
+
+        for (unsigned c=0; c<outputMatrixCount; ++c) {
+
+			if (!bindingNameInterface[c].first.empty()) continue;
+
+			bool skinAttached = false;
+			bool doublyAttachedObject = false;
+			bool atLeastOneAttached = false;
+			for (const auto&cmd:model.GetCommands())
+				if (cmd.second._localToModel == bindingNameInterface[c].second) {
+					atLeastOneAttached = true;
+
+					// if we've got a skin controller attached, we can't do any merging
+					skinAttached |= cmd.second._skinControllerBlock != NascentObjectGuid{};
+
+					// find all of the meshes attached, and check if any are attached in
+					// multiple places
+					for (const auto&cmd2:model.GetCommands())
+						doublyAttachedObject |= cmd2.second._geometryBlock == cmd.second._geometryBlock && cmd2.second._localToModel != cmd.second._localToModel;
+				}
+
+            _canMergeIntoTransform[c] = atLeastOneAttached && !skinAttached && !doublyAttachedObject;
+        }
+    }
+
+    ModelTransMachineOptimizer::ModelTransMachineOptimizer() {}
+
+    ModelTransMachineOptimizer::~ModelTransMachineOptimizer()
+    {}
 
 }}}
