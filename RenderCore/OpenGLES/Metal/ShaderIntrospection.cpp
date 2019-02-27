@@ -216,7 +216,7 @@ namespace RenderCore { namespace Metal_OpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void Bind(DeviceContext& context, const SetUniformCommandGroup& uniforms, IteratorRange<const void*> data)
+    unsigned Bind(DeviceContext& context, const SetUniformCommandGroup& uniforms, IteratorRange<const void*> data)
     {
         assert(data.begin() && data.size());
 
@@ -278,6 +278,7 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         CheckGLError("Bind SetUniformCommandGroup");
+        return (unsigned)uniforms._commands.size();
     }
 
     std::ostream& operator<<(std::ostream&str, const SetUniformCommandGroup& cmdGroup)

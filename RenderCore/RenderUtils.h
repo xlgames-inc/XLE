@@ -69,16 +69,16 @@ namespace RenderCore
     class SharedPkt : public MiniHeap::Allocation
     {
     public:
-        void* get() const never_throws { return _allocation; }
-        operator bool() const never_throws { return _allocation != nullptr; }
+        void* get() const never_throws          { CheckSubframeHeapReset(); return _allocation; }
+        operator bool() const never_throws      { CheckSubframeHeapReset(); return _allocation != nullptr; }
 
-        void* begin() { return _allocation; }
-        void* end() { return PtrAdd(_allocation, _size); }
-        const void* begin() const { return _allocation; }
-        const void* end() const { return PtrAdd(_allocation, _size); }
-        size_t size() const { return _size; }
+        void* begin()               { CheckSubframeHeapReset(); return _allocation; }
+        void* end()                 { CheckSubframeHeapReset(); return PtrAdd(_allocation, _size); }
+        const void* begin() const   { CheckSubframeHeapReset(); return _allocation; }
+        const void* end() const     { CheckSubframeHeapReset(); return PtrAdd(_allocation, _size); }
+        size_t size() const         { CheckSubframeHeapReset(); return _size; }
 
-		IteratorRange<const void*> AsIteratorRange() const { return MakeIteratorRange(begin(), end()); }
+		IteratorRange<const void*> AsIteratorRange() const { CheckSubframeHeapReset(); return MakeIteratorRange(begin(), end()); }
 
         SharedPkt() never_throws;
         SharedPkt(const SharedPkt& cloneFrom);
@@ -87,15 +87,27 @@ namespace RenderCore
         SharedPkt& operator=(SharedPkt&& moveFrom) never_throws;
         ~SharedPkt();
 
+        void CalculateHash();
+        uint64_t GetHash() const { return _calculatedHash; }     // unless CalculateHash is explicitly called, the hash doesn't get calculated and is just zero here
+
         friend SharedPkt MakeSharedPktSize(size_t size);
         friend SharedPkt MakeSharedPkt(const void* begin, const void* end);
         friend SharedPkt MakeSubFramePktSize(size_t size);
+        friend SharedPkt MakeSubFramePktSizeAligned(size_t size, size_t alignment);
         friend SharedPkt MakeSubFramePkt(const void* begin, const void* end);
 
         void swap(SharedPkt& other) never_throws;
     private:
-        SharedPkt(MiniHeap::Allocation alloc, size_t size);
+        SharedPkt(MiniHeap::Allocation alloc, size_t size, unsigned subframeHeapReset=0);
         size_t _size;
+        uint64_t _calculatedHash;
+
+        #if defined(_DEBUG)
+            unsigned _subframeHeapReset;
+            void CheckSubframeHeapReset() const;
+        #else
+            void CheckSubframeHeapReset() const {}
+        #endif
         static MiniHeap& GetHeap();
     };
 
@@ -110,6 +122,7 @@ namespace RenderCore
     }
     
     SharedPkt MakeSubFramePktSize(size_t size);
+    SharedPkt MakeSubFramePktSizeAligned(size_t size, size_t alignment);
     SharedPkt MakeSubFramePkt(const void* begin, const void* end);
     
     template<typename T,
@@ -126,6 +139,10 @@ namespace RenderCore
         _allocation = nullptr;
         _marker = ~uint32(0x0);
         _size = 0;
+        _calculatedHash = 0;
+        #if defined(_DEBUG)
+            _subframeHeapReset = 0;
+        #endif
         swap(moveFrom);
     }
 
@@ -134,6 +151,10 @@ namespace RenderCore
         _allocation = nullptr;
         _marker = ~uint32(0x0);
         _size = 0;
+        _calculatedHash = 0;
+        #if defined(_DEBUG)
+            _subframeHeapReset = 0;
+        #endif
     }
 
     inline SharedPkt& SharedPkt::operator=(const SharedPkt& cloneFrom)
@@ -153,6 +174,10 @@ namespace RenderCore
         std::swap(other._allocation, _allocation);
         std::swap(other._marker, _marker);
         std::swap(other._size, _size);
+        std::swap(other._calculatedHash, _calculatedHash);
+        #if defined(_DEBUG)
+            std::swap(other._subframeHeapReset, _subframeHeapReset);
+        #endif
     }
 
     inline unsigned ARGBtoABGR(unsigned input)

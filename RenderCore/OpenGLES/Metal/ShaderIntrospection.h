@@ -80,6 +80,6 @@ namespace RenderCore { namespace Metal_OpenGLES
         std::vector<std::pair<HashType, Struct>> _structs;
     };
 
-    void Bind(DeviceContext& context, const SetUniformCommandGroup& uniforms, IteratorRange<const void*> data);
+    unsigned Bind(DeviceContext& context, const SetUniformCommandGroup& uniforms, IteratorRange<const void*> data);
 
 }}

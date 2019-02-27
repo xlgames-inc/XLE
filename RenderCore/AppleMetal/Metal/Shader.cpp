@@ -74,6 +74,9 @@ namespace RenderCore { namespace Metal_AppleMetal
         StringSection<::Assets::ResChar> definesTable,
         IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
     {
+#if defined(_DEBUG)
+        std::stringstream variantLabel;
+#endif
         std::stringstream definesPreamble;
         NSMutableDictionary* preprocessorMacros = [[NSMutableDictionary alloc] init];
         {
@@ -94,10 +97,16 @@ namespace RenderCore { namespace Metal_AppleMetal
                     NSString* value = [NSString stringWithCString:MakeStringSection(e, defineEnd).AsString().c_str() encoding:NSUTF8StringEncoding];
                     preprocessorMacros[key] = value;
                     definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << std::endl;
+#if defined(_DEBUG)
+                    variantLabel << MakeStringSection(p, endOfName).AsString() << " " << MakeStringSection(e, defineEnd).AsString() << "; ";
+#endif
                 } else {
                     NSString* key = [NSString stringWithCString:MakeStringSection(p, endOfName).AsString().c_str() encoding:NSUTF8StringEncoding];
                     preprocessorMacros[key] = @(1);
                     definesPreamble << "#define " << MakeStringSection(p, endOfName).AsString() << std::endl;
+#if defined(_DEBUG)
+                    variantLabel << MakeStringSection(p, endOfName).AsString() << "; ";
+#endif
                 }
 
                 p = (defineEnd == definesTable.end()) ? defineEnd : (defineEnd+1);
@@ -145,6 +154,9 @@ namespace RenderCore { namespace Metal_AppleMetal
             return false;
         }
         assert(newLibrary);
+#if defined(_DEBUG)
+        [newLibrary setLabel:[NSString stringWithCString:variantLabel.str().c_str() encoding:NSUTF8StringEncoding]];
+#endif
 
         uint64_t hashCode = DefaultSeed64;
         /* TODO: improve hash for shader library */
@@ -215,6 +227,10 @@ namespace RenderCore { namespace Metal_AppleMetal
         /* as for what function to call, there should only be one function in the library */
         _vf = [vertexLibrary newFunctionWithName:[[vertexLibrary functionNames] firstObject]];
         _ff = [fragmentLibrary newFunctionWithName:[[fragmentLibrary functionNames] firstObject]];
+#if defined(_DEBUG)
+        [_vf setLabel:[[_vf.get() name] stringByAppendingFormat:@" (%@)", vertexLibrary.label]];
+        [_ff setLabel:[[_ff.get() name] stringByAppendingFormat:@" (%@)", fragmentLibrary.label]];
+#endif
 
         _guid = g_nextShaderProgramGUID++;
     }

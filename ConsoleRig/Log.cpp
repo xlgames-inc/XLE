@@ -237,9 +237,9 @@ namespace ConsoleRig
         #endif
     };
 
-    LogCentral& LogCentral::GetInstance()
+    const std::shared_ptr<LogCentral>& LogCentral::GetInstance()
     {
-        static LogCentral instance;
+        static std::shared_ptr<LogCentral> instance = std::make_shared<LogCentral>();
         return instance;
     }
 
@@ -307,7 +307,9 @@ namespace ConsoleRig
             _cfgSet->Set(id, cfg);
 
             // Reapply all configurations to the LogCentral in the local module
-            LogCentral::GetInstance().SetConfiguration(_cfgSet);
+            auto logCentral = _attachedLogCentral.lock();
+            if (logCentral)
+                logCentral->SetConfiguration(_cfgSet);
             /*
             auto& central = LogCentral::GetInstance();
             auto hash = Hash64(id);
@@ -323,7 +325,9 @@ namespace ConsoleRig
         #if defined(CONSOLERIG_ENABLE_LOG)
             if (!_cfgSet || !_cfgSet->GetDependencyValidation() || _cfgSet->GetDependencyValidation()->GetValidationIndex() > 0) {
                 _cfgSet = LoadConfigSet(_logCfgFile);
-                LogCentral::GetInstance().SetConfiguration(_cfgSet);
+                auto logCentral = _attachedLogCentral.lock();
+                if (logCentral)
+                    logCentral->SetConfiguration(_cfgSet);
             }
         #endif
     }
@@ -331,16 +335,25 @@ namespace ConsoleRig
     void LogCentralConfiguration::AttachCurrentModule()
     {
         assert(s_instance == nullptr);
+        assert(!_attachedLogCentral.lock());
         s_instance = this;
-        LogCentral::GetInstance().SetConfiguration(_cfgSet);
+        auto logCentral = LogCentral::GetInstance();
+        if (logCentral) {
+            logCentral->SetConfiguration(_cfgSet);
+            _attachedLogCentral = logCentral;
+        }
     }
 
     void LogCentralConfiguration::DetachCurrentModule()
     {
         assert(s_instance == this);
         s_instance = nullptr;
-         #if defined(CONSOLERIG_ENABLE_LOG)
-            LogCentral::GetInstance().SetConfiguration(nullptr);
+        #if defined(CONSOLERIG_ENABLE_LOG)
+            auto logCentral = _attachedLogCentral.lock();
+            if (logCentral) {
+                logCentral->SetConfiguration(nullptr);
+            }
+            _attachedLogCentral.reset();
         #endif
     }
 

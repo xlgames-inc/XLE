@@ -115,6 +115,31 @@ namespace RenderCore { namespace Metal_OpenGLES
         return bindingPoint;
     }
 
+    static const char* CheckFramebufferStatusToString(GLenum value)
+    {
+        switch (value) {
+        case GL_FRAMEBUFFER_COMPLETE: return "complete";
+        case GL_FRAMEBUFFER_UNDEFINED: return "undefined";
+        case GL_FRAMEBUFFER_INCOMPLETE_ATTACHMENT: return "incomplete-attachment";
+        case GL_FRAMEBUFFER_INCOMPLETE_MISSING_ATTACHMENT: return "incomplete-missing-attachment";
+        case GL_FRAMEBUFFER_UNSUPPORTED: return "unsupported";
+        case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE: return "incomplete-multisample";
+        
+        // Desktop GL problems
+        #if defined(GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS)
+            case GL_FRAMEBUFFER_INCOMPLETE_LAYER_TARGETS: return "incomplete-layer-targets";
+        #endif
+        #if defined(GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER)
+            case GL_FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER: return "incomplete-draw-buffer";
+        #endif
+        #if defined(GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER)
+            case GL_FRAMEBUFFER_INCOMPLETE_READ_BUFFER: return "incomplete-read-buffer";
+        #endif
+        }
+
+        return "<<error>>";
+    }
+
     FrameBuffer::FrameBuffer(
 		ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
@@ -250,23 +275,26 @@ namespace RenderCore { namespace Metal_OpenGLES
                 glDrawBuffers(sp._rtvCount, drawBuffers);
             #endif
 
-            #if !defined(GL_ES_VERSION_2_0) && !defined(GL_ES_VERSION_3_0) // i.e. desktop gl
-                // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
-                if (sp._rtvCount == 0) {
-                    glDrawBuffer(GL_NONE);
-                    glReadBuffer(GL_NONE);
-                } else {
-                    // XTODO: currently there are situations where colorAttachmentIterator is 0. Is this expected?
-                    if (colorAttachmentIterator > 0) {
-                        glReadBuffer(GL_COLOR_ATTACHMENT0);
-                    }
-                }
+            // Ensure the glReadBuffer state to some reasonable value to prevent state leakage
+            // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
+            // But on GLES, it's only available in version 3.0
+            #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
+                bool setReadBufferState = (factory.GetFeatureSet() & FeatureSet::GLES300);
+            #else
+                bool setReadBufferState = true;
             #endif
+            if (setReadBufferState)
+                glReadBuffer((sp._rtvCount > 0) ? drawBuffers[0] : GL_NONE);
 
             #if defined(_DEBUG)
                 GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
                 if (validationFlag != GL_FRAMEBUFFER_COMPLETE) {
-                    Log(Warning) << "Frame buffer failed with debugging output: " << debuggingOutput.str() << std::endl;
+                    // See documentation in https://www.khronos.org/registry/OpenGL-Refpages/gl4/html/glCheckFramebufferStatus.xhtml
+                    // and https://www.khronos.org/registry/OpenGL-Refpages/es3.0/html/glCheckFramebufferStatus.xhtml
+                    // Possible problems if you hit this point:
+                    //  * in opengl, when mutlisampling is enabled, all buffers must either be renderbuffers 
+                    //    or textures. You can't have a mixture of the two
+                    Log(Warning) << "Frame buffer failed (" << CheckFramebufferStatusToString(validationFlag) << ") with debugging output: " << std::endl << debuggingOutput.str() << std::endl;
                     assert(validationFlag == GL_FRAMEBUFFER_COMPLETE);
                 }
             #endif
@@ -359,8 +387,9 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (clearStencil) {
                 GLint stencilWriteMask;
                 glGetIntegerv(GL_STENCIL_WRITEMASK, &stencilWriteMask);
-                if (!(stencilWriteMask & 0xFF)) {
-                    Throw(::Exceptions::BasicLabel("Attempting to clear stencil with stencil mask %u in subpass %d", stencilWriteMask, (int)subpassIndex));
+                // We expect the entire stencil to be cleared
+                if ((stencilWriteMask & 0xFF) != 0xFF) {
+                    glStencilMask(0xFF);
                 }
             }
         #endif

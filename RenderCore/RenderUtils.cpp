@@ -58,12 +58,29 @@ namespace RenderCore
             _writeMarker += size;
             return result;
         }
+
+        void* AllocateAligned(size_t size, size_t alignment)
+        {
+            auto alignOffset = size_t(_writeMarker) % alignment;
+            if (alignOffset != 0) {
+                if (PtrAdd(_writeMarker, alignment-alignOffset) > AsPointer(_data.end())) {
+                    if (_logMsg) {
+                        Log(Warning) << "Overran subframe heap with allocation of size (" << size << ")" << std::endl;
+                        _logMsg = false;
+                    }
+                    return nullptr;
+                }
+
+                _writeMarker = PtrAdd(_writeMarker, alignment-alignOffset);
+            }
+            return Allocate(size);
+        }
         
         SubFrameHeap()
         : _data(256*1024, 0)
         {
             _writeMarker = _data.data();
-            _resetId = 0;
+            _resetId = 1;
             _logMsg = true;
         }
         
@@ -81,8 +98,11 @@ namespace RenderCore
         return s_instance;
     }
 
-    SharedPkt::SharedPkt(MiniHeap::Allocation alloc, size_t size)
-    : Allocation(alloc), _size(size)
+    SharedPkt::SharedPkt(MiniHeap::Allocation alloc, size_t size, unsigned subframeHeapReset)
+    : Allocation(alloc), _size(size), _calculatedHash(0)
+    #if defined(_DEBUG)
+        , _subframeHeapReset(subframeHeapReset)
+    #endif
     {
             // Careful --   first initialization never addrefs!
             //              this is because allocations will return an 
@@ -90,7 +110,10 @@ namespace RenderCore
     }
 
     SharedPkt::SharedPkt(const SharedPkt& cloneFrom)
-    : Allocation(cloneFrom), _size(cloneFrom._size)
+    : Allocation(cloneFrom), _size(cloneFrom._size), _calculatedHash(cloneFrom._calculatedHash)
+    #if defined(_DEBUG)
+        , _subframeHeapReset(cloneFrom._subframeHeapReset)
+    #endif
     {
         if (_allocation != nullptr && _marker != ~0u) {
             GetHeap().AddRef(*this);
@@ -105,6 +128,18 @@ namespace RenderCore
             GetHeap().Release(*this);
         }
     }
+
+    void SharedPkt::CalculateHash()
+    {
+        _calculatedHash = Hash64(begin(), end());
+    }
+
+    #if defined(_DEBUG)
+        void SharedPkt::CheckSubframeHeapReset() const
+        {
+            assert(_subframeHeapReset == 0 || _subframeHeapReset == GetSubFrameHeap().GetResetId());
+        }
+    #endif
 
     SharedPkt MakeSharedPktSize(size_t size)
     {
@@ -128,7 +163,15 @@ namespace RenderCore
         auto* allocation = GetSubFrameHeap().Allocate(size);
         if (!allocation)
             return MakeSharedPktSize(size);   // fall back to (slower) shared pkt
-        return SharedPkt({allocation, ~0u}, size);
+        return SharedPkt({allocation, ~0u}, size, GetSubFrameHeap().GetResetId());
+    }
+
+    SharedPkt MakeSubFramePktSizeAligned(size_t size, size_t alignment)
+    {
+        auto* allocation = GetSubFrameHeap().AllocateAligned(size, alignment);
+        if (!allocation)
+            return MakeSharedPktSize(size);   // fall back to (slower) shared pkt
+        return SharedPkt({allocation, ~0u}, size, GetSubFrameHeap().GetResetId());
     }
     
     SharedPkt MakeSubFramePkt(const void* begin, const void* end)
@@ -137,7 +180,7 @@ namespace RenderCore
         auto* allocation = GetSubFrameHeap().Allocate(size);
         if (!allocation)
             return MakeSharedPkt(begin, end);   // fall back to (slower) shared pkt
-        SharedPkt pkt({allocation, ~0u}, size);
+        SharedPkt pkt({allocation, ~0u}, size, GetSubFrameHeap().GetResetId());
         if (pkt.begin()) {
             XlCopyMemory(pkt.begin(), begin, size);
         }

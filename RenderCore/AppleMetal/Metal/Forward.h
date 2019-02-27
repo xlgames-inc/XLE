@@ -17,6 +17,7 @@ namespace RenderCore { namespace Metal_AppleMetal {
     class DepthStencilView;
     class FrameBuffer;
     class StencilDesc;
+    class AttachmentBlendDesc;
     class DepthStencilDesc;
     class RasterizationDesc;
     class SamplerStateDesc;

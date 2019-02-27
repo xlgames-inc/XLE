@@ -34,6 +34,8 @@ namespace ConsoleRig
         Sink::BitField _disabledSinks = 0;
     };
 
+    class LogCentral;
+
     template<typename CharType = char, typename CharTraits = std::char_traits<CharType>>
         class MessageTarget : public std::basic_streambuf<CharType, CharTraits>
     {
@@ -55,6 +57,7 @@ namespace ConsoleRig
         bool                        _sourceLocationPrimed;
         MessageTargetConfiguration _cfg;
         std::function<std::streamsize(const CharType* s, std::streamsize count)> _externalMessageHandler;
+        std::weak_ptr<LogCentral>   _registeredLogCentral;
 
         using int_type = typename std::basic_streambuf<CharType>::int_type;
         virtual std::streamsize xsputn(const CharType* s, std::streamsize count) override;
@@ -80,7 +83,7 @@ namespace ConsoleRig
     class LogCentral
     {
     public:
-        static LogCentral& GetInstance();
+        static const std::shared_ptr<LogCentral>& GetInstance();
 
         void Register(MessageTarget<>& target, StringSection<> id);
         void Deregister(MessageTarget<>& target);
@@ -113,6 +116,7 @@ namespace ConsoleRig
     private:
         std::shared_ptr<LogConfigurationSet> _cfgSet;
         std::string _logCfgFile;
+        std::weak_ptr<LogCentral> _attachedLogCentral;
 
         static LogCentralConfiguration* s_instance;
         void Apply();
@@ -125,7 +129,11 @@ namespace ConsoleRig
     : _chain(&chain)
     {
         #if defined(CONSOLERIG_ENABLE_LOG)
-            LogCentral::GetInstance().Register(*this, id);
+            auto logCentral = LogCentral::GetInstance();
+            if (logCentral) {
+                logCentral->Register(*this, id);
+                _registeredLogCentral = logCentral;
+            }
         #endif
     }
 
@@ -134,7 +142,14 @@ namespace ConsoleRig
     {
         _chain->pubsync();
         #if defined(CONSOLERIG_ENABLE_LOG)
-            LogCentral::GetInstance().Deregister(*this);
+            // DavidJ --
+            //      For global MessageTargets objects, the LogCentral instance can be destroyed
+            //      first. So we can't access the singleton GetInstance() method from here. We
+            //      need to keep a weak pointer to the LogCentral instance we registered with,
+            //      and check it to make sure it still exists.
+            auto logCentral = _registeredLogCentral.lock();
+            if (logCentral)
+                logCentral->Deregister(*this);
         #endif
     }
 
