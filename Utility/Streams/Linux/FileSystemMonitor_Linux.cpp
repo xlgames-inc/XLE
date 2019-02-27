@@ -254,6 +254,10 @@ namespace Utility
 
     }
 
+    void TerminateFileSystemMonitoring() {
+
+    }
+
     OnChangeCallback::~OnChangeCallback() {}
 }
 
