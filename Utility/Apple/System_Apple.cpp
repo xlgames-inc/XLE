@@ -309,8 +309,16 @@ namespace Utility
         RunCallbacks(maybeEntry->second);
     }
     
-    static KQueueMonitor s_kq_monitor;
-    
+    static std::unique_ptr<KQueueMonitor> s_kq_monitor;
+    static Threading::RecursiveMutex s_monitorLock;
+
+    void EnsureMonitorExists() {
+        ScopedLock(s_monitorLock);
+        if (s_kq_monitor == nullptr) {
+            s_kq_monitor = std::make_unique<KQueueMonitor>();
+        }
+    }
+
     void AttachFileSystemMonitor(StringSection<utf16> directoryName,
                                  StringSection<utf16> filename,
                                  std::shared_ptr<OnChangeCallback> callback) {
@@ -319,15 +327,18 @@ namespace Utility
     void AttachFileSystemMonitor(StringSection<utf8> directoryName,
                                  StringSection<utf8> filename,
                                  std::shared_ptr<OnChangeCallback> callback) {
+        ScopedLock(s_monitorLock);
+        EnsureMonitorExists();
+
         // First monitor the directory
         const char *cpath = reinterpret_cast<const char *>(directoryName.begin());
         auto canonical_path = std::make_unique<char[]>(PATH_MAX);
         realpath(cpath, canonical_path.get());
-        s_kq_monitor.Monitor(canonical_path.get(), nullptr);
+        s_kq_monitor->Monitor(canonical_path.get(), nullptr);
         
         // Now monitor the file itself
         auto filepath = FilePathFromDirectoryNameAndFileName(directoryName, filename);
-        s_kq_monitor.Monitor(filepath, callback);
+        s_kq_monitor->Monitor(filepath, callback);
     }
     
     void    FakeFileChange(StringSection<utf16> directoryName, StringSection<utf16> filename) {
@@ -335,10 +346,18 @@ namespace Utility
     }
     
     void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename) {
+        ScopedLock(s_monitorLock);
+        EnsureMonitorExists();
+
         auto filepath = FilePathFromDirectoryNameAndFileName(directoryName, filename);
-        s_kq_monitor.FakeFileChange(filepath);
+        s_kq_monitor->FakeFileChange(filepath);
     }
     
+    void TerminateFileSystemMonitoring() {
+        ScopedLock(s_monitorLock);
+        s_kq_monitor = nullptr;
+    }
+
     OnChangeCallback::~OnChangeCallback() {}
 #else
     void AttachFileSystemMonitor(StringSection<utf16> directoryName,
@@ -358,6 +377,10 @@ namespace Utility
     }
 
     void    FakeFileChange(StringSection<utf8> directoryName, StringSection<utf8> filename) {
+    }
+
+    void TerminateFileSystemMonitoring() {
+
     }
 
     OnChangeCallback::~OnChangeCallback() {}
