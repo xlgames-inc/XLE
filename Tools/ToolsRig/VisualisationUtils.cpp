@@ -249,6 +249,7 @@ namespace ToolsRig
 		VisOverlaySettings _settings;
         std::shared_ptr<VisMouseOver> _mouseOver;
 		std::shared_ptr<VisCameraSettings> _cameraSettings;
+		std::shared_ptr<VisAnimationState> _animState;
 
 		std::shared_ptr<SceneEngine::IScene> _scene;
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
@@ -281,6 +282,10 @@ namespace ToolsRig
 			if (newActualized) {
 				_pimpl->_scene = newActualized;
 				_pimpl->_sceneFuture = nullptr;
+
+				auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+				if (visContext)
+					visContext->BindAnimationState(_pimpl->_animState);
 			} else if (_pimpl->_sceneFuture->GetAssetState() == ::Assets::AssetState::Invalid) {
 				_pimpl->_scene = nullptr;
 				_pimpl->_sceneFuture = nullptr;
@@ -421,6 +426,16 @@ namespace ToolsRig
 		return _pimpl->_settings;
 	}
 
+	void VisualisationOverlay::Set(const std::shared_ptr<VisAnimationState>& animState)
+	{
+		_pimpl->_animState = animState;
+		if (_pimpl->_scene) {
+			auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+			if (visContext)
+				visContext->BindAnimationState(animState);
+		}
+	}
+
     auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
     { return nullptr; }
 
@@ -456,8 +471,7 @@ namespace ToolsRig
 		RenderCore::IThreadContext& threadContext,
 		const RenderCore::Techniques::TechniqueContext& techniqueContext,
         std::pair<Float3, Float3> worldSpaceRay,
-		SceneEngine::IScene& scene,
-		const std::string& modelName, const std::string& materialName)
+		SceneEngine::IScene& scene)
 	{
 		using namespace RenderCore;
 
@@ -488,8 +502,15 @@ namespace ToolsRig
             result._distance = r._intersectionDepth;
             result._drawCallIndex = r._drawCallIndex;
             result._materialGuid = r._materialGuid;
-            result._materialName = materialName;
-            result._modelName = modelName;
+
+			result._modelName = "Model";
+			result._materialName = "Material";
+			auto* visContent = dynamic_cast<IVisContent*>(&scene);
+			if (visContent) {
+				auto details = visContent->GetDrawCallDetails(result._drawCallIndex);
+				result._modelName = details._modelName;
+				result._materialName = details._materialName;
+			}
 
             return result;
         }
@@ -498,25 +519,6 @@ namespace ToolsRig
 
 		return {};
     }
-
-	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
-        RenderCore::IThreadContext& threadContext,
-		const RenderCore::Techniques::TechniqueContext& techniqueContext,
-        std::pair<Float3, Float3> worldSpaceRay,
-		SceneEngine::IScene& scene)
-    {
-		std::string modelName = "Model", materialName = "Material";
-		auto* visContent = dynamic_cast<IVisContent*>(&scene);
-		if (visContent) {
-			modelName = visContent->GetModelName();
-			materialName = visContent->GetMaterialName();
-		}
-
-		return FirstRayIntersection(
-			threadContext, techniqueContext, worldSpaceRay,
-			scene,
-			modelName, materialName);
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

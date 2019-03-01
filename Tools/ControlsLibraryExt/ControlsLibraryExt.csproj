@@ -77,34 +77,39 @@
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="Commands\CommonCommands.cs" />
-    <Compile Include="Material\ActiveMaterialContext.cs" />
-    <Compile Include="Material\MaterialInspector.cs">
+    <Compile Include="AnimationCtrlStrip.cs">
       <SubType>UserControl</SubType>
     </Compile>
+    <Compile Include="AnimationCtrlStrip.Designer.cs">
+      <DependentUpon>AnimationCtrlStrip.cs</DependentUpon>
+    </Compile>
+    <Compile Include="Commands\CommonCommands.cs" />
+    <Compile Include="Material\ActiveMaterialContext.cs" />
+    <Compile Include="Material\MaterialInspector.cs" />
     <Compile Include="ModelView\CtrlStrip.cs">
       <SubType>UserControl</SubType>
     </Compile>
     <Compile Include="ModelView\CtrlStrip.Designer.cs">
       <DependentUpon>CtrlStrip.cs</DependentUpon>
     </Compile>
-    <Compile Include="ModelView\ModelView.cs">
-      <SubType>UserControl</SubType>
-    </Compile>
-    <Compile Include="ModelView\ModelView.Designer.cs">
-      <DependentUpon>ModelView.cs</DependentUpon>
+    <Compile Include="ModelView\PreviewerControl.cs" />
+    <Compile Include="ModelView\PreviewerControl.Designer.cs">
+      <DependentUpon>PreviewerControl.cs</DependentUpon>
     </Compile>
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
+    <EmbeddedResource Include="AnimationCtrlStrip.resx">
+      <DependentUpon>AnimationCtrlStrip.cs</DependentUpon>
+    </EmbeddedResource>
     <EmbeddedResource Include="Material\material.xsd">
       <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="ModelView\CtrlStrip.resx">
       <DependentUpon>CtrlStrip.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="ModelView\ModelView.resx">
-      <DependentUpon>ModelView.cs</DependentUpon>
+    <EmbeddedResource Include="ModelView\PreviewerControl.resx">
+      <DependentUpon>PreviewerControl.cs</DependentUpon>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>

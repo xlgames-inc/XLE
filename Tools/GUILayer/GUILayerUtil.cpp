@@ -50,6 +50,13 @@ namespace GUILayer
 		return ToManaged(MakeIteratorRange(exts));
 	}
 
+	System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ Utils::GetAnimationSetExtensions()
+	{
+		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
+			RenderCore::Assets::AnimationSetScaffold::CompileProcessType);
+		return ToManaged(MakeIteratorRange(exts));
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     TechniqueContextWrapper::TechniqueContextWrapper(

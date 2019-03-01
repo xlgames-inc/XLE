@@ -22,6 +22,7 @@ namespace ControlsLibraryExt.ModelView
         private void InitializeComponent()
         {
             this._ctrls = new CtrlStrip();
+            this._animationCtrls = new AnimationCtrlStrip();
             this._view = new ControlsLibrary.LayerControl();
             this.SuspendLayout();
             // 
@@ -32,6 +33,14 @@ namespace ControlsLibraryExt.ModelView
             this._ctrls.Location = new System.Drawing.Point(0, 512);
             this._ctrls.Size = new System.Drawing.Size(677, 32);
             this._ctrls.TabIndex = 0;
+            // 
+            // _animationCtrls
+            // 
+            this._animationCtrls.Anchor = ((System.Windows.Forms.AnchorStyles)(((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Left)
+            | System.Windows.Forms.AnchorStyles.Right)));
+            this._animationCtrls.Location = new System.Drawing.Point(0, 550);
+            this._animationCtrls.Size = new System.Drawing.Size(677, 32);
+            this._animationCtrls.TabIndex = 0;
             // 
             // _view
             // 
@@ -48,9 +57,10 @@ namespace ControlsLibraryExt.ModelView
             // this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this._view);
             this.Controls.Add(this._ctrls);
+            this.Controls.Add(this._animationCtrls);
             this.Margin = new System.Windows.Forms.Padding(0);
             this.Name = "PreviewerControl";
-            this.Size = new System.Drawing.Size(677, 544);
+            this.Size = new System.Drawing.Size(677, 582);
             this.ResumeLayout(false);
 
         }
@@ -58,6 +68,7 @@ namespace ControlsLibraryExt.ModelView
         #endregion
 
         private CtrlStrip _ctrls;
+        private AnimationCtrlStrip _animationCtrls;
         private ControlsLibrary.LayerControl _view;
     }
 }

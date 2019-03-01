@@ -22,19 +22,17 @@ namespace ControlsLibraryExt.ModelView
     {
         public GUILayer.ModelVisSettings ModelSettings
         {
-            set { _layerController.SetModelSettings(value); }
-            get { return _layerController.GetModelSettings(); }
+            set { LayerController.SetModelSettings(value); }
+            get { return LayerController.GetModelSettings(); }
         }
 
         public GUILayer.VisOverlaySettings OverlaySettings
         {
-            set { _layerController.SetOverlaySettings(value); }
-            get { return _layerController.GetOverlaySettings(); }
+            set { LayerController.SetOverlaySettings(value); }
+            get { return LayerController.GetOverlaySettings(); }
         }
-        public GUILayer.VisMouseOver MouseOver { get { return _layerController.MouseOver; } }
-        public GUILayer.VisLayerController LayerController { get { return _layerController; } }
-
-        private GUILayer.VisLayerController _layerController = new GUILayer.VisLayerController();
+        public GUILayer.VisMouseOver MouseOver { get { return LayerController.MouseOver; } }
+        public GUILayer.VisLayerController LayerController { get; } = new GUILayer.VisLayerController();
     }
 
     [Export(typeof(PreviewerControl))]
@@ -73,6 +71,7 @@ namespace ControlsLibraryExt.ModelView
             context.LayerController.AttachToView(_view.Underlying);
             _ctrls.OverlaySettings = context.OverlaySettings;
             _ctrls.ModelSettings = context.ModelSettings;
+            _animationCtrls.AnimationState = context.LayerController.AnimationState;
         }
 
         public Material.ActiveMaterialContext ActiveMaterialContext { get; set; }
@@ -197,7 +196,8 @@ namespace ControlsLibraryExt.ModelView
             switch ((Command)commandTag)
             {
                 case Command.SelectModel:
-                    return _contextRegistry.GetActiveContext<PreviewerContext>() != null;
+                case Command.SelectAnimationSet:
+                    return _contextRegistry.GetActiveContext<PreviewerContext>() != null;                
             }
 
             return false;
@@ -207,46 +207,58 @@ namespace ControlsLibraryExt.ModelView
         {
             if (commandTag is Command)
             {
-                switch ((Command)commandTag)
+                var context = _contextRegistry.GetActiveContext<PreviewerContext>();
+                if (context != null)
                 {
-                    case Command.SelectModel:
-                        var context = _contextRegistry.GetActiveContext<PreviewerContext>();
-                        if (context != null)
-                        {
-                            var filters = GUILayer.Utils.GetModelExtensions();
-
-                            var sb = new System.Text.StringBuilder("", 256);
-                            bool first = true;
-                            bool folderIsAnOption = false;
-                            foreach (var f in filters)
-                            {
-                                if (f.Extension == "folder")
-                                {
-                                    folderIsAnOption = true;
-                                    continue;
-                                }
-
-                                if (!first) sb.Append("|");
-                                first = false;
-                                sb.Append(f.Description);
-                                sb.Append("|*.");
-                                sb.Append(f.Extension);
-                            }
-                            if (!first) sb.Append("|");
-                            first = false;
-                            sb.Append("All Files|*.*");
-
-                            ofd.Filter = sb.ToString();
-                            if (ofd.ShowDialog() == DialogResult.OK)
+                    switch ((Command)commandTag)
+                    {
+                        case Command.SelectModel:
+                            if (OpenFilesWithFilters(GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
                             {
                                 var settings = context.ModelSettings;
                                 settings.ModelName = ofd.FileName;
                                 context.ModelSettings = settings;
                             }
-                        }
-                        break;
+                            break;
+
+                        case Command.SelectAnimationSet:
+                            if (OpenFilesWithFilters(GUILayer.Utils.GetAnimationSetExtensions()) == DialogResult.OK)
+                            {
+                                var settings = context.ModelSettings;
+                                settings.AnimationFileName = ofd.FileName;
+                                context.ModelSettings = settings;
+                            }
+                            break;
+                    }
                 }
             }
+        }
+
+        private DialogResult OpenFilesWithFilters(System.Collections.Generic.IEnumerable<GUILayer.Utils.AssetExtension> filters)
+        {
+            var sb = new System.Text.StringBuilder("", 256);
+            bool first = true;
+            bool folderIsAnOption = false;
+            foreach (var f in filters)
+            {
+                if (f.Extension == "folder")
+                {
+                    folderIsAnOption = true;
+                    continue;
+                }
+
+                if (!first) sb.Append("|");
+                first = false;
+                sb.Append(f.Description);
+                sb.Append("|*.");
+                sb.Append(f.Extension);
+            }
+            if (!first) sb.Append("|");
+            first = false;
+            sb.Append("All Files|*.*");
+
+            ofd.Filter = sb.ToString();
+            return ofd.ShowDialog();
         }
 
         public void UpdateCommand(object commandTag, CommandState state) { }
@@ -264,11 +276,24 @@ namespace ControlsLibraryExt.ModelView
                     null,
                     CommandVisibility.Menu),
                 this);
+
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.SelectAnimationSet,
+                    StandardMenu.File,
+                    "Previewer",
+                    "Select Animation Set".Localize(),
+                    "Select animation set to use in previewer".Localize(),
+                    Sce.Atf.Input.Keys.None,
+                    null,
+                    CommandVisibility.Menu),
+                this);
         }
 
         private enum Command
         {
-            SelectModel
+            SelectModel,
+            SelectAnimationSet
         }
 
         [Import(AllowDefault = false)]

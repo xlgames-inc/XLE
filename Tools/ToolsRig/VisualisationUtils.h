@@ -85,17 +85,35 @@ namespace ToolsRig
         ChangeEvent _changeEvent;
     };
 
+	class VisAnimationState
+	{
+	public:
+		std::vector<std::string> _animationList;
+		std::string _activeAnimation;
+		float _animationTime = 0.f;
+		unsigned _anchorTime = 0;
+		enum class State { Stopped, Playing };
+		State _state = State::Stopped;
+
+		ChangeEvent _changeEvent;
+	};
+
 	class IVisContent
 	{
 	public:
-		virtual std::string GetModelName() const = 0;
-		virtual std::string GetMaterialName() const = 0;
 		virtual std::pair<Float3, Float3> GetBoundingBox() const = 0;
+
 		virtual std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>&) = 0;
 		virtual void RenderSkeleton(
 			RenderCore::IThreadContext& context, 
 			RenderCore::Techniques::ParsingContext& parserContext, 
 			bool drawBoneNames) const = 0;
+
+		struct DrawCallDetails { std::string _modelName, _materialName; };
+		virtual DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex) const = 0;
+
+		virtual void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) = 0;
+
 		virtual ~IVisContent();
 	};
 
@@ -135,6 +153,7 @@ namespace ToolsRig
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
 		void Set(const std::shared_ptr<VisCameraSettings>&);
 		void Set(const VisOverlaySettings& overlaySettings);
+		void Set(const std::shared_ptr<VisAnimationState>&);
 
 		const VisOverlaySettings& GetOverlaySettings() const;
 

@@ -15,6 +15,7 @@
 #include "../../SceneEngine/SceneParser.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
+#include "../../Utility/TimeUtils.h"
 
 #pragma warning(disable:4505)
 
@@ -29,6 +30,15 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	uint64_t GetAnimationHash(StringSection<> name)
+	{
+		const char* parseEnd = nullptr;
+		auto parsedValue = XlAtoUI64(name.begin(), &parseEnd, 16);
+		if (parseEnd == name.end())
+			return parsedValue;
+		return Hash64(name);
+	}
+
 	class ModelScene : public SceneEngine::IScene, public IVisContent
     {
     public:
@@ -41,17 +51,18 @@ namespace ToolsRig
 
 			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine->GetOutputMatrixCount());
 
-			if (_animationScaffold) {
+			if (_animationScaffold && _animationState) {
 				auto& animData = _animationScaffold->ImmutableData();
-				auto foundAnimation = animData._animationSet.GetAnimations()[0];
 
-				static float time = 0.f;
-				time += 1.0f / 60.f;
+				auto foundAnimation = animData._animationSet.FindAnimation(GetAnimationHash(_animationState->_activeAnimation));
+				float time = _animationState->_animationTime;
+				if (_animationState->_state == VisAnimationState::State::Playing) {
+					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
+					time = fmodf(time - foundAnimation._beginTime, foundAnimation._endTime - foundAnimation._beginTime) + foundAnimation._beginTime;
+				}
 
-				RenderCore::Assets::AnimationState animState(
-					std::fmod(time, foundAnimation._endTime), foundAnimation._name);
 				auto params = animData._animationSet.BuildTransformationParameterSet(
-					animState,
+					{time, foundAnimation._name},
 					*skeletonMachine, _animSetBinding,
 					animData._curves, animData._curvesCount);
 
@@ -86,8 +97,10 @@ namespace ToolsRig
 			}
 		}
 
-		std::string GetModelName() const { return _modelName; }
-		std::string GetMaterialName() const { return _materialName; }
+		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex) const
+		{
+			return { _modelName, _materialName };
+		}
 		std::pair<Float3, Float3> GetBoundingBox() const { return _renderer->GetModelScaffold()->GetStaticBoundingBox(); }
 
 		std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate>& delegate)
@@ -106,15 +119,16 @@ namespace ToolsRig
 
 			if (_animationScaffold) {
 				auto& animData = _animationScaffold->ImmutableData();
-				auto foundAnimation = animData._animationSet.GetAnimations()[0];
 
-				static float time = 0.f;
-				time += 1.0f / 60.f;
+				auto foundAnimation = animData._animationSet.FindAnimation(GetAnimationHash(_animationState->_activeAnimation));
+				float time = _animationState->_animationTime;
+				if (_animationState->_state == VisAnimationState::State::Playing) {
+					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
+					time = fmodf(time - foundAnimation._beginTime, foundAnimation._endTime - foundAnimation._beginTime) + foundAnimation._beginTime;
+				}
 
-				RenderCore::Assets::AnimationState animState(
-					std::fmod(time, foundAnimation._endTime), foundAnimation._name);
 				auto params = animData._animationSet.BuildTransformationParameterSet(
-					animState,
+					{time, foundAnimation._name},
 					*skeletonMachine, _animSetBinding,
 					animData._curves, animData._curvesCount);
 
@@ -132,6 +146,22 @@ namespace ToolsRig
 					*skeletonMachine,
 					Identity<Float4x4>(),
 					drawBoneNames);
+			}
+		}
+
+		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState)
+		{
+			_animationState = animState;
+			if (_animationState) {
+				_animationState->_animationList.clear();
+				if (_animationScaffold) {
+					for (const auto&anim:_animationScaffold->ImmutableData()._animationSet.GetAnimations()) {
+						char buffer[64];
+						XlUI64toA(anim._name, buffer, dimof(buffer), 16);
+						_animationState->_animationList.push_back(buffer);
+					}
+				}
+				_animationState->_changeEvent.Invoke();
 			}
 		}
 
@@ -247,6 +277,8 @@ namespace ToolsRig
 		std::shared_ptr<ModelScaffold>				_modelScaffoldForEmbeddedSkeleton;
 		std::shared_ptr<SkeletonScaffold>			_skeletonScaffold;
 		RenderCore::Assets::AnimationSetBinding		_animSetBinding;
+
+		std::shared_ptr<VisAnimationState>			_animationState;
 
 		::Assets::DepValPtr		_depVal;
 		std::string				_modelName, _materialName;

@@ -16,6 +16,8 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderCore/Techniques/Techniques.h"
+#include "../../SceneEngine/SceneParser.h"
+// #include "../../Assets/AssetFuture.h"
 #include "../../Utility/StringFormat.h"
 #include <iomanip>
 
@@ -31,6 +33,9 @@ namespace GUILayer
 		std::shared_ptr<PlatformRig::IOverlaySystem> _manipulatorLayer;
 		std::shared_ptr<ToolsRig::MouseOverTrackingOverlay> _trackingLayer;
 		std::shared_ptr<ToolsRig::VisMouseOver> _mouseOver;
+		std::shared_ptr<ToolsRig::VisAnimationState> _animState;
+
+		::Assets::FuturePtr<SceneEngine::IScene> _scene;
 
 		ToolsRig::ModelVisSettings _modelSettings;
     };
@@ -44,9 +49,10 @@ namespace GUILayer
         using namespace RenderOverlays::DebuggingDisplay;
 
         auto textHeight = (int)RenderOverlays::GetDefaultFont()->GetFontProperties()._lineHeight;
-        String^ matName = /*VisMouseOver::DescriptiveMaterialName(
-            VisMouseOver::BuildFullMaterialName(*modelSettings, *modelCache, mouseOver._materialGuid));*/
-			"matName";
+        String^ matName = "matName";
+		auto* visContent = dynamic_cast<const ToolsRig::IVisContent*>(&scene);
+		if (visContent)
+			matName = clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(mouseOver._drawCallIndex)._materialName);
         DrawText(
             &context,
             Rect(Coord2(viewport._topLeft[0]+3, viewport._bottomRight[1]-textHeight-3), Coord2(viewport._bottomRight[0]-3, viewport._bottomRight[1]-3)),
@@ -63,16 +69,21 @@ namespace GUILayer
 
 	VisMouseOver^ VisLayerController::MouseOver::get()
 	{
-		return gcnew VisMouseOver(_pimpl->_mouseOver, nullptr);
+		return gcnew VisMouseOver(_pimpl->_mouseOver, nullptr); // _pimpl->_scene ? _pimpl->_scene->TryActualize() : nullptr);
+	}
+
+	VisAnimationState^ VisLayerController::AnimationState::get()
+	{
+		return gcnew VisAnimationState(_pimpl->_animState);
 	}
 
 	void VisLayerController::SetModelSettings(ModelVisSettings^ settings)
 	{
 		_pimpl->_modelSettings = *settings->GetUnderlying();
-		auto scene = ToolsRig::MakeScene(_pimpl->_modelSettings);
-		_pimpl->_modelLayer->Set(scene);
-		_pimpl->_visOverlay->Set(scene);
-		_pimpl->_trackingLayer->Set(scene);
+		_pimpl->_scene = ToolsRig::MakeScene(_pimpl->_modelSettings);
+		_pimpl->_modelLayer->Set(_pimpl->_scene);
+		_pimpl->_visOverlay->Set(_pimpl->_scene);
+		_pimpl->_trackingLayer->Set(_pimpl->_scene);
 	}
 
 	ModelVisSettings^ VisLayerController::GetModelSettings()
@@ -113,6 +124,7 @@ namespace GUILayer
 	{
 		_pimpl.reset(new VisLayerControllerPimpl());
 		_pimpl->_mouseOver = std::make_shared<ToolsRig::VisMouseOver>();
+		_pimpl->_animState = std::make_shared<ToolsRig::VisAnimationState>();
 
 		_pimpl->_modelLayer = std::make_shared<ToolsRig::ModelVisLayer>();
 		_pimpl->_modelLayer->Set(ToolsRig::VisEnvSettings{});
@@ -121,6 +133,7 @@ namespace GUILayer
 			ToolsRig::VisOverlaySettings{},
             _pimpl->_mouseOver);
 		_pimpl->_visOverlay->Set(_pimpl->_modelLayer->GetCamera());
+		_pimpl->_visOverlay->Set(_pimpl->_animState);
         
 
 		{

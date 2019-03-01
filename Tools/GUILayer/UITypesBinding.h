@@ -20,7 +20,7 @@ using namespace System::Collections::Generic;
 
 namespace RenderCore { namespace Assets { class RawMaterial; } }
 namespace RenderCore { namespace Techniques { class Material; } }
-namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; }
+namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; }
 
 namespace GUILayer
 {
@@ -233,14 +233,47 @@ namespace GUILayer
 
         VisMouseOver(
             std::shared_ptr<ToolsRig::VisMouseOver> attached,
-            std::shared_ptr<ToolsRig::ModelVisSettings> settings);
+            std::shared_ptr<SceneEngine::IScene> scene);
         VisMouseOver();
         ~VisMouseOver();
 
     protected:
         clix::shared_ptr<ToolsRig::VisMouseOver> _object;
-        clix::shared_ptr<ToolsRig::ModelVisSettings> _modelSettings;
+        clix::shared_ptr<SceneEngine::IScene> _scene;
     };
+
+	public ref class VisAnimationState
+	{
+	public:
+        [Description("Available Animations List")]
+        property System::Collections::Generic::IEnumerable<System::String^>^ AnimationList { System::Collections::Generic::IEnumerable<System::String^>^ get(); }
+
+        [Description("Active Animation")]
+        property System::String^ ActiveAnimation { System::String^ get(); void set(System::String^); }
+
+        [Description("Animation Time")]
+        property float AnimationTime { float get(); void set(float); }
+
+        [Description("Anchor Time")]
+        property unsigned AnchorTime { unsigned get(); void set(unsigned); }
+
+		enum class State { Stopped, Playing };
+		
+		[Description("State")]
+		property State CurrentState { State get(); void set(State); }
+
+        const std::shared_ptr<ToolsRig::VisAnimationState>& GetUnderlying() { return _animState.GetNativePtr(); }
+
+		delegate void OnChangedCallback();
+		void AddOnChangedCallback(OnChangedCallback^ del);
+
+        VisAnimationState(const std::shared_ptr<ToolsRig::VisAnimationState>& attached);
+        VisAnimationState();
+        ~VisAnimationState();
+
+    protected:
+        clix::shared_ptr<ToolsRig::VisAnimationState> _animState;
+	};
 
     template<typename NameType, typename ValueType>
         public ref class PropertyPair : public INotifyPropertyChanged

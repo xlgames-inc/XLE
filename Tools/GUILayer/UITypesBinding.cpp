@@ -12,7 +12,7 @@
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/DivergentAsset.h"
-#include "../../FixedFunctionModel/ModelCache.h"
+#include "../../SceneEngine/SceneParser.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Metal/State.h"
@@ -209,7 +209,12 @@ namespace GUILayer
 
     System::String^ VisMouseOver::ModelName::get() 
     {
-        return clix::marshalString<clix::E_UTF8>(_modelSettings->_modelName);
+		if (_scene) {
+			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
+			if (visContent)
+				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex)._modelName);
+		}
+		return nullptr;
     }
 
     bool VisMouseOver::HasMouseOver::get()
@@ -219,9 +224,12 @@ namespace GUILayer
 
     System::String^ VisMouseOver::FullMaterialName::get()
     {
-        if (_object->_hasMouseOver)
-            return BuildFullMaterialName(*_modelSettings.get(), _object->_materialGuid);
-        return nullptr;
+		if (_scene) {
+			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
+			if (visContent)
+				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex)._materialName);
+		}
+		return nullptr;
     }
 
     String^ VisMouseOver::BuildFullMaterialName(
@@ -270,10 +278,10 @@ namespace GUILayer
 
     VisMouseOver::VisMouseOver(
         std::shared_ptr<ToolsRig::VisMouseOver> attached,
-        std::shared_ptr<ToolsRig::ModelVisSettings> settings)
+        std::shared_ptr<SceneEngine::IScene> scene)
     {
         _object = std::move(attached);
-        _modelSettings = std::move(settings);
+        _scene = scene;
     }
 
     VisMouseOver::VisMouseOver()
@@ -284,8 +292,92 @@ namespace GUILayer
     VisMouseOver::~VisMouseOver() 
     { 
         _object.reset(); 
-        _modelSettings.reset(); 
+        _scene.reset(); 
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	System::Collections::Generic::IEnumerable<System::String^>^ VisAnimationState::AnimationList::get()
+	{
+		auto result = gcnew System::Collections::Generic::List<System::String^>();
+		for (const auto&a:_animState->_animationList)
+			result->Add(clix::marshalString<clix::E_UTF8>(a));
+		return result;
+	}
+
+    System::String^ VisAnimationState::ActiveAnimation::get()
+	{
+		return clix::marshalString<clix::E_UTF8>(_animState->_activeAnimation);
+	}
+
+	void VisAnimationState::ActiveAnimation::set(System::String^ value)
+	{
+		_animState->_activeAnimation = clix::marshalString<clix::E_UTF8>(value);
+	}
+
+    float VisAnimationState::AnimationTime::get()
+	{
+		return _animState->_animationTime;
+	}
+
+	void VisAnimationState::AnimationTime::set(float value)
+	{
+		_animState->_animationTime = value;
+	}
+
+	unsigned VisAnimationState::AnchorTime::get()
+	{
+		return _animState->_anchorTime;
+	}
+	
+	void VisAnimationState::AnchorTime::set(unsigned value)
+	{
+		_animState->_anchorTime = value;
+	}
+
+	VisAnimationState::State VisAnimationState::CurrentState::get()
+	{
+		switch (_animState->_state) {
+		case ToolsRig::VisAnimationState::State::Playing: return State::Playing;
+		default: return State::Stopped;
+		}
+	}
+
+	void VisAnimationState::CurrentState::set(VisAnimationState::State value)
+	{
+		switch (value) {
+		case State::Playing: _animState->_state = ToolsRig::VisAnimationState::State::Playing; break;
+		default: _animState->_state = ToolsRig::VisAnimationState::State::Stopped; break;
+		}
+	}
+
+	class DelegateChangeEvent : public OnChangeCallback
+	{
+	public:
+		void    OnChange()
+		{
+			(_del.get())();
+		}
+
+		DelegateChangeEvent(VisAnimationState::OnChangedCallback^ del) : _del(del) {}
+		~DelegateChangeEvent() {}
+	private:
+		msclr::auto_gcroot<VisAnimationState::OnChangedCallback^> _del;
+	};
+
+	void VisAnimationState::AddOnChangedCallback(OnChangedCallback^ del)
+	{
+		_animState->_changeEvent._callbacks.push_back(
+			std::make_shared<DelegateChangeEvent>(del));
+	}
+
+    VisAnimationState::VisAnimationState(const std::shared_ptr<ToolsRig::VisAnimationState>& attached)
+	: _animState(attached)
+	{
+	}
+
+	VisAnimationState::VisAnimationState() {}
+	VisAnimationState::~VisAnimationState() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

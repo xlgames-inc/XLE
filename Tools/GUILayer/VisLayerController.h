@@ -14,13 +14,17 @@ namespace GUILayer
     ref class VisMouseOver;
 	ref class VisOverlaySettings;
 	ref class LayerControl;
+	ref class VisAnimationState;
 
     public ref class VisLayerController
     {
 	public:
 		property VisMouseOver^ MouseOver { VisMouseOver^ get(); }
+		property VisAnimationState^ AnimationState { VisAnimationState^ get(); }
+
 		void SetModelSettings(ModelVisSettings^ settings);
 		ModelVisSettings^ GetModelSettings();
+
 		void SetOverlaySettings(VisOverlaySettings^ settings);
 		VisOverlaySettings^ GetOverlaySettings();
 
