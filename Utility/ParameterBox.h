@@ -237,6 +237,11 @@ namespace Utility
         void SetParameter(
             ParameterNameHash hash, const utf8 name[], const void* value,
             const ImpliedTyping::TypeDesc& insertType);
+
+        SerializableVector<ParameterNameHash>::const_iterator SetParameterHint(
+            SerializableVector<ParameterNameHash>::const_iterator paramNameHash,
+            ParameterNameHash hash, const utf8 name[], const void* value,
+            const ImpliedTyping::TypeDesc& insertType);
     };
 
     #pragma pack(pop)
