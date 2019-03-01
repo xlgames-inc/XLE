@@ -64,7 +64,6 @@ namespace Assets
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
 		} CATCH (const Exceptions::InvalidAsset& e) {
 			future.SetInvalidAsset(e.GetDependencyValidation(), e.GetActualizationLog());
-			throw;	// Have to rethrow InvalidAsset, otherwise we loose our dependency validation. This can occur when the AutoConstructAsset function itself loads some other asset
 		} CATCH (const std::exception& e) {
 			Log(Warning) << "No dependency validation associated with asset after construction failure. Hot reloading will not function for this asset." << std::endl;
 			future.SetInvalidAsset(std::make_shared<DependencyValidation>(), AsBlob(e));
