@@ -104,7 +104,6 @@ namespace ColladaConversion
             auto paramName = std::string(nodeName) + "/" + AsString(trans.GetSid());
             const bool isAnimated = !trans.GetSid().IsEmpty() && predicate(paramName);
             parameterType = isAnimated ? ParameterType_Animated : ParameterType_Embedded;
-            auto parameterId = Hash32(AsPointer(paramName.cbegin()), AsPointer(paramName.cend()));
 
                 // We ignore transforms that are too close to their identity...
             const auto transformThreshold   = 1e-3f;
@@ -119,7 +118,7 @@ namespace ColladaConversion
                     //
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  interf.TryAddParameter<Float4x4>(paramIndex, MakeStringSection(paramName), parameterId)) {
+                    &&  interf.TryAddParameter<Float4x4>(paramIndex, MakeStringSection(paramName))) {
 
 					defaultParameters.Set(paramIndex, *(const Float4x4*)trans.GetUnionData());
                     dst.PushCommand(TransformStackCommand::TransformFloat4x4_Parameter);
@@ -137,7 +136,7 @@ namespace ColladaConversion
 
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  interf.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName), parameterId)) {
+                    &&  interf.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName))) {
 
 					defaultParameters.Set(paramIndex, *(const Float3*)trans.GetUnionData());
                     dst.PushCommand(TransformStackCommand::Translate_Parameter);
@@ -156,7 +155,7 @@ namespace ColladaConversion
                 const auto& rot = *(const ArbitraryRotation*)trans.GetUnionData();
                 uint32 paramIndex = ~0u;
                 if (    parameterType != ParameterType_Embedded
-                    &&  interf.TryAddParameter<Float4>(paramIndex, MakeStringSection(paramName), parameterId)) {
+                    &&  interf.TryAddParameter<Float4>(paramIndex, MakeStringSection(paramName))) {
 
 					defaultParameters.Set(paramIndex, *(const Float4*)&rot);
 
@@ -204,14 +203,14 @@ namespace ColladaConversion
                 if (parameterType != ParameterType_Embedded) {
                     uint32 paramIndex = ~0u;
                     if (isUniform) {
-                        if (interf.TryAddParameter<float>(paramIndex, MakeStringSection(paramName), parameterId)) {
+                        if (interf.TryAddParameter<float>(paramIndex, MakeStringSection(paramName))) {
 							defaultParameters.Set(paramIndex, scale[0]);
                             dst.PushCommand(TransformStackCommand::UniformScale_Parameter);
                             dst.PushCommand(paramIndex);
                             writeEmbedded = false;
                         }
                     } else {
-                        if (interf.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName), parameterId)) {
+                        if (interf.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName))) {
 							defaultParameters.Set(paramIndex, scale);
                             dst.PushCommand(TransformStackCommand::ArbitraryScale_Parameter);
                             dst.PushCommand(paramIndex);

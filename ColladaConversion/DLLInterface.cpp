@@ -17,7 +17,6 @@
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../RenderCore/GeoProc/NascentRawGeometry.h"
 #include "../RenderCore/GeoProc/NascentAnimController.h"
-#include "../RenderCore/GeoProc/NascentGeometryObjects.h"
 #include "../RenderCore/GeoProc/NascentObjectsSerialize.h"
 #include "../RenderCore/GeoProc/NascentModel.h"
 #include "../RenderCore/GeoProc/MeshDatabase.h"
@@ -355,7 +354,7 @@ namespace ColladaConversion
 		NascentSkeleton result;
 		{
 			uint32 outputMarker = ~0u;
-			if (result.GetInterface().TryRegisterJointName(outputMarker, "", "root"))
+			if (result.GetInterface().TryRegisterJointName(outputMarker, "", "identity"))
 				result.GetSkeletonMachine().WriteOutputMarker(outputMarker);
 		}
 
@@ -562,6 +561,15 @@ namespace ColladaConversion
             } CATCH (...) {
             } CATCH_END
         }
+
+		// Add a default animation containing all of the drivers in this file
+		if (!_animationSet.GetAnimationDrivers().empty() || !_animationSet.GetConstantDrivers().empty()) {
+			_animationSet.AddAnimation(
+				"main",
+				0, (unsigned)_animationSet.GetAnimationDrivers().size(),
+				0, (unsigned)_animationSet.GetConstantDrivers().size(),
+				0.f, 5.0f);
+		}
     }
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimations(const ColladaCompileOp& model, StringSection<utf8> rootNodeName)
@@ -657,10 +665,34 @@ namespace ColladaConversion
 		}
     };
 
-	std::shared_ptr<::Assets::ICompileOperation> CreateMergedAnimSetCompileOperation(StringSection<::Assets::ResChar> identifier)
+	std::shared_ptr<::Assets::ICompileOperation> CreateMergedAnimSetCompileOperation(StringSection<::Assets::ResChar> identifier, bool folderSearch)
 	{
 		// Search the given directory for all .dae files. We'll merge them all together as a single animation set
-		auto sourceFiles = RawFS::FindFiles(identifier.AsString() + "/*.dae", RawFS::FindFilesFilter::File);
+		std::vector<std::pair<std::string, std::string>> sourceFiles;
+		if (folderSearch) {
+			auto rawFiles = RawFS::FindFiles(identifier.AsString() + "/*.dae", RawFS::FindFilesFilter::File);
+			for (const auto&filePath:rawFiles)
+				sourceFiles.push_back(std::make_pair(filePath, MakeFileNameSplitter(filePath).File().AsString()));
+		} else {
+			auto cfgFileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(identifier, 0, "r", FileShareMode::Read);
+			InputStreamFormatter<utf8> formatter { MemoryMappedInputStream{cfgFileData.GetData()} };
+			auto searchRules = ::Assets::DefaultDirectorySearchRules(identifier);
+			for (;;) {
+				StringSection<utf8> name, value;
+				auto next = formatter.PeekNext();
+				if (next == InputStreamFormatter<utf8>::Blob::AttributeName) {
+					if (!formatter.TryAttribute(name, value))
+						Throw(FormatException("Malformed attribute", formatter.GetLocation()));
+					char foundFile[MaxPath];
+					searchRules.ResolveFile(foundFile, value.Cast<char>());
+					sourceFiles.push_back(std::make_pair(foundFile, name.Cast<char>().AsString()));
+					continue;
+				} else if (next == InputStreamFormatter<utf8>::Blob::EndElement || next == InputStreamFormatter<utf8>::Blob::None)
+					break;
+
+				Throw(FormatException("Unexpected blob", formatter.GetLocation()));
+			}
+		}
 
 		std::shared_ptr<MergedAnimCompileOp> result = std::make_shared<MergedAnimCompileOp>();
 		::Assets::DependentFileState cfgDep { MakeStringSection("colladaimport.cfg"), ::Assets::MainFileSystem::TryGetDesc("colladaimport.cfg")._modificationTime };
@@ -669,12 +701,12 @@ namespace ColladaConversion
 		ImportConfiguration cfg("colladaimport.cfg");
 
 		for (const auto&filePath:sourceFiles) {
-			::Assets::DependentFileState subFileDep { filePath, ::Assets::MainFileSystem::TryGetDesc(filePath)._modificationTime };
+			::Assets::DependentFileState subFileDep { filePath.first, ::Assets::MainFileSystem::TryGetDesc(filePath.first)._modificationTime };
 			result->_dependencies.push_back(subFileDep);
 
 			ColladaCompileOp subResult;
 			subResult._cfg = cfg;
-			subResult._fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath), 0, "r", FileShareMode::Read);
+			subResult._fileData = ::Assets::MainFileSystem::OpenMemoryMappedFile(MakeStringSection(filePath.first), 0, "r", FileShareMode::Read);
 			XmlInputStreamFormatter<utf8> formatter(
 				MemoryMappedInputStream(subResult._fileData.GetData()));
 			formatter._allowCharacterData = true;
@@ -688,7 +720,7 @@ namespace ColladaConversion
 			PreparedAnimationFile animFile(subResult);
 
 			result->_animationSet.MergeAnimation(
-				animFile._animationSet, MakeFileNameSplitter(filePath).File().AsString(), 
+				animFile._animationSet, filePath.second, 
 				animFile._curves, result->_curves);
 		}
 
@@ -699,8 +731,11 @@ namespace ColladaConversion
 	std::shared_ptr<::Assets::ICompileOperation> CreateCompileOperation(StringSection<::Assets::ResChar> identifier)
 	{
 #pragma comment(linker, "/EXPORT:CreateCompileOperation=" __FUNCDNAME__)
-		if (identifier.size() > 6 && XlEqStringI(MakeStringSection(identifier.end()-6, identifier.end()), "alldae")) {
-			return CreateMergedAnimSetCompileOperation(MakeStringSection(identifier.begin(), identifier.end()-6));
+		auto splitter = MakeFileNameSplitter(identifier);
+		if (XlEqStringI(splitter.FileAndExtension(), "alldae")) {
+			return CreateMergedAnimSetCompileOperation(splitter.DriveAndPath(), true);
+		} else if (XlEqStringI(splitter.Extension(), "daelst")) {
+			return CreateMergedAnimSetCompileOperation(identifier, false);
 		} else {
 			return CreateNormalCompileOperation(identifier);
 		}
@@ -716,12 +751,15 @@ namespace ColladaConversion
 	public:
 		const char*			Description() const { return "Compiler and converter for Collada asset files"; }
 
-		virtual unsigned	FileKindCount() const { return 2; }
+		virtual unsigned	FileKindCount() const { return 3; }
 		virtual FileKind	GetFileKind(unsigned index) const
 		{
-			assert(index==0 || index == 1);
+			assert(index == 0 || index == 1 || index == 2);
 			if (index == 0)
 				return FileKind { MakeIteratorRange(s_knownAssetTypes), R"(.*\.dae)", "Collada XML asset", "dae" };
+
+			if (index == 1)
+				return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*\.daelst)", "Animation List", "daelst" };
 
 			return FileKind { MakeIteratorRange(s_animSetAssetTypes), R"(.*[\\/]alldae)", "All collada animations in a directory", "folder" };
 		}

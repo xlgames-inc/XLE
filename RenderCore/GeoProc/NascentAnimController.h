@@ -17,44 +17,37 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
+	std::pair<Float3, Float3>   InvalidBoundingBox();
 
         ////////////////////////////////////////////////////////
 
     class NascentBoundSkinnedGeometry
     {
     public:
-        DynamicArray<uint8>         _unanimatedVertexElements;
-        DynamicArray<uint8>         _indices;
+        DynamicArray<uint8_t>		_unanimatedVertexElements;
+        DynamicArray<uint8_t>		_indices;
 
-        Format                      _indexFormat;        
+        Format                      _indexFormat = (Format)0;
         GeoInputAssembly            _mainDrawUnanimatedIA;
         GeoInputAssembly            _mainDrawAnimatedIA;
 
         std::vector<DrawCallDesc>    _mainDrawCalls;
 
-        DynamicArray<uint8>         _animatedVertexElements;
-        DynamicArray<uint8>         _skeletonBinding;
-        unsigned                    _skeletonBindingVertexStride;
-        unsigned                    _animatedVertexBufferSize;
+        DynamicArray<uint8_t>         _animatedVertexElements;
+        DynamicArray<uint8_t>		_skeletonBinding;
+        unsigned                    _skeletonBindingVertexStride = 0;
+        unsigned                    _animatedVertexBufferSize = 0;
 
         std::vector<Float4x4>		_inverseBindMatrices;
-        DynamicArray<uint16>        _jointMatrices;         // (uint16 or uint8 for this array)
+        DynamicArray<uint16_t>		_jointMatrices;         // (uint16 or uint8 for this array)
         Float4x4                    _bindShapeMatrix;
             
         std::vector<DrawCallDesc>   _preskinningDrawCalls;
         GeoInputAssembly            _preskinningIA;
 
-        std::pair<Float3, Float3>	_localBoundingBox;
+        std::pair<Float3, Float3>	_localBoundingBox = InvalidBoundingBox();
 
         void    Serialize(Serialization::NascentBlockSerializer& outputSerializer, std::vector<uint8>& largeResourcesBlock) const;
-
-        NascentBoundSkinnedGeometry(DynamicArray<uint8>&&   unanimatedVertexElements,
-                                    DynamicArray<uint8>&&   animatedVertexElements,
-                                    DynamicArray<uint8>&&   skeletonBinding,
-                                    DynamicArray<uint8>&&   indices);
-        NascentBoundSkinnedGeometry(NascentBoundSkinnedGeometry&& moveFrom);
-        NascentBoundSkinnedGeometry& operator=(NascentBoundSkinnedGeometry&& moveFrom);
-
         friend std::ostream& StreamOperator(std::ostream&, const NascentBoundSkinnedGeometry&);
     };
 
@@ -70,23 +63,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class UnboundSkinController 
     {
     public:
-        class Bucket
+        struct Bucket
         {
-        public:
             std::vector<InputElementDesc>    _vertexInputLayout;
-            unsigned                         _weightCount;
+            unsigned                         _weightCount = 0;
 
             std::unique_ptr<uint8[]>         _vertexBufferData;
-            size_t                           _vertexBufferSize;
+            size_t                           _vertexBufferSize = 0;
 
             std::vector<uint16>              _vertexBindings;
-
-            Bucket();
-            Bucket(Bucket&& moveFrom) never_throws;
-            Bucket& operator=(Bucket&& moveFrom) never_throws;
-
-        private:
-            Bucket& operator=(const Bucket& copyFrom);
         };
 
         Float4x4					_bindShapeMatrix;
@@ -107,11 +92,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             std::vector<std::string>&& jointNames,
             NascentObjectGuid sourceRef,
             std::vector<uint32>&& vertexPositionToBucketIndex);
-        UnboundSkinController(UnboundSkinController&& moveFrom) never_throws;
-        UnboundSkinController& operator=(UnboundSkinController&& moveFrom) never_throws;
-
-    private:
-        UnboundSkinController& operator=(const UnboundSkinController& copyFrom);
+        UnboundSkinController(UnboundSkinController&& moveFrom) = default;
+        UnboundSkinController& operator=(UnboundSkinController&& moveFrom) = default;
     };
 
 	template <int WeightCount>

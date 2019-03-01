@@ -72,7 +72,7 @@ namespace RenderCore { namespace Assets
 
         TransformationParameterSet  BuildTransformationParameterSet(
             const AnimationState&           animState,
-            const SkeletonMachine&    transformationMachine,
+            const SkeletonMachine&			transformationMachine,
             const AnimationSetBinding&      binding,
             const RawAnimationCurve*        curves,
             size_t                          curvesCount) const;

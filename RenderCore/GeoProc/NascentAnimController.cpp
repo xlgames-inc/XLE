@@ -350,15 +350,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
 
             //      Build the final "BoundSkinnedGeometry" object
-        NascentBoundSkinnedGeometry result(
-            DynamicArray<uint8>(std::move(unanimatedVertexBuffer), unanimatedVertexStride*unifiedVertexCount),
-            DynamicArray<uint8>(std::move(animatedVertexBuffer), animatedVertexStride*unifiedVertexCount),
-            DynamicArray<uint8>(std::move(skeletonBindingVertices), destinationWeightVertexStride*unifiedVertexCount),
-            DynamicArray<uint8>(std::move(newIndexBuffer), sourceGeo._indices.size()));
+        NascentBoundSkinnedGeometry result;
+		result._unanimatedVertexElements = DynamicArray<uint8>(std::move(unanimatedVertexBuffer), unanimatedVertexStride*unifiedVertexCount);
+		result._animatedVertexElements = DynamicArray<uint8>(std::move(animatedVertexBuffer), animatedVertexStride*unifiedVertexCount);
+		result._skeletonBinding = DynamicArray<uint8>(std::move(skeletonBindingVertices), destinationWeightVertexStride*unifiedVertexCount);
+		result._indices = DynamicArray<uint8>(std::move(newIndexBuffer), sourceGeo._indices.size());
 
         result._skeletonBindingVertexStride = (unsigned)destinationWeightVertexStride;
         result._animatedVertexBufferSize = (unsigned)(animatedVertexStride*unifiedVertexCount);
 
+		assert(controller._inverseBindMatrices.size() == jointMatrices.size());
         result._inverseBindMatrices = controller._inverseBindMatrices;
         result._jointMatrices = std::move(jointMatrices);
         result._bindShapeMatrix = controller._bindShapeMatrix;
@@ -433,15 +434,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         outputSerializer.SerializeSubBlock(MakeIteratorRange(_inverseBindMatrices));
         outputSerializer.SerializeValue(_inverseBindMatrices.size());
-
-        std::vector<Float4x4> inverseBindByBindShape = _inverseBindMatrices;
-        for (unsigned c=0; c<inverseBindByBindShape.size(); ++c) {
-            inverseBindByBindShape[c] = Combine(
-                _bindShapeMatrix,
-                inverseBindByBindShape[c]);
-        }
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(inverseBindByBindShape));
-        outputSerializer.SerializeValue(inverseBindByBindShape.size());
         outputSerializer.SerializeSubBlock(MakeIteratorRange(_jointMatrices));
         outputSerializer.SerializeValue(_jointMatrices.size());
         
@@ -452,61 +444,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         ::Serialize(outputSerializer, _localBoundingBox.first);
         ::Serialize(outputSerializer, _localBoundingBox.second);
-    }
-
-    NascentBoundSkinnedGeometry::NascentBoundSkinnedGeometry(     DynamicArray<uint8>&& unanimatedVertexElements,
-                                                    DynamicArray<uint8>&& animatedVertexElements,
-                                                    DynamicArray<uint8>&& skeletonBinding,
-                                                    DynamicArray<uint8>&& indices)
-    :       _unanimatedVertexElements(std::forward<DynamicArray<uint8>>(unanimatedVertexElements))
-    ,       _animatedVertexElements(std::forward<DynamicArray<uint8>>(animatedVertexElements))
-    ,       _skeletonBinding(std::forward<DynamicArray<uint8>>(skeletonBinding))
-    ,       _indices(std::forward<DynamicArray<uint8>>(indices))
-    ,       _jointMatrices(nullptr, 0)
-    ,       _animatedVertexBufferSize(0)
-    ,       _localBoundingBox(InvalidBoundingBox())
-    ,       _indexFormat(Format::Unknown)
-    {
-    }
-
-    NascentBoundSkinnedGeometry::NascentBoundSkinnedGeometry(NascentBoundSkinnedGeometry&& moveFrom)
-    :       _unanimatedVertexElements(std::move(moveFrom._unanimatedVertexElements))
-    ,       _animatedVertexElements(std::move(moveFrom._animatedVertexElements))
-    ,       _skeletonBinding(std::move(moveFrom._skeletonBinding))
-    ,       _skeletonBindingVertexStride(moveFrom._skeletonBindingVertexStride)
-    ,       _indices(std::move(moveFrom._indices))
-    ,       _inverseBindMatrices(std::move(moveFrom._inverseBindMatrices))
-    ,       _jointMatrices(std::move(moveFrom._jointMatrices))
-    ,       _bindShapeMatrix(moveFrom._bindShapeMatrix)
-    ,       _mainDrawCalls(std::move(moveFrom._mainDrawCalls))
-    ,       _mainDrawUnanimatedIA(std::move(moveFrom._mainDrawUnanimatedIA))
-    ,       _mainDrawAnimatedIA(std::move(moveFrom._mainDrawAnimatedIA))
-    ,       _preskinningDrawCalls(std::move(moveFrom._preskinningDrawCalls))
-    ,       _preskinningIA(std::move(moveFrom._preskinningIA))
-    ,       _animatedVertexBufferSize(moveFrom._animatedVertexBufferSize)
-    ,       _localBoundingBox(moveFrom._localBoundingBox)
-    ,       _indexFormat(moveFrom._indexFormat)
-    {}
-
-    NascentBoundSkinnedGeometry& NascentBoundSkinnedGeometry::operator=(NascentBoundSkinnedGeometry&& moveFrom)
-    {
-        _unanimatedVertexElements = std::move(moveFrom._unanimatedVertexElements);
-        _animatedVertexElements = std::move(moveFrom._animatedVertexElements);
-        _skeletonBinding = std::move(moveFrom._skeletonBinding);
-        _skeletonBindingVertexStride = moveFrom._skeletonBindingVertexStride;
-        _indices = std::move(moveFrom._indices);
-        _inverseBindMatrices = std::move(moveFrom._inverseBindMatrices);
-        _jointMatrices = std::move(moveFrom._jointMatrices);
-        _bindShapeMatrix = moveFrom._bindShapeMatrix;
-        _mainDrawCalls = std::move(moveFrom._mainDrawCalls);
-        _mainDrawUnanimatedIA = std::move(moveFrom._mainDrawUnanimatedIA);
-        _mainDrawAnimatedIA = std::move(moveFrom._mainDrawAnimatedIA);
-        _preskinningDrawCalls = std::move(moveFrom._preskinningDrawCalls);
-        _preskinningIA = std::move(moveFrom._preskinningIA);
-        _animatedVertexBufferSize = moveFrom._animatedVertexBufferSize;
-        _localBoundingBox = moveFrom._localBoundingBox;
-        _indexFormat = moveFrom._indexFormat;
-        return *this;
     }
 
 
@@ -561,26 +498,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		_inverseBindMatrices = std::move(newInverseBindMatrices);
 	}
 
-    UnboundSkinController::Bucket::Bucket() { _weightCount = 0; _vertexBufferSize = 0; }
-    UnboundSkinController::Bucket::Bucket(Bucket&& moveFrom) never_throws
-    :       _vertexInputLayout(std::move(moveFrom._vertexInputLayout))
-    ,       _weightCount(moveFrom._weightCount)
-    ,       _vertexBufferData(std::move(moveFrom._vertexBufferData))
-    ,       _vertexBufferSize(moveFrom._vertexBufferSize)
-    ,       _vertexBindings(std::move(moveFrom._vertexBindings))
-    {
-    }
-
-    auto UnboundSkinController::Bucket::operator=(Bucket&& moveFrom) never_throws -> Bucket&
-    {
-        _vertexInputLayout = std::move(moveFrom._vertexInputLayout);
-        _weightCount = moveFrom._weightCount;
-        _vertexBufferData = std::move(moveFrom._vertexBufferData);
-        _vertexBufferSize = moveFrom._vertexBufferSize;
-        _vertexBindings = std::move(moveFrom._vertexBindings);
-        return *this;
-    }
-
     UnboundSkinController::UnboundSkinController(   
         Bucket&& bucket4, Bucket&& bucket2, Bucket&& bucket1, Bucket&& bucket0,
         std::vector<Float4x4>&& inverseBindMatrices, const Float4x4& bindShapeMatrix,
@@ -597,29 +514,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         _bucket[1] = std::forward<Bucket>(bucket2);
         _bucket[2] = std::forward<Bucket>(bucket1);
         _bucket[3] = std::forward<Bucket>(bucket0);
-    }
-
-    UnboundSkinController::UnboundSkinController(UnboundSkinController&& moveFrom) never_throws
-    :       _inverseBindMatrices(std::move(moveFrom._inverseBindMatrices))
-    ,       _bindShapeMatrix(moveFrom._bindShapeMatrix)
-    ,       _positionIndexToBucketIndex(std::move(moveFrom._positionIndexToBucketIndex))
-    ,       _jointNames(moveFrom._jointNames)
-    ,       _sourceRef(moveFrom._sourceRef)
-    {
-        for (unsigned c=0; c<dimof(_bucket); ++c)
-            _bucket[c] = std::move(moveFrom._bucket[c]);
-    }
-
-    UnboundSkinController& UnboundSkinController::operator=(UnboundSkinController&& moveFrom) never_throws
-    {
-        for (unsigned c=0; c<dimof(_bucket); ++c)
-            _bucket[c] = std::move(moveFrom._bucket[c]);
-        _inverseBindMatrices = std::move(moveFrom._inverseBindMatrices);
-        _bindShapeMatrix = moveFrom._bindShapeMatrix;
-        _positionIndexToBucketIndex = std::move(moveFrom._positionIndexToBucketIndex);
-        _jointNames = std::move(moveFrom._jointNames);
-        _sourceRef = moveFrom._sourceRef;
-        return *this;
     }
 
 	template<unsigned WeightCount>

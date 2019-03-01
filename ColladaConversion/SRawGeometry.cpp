@@ -830,8 +830,9 @@ namespace ColladaConversion
         auto jointInput = controller.GetJointInputs().FindInputBySemantic(u("JOINT"));
 		if (!jointInput) return {};
 
+		GuidReference jointSourceRef(jointInput->_source);
         auto* jointSource = FindElement(
-            GuidReference(jointInput->_source), resolveContext, 
+            jointSourceRef, resolveContext, 
             &IDocScopeIdResolver::FindSource);
 		if (!jointSource) return {};
 
@@ -859,7 +860,20 @@ namespace ColladaConversion
 			if (elementIndex < remapping.size() && remapping[elementIndex] != ~0u) {
 				if (result.size() <= remapping[elementIndex])
 					result.resize(remapping[elementIndex]+1);
-				result[remapping[elementIndex]] = std::string((const char*)elementStart, (const char*)i);
+
+				// We must convert from the "ids" in the JOINTS array to node names
+				// This is because we use names (rather than ids) for skeleton/animation
+				// binding operations. Names are more reliable for cross-file binding,
+				// but it means we have to do this mapping here
+				auto nodeId = std::string((const char*)elementStart, (const char*)i);
+				auto node = FindElement(
+					GuidReference(Hash64(nodeId), jointSourceRef._fileHash), resolveContext, 
+					&IDocScopeIdResolver::FindNode);
+				if (node) {
+					result[remapping[elementIndex]] = node.GetName().Cast<char>().AsString();
+				} else {
+					result[remapping[elementIndex]] = nodeId;
+				}
 			}
             // result.push_back(std::string((const char*)elementStart, (const char*)i));
 			++elementIndex;
@@ -1203,25 +1217,33 @@ namespace ColladaConversion
             }
         }
 
-		std::vector<unsigned> jointUsage;
-		jointUsage.resize(256);
-		AccumulateJointUsage(bucket1, jointUsage);
-		AccumulateJointUsage(bucket2, jointUsage);
-		AccumulateJointUsage(bucket4, jointUsage);
-
+		// Compress the list of joints used by this controller by only
+		// including joints that are actually referenced by weights
 		std::vector<unsigned> jointIndexRemapping;
-		unsigned finalJointIndexCount = 0;
-		for (unsigned c=0; c<jointUsage.size(); ++c) {
-			if (jointUsage[c]) {
-				if (jointIndexRemapping.size() <= c)
-					jointIndexRemapping.resize(c+1, ~0u);
-				jointIndexRemapping[c] = finalJointIndexCount;
-				++finalJointIndexCount;
+		const bool doJointUsageCompression = true;
+		if (doJointUsageCompression) {
+			std::vector<unsigned> jointUsage;
+			jointUsage.resize(256);
+			AccumulateJointUsage(bucket1, jointUsage);
+			AccumulateJointUsage(bucket2, jointUsage);
+			AccumulateJointUsage(bucket4, jointUsage);
+
+			unsigned finalJointIndexCount = 0;
+			for (unsigned c=0; c<jointUsage.size(); ++c) {
+				if (jointUsage[c]) {
+					if (jointIndexRemapping.size() <= c)
+						jointIndexRemapping.resize(c+1, ~0u);
+					jointIndexRemapping[c] = finalJointIndexCount;
+					++finalJointIndexCount;
+				}
 			}
+			RemapJointIndices(bucket1, MakeIteratorRange(jointIndexRemapping));
+			RemapJointIndices(bucket2, MakeIteratorRange(jointIndexRemapping));
+			RemapJointIndices(bucket4, MakeIteratorRange(jointIndexRemapping));
+		} else {
+			for (unsigned c=0; c<256; ++c)
+				jointIndexRemapping.push_back(c);
 		}
-		RemapJointIndices(bucket1, MakeIteratorRange(jointIndexRemapping));
-		RemapJointIndices(bucket2, MakeIteratorRange(jointIndexRemapping));
-		RemapJointIndices(bucket4, MakeIteratorRange(jointIndexRemapping));
             
         UnboundSkinController::Bucket b4;
         b4._vertexBindings = std::move(bucket4._vertexBindings);

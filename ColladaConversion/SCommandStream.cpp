@@ -15,7 +15,6 @@
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../RenderCore/GeoProc/NascentRawGeometry.h"
 #include "../RenderCore/GeoProc/NascentAnimController.h"
-#include "../RenderCore/GeoProc/NascentGeometryObjects.h"
 #include "../RenderCore/GeoProc/GeoProcUtil.h"
 
 #include "../RenderCore/Assets/MaterialScaffold.h"  // for MakeMaterialGuid
@@ -141,17 +140,15 @@ namespace ColladaConversion
 
     std::string SkeletonBindingName(const Node& node)
     {
-            // Both "name" and "id" are optional.
-			// We must prioritize the id if it exists, so that the binding name
-			// matches up with the way collada builds the "JOINTS" array in skin
-			// controllers. Collada uses ids, rather than names, for that list.
-			// So we must match the same behaviour here, because this is used
-			// to populate a binding table to match the binding names from that
-			// joints array
-        if (!node.GetId().IsEmpty())
-            return ColladaConversion::AsString(node.GetId().GetOriginal());
-		if (node.GetName()._end > node.GetName()._start)
+        // Both "name" and "id" are optional.
+		// It turns out we must priortize the name here, because of cross-file binding.
+		// There's no real guarantee that 2 nodes will have the same ids in different files,
+		// since the ids are algorithmically generated from the names.
+		// However if we keep to a convention of not duplicating names, we 
+        if (!node.GetName().IsEmpty())
             return ColladaConversion::AsString(node.GetName()); 
+		if (!node.GetId().IsEmpty())
+            return ColladaConversion::AsString(node.GetId().GetOriginal());
         return XlDynFormatString("Unnamed%i", (unsigned)node.GetIndex());
     }
 

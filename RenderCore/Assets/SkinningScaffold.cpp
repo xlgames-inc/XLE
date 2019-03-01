@@ -48,7 +48,7 @@ namespace RenderCore { namespace Assets
 
         AnimationState animState = animState__;
 
-        size_t driverStart = 0, driverEnd = GetAnimationDriverCount();
+        size_t driverStart = 0, driverEnd = 0;
         size_t constantDriverStartIndex = 0, constantDriverEndIndex = _constantDriverCount;
         if (animState._animation!=0x0) {
             auto end = &_animations[_animationCount];

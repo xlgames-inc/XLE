@@ -34,47 +34,25 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class AnimationDriver
         {
         public:
-            unsigned            _curveIndex;
-            unsigned            _parameterIndex;
-            unsigned            _samplerOffset;
-            AnimSamplerType     _samplerType;
+            unsigned            _curveIndex = ~0u;
+            unsigned            _parameterIndex = ~0u;
+            AnimSamplerType     _samplerType = (AnimSamplerType)~0u;
+			unsigned            _samplerOffset = ~0u;
 
-            AnimationDriver(
-                unsigned            curveIndex, 
-                unsigned            parameterIndex, 
-                AnimSamplerType     samplerType, 
-                unsigned            samplerOffset)
-            : _curveIndex(curveIndex)
-            , _parameterIndex(parameterIndex)
-            , _samplerType(samplerType)
-            , _samplerOffset(samplerOffset) {}
-
-            void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+			static const bool SerializeRaw = true;
         };
 
                     /////   C O N S T A N T   D R I V E R   /////
         class ConstantDriver
         {
         public:
-            unsigned            _dataOffset;
-            unsigned            _parameterIndex;
-			Format				_format;
-            unsigned            _samplerOffset;
-            AnimSamplerType     _samplerType;
+            unsigned            _dataOffset = ~0u;
+            unsigned            _parameterIndex = ~0u;
+			Format				_format = (Format)0;
+            AnimSamplerType     _samplerType = (AnimSamplerType)~0u;
+			unsigned            _samplerOffset = ~0u;
 
-            ConstantDriver(
-                unsigned            dataOffset,
-                unsigned            parameterIndex,
-				Format				format,
-                AnimSamplerType     samplerType,
-                unsigned            samplerOffset)
-            : _dataOffset(dataOffset)
-            , _parameterIndex(parameterIndex)
-			, _format(format)
-            , _samplerType(samplerType)
-            , _samplerOffset(samplerOffset) {}
-
-            void Serialize(Serialization::NascentBlockSerializer& serializer) const;
+            static const bool SerializeRaw = true;
         };
 
         void    AddAnimationDriver(
@@ -113,16 +91,18 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::ostream& stream, 
 			const NascentAnimationSet& transMachine);
 
-        NascentAnimationSet();
-        ~NascentAnimationSet();
-        NascentAnimationSet(NascentAnimationSet&& moveFrom);
-        NascentAnimationSet& operator=(NascentAnimationSet&& moveFrom);
-
         void            Serialize(Serialization::NascentBlockSerializer& serializer) const;
     private:
         std::vector<AnimationDriver>    _animationDrivers;
         std::vector<ConstantDriver>     _constantDrivers;
-        class Animation;
+        class Animation
+		{
+		public:
+			std::string     _name;
+			unsigned        _begin, _end;
+			unsigned        _constantBegin, _constantEnd;
+			float           _startTime, _endTime;
+		};
         std::vector<Animation>          _animations;
         std::vector<std::string>        _parameterInterfaceDefinition;
         std::vector<uint8>              _constantData;
@@ -148,26 +128,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		void	FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> newOutputInterface);
 		void	Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
-        NascentSkeleton();
-        ~NascentSkeleton();
-        NascentSkeleton(NascentSkeleton&& moveFrom) = default;
-        NascentSkeleton& operator=(NascentSkeleton&& moveFrom) = default;
     private:
         NascentSkeletonMachine		_skeletonMachine;
 		NascentSkeletonInterface	_interface;
 		TransformationParameterSet	_defaultParameters;
     };
-
-	/*class NascentSkeletonFile
-	{
-	public:
-		NascentSkeleton&		GetBasicSkeleton() { return _basicSkeleton; }
-		NascentSkeleton&		GetSkinningSkeleton(const std::string& name) { return _skinningSkeletons[name]; }
-
-	private:
-		NascentSkeleton			_basicSkeleton;
-		std::unordered_map<std::string, NascentSkeleton> _skinningSkeletons;
-	};*/
 
         //
         //      "Model Command Stream" is the list of model elements
@@ -185,16 +150,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class GeometryInstance
         {
         public:
-            unsigned                    _id;
-            unsigned                    _localToWorldId;
+            unsigned                    _id = ~0u;
+            unsigned                    _localToWorldId = ~0u;
             std::vector<MaterialGuid>   _materials;
-            unsigned                    _levelOfDetail;
-            GeometryInstance(
-                unsigned id, unsigned localToWorldId, 
-                std::vector<MaterialGuid>&& materials, unsigned levelOfDetail) 
-            :   _id(id), _localToWorldId(localToWorldId)
-            ,   _materials(std::forward<std::vector<MaterialGuid>>(materials))
-            ,   _levelOfDetail(levelOfDetail) {}
+            unsigned                    _levelOfDetail = ~0u;
 
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
         };
@@ -203,15 +162,10 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class SkinControllerInstance
         {
         public:
-            unsigned                    _id;
-            unsigned                    _localToWorldId;
+            unsigned                    _id = ~0u;
+            unsigned                    _localToWorldId = ~0u;
             std::vector<MaterialGuid>   _materials;
-            unsigned                    _levelOfDetail;
-            SkinControllerInstance(
-                unsigned id, unsigned localToWorldId, 
-                std::vector<MaterialGuid>&& materials, unsigned levelOfDetail)
-            :   _id(id), _localToWorldId(localToWorldId), _materials(std::forward<std::vector<MaterialGuid>>(materials))
-            ,   _levelOfDetail(levelOfDetail) {}
+            unsigned                    _levelOfDetail = ~0u;
 
             void Serialize(Serialization::NascentBlockSerializer& serializer) const;
         };
@@ -220,8 +174,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         class CameraInstance
         {
         public:
-            unsigned    _localToWorldId;
-            CameraInstance(unsigned localToWorldId) : _localToWorldId(localToWorldId) {}
+            unsigned    _localToWorldId = ~0u;
         };
 
         void Add(GeometryInstance&& geoInstance);
@@ -236,11 +189,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<uint64_t> BuildHashedInputInterface() const;
         unsigned GetMaxLOD() const;
 
-        NascentModelCommandStream();
-        ~NascentModelCommandStream();
-        NascentModelCommandStream(NascentModelCommandStream&& moveFrom) = default;
-        NascentModelCommandStream& operator=(NascentModelCommandStream&& moveFrom) = default;
-
         std::vector<GeometryInstance>               _geometryInstances;
         std::vector<CameraInstance>                 _cameraInstances;
         std::vector<SkinControllerInstance>         _skinControllerInstances;
@@ -249,9 +197,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     private:
         std::vector<std::pair<std::string, std::string>>	_inputInterfaceNames;
-
-        NascentModelCommandStream& operator=(const NascentModelCommandStream& copyFrom) never_throws;
-        NascentModelCommandStream(const NascentModelCommandStream& copyFrom);
     };
 }}}
 

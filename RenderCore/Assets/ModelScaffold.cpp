@@ -44,7 +44,7 @@ namespace RenderCore { namespace Assets
         DestroyArray(_boundSkinnedControllers, &_boundSkinnedControllers[_boundSkinnedControllerCount]);
     }
 
-    uint64 GeoInputAssembly::BuildHash() const
+    uint64_t GeoInputAssembly::BuildHash() const
     {
             //  Build a hash for this object.
             //  Note that we should be careful that we don't get an
@@ -52,7 +52,7 @@ namespace RenderCore { namespace Assets
             //  semantic names. Do to this right, we should make sure
             //  that left over space has no effect.
         auto elementsHash = Hash64(AsPointer(_elements.cbegin()), AsPointer(_elements.cend()));
-        elementsHash ^= uint64(_vertexStride);
+        elementsHash ^= uint64_t(_vertexStride);
         return elementsHash;
     }
 

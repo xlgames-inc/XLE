@@ -50,6 +50,8 @@ namespace ColladaConversion
         }
     }
 
+	std::string SkeletonBindingName(const Node& node);
+
     std::string AsParameterName(SidBreakdown breakdown, const URIResolveContext& resolveContext)
     {
         // This is awkward because to want to convert from the node "id" to the node "name"
@@ -63,7 +65,7 @@ namespace ColladaConversion
         // (assuming the original data hasn't been changed)
         std::string temp;
         auto ele = FindElement(GuidReference(breakdown._baseObject), resolveContext, &IDocScopeIdResolver::FindNode);
-        if (ele) temp = ColladaConversion::AsString(ele.GetName());
+        if (ele) temp = SkeletonBindingName(ele);
         else temp = ColladaConversion::AsString(breakdown._baseObject);
 
         for (const auto&i:breakdown._scoping)

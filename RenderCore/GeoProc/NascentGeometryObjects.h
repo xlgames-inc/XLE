@@ -5,6 +5,7 @@
 #include "NascentRawGeometry.h"
 #include "NascentAnimController.h"
 #include <vector>
+#include <iosfwd>
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
@@ -14,9 +15,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	public:
 		std::vector<std::pair<NascentObjectGuid, NascentRawGeometry>> _rawGeos;
 		std::vector<std::pair<NascentObjectGuid, NascentBoundSkinnedGeometry>> _skinnedGeos;
-
-		unsigned GetGeo(NascentObjectGuid id);
-		unsigned GetSkinnedGeo(NascentObjectGuid id);
 
 		std::pair<Float3, Float3> CalculateBoundingBox
 		(

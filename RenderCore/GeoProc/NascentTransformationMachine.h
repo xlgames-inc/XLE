@@ -68,15 +68,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         int						_pendingPops; // Only required during construction
     };
 
-	using AnimationParameterHashName = uint32;
-
 	class NascentSkeletonInterface
 	{
 	public:
-		T1(Type) bool	TryAddParameter(uint32& paramIndex, StringSection<> paramName, AnimationParameterHashName hashName);
-		bool			TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
+		T1(Type) bool	TryAddParameter(uint32_t& paramIndex, StringSection<> paramName);
+		bool			TryRegisterJointName(uint32_t& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
 
 		using JointTag = std::pair<std::string, std::string>;
+		using ParameterTag = std::string;
+
 		IteratorRange<const JointTag*>	GetOutputInterface() const { return MakeIteratorRange(_jointTags); }
 		void							SetOutputInterface(IteratorRange<const JointTag*> jointNames);
 
@@ -97,48 +97,40 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		~NascentSkeletonInterface();
 
 	private:
-		std::vector<AnimationParameterHashName>		_float1ParameterNames;
-		std::vector<AnimationParameterHashName>		_float3ParameterNames;
-		std::vector<AnimationParameterHashName>		_float4ParameterNames;
-		std::vector<AnimationParameterHashName>		_float4x4ParameterNames;
+		std::vector<ParameterTag>		_float1ParameterNames;
+		std::vector<ParameterTag>		_float3ParameterNames;
+		std::vector<ParameterTag>		_float4ParameterNames;
+		std::vector<ParameterTag>		_float4x4ParameterNames;
 
-		std::vector<std::pair<AnimationParameterHashName, std::string>>  _dehashTable;
-
-		std::vector<JointTag> _jointTags;
+		std::vector<JointTag>			_jointTags;
 
 		template<typename Type>
-			std::vector<AnimationParameterHashName>& GetTables();
+			std::vector<ParameterTag>& GetTables();
 
-		std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterHashName parameterName) const;
+		/*std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterHashName parameterName) const;
 		AnimationParameterHashName			GetParameterName(AnimSamplerType type, uint32 index) const;
 
 		std::string                 HashedIdToStringId     (AnimationParameterHashName colladaId) const;
-		AnimationParameterHashName	StringIdToHashedId     (const std::string& stringId) const;
+		AnimationParameterHashName	StringIdToHashedId     (const std::string& stringId) const;*/
 	};
 
         ////////////////// template implementation //////////////////
 
     template<typename Type>
         bool NascentSkeletonInterface::TryAddParameter( 
-            uint32& paramIndex,
-			StringSection<char> paramName,
-			AnimationParameterHashName hashName)
+            uint32_t& paramIndex,
+			StringSection<> paramName)
     {
         auto& tables = GetTables<Type>();
-        auto i = std::find(tables.begin(), tables.end(), hashName);
+        auto i = std::find_if(tables.begin(), tables.end(), 
+			[paramName](const std::string& s) { return XlEqString(paramName, s); });
         if (i!=tables.end()) {
-            Log(Warning) << "Duplicate animation parameter name in node " << paramName.AsString() << ". Only the first will work. The rest will be static." << std::endl;
-            return false;
+            paramIndex = (uint32_t)std::distance(tables.begin(), i);
+            return true;
         }
 
-		auto dhi = LowerBound(_dehashTable, hashName);
-		if (dhi!=_dehashTable.end() && dhi->first == hashName) {
-			Log(Warning) << "Duplicate animation parameter name in node " << paramName.AsString() << ". Only the first will work. The rest will be static." << std::endl;
-            return false;
-		}
-		_dehashTable.insert(dhi, std::make_pair(hashName, paramName.AsString()));
-        paramIndex = (uint32)tables.size();
-        tables.push_back(hashName);
+        paramIndex = (uint32_t)tables.size();
+        tables.push_back(paramName.AsString());
         return true;
     }
 

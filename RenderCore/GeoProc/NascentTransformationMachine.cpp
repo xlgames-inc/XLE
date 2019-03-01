@@ -123,6 +123,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		_commandStream = RenderCore::Assets::RemapOutputMatrices(
 			MakeIteratorRange(_commandStream), 
 			outputMatrixMapping);
+
+		unsigned newOutputMatrixCount = 0;
+		for (unsigned c=0; c<std::min((unsigned)outputMatrixMapping.size(), _outputMatrixCount); ++c)
+			newOutputMatrixCount = std::max(newOutputMatrixCount, outputMatrixMapping[c]+1);
+		_outputMatrixCount = newOutputMatrixCount;
 	}
 
     NascentSkeletonMachine::NascentSkeletonMachine() : _pendingPops(0), _outputMatrixCount(0) {}
@@ -130,21 +135,24 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	/*class NascentSkeletonInterface::CompareJointName
-	{
-	public:
-		bool operator()(const Joint& lhs, const Joint& rhs) { return lhs._name < rhs._name; }
-		bool operator()(const Joint& lhs, const std::string& rhs) { return lhs._name < rhs; }
-		bool operator()(const std::string& lhs, const Joint& rhs) { return lhs < rhs._name; }
-	};*/
-
 	NascentSkeletonInterface::NascentSkeletonInterface() {}
 	NascentSkeletonInterface::~NascentSkeletonInterface() {}
 
-    template<> auto NascentSkeletonInterface::GetTables<float>()    -> std::vector<AnimationParameterHashName>& { return _float1ParameterNames; }
-    template<> auto NascentSkeletonInterface::GetTables<Float3>()   -> std::vector<AnimationParameterHashName>& { return _float3ParameterNames; }
-    template<> auto NascentSkeletonInterface::GetTables<Float4>()   -> std::vector<AnimationParameterHashName>& { return _float4ParameterNames; }
-    template<> auto NascentSkeletonInterface::GetTables<Float4x4>() -> std::vector<AnimationParameterHashName>& { return _float4x4ParameterNames; }
+    template<> auto NascentSkeletonInterface::GetTables<float>()    -> std::vector<ParameterTag>& { return _float1ParameterNames; }
+    template<> auto NascentSkeletonInterface::GetTables<Float3>()   -> std::vector<ParameterTag>& { return _float3ParameterNames; }
+    template<> auto NascentSkeletonInterface::GetTables<Float4>()   -> std::vector<ParameterTag>& { return _float4ParameterNames; }
+    template<> auto NascentSkeletonInterface::GetTables<Float4x4>() -> std::vector<ParameterTag>& { return _float4x4ParameterNames; }
+
+	#pragma pack(push)
+	#pragma pack(1)
+		struct NascentSkeletonInterface_Param    /* must match SkeletonMachine::InputInterface::Parameter */
+		{
+			uint64				_name;
+			uint32				_index;
+			AnimSamplerType		_type;
+			static const bool SerializeRaw = true;
+		};
+	#pragma pack(pop)
 
 	template <>
 		void    NascentSkeletonInterface::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
@@ -153,25 +161,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		//      We have to write out both an input and an output interface
 		//      First input interface...
 		//
-#pragma pack(push)
-#pragma pack(1)
-		struct Param    /* must match SkeletonMachine::InputInterface::Parameter */
-		{
-			uint64				_name;
-			uint32				_index;
-			AnimSamplerType		_type;
-
-			void    Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
-			{
-				::Serialize(outputSerializer, _name);
-				::Serialize(outputSerializer, _index);
-				::Serialize(outputSerializer, unsigned(_type));
-			}
-		};
-#pragma pack(pop)
-
-		std::vector<Param> runTimeInputInterface;
-		typedef std::vector<AnimationParameterHashName> T;
+		std::vector<NascentSkeletonInterface_Param> runTimeInputInterface;
+		typedef std::vector<ParameterTag> T;
 		std::pair<const T*, AnimSamplerType> tables[] = {
 			std::make_pair(&_float1ParameterNames,      AnimSamplerType::Float1),
 			std::make_pair(&_float3ParameterNames,      AnimSamplerType::Float3),
@@ -179,19 +170,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			std::make_pair(&_float4x4ParameterNames,    AnimSamplerType::Float4x4)
 		};
 
-		ConsoleRig::DebuggerOnlyWarning("Transformation Machine input interface:\n");
 		for (unsigned t=0; t<dimof(tables); ++t) {
 			for (auto i=tables[t].first->begin(); i!=tables[t].first->end(); ++i) {
-				auto n = HashedIdToStringId(*i);
-				if (!n.empty()) {
-					Param p;
-					p._type     = tables[t].second;
-					p._index    = uint32(std::distance(tables[t].first->begin(), i));
-					p._name     = Hash64(AsPointer(n.begin()), AsPointer(n.end()));
-					runTimeInputInterface.push_back(p);
-
-					ConsoleRig::DebuggerOnlyWarning("  (%s, %i) -- %s\n", AsString(p._type), p._index, n.c_str());
-				}
+				NascentSkeletonInterface_Param p;
+				p._type     = tables[t].second;
+				p._index    = uint32(std::distance(tables[t].first->begin(), i));
+				p._name     = Hash64(*i);
+				runTimeInputInterface.push_back(p);
 			}
 		}
 		outputSerializer.SerializeSubBlock(MakeIteratorRange(runTimeInputInterface));
@@ -228,42 +213,48 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		stream << "Output matrices: " << interf._jointTags.size() << std::endl;
 		stream << "Command stream size: " << transMachine._commandStream.size() * sizeof(uint32) << std::endl;
 
-		stream << " --- Animation parameters (" << interf._dehashTable.size() << ") :" << std::endl;
-		for (const auto& p:interf._dehashTable) {
-			stream << "[" << p.second << "] (0x" << std::hex << p.first << std::dec << ") ";
-			auto paramIndex = interf.GetParameterIndex(p.first);
-			switch (paramIndex.first) {
-			case AnimSamplerType::Float1:
-				stream << "Float1[" << paramIndex.second << "], default: " << defaultParameters.GetFloat1Parameters()[paramIndex.second];
+		const std::vector<NascentSkeletonInterface::ParameterTag>* paramTables[] = {
+			&interf._float1ParameterNames,
+			&interf._float3ParameterNames,
+			&interf._float4ParameterNames,
+			&interf._float4x4ParameterNames,
+		};
+		const char* paramTableNames[] = { "float1", "float3", "float4", "float4x4" };
+
+		stream << " --- Animation parameters input interface:" << std::endl;
+		for (unsigned t=0; t<dimof(paramTables); ++t) {
+			stream << "\tTable of " << paramTableNames[t] << std::endl;
+			auto& table = *paramTables[t];
+		
+			for (unsigned p=0; p<table.size(); ++p) {
+				stream << "\t\t[" << p << "] " << table[p];
+				switch (t) {
+				case 0:
+					stream << ", default: " << defaultParameters.GetFloat1Parameters()[p];
+					break;
+				case 1:
+				{
+					auto& f3 = defaultParameters.GetFloat3Parameters()[p];
+					stream << ", default: " << f3[0] << ", " << f3[1] << ", " << f3[2];
+				}
 				break;
-			case AnimSamplerType::Float3:
-			{
-				auto& f3 = defaultParameters.GetFloat3Parameters()[paramIndex.second];
-				stream << "Float3[" << paramIndex.second << "], default: " << f3[0] << ", " << f3[1] << ", " << f3[2];
+				case 2:
+				{
+					auto& f4 = defaultParameters.GetFloat4Parameters()[p];
+					stream << ", default: " << f4[0] << ", " << f4[1] << ", " << f4[2] << ", " << f4[3];
+				}
+				break;
+				case 3:
+				{
+					auto& f4x4 = defaultParameters.GetFloat4x4Parameters()[p];
+					stream << ", default diag: " << f4x4(0,0) << ", " << f4x4(1,1) << ", " << f4x4(2,2) << ", " << f4x4(3,3);
+				}
+				break;
+				default:
+					stream << "unknown type";
+				}
+				stream << std::endl;
 			}
-			break;
-			case AnimSamplerType::Float4:
-			{
-				auto& f4 = defaultParameters.GetFloat4Parameters()[paramIndex.second];
-				stream << "Float4[" << paramIndex.second << "], default: " << f4[0] << ", " << f4[1] << ", " << f4[2] << ", " << f4[3];
-			}
-			break;
-			case AnimSamplerType::Quaternion:
-			{
-				auto& f4 = defaultParameters.GetFloat4Parameters()[paramIndex.second];
-				stream << "Quaternion[" << paramIndex.second << "], default: " << f4[0] << ", " << f4[1] << ", " << f4[2] << ", " << f4[3];
-			}
-			break;
-			case AnimSamplerType::Float4x4:
-			{
-				auto& f4x4 = defaultParameters.GetFloat4x4Parameters()[paramIndex.second];
-				stream << "Float4x4[" << paramIndex.second << "], default diag: " << f4x4(0,0) << ", " << f4x4(1,1) << ", " << f4x4(2,2) << ", " << f4x4(3,3);
-			}
-			break;
-			default:
-				stream << "unknown type";
-			}
-			stream << std::endl;
 		}
 
 		stream << " --- Output interface:" << std::endl;
@@ -282,7 +273,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			},
 			[&interf](AnimSamplerType samplerType, unsigned parameterIndex) -> std::string
 			{
-				using T = std::vector<AnimationParameterHashName>;
+				using T = std::vector<NascentSkeletonInterface::ParameterTag>;
 				std::pair<const T*, AnimSamplerType> tables[] = {
 					std::make_pair(&interf._float1ParameterNames,		AnimSamplerType::Float1),
 					std::make_pair(&interf._float3ParameterNames,		AnimSamplerType::Float3),
@@ -292,14 +283,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				};
 
 				auto& names = *tables[unsigned(samplerType)].first;
-				if (parameterIndex < names.size()) return interf.HashedIdToStringId(names[parameterIndex]);
+				if (parameterIndex < names.size()) return names[parameterIndex];
 				else return std::string();
 			});
 
 		return stream;
 	}
 
-    auto NascentSkeletonInterface::GetParameterIndex(AnimationParameterHashName parameterName) const -> std::pair<AnimSamplerType, uint32>
+    /*auto NascentSkeletonInterface::GetParameterIndex(AnimationParameterHashName parameterName) const -> std::pair<AnimSamplerType, uint32>
     {
         {
             auto i = std::find(_float1ParameterNames.begin(), _float1ParameterNames.end(), parameterName);
@@ -353,7 +344,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             if (i->second == stringId)
                 return i->first;
         return ~AnimationParameterHashName(0x0);
-    }
+    }*/
 
     bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName)
     {

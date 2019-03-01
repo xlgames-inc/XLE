@@ -9,20 +9,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	unsigned NascentGeometryObjects::GetGeo(NascentObjectGuid id)
-	{
-		for (const auto& i:_rawGeos)
-			if (i.first == id) return unsigned(&i - AsPointer(_rawGeos.cbegin()));
-		return ~0u;
-	}
-
-	unsigned NascentGeometryObjects::GetSkinnedGeo(NascentObjectGuid id)
-	{
-		for (const auto& i:_skinnedGeos)
-			if (i.first == id) return unsigned(&i - AsPointer(_skinnedGeos.cbegin()));
-		return ~0u;
-	}
-
 	std::pair<Float3, Float3> NascentGeometryObjects::CalculateBoundingBox
 		(
 			const NascentModelCommandStream& scene,

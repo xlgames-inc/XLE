@@ -13,13 +13,12 @@
 #include "../../Utility/Streams/Serialization.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/StringUtils.h"
-#include "../../Core/Types.h"
 
 namespace RenderCore { class MiniInputElementDesc; }
 
 namespace RenderCore { namespace Assets 
 {
-    typedef uint64 MaterialGuid;
+    typedef uint64_t MaterialGuid;
 
     #pragma pack(push)
     #pragma pack(1)
@@ -46,7 +45,7 @@ namespace RenderCore { namespace Assets
         class InputInterface
         {
         public:
-            uint64*     _jointNames;
+            uint64_t*	_jointNames;
             size_t      _jointCount;
         };
 
@@ -107,7 +106,7 @@ namespace RenderCore { namespace Assets
         SerializableVector<VertexElement>   _elements;
         unsigned                            _vertexStride = 0;
 
-        uint64 BuildHash() const;
+        uint64_t BuildHash() const;
     };
 
     class VertexData
@@ -146,8 +145,6 @@ namespace RenderCore { namespace Assets
 
         Float4x4*       _inverseBindMatrices;
         size_t          _inverseBindMatrixCount;
-        Float4x4*       _inverseBindByBindShapeMatrices;
-        size_t          _inverseBindByBindShapeMatrixCount;
         uint16*         _jointMatrices;         // (uint16 or uint8 for this array)
         size_t          _jointMatrixCount;
         Float4x4        _bindShapeMatrix;

@@ -17,18 +17,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 { 
-    class NascentAnimationSet::Animation
-    {
-    public:
-        std::string     _name;
-        unsigned        _begin, _end;
-        unsigned        _constantBegin, _constantEnd;
-        float           _startTime, _endTime;
-        Animation() : _begin(0), _end(0), _constantBegin(0), _constantEnd(0), _startTime(0.f), _endTime(0.f) {}
-        Animation(const std::string& name, unsigned begin, unsigned end, unsigned constantBegin, unsigned constantEnd, float startTime, float endTime) 
-            : _name(name), _begin(begin), _end(end), _constantBegin(constantBegin), _constantEnd(constantEnd), _startTime(startTime), _endTime(endTime) {}
-    };
-
     void    NascentAnimationSet::AddConstantDriver( 
                                     const std::string&  parameterName, 
                                     const void*         constantValue, 
@@ -55,8 +43,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             (uint8*)constantValue, PtrAdd((uint8*)constantValue, valueSize),
             std::back_inserter(_constantData));
 
-        _constantDrivers.push_back(
-            ConstantDriver(dataOffset, (unsigned)parameterIndex, format, samplerType, samplerOffset));
+        _constantDrivers.push_back({dataOffset, (unsigned)parameterIndex, format, samplerType, samplerOffset});
     }
 
     void    NascentAnimationSet::AddAnimationDriver( 
@@ -73,8 +60,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             _parameterInterfaceDefinition.push_back(parameterName);
         }
 
-        _animationDrivers.push_back(
-            AnimationDriver(curveId, (unsigned)parameterIndex, samplerType, samplerOffset));
+        _animationDrivers.push_back({curveId, (unsigned)parameterIndex, samplerType, samplerOffset});
     }
 
     bool    NascentAnimationSet::HasAnimationDriver(const std::string&  parameterName) const
@@ -135,10 +121,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 				i->_samplerType, i->_samplerOffset);
         }
 
-        _animations.push_back(Animation(name, 
-            (unsigned)startIndex, (unsigned)_animationDrivers.size(), 
-            (unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
-            minTime, maxTime));
+        _animations.push_back(
+			Animation{
+				name, 
+				(unsigned)startIndex, (unsigned)_animationDrivers.size(), 
+				(unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
+				minTime, maxTime});
     }
 
 	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves)
@@ -157,10 +145,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			}
 		}
 
-		_animations.push_back(Animation(name, 
-            (unsigned)0, (unsigned)_animationDrivers.size(), 
-            (unsigned)0, (unsigned)_constantDrivers.size(),
-            minTime, maxTime));
+		_animations.push_back(
+			Animation{
+				name, 
+				(unsigned)0, (unsigned)_animationDrivers.size(), 
+				(unsigned)0, (unsigned)_constantDrivers.size(),
+				minTime, maxTime});
 	}
 
 	void	NascentAnimationSet::AddAnimation(
@@ -169,28 +159,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			unsigned constantBegin, unsigned constantEnd,
 			float minTime, float maxTime)
 	{
-		_animations.push_back(Animation(name, 
-            driverBegin, driverEnd, 
-            constantBegin, constantEnd,
-            minTime, maxTime));
+		_animations.push_back(
+			Animation{
+				name, 
+				driverBegin, driverEnd, 
+				constantBegin, constantEnd,
+				minTime, maxTime});
 	}
-
-    void NascentAnimationSet::AnimationDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        ::Serialize(serializer, unsigned(_curveIndex));
-        ::Serialize(serializer, _parameterIndex);
-        ::Serialize(serializer, unsigned(_samplerType));
-		::Serialize(serializer, _samplerOffset);
-    }
-
-    void NascentAnimationSet::ConstantDriver::Serialize(Serialization::NascentBlockSerializer& serializer) const
-    {
-        ::Serialize(serializer, _dataOffset);
-        ::Serialize(serializer, _parameterIndex);
-        ::Serialize(serializer, unsigned(_format));
-		::Serialize(serializer, unsigned(_samplerType));
-		::Serialize(serializer, _samplerOffset);
-    }
 
     struct AnimationDesc        // matches AnimationSet::Animation
     {
@@ -199,17 +174,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         unsigned    _beginConstantDriver, _endConstantDriver;
         float       _beginTime, _endTime; 
 
-        AnimationDesc() {}
-        void Serialize(Serialization::NascentBlockSerializer& serializer) const
-        {
-            ::Serialize(serializer, _name);
-            ::Serialize(serializer, _beginDriver);
-            ::Serialize(serializer, _endDriver);
-            ::Serialize(serializer, _beginConstantDriver);
-            ::Serialize(serializer, _endConstantDriver);
-            ::Serialize(serializer, _beginTime);
-            ::Serialize(serializer, _endTime);
-        }
+		static const bool SerializeRaw = true;
     };
 
     struct CompareAnimationName
@@ -284,24 +249,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return stream;
 	}
 
-    NascentAnimationSet::NascentAnimationSet() {}
-    NascentAnimationSet::~NascentAnimationSet() {}
-    NascentAnimationSet::NascentAnimationSet(NascentAnimationSet&& moveFrom)
-    :   _animationDrivers(std::move(moveFrom._animationDrivers))
-    ,   _constantDrivers(std::move(moveFrom._constantDrivers))
-    ,   _animations(std::move(moveFrom._animations))
-    ,   _parameterInterfaceDefinition(std::move(moveFrom._parameterInterfaceDefinition))
-    ,   _constantData(std::move(moveFrom._constantData))
-    {}
-    NascentAnimationSet& NascentAnimationSet::operator=(NascentAnimationSet&& moveFrom)
-    {
-        _animationDrivers = std::move(moveFrom._animationDrivers);
-        _constantDrivers = std::move(moveFrom._constantDrivers);
-        _animations = std::move(moveFrom._animations);
-        _parameterInterfaceDefinition = std::move(moveFrom._parameterInterfaceDefinition);
-        _constantData = std::move(moveFrom._constantData);
-        return *this;
-    }
 
 
 
@@ -328,8 +275,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		::Serialize(serializer, _defaultParameters);
     }
 
-    NascentSkeleton::NascentSkeleton() {}
-    NascentSkeleton::~NascentSkeleton() {}
 
 
 
@@ -362,10 +307,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     {
         _skinControllerInstances.emplace_back(std::move(skinControllerInstance));
     }
-
-    NascentModelCommandStream::NascentModelCommandStream() {}
-    NascentModelCommandStream::~NascentModelCommandStream() {}
-
 
     void NascentModelCommandStream::GeometryInstance::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
