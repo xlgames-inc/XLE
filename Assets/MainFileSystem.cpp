@@ -5,6 +5,7 @@
 #include "IFileSystem.h"
 #include "MountingTree.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Threading/ThreadingUtils.h"
 
 namespace Assets
 {
@@ -340,6 +341,75 @@ namespace Assets
 				file->Read(result->data(), 1, size);
 				return result;
 			}
+		}
+
+		return nullptr;
+	}
+
+	std::unique_ptr<uint8[]> TryLoadFileAsMemoryBlock_TolerateSharingErrors(StringSection<char> sourceFileName, size_t* sizeResult)
+	{
+		std::unique_ptr<::Assets::IFileInterface> file;
+
+        unsigned retryCount = 0;
+        for (;;) {
+            auto result = ::Assets::MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
+            if (result == ::Assets::IFileSystem::IOReason::Success) {
+                file->Seek(0, FileSeekAnchor::End);
+                size_t size = file->TellP();
+                file->Seek(0);
+                if (sizeResult) {
+                    *sizeResult = size;
+                }
+                if (size) {
+                    auto result = std::make_unique<uint8[]>(size);
+                    file->Read(result.get(), 1, size);
+                    return result;
+                } else {
+                    return nullptr;
+                }
+            }
+
+            // If we get an access denied error, we're going to try a few more times, with short
+            // delays in between. This can be important when hot reloading a resource -- because
+            // we will get the filesystem update trigger on write, before an editor has closed
+            // the file. During that window, we can get a sharing failure. We just have to yield
+            // some CPU time and allow the editor to close the file.
+            if (result != ::Assets::IFileSystem::IOReason::ExclusiveLock || retryCount >= 5) break;
+
+            ++retryCount;
+            Threading::Sleep(retryCount*retryCount*15);
+        }
+
+        // on missing file (or failed load), we return the equivalent of an empty file
+        if (sizeResult) { *sizeResult = 0; }
+        return nullptr;
+	}
+
+	Blob TryLoadFileAsBlob_TolerateSharingErrors(StringSection<char> sourceFileName)
+	{
+		std::unique_ptr<IFileInterface> file;
+		unsigned retryCount = 0;
+        for (;;) {
+			auto result = MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
+			if (result == IFileSystem::IOReason::Success) {
+				file->Seek(0, FileSeekAnchor::End);
+				size_t size = file->TellP();
+				file->Seek(0);
+				if (size) {
+					auto result = std::make_shared<std::vector<uint8_t>>(size);
+					file->Read(result->data(), 1, size);
+					return result;
+				} else {
+					return nullptr;
+				}
+			}
+
+			// See similar logic in TryLoadFileAsMemoryBlock_TolerateSharingErrors for retrying
+			// after getting a "ExclusiveLock" error result
+			if (result != ::Assets::IFileSystem::IOReason::ExclusiveLock || retryCount >= 5) break;
+
+            ++retryCount;
+            Threading::Sleep(retryCount*retryCount*15);
 		}
 
 		return nullptr;

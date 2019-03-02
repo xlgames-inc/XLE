@@ -33,6 +33,7 @@ namespace Utility
                 Success, FileNotFound,
                 AccessDenied, WriteProtect,
 				Mounting, Invalid,
+				ExclusiveLock,				// locked for read and/or write exclusively by another process (ie, this is called "sharing violation" in the Win32 error codes)
                 Complex
             };
 
