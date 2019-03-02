@@ -77,10 +77,10 @@
     <Reference Include="System.XML" />
   </ItemGroup>
   <ItemGroup>
-    <Compile Include="AnimationCtrlStrip.cs">
+    <Compile Include="ModelView\AnimationCtrlStrip.cs">
       <SubType>UserControl</SubType>
     </Compile>
-    <Compile Include="AnimationCtrlStrip.Designer.cs">
+    <Compile Include="ModelView\AnimationCtrlStrip.Designer.cs">
       <DependentUpon>AnimationCtrlStrip.cs</DependentUpon>
     </Compile>
     <Compile Include="Commands\CommonCommands.cs" />
@@ -99,7 +99,7 @@
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>
   <ItemGroup>
-    <EmbeddedResource Include="AnimationCtrlStrip.resx">
+    <EmbeddedResource Include="ModelView\AnimationCtrlStrip.resx">
       <DependentUpon>AnimationCtrlStrip.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Material\material.xsd">

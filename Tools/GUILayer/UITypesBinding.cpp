@@ -297,11 +297,16 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	System::Collections::Generic::IEnumerable<System::String^>^ VisAnimationState::AnimationList::get()
+	System::Collections::Generic::IEnumerable<VisAnimationState::AnimationDetails^>^ VisAnimationState::AnimationList::get()
 	{
-		auto result = gcnew System::Collections::Generic::List<System::String^>();
-		for (const auto&a:_animState->_animationList)
-			result->Add(clix::marshalString<clix::E_UTF8>(a));
+		auto result = gcnew System::Collections::Generic::List<AnimationDetails^>();
+		for (const auto&a:_animState->_animationList) {
+			AnimationDetails^ animDetails = gcnew AnimationDetails;
+			animDetails->Name = clix::marshalString<clix::E_UTF8>(a._name);
+			animDetails->BeginTime = a._beginTime;
+			animDetails->EndTime = a._endTime;
+			result->Add(animDetails);
+		}
 		return result;
 	}
 
@@ -339,6 +344,7 @@ namespace GUILayer
 	{
 		switch (_animState->_state) {
 		case ToolsRig::VisAnimationState::State::Playing: return State::Playing;
+		case ToolsRig::VisAnimationState::State::BindPose: return State::BindPose;
 		default: return State::Stopped;
 		}
 	}
@@ -347,6 +353,7 @@ namespace GUILayer
 	{
 		switch (value) {
 		case State::Playing: _animState->_state = ToolsRig::VisAnimationState::State::Playing; break;
+		case State::BindPose: _animState->_state = ToolsRig::VisAnimationState::State::BindPose; break;
 		default: _animState->_state = ToolsRig::VisAnimationState::State::Stopped; break;
 		}
 	}

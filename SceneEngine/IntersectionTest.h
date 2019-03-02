@@ -93,19 +93,14 @@ namespace SceneEngine
         class Result
         {
         public:
-            Type::Enum                  _type;
-            Float3                      _worldSpaceCollision;
-            std::pair<uint64, uint64>   _objectGuid;
-            float                       _distance;
-            unsigned                    _drawCallIndex;
-            uint64                      _materialGuid;
-            ::Assets::rstring           _materialName;
-            ::Assets::rstring           _modelName;
-
-            Result() 
-            : _type(Type::Enum(0)), _worldSpaceCollision(0.f, 0.f, 0.f)
-            , _objectGuid(0ull, 0ull), _distance(FLT_MAX)
-            , _materialGuid(0), _drawCallIndex(0) {}
+            Type::Enum						_type = Type::Enum(0);
+            Float3							_worldSpaceCollision;
+			std::pair<uint64_t, uint64_t>   _objectGuid = {0ull, 0ull};
+            float							_distance = FLT_MAX;
+            unsigned						_drawCallIndex = ~0u;
+            uint64_t						_materialGuid = 0;
+            ::Assets::rstring				_materialName;
+            ::Assets::rstring				_modelName;
         };
 
         Result FirstRayIntersection(

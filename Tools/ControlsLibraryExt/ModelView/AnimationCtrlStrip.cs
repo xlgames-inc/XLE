@@ -15,31 +15,24 @@ namespace ControlsLibraryExt
         {
             InitializeComponent();
 
-            /*AvailableAnimations = new List<string>{
-                "Walk", "Run", "Dodge"
-            };*/
-
             updateTimer.Interval = 200;
             updateTimer.Tick += UpdateTimeBar;
         }
 
-        /*private class AnimationState
+        private float SelectedAnimationLength
         {
-            internal int AnchorTime;
-            internal float Time;
-            internal bool Playing;
-        }
-        private AnimationState CurrentState = new AnimationState { AnchorTime = 0, Time = 0.0f, Playing = false };*/
-
-        private float SelectedAnimationLength;
-        // private string SelectedAnimation;
-        private IEnumerable<string> AvailableAnimations
-        {
-            set
+            get
             {
-                _animationSelection.Items.Clear();
-                foreach(string s in value)
-                    _animationSelection.Items.Add(s);
+                var selectedAnimation = _animationState.ActiveAnimation;
+                float result = 5.0f;
+                foreach (var s in _animationState.AnimationList)
+                {
+                    if (String.Compare(s.Name, selectedAnimation) == 0)
+                    {
+                        result = s.EndTime - s.BeginTime;
+                    }
+                }
+                return result;
             }
         }
 
@@ -83,10 +76,21 @@ namespace ControlsLibraryExt
 
         private void _animationSelection_SelectedIndexChanged(object sender, EventArgs e)
         {
-            SelectedAnimationLength = 5.0f;
             _animationState.AnimationTime = 0.0f;
             _animationState.AnchorTime = (uint)Environment.TickCount;
-            _animationState.ActiveAnimation = _animationSelection.Text;
+            if (string.Compare(_animationSelection.Text, BindPoseStr)==0)
+            {
+                _animationState.ActiveAnimation = string.Empty;
+                _animationState.CurrentState = GUILayer.VisAnimationState.State.BindPose;
+            }
+            else
+            {
+                _animationState.ActiveAnimation = _animationSelection.Text;
+                if (_animationState.CurrentState == GUILayer.VisAnimationState.State.BindPose)
+                    _animationState.CurrentState = GUILayer.VisAnimationState.State.Stopped;
+            }
+            _playButton.Checked = _animationState.CurrentState == GUILayer.VisAnimationState.State.Playing;
+            _playButton.Enabled = _animationState.CurrentState != GUILayer.VisAnimationState.State.BindPose;
             UpdateTimeBar(null, null);
         }
 
@@ -108,11 +112,20 @@ namespace ControlsLibraryExt
             }
         }
 
+        private string BindPoseStr = "<<bind pose>>";
+
         private void UpdateFromAnimationState()
         {
             _playButton.Checked = _animationState.CurrentState == GUILayer.VisAnimationState.State.Playing;
-            AvailableAnimations = _animationState.AnimationList;
+            _playButton.Enabled = _animationState.CurrentState != GUILayer.VisAnimationState.State.BindPose;
+            _animationSelection.Items.Clear();
+            _animationSelection.Items.Add(BindPoseStr);
+            foreach (var s in _animationState.AnimationList)
+            {
+                _animationSelection.Items.Add(s.Name);
+            }
             _animationSelection.Text = _animationState.ActiveAnimation;
+            UpdateTimeBar(null, null);
         }
 
         private GUILayer.VisAnimationState _animationState;

@@ -88,11 +88,16 @@ namespace ToolsRig
 	class VisAnimationState
 	{
 	public:
-		std::vector<std::string> _animationList;
+		struct AnimationDetails
+		{
+			std::string _name;
+			float _beginTime, _endTime;
+		};
+		std::vector<AnimationDetails> _animationList;
 		std::string _activeAnimation;
 		float _animationTime = 0.f;
 		unsigned _anchorTime = 0;
-		enum class State { Stopped, Playing };
+		enum class State { Stopped, Playing, BindPose };
 		State _state = State::Stopped;
 
 		ChangeEvent _changeEvent;

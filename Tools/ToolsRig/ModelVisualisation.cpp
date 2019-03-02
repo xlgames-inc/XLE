@@ -51,10 +51,11 @@ namespace ToolsRig
 
 			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine->GetOutputMatrixCount());
 
-			if (_animationScaffold && _animationState) {
+			if (_animationScaffold && _animationState && _animationState->_state != VisAnimationState::State::BindPose) {
 				auto& animData = _animationScaffold->ImmutableData();
 
-				auto foundAnimation = animData._animationSet.FindAnimation(GetAnimationHash(_animationState->_activeAnimation));
+				auto animHash = GetAnimationHash(_animationState->_activeAnimation);
+				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
 				if (_animationState->_state == VisAnimationState::State::Playing) {
 					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
@@ -62,9 +63,9 @@ namespace ToolsRig
 				}
 
 				auto params = animData._animationSet.BuildTransformationParameterSet(
-					{time, foundAnimation._name},
+					{time, animHash},
 					*skeletonMachine, _animSetBinding,
-					animData._curves, animData._curvesCount);
+					MakeIteratorRange(animData._curves));
 
 				skeletonMachine->GenerateOutputTransforms(
 					MakeIteratorRange(skeletonMachineOutput),
@@ -117,10 +118,11 @@ namespace ToolsRig
 		{
 			auto skeletonMachine = GetSkeletonMachine();
 
-			if (_animationScaffold) {
+			if (_animationScaffold && _animationState && _animationState->_state != VisAnimationState::State::BindPose) {
 				auto& animData = _animationScaffold->ImmutableData();
 
-				auto foundAnimation = animData._animationSet.FindAnimation(GetAnimationHash(_animationState->_activeAnimation));
+				auto animHash = GetAnimationHash(_animationState->_activeAnimation);
+				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
 				if (_animationState->_state == VisAnimationState::State::Playing) {
 					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
@@ -128,9 +130,9 @@ namespace ToolsRig
 				}
 
 				auto params = animData._animationSet.BuildTransformationParameterSet(
-					{time, foundAnimation._name},
+					{time, animHash},
 					*skeletonMachine, _animSetBinding,
-					animData._curves, animData._curvesCount);
+					MakeIteratorRange(animData._curves));
 
 				RenderOverlays::RenderSkeleton(
 					context,
@@ -156,9 +158,14 @@ namespace ToolsRig
 				_animationState->_animationList.clear();
 				if (_animationScaffold) {
 					for (const auto&anim:_animationScaffold->ImmutableData()._animationSet.GetAnimations()) {
-						char buffer[64];
-						XlUI64toA(anim._name, buffer, dimof(buffer), 16);
-						_animationState->_animationList.push_back(buffer);
+						auto name = _animationScaffold->ImmutableData()._animationSet.LookupStringName(anim.first);
+						if (!name.IsEmpty()) {
+							_animationState->_animationList.push_back({name.AsString(), anim.second._beginTime, anim.second._endTime});
+						} else {
+							char buffer[64];
+							XlUI64toA(anim.first, buffer, dimof(buffer), 16);
+							_animationState->_animationList.push_back({buffer, anim.second._beginTime, anim.second._endTime});
+						}
 					}
 				}
 				_animationState->_changeEvent.Invoke();

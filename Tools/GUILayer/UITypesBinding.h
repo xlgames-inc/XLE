@@ -245,8 +245,16 @@ namespace GUILayer
 	public ref class VisAnimationState
 	{
 	public:
+		ref class AnimationDetails
+		{
+		public:
+			System::String^ Name;
+			float BeginTime;
+			float EndTime;
+		};
+
         [Description("Available Animations List")]
-        property System::Collections::Generic::IEnumerable<System::String^>^ AnimationList { System::Collections::Generic::IEnumerable<System::String^>^ get(); }
+        property System::Collections::Generic::IEnumerable<AnimationDetails^>^ AnimationList { System::Collections::Generic::IEnumerable<AnimationDetails^>^ get(); }
 
         [Description("Active Animation")]
         property System::String^ ActiveAnimation { System::String^ get(); void set(System::String^); }
@@ -257,7 +265,7 @@ namespace GUILayer
         [Description("Anchor Time")]
         property unsigned AnchorTime { unsigned get(); void set(unsigned); }
 
-		enum class State { Stopped, Playing };
+		enum class State { Stopped, Playing, BindPose };
 		
 		[Description("State")]
 		property State CurrentState { State get(); void set(State); }
