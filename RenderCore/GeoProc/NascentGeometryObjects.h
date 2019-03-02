@@ -9,6 +9,7 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
+	class NascentModelCommandStream;
 
 	class NascentGeometryObjects
 	{

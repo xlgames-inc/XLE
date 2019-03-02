@@ -18,8 +18,7 @@ namespace RenderCore { namespace Assets
         for (unsigned c=0; c<std::min(_jointMatrices.size(), destination.size()); ++c) {
             auto transMachineOutput = _skeletonBinding.ModelJointToMachineOutput(_jointMatrices[c]);
             if (transMachineOutput != ~unsigned(0x0)) {
-                Float4x4 finalMatrix = Combine(_inverseBindMatrices[c], skeletonMachineResult[transMachineOutput]);
-				finalMatrix = Combine(finalMatrix, _bindShapeMatrix);
+                Float4x4 finalMatrix = Combine(_bindShapeByInverseBindMatrices[c], skeletonMachineResult[transMachineOutput]);
                 destination[c] = Truncate(finalMatrix);
             } else {
                 destination[c] = Identity<Float3x4>();
@@ -137,8 +136,7 @@ namespace RenderCore { namespace Assets
 		_jointIndices = AsUInt4s(AsVertexElementIteratorRange(MakeIteratorRange(skelVbData.get(), PtrAdd(skelVbData.get(), skelVb._size)), *jointIndicesElement, skelVb._ia._vertexStride));
 
 		_preskinningDrawCalls = { skinnedController._preskinningDrawCalls, skinnedController._preskinningDrawCalls + skinnedController._preskinningDrawCallCount };
-		_inverseBindMatrices = { skinnedController._inverseBindMatrices, skinnedController._inverseBindMatrices + skinnedController._inverseBindMatrixCount };
-		_bindShapeMatrix = skinnedController._bindShapeMatrix;
+		_bindShapeByInverseBindMatrices = { skinnedController._bindShapeByInverseBindMatrices, skinnedController._bindShapeByInverseBindMatrices + skinnedController._bindShapeByInverseBindMatrixCount };
 		_jointMatrices = { skinnedController._jointMatrices, skinnedController._jointMatrices + skinnedController._jointMatrixCount };
 
 		_jointInputInterface = modelScaffold.CommandStream().GetInputInterface();

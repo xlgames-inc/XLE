@@ -106,12 +106,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		template<typename Type>
 			std::vector<ParameterTag>& GetTables();
-
-		/*std::pair<AnimSamplerType, uint32>  GetParameterIndex(AnimationParameterHashName parameterName) const;
-		AnimationParameterHashName			GetParameterName(AnimSamplerType type, uint32 index) const;
-
-		std::string                 HashedIdToStringId     (AnimationParameterHashName colladaId) const;
-		AnimationParameterHashName	StringIdToHashedId     (const std::string& stringId) const;*/
 	};
 
         ////////////////// template implementation //////////////////

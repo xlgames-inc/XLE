@@ -9,6 +9,11 @@
 
 namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
 
+namespace Utility {
+	template<typename Element>
+		class SerializableVector;
+}
+
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
 	class NascentGeometryObjects;
@@ -29,5 +34,5 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
 		const std::string& name,
 		const NascentAnimationSet& animationSet,
-		IteratorRange<const RawAnimationCurve*> curves);
+		const SerializableVector<RawAnimationCurve>& curves);
 }}}

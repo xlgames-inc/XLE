@@ -861,14 +861,18 @@ namespace ColladaConversion
 				if (result.size() <= remapping[elementIndex])
 					result.resize(remapping[elementIndex]+1);
 
-				// We must convert from the "ids" in the JOINTS array to node names
-				// This is because we use names (rather than ids) for skeleton/animation
+				// We must convert from the "sids" in the JOINTS array to node names
+				// This is because we use names (rather than sids) for skeleton/animation
 				// binding operations. Names are more reliable for cross-file binding,
-				// but it means we have to do this mapping here
+				// but it means we have to do this mapping here.
+				// Also note that Collada uses the "sid" element on names for the string
+				// values in the <joints> array (as per the standard). Many files just
+				// duplicate the id and the sid; but where they differ, we must be sure
+				// to use the sid
 				auto nodeId = std::string((const char*)elementStart, (const char*)i);
 				auto node = FindElement(
 					GuidReference(Hash64(nodeId), jointSourceRef._fileHash), resolveContext, 
-					&IDocScopeIdResolver::FindNode);
+					&IDocScopeIdResolver::FindNodeBySid);
 				if (node) {
 					result[remapping[elementIndex]] = node.GetName().Cast<char>().AsString();
 				} else {
@@ -1283,6 +1287,7 @@ namespace ColladaConversion
 
         auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
         auto jointNames = GetJointNames(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
+		assert(inverseBindMatrices.size() == jointNames.size());
         GuidReference ref(controller.GetBaseMesh());
         return UnboundSkinController(
             std::move(b4), std::move(b2), std::move(b1), std::move(b0),

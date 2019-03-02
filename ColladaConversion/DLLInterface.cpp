@@ -131,8 +131,10 @@ namespace ColladaConversion
 				// look for a skin controller instead... We will use the geometry object that is referenced
 				// by the controller
 			auto* scaffoldController = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindSkinController);
-			refGuid = GuidReference{scaffoldController->GetBaseMesh()};
-			scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
+			if (scaffoldController) {
+				refGuid = GuidReference{scaffoldController->GetBaseMesh()};
+				scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
+			}
 		}
 
 		if (!scaffoldGeo)
@@ -199,12 +201,19 @@ namespace ColladaConversion
 		return IsAncestorOf(node.GetParent(), roots);
 	}
 
-	static std::string GetSkeletonName(const InstanceController& instController)
+	static std::string GetSkeletonName(const InstanceController& instController, const ::ColladaConversion::URIResolveContext& resolveContext)
 	{
-		auto skeleName = instController.GetSkeleton().Cast<char>().AsString();
-		if (!skeleName.empty() && *skeleName.begin() == '#')
-			skeleName.erase(skeleName.begin());
-		return skeleName;
+		auto node = FindElement(
+			GuidReference(instController.GetSkeleton()),
+			resolveContext,
+			&IDocScopeIdResolver::FindNode);
+		if (node)
+			return SkeletonBindingName(node);
+
+		auto skeleId = instController.GetSkeleton().Cast<char>().AsString();
+		if (!skeleId.empty() && *skeleId.begin() == '#')
+			skeleId.erase(skeleId.begin());
+		return skeleId;
 	}
 
 	static NascentModel ConvertModel(const ColladaCompileOp& input, const VisualScene& scene, IteratorRange<const Node*> roots)
@@ -265,7 +274,7 @@ namespace ColladaConversion
 						instController._reference.AsString().c_str()));
 
 				auto controller = Convert(*scaffoldController, input._resolveContext, input._cfg);
-				auto skeleName = GetSkeletonName(instController);
+				auto skeleName = GetSkeletonName(instController, input._resolveContext);
 
 				model.Add(
 					controllerId, 
@@ -328,6 +337,7 @@ namespace ColladaConversion
 			auto finalSkeleInterface = embeddedSkeleton.GetInterface().GetOutputInterface();
 			ModelTransMachineOptimizer optimizer(model, finalSkeleInterface);
 			embeddedSkeleton.GetSkeletonMachine().Optimize(optimizer);
+			assert(embeddedSkeleton.GetSkeletonMachine().GetOutputMatrixCount() == finalSkeleInterface.size());
 
 			for (unsigned c=0; c<finalSkeleInterface.size(); ++c) {
 				const auto& mat = optimizer.GetMergedOutputMatrices()[c];
@@ -460,7 +470,7 @@ namespace ColladaConversion
 			if (!IsAncestorOf(attachNode, MakeIteratorRange(roots)))
 				continue;
 
-			skinningSkeletons.insert(GetSkeletonName(instController));
+			skinningSkeletons.insert(GetSkeletonName(instController, input._resolveContext));
 		}
 		skinningSkeletons.insert(std::string{});
 
@@ -539,7 +549,7 @@ namespace ColladaConversion
     {
     public:
         NascentAnimationSet _animationSet;
-        std::vector<RenderCore::Assets::RawAnimationCurve> _curves;
+        SerializableVector<RenderCore::Assets::RawAnimationCurve> _curves;
 
         PreparedAnimationFile(const ColladaCompileOp&);
     };
@@ -577,7 +587,7 @@ namespace ColladaConversion
 		PreparedAnimationFile animFile(model);
 		return SerializeAnimationsToChunks(
 			model._name.c_str(), animFile._animationSet,
-			MakeIteratorRange(animFile._curves));
+			animFile._curves);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -652,7 +662,7 @@ namespace ColladaConversion
 		std::vector<::Assets::DependentFileState> _dependencies;
 
 		NascentAnimationSet _animationSet;
-        std::vector<RenderCore::Assets::RawAnimationCurve> _curves;
+        SerializableVector<RenderCore::Assets::RawAnimationCurve> _curves;
 
 		std::vector<TargetDesc> GetTargets() const { return _targets; }
 		std::vector<::Assets::DependentFileState> GetDependencies() const { return _dependencies; }
@@ -661,7 +671,7 @@ namespace ColladaConversion
 		{
 			return SerializeAnimationsToChunks(
 				"MergedAnimSet", _animationSet,
-				MakeIteratorRange(_curves));
+				_curves);
 		}
     };
 
@@ -721,7 +731,7 @@ namespace ColladaConversion
 
 			result->_animationSet.MergeAnimation(
 				animFile._animationSet, filePath.second, 
-				animFile._curves, result->_curves);
+				MakeIteratorRange(animFile._curves), result->_curves);
 		}
 
 		result->_targets.push_back(ColladaCompileOp::TargetDesc{Type_AnimationSet, "Animations"});

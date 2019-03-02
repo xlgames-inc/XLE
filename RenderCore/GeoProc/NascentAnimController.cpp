@@ -359,10 +359,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         result._skeletonBindingVertexStride = (unsigned)destinationWeightVertexStride;
         result._animatedVertexBufferSize = (unsigned)(animatedVertexStride*unifiedVertexCount);
 
-		assert(controller._inverseBindMatrices.size() == jointMatrices.size());
-        result._inverseBindMatrices = controller._inverseBindMatrices;
+		std::vector<Float4x4> bindShapeByInverseBindMatrices;
+		bindShapeByInverseBindMatrices.reserve(controller._inverseBindMatrices.size());
+		for (const auto&ibm:controller._inverseBindMatrices)
+			bindShapeByInverseBindMatrices.push_back(Combine(controller._bindShapeMatrix, ibm));
+        result._bindShapeByInverseBindMatrices = std::move(bindShapeByInverseBindMatrices);
         result._jointMatrices = std::move(jointMatrices);
-        result._bindShapeMatrix = controller._bindShapeMatrix;
 
         result._mainDrawCalls = sourceGeo._mainDrawCalls;
         result._mainDrawUnanimatedIA._vertexStride = unanimatedVertexStride;
@@ -432,13 +434,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
             RenderCore::Assets::VertexData 
                 { _preskinningIA, unsigned(vbOffset2), unsigned(vbSize2) });
 
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(_inverseBindMatrices));
-        outputSerializer.SerializeValue(_inverseBindMatrices.size());
+        outputSerializer.SerializeSubBlock(MakeIteratorRange(_bindShapeByInverseBindMatrices));
+        outputSerializer.SerializeValue(_bindShapeByInverseBindMatrices.size());
         outputSerializer.SerializeSubBlock(MakeIteratorRange(_jointMatrices));
         outputSerializer.SerializeValue(_jointMatrices.size());
         
-        ::Serialize(outputSerializer, _bindShapeMatrix);
-
         outputSerializer.SerializeSubBlock(MakeIteratorRange(_preskinningDrawCalls));
         outputSerializer.SerializeValue(_preskinningDrawCalls.size());
 

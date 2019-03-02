@@ -290,62 +290,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return stream;
 	}
 
-    /*auto NascentSkeletonInterface::GetParameterIndex(AnimationParameterHashName parameterName) const -> std::pair<AnimSamplerType, uint32>
-    {
-        {
-            auto i = std::find(_float1ParameterNames.begin(), _float1ParameterNames.end(), parameterName);
-            if (i!=_float1ParameterNames.end()) {
-                return std::make_pair(AnimSamplerType::Float1, (uint32)std::distance(_float1ParameterNames.begin(), i));
-            }
-        }
-        {
-            auto i = std::find(_float3ParameterNames.begin(), _float3ParameterNames.end(), parameterName);
-            if (i!=_float3ParameterNames.end()) {
-                return std::make_pair(AnimSamplerType::Float3, (uint32)std::distance(_float3ParameterNames.begin(), i));
-            }
-        }
-        {
-            auto i = std::find(_float4ParameterNames.begin(), _float4ParameterNames.end(), parameterName);
-            if (i!=_float4ParameterNames.end()) {
-                return std::make_pair(AnimSamplerType::Float4, (uint32)std::distance(_float4ParameterNames.begin(), i));
-            }
-        }
-        {
-            auto i = std::find(_float4x4ParameterNames.begin(), _float4x4ParameterNames.end(), parameterName);
-            if (i!=_float4x4ParameterNames.end()) {
-                return std::make_pair(AnimSamplerType::Float4x4, (uint32)std::distance(_float4x4ParameterNames.begin(), i));
-            }
-        }
-
-        return std::make_pair(AnimSamplerType::Float1, ~uint32(0x0));
-    }
-
-    auto   NascentSkeletonInterface::GetParameterName(AnimSamplerType type, uint32 index) const -> AnimationParameterHashName
-    {
-        typedef std::pair<AnimationParameterHashName, uint32> P;
-        if (type == AnimSamplerType::Float4x4 && index < _float4x4ParameterNames.size()) return _float4x4ParameterNames[index];
-        else if (type == AnimSamplerType::Float4 && index < _float4ParameterNames.size()) return _float4ParameterNames[index];
-        else if (type == AnimSamplerType::Float3 && index < _float3ParameterNames.size()) return _float3ParameterNames[index];
-        else if (type == AnimSamplerType::Float1 && index < _float1ParameterNames.size()) return _float1ParameterNames[index];
-        return ~AnimationParameterHashName(0x0);
-    }
-
-    std::string NascentSkeletonInterface::HashedIdToStringId     (AnimationParameterHashName colladaId) const
-    {
-		auto i = LowerBound(_dehashTable, colladaId);
-		if (i != _dehashTable.end() && i->first == colladaId)
-			return i->second;
-        return std::string();
-    }
-
-    auto       NascentSkeletonInterface::StringIdToHashedId     (const std::string& stringId) const -> AnimationParameterHashName
-    {
-        for (auto i=_dehashTable.cbegin(); i!=_dehashTable.end(); ++i)
-            if (i->second == stringId)
-                return i->first;
-        return ~AnimationParameterHashName(0x0);
-    }*/
-
     bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName)
     {
 		outputMarker = (uint32)_jointTags.size();

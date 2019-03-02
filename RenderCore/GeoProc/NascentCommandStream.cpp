@@ -86,8 +86,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
     void    NascentAnimationSet::MergeAnimation(
         const NascentAnimationSet& animation, const std::string& name,
-        const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
-        std::vector<Assets::RawAnimationCurve>& destinationCurves)
+        IteratorRange<const Assets::RawAnimationCurve*> sourceCurves, 
+        SerializableVector<Assets::RawAnimationCurve>& destinationCurves)
     {
             //
             //      Merge the animation drivers in the given input animation, and give 
@@ -122,11 +122,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         }
 
         _animations.push_back(
-			Animation{
-				name, 
-				(unsigned)startIndex, (unsigned)_animationDrivers.size(), 
-				(unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
-				minTime, maxTime});
+			std::make_pair(
+				name,
+				Animation{
+					(unsigned)startIndex, (unsigned)_animationDrivers.size(), 
+					(unsigned)constantStartIndex, (unsigned)_constantDrivers.size(),
+					minTime, maxTime}));
     }
 
 	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves)
@@ -146,11 +147,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
 
 		_animations.push_back(
-			Animation{
-				name, 
-				(unsigned)0, (unsigned)_animationDrivers.size(), 
-				(unsigned)0, (unsigned)_constantDrivers.size(),
-				minTime, maxTime});
+			std::make_pair(
+				name,
+				Animation{
+					(unsigned)0, (unsigned)_animationDrivers.size(), 
+					(unsigned)0, (unsigned)_constantDrivers.size(),
+					minTime, maxTime}));
 	}
 
 	void	NascentAnimationSet::AddAnimation(
@@ -160,63 +162,45 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			float minTime, float maxTime)
 	{
 		_animations.push_back(
-			Animation{
-				name, 
-				driverBegin, driverEnd, 
-				constantBegin, constantEnd,
-				minTime, maxTime});
+			std::make_pair(
+				name,
+				Animation{
+					driverBegin, driverEnd, 
+					constantBegin, constantEnd,
+					minTime, maxTime}));
 	}
-
-    struct AnimationDesc        // matches AnimationSet::Animation
-    {
-        uint64      _name;
-        unsigned    _beginDriver, _endDriver;
-        unsigned    _beginConstantDriver, _endConstantDriver;
-        float       _beginTime, _endTime; 
-
-		static const bool SerializeRaw = true;
-    };
-
-    struct CompareAnimationName
-    {
-        bool operator()(const AnimationDesc& lhs, const AnimationDesc& rhs) const   { return lhs._name < rhs._name; }
-        bool operator()(const AnimationDesc& lhs, uint64 rhs) const                 { return lhs._name < rhs; }
-        bool operator()(uint64 lhs, const AnimationDesc& rhs) const                 { return lhs < rhs._name; }
-    };
 
     void NascentAnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
-        serializer.SerializeSubBlock(MakeIteratorRange(_animationDrivers));
-        serializer.SerializeValue(_animationDrivers.size());
-        serializer.SerializeSubBlock(MakeIteratorRange(_constantDrivers));
-        serializer.SerializeValue(_constantDrivers.size());
-        serializer.SerializeSubBlock(MakeIteratorRange(_constantData));
+		AnimationSet finalAnimationSet;
+		finalAnimationSet._animationDrivers.insert(finalAnimationSet._animationDrivers.begin(), _animationDrivers.begin(), _animationDrivers.end());
+		finalAnimationSet._constantDrivers.insert(finalAnimationSet._constantDrivers.begin(), _constantDrivers.begin(), _constantDrivers.end());
 
-            //      List of animations...
+		finalAnimationSet._animations.reserve(_animations.size());
+		for (const auto&a:_animations)
+			finalAnimationSet._animations.push_back(std::make_pair(Hash64(a.first), a.second));
+		std::sort(finalAnimationSet._animations.begin(), finalAnimationSet._animations.end(), CompareFirst<uint64_t, Animation>());
 
-        auto outputAnimations = std::make_unique<AnimationDesc[]>(_animations.size());
-        for (size_t c=0; c<_animations.size(); ++c) {
-            AnimationDesc&o = outputAnimations[c];
-            const Animation&i = _animations[c];
-            o._name = Hash64(AsPointer(i._name.begin()), AsPointer(i._name.end()));
-            o._beginDriver = i._begin; o._endDriver = i._end;
-            o._beginConstantDriver = i._constantBegin; o._endConstantDriver = i._constantEnd;
-            o._beginTime = i._startTime; o._endTime = i._endTime;
-        }
-        std::sort(outputAnimations.get(), &outputAnimations[_animations.size()], CompareAnimationName());
-        serializer.SerializeSubBlock(MakeIteratorRange((const AnimationDesc*)outputAnimations.get(), (const AnimationDesc*)&outputAnimations[_animations.size()]));
-        serializer.SerializeValue(_animations.size());
+		finalAnimationSet._outputInterface.reserve(_parameterInterfaceDefinition.size());
+		for (const auto&p:_parameterInterfaceDefinition)
+			finalAnimationSet._outputInterface.push_back(Hash64(p));
 
-            //      Output interface...
+		finalAnimationSet._constantData.insert(finalAnimationSet._constantData.begin(), _constantData.begin(), _constantData.end());
 
-        ConsoleRig::DebuggerOnlyWarning("Animation set output interface:\n");
-        auto parameterNameHashes = std::make_unique<uint64[]>(_parameterInterfaceDefinition.size());
-        for (size_t c=0; c<_parameterInterfaceDefinition.size(); ++c) {
-            ConsoleRig::DebuggerOnlyWarning("  [%i] %s\n", c, _parameterInterfaceDefinition[c].c_str());
-            parameterNameHashes[c] = Hash64(AsPointer(_parameterInterfaceDefinition[c].begin()), AsPointer(_parameterInterfaceDefinition[c].end()));
-        }
-        serializer.SerializeSubBlock(MakeIteratorRange(parameterNameHashes.get(), &parameterNameHashes[_parameterInterfaceDefinition.size()]));
-        serializer.SerializeValue(_parameterInterfaceDefinition.size());
+		// Construct the string name block (note that we have write the names in their final sorted order)
+		for (const auto&a:finalAnimationSet._animations) {
+			std::string srcName;
+			for (const auto&src:_animations)
+				if (a.first == Hash64(src.first)) {
+					srcName = src.first;
+					break;
+				}
+			finalAnimationSet._stringNameBlockOffsets.push_back((unsigned)finalAnimationSet._stringNameBlock.size());
+			finalAnimationSet._stringNameBlock.insert(finalAnimationSet._stringNameBlock.end(), srcName.begin(), srcName.end());
+		}
+		finalAnimationSet._stringNameBlockOffsets.push_back((unsigned)finalAnimationSet._stringNameBlock.size());
+		
+		::Serialize(serializer, finalAnimationSet);
     }
 
 	std::ostream& StreamOperator(
@@ -231,7 +215,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		stream << "--- Animations (" << animSet._animations.size() << ")" << std::endl;
 		for (unsigned c=0; c<animSet._animations.size(); ++c) {
 			auto& anim = animSet._animations[c];
-			stream << "[" << c << "] " << anim._name << " " << anim._startTime << " to " << anim._endTime << std::endl;
+			stream << "[" << c << "] " << anim.first << " " << anim.second._beginTime << " to " << anim.second._endTime << std::endl;
 		}
 
 		stream << "--- Animations drivers (" << animSet._animationDrivers.size() << ")" << std::endl;
@@ -253,19 +237,27 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
-	void NascentSkeleton::FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> newOutputInterface)
+	void NascentSkeleton::FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> filterIn)
 	{
 		auto oldOutputInterface =_interface.GetOutputInterface();
+		std::vector<std::pair<std::string, std::string>> newOutputInterface;
 
 		std::vector<unsigned> oldIndexToNew(oldOutputInterface.size(), ~0u);
 		for (unsigned c=0; c<oldOutputInterface.size(); c++) {
 			auto i = std::find(newOutputInterface.begin(), newOutputInterface.end(), oldOutputInterface[c]);
-			if (i!=newOutputInterface.end())
+			if (i!=newOutputInterface.end()) {
 				oldIndexToNew[c] = (unsigned)std::distance(newOutputInterface.begin(), i);
+			} else {
+				auto f = std::find(filterIn.begin(), filterIn.end(), oldOutputInterface[c]);
+				if (f!=filterIn.end()) {
+					oldIndexToNew[c] = (unsigned)(newOutputInterface.size());
+					newOutputInterface.push_back(oldOutputInterface[c]);
+				}
+			}
 		}
 
 		_skeletonMachine.RemapOutputMatrices(MakeIteratorRange(oldIndexToNew));
-		_interface.SetOutputInterface(newOutputInterface);
+		_interface.SetOutputInterface(MakeIteratorRange(newOutputInterface));
 	}
 
     void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const

@@ -1766,7 +1766,7 @@ namespace ColladaConversion
     {
     public:
         DocScopeId _id;
-        Section _sid;
+        DocScopeId _sid;
         Section _name;
 
         IndexIntoNodes _parent;
@@ -2236,7 +2236,7 @@ namespace ColladaConversion
             if (r) return r;
         }
 
-        return Node();
+		return Node {};
     }
 
     Node                    DocumentScaffold::FindNode(uint64 guid) const
@@ -2248,8 +2248,29 @@ namespace ColladaConversion
             auto r = SearchForNode(vs.GetRootNode(), guid);
             if (r) return r;
         }
-        return Node();
+		return Node {};
     }
+
+	static Node SearchForNodeBySid(Node n, uint64 guid)
+    {
+        if (n.GetSid().GetHash() == guid) return n;
+
+        for (auto child = n.GetFirstChild(); child; child = child.GetNextSibling()) {
+            auto r = SearchForNodeBySid(child, guid);
+            if (r) return r;
+        }
+
+		return Node {};
+    }
+
+	Node                    DocumentScaffold::FindNodeBySid(uint64 guid) const
+	{
+		for (const auto& vs:_visualScenes) {
+            auto r = SearchForNodeBySid(vs.GetRootNode(), guid);
+            if (r) return r;
+        }
+		return Node {};
+	}
 
     const Sampler*          DocumentScaffold::FindSampler(uint64 guid) const
     {
@@ -2355,7 +2376,7 @@ namespace ColladaConversion
         return _scene->_nodes[_index]._id;
     }
 
-    Section Node::GetSid() const
+    const DocScopeId& Node::GetSid() const
     {
         assert(_index != VisualScene::IndexIntoNodes_Invalid);
         return _scene->_nodes[_index]._sid;

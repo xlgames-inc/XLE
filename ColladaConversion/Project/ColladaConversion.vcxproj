@@ -121,7 +121,6 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentCommandStream.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h" />
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentMaterial.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentModel.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.h" />

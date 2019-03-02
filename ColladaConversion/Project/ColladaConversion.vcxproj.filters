@@ -109,9 +109,6 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentMaterial.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h">
       <Filter>GeoProc</Filter>
     </ClInclude>

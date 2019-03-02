@@ -8,6 +8,7 @@
 
 #include "NascentTransformationMachine.h"
 #include "../RenderCore/Assets/TransformationCommands.h"		// (for TransformationParameterSet)
+#include "../RenderCore/Assets/AnimationScaffoldInternal.h"
 #include <vector>
 #include <string>
 
@@ -30,30 +31,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     class NascentAnimationSet
     {
     public:
-                    /////   A N I M A T I O N   D R I V E R   /////
-        class AnimationDriver
-        {
-        public:
-            unsigned            _curveIndex = ~0u;
-            unsigned            _parameterIndex = ~0u;
-            AnimSamplerType     _samplerType = (AnimSamplerType)~0u;
-			unsigned            _samplerOffset = ~0u;
-
-			static const bool SerializeRaw = true;
-        };
-
-                    /////   C O N S T A N T   D R I V E R   /////
-        class ConstantDriver
-        {
-        public:
-            unsigned            _dataOffset = ~0u;
-            unsigned            _parameterIndex = ~0u;
-			Format				_format = (Format)0;
-            AnimSamplerType     _samplerType = (AnimSamplerType)~0u;
-			unsigned            _samplerOffset = ~0u;
-
-            static const bool SerializeRaw = true;
-        };
+		using AnimationDriver = RenderCore::Assets::AnimationSet::AnimationDriver;
+		using ConstantDriver = RenderCore::Assets::AnimationSet::ConstantDriver;
+		using Animation = RenderCore::Assets::AnimationSet::Animation;
 
         void    AddAnimationDriver(
             const std::string&  parameterName, 
@@ -73,8 +53,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         void    MergeAnimation(
             const NascentAnimationSet& animation, const std::string& name,
-            const std::vector<Assets::RawAnimationCurve>& sourceCurves, 
-            std::vector<Assets::RawAnimationCurve>& destinationCurves);
+            IteratorRange<const Assets::RawAnimationCurve*> sourceCurves, 
+			SerializableVector<Assets::RawAnimationCurve>& destinationCurves);
 
 		void	MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves);
 
@@ -95,15 +75,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     private:
         std::vector<AnimationDriver>    _animationDrivers;
         std::vector<ConstantDriver>     _constantDrivers;
-        class Animation
-		{
-		public:
-			std::string     _name;
-			unsigned        _begin, _end;
-			unsigned        _constantBegin, _constantEnd;
-			float           _startTime, _endTime;
-		};
-        std::vector<Animation>          _animations;
+        std::vector<std::pair<std::string, Animation>>          _animations;
         std::vector<std::string>        _parameterInterfaceDefinition;
         std::vector<uint8>              _constantData;
     };
@@ -125,7 +97,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		TransformationParameterSet&         GetDefaultParameters()			{ return _defaultParameters; }
 		const TransformationParameterSet&   GetDefaultParameters() const	{ return _defaultParameters; }
 
-		void	FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> newOutputInterface);
+		void	FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> filterIn);
 		void	Serialize(Serialization::NascentBlockSerializer& serializer) const;
 
     private:

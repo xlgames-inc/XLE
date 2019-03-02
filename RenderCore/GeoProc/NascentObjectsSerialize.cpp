@@ -187,13 +187,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
 		const std::string& name,
 		const NascentAnimationSet& animationSet,
-		IteratorRange<const RenderCore::Assets::RawAnimationCurve*> curves)
+		const SerializableVector<RawAnimationCurve>& curves)
 	{
 		Serialization::NascentBlockSerializer serializer;
 
 		::Serialize(serializer, animationSet);
-		serializer.SerializeSubBlock(curves);
-		serializer.SerializeValue(curves.size());
+		::Serialize(serializer, curves);
 
 		auto block = ::Assets::AsBlob(serializer);
 

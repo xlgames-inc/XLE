@@ -143,11 +143,10 @@ namespace RenderCore { namespace Assets
         VertexData      _animatedVertexElements;
         VertexData      _skeletonBinding;
 
-        Float4x4*       _inverseBindMatrices;
-        size_t          _inverseBindMatrixCount;
+        Float4x4*       _bindShapeByInverseBindMatrices;
+        size_t          _bindShapeByInverseBindMatrixCount;
         uint16*         _jointMatrices;         // (uint16 or uint8 for this array)
         size_t          _jointMatrixCount;
-        Float4x4        _bindShapeMatrix;
 
         DrawCallDesc*   _preskinningDrawCalls;
         size_t          _preskinningDrawCallCount;
