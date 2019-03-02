@@ -320,7 +320,7 @@ namespace Assets { namespace IntermediateAssets
 							if (XlEqString(compareVersion, (const utf8*)versionString)) {
 								// this branch is already present, and is good... so use it
 								goodBranchDir = std::string(baseDirectory) + "/" + findData.cFileName;
-                                _markerFile = std::make_unique<BasicFile>(std::move(markerFile));
+                                _markerFile = OpenFileOutput(std::move(markerFile));
 								break;
 							}
 
@@ -350,12 +350,10 @@ namespace Assets { namespace IntermediateAssets
 
                         // Opening without sharing to prevent other instances of XLE apps from using
                         // the same directory.
-                    auto stream = OpenFileOutput(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
-                    OutputStreamFormatter formatter(*stream);
+                    _markerFile = OpenFileOutput(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
+                    OutputStreamFormatter formatter(*_markerFile);
                     formatter.WriteAttribute(u("VersionString"), (const utf8*)versionString);
                     formatter.Flush();
-
-                    _markerFile = std::make_unique<BasicFile>(MainFileSystem::OpenBasicFile(buffer, "wb", 0));
 					break;
 				}
 			}
