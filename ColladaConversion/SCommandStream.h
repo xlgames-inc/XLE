@@ -7,24 +7,17 @@
 #pragma once
 
 #include "Scaffold.h"
-#include "../RenderCore/GeoProc/NascentCommandStream.h"
-#include "../RenderCore/GeoProc/NascentObjectGuid.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/IteratorUtils.h"
 #include <vector>
 
-namespace RenderCore { namespace Assets { namespace GeoProc
-{ 
-	class NascentSkeleton;
-	class NascentModelCommandStream;
-}}}
+namespace RenderCore { namespace Assets { namespace GeoProc { class NascentSkeleton; }}}
 
 namespace ColladaConversion
 {
-	using namespace RenderCore::Assets::GeoProc;
-	class Node; class VisualScene; class URIResolveContext; class InstanceGeometry; class InstanceController;
-    class ImportConfiguration;
+	class Node; class URIResolveContext;
 
-	void BuildSkeleton(NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName = {});
+	void BuildSkeleton(RenderCore::Assets::GeoProc::NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName = {});
 
 	auto BuildMaterialTableStrings(
         IteratorRange<const InstanceGeometry::MaterialBinding*> bindings, 

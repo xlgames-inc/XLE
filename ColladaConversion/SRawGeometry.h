@@ -13,7 +13,6 @@
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    class NascentRawGeometry;
     class UnboundSkinController;
 }}}
 

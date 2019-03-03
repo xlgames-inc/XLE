@@ -163,8 +163,6 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         ////////////////////////////////////////////////////////
 
-    class TableOfObjects;
-
     NascentBoundSkinnedGeometry BindController(
         const NascentRawGeometry& sourceGeo,
         const UnboundSkinController& controller,

@@ -5,27 +5,17 @@
 #pragma once
 
 #include "../Assets/ICompileOperation.h"
-#include "../../Utility/IteratorUtils.h"
-
-namespace RenderCore { namespace Assets { class RawAnimationCurve; }}
-
-namespace Utility {
-	template<typename Element>
-		class SerializableVector;
-}
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	class NascentGeometryObjects;
-	class NascentModelCommandStream;
+	class NascentModel;
 	class NascentSkeleton;
 	class NascentAnimationSet;
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkinToChunks(
 		const std::string& name,
-		const NascentGeometryObjects& geoObjects, 
-		const NascentModelCommandStream& cmdStream, 
-		const NascentSkeleton& skeleton);
+		const NascentModel& model,
+		const NascentSkeleton& embeddedSkeleton);
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeSkeletonToChunks(
 		const std::string& name,
@@ -33,6 +23,5 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 	std::vector<::Assets::ICompileOperation::OperationResult> SerializeAnimationsToChunks(
 		const std::string& name,
-		const NascentAnimationSet& animationSet,
-		const SerializableVector<RawAnimationCurve>& curves);
+		const NascentAnimationSet& animationSet);
 }}}

@@ -10,17 +10,6 @@
 namespace RenderCore { namespace Assets { class VertexElement; }}
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-    class NascentModelCommandStream;
-    class TableOfObjects;
-
-    std::pair<Float3, Float3> CalculateBoundingBox
-        (
-            const NascentModelCommandStream& scene,
-            const TableOfObjects& objects,
-            const Float4x4* transformsBegin, 
-            const Float4x4* transformsEnd
-        );
-
     unsigned int    FloatBits(float input);
     unsigned int    FloatBits(double input);
 
@@ -35,5 +24,4 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     std::pair<Float3, Float3>   InvalidBoundingBox();
 
     Assets::VertexElement FindPositionElement(const Assets::VertexElement elements[], size_t elementCount);
-
 }}}

@@ -36,16 +36,10 @@
     <ClCompile Include="..\Assets\SkinningScaffold.cpp">
       <Filter>Assets\Anim</Filter>
     </ClCompile>
-    <ClCompile Include="..\GeoProc\NascentGeometryObjects.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\GeoProc\NascentObjectsSerialize.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\GeoProc\NascentRawGeometry.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\GeoProc\NascentTransformationMachine.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\GeoProc\MeshDatabase.cpp">
@@ -81,6 +75,9 @@
     <ClCompile Include="..\GeoProc\NascentModel.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\GeoProc\NascentSkeletonMachine.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Assets\AssetUtils.h" />
@@ -107,16 +104,10 @@
     <ClInclude Include="..\Assets\ModelImmutableData.h">
       <Filter>Assets\Model</Filter>
     </ClInclude>
-    <ClInclude Include="..\GeoProc\NascentGeometryObjects.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
     <ClInclude Include="..\GeoProc\NascentObjectsSerialize.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentRawGeometry.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\GeoProc\NascentTransformationMachine.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\MeshDatabase.h">
@@ -156,6 +147,9 @@
       <Filter>Assets\Anim</Filter>
     </ClInclude>
     <ClInclude Include="..\GeoProc\NascentModel.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\GeoProc\NascentSkeletonMachine.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
   </ItemGroup>

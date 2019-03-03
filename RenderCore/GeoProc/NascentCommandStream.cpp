@@ -85,9 +85,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
     }
 
     void    NascentAnimationSet::MergeAnimation(
-        const NascentAnimationSet& animation, const std::string& name,
-        IteratorRange<const Assets::RawAnimationCurve*> sourceCurves, 
-        SerializableVector<Assets::RawAnimationCurve>& destinationCurves)
+        const NascentAnimationSet& animation, const std::string& name)
     {
             //
             //      Merge the animation drivers in the given input animation, and give 
@@ -97,8 +95,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         size_t startIndex = _animationDrivers.size();
         size_t constantStartIndex = _constantDrivers.size();
         for (auto i=animation._animationDrivers.cbegin(); i!=animation._animationDrivers.end(); ++i) {
-            if (i->_curveIndex >= sourceCurves.size()) continue;
-            const auto* animCurve = &sourceCurves[i->_curveIndex];
+            if (i->_curveIndex >= animation._curves.size()) continue;
+            const auto* animCurve = &animation._curves[i->_curveIndex];
             if (animCurve) {
                 float curveStart = animCurve->StartTime();
                 float curveEnd = animCurve->EndTime();
@@ -106,9 +104,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
                 maxTime = std::max(maxTime, curveEnd);
 
                 const std::string& pname = animation._parameterInterfaceDefinition[i->_parameterIndex];
-                destinationCurves.push_back(Assets::RawAnimationCurve(*animCurve));
+                _curves.emplace_back(Assets::RawAnimationCurve(*animCurve));
                 AddAnimationDriver(
-                    pname, unsigned(destinationCurves.size()-1), 
+                    pname, unsigned(_curves.size()-1), 
                     i->_samplerType, i->_samplerOffset);
             }
         }
@@ -170,6 +168,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					minTime, maxTime}));
 	}
 
+	unsigned NascentAnimationSet::AddCurve(RenderCore::Assets::RawAnimationCurve&& curve)
+	{
+		auto result = (unsigned)_curves.size();
+		_curves.emplace_back(std::move(curve));
+		return result;
+	}
+
     void NascentAnimationSet::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
 		AnimationSet finalAnimationSet;
@@ -201,6 +206,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		finalAnimationSet._stringNameBlockOffsets.push_back((unsigned)finalAnimationSet._stringNameBlock.size());
 		
 		::Serialize(serializer, finalAnimationSet);
+
+		::Serialize(serializer, _curves);
     }
 
 	std::ostream& StreamOperator(
@@ -237,36 +244,11 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 
 
-	void NascentSkeleton::FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> filterIn)
-	{
-		auto oldOutputInterface =_interface.GetOutputInterface();
-		std::vector<std::pair<std::string, std::string>> newOutputInterface;
-
-		std::vector<unsigned> oldIndexToNew(oldOutputInterface.size(), ~0u);
-		for (unsigned c=0; c<oldOutputInterface.size(); c++) {
-			auto i = std::find(newOutputInterface.begin(), newOutputInterface.end(), oldOutputInterface[c]);
-			if (i!=newOutputInterface.end()) {
-				oldIndexToNew[c] = (unsigned)std::distance(newOutputInterface.begin(), i);
-			} else {
-				auto f = std::find(filterIn.begin(), filterIn.end(), oldOutputInterface[c]);
-				if (f!=filterIn.end()) {
-					oldIndexToNew[c] = (unsigned)(newOutputInterface.size());
-					newOutputInterface.push_back(oldOutputInterface[c]);
-				}
-			}
-		}
-
-		_skeletonMachine.RemapOutputMatrices(MakeIteratorRange(oldIndexToNew));
-		_interface.SetOutputInterface(MakeIteratorRange(newOutputInterface));
-	}
-
     void NascentSkeleton::Serialize(Serialization::NascentBlockSerializer& serializer) const
     {
         ::Serialize(serializer, _skeletonMachine);
-		::Serialize(serializer, _interface);
 		::Serialize(serializer, _defaultParameters);
     }
-
 
 
 

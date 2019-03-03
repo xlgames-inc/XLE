@@ -8,14 +8,11 @@
 
 #include "../RenderCore/Assets/RawAnimationCurve.h"
 #include "../RenderCore/Assets/TransformationCommands.h"
-#include "../Core/Exceptions.h"
 #include <string>
 #include <vector>
 
 namespace ColladaConversion
 {
-	class Animation; class URIResolveContext;
-
     class UnboundAnimation
     {
     public:
@@ -31,8 +28,7 @@ namespace ColladaConversion
         std::vector<Curve> _curves;
     };
 
-    UnboundAnimation Convert(
-        const ::ColladaConversion::Animation& animation,
-        const ::ColladaConversion::URIResolveContext& resolveContext);
+    class Animation; class URIResolveContext;
+	UnboundAnimation Convert(const Animation& animation, const URIResolveContext& resolveContext);
 }
 

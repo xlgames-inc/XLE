@@ -1,10 +1,8 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "NascentTransformationMachine.h"
+#include "NascentSkeletonMachine.h"
 #include "../Assets/TransformationCommands.h"
 #include "../RenderUtils.h"
 #include "../../Assets/Assets.h"
@@ -26,16 +24,12 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return result;
 	}
 
-    template <>
-        void    NascentSkeletonMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
-    {
-        outputSerializer.SerializeSubBlock(MakeIteratorRange(_commandStream));
-        outputSerializer.SerializeValue(_commandStream.size());
-        outputSerializer.SerializeValue(_outputMatrixCount);
-	}
-
-	void        NascentSkeletonMachine::WriteOutputMarker(unsigned marker)
+	void        NascentSkeletonMachine::WriteOutputMarker(StringSection<> skeletonName, StringSection<> jointName)
 	{
+		uint32_t marker = ~0u;
+		if (!TryRegisterJointName(marker, skeletonName, jointName))
+			Throw(::Exceptions::BasicLabel("Failure while attempt to register joint name: (%s:%s)", skeletonName.AsString().c_str(), jointName.AsString().c_str()));
+
 		_outputMatrixCount = std::max(_outputMatrixCount, marker+1);
 		_commandStream.push_back((uint32)Assets::TransformStackCommand::WriteOutputMatrix);
 		_commandStream.push_back(marker);
@@ -130,18 +124,38 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		_outputMatrixCount = newOutputMatrixCount;
 	}
 
+	void NascentSkeletonMachine::FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> filterIn)
+	{
+		auto oldOutputInterface = GetOutputInterface();
+		std::vector<std::pair<std::string, std::string>> newOutputInterface;
+
+		std::vector<unsigned> oldIndexToNew(oldOutputInterface.size(), ~0u);
+		for (unsigned c=0; c<oldOutputInterface.size(); c++) {
+			auto i = std::find(newOutputInterface.begin(), newOutputInterface.end(), oldOutputInterface[c]);
+			if (i!=newOutputInterface.end()) {
+				oldIndexToNew[c] = (unsigned)std::distance(newOutputInterface.begin(), i);
+			} else {
+				auto f = std::find(filterIn.begin(), filterIn.end(), oldOutputInterface[c]);
+				if (f!=filterIn.end()) {
+					oldIndexToNew[c] = (unsigned)(newOutputInterface.size());
+					newOutputInterface.push_back(oldOutputInterface[c]);
+				}
+			}
+		}
+
+		RemapOutputMatrices(MakeIteratorRange(oldIndexToNew));
+		SetOutputInterface(MakeIteratorRange(newOutputInterface));
+	}
+
     NascentSkeletonMachine::NascentSkeletonMachine() : _pendingPops(0), _outputMatrixCount(0) {}
     NascentSkeletonMachine::~NascentSkeletonMachine() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	NascentSkeletonInterface::NascentSkeletonInterface() {}
-	NascentSkeletonInterface::~NascentSkeletonInterface() {}
-
-    template<> auto NascentSkeletonInterface::GetTables<float>()    -> std::vector<ParameterTag>& { return _float1ParameterNames; }
-    template<> auto NascentSkeletonInterface::GetTables<Float3>()   -> std::vector<ParameterTag>& { return _float3ParameterNames; }
-    template<> auto NascentSkeletonInterface::GetTables<Float4>()   -> std::vector<ParameterTag>& { return _float4ParameterNames; }
-    template<> auto NascentSkeletonInterface::GetTables<Float4x4>() -> std::vector<ParameterTag>& { return _float4x4ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<float>()    -> std::vector<ParameterTag>& { return _float1ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<Float3>()   -> std::vector<ParameterTag>& { return _float3ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<Float4>()   -> std::vector<ParameterTag>& { return _float4ParameterNames; }
+    template<> auto NascentSkeletonMachine::GetParameterTables<Float4x4>() -> std::vector<ParameterTag>& { return _float4x4ParameterNames; }
 
 	#pragma pack(push)
 	#pragma pack(1)
@@ -155,8 +169,15 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	#pragma pack(pop)
 
 	template <>
-		void    NascentSkeletonInterface::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
+		void    NascentSkeletonMachine::Serialize(Serialization::NascentBlockSerializer& outputSerializer) const
 	{
+		//
+		//		Write the command stream
+		//
+		outputSerializer.SerializeSubBlock(MakeIteratorRange(_commandStream));
+        outputSerializer.SerializeValue(_commandStream.size());
+        outputSerializer.SerializeValue(_outputMatrixCount);
+
 		//
 		//      We have to write out both an input and an output interface
 		//      First input interface...
@@ -190,13 +211,13 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		outputSerializer.SerializeValue(jointHashNames.size());
 	}
 
-	void NascentSkeletonInterface::SetOutputInterface(IteratorRange<const JointTag*> jointNames)
+	void NascentSkeletonMachine::SetOutputInterface(IteratorRange<const JointTag*> jointNames)
 	{
 		_jointTags.clear();
 		_jointTags.insert(_jointTags.end(), jointNames.begin(), jointNames.end());
 	}
 
-	std::vector<uint64_t> NascentSkeletonInterface::BuildHashedOutputInterface() const
+	std::vector<uint64_t> NascentSkeletonMachine::BuildHashedOutputInterface() const
 	{
 		std::vector<uint64_t> hashedInterface;
 		hashedInterface.reserve(_jointTags.size());
@@ -207,17 +228,16 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 	std::ostream& StreamOperator(
 		std::ostream& stream, 
 		const NascentSkeletonMachine& transMachine, 
-		const NascentSkeletonInterface& interf,
 		const TransformationParameterSet& defaultParameters)
 	{
-		stream << "Output matrices: " << interf._jointTags.size() << std::endl;
+		stream << "Output matrices: " << transMachine._jointTags.size() << std::endl;
 		stream << "Command stream size: " << transMachine._commandStream.size() * sizeof(uint32) << std::endl;
 
-		const std::vector<NascentSkeletonInterface::ParameterTag>* paramTables[] = {
-			&interf._float1ParameterNames,
-			&interf._float3ParameterNames,
-			&interf._float4ParameterNames,
-			&interf._float4x4ParameterNames,
+		const std::vector<NascentSkeletonMachine::ParameterTag>* paramTables[] = {
+			&transMachine._float1ParameterNames,
+			&transMachine._float3ParameterNames,
+			&transMachine._float4ParameterNames,
+			&transMachine._float4x4ParameterNames,
 		};
 		const char* paramTableNames[] = { "float1", "float3", "float4", "float4x4" };
 
@@ -258,28 +278,28 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		}
 
 		stream << " --- Output interface:" << std::endl;
-		for (auto i=interf._jointTags.begin(); i!=interf._jointTags.end(); ++i)
-			stream << "  [" << std::distance(interf._jointTags.begin(), i) << "] " << i->first << " : " << i->second << ", Output transform index: (" << std::distance(interf._jointTags.begin(), i) << ")" << std::endl;
+		for (auto i=transMachine._jointTags.begin(); i!=transMachine._jointTags.end(); ++i)
+			stream << "  [" << std::distance(transMachine._jointTags.begin(), i) << "] " << i->first << " : " << i->second << ", Output transform index: (" << std::distance(transMachine._jointTags.begin(), i) << ")" << std::endl;
 
 		stream << " --- Command stream:" << std::endl;
 		const auto& cmds = transMachine._commandStream;
 		TraceTransformationMachine(
 			stream, MakeIteratorRange(cmds),
-			[&interf](unsigned outputMatrixIndex) -> std::string
+			[&transMachine](unsigned outputMatrixIndex) -> std::string
 			{
-				if (outputMatrixIndex < interf._jointTags.size())
-					return interf._jointTags[outputMatrixIndex].first + " : " + interf._jointTags[outputMatrixIndex].second;
+				if (outputMatrixIndex < transMachine._jointTags.size())
+					return transMachine._jointTags[outputMatrixIndex].first + " : " + transMachine._jointTags[outputMatrixIndex].second;
 				return std::string();
 			},
-			[&interf](AnimSamplerType samplerType, unsigned parameterIndex) -> std::string
+			[&transMachine](AnimSamplerType samplerType, unsigned parameterIndex) -> std::string
 			{
-				using T = std::vector<NascentSkeletonInterface::ParameterTag>;
+				using T = std::vector<NascentSkeletonMachine::ParameterTag>;
 				std::pair<const T*, AnimSamplerType> tables[] = {
-					std::make_pair(&interf._float1ParameterNames,		AnimSamplerType::Float1),
-					std::make_pair(&interf._float3ParameterNames,		AnimSamplerType::Float3),
-					std::make_pair(&interf._float4ParameterNames,		AnimSamplerType::Float4),
-					std::make_pair(&interf._float4x4ParameterNames,		AnimSamplerType::Float4x4),
-					std::make_pair(&interf._float4ParameterNames,		AnimSamplerType::Quaternion)
+					std::make_pair(&transMachine._float1ParameterNames,		AnimSamplerType::Float1),
+					std::make_pair(&transMachine._float3ParameterNames,		AnimSamplerType::Float3),
+					std::make_pair(&transMachine._float4ParameterNames,		AnimSamplerType::Float4),
+					std::make_pair(&transMachine._float4x4ParameterNames,		AnimSamplerType::Float4x4),
+					std::make_pair(&transMachine._float4ParameterNames,		AnimSamplerType::Quaternion)
 				};
 
 				auto& names = *tables[unsigned(samplerType)].first;
@@ -290,7 +310,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		return stream;
 	}
 
-    bool    NascentSkeletonInterface::TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName)
+    bool    NascentSkeletonMachine::TryRegisterJointName(uint32& outputMarker, StringSection<> skeletonName, StringSection<> jointName)
     {
 		outputMarker = (uint32)_jointTags.size();
 		_jointTags.push_back({skeletonName.AsString(), jointName.AsString()});	// (note -- not checking for duplicates)

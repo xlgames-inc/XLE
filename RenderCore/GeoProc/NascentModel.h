@@ -69,9 +69,9 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 			unsigned					_levelOfDetail;
 		};
 
-		GeometryBlock* FindGeometryBlock(NascentObjectGuid id);
-		SkinControllerBlock* FindSkinControllerBlock(NascentObjectGuid id);
-		Command* FindCommand(NascentObjectGuid id);
+		const GeometryBlock* FindGeometryBlock(NascentObjectGuid id) const;
+		const SkinControllerBlock* FindSkinControllerBlock(NascentObjectGuid id) const;
+		const Command* FindCommand(NascentObjectGuid id) const;
 
 		void Add(NascentObjectGuid id, const std::string& name, GeometryBlock&& object);
 		void Add(NascentObjectGuid id, const std::string& name, SkinControllerBlock&& object);
@@ -87,7 +87,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
 		std::vector<::Assets::ICompileOperation::OperationResult> SerializeToChunks(
 			const std::string& name,
-			const NascentSkeleton& embeddedSkeleton);
+			const NascentSkeleton& embeddedSkeleton) const;
 
 	private:
 		std::vector<std::pair<Indexor,GeometryBlock>>		_geoBlocks;
@@ -112,6 +112,8 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<Float4x4>		_mergedTransforms;
 		std::vector<std::pair<std::string, std::string>>	_bindingNameInterface;
     };
+
+	void OptimizeSkeleton(NascentSkeleton& embeddedSkeleton, NascentModel& model);
 	
 
 }}}

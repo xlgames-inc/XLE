@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -24,8 +22,6 @@ namespace RenderCore { namespace Assets
 
 namespace RenderCore { namespace Assets { namespace GeoProc
 {
-	class NascentSkeletonInterface;
-
     class NascentSkeletonMachine
     {
     public:
@@ -37,21 +33,31 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         template<typename Serializer>
             void    Serialize(Serializer& outputSerializer) const;
 
-        std::unique_ptr<Float4x4[]>
-            GenerateOutputTransforms(const TransformationParameterSet&   parameterSet) const;
+        std::unique_ptr<Float4x4[]>		GenerateOutputTransforms(const TransformationParameterSet& parameterSet) const;
 
-        const std::vector<uint32>&  GetCommandStream() const { return _commandStream; }
+		using JointTag = std::pair<std::string, std::string>;
+		using ParameterTag = std::string;
+
+		IteratorRange<const JointTag*>	GetOutputInterface() const { return MakeIteratorRange(_jointTags); }
+		void							SetOutputInterface(IteratorRange<const JointTag*> jointNames);
+		std::vector<uint64_t>			BuildHashedOutputInterface() const;
+
+		T1(Type) bool	TryAddParameter(uint32_t& paramIndex, StringSection<> paramName);
+		bool			TryRegisterJointName(uint32_t& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
+
+		void			FilterOutputInterface(IteratorRange<const std::pair<std::string, std::string>*> filterIn);
+
+        const std::vector<uint32>&		GetCommandStream() const { return _commandStream; }
 
         friend std::ostream& StreamOperator(
 			std::ostream& stream, 
 			const NascentSkeletonMachine& transMachine, 
-			const NascentSkeletonInterface& interf,
 			const TransformationParameterSet& defaultParameters);
 
         void    PushCommand(uint32 cmd);
         void    PushCommand(TransformStackCommand cmd);
         void    PushCommand(const void* ptr, size_t size);
-		void	WriteOutputMarker(unsigned marker);
+		void	WriteOutputMarker(StringSection<> skeletonName, StringSection<> jointName);
         void    ResolvePendingPops();
 
         void    Optimize(ITransformationMachineOptimizer& optimizer);
@@ -66,37 +72,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
         std::vector<uint32>     _commandStream;
         unsigned                _outputMatrixCount;
         int						_pendingPops; // Only required during construction
-    };
 
-	class NascentSkeletonInterface
-	{
-	public:
-		T1(Type) bool	TryAddParameter(uint32_t& paramIndex, StringSection<> paramName);
-		bool			TryRegisterJointName(uint32_t& outputMarker, StringSection<> skeletonName, StringSection<> jointName);
-
-		using JointTag = std::pair<std::string, std::string>;
-		using ParameterTag = std::string;
-
-		IteratorRange<const JointTag*>	GetOutputInterface() const { return MakeIteratorRange(_jointTags); }
-		void							SetOutputInterface(IteratorRange<const JointTag*> jointNames);
-
-		std::vector<uint64_t> BuildHashedOutputInterface() const;
-
-		template<typename Serializer>
-			void    Serialize(Serializer& outputSerializer) const;
-
-		friend std::ostream& StreamOperator(
-			std::ostream& stream, 
-			const NascentSkeletonMachine& transMachine, 
-			const NascentSkeletonInterface& interf,
-			const TransformationParameterSet& defaultParameters);
-
-		NascentSkeletonInterface();
-		NascentSkeletonInterface(NascentSkeletonInterface&& machine) = default;
-		NascentSkeletonInterface& operator=(NascentSkeletonInterface&& moveFrom) = default;
-		~NascentSkeletonInterface();
-
-	private:
 		std::vector<ParameterTag>		_float1ParameterNames;
 		std::vector<ParameterTag>		_float3ParameterNames;
 		std::vector<ParameterTag>		_float4ParameterNames;
@@ -105,17 +81,17 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 		std::vector<JointTag>			_jointTags;
 
 		template<typename Type>
-			std::vector<ParameterTag>& GetTables();
-	};
+			std::vector<ParameterTag>& GetParameterTables();
+    };
 
         ////////////////// template implementation //////////////////
 
     template<typename Type>
-        bool NascentSkeletonInterface::TryAddParameter( 
+        bool NascentSkeletonMachine::TryAddParameter( 
             uint32_t& paramIndex,
 			StringSection<> paramName)
     {
-        auto& tables = GetTables<Type>();
+        auto& tables = GetParameterTables<Type>();
         auto i = std::find_if(tables.begin(), tables.end(), 
 			[paramName](const std::string& s) { return XlEqString(paramName, s); });
         if (i!=tables.end()) {

@@ -19,25 +19,16 @@
     <ClCompile Include="..\SRawGeometry.cpp">
       <Filter>ObjectConversion</Filter>
     </ClCompile>
-    <ClCompile Include="..\STransformationMachine.cpp">
-      <Filter>ObjectConversion</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentAnimController.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentCommandStream.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
-    <ClCompile Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentRawGeometry.cpp">
-      <Filter>GeoProc</Filter>
-    </ClCompile>
-    <ClCompile Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
     <ClCompile Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.cpp">
@@ -74,6 +65,10 @@
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentModel.cpp">
       <Filter>GeoProc</Filter>
     </ClCompile>
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentSkeletonMachine.cpp">
+      <Filter>GeoProc</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ColladaConversion.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Scaffold.h">
@@ -97,16 +92,10 @@
     <ClInclude Include="..\SRawGeometry.h">
       <Filter>ObjectConversion</Filter>
     </ClInclude>
-    <ClInclude Include="..\STransformationMachine.h">
-      <Filter>ObjectConversion</Filter>
-    </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentCommandStream.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h">
@@ -116,9 +105,6 @@
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentRawGeometry.h">
-      <Filter>GeoProc</Filter>
-    </ClInclude>
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
     <ClInclude Include="..\..\RenderCore\GeoProc\GeometryAlgorithm.h">
@@ -148,6 +134,10 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentModel.h">
       <Filter>GeoProc</Filter>
     </ClInclude>
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentSkeletonMachine.h">
+      <Filter>GeoProc</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ColladaConversion.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Scaffold">
