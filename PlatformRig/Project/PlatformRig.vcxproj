@@ -112,6 +112,7 @@
     <ClCompile Include="..\WinAPI\AllocationProfiler.cpp" />
     <ClCompile Include="..\WinAPI\InputTranslator.cpp" />
     <ClCompile Include="..\WinAPI\OverlappedWindow.cpp" />
+    <ClCompile Include="..\WinAPI\RunLoop_WinAPI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">
@@ -173,6 +174,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\UnitCamera.h" />
+    <ClInclude Include="..\WinAPI\RunLoop_WinAPI.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

@@ -44,6 +44,9 @@
     </ClCompile>
     <ClCompile Include="..\InputListener.cpp" />
     <ClCompile Include="..\DebugHotKeys.cpp" />
+    <ClCompile Include="..\WinAPI\RunLoop_WinAPI.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -90,5 +93,8 @@
     <ClInclude Include="..\Screenshot.h" />
     <ClInclude Include="..\InputListener.h" />
     <ClInclude Include="..\DebugHotKeys.h" />
+    <ClInclude Include="..\WinAPI\RunLoop_WinAPI.h">
+      <Filter>WinAPI</Filter>
+    </ClInclude>
   </ItemGroup>
 </Project>

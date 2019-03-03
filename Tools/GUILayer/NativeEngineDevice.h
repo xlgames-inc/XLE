@@ -9,6 +9,7 @@
 #include "EngineForward.h"
 #include "../../ConsoleRig/AttachablePtr.h"
 #include <memory>
+#include <msclr\auto_gcroot.h>
 
 namespace RenderCore { namespace Assets { class Services; } }
 namespace ToolsRig { class DivergentAssetManager; }
@@ -42,6 +43,7 @@ namespace GUILayer
 		std::unique_ptr<ToolsRig::DivergentAssetManager> _divAssets;
 		ConsoleRig::CrossModule* _crossModule;
         int _creationThreadId;
+		msclr::auto_gcroot<System::Windows::Forms::IMessageFilter^> _messageFilter;
     };
 
 	class RenderTargetWrapper

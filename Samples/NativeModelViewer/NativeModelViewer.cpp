@@ -82,7 +82,7 @@ namespace Sample
 		}
 	}
 
-	auto NativeModelViewerOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+	auto NativeModelViewerOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
 	{ 
 		return OverlaySystemSet::GetInputListener(); 
 	}

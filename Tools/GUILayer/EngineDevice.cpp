@@ -7,12 +7,15 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "MarshalString.h"
+#include "CLIXAutoPtr.h"
 #include "WindowRigInternal.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/DivergentAsset.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
+#include "../../PlatformRig/OverlappedWindow.h"
+#include "../../PlatformRig/WinAPI/RunLoop_WinAPI.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/Assets/Services.h"
@@ -38,6 +41,22 @@
 
 namespace GUILayer
 {
+	ref class TimerMessageFilter : public System::Windows::Forms::IMessageFilter
+	{
+	public:
+		virtual bool PreFilterMessage(System::Windows::Forms::Message% m)
+		{
+			if (m.Msg == WM_TIMER && _osRunLoop.get()) {
+				// Return true to filter the event out of the message loop (which we will do if the timer id is recognized)
+				return _osRunLoop->OnOSTrigger((UINT_PTR)m.WParam.ToPointer());
+			}
+
+			return false;
+		}
+
+		clix::shared_ptr<PlatformRig::OSRunLoop_BasicTimer> _osRunLoop;
+	};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     void EngineDevice::SetDefaultWorkingDirectory()
     {
@@ -78,10 +97,21 @@ namespace GUILayer
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
 		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
+
+		TimerMessageFilter^ messageFilter = gcnew TimerMessageFilter();
+		auto osRunLoop = std::make_shared<PlatformRig::OSRunLoop_BasicTimer>((HWND)0);
+		messageFilter->_osRunLoop = osRunLoop;
+		PlatformRig::SetOSRunLoop(osRunLoop);
+
+		_messageFilter = messageFilter;
+		System::Windows::Forms::Application::AddMessageFilter(messageFilter);
     }
 
     NativeEngineDevice::~NativeEngineDevice()
     {
+		if (_messageFilter)
+			System::Windows::Forms::Application::RemoveMessageFilter(_messageFilter.get());
+		PlatformRig::SetOSRunLoop(nullptr);
 		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
 		_divAssets.reset();
         _renderAssetsServices.reset();

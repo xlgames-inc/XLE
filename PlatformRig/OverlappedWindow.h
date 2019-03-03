@@ -9,6 +9,7 @@
 #include "../Math/Vector.h"
 #include "../Utility/Mixins.h"
 #include <memory>       // for unique_ptr
+#include <functional>
 
 namespace PlatformRig
 {
@@ -20,6 +21,23 @@ namespace PlatformRig
         virtual void    OnResize(unsigned newWidth, unsigned newHeight) = 0;
         virtual ~IWindowHandler() {}
     };
+
+	class IOSRunLoop
+	{
+	public:
+		using TimeoutCallback = std::function<void()>;
+		using EventId = unsigned;
+
+		virtual EventId ScheduleTimeoutEvent(
+			unsigned timePoint,		// in milliseconds, matching values returned from Millisecond_Now(),
+			TimeoutCallback&& callback) = 0;
+		virtual void RemoveEvent(EventId evnts) = 0;
+
+		virtual ~IOSRunLoop() {}
+	};
+
+	IOSRunLoop* GetOSRunLoop();
+	void SetOSRunLoop(const std::shared_ptr<IOSRunLoop>& runLoop);
 
     /// <summary>An independent window in OS presentation scheme</summary>
     /// Creates and manages an independent OS window.

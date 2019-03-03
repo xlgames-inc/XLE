@@ -32,6 +32,7 @@
 #include "../../Math/Transformations.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../Utility/TimeUtils.h"
 
 namespace ToolsRig
 {
@@ -522,17 +523,70 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MouseOverTrackingListener : public PlatformRig::IInputListener
+    class MouseOverTrackingListener : public PlatformRig::IInputListener, public std::enable_shared_from_this<MouseOverTrackingListener>
     {
     public:
         bool OnInputEvent(
 			const PlatformRig::InputContext& context,
 			const PlatformRig::InputSnapshot& evnt)
         {
-            using namespace SceneEngine;
+			if (evnt._mouseDelta == PlatformRig::Coord2 { 0, 0 })
+				return false;
 
-            auto worldSpaceRay = IntersectionTestContext::CalculateWorldSpaceRay(
-				AsCameraDesc(*_camera), evnt._mousePosition, context._viewMins, context._viewMaxs);
+			// Limit the update frequency by ensuring that enough time has
+			// passed since the last time we did an update. If there hasn't
+			// been enough time, we should schedule a timeout event to trigger.
+			//
+			// If there has already been a timeout event scheduled, we have 2 options.
+			// Either we reschedule it, or we just allow the previous timeout to 
+			// finish as normal.
+			//			
+			// If we rescheduled the event, it would mean that fast movement of the 
+			// mouse would disable all update events, and we would only get new information
+			// after the mouse has come to rest for the timeout period.
+			//
+			// The preferred option may depend on the particular use case.
+			auto time = Millisecond_Now();
+			const auto timePeriod = 200u;
+			_timeoutContext = context;
+			_timeoutMousePosition = evnt._mousePosition;
+			if ((time - _timeOfLastCalculate) < timePeriod) {
+				auto* osRunLoop = PlatformRig::GetOSRunLoop();
+				if (_timeoutEvent == ~0u && osRunLoop) {
+					std::weak_ptr<MouseOverTrackingListener> weakThis = shared_from_this();
+					_timeoutEvent = osRunLoop->ScheduleTimeoutEvent(
+						time + timePeriod,
+						[weakThis]() {
+							auto l = weakThis.lock();
+							if (l) {
+								l->_timeOfLastCalculate = Millisecond_Now();
+								l->CalculateForMousePosition(
+									l->_timeoutContext,
+									l->_timeoutMousePosition);
+								l->_timeoutEvent = ~0u;								
+							}
+						});
+				}
+			} else {
+				auto* osRunLoop = PlatformRig::GetOSRunLoop();
+				if (_timeoutEvent != ~0u && osRunLoop) {
+					osRunLoop->RemoveEvent(_timeoutEvent);
+					_timeoutEvent = ~0u;
+				}
+
+				CalculateForMousePosition(context, evnt._mousePosition);
+				_timeOfLastCalculate = time;
+			}
+
+			return false;
+		}
+
+		void CalculateForMousePosition(
+			const PlatformRig::InputContext& context,
+			PlatformRig::Coord2 mousePosition)
+		{
+            auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
+				AsCameraDesc(*_camera), mousePosition, context._viewMins, context._viewMaxs);
 
 			SceneEngine::IScene* scene = nullptr;
 			if (_sceneFuture)
@@ -557,8 +611,6 @@ namespace ToolsRig
 					}
 				}
 			}
-
-            return false;
         }
 
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
@@ -587,6 +639,11 @@ namespace ToolsRig
         std::shared_ptr<VisCameraSettings> _camera;
         
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
+		unsigned _timeOfLastCalculate = 0;
+
+		PlatformRig::InputContext _timeoutContext;
+		PlatformRig::Coord2 _timeoutMousePosition;
+		unsigned _timeoutEvent = ~0u;
     };
 
     auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
