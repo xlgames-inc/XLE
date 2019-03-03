@@ -9,7 +9,7 @@
 #include "EngineControl.h"
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
-#include "IWindowRig.h"
+#include "WindowRigInternal.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../../PlatformRig/FrameRig.h"
@@ -18,6 +18,7 @@
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../RenderCore/IDevice.h"
+#include "../../RenderCore/Assets/Services.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Utility/PtrUtils.h"
 
@@ -214,11 +215,23 @@ namespace GUILayer
         _pimpl.reset();
     }
 
+	static std::unique_ptr<WindowRig> CreateWindowRig(EngineDevice^ engineDevice, const void* nativeWindowHandle)
+    {
+        auto result = std::make_unique<WindowRig>(*engineDevice->GetNative().GetRenderDevice(), nativeWindowHandle);
+
+        BufferUploads::IManager* bufferUploads = &engineDevice->GetNative().GetRenderAssetServices()->GetBufferUploads();
+        result->GetFrameRig().AddPostPresentCallback(
+            [bufferUploads](RenderCore::IThreadContext& threadContext)
+            { bufferUploads->Update(threadContext, false); });
+
+        return std::move(result);
+    }
+
     EngineControl::EngineControl(Control^ control)
     {
         _pimpl.reset(new EngineControlPimpl);
         auto engineDevice = EngineDevice::GetInstance();
-        _pimpl->_windowRig = engineDevice->GetNative().CreateWindowRig(control->Handle.ToPointer());
+        _pimpl->_windowRig = CreateWindowRig(engineDevice, control->Handle.ToPointer());
         _pimpl->_inputTranslator = std::make_unique<PlatformRig::InputTranslator>();
         _pimpl->_inputTranslator->AddListener(_pimpl->_windowRig->GetFrameRig().GetMainOverlaySystem()->GetInputListener());
 

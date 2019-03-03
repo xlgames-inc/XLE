@@ -28,18 +28,18 @@ namespace ConsoleRig
         {
             std::vector<std::pair<uint64, std::unique_ptr<Box>>>    _internalTable;
         };
-    }
 
-    template <typename Box> std::vector<std::pair<uint64, std::unique_ptr<Box>>>& GetBoxTable()
+		template <typename Box> std::vector<std::pair<uint64, std::unique_ptr<Box>>>& GetBoxTable()
         {
             static Internal::BoxTable<Box>* table = nullptr;
             if (!table) {
                 auto t = std::make_unique<Internal::BoxTable<Box>>();
                 table = t.get();    // note -- this will end up holding a dangling ptr after calling shutdown (could use a weak_ptr...?)
-                Internal::BoxTables.push_back(std::move(t));
+                Internal::BoxTables.emplace_back(std::move(t));
             }
             return table->_internalTable;
         }
+    }
 
 	template <typename Desc> uint64 CalculateCachedBoxHash(const Desc& desc)
 	{
@@ -49,7 +49,7 @@ namespace ConsoleRig
     template <typename Box> Box& FindCachedBox(const typename Box::Desc& desc)
     {
         auto hashValue = CalculateCachedBoxHash(desc);
-        auto& boxTable = GetBoxTable<Box>();
+        auto& boxTable = Internal::GetBoxTable<Box>();
         auto i = LowerBound(boxTable, hashValue);
         if (i!=boxTable.cend() && i->first==hashValue) {
             return *i->second;
@@ -57,7 +57,7 @@ namespace ConsoleRig
 
         auto ptr = std::make_unique<Box>(desc);
 		Log(Verbose) << "Created cached box for type (" << typeid(Box).name() << ") -- first time. HashValue:(0x" << std::hex << hashValue << std::dec << ")" << std::endl;
-        auto i2 = boxTable.insert(i, std::make_pair(hashValue, std::move(ptr)));
+        auto i2 = boxTable.emplace(i, std::make_pair(hashValue, std::move(ptr)));
         return *i2->second;
     }
 
@@ -69,7 +69,7 @@ namespace ConsoleRig
     template <typename Box> Box& FindCachedBoxDep(const typename Box::Desc& desc)
     {
         auto hashValue = CalculateCachedBoxHash(desc);
-        auto& boxTable = GetBoxTable<Box>();
+        auto& boxTable = Internal::GetBoxTable<Box>();
         auto i = LowerBound(boxTable, hashValue);
         if (i!=boxTable.end() && i->first==hashValue) {
             if (i->second->GetDependencyValidation()->GetValidationIndex()!=0) {
@@ -80,9 +80,8 @@ namespace ConsoleRig
         }
 
         auto ptr = std::make_unique<Box>(desc);
-		Log(Verbose)
-			<< "Created cached box for type (" << typeid(Box).name() << ") -- first time. HashValue:(0x" << std::hex << hashValue << std::dec << ")" << std::endl;
-        auto i2 = boxTable.insert(i, std::make_pair(hashValue, std::move(ptr)));
+		Log(Verbose) << "Created cached box for type (" << typeid(Box).name() << ") -- first time. HashValue:(0x" << std::hex << hashValue << std::dec << ")" << std::endl;
+        auto i2 = boxTable.emplace(i, std::make_pair(hashValue, std::move(ptr)));
         return *i2->second;
     }
 

@@ -16,15 +16,12 @@ namespace ConsoleRig { class GlobalServices; class CrossModule; }
 
 namespace GUILayer
 {
-    class IWindowRig;
-
     class NativeEngineDevice
     {
     public:
         const std::shared_ptr<RenderCore::IDevice>&        GetRenderDevice() { return _renderDevice; }
         BufferUploads::IManager*    GetBufferUploads();
         ::Assets::Services*         GetAssetServices() { return _assetServices.get(); }
-        std::unique_ptr<IWindowRig> CreateWindowRig(const void* nativeWindowHandle);
         void                        AttachDefaultCompilers();
         RenderCore::IThreadContext* GetImmediateContext();
         ConsoleRig::GlobalServices* GetGlobalServices() { return _services.get(); }

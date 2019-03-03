@@ -48,18 +48,6 @@ namespace GUILayer
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
-    {
-        std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
-
-        BufferUploads::IManager* bufferUploads = &_renderAssetsServices->GetBufferUploads();
-        result->GetFrameRig().AddPostPresentCallback(
-            [bufferUploads](RenderCore::IThreadContext& threadContext)
-            { bufferUploads->Update(threadContext, false); });
-
-        return std::move(result);
-    }
-
     void NativeEngineDevice::AttachDefaultCompilers()
     {
         _renderAssetsServices->InitModelCompilers();
@@ -69,15 +57,8 @@ namespace GUILayer
         asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext));
     }
 
-    BufferUploads::IManager*    NativeEngineDevice::GetBufferUploads()
-    {
-        return &_renderAssetsServices->GetBufferUploads();
-    }
-
-    RenderCore::IThreadContext* NativeEngineDevice::GetImmediateContext()
-    {
-        return _renderDevice->GetImmediateContext().get();
-    }
+    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return &_renderAssetsServices->GetBufferUploads(); }
+    RenderCore::IThreadContext*		NativeEngineDevice::GetImmediateContext()	{ return _renderDevice->GetImmediateContext().get(); }
 
     NativeEngineDevice::NativeEngineDevice()
     {
@@ -167,7 +148,7 @@ namespace GUILayer
     {
         assert(s_instance == nullptr);
         _shutdownCallbacks = gcnew System::Collections::Generic::List<System::WeakReference^>();
-        _pimpl = new NativeEngineDevice;
+        _pimpl = new NativeEngineDevice();
         s_instance = this;
     }
 
@@ -179,14 +160,15 @@ namespace GUILayer
         PrepareForShutdown();
         Assets::Dependencies_Shutdown();
         delete _pimpl;
-        _pimpl = nullptr;
+		_pimpl = nullptr;
         TerminateFileSystemMonitoring();
     }
 
     EngineDevice::!EngineDevice() 
     {
-        delete _pimpl;
-        _pimpl = nullptr;
+		if (_pimpl) {
+			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of EngineDevice");
+		}
     }
 }
 

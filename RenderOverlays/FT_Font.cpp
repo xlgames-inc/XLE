@@ -8,6 +8,7 @@
 #include "FT_FontTexture.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/Assets.h"
+#include "../ConsoleRig/ResourceBox.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/StringUtils.h"
@@ -73,21 +74,23 @@ namespace RenderOverlays
 		std::unordered_map<std::string, std::string> _nameMap;
 		::Assets::DepValPtr _nameMapDepVal;
 
-		FTFontResources();
+		class Desc {};
+		FTFontResources(const Desc&);
 		~FTFontResources();
 	};
 
 	static FTFontResources& GetRes()
 	{
-		static FTFontResources s_result;
-		return s_result;
+		return ConsoleRig::FindCachedBox2<FTFontResources>();
 	}
 
 	FTFont::FTFont(StringSection<::Assets::ResChar> faceName, int faceSize)
 	{
+		auto& res = GetRes();
+
 		std::string finalPath = faceName.AsString();
-		auto i = GetRes()._nameMap.find(finalPath);
-		if (i != GetRes()._nameMap.end())
+		auto i = res._nameMap.find(finalPath);
+		if (i != res._nameMap.end())
 			finalPath = i->second;
 
 		_pBuffer = GetRes()._bufferManager.GetBuffer(finalPath);
@@ -322,7 +325,7 @@ namespace RenderOverlays
         }
 	}
 
-	FTFontResources::FTFontResources()
+	FTFontResources::FTFontResources(const Desc&)
 	{
 		FT_Error error = FT_Init_FreeType(&_ftLib);
 		if (error)

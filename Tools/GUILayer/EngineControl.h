@@ -54,10 +54,11 @@ namespace GUILayer
 		PlatformRig::InputContext MakeInputContext(System::Windows::Forms::Control^ control);
     };
 
+	class WindowRig;
     class EngineControlPimpl
     {
     public:
-        std::unique_ptr<IWindowRig> _windowRig;
+        std::unique_ptr<WindowRig> _windowRig;
         std::unique_ptr<PlatformRig::InputTranslator> _inputTranslator;
 
         ~EngineControlPimpl();

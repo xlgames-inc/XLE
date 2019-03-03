@@ -255,6 +255,9 @@ namespace ConsoleRig
 
 	void ResourceBoxes_Shutdown()
 	{
+		// Destroy the box tables in reverse order
+		while (!Internal::BoxTables.empty())
+			Internal::BoxTables.erase(Internal::BoxTables.end()-1);
 		Internal::BoxTables = std::vector<std::unique_ptr<Internal::IBoxTable>>();
 	}
 
