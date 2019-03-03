@@ -38,7 +38,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../PlatformRig/DebugHotKeys.h"
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -131,8 +131,8 @@ namespace Sample
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         EnvironmentSceneParser& mainScene, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener)
+        std::shared_ptr<PlatformRig::IInputListener> cameraInputListener,
+        std::shared_ptr<PlatformRig::IInputListener> overlaySystemInputListener)
     {
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
         mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));

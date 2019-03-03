@@ -10,24 +10,22 @@
 #include "../Utility/UTFUtils.h"
 #include <vector>
 
-namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; class InputContext; class InputSnapshot; } }
-
 namespace PlatformRig
 {
+	class IInputListener; class InputContext; class InputSnapshot;
+
     class InputTranslator
     {
     public:
-		using Context = RenderOverlays::DebuggingDisplay::InputContext;
+        void    OnMouseMove         (const InputContext& context, signed newX,       signed newY);
+        void    OnMouseButtonChange (const InputContext& context, signed newX, signed newY, unsigned index,    bool newState);
+        void    OnMouseButtonDblClk (const InputContext& context, signed newX, signed newY, unsigned index);
+        void    OnKeyChange         (const InputContext& context, unsigned keyCode,  bool newState);
+        void    OnChar              (const InputContext& context, ucs2 chr);
+        void    OnMouseWheel        (const InputContext& context, signed wheelDelta);
+        void    OnFocusChange       (const InputContext& context);
 
-        void    OnMouseMove         (const Context& context, signed newX,       signed newY);
-        void    OnMouseButtonChange (const Context& context, signed newX, signed newY, unsigned index,    bool newState);
-        void    OnMouseButtonDblClk (const Context& context, signed newX, signed newY, unsigned index);
-        void    OnKeyChange         (const Context& context, unsigned keyCode,  bool newState);
-        void    OnChar              (const Context& context, ucs2 chr);
-        void    OnMouseWheel        (const Context& context, signed wheelDelta);
-        void    OnFocusChange       (const Context& context);
-
-        void    AddListener         (std::weak_ptr<RenderOverlays::DebuggingDisplay::IInputListener> listener);
+        void    AddListener         (std::weak_ptr<IInputListener> listener);
 
         Int2    GetMousePosition();
 
@@ -41,8 +39,8 @@ namespace PlatformRig
         unsigned        GetMouseButtonState() const;
 
         void            Publish(
-			const Context& context, 
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& snapShot);
+			const InputContext& context, 
+			const InputSnapshot& snapShot);
         const char*     AsKeyName(unsigned keyCode);
     };
 }

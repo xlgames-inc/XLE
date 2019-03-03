@@ -21,7 +21,7 @@ namespace Overlays
         TestMaterialSettings(SceneEngine::MaterialOverride& materialSettings);
         ~TestMaterialSettings();
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
 
     private:
         ScrollBar   _scrollers[11];

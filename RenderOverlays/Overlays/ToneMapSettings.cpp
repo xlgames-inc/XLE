@@ -74,7 +74,7 @@ namespace Overlays
         }
     }
 
-    bool    ToneMapSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ToneMapSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
@@ -170,7 +170,7 @@ namespace Overlays
         }
     }
 
-    bool    ColorGradingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ColorGradingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {

@@ -118,11 +118,11 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool    CommonManipulator::OnInputEvent(
-        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
-        const bool shiftHeld = evnt.IsHeld(RenderOverlays::DebuggingDisplay::KeyId_Make("shift"));
+        const bool shiftHeld = evnt.IsHeld(PlatformRig::KeyId_Make("shift"));
         if (evnt._wheelDelta) {
                 // on wheel delta, change effect size
             if (shiftHeld) {
@@ -196,7 +196,7 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool    RectangleManipulator::OnInputEvent(
-        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const PlatformRig::InputSnapshot& evnt, 
         const IntersectionTestContext& hitTestContext,
         const IntersectionTestScene& hitTestScene)
     {

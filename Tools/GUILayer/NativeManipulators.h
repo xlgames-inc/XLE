@@ -6,11 +6,7 @@
 
 using namespace System::Collections::Generic;
 
-namespace RenderOverlays { namespace DebuggingDisplay
-{
-    class InputSnapshot;
-}}
-
+namespace PlatformRig { class InputSnapshot; }
 namespace ToolsRig { class IManipulator; }
 
 namespace GUILayer
@@ -73,7 +69,7 @@ namespace GUILayer
         ~NativeManipulatorLayer();
 
     private:
-        bool SendInputEvent(IViewContext^ vc, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool SendInputEvent(IViewContext^ vc, const PlatformRig::InputSnapshot& evnt);
         ActiveManipulatorContext^ _manipContext;
     };
 }

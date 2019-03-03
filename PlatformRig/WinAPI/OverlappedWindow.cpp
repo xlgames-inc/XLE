@@ -6,7 +6,7 @@
 
 #include "../OverlappedWindow.h"
 #include "../InputTranslator.h"
-#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../InputListener.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/MemoryUtils.h"
@@ -65,14 +65,11 @@ namespace PlatformRig
         Pimpl() : _hwnd(HWND(INVALID_HANDLE_VALUE)), _activated(false) {}
     };
 
-	RenderOverlays::DebuggingDisplay::InputContext MakeInputContext(HWND hwnd)
+	InputContext MakeInputContext(HWND hwnd)
 	{
 		RECT clientRect;
 		GetClientRect(hwnd, &clientRect);
-		return {
-			RenderOverlays::DebuggingDisplay::Coord2{clientRect.left, clientRect.top},
-			RenderOverlays::DebuggingDisplay::Coord2{clientRect.right, clientRect.bottom}
-		};
+		return { Coord2{clientRect.left, clientRect.top}, Coord2{clientRect.right, clientRect.bottom} };
 	}
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)

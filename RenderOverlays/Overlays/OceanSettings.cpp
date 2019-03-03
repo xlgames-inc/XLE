@@ -81,7 +81,7 @@ namespace Overlays
         }
     }
 
-    bool    OceanSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    OceanSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
@@ -199,7 +199,7 @@ namespace Overlays
         }
     }
 
-    bool    OceanLightingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    OceanLightingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {

@@ -84,8 +84,10 @@
     <ClCompile Include="..\DebuggingDisplays\GPUProfileDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\PlacementsDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp" />
+    <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\FrameRig.cpp" />
     <ClCompile Include="..\InitDebugDisplays.cpp" />
+    <ClCompile Include="..\InputListener.cpp" />
     <ClCompile Include="..\MainInputHandler.cpp" />
     <ClCompile Include="..\MeshNode.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -145,7 +147,9 @@
     <ClInclude Include="..\DebuggingDisplays\GPUProfileDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\PlacementsDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\TestDisplays.h" />
+    <ClInclude Include="..\DebugHotKeys.h" />
     <ClInclude Include="..\FrameRig.h" />
+    <ClInclude Include="..\InputListener.h" />
     <ClInclude Include="..\InputTranslator.h" />
     <ClInclude Include="..\MainInputHandler.h" />
     <ClInclude Include="..\MeshNode.h">

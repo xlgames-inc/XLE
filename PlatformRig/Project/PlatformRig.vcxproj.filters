@@ -42,6 +42,8 @@
     <ClCompile Include="..\WinAPI\InputTranslator.cpp">
       <Filter>WinAPI</Filter>
     </ClCompile>
+    <ClCompile Include="..\InputListener.cpp" />
+    <ClCompile Include="..\DebugHotKeys.cpp" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="WinAPI">
@@ -86,5 +88,7 @@
       <Filter>DebuggingDisplays</Filter>
     </ClInclude>
     <ClInclude Include="..\Screenshot.h" />
+    <ClInclude Include="..\InputListener.h" />
+    <ClInclude Include="..\DebugHotKeys.h" />
   </ItemGroup>
 </Project>

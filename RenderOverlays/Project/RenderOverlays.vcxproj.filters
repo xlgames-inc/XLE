@@ -21,7 +21,6 @@
     <ClCompile Include="..\Overlays\VolFogSettings.cpp">
       <Filter>Overlays</Filter>
     </ClCompile>
-    <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\Overlays\ShadowFrustumDebugger.cpp">
       <Filter>Overlays</Filter>
     </ClCompile>
@@ -55,7 +54,6 @@
     <ClInclude Include="..\Overlays\VolFogSettings.h">
       <Filter>Overlays</Filter>
     </ClInclude>
-    <ClInclude Include="..\DebugHotKeys.h" />
     <ClInclude Include="..\Overlays\ShadowFrustumDebugger.h">
       <Filter>Overlays</Filter>
     </ClInclude>

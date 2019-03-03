@@ -17,16 +17,12 @@
 
 namespace PlatformRig
 {
-    using RenderOverlays::DebuggingDisplay::IInputListener;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class OverlaySystemSwitch::InputListener : public IInputListener
     {
     public:
-        virtual bool    OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        virtual bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt)
         {
             using namespace RenderOverlays::DebuggingDisplay;
             static const KeyId shiftKey = KeyId_Make("shift");
@@ -110,11 +106,8 @@ namespace PlatformRig
     class OverlaySystemSet::InputListener : public IInputListener
     {
     public:
-        virtual bool    OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        virtual bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt)
         {
-            using namespace RenderOverlays::DebuggingDisplay;
             for (auto i=_parent->_childSystems.begin(); i!=_parent->_childSystems.end(); ++i) {
                 auto listener = (*i)->GetInputListener();
                 if (listener && listener->OnInputEvent(context, evnt)) {

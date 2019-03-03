@@ -302,7 +302,7 @@ namespace ToolsRig
     {
     public:
         virtual bool    OnInputEvent(
-            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
@@ -328,7 +328,7 @@ namespace ToolsRig
     static const float s_manipulatorCylinderRadius = 0.125f;
 
     bool FineTuneManipulator::OnInputEvent(
-        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {

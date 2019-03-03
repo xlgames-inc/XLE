@@ -16,13 +16,11 @@
 
 namespace ToolsRig
 {
-    using RenderOverlays::DebuggingDisplay::InputSnapshot;
-
     class CameraMovementManipulator : public IManipulator
     {
     public:
         bool OnInputEvent(
-            const InputSnapshot& evnt, 
+            const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
@@ -49,7 +47,7 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool CameraMovementManipulator::OnInputEvent(
-        const InputSnapshot& evnt, 
+        const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
@@ -73,7 +71,7 @@ namespace ToolsRig
             //  directed to the camera when the middle mouse button is down.
         if (!_visCameraSettings) { return false; }
 
-        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
+        static auto ctrl = PlatformRig::KeyId_Make("control");
         if (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) {
 
             if (!&hitTestContext || !&hitTestScene) return false;
@@ -92,8 +90,8 @@ namespace ToolsRig
             // cancel manipulator when the middle mouse button is released
         if (evnt.IsRelease_MButton()) { return false; }
 
-        static auto alt = RenderOverlays::DebuggingDisplay::KeyId_Make("alt");
-        static auto shift = RenderOverlays::DebuggingDisplay::KeyId_Make("shift");
+        static auto alt = PlatformRig::KeyId_Make("alt");
+        static auto shift = PlatformRig::KeyId_Make("shift");
         enum ModifierMode
         {
             Translate, Orbit
@@ -200,10 +198,10 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool    ManipulatorStack::OnInputEvent(
-		const RenderOverlays::DebuggingDisplay::InputContext& context,
-		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+		const PlatformRig::InputContext& context,
+		const PlatformRig::InputSnapshot& evnt)
     {
-        static auto ctrl = RenderOverlays::DebuggingDisplay::KeyId_Make("control");
+        static auto ctrl = PlatformRig::KeyId_Make("control");
         if (evnt.IsPress_MButton() || evnt.IsRelease_MButton() || (evnt.IsHeld(ctrl) && evnt.IsPress_LButton()) || evnt._wheelDelta) {
             auto i = LowerBound(_registeredManipulators, CameraManipulator);
             if (i!=_registeredManipulators.end() && i->first == CameraManipulator) {

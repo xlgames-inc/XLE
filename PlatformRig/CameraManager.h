@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderOverlays/DebuggingDisplay.h"
+#include "InputListener.h"
 #include "../Math/Matrix.h"
 
 namespace RenderCore { namespace Techniques { class CameraDesc; } }
@@ -22,12 +22,10 @@ namespace PlatformRig { namespace Camera
 
     class UnitCamManager;
 
-    class CameraInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
+    class CameraInputHandler : public IInputListener
     {
     public:
-        bool    OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt);
         void    Commit(float dt);
         
         CameraInputHandler(
@@ -41,8 +39,8 @@ namespace PlatformRig { namespace Camera
         std::unique_ptr<UnitCamManager> _unitCamera;
         Float3 _orbitFocus;
 
-        RenderOverlays::DebuggingDisplay::InputSnapshot     _accumulatedState;
-        RenderOverlays::DebuggingDisplay::InputSnapshot     _prevAccumulatedState;
+        InputSnapshot     _accumulatedState;
+        InputSnapshot     _prevAccumulatedState;
     };
 }}
 

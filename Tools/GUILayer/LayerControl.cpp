@@ -100,9 +100,7 @@ namespace GUILayer
         class OverlaySystemAdapter : public PlatformRig::IOverlaySystem
         {
         public:
-            typedef RenderOverlays::DebuggingDisplay::IInputListener IInputListener;
-
-            std::shared_ptr<IInputListener> GetInputListener()
+            std::shared_ptr<PlatformRig::IInputListener> GetInputListener()
             {
                 // return _managedOverlay->GetInputListener();
                 return nullptr;

@@ -15,7 +15,7 @@ namespace SceneEngine
     class IntersectionTestScene;
 }
 
-namespace RenderOverlays { namespace DebuggingDisplay { class InputSnapshot; } }
+namespace PlatformRig { class InputSnapshot; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace ToolsRig
@@ -24,7 +24,7 @@ namespace ToolsRig
     {
     public:
         virtual bool OnInputEvent(
-            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
         virtual void Render(

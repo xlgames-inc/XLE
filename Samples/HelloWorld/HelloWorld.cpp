@@ -16,10 +16,10 @@ namespace Sample
 {
 	void RenderPostScene(RenderCore::IThreadContext& context);
 
-	class HelloWorldOverlay::InputListener : public RenderOverlays::DebuggingDisplay::IInputListener
+	class HelloWorldOverlay::InputListener : public PlatformRig::IInputListener
 	{
 	public:
-		bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputContext& context, const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+		bool    OnInputEvent(const PlatformRig::InputContext& context, const PlatformRig::InputSnapshot& evnt)
 		{
 			_zoomFactor += evnt._wheelDelta / (16.f * 180.f);
 			_zoomFactor = std::max(0.0f, _zoomFactor);
@@ -72,7 +72,7 @@ namespace Sample
 		}
 	}
 
-	auto HelloWorldOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+	auto HelloWorldOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
 	{
 		return _inputListener;
 	}

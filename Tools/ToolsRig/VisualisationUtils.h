@@ -147,7 +147,7 @@ namespace ToolsRig
 	class VisualisationOverlay : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual std::shared_ptr<IInputListener> GetInputListener();
+        virtual std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
 
         virtual void Render(
             RenderCore::IThreadContext& context,
@@ -176,7 +176,7 @@ namespace ToolsRig
     class MouseOverTrackingOverlay : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual std::shared_ptr<IInputListener> GetInputListener();
+        virtual std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
 
         virtual void Render(
             RenderCore::IThreadContext& context, 
@@ -206,7 +206,7 @@ namespace ToolsRig
     };
 
 	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(
-		const std::shared_ptr<PlatformRig::IOverlaySystem::IInputListener>& listener);
+		const std::shared_ptr<PlatformRig::IInputListener>& listener);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

@@ -398,8 +398,7 @@ namespace PlatformRig { namespace Camera
         return Float3(ypr[2], ypr[0], ypr[1]);
     }
 
-    UnitCamManager::OutputCamera UnitCamManager::UpdateUnitCamera(float dt, ClientUnit* unit, 
-        const RenderOverlays::DebuggingDisplay::InputSnapshot& snapShot)
+    UnitCamManager::OutputCamera UnitCamManager::UpdateUnitCamera(float dt, ClientUnit* unit, const InputSnapshot& snapShot)
     {
         ++_frameId;
 

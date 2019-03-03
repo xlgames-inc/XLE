@@ -12,7 +12,7 @@
 #include "../../Core/Types.h"
 #include <memory>
 
-namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
+namespace PlatformRig { class IInputListener; }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 
 namespace SceneEngine
@@ -45,7 +45,7 @@ namespace ToolsRig
             RenderCore::IThreadContext& context, 
             RenderCore::Techniques::ParsingContext& parserContext);
 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputLister();
+        std::shared_ptr<PlatformRig::IInputListener> GetInputLister();
 
         PlacementsManipulatorsManager(
             std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,

@@ -21,7 +21,7 @@
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../PlatformRig/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
 #include "../../Assets/AssetServices.h"

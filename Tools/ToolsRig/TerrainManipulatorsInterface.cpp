@@ -22,20 +22,20 @@ namespace ToolsRig
         //      I N T E R F A C E           //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ManipulatorsInterface::InputListener : public RenderOverlays::DebuggingDisplay::IInputListener
+    class ManipulatorsInterface::InputListener : public PlatformRig::IInputListener
     {
     public:
         bool OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+			const PlatformRig::InputContext& context,
+			const PlatformRig::InputSnapshot& evnt);
         InputListener(std::shared_ptr<ManipulatorsInterface> parent);
     private:
         std::weak_ptr<ManipulatorsInterface> _parent;
     };
 
     bool    ManipulatorsInterface::InputListener::OnInputEvent(
-		const RenderOverlays::DebuggingDisplay::InputContext& context,
-		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+		const PlatformRig::InputContext& context,
+		const PlatformRig::InputSnapshot& evnt)
     {
         auto p = _parent.lock();
         if (p) {
@@ -65,7 +65,7 @@ namespace ToolsRig
         _activeManipulatorIndex = unsigned(_activeManipulatorIndex + relativeIndex + _manipulators.size()) % unsigned(_manipulators.size());
     }
 
-    std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   ManipulatorsInterface::CreateInputListener()
+    std::shared_ptr<PlatformRig::IInputListener>   ManipulatorsInterface::CreateInputListener()
     {
         return std::make_shared<InputListener>(shared_from_this());
     }
@@ -313,7 +313,7 @@ namespace ToolsRig
         }
     }
 
-    bool HandleManipulatorsControls(InterfaceState& interfaceState, const InputSnapshot& input, IManipulator& manipulator)
+    bool HandleManipulatorsControls(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input, IManipulator& manipulator)
     {
         if (input.IsHeld_LButton()) {
             auto topMost = interfaceState.TopMostWidget();
@@ -354,7 +354,7 @@ namespace ToolsRig
         DrawManipulatorControls(context, layout, interactables, interfaceState, *activeManipulator, "Terrain tools");
     }
 
-    bool    ManipulatorsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ManipulatorsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
     {
         auto topMost = interfaceState.TopMostWidget();
         if (input.IsRelease_LButton()) {

@@ -24,7 +24,7 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 
 #include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../PlatformRig/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
 #include "../../Assets/AssetServices.h"
@@ -107,7 +107,7 @@ namespace Sample
             InitProfilerDisplays(*frameRig.GetDebugSystem(), &threadContext->GetAnnotator(), cpuProfiler);
 
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
-            overlaySwitch->AddSystem(RenderOverlays::DebuggingDisplay::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
+            overlaySwitch->AddSystem(PlatformRig::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
             frameRig.GetDebugScreensOverlaySystem()->AddSystem(overlaySwitch);
 
 			sampleGlobals._debugScreens = frameRig.GetDebugSystem();
@@ -118,7 +118,7 @@ namespace Sample
                 //      * The order in which we add handlers determines their priority in intercepting messages
             Log(Verbose) << "Setup input" << std::endl;
             sampleGlobals._mainInputHander = std::make_shared<PlatformRig::MainInputHandler>();
-            sampleGlobals._mainInputHander->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
+            sampleGlobals._mainInputHander->AddListener(PlatformRig::MakeHotKeysHandler("xleres/hotkey.txt"));
             sampleGlobals._mainInputHander->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
 			sampleGlobals._mainInputHander->AddListener(frameRig.GetDebugScreensOverlaySystem()->GetInputListener());
             window.GetInputTranslator().AddListener(sampleGlobals._mainInputHander);

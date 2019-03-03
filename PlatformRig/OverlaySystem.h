@@ -13,11 +13,11 @@
 #include <memory>
 #include <vector>
 
-namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; } }
 namespace RenderCore { namespace Techniques { class ProjectionDesc; class ParsingContext; } }
 
 namespace PlatformRig
 {
+	class IInputListener;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     class IOverlaySystem
@@ -28,7 +28,6 @@ namespace PlatformRig
 			const RenderCore::IResourcePtr& renderTarget,
 			RenderCore::Techniques::ParsingContext& parserContext) = 0; 
 
-        using IInputListener = RenderOverlays::DebuggingDisplay::IInputListener;
         virtual std::shared_ptr<IInputListener> GetInputListener();
         virtual void SetActivationState(bool newState);
 

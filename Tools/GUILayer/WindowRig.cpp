@@ -76,8 +76,7 @@ namespace GUILayer
 
         {
             auto overlaySwitch = std::make_shared<PlatformRig::OverlaySystemSwitch>();
-            using RenderOverlays::DebuggingDisplay::KeyId_Make;
-            overlaySwitch->AddSystem(KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
+            overlaySwitch->AddSystem(PlatformRig::KeyId_Make("~"), PlatformRig::CreateConsoleOverlaySystem());
             _frameRig->GetMainOverlaySystem()->AddSystem(overlaySwitch);
         }
 

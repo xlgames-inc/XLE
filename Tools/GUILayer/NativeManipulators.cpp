@@ -15,7 +15,7 @@
 #include "MarshalString.h"
 #include "NativeEngineDevice.h"
 #include "../ToolsRig/IManipulator.h"
-#include "../../RenderOverlays/DebuggingDisplay.h"
+#include "../PlatformRig/InputListener.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include <msclr/auto_handle.h>
@@ -27,13 +27,12 @@ extern "C" __declspec(dllimport) short __stdcall GetKeyState(int nVirtKey);
 
 namespace GUILayer
 {
-    static void SetupModifierKeys(RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    static void SetupModifierKeys(PlatformRig::InputSnapshot& evnt)
     {
-        using namespace RenderOverlays::DebuggingDisplay;
-        typedef InputSnapshot::ActiveButton ActiveButton;
-        static auto shift = KeyId_Make("shift");
-        static auto control = KeyId_Make("control");
-        static auto alt = KeyId_Make("alt");
+        typedef PlatformRig::InputSnapshot::ActiveButton ActiveButton;
+        static auto shift = PlatformRig::KeyId_Make("shift");
+        static auto control = PlatformRig::KeyId_Make("control");
+        static auto alt = PlatformRig::KeyId_Make("alt");
 
         if (GetKeyState(0x10) < 0) evnt._activeButtons.push_back(ActiveButton(shift, false, true));
         if (GetKeyState(0x11) < 0) evnt._activeButtons.push_back(ActiveButton(control, false, true));
@@ -42,7 +41,7 @@ namespace GUILayer
 
     bool NativeManipulatorLayer::MouseMove(IViewContext^ vc, Point scrPt)
     {
-        using namespace RenderOverlays::DebuggingDisplay;
+        using namespace PlatformRig;
 		InputSnapshot evnt(0, 0, 0, Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
 			// "return true" has two effects --
 			//		1. sets the cursor to a moving cursor
@@ -59,7 +58,7 @@ namespace GUILayer
 
     bool NativeManipulatorLayer::OnBeginDrag(IViewContext^ vc, Point scrPt) 
     { 
-        using namespace RenderOverlays::DebuggingDisplay;
+        using namespace PlatformRig;
         auto btnState = 1<<0;
 		InputSnapshot evnt(
 			btnState, btnState, 0,
@@ -75,7 +74,7 @@ namespace GUILayer
 			//  for buttons and keys pressed down.
             //  For the first "OnDragging" operation after a "OnBeginDrag", we should
             //  emulate a mouse down event.
-		using namespace RenderOverlays::DebuggingDisplay;
+		using namespace PlatformRig;
         auto btnState = 1<<0;
 		InputSnapshot evnt(
 			btnState, 0, 0,
@@ -87,7 +86,7 @@ namespace GUILayer
     bool NativeManipulatorLayer::OnEndDrag(IViewContext^ vc, Point scrPt) 
 	{
             // Emulate a "mouse up" operation 
-        using namespace RenderOverlays::DebuggingDisplay;
+        using namespace PlatformRig;
         auto btnState = 1<<0;
 		InputSnapshot evnt(
 			0, btnState, 0,
@@ -98,7 +97,7 @@ namespace GUILayer
 
     bool NativeManipulatorLayer::OnHover(IViewContext^ vc, Point scrPt)
     {
-        using namespace RenderOverlays::DebuggingDisplay;
+        using namespace PlatformRig;
 		InputSnapshot evnt(0, 0, 0, Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
         SetupModifierKeys(evnt);
         return SendInputEvent(vc, evnt);
@@ -106,7 +105,7 @@ namespace GUILayer
 
     void NativeManipulatorLayer::OnMouseWheel(IViewContext^ vc, Point scrPt, int delta)
     {
-        using namespace RenderOverlays::DebuggingDisplay;
+        using namespace PlatformRig;
 		InputSnapshot evnt(
 			0, 0, delta,
 			Coord2(scrPt.X, scrPt.Y), Coord2(0, 0));
@@ -125,7 +124,7 @@ namespace GUILayer
 
     bool NativeManipulatorLayer::SendInputEvent(
         IViewContext^ vc, 
-		const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+		const PlatformRig::InputSnapshot& evnt)
 	{
 		auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return false;

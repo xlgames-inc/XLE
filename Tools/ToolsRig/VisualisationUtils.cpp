@@ -436,7 +436,7 @@ namespace ToolsRig
 		}
 	}
 
-    auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+    auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
     { return nullptr; }
 
     void VisualisationOverlay::SetActivationState(bool) {}
@@ -522,12 +522,12 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class MouseOverTrackingListener : public RenderOverlays::DebuggingDisplay::IInputListener
+    class MouseOverTrackingListener : public PlatformRig::IInputListener
     {
     public:
         bool OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+			const PlatformRig::InputContext& context,
+			const PlatformRig::InputSnapshot& evnt)
         {
             using namespace SceneEngine;
 
@@ -589,7 +589,7 @@ namespace ToolsRig
         ::Assets::FuturePtr<SceneEngine::IScene> _sceneFuture;
     };
 
-    auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<IInputListener>
+    auto MouseOverTrackingOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
     {
         return _inputListener;
     }
@@ -641,20 +641,20 @@ namespace ToolsRig
 	class InputLayer : public PlatformRig::IOverlaySystem
     {
     public:
-        std::shared_ptr<IInputListener> GetInputListener();
+        std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
 
         void Render(
             RenderCore::IThreadContext& context,
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext); 
 
-        InputLayer(std::shared_ptr<IInputListener> listener);
+        InputLayer(std::shared_ptr<PlatformRig::IInputListener> listener);
         ~InputLayer();
     protected:
-        std::shared_ptr<IInputListener> _listener;
+        std::shared_ptr<PlatformRig::IInputListener> _listener;
     };
 
-    auto InputLayer::GetInputListener() -> std::shared_ptr<IInputListener>
+    auto InputLayer::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
     {
         return _listener;
     }
@@ -664,10 +664,10 @@ namespace ToolsRig
 		const RenderCore::IResourcePtr&,
 		RenderCore::Techniques::ParsingContext&) {}
 
-    InputLayer::InputLayer(std::shared_ptr<IInputListener> listener) : _listener(listener) {}
+    InputLayer::InputLayer(std::shared_ptr<PlatformRig::IInputListener> listener) : _listener(listener) {}
     InputLayer::~InputLayer() {}
 
-	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(const std::shared_ptr<PlatformRig::IOverlaySystem::IInputListener>& listener)
+	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(const std::shared_ptr<PlatformRig::IInputListener>& listener)
 	{
 		return std::make_shared<InputLayer>(listener);
 	}

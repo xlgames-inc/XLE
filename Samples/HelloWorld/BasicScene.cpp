@@ -237,12 +237,12 @@ namespace Sample
 			static float time = 0.f;
 			time += 1.0f / 60.f;
 
-			RenderCore::Assets::AnimationState animState(
-				std::fmod(time, foundAnimation._endTime), animation);
+			RenderCore::Assets::AnimationState animState{
+				std::fmod(time, foundAnimation._endTime), animation};
 			auto params = animData._animationSet.BuildTransformationParameterSet(
 				animState,
 				skeletonMachine, animSetToSkeletonBinding,
-				animData._curves, animData._curvesCount);
+				MakeIteratorRange(animData._curves));
 
 			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine.GetOutputMatrixCount());
 			skeletonMachine.GenerateOutputTransforms(

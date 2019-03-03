@@ -15,12 +15,12 @@ namespace PlatformRig { namespace Camera { class ICameraAttach; }}
 namespace Sample
 {
     class Character;
-    class SampleInputHandler : public RenderOverlays::DebuggingDisplay::IInputListener
+    class SampleInputHandler : public PlatformRig::IInputListener
     {
     public:
         bool OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+			const PlatformRig::InputContext& context,
+			const PlatformRig::InputSnapshot& evnt);
 
         SampleInputHandler(
             std::shared_ptr<PlatformRig::Camera::ICameraAttach> playerCharacter, 

@@ -84,7 +84,6 @@
   <ItemGroup>
     <ClCompile Include="..\animationvisualization.cpp" />
     <ClCompile Include="..\DebuggingDisplay.cpp" />
-    <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\Font.cpp" />
     <ClCompile Include="..\OverlayPrimitives.cpp" />
     <ClCompile Include="..\FontRectanglePacking.cpp" />
@@ -104,7 +103,6 @@
   <ItemGroup>
     <ClInclude Include="..\animationvisualization.h" />
     <ClInclude Include="..\DebuggingDisplay.h" />
-    <ClInclude Include="..\DebugHotKeys.h" />
     <ClInclude Include="..\FontRectanglePacking.h" />
     <ClInclude Include="..\HighlightEffects.h" />
     <ClInclude Include="..\IOverlayContext.h" />

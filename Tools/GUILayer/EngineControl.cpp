@@ -54,10 +54,10 @@ namespace GUILayer
     {
 	}
 
-	RenderOverlays::DebuggingDisplay::InputContext EngineControl::MakeInputContext(System::Windows::Forms::Control^ control)
+	PlatformRig::InputContext EngineControl::MakeInputContext(System::Windows::Forms::Control^ control)
 	{
 		System::Drawing::Rectangle rect = control->ClientRectangle;
-		return RenderOverlays::DebuggingDisplay::InputContext {
+		return PlatformRig::InputContext {
 			{ rect.Left, rect.Top },
 			{ rect.Right, rect.Bottom }
 		};

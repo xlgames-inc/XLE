@@ -20,7 +20,7 @@ namespace Sample
 
     class TerrainManipulators
         : public PlatformRig::IOverlaySystem
-        , public RenderOverlays::DebuggingDisplay::IInputListener
+        , public PlatformRig::IInputListener
         , public std::enable_shared_from_this<TerrainManipulators>
     {
     public:
@@ -37,14 +37,14 @@ namespace Sample
             _screens->Register(_terrainManipulators, "Terrain", DebugScreensSystem::SystemDisplay);
         }
 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> GetInputListener()
+        std::shared_ptr<PlatformRig::IInputListener> GetInputListener()
         {
             return shared_from_this();
         }
 
         bool OnInputEvent(
-			const RenderOverlays::DebuggingDisplay::InputContext& context,
-			const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+			const PlatformRig::InputContext& context,
+			const PlatformRig::InputSnapshot& evnt)
         {
             return  _screens->OnInputEvent(context, evnt)
                 ||  _manipInputListener->OnInputEvent(context, evnt);
@@ -72,7 +72,7 @@ namespace Sample
         std::shared_ptr<::ToolsRig::ManipulatorsInterface> _manipulatorsInterface;
         std::shared_ptr<::ToolsRig::ManipulatorsDisplay> _terrainManipulators;
         std::shared_ptr<DebugScreensSystem> _screens;
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> _manipInputListener;
+        std::shared_ptr<PlatformRig::IInputListener> _manipInputListener;
         std::shared_ptr<::ToolsRig::TerrainManipulatorContext> _terrainManipulatorContext;
     };
 

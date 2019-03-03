@@ -328,7 +328,6 @@ namespace PlatformRig { namespace Overlays
                 return true;
             }
         }
-        using RenderOverlays::DebuggingDisplay::KeyId_Make;
         for (const auto& b:input._activeButtons) {
             if (b._name == KeyId_Make("up") && b._transition && b._state) {
                 _pimpl->_rowOffset = std::max(0, _pimpl->_rowOffset-1);

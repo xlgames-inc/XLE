@@ -10,7 +10,8 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include <memory>
 
-namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InputSnapshot; class IInputListener; class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
+namespace PlatformRig { class InputSnapshot; class IInputListener; }
+namespace RenderOverlays { class IOverlayContext; namespace DebuggingDisplay { class InterfaceState; struct Layout; class Interactables; class DebugScreensSystem; }; class Font; }
 namespace SceneEngine { class TerrainManager; class IntersectionTestContext; class IntersectionTestScene; }
 namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
@@ -29,7 +30,7 @@ namespace ToolsRig
         void SelectManipulator(signed relativeIndex);
         IManipulator* GetActiveManipulator() const { return _manipulators[_activeManipulatorIndex].get(); }
 
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   CreateInputListener();
+        std::shared_ptr<PlatformRig::IInputListener>   CreateInputListener();
 
         ManipulatorsInterface(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
@@ -53,7 +54,7 @@ namespace ToolsRig
         void    Render( RenderOverlays::IOverlayContext& context, RenderOverlays::DebuggingDisplay::Layout& layout, 
                         RenderOverlays::DebuggingDisplay::Interactables&interactables, 
                         RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState);
-        bool    ProcessInput(RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState, const RenderOverlays::DebuggingDisplay::InputSnapshot& input);
+        bool    ProcessInput(RenderOverlays::DebuggingDisplay::InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
 
         ManipulatorsDisplay(std::shared_ptr<ManipulatorsInterface> interf);
         ~ManipulatorsDisplay();

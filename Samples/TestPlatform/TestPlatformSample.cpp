@@ -15,6 +15,7 @@
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../PlatformRig/OverlaySystem.h"
+#include "../../PlatformRig/DebugHotKeys.h"
 
 #include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/LightingParserStandardPlugin.h"
@@ -29,7 +30,6 @@
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Tools/ToolsRig/BasicManipulators.h"
 #include "../../Assets/AssetServices.h"
@@ -98,10 +98,10 @@ namespace Sample
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         std::shared_ptr<TestPlatformSceneParser> mainScene, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener);
+        std::shared_ptr<PlatformRig::IInputListener> cameraInputListener,
+        std::shared_ptr<PlatformRig::IInputListener> overlaySystemInputListener);
     static void InitProfilerDisplays(RenderOverlays::DebuggingDisplay::DebugScreensSystem& debugSys);
-    static std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> CreateCameraListener(TestPlatformSceneParser& scene);
+    static std::shared_ptr<PlatformRig::IInputListener> CreateCameraListener(TestPlatformSceneParser& scene);
 
     static PlatformRig::FrameRig::RenderResult RenderFrame(
         RenderCore::IThreadContext& context,
@@ -264,11 +264,11 @@ namespace Sample
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         std::shared_ptr<TestPlatformSceneParser> mainScene, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener)
+        std::shared_ptr<PlatformRig::IInputListener> cameraInputListener,
+        std::shared_ptr<PlatformRig::IInputListener> overlaySystemInputListener)
     {
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
-        mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
+        mainInputHandler->AddListener(PlatformRig::MakeHotKeysHandler("xleres/hotkey.txt"));
         if (overlaySystemInputListener) {
             mainInputHandler->AddListener(overlaySystemInputListener);
         }
@@ -290,7 +290,7 @@ namespace Sample
             "[Profiler] CPU Profiler");
     }
 
-    static std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> CreateCameraListener(TestPlatformSceneParser& scene)
+    static std::shared_ptr<PlatformRig::IInputListener> CreateCameraListener(TestPlatformSceneParser& scene)
     {
         auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>();
         manipulators->Register(

@@ -22,7 +22,7 @@ namespace Overlays
         SharedBrowser(const char baseDirectory[], const std::string& headerName, unsigned itemDimensions, const std::string& fileFilter);
         ~SharedBrowser();
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
 
     private:
         class Pimpl;
@@ -48,7 +48,7 @@ namespace Overlays
                 : _consumed(consumed), _selectedModel(selected) {}
         };
         ProcessInputResult SpecialProcessInput(
-            InterfaceState& interfaceState, const InputSnapshot& input);
+            InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
 
         Coord2  GetPreviewSize() const;
         auto    GetSRV(RenderCore::IThreadContext& context, const std::basic_string<ucs2>&) -> std::pair<const RenderCore::Metal::ShaderResourceView*, uint64>;
