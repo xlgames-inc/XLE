@@ -120,6 +120,11 @@ namespace GUILayer
 		overlaySet.RemoveSystem(*_pimpl->_modelLayer);
 	}
 
+	void VisLayerController::OnEngineShutdown()
+	{
+		_pimpl.reset();
+	}
+
 	VisLayerController::VisLayerController()
 	{
 		_pimpl.reset(new VisLayerControllerPimpl());
@@ -163,6 +168,9 @@ namespace GUILayer
 				std::make_shared<RenderCore::Techniques::TechniqueContext>(),
 				_pimpl->_modelLayer->GetCamera(), &RenderTrackingOverlay);
 		}
+
+		auto engineDevice = EngineDevice::GetInstance();
+		engineDevice->AddOnShutdown(this);
 	}
 
 	VisLayerController::~VisLayerController()
@@ -172,7 +180,8 @@ namespace GUILayer
 
 	VisLayerController::!VisLayerController()
 	{
-		System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
+		if (_pimpl.get())
+			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
 	}
 }
 

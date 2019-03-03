@@ -68,10 +68,13 @@ namespace ControlsLibraryExt.ModelView
                 existingContext.LayerController.DetachFromView(_view.Underlying);
             }
             Context = context;
-            context.LayerController.AttachToView(_view.Underlying);
-            _ctrls.OverlaySettings = context.OverlaySettings;
-            _ctrls.ModelSettings = context.ModelSettings;
-            _animationCtrls.AnimationState = context.LayerController.AnimationState;
+            if (context != null)
+            {
+                context.LayerController.AttachToView(_view.Underlying);
+                _ctrls.OverlaySettings = context.OverlaySettings;
+                _ctrls.ModelSettings = context.ModelSettings;
+                _animationCtrls.AnimationState = context.LayerController.AnimationState;
+            }
         }
 
         public Material.ActiveMaterialContext ActiveMaterialContext { get; set; }
@@ -82,10 +85,13 @@ namespace ControlsLibraryExt.ModelView
         {
             if (disposing)
             {
-                _view.MouseClick -= OnViewerMouseClick;
-
+                SetContext(null);
                 if (components != null) components.Dispose();
-                if (_view != null) _view.Dispose();
+                if (_view != null)
+                {
+                    _view.MouseClick -= OnViewerMouseClick;
+                    _view.Dispose();
+                }
             }
             base.Dispose(disposing);
         }

@@ -153,6 +153,14 @@ namespace GUILayer
         return _techContextWrapper;
     }
 
+	void LayerControl::OnEngineShutdown()
+	{
+		_pimpl.reset();
+		delete _techContextWrapper;
+		_techContextWrapper = nullptr;
+		EngineControl::OnEngineShutdown();
+	}
+
     LayerControl::LayerControl(System::Windows::Forms::Control^ control)
         : EngineControl(control)
     {
@@ -166,12 +174,16 @@ namespace GUILayer
 
     LayerControl::~LayerControl() 
     {
+		_pimpl.reset();
         delete _techContextWrapper;
+		_techContextWrapper = nullptr;
     }
 
     LayerControl::!LayerControl()
     {
-        System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
+		if (_pimpl.get()) {
+			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of LayerControl");
+		}
     }
 }
 

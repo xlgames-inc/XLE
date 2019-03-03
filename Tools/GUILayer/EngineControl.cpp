@@ -247,7 +247,9 @@ namespace GUILayer
 
     EngineControl::!EngineControl()
     {
-        _pimpl.reset();
+        if (_pimpl.get()) {
+			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of EngineControl");
+		}
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

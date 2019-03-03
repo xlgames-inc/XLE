@@ -34,6 +34,8 @@ namespace GUILayer
         LayerControl(System::Windows::Forms::Control^ control);
         ~LayerControl();
         !LayerControl();
+		virtual void OnEngineShutdown() override;
+
     protected:
         clix::auto_ptr<LayerControlPimpl> _pimpl;
         TechniqueContextWrapper^ _techContextWrapper;

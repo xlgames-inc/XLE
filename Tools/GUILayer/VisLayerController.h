@@ -5,6 +5,7 @@
 #pragma once
 
 #include "UITypesBinding.h"
+#include "EngineDevice.h"
 
 namespace GUILayer 
 {
@@ -16,7 +17,7 @@ namespace GUILayer
 	ref class LayerControl;
 	ref class VisAnimationState;
 
-    public ref class VisLayerController
+	public ref class VisLayerController : public IOnEngineShutdown
     {
 	public:
 		property VisMouseOver^ MouseOver { VisMouseOver^ get(); }
@@ -34,6 +35,7 @@ namespace GUILayer
 		VisLayerController();
 		~VisLayerController();
 		!VisLayerController();
+		virtual void OnEngineShutdown();
 
 	private:
 		clix::auto_ptr<VisLayerControllerPimpl> _pimpl;
