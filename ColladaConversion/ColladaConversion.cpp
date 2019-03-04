@@ -505,11 +505,7 @@ namespace ColladaConversion
 
 		// Add a default animation containing all of the drivers in this file
 		if (!result.GetAnimationDrivers().empty() || !result.GetConstantDrivers().empty()) {
-			result.AddAnimation(
-				"main",
-				0, (unsigned)result.GetAnimationDrivers().size(),
-				0, (unsigned)result.GetConstantDrivers().size(),
-				0.f, 5.0f);
+			result.MakeIndividualAnimation("main");
 		}
 
 		return result;

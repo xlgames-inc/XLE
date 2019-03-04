@@ -51,7 +51,7 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 
         bool    HasAnimationDriver(const std::string&  parameterName) const;
         void    MergeAnimation(const NascentAnimationSet& animation, const std::string& name);
-		void	MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves);
+		void	MakeIndividualAnimation(const std::string& name);
 
 		void	AddAnimation(
 			const std::string& name, 

@@ -128,14 +128,14 @@ namespace RenderCore { namespace Assets { namespace GeoProc
 					minTime, maxTime}));
     }
 
-	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name, IteratorRange<const RawAnimationCurve*> curves)
+	void	NascentAnimationSet::MakeIndividualAnimation(const std::string& name)
 	{
 		// Make an Animation record that covers all of the curves registered.
 		// This is intended for cases where there's only a single animation within the NascentAnimationSet
 		float minTime = FLT_MAX, maxTime = -FLT_MAX;
 		for (auto i=_animationDrivers.cbegin(); i!=_animationDrivers.end(); ++i) {
-            if (i->_curveIndex >= curves.size()) continue;
-            const auto* animCurve = &curves[i->_curveIndex];
+            if (i->_curveIndex >= _curves.size()) continue;
+            const auto* animCurve = &_curves[i->_curveIndex];
             if (animCurve) {
                 float curveStart = animCurve->StartTime();
                 float curveEnd = animCurve->EndTime();
