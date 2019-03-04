@@ -117,7 +117,8 @@ namespace Previewer
 
                 typeof(ActiveMaterialContext),
                 typeof(Previewer),
-                typeof(GlobalPreviewerCommands)
+                typeof(GlobalPreviewerCommands),
+                typeof(GameLoopService)
             );
 
             // enable use of the system clipboard

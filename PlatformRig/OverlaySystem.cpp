@@ -88,6 +88,13 @@ namespace PlatformRig
         }
     }
 
+	auto OverlaySystemSwitch::GetOverlayState() const -> OverlayState
+	{
+		if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size()))
+            return _childSystems[_activeChildIndex].second->GetOverlayState();
+        return {};
+	}
+
     void OverlaySystemSwitch::AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system)
     {
         _childSystems.push_back(std::make_pair(activator, std::move(system)));
@@ -142,6 +149,17 @@ namespace PlatformRig
         }
     }
 
+	auto OverlaySystemSet::GetOverlayState() const -> OverlayState
+	{
+		OverlayState result;
+		for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
+			auto childState = (*i)->GetOverlayState();
+			if (childState._refreshMode == RefreshMode::RegularAnimation)
+				result._refreshMode = RefreshMode::RegularAnimation;
+		}
+		return result;
+	}
+
     void OverlaySystemSet::AddSystem(std::shared_ptr<IOverlaySystem> system)
     {
         _childSystems.push_back(std::move(system));
@@ -169,6 +187,7 @@ namespace PlatformRig
 
 	std::shared_ptr<IInputListener> IOverlaySystem::GetInputListener() { return nullptr; }
 	void IOverlaySystem::SetActivationState(bool newState) {}
+	auto IOverlaySystem::GetOverlayState() const -> OverlayState { return {}; }
     IOverlaySystem::~IOverlaySystem() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

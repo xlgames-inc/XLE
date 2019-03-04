@@ -437,10 +437,22 @@ namespace ToolsRig
 		}
 	}
 
-    auto VisualisationOverlay::GetInputListener() -> std::shared_ptr<PlatformRig::IInputListener>
-    { return nullptr; }
+    auto VisualisationOverlay::GetOverlayState() const -> OverlayState
+	{
+		RefreshMode refreshMode = RefreshMode::EventBased;
 
-    void VisualisationOverlay::SetActivationState(bool) {}
+		// Need regular updates if the scene future hasn't been fully loaded yet
+		// Or if there's active animation playing in the scene
+		if (_pimpl->_sceneFuture) { 	
+			refreshMode = RefreshMode::RegularAnimation;
+		} else {
+			auto* visContext = dynamic_cast<IVisContent*>(_pimpl->_scene.get());
+			if (visContext && visContext->HasActiveAnimation())
+				refreshMode = RefreshMode::RegularAnimation;
+		}
+		
+		return { refreshMode };
+	}
 
     VisualisationOverlay::VisualisationOverlay(
 		const VisOverlaySettings& overlaySettings,

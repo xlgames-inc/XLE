@@ -73,7 +73,11 @@ namespace GUILayer
                 parserContext, nullptr);
 
             // return false if when we have pending resources (encourage another redraw)
-            result =  !frResult._renderResult._hasPendingResources;
+            result = !frResult._renderResult._hasPendingResources;
+
+			if (frameRig.GetMainOverlaySystem()->GetOverlayState()._refreshMode == PlatformRig::IOverlaySystem::RefreshMode::RegularAnimation)
+				result = false;
+
         } CATCH (...) {
         } CATCH_END
         activePaintCheck2 = false;

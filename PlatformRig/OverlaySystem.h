@@ -31,6 +31,13 @@ namespace PlatformRig
         virtual std::shared_ptr<IInputListener> GetInputListener();
         virtual void SetActivationState(bool newState);
 
+		enum class RefreshMode { EventBased, RegularAnimation };
+		struct OverlayState
+		{
+			RefreshMode _refreshMode = RefreshMode::EventBased;
+		};
+		virtual OverlayState GetOverlayState() const;
+
         virtual ~IOverlaySystem();
     };
 
@@ -45,6 +52,7 @@ namespace PlatformRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool newState);
+		OverlayState GetOverlayState() const;
 
         void AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system);
 
@@ -70,6 +78,7 @@ namespace PlatformRig
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
         void SetActivationState(bool newState);
+		virtual OverlayState GetOverlayState() const;
 
         void AddSystem(std::shared_ptr<IOverlaySystem> system);
 		void RemoveSystem(IOverlaySystem& system);

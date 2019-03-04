@@ -76,6 +76,7 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveMaterialContext.cs" />
+    <Compile Include="GameLoopService.cs" />
     <Compile Include="Previewer.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />

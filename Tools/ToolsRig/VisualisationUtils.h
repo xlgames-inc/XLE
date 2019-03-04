@@ -118,6 +118,7 @@ namespace ToolsRig
 		virtual DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex) const = 0;
 
 		virtual void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) = 0;
+		virtual bool HasActiveAnimation() const = 0;
 
 		virtual ~IVisContent();
 	};
@@ -147,13 +148,11 @@ namespace ToolsRig
 	class VisualisationOverlay : public PlatformRig::IOverlaySystem
     {
     public:
-        virtual std::shared_ptr<PlatformRig::IInputListener> GetInputListener();
-
         virtual void Render(
             RenderCore::IThreadContext& context,
 			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
-        virtual void SetActivationState(bool newState);
+		virtual OverlayState GetOverlayState() const;
 
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
 		void Set(const std::shared_ptr<VisCameraSettings>&);

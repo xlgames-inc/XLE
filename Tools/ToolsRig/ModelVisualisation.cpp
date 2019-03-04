@@ -57,10 +57,9 @@ namespace ToolsRig
 				auto animHash = GetAnimationHash(_animationState->_activeAnimation);
 				auto foundAnimation = animData._animationSet.FindAnimation(animHash);
 				float time = _animationState->_animationTime;
-				if (_animationState->_state == VisAnimationState::State::Playing) {
+				if (_animationState->_state == VisAnimationState::State::Playing)
 					time += (Millisecond_Now() - _animationState->_anchorTime) / 1000.f;
-					time = fmodf(time - foundAnimation._beginTime, foundAnimation._endTime - foundAnimation._beginTime) + foundAnimation._beginTime;
-				}
+				time = fmodf(time - foundAnimation._beginTime, foundAnimation._endTime - foundAnimation._beginTime) + foundAnimation._beginTime;
 
 				auto params = animData._animationSet.BuildTransformationParameterSet(
 					{time, animHash},
@@ -170,6 +169,11 @@ namespace ToolsRig
 				}
 				_animationState->_changeEvent.Invoke();
 			}
+		}
+
+		bool HasActiveAnimation() const
+		{
+			return _animationScaffold && _animationState && _animationState->_state == VisAnimationState::State::Playing;
 		}
 
 		static void ConstructToFuture(

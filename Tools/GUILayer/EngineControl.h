@@ -27,11 +27,15 @@ namespace GUILayer
         bool IsInputKey(System::Windows::Forms::Keys keyData);
 
         IWindowRig& GetWindowRig();
+		bool IsVisible();
 
         EngineControl(System::Windows::Forms::Control^ control);
 		~EngineControl();
         !EngineControl();
         virtual void OnEngineShutdown();
+
+		static bool HasRegularAnimationControls();
+		static void TickRegularAnimation();
 
     protected:
         void Evnt_KeyDown(Object^, System::Windows::Forms::KeyEventArgs^ e);
@@ -50,6 +54,7 @@ namespace GUILayer
 
     private:
         clix::auto_ptr<EngineControlPimpl> _pimpl;
+		System::WeakReference^ _attachedControl;
 
 		PlatformRig::InputContext MakeInputContext(System::Windows::Forms::Control^ control);
     };

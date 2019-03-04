@@ -26,6 +26,58 @@ using namespace System::Windows::Forms;
 
 namespace GUILayer 
 {
+	static msclr::auto_gcroot<System::Collections::Generic::List<System::WeakReference^>^> s_regularAnimationControls
+		= gcnew System::Collections::Generic::List<System::WeakReference^>();
+
+	bool EngineControl::HasRegularAnimationControls()
+	{
+		for (int c=0; c<s_regularAnimationControls->Count;) {
+			if (!s_regularAnimationControls.get()[c]->IsAlive) {
+				s_regularAnimationControls->RemoveAt(c);
+			} else {
+				++c;
+			}
+		}
+		
+		for each(auto r in s_regularAnimationControls.get()) {
+			auto target = (EngineControl^)r->Target;
+			if (target && target->IsVisible())
+				return true;
+		}
+		return false;
+	}
+
+	void EngineControl::TickRegularAnimation()
+	{
+		array<System::WeakReference^>^ renderables = gcnew array<System::WeakReference^>(s_regularAnimationControls->Count);
+		s_regularAnimationControls->CopyTo(renderables);
+		for each(auto r in renderables) {
+			auto target = (EngineControl^)r->Target;
+			if (target)
+				target->Render();
+		}
+	}
+
+	static void AddRegularAnimation(EngineControl^ ctrl)
+	{
+		for (int c=0; c<s_regularAnimationControls->Count;++c)
+			if (!s_regularAnimationControls.get()[c]->Target == (System::Object^)ctrl)
+				return;
+		s_regularAnimationControls->Add(gcnew System::WeakReference(ctrl));
+	}
+
+	static void RemoveRegularAnimation(EngineControl^ ctrl)
+	{
+		for (int c=0; c<s_regularAnimationControls->Count;) {
+			if (!s_regularAnimationControls.get()[c]->IsAlive 
+				|| s_regularAnimationControls.get()[c]->Target == (System::Object^)ctrl) {
+				s_regularAnimationControls->RemoveAt(c);
+			} else {
+				++c;
+			}
+		}
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void EngineControl::OnPaint(Control^ ctrl, PaintEventArgs^ pe)
@@ -35,8 +87,12 @@ namespace GUILayer
         //    https://msdn.microsoft.com/en-us/library/1e430ef4(v=vs.85).aspx
         // __super::OnPaint(pe);
 
-        if (!Render())
-            ctrl->Invalidate();
+        bool res = Render();
+		if (!res) {
+			AddRegularAnimation(this);
+		} else {
+			RemoveRegularAnimation(this);
+		}
     }
 
     bool EngineControl::Render()
@@ -215,6 +271,14 @@ namespace GUILayer
         _pimpl.reset();
     }
 
+	bool EngineControl::IsVisible()
+	{
+		Control^ ctrl = (Control^)_attachedControl->Target;
+		if (ctrl)
+			return ctrl->Visible;
+		return false;
+	}
+
 	static std::unique_ptr<WindowRig> CreateWindowRig(EngineDevice^ engineDevice, const void* nativeWindowHandle)
     {
         auto result = std::make_unique<WindowRig>(*engineDevice->GetNative().GetRenderDevice(), nativeWindowHandle);
@@ -246,6 +310,8 @@ namespace GUILayer
         control->GotFocus   += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
         control->LostFocus  += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_FocusChange);
         control->Resize     += gcnew System::EventHandler(this, &GUILayer::EngineControl::Evnt_Resize);
+
+		_attachedControl = gcnew System::WeakReference(control);
 
         // We can't guarantee when the destructor or finalizer will be called. But we need to make sure
         // that the native objects are released before the device is destroyed. The only way to do that
