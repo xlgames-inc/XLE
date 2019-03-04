@@ -6,7 +6,8 @@
 
 #include "DelayedDeleteQueue.h"
 #include "../../ConsoleRig/Log.h"
-#include <msclr\lock.h>
+#include <msclr/lock.h>
+#include <msclr/auto_gcroot.h>
 
 namespace GUILayer
 {
@@ -17,7 +18,7 @@ namespace GUILayer
 	class QueueContainer
 	{
 	public:
-		msclr::gcroot<DeletablePtrList^> _queue = gcnew DeletablePtrList;
+		msclr::auto_gcroot<DeletablePtrList^> _queue = gcnew DeletablePtrList;
 		QueueContainer() { static_hasQueue = true; }
 		~QueueContainer() { static_hasQueue = false; }
 	};
@@ -27,7 +28,7 @@ namespace GUILayer
     void DelayedDeleteQueue::Add(System::IntPtr ptr, DeletionCallback^ callback)
     {
 		if (static_hasQueue) {
-			msclr::lock l(static_queue._queue);
+			msclr::lock l(static_queue._queue.get());
 			static_queue._queue->Add(gcnew DeletablePtr(ptr, callback));
 		} else {
 			callback(ptr);
@@ -37,18 +38,16 @@ namespace GUILayer
     void DelayedDeleteQueue::FlushQueue()
     {
         // swap with a new list, so the list doesn't get modified by another thread as we're deleting items
-        auto flip = gcnew DeletablePtrList;
+        msclr::auto_gcroot<DeletablePtrList^> flip = gcnew DeletablePtrList;
         {
-            msclr::lock l(static_queue._queue);
-            auto t = static_queue._queue;
-            static_queue._queue = flip;
-            flip = t;
+            msclr::lock l(static_queue._queue.get());
+            static_queue._queue.swap(flip);
         }
 
         auto count = flip->Count;
         if (count > 0) {
             Log(Verbose) << "Destroying native objects that were released indeterministically from cli code: " << count << std::endl;
-            for each(auto i in flip)
+            for each(auto i in flip.get())
                 (i->Item2)(i->Item1);
             flip->Clear();
         }
