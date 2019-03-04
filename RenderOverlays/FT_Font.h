@@ -25,6 +25,8 @@ namespace RenderOverlays
 		~FontCharTable();
 	};
 
+	class FTFontResources;
+
 	class FTFont : public Font 
 	{
 	public:
@@ -40,6 +42,7 @@ namespace RenderOverlays
 		FTFont(StringSection<::Assets::ResChar> faceName, int faceSize);
 		virtual ~FTFont();
 	protected:
+		std::shared_ptr<FTFontResources> _resources;
 		int _ascend;
 		std::shared_ptr<FT_FaceRec_> _face;
 		::Assets::Blob _pBuffer;

@@ -74,30 +74,37 @@ namespace RenderOverlays
 		std::unordered_map<std::string, std::string> _nameMap;
 		::Assets::DepValPtr _nameMapDepVal;
 
-		class Desc {};
-		FTFontResources(const Desc&);
+		FTFontResources();
 		~FTFontResources();
 	};
 
-	static FTFontResources& GetRes()
+	class FTFontResourcesBox
 	{
-		return ConsoleRig::FindCachedBox2<FTFontResources>();
-	}
+	public:
+		std::shared_ptr<FTFontResources> _resources;
+
+		class Desc {};
+		FTFontResourcesBox(const Desc&)
+		{
+			_resources = std::make_shared<FTFontResources>();
+		}
+		~FTFontResourcesBox() {}
+	};
 
 	FTFont::FTFont(StringSection<::Assets::ResChar> faceName, int faceSize)
 	{
-		auto& res = GetRes();
+		_resources = ConsoleRig::FindCachedBox2<FTFontResourcesBox>()._resources;
 
 		std::string finalPath = faceName.AsString();
-		auto i = res._nameMap.find(finalPath);
-		if (i != res._nameMap.end())
+		auto i = _resources->_nameMap.find(finalPath);
+		if (i != _resources->_nameMap.end())
 			finalPath = i->second;
 
-		_pBuffer = GetRes()._bufferManager.GetBuffer(finalPath);
+		_pBuffer = _resources->_bufferManager.GetBuffer(finalPath);
 
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, finalPath);
-		::Assets::RegisterAssetDependency(_depVal, GetRes()._nameMapDepVal);
+		::Assets::RegisterAssetDependency(_depVal, _resources->_nameMapDepVal);
 
 		if (!_pBuffer)
 			Throw(::Assets::Exceptions::ConstructionError(
@@ -106,7 +113,7 @@ namespace RenderOverlays
 				"Failed to load font (%s)", finalPath.c_str()));
 
 		FT_Face face;
-		FT_New_Memory_Face(GetRes()._ftLib, _pBuffer->data(), (FT_Long)_pBuffer->size(), 0, &face);
+		FT_New_Memory_Face(_resources->_ftLib, _pBuffer->data(), (FT_Long)_pBuffer->size(), 0, &face);
 		_face = std::shared_ptr<FT_FaceRec_>{
 			face,
 			[](FT_Face f) { FT_Done_Face(f); } };
@@ -183,7 +190,7 @@ namespace RenderOverlays
 		glyphEntry._bitmapOffsetY = -glyph->bitmap_top;
 
 		if (glyph->bitmap.width!=0 && glyph->bitmap.rows!=0) {
-			auto textureGlyph = GetRes()._fontTexMgr->CreateChar(
+			auto textureGlyph = _resources->_fontTexMgr->CreateChar(
 				glyph->bitmap.width, glyph->bitmap.rows,
 				MakeIteratorRange(glyph->bitmap.buffer, PtrAdd(glyph->bitmap.buffer, glyph->bitmap.width*glyph->bitmap.rows)));
 
@@ -325,7 +332,7 @@ namespace RenderOverlays
         }
 	}
 
-	FTFontResources::FTFontResources(const Desc&)
+	FTFontResources::FTFontResources()
 	{
 		FT_Error error = FT_Init_FreeType(&_ftLib);
 		if (error)
@@ -346,7 +353,7 @@ namespace RenderOverlays
 
 	FT_FontTextureMgr& GetFontTextureMgr()
 	{
-		return *GetRes()._fontTexMgr;
+		return *ConsoleRig::FindCachedBox2<FTFontResourcesBox>()._resources->_fontTexMgr;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
