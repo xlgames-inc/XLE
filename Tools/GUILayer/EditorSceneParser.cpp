@@ -28,6 +28,7 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/PreparedScene.h"
+#include "../../SceneEngine/SurfaceHeightsProvider.h"
 
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"

@@ -8,7 +8,7 @@
 
 using namespace System::Collections::Generic;
 
-namespace Assets { class AssetSetManager; class UndoQueue; class IDefaultAssetHeap; }
+namespace Assets { class AssetSetManager; class IDefaultAssetHeap; }
 
 namespace GUILayer
 {
@@ -80,7 +80,6 @@ namespace GUILayer
 
     protected:
         ::Assets::AssetSetManager* _assetSets;
-		::Assets::UndoQueue* _undoQueue;
         PendingSaveList^ _saveList;
     };
 }

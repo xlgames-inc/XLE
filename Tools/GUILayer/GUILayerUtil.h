@@ -12,7 +12,6 @@
 namespace RenderCore { namespace Techniques { class TechniqueContext; } }
 namespace SceneEngine 
 {
-    class IntersectionTestContext; 
     class IntersectionTestScene; 
     class TerrainManager;
     class PlacementsEditor;
@@ -48,16 +47,6 @@ namespace GUILayer
 
         TechniqueContextWrapper(std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
         ~TechniqueContextWrapper();
-    };
-
-    public ref class IntersectionTestContextWrapper
-    {
-    public:
-        clix::shared_ptr<SceneEngine::IntersectionTestContext> _context;
-
-		SceneEngine::IntersectionTestContext& GetNative();
-        IntersectionTestContextWrapper(std::shared_ptr<SceneEngine::IntersectionTestContext> context);
-        ~IntersectionTestContextWrapper();
     };
 
 	public ref class IntersectionTestSceneWrapper

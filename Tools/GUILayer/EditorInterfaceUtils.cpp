@@ -75,40 +75,17 @@ namespace GUILayer
     }
     ObjectSet::~ObjectSet()    { _nativePlacements.reset(); }
 
-    public ref class CameraDescWrapper
-    {
-    public:
-        CameraDescWrapper(ToolsRig::VisCameraSettings& camSettings)
-        {
-            _native = new RenderCore::Techniques::CameraDesc(
-                ToolsRig::AsCameraDesc(camSettings));
-        }
-        ~CameraDescWrapper() { this->!CameraDescWrapper();}
-        !CameraDescWrapper() { delete _native; }
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-        RenderCore::Techniques::CameraDesc* _native;
-    };
-
-    IntersectionTestContextWrapper^
-        CreateIntersectionTestContext(
-            EngineDevice^ engineDevice,
-            TechniqueContextWrapper^ techniqueContext,
-            CameraDescWrapper^ camera,
-            unsigned viewportWidth, unsigned viewportHeight)
+	CameraDescWrapper::CameraDescWrapper(ToolsRig::VisCameraSettings& camSettings)
     {
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> nativeTC;
-        if (techniqueContext) {
-            nativeTC = techniqueContext->_techniqueContext.GetNativePtr();
-        } else {
-            nativeTC = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-        }
-        return gcnew IntersectionTestContextWrapper(
-            std::make_shared<SceneEngine::IntersectionTestContext>(
-                engineDevice->GetNative().GetRenderDevice()->GetImmediateContext(),
-                *camera->_native,
-                std::make_shared<RenderCore::PresentationChainDesc>(viewportWidth, viewportHeight),
-                nativeTC));
+        _native.reset(new RenderCore::Techniques::CameraDesc(
+            ToolsRig::AsCameraDesc(camSettings)));
     }
+
+    CameraDescWrapper::~CameraDescWrapper() { _native.reset(); }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     public ref class EditorInterfaceUtils
     {
@@ -122,30 +99,21 @@ namespace GUILayer
             return temp.release();
         }
 
-        static IntersectionTestContextWrapper^
-            CreateIntersectionTestContext(
-                EngineDevice^ engineDevice,
-                TechniqueContextWrapper^ techniqueContext,
-                CameraDescWrapper^ camera,
-                unsigned viewportWidth, unsigned viewportHeight)
-        {
-            return GUILayer::CreateIntersectionTestContext(
-                engineDevice, techniqueContext, camera,
-                viewportWidth, viewportHeight);
-        }
-
         static System::Collections::Generic::ICollection<HitRecord>^
             RayIntersection(
+                CameraDescWrapper^ camera,
+				TechniqueContextWrapper^ techniqueContext,
                 IntersectionTestSceneWrapper^ testScene,
-                IntersectionTestContextWrapper^ testContext,
                 Vector3 start, Vector3 end, unsigned filter)
         {
             TRY
             {
+				SceneEngine::IntersectionTestContext2 testContext {
+					*camera->_native, UInt2{0,0}, UInt2{0,0},
+					techniqueContext->_techniqueContext.GetNativePtr()
+				};
                 auto firstResult = testScene->_scene->FirstRayIntersection(
-                    *testContext->_context.get(),
-                    std::make_pair(AsFloat3(start), AsFloat3(end)),
-                    filter);
+                    testContext, std::make_pair(AsFloat3(start), AsFloat3(end)), filter);
 
                 if (firstResult._type != 0) {
                     auto record = gcnew HitRecord;
@@ -177,8 +145,9 @@ namespace GUILayer
 
         static System::Collections::Generic::ICollection<HitRecord>^
             FrustumIntersection(
+				CameraDescWrapper^ camera,
+				TechniqueContextWrapper^ techniqueContext,
                 IntersectionTestSceneWrapper^ testScene,
-                IntersectionTestContextWrapper^ testContext,
                 const float matrix[],
                 unsigned filter)
         {
@@ -186,9 +155,12 @@ namespace GUILayer
             {
                 Float4x4 worldToProjection = Transpose(AsFloat4x4(matrix));
 
-                auto nativeResults = testScene->_scene->FrustumIntersection(
-                    *testContext->_context.get(),
-                    worldToProjection, filter);
+                SceneEngine::IntersectionTestContext2 testContext {
+					*camera->_native, UInt2{0,0}, UInt2{0,0},
+					techniqueContext->_techniqueContext.GetNativePtr()
+				};
+				auto nativeResults = testScene->_scene->FrustumIntersection(
+                    testContext, worldToProjection, filter);
 
                 if (!nativeResults.empty()) {
 
@@ -250,12 +222,18 @@ namespace GUILayer
 
         static bool GetTerrainUnderCursor(
             [Out] Vector3% intersection,
-            IntersectionTestContextWrapper^ context,
+			CameraDescWrapper^ camera,
+			TechniqueContextWrapper^ techniqueContext,
+			unsigned viewportWidth, unsigned viewportHeight,
             IntersectionTestSceneWrapper^ testScene,
             unsigned ptx, unsigned pty)
         {
+			SceneEngine::IntersectionTestContext2 testContext {
+				*camera->_native, UInt2{0,0}, UInt2{viewportWidth,viewportHeight},
+				techniqueContext->_techniqueContext.GetNativePtr()
+			};
             auto test = testScene->_scene->UnderCursor(
-                *context->_context.get(), UInt2(ptx, pty),
+                testContext, UInt2(ptx, pty),
                 SceneEngine::IntersectionTestScene::Type::Terrain);
             if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                 intersection = AsVector3(test._worldSpaceCollision);

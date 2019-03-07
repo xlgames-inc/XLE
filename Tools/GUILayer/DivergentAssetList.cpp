@@ -233,7 +233,6 @@ namespace GUILayer
     DivergentAssetList::DivergentAssetList(EngineDevice^ engine, PendingSaveList^ saveList)
     {
         _assetSets = &engine->GetNative().GetAssetServices()->GetAssetSets();
-        _undoQueue = nullptr;
         _saveList = saveList;
     }
 

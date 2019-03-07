@@ -41,7 +41,6 @@ namespace EntityInterface
 namespace GUILayer
 {
     ref class VisCameraSettings;
-    ref class IntersectionTestContextWrapper;
 	ref class IntersectionTestSceneWrapper;
     ref class PlacementsEditorWrapper;
     ref class PlacementsRendererWrapper;

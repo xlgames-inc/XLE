@@ -255,17 +255,13 @@ namespace XLEBridgeUtils
 
             ICollection<GUILayer::HitRecord>^ results = nullptr;
             {
-                msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(
-                    Utils::CreateIntersectionTestContext(
-                        device, techniqueContext, camera, 
-                        (unsigned)viewportSize.Width, (unsigned)viewportSize.Height));
-
                 msclr::auto_handle<GUILayer::IntersectionTestSceneWrapper> scene(
                     sceneManager->GetIntersectionScene());
 
                 cli::pin_ptr<float> ptr = &pickingFrustum->M11;
                 results = GUILayer::EditorInterfaceUtils::FrustumIntersection(
-                    scene.get(), context.get(), ptr, (uint)flags);
+					camera, techniqueContext,
+                    scene.get(), ptr, (uint)flags);
             }
 
             if (results == nullptr) { return nullptr; }
@@ -309,16 +305,12 @@ namespace XLEBridgeUtils
             auto endPt = ray.Origin + camera->_native->_farClip * ray.Direction;
 
             {
-                msclr::auto_handle<GUILayer::IntersectionTestContextWrapper> context(
-                    Utils::CreateIntersectionTestContext(
-                        device, techniqueContext, camera, 
-                        (uint)viewportSize.Width, (uint)viewportSize.Height));
-
                 msclr::auto_handle<GUILayer::IntersectionTestSceneWrapper> scene(
                     sceneManager->GetIntersectionScene());
 
                 results = GUILayer::EditorInterfaceUtils::RayIntersection(
-                    scene.get(), context.get(),
+					camera, techniqueContext,
+                    scene.get(),
                     Utils::AsVector3(ray.Origin),
                     Utils::AsVector3(endPt), (uint)flags);
             }

@@ -70,22 +70,6 @@ namespace GUILayer
         _techniqueContext.reset();
     }
 
-    IntersectionTestContextWrapper::IntersectionTestContextWrapper(
-        std::shared_ptr<SceneEngine::IntersectionTestContext> context)
-    {
-        _context = std::move(context);
-    }
-
-    IntersectionTestContextWrapper::~IntersectionTestContextWrapper()
-    {
-        _context.reset();
-    }
-
-	SceneEngine::IntersectionTestContext& IntersectionTestContextWrapper::GetNative()
-	{
-		return *_context.get();
-	}
-
 	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
 		std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
 	{

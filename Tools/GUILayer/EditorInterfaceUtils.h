@@ -14,6 +14,7 @@
 
 namespace SceneEngine { class PlacementsEditor; }
 namespace PlatformRig { class EnvironmentSettings; }
+namespace ToolsRig { class VisCameraSettings; }
 
 namespace GUILayer
 {
@@ -52,15 +53,12 @@ namespace GUILayer
         ~EnvironmentSettingsSet();
     };
 
-    ref class IntersectionTestContextWrapper;
-    ref class EngineDevice;
-    ref class TechniqueContextWrapper;
-    ref class CameraDescWrapper;
+	public ref class CameraDescWrapper
+    {
+    public:
+        clix::auto_ptr<RenderCore::Techniques::CameraDesc> _native;
 
-    IntersectionTestContextWrapper^
-        CreateIntersectionTestContext(
-            EngineDevice^ engineDevice,
-            TechniqueContextWrapper^ techniqueContext,
-            CameraDescWrapper^ camera,
-            unsigned viewportWidth, unsigned viewportHeight);
+		CameraDescWrapper(ToolsRig::VisCameraSettings& camSettings);
+        ~CameraDescWrapper();
+    };
 }

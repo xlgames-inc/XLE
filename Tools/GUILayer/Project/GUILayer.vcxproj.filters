@@ -141,9 +141,6 @@
     <Filter Include="IterativeSystem">
       <UniqueIdentifier>{0211ba0a-2698-4e77-bf68-bfda5c419e32}</UniqueIdentifier>
     </Filter>
-    <Filter Include="Resources">
-      <UniqueIdentifier>{2eb2f1ef-b552-4d2a-bb05-1baa7d7fa9a8}</UniqueIdentifier>
-    </Filter>
   </ItemGroup>
   <ItemGroup>
     <_EmbedManagedResourceFile Include="..\Resources\material.png" />

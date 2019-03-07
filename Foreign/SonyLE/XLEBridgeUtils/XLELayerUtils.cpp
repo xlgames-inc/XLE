@@ -46,18 +46,6 @@ namespace XLEBridgeUtils
         return gcnew GUILayer::CameraDescWrapper(visCam);
     }
 
-    GUILayer::IntersectionTestContextWrapper^
-        Utils::CreateIntersectionTestContext(
-            GUILayer::EngineDevice^ engineDevice,
-            GUILayer::TechniqueContextWrapper^ techniqueContext,
-            GUILayer::CameraDescWrapper^ camera,
-            unsigned viewportWidth, unsigned viewportHeight)
-    {
-        return GUILayer::EditorInterfaceUtils::CreateIntersectionTestContext(
-            engineDevice, techniqueContext, 
-            camera, viewportWidth, viewportHeight);
-    }
-
     Sce::Atf::VectorMath::Matrix4F^ Utils::MakeFrustumMatrix(
         GUILayer::CameraDescWrapper^ camera,
         System::Drawing::RectangleF rectangle,

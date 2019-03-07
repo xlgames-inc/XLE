@@ -34,13 +34,6 @@ namespace XLEBridgeUtils
 
         static GUILayer::CameraDescWrapper^ AsCameraDesc(Sce::Atf::Rendering::Camera^ camera);
 
-        static GUILayer::IntersectionTestContextWrapper^
-            CreateIntersectionTestContext(
-                GUILayer::EngineDevice^ engineDevice,
-                GUILayer::TechniqueContextWrapper^ techniqueContext,
-                GUILayer::CameraDescWrapper^ camera,
-                unsigned viewportWidth, unsigned viewportHeight);
-
         static Sce::Atf::VectorMath::Matrix4F^ MakeFrustumMatrix(
             GUILayer::CameraDescWrapper^ camera,
             System::Drawing::RectangleF rectangle,

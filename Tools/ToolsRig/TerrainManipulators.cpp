@@ -37,9 +37,6 @@ extern unsigned FrameRenderCount;
 
 namespace ToolsRig
 {
-    using SceneEngine::IntersectionTestContext;
-    using SceneEngine::IntersectionTestScene;
-
     static const char HeightsLayerError[] = "This tool only works on heights values. Select the terrain heights layer.";
 
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
