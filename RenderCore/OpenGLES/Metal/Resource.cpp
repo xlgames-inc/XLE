@@ -140,9 +140,6 @@ namespace RenderCore { namespace Metal_OpenGLES
 
             // write only textures can become render buffers
             auto fmt = AsTexelFormatType(desc._textureDesc._format);
-            if (!(factory.GetFeatureSet() & FeatureSet::GLES300) && fmt._type != 0) {
-                fmt._internalFormat = fmt._format;
-            }
 
             bool canBeRenderBuffer = desc._cpuAccess == 0 && desc._gpuAccess == GPUAccess::Write && (!(desc._bindFlags & BindFlag::ShaderResource)) && !initializer;
             if (!canBeRenderBuffer) {
@@ -155,12 +152,11 @@ namespace RenderCore { namespace Metal_OpenGLES
 
                     auto bindTarget = GL_TEXTURE_2D;
 
-
-#if APPORTABLE // glTexStorage2D is not yet supported in Apportable
-                    bool useTexStorage = false;
-#else
-                    bool useTexStorage = factory.GetFeatureSet() & FeatureSet::GLES300;
-#endif
+                    #if APPORTABLE // glTexStorage2D is not yet supported in Apportable
+                        bool useTexStorage = false;
+                    #else
+                        bool useTexStorage = factory.GetFeatureSet() & FeatureSet::GLES300;
+                    #endif
                     if (desc._textureDesc._dimensionality == TextureDesc::Dimensionality::T1D) {
                         assert(desc._textureDesc._height == 1);
                         assert(desc._textureDesc._arrayCount <= 1);
@@ -181,6 +177,14 @@ namespace RenderCore { namespace Metal_OpenGLES
                     if (!initializer && useTexStorage) {
                         GL_WRAP(TexStorage2D)(bindTarget, desc._textureDesc._mipCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
                     } else {
+
+                        // OpenGLES2.0 doesn't understand the "internal formats" when using glTexImage2D
+                        // It requires that the internalFormat parameter matches the format parameter
+                        // However, OpenGLES2.0 does use the internal formats in the glRenderbufferStorage
+                        // call.
+                        if (!(factory.GetFeatureSet() & FeatureSet::GLES300) && fmt._type != 0) {
+                            fmt._internalFormat = fmt._format;
+                        }
 
                         // If we're uploading a cubemap, we must iterate through all of the faces
                         // and use a binding target for each face.
@@ -264,7 +268,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (supportsMultisampleRenderbuffer && desc._textureDesc._samples._sampleCount > 1) {
                      glRenderbufferStorageMultisample(GL_RENDERBUFFER, desc._textureDesc._samples._sampleCount, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
                 } else {
-                    glRenderbufferStorage(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
+                    GL_WRAP(RenderbufferStorage)(GL_RENDERBUFFER, fmt._internalFormat, desc._textureDesc._width, desc._textureDesc._height);
                 }
 
                 if (ObjectFactory::WriteObjectLabels() && (factory.GetFeatureSet() & FeatureSet::Flags::LabelObject) && desc._name[0])

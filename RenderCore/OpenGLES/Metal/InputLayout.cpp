@@ -340,7 +340,10 @@ namespace RenderCore { namespace Metal_OpenGLES
                         if (_attributeState & (1<<c))
                             glVertexAttribDivisorARB(c, instanceDataRate[c]);
                 #else
-                    assert(0);  // no hardware support for variable rate input attributes
+                    for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
+                        if (_attributeState & (1<<c)) {
+                            assert(instanceDataRate[c] == 0); // no hardware support for variable rate input attributes
+                        }
                 #endif
             }
             for (int c=0; c<std::min(32u, _maxVertexAttributes); ++c)
