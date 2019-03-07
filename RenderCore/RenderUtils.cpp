@@ -33,6 +33,60 @@ namespace RenderCore
         : GenericFailure(what) 
         {}
     }
+
+    class SubFrameHeap_Heap
+    {
+    public:
+        std::vector<uint8_t>    _data;
+        uint8_t*                _writeMarker = nullptr;
+        unsigned                _resetId = 0;
+
+        SubFrameHeap_Heap() {}
+        SubFrameHeap_Heap(SubFrameHeap_Heap&&moveFrom) = default;
+        SubFrameHeap_Heap& operator=(SubFrameHeap_Heap&&moveFrom) = default;
+    };
+
+#if !FEATURE_THREAD_LOCAL_KEYWORD
+    thread_local_ptr<SubFrameHeap_Heap>  s_producerHeap;
+
+    static SubFrameHeap_Heap* GetThreadLocalProducerHeap()
+    {
+        return s_producerHeap.get();
+    }
+
+    static SubFrameHeap_Heap& GetOrCreateThreadLocalProducerHeap()
+    {
+        auto* producerHeap = s_producerHeap.get();
+        if (!producerHeap) {
+            s_producerHeap.allocate();
+            producerHeap = s_producerHeap.get();
+            producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
+            producerHeap->_writeMarker = producerHeap->_data.data();
+            producerHeap->_resetId = 1;
+        }
+        return *producerHeap;
+    }
+#else
+    static thread_local std::shared_ptr<SubFrameHeap_Heap> s_producerHeap;
+
+    static SubFrameHeap_Heap* GetThreadLocalProducerHeap()
+    {
+        return s_producerHeap.get();
+    }
+
+    static SubFrameHeap_Heap& GetOrCreateThreadLocalProducerHeap()
+    {
+        auto* producerHeap = s_producerHeap.get();
+        if (!producerHeap) {
+            s_producerHeap = std::make_shared<SubFrameHeap_Heap>();
+            producerHeap = s_producerHeap.get();
+            producerHeap->_data = std::vector<uint8_t>(256*1024, 0);
+            producerHeap->_writeMarker = producerHeap->_data.data();
+            producerHeap->_resetId = 1;
+        }
+        return *producerHeap;
+    }
+#endif
     
     class SubFrameHeap
     {
@@ -44,7 +98,7 @@ namespace RenderCore
             ScopedLock(_swapMutex);
             while (!_pendingConsumerHeaps.empty() && _pendingConsumerHeaps.begin()->_resetId <= producerBarrierId) {
                 if (_reusableHeaps.size() < 5) {
-                    Heap temp;
+                    SubFrameHeap_Heap temp;
                     std::swap(temp, *_pendingConsumerHeaps.begin());
                     _reusableHeaps.emplace_back(std::move(temp));
                 }
@@ -60,7 +114,7 @@ namespace RenderCore
                 assert(Threading::CurrentThreadId() == _mainProducerThread);
             #endif
 
-            auto* producerHeap = _producerHeap.get();
+            auto* producerHeap = GetThreadLocalProducerHeap();
 
             unsigned result = 0;
             if (producerHeap) {
@@ -68,7 +122,7 @@ namespace RenderCore
                 // Try to swap the main buffer into the secondary / waiting for consumer buffer
                 result = producerHeap->_resetId;
 
-                Heap nextMainHeap;
+                SubFrameHeap_Heap nextMainHeap;
                 if (!_reusableHeaps.empty()) {
                     std::swap(nextMainHeap, *_reusableHeaps.begin());
                     _reusableHeaps.erase(_reusableHeaps.begin());
@@ -94,7 +148,7 @@ namespace RenderCore
         {
             // Don't even need a lock for this (assuming OnProducerFrameBarrier will not be called
             // synchronously)
-            auto* producerHeap = _producerHeap.get();
+            auto* producerHeap = GetThreadLocalProducerHeap();
             if (producerHeap) {
                 producerHeap->_writeMarker = producerHeap->_data.data();
                 ++producerHeap->_resetId;
@@ -104,7 +158,7 @@ namespace RenderCore
 
         bool IsValidResetId(ResetId resetId) const
         {
-            auto* producerHeap = _producerHeap.get();
+            auto* producerHeap = GetThreadLocalProducerHeap();
             if (producerHeap && resetId == producerHeap->_resetId)
                 return true;
 
@@ -117,13 +171,8 @@ namespace RenderCore
         
         std::pair<void*, ResetId> Allocate(size_t size)
         {
-            auto* producerHeap = _producerHeap.get();
-            if (!producerHeap) {
-                _producerHeap.allocate();
-                producerHeap = _producerHeap.get();
-            }
-
-            if (PtrAdd(producerHeap->_writeMarker, size) > AsPointer(producerHeap->_data.end())) {
+            auto& producerHeap = GetOrCreateThreadLocalProducerHeap();
+            if (PtrAdd(producerHeap._writeMarker, size) > AsPointer(producerHeap._data.end())) {
                 if (_logMsg) {
                     Log(Warning) << "Overran subframe heap with allocation of size (" << size << ")" << std::endl;
                     _logMsg = false;
@@ -131,22 +180,17 @@ namespace RenderCore
                 return {nullptr, 0};
             }
             
-            void* result = producerHeap->_writeMarker;
-            producerHeap->_writeMarker += size;
-            return {result, producerHeap->_resetId};
+            void* result = producerHeap._writeMarker;
+            producerHeap._writeMarker += size;
+            return {result, producerHeap._resetId};
         }
 
         std::pair<void*, ResetId> AllocateAligned(size_t size, size_t alignment)
         {
-            auto* producerHeap = _producerHeap.get();
-            if (!producerHeap) {
-                _producerHeap.allocate();
-                producerHeap = _producerHeap.get();
-            }
-
-            auto alignOffset = size_t(producerHeap->_writeMarker) % alignment;
+            auto& producerHeap = GetOrCreateThreadLocalProducerHeap();
+            auto alignOffset = size_t(producerHeap._writeMarker) % alignment;
             if (alignOffset != 0) {
-                if (PtrAdd(producerHeap->_writeMarker, alignment-alignOffset+size) > AsPointer(producerHeap->_data.end())) {
+                if (PtrAdd(producerHeap._writeMarker, alignment-alignOffset+size) > AsPointer(producerHeap._data.end())) {
                     if (_logMsg) {
                         Log(Warning) << "Overran subframe heap with aligned allocation of size (" << size << ") alignment (" << alignment << ")" << std::endl;
                         _logMsg = false;
@@ -154,7 +198,7 @@ namespace RenderCore
                     return {nullptr, 0};
                 }
 
-                producerHeap->_writeMarker = PtrAdd(producerHeap->_writeMarker, alignment-alignOffset);
+                producerHeap._writeMarker = PtrAdd(producerHeap._writeMarker, alignment-alignOffset);
             }
 
             // now that we've queued "_writeMarker" to be aligned, we can just go ahead and allocate
@@ -166,12 +210,6 @@ namespace RenderCore
         
         SubFrameHeap()
         {
-            _producerHeap.allocate();
-            auto& producerHeap = *_producerHeap.get();
-            producerHeap._data = std::vector<uint8_t>(256*1024, 0);
-            producerHeap._writeMarker = producerHeap._data.data();
-            producerHeap._resetId = 1;
-
             _pendingConsumerHeaps.reserve(5);
             _reusableHeaps.reserve(5);
 
@@ -184,22 +222,8 @@ namespace RenderCore
         
         ~SubFrameHeap() {}
     private:
-        class Heap
-        {
-        public:
-            std::vector<uint8_t>    _data;
-            uint8_t*                _writeMarker = nullptr;
-            unsigned                _resetId = 0;
-
-            Heap() {}
-            Heap(Heap&&moveFrom) = default;
-            Heap& operator=(Heap&&moveFrom) = default;
-        };
-
-        thread_local_ptr<Heap>  _producerHeap;
-
-        std::vector<Heap>       _pendingConsumerHeaps;
-        std::vector<Heap>       _reusableHeaps;
+        std::vector<SubFrameHeap_Heap>       _pendingConsumerHeaps;
+        std::vector<SubFrameHeap_Heap>       _reusableHeaps;
 
         bool                    _logMsg;
 
