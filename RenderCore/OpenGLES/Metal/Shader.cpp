@@ -317,8 +317,9 @@ namespace RenderCore { namespace Metal_OpenGLES
                 if (!obj) return;
                 OutputBlob& blob = *(OutputBlob*)obj->data();
                 {
-                    ScopedLock(s_compiledShadersLock);
-                    s_compiledShaders.erase(blob._hashCode);
+                    auto& objectFactory = GetObjectFactory();
+                    ScopedLock(objectFactory._compiledShadersLock);
+                    objectFactory._compiledShaders.erase(blob._hashCode);
                 }
                 delete obj;
             });
