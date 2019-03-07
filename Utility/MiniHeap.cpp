@@ -202,14 +202,21 @@ namespace Utility
     }
 
     static uint32 MainHeapMarker = 0xf;     // (category 15)
-    
+
     class MainHeapExtraData
     {
     public:
         Interlocked::Value _refCount;
-        unsigned _dummy[3];     // (padding to try to encourage 16 byte alignment)
+        void *_alignedFreePtr;
+        unsigned _dummy[3 - sizeof(void *) / 4];     // (padding to try to encourage 16 byte alignment)
 
-        void Initialize(signed refCount) { _refCount = refCount; _dummy[0] = _dummy[1] = _dummy[2] = 0x0; }
+        void Initialize(signed refCount, void *alignedFreePtr = nullptr)
+        {
+            _refCount = refCount;
+            _alignedFreePtr = alignedFreePtr;
+            for (unsigned c = 0; c < dimof(_dummy); ++c)
+                _dummy[c] = 0x0;
+        }
     };
 
     static unsigned BlockSizeForHeap(unsigned heapIndex)
@@ -232,8 +239,8 @@ namespace Utility
             //  we can allocate. Bigger allocations should ideally
             //  the main heap (no need for the mini heap for very
             //  large allocations)
-            auto* heapAlloc = malloc(size + sizeof(MainHeapExtraData));
-            ((MainHeapExtraData*)heapAlloc)->Initialize(1); // start at ref count of "1"
+            auto *heapAlloc = malloc(size + sizeof(MainHeapExtraData));
+            ((MainHeapExtraData *) heapAlloc)->Initialize(1); // start at ref count of "1"
             return Allocation(PtrAdd(heapAlloc, sizeof(MainHeapExtraData)), MainHeapMarker);
         }
 
@@ -285,6 +292,25 @@ namespace Utility
         assert(alloc._allocation != nullptr);
         _pimpl->_freePages.push_back(std::move(newPage));
         return alloc;
+    }
+
+    auto MiniHeap::AllocateAligned(unsigned size, unsigned alignment) -> Allocation
+    {
+        if (!size) { return Allocation(); }     // zero size allocation is valid, but wierd
+        if (alignment<=1) return Allocate(size);
+
+        // Aligned allocations always get the slower main heap style allocations
+
+        auto *heapAlloc = malloc(size + sizeof(MainHeapExtraData) + alignment);
+
+        size_t markerAllocation = size_t(heapAlloc) + sizeof(MainHeapExtraData);
+        if ((markerAllocation%alignment)!=0)
+            markerAllocation += alignment - (markerAllocation%alignment);
+
+        auto* exdata = (MainHeapExtraData*)(markerAllocation - ptrdiff_t(sizeof(MainHeapExtraData)));
+        exdata->Initialize(1, heapAlloc); // start at ref count of "1"
+        assert((markerAllocation%alignment)==0);
+        return Allocation((void*)markerAllocation, MainHeapMarker);
     }
 
     void        MiniHeap::Free(void* ptr) 
@@ -399,7 +425,13 @@ namespace Utility
             auto* exdata = (MainHeapExtraData*)PtrAdd(marker._allocation, -ptrdiff_t(sizeof(MainHeapExtraData)));
             auto oldRefCount = Interlocked::Decrement(&exdata->_refCount);
             assert(oldRefCount >= 1);
-            if (oldRefCount == 1) { free(exdata); }
+            if (oldRefCount == 1) {
+                if (exdata->_alignedFreePtr) {
+                    free(exdata->_alignedFreePtr);
+                } else {
+                    free(exdata);
+                }
+            }
             return;
         }
 
