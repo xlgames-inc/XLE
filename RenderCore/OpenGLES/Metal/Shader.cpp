@@ -313,10 +313,11 @@ namespace RenderCore { namespace Metal_OpenGLES
         };
         payload = std::shared_ptr<std::vector<uint8>>(
             new std::vector<uint8>(sizeof(OutputBlob)),
-            [&objectFactory](std::vector<uint8>* obj) {
+            [](std::vector<uint8>* obj) {
                 if (!obj) return;
                 OutputBlob& blob = *(OutputBlob*)obj->data();
                 {
+                    auto& objectFactory = GetObjectFactory();
                     ScopedLock(objectFactory._compiledShadersLock);
                     objectFactory._compiledShaders.erase(blob._hashCode);
                 }

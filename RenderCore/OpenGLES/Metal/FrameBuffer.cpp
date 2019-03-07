@@ -266,25 +266,18 @@ namespace RenderCore { namespace Metal_OpenGLES
                 BindToFramebuffer(GetDepthStencilBindingPoint(res, viewWindow), res, viewWindow);
             }
 
-            #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
-                // Don't call glDrawBuffers on GLES2
-                if (factory.GetFeatureSet() & FeatureSet::GLES300) {
-                    glDrawBuffers(sp._rtvCount, drawBuffers);
-                }
-            #else
-                glDrawBuffers(sp._rtvCount, drawBuffers);
-            #endif
-
             // Ensure the glReadBuffer state to some reasonable value to prevent state leakage
             // In desktop GL, we must do this to avoid FRAMEBUFFER_INCOMPLETE_DRAW_BUFFER framebuffer status
             // But on GLES, it's only available in version 3.0
             #if defined(GL_ES_VERSION_2_0) || defined(GL_ES_VERSION_3_0)
-                bool setReadBufferState = (factory.GetFeatureSet() & FeatureSet::GLES300);
+                bool setReadAndDrawBufferState = (factory.GetFeatureSet() & FeatureSet::GLES300);
             #else
-                bool setReadBufferState = true;
+                bool setReadAndDrawBufferState = true;
             #endif
-            if (setReadBufferState)
+            if (setReadAndDrawBufferState) {
+                glDrawBuffers(sp._rtvCount, drawBuffers);
                 glReadBuffer((sp._rtvCount > 0) ? drawBuffers[0] : GL_NONE);
+            }
 
             #if defined(_DEBUG)
                 GLenum validationFlag = glCheckFramebufferStatus(GL_FRAMEBUFFER);
@@ -322,7 +315,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     sp._resolveHeight = desc._textureDesc._height;
                 }
                 if (factory.GetFeatureSet() & FeatureSet::GLES300) {
-                    glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers);
+                    glDrawBuffers((unsigned)spDesc._resolve.size(), drawBuffers); // glDrawBuffers enters the API in GLES3.0
                 }
 
                 if (spDesc._depthStencilResolve._resourceName != ~0) {

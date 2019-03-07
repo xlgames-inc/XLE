@@ -2,6 +2,7 @@
 
 #include "../../Core/SelectConfiguration.h"
 #include "../../Core/Exceptions.h"
+#include <utility>
 
 // IOS and OSX don't support the "thread_local" keyword, so we have to do it manually with
 // pthreads. It's a bit of extra boilerplate / busycode
@@ -17,11 +18,12 @@
             class thread_local_ptr
         {
         public:
-            T* get();
+            T* get() const;
             void set(T*);
 
             template<typename... Params>
                 void allocate(Params... moveFrom);
+            void allocate();
 
             thread_local_ptr();
             ~thread_local_ptr();
@@ -32,7 +34,7 @@
         };
 
         template<typename T>
-            T* thread_local_ptr<T>::get()
+            T* thread_local_ptr<T>::get() const
         {
             return (T*)pthread_getspecific(_key);
         }
@@ -54,6 +56,12 @@
                 void thread_local_ptr<T>::allocate(Params... moveFrom)
         {
             set(new T(std::forward<Params...>(moveFrom...)));
+        }
+
+        template<typename T>
+            void thread_local_ptr<T>::allocate()
+        {
+            set(new T);
         }
 
         template<typename T>

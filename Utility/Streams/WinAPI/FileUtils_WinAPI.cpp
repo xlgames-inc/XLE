@@ -51,6 +51,9 @@ namespace Utility
         case ERROR_WRITE_PROTECT:
             return Exceptions::IOException::Reason::WriteProtect;
 
+		case ERROR_SHARING_VIOLATION:
+			return Exceptions::IOException::Reason::ExclusiveLock;
+
         default:
             return Exceptions::IOException::Reason::Complex;
         }

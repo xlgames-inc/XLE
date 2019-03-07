@@ -60,6 +60,7 @@ namespace Utility
         };
 
         Allocation  Allocate(unsigned size);
+        Allocation  AllocateAligned(unsigned size, unsigned alignment);
         void        Free(void* ptr);
         void        AddRef(Allocation marker);
         void        Release(Allocation marker);

@@ -19,7 +19,7 @@ namespace Assets
 	class IFileInterface;
 }
 
-namespace Utility { class BasicFile; }
+namespace Utility { class OutputStream; }
 
 namespace Assets { namespace IntermediateAssets
 {
@@ -89,7 +89,7 @@ namespace Assets { namespace IntermediateAssets
 
 	protected:
 		std::string _baseDirectory;
-		std::unique_ptr<BasicFile> _markerFile;
+		std::unique_ptr<OutputStream> _markerFile;
 	};
 }}
 

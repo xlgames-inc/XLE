@@ -1,6 +1,7 @@
 #pragma once
 
 #include "../TimeUtils.h"
+#include "../Threading/ThreadingUtils.h"
 #include "../../Core/Types.h"
 #include "../IteratorUtils.h"
 #include <vector>
@@ -41,18 +42,16 @@ namespace Utility
         bool _isRecordingKnownEvents;
 
         #if !defined(NDEBUG)
-            size_t _threadId;
+            Threading::ThreadId _threadId;
             static const unsigned s_maxStackDepth = 16;
             uint32 _aeStack[s_maxStackDepth];
             uint32 _aeStackI;
         #endif
     };
     
-    size_t XlGetCurrentThreadId();
-
     inline unsigned SuppressionProfiler::BeginEvent(const char eventLiteral[])
     {
-        assert(XlGetCurrentThreadId() == _threadId);
+        assert(Threading::CurrentThreadId() == _threadId);
         auto i = std::lower_bound(_suppressedEvents.begin(), _suppressedEvents.end(), eventLiteral);
         if (i != _suppressedEvents.end() && *i == eventLiteral)
             return ~0u;
@@ -73,7 +72,7 @@ namespace Utility
 
     inline void SuppressionProfiler::EndEvent(unsigned eventId)
     {
-        assert(XlGetCurrentThreadId() == _threadId);
+        assert(Threading::CurrentThreadId() == _threadId);
         #if !defined(NDEBUG)
             assert(_aeStackI > 0);
             assert(_aeStack[_aeStackI-1] == eventId);   // verify that this is the right event we're removing

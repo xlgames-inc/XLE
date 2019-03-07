@@ -868,8 +868,18 @@ namespace Utility
         ParameterNameHash hash, const utf8 name[], const void* value,
         const ImpliedTyping::TypeDesc& insertType)
     {
+        SetParameterHint(
+            std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), hash),
+            hash, name,
+            value, insertType);
+    }
+
+    auto ParameterBox::SetParameterHint(
+        SerializableVector<ParameterNameHash>::const_iterator i,
+        ParameterNameHash hash, const utf8 name[], const void* value,
+        const ImpliedTyping::TypeDesc& insertType) -> SerializableVector<ParameterNameHash>::const_iterator
+    {
         const auto valueSize = insertType.GetSize();
-        auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), hash);
         if (i==_hashNames.cend()) {
                 // push new value onto the end (including name & type info)
             _hashNames.push_back(hash);
@@ -891,13 +901,13 @@ namespace Utility
 
             _cachedHash = 0;
             _cachedParameterNameHash = 0;
-            return;
+            return _hashNames.end()-1;
         }
 
         size_t index = std::distance(_hashNames.cbegin(), i);
         if (*i!=hash) {
                 // insert new value in the middle somewhere
-            _hashNames.insert(i, hash);
+            i = _hashNames.insert(i, hash);
 
             const auto nameLength = (name?XlStringLen(name):0)+1;
             auto dstOffsets = _offsets[index];
@@ -922,7 +932,7 @@ namespace Utility
 
             _cachedHash = 0;
             _cachedParameterNameHash = 0;
-            return;
+            return i;
         }
 
             // just update the value
@@ -959,6 +969,7 @@ namespace Utility
         }
 
         _cachedHash = 0;
+        return i;
     }
 
     template<typename Type>
@@ -1276,17 +1287,26 @@ namespace Utility
 
     void ParameterBox::MergeIn(const ParameterBox& source)
     {
-            // simple implementation... 
-            //  We could build a more effective implementation taking into account
-            //  the fact that both parameter boxes are sorted.
-        for (auto i=source._offsets.cbegin(); i!=source._offsets.cend(); ++i) {
-            /* TODO: in cases where we do not have a name, we should merge based on hash.
-             * Currently, asserting that MakeParameterHash(name) matches the hash does not always work. */
-            const auto* name = &source._names[i->first];
-            SetParameter(
-                name,
-                ValueTableOffset(source._values, i->second),
-                source._types[std::distance(source._offsets.cbegin(), i)]);
+        auto srcHashNameI = source._hashNames.cbegin();
+        auto hashNameI = _hashNames.cbegin();
+
+        for (;;) {
+            if (srcHashNameI == source._hashNames.cend()) return;
+
+            // Skip over any parameters in "this" that should come before the
+            // parameter we need to merge in
+            while (hashNameI < _hashNames.cend() && *hashNameI < *srcHashNameI) ++hashNameI;
+
+            auto srcIdx = std::distance(source._hashNames.cbegin(), srcHashNameI);
+            auto srcOffsets = source._offsets[srcIdx];
+            hashNameI = SetParameterHint(
+                hashNameI,
+                *srcHashNameI,
+                PtrAdd(source._names.begin(), srcOffsets.first),
+                PtrAdd(source._values.begin(), srcOffsets.second),
+                source._types[srcIdx]);
+            ++srcHashNameI;
+            ++hashNameI;
         }
     }
 
@@ -1315,8 +1335,12 @@ namespace Utility
                 name, &name[nameLen]);
                
                 // attributes with empty name strings will throw an exception here
-            if (finalNameLen <= 0)
-                Throw(::Exceptions::BasicLabel("Empty name string or error during name conversion"));
+            if (finalNameLen <= 0) {
+                // Throw(::Exceptions::BasicLabel("Empty name string or error during name conversion"));
+                nameBuffer.resize(64);
+                XlUI64toA(_hashNames[std::distance(_offsets.cbegin(), i)], (char*)nameBuffer.data(), nameBuffer.size(), 16);
+                finalNameLen = (unsigned)(std::find(nameBuffer.begin(), nameBuffer.end(), (utf8)'\0') - nameBuffer.begin());
+            }
 
                 // We need special cases for string types. In these cases we might have to
                 // do some conversion to get the value in the format we want.

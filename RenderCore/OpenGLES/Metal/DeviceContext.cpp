@@ -241,7 +241,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     startVertexLocation, vertexCount,
                     instanceCount);
             } else {
-                #if GL_EXT_draw_instanced
+                #if GL_EXT_draw_instanced && (PLATFORMOS_TARGET != PLATFORMOS_WINDOWS) // Some distributions of Angle for Win32s declare but don't implement this function
                     glDrawArraysInstancedEXT(
                         GLenum(_nativeTopology),
                         startVertexLocation, vertexCount,
@@ -270,7 +270,7 @@ namespace RenderCore { namespace Metal_OpenGLES
                     (const void*)(size_t)(_indexFormatBytes * startIndexLocation + _indexBufferOffsetBytes),
                     instanceCount);
             } else {
-                #if GL_EXT_draw_instanced
+                #if GL_EXT_draw_instanced && (PLATFORMOS_TARGET != PLATFORMOS_WINDOWS) // Some distributions of Angle for Win32s declare but don't implement this function
                     glDrawElementsInstancedEXT(
                         GLenum(_nativeTopology), GLsizei(indexCount),
                         GLenum(_indicesFormat),
