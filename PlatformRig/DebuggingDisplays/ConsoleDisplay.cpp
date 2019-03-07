@@ -114,7 +114,7 @@ namespace PlatformRig { namespace Overlays
         return std::basic_string<ucs2>(buffer);
     }
 
-    bool    ConsoleDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ConsoleDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         bool consume = false;
         if (input._pressedChar) {

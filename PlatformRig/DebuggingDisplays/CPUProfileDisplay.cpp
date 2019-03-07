@@ -311,7 +311,7 @@ namespace PlatformRig { namespace Overlays
     }
 
     bool HierarchicalProfilerDisplay::ProcessInput(
-        InterfaceState& interfaceState, const InputSnapshot& input)
+        InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (input.IsPress_LButton() || input.IsRelease_LButton()) {
             auto topId = interfaceState.TopMostWidget()._id;

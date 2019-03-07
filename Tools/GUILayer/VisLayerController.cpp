@@ -140,7 +140,7 @@ namespace GUILayer
 		_pimpl->_visOverlay->Set(_pimpl->_modelLayer->GetCamera());
 		_pimpl->_visOverlay->Set(_pimpl->_animState);
         
-
+		auto techContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		{
 			/*
 			auto immContext = EngineDevice::GetInstance()->GetNative().GetRenderDevice()->GetImmediateContext();
@@ -155,7 +155,7 @@ namespace GUILayer
 				_pimpl->_globalTechniqueContext);
 				*/
 
-			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(); // intersectionContext, intersectionScene);
+			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(_pimpl->_modelLayer->GetCamera(), techContext);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
 				ToolsRig::CreateCameraManipulator(_pimpl->_modelLayer->GetCamera()));
@@ -165,7 +165,7 @@ namespace GUILayer
 		{
 			_pimpl->_trackingLayer = std::make_shared<ToolsRig::MouseOverTrackingOverlay>(
 				_pimpl->_mouseOver,
-				std::make_shared<RenderCore::Techniques::TechniqueContext>(),
+				techContext,
 				_pimpl->_modelLayer->GetCamera(), &RenderTrackingOverlay);
 		}
 

@@ -8,6 +8,7 @@
 #include "IManipulator.h"
 #include "ManipulatorsUtil.h"
 #include "ManipulatorsRender.h"
+#include "VisualisationUtils.h"		// (for AsCameraDesc)
 
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/Terrain.h"
@@ -23,6 +24,7 @@
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/Geometry.h"
 #include <iomanip>
@@ -43,20 +45,22 @@ namespace ToolsRig
                                 Interactables& interactables, InterfaceState& interfaceState);
         void    RenderToScene(  RenderCore::IThreadContext& context, 
                                 RenderCore::Techniques::ParsingContext& parserContext);
-        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
         PlacementsWidgets(
-            std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
-            std::shared_ptr<SceneEngine::PlacementsRenderer> renderer, 
-            std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-            std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene);
+            const std::shared_ptr<SceneEngine::PlacementsEditor>& editor, 
+            const std::shared_ptr<SceneEngine::PlacementsRenderer>& renderer, 
+            const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionTestScene,
+			const std::shared_ptr<VisCameraSettings>& camera,
+			const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~PlacementsWidgets();
 
     private:
         typedef Overlays::ModelBrowser ModelBrowser;
 
         std::shared_ptr<ModelBrowser>       _browser;
-        std::shared_ptr<SceneEngine::IntersectionTestContext> _intersectionTestContext;
+        std::shared_ptr<VisCameraSettings> _camera;
+		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
         std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionTestScene;
         std::shared_ptr<SceneEngine::PlacementsEditor> _editor;
         bool            _browserActive;
@@ -82,7 +86,7 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
-            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestContext2& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
@@ -91,9 +95,9 @@ namespace ToolsRig
         const char* GetName() const;
         std::string GetStatusText() const;
 
-        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+        IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+		IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
         void SetActivationState(bool);
 
         SelectAndEdit(
@@ -184,7 +188,7 @@ namespace ToolsRig
 
     bool SelectAndEdit::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
-        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         bool consume = false;
@@ -300,7 +304,7 @@ namespace ToolsRig
                             //  The current "up" translation axis should lie flat on the plane. We
                             //  also want the camera "right" to lie close to the plane.
 
-                        auto currentCamera = hitTestContext.GetCameraDesc();
+                        auto currentCamera = hitTestContext._cameraDesc;
                         Float3 upAxis = ExtractUp_Cam(currentCamera._cameraToWorld);
                         Float3 rightAxis = ExtractRight_Cam(currentCamera._cameraToWorld);
                         assert(Equivalent(MagnitudeSquared(upAxis), 1.f, 1e-6f));
@@ -554,8 +558,8 @@ namespace ToolsRig
     }
 
     const char* SelectAndEdit::GetName() const                                            { return "Select And Edit"; }
-    auto SelectAndEdit::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
-    auto SelectAndEdit::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+	auto SelectAndEdit::GetFloatParameters() const -> IteratorRange<const FloatParameter*>  { return {}; }
+	auto SelectAndEdit::GetBoolParameters() const -> IteratorRange<const BoolParameter*>    { return {}; }
     void SelectAndEdit::SetActivationState(bool) 
     {
         if (_transaction) {
@@ -587,16 +591,16 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
-            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestContext2& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
 
         const char* GetName() const;
-        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+        IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+		IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
         void SetActivationState(bool);
         std::string GetStatusText() const { return std::string(); }
 
@@ -662,7 +666,7 @@ namespace ToolsRig
 
     bool PlaceSingle::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
-        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         //  If we get a click on the terrain, then we should perform 
@@ -726,14 +730,14 @@ namespace ToolsRig
     }
 
     const char* PlaceSingle::GetName() const                                            { return "Place single"; }
-    auto PlaceSingle::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  { return std::make_pair(nullptr, 0); }
-    auto PlaceSingle::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    
+	auto PlaceSingle::GetFloatParameters() const -> IteratorRange<const FloatParameter*>  { return {}; }
+    auto PlaceSingle::GetBoolParameters() const -> IteratorRange<const BoolParameter*>    
     {
         static BoolParameter parameters[] = 
         {
-            BoolParameter(ManipulatorParameterOffset(&PlaceSingle::_doRandomRotation), 0, "RandomRotation"),
+			BoolParameter{ManipulatorParameterOffset(&PlaceSingle::_doRandomRotation), 0, "RandomRotation"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     void PlaceSingle::SetActivationState(bool newState)
@@ -771,16 +775,16 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
-            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestContext2& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
 
         const char* GetName() const;
-        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+        IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+		IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
         void SetActivationState(bool);
         std::string GetStatusText() const { return std::string(); }
 
@@ -807,7 +811,7 @@ namespace ToolsRig
 
     bool ScatterPlacements::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
-        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
             //  If we get a click on the terrain, then we should perform 
@@ -1252,17 +1256,17 @@ namespace ToolsRig
 
     const char* ScatterPlacements::GetName() const  { return "ScatterPlace"; }
 
-    auto ScatterPlacements::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>  
+    auto ScatterPlacements::GetFloatParameters() const -> IteratorRange<const FloatParameter*> 
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_radius), 1.f, 100.f, FloatParameter::Logarithmic, "Size"),
-            FloatParameter(ManipulatorParameterOffset(&ScatterPlacements::_density), 0.01f, 1.f, FloatParameter::Linear, "Density")
+			FloatParameter{ManipulatorParameterOffset(&ScatterPlacements::_radius), 1.f, 100.f, FloatParameter::ScaleType::Logarithmic, "Size"},
+			FloatParameter{ManipulatorParameterOffset(&ScatterPlacements::_density), 0.01f, 1.f, FloatParameter::ScaleType::Linear, "Density"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
-    auto ScatterPlacements::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>    { return std::make_pair(nullptr, 0); }
+	auto ScatterPlacements::GetBoolParameters() const -> IteratorRange<const BoolParameter*>    { return {}; }
 
     void ScatterPlacements::SetActivationState(bool newState) 
     {
@@ -1434,7 +1438,7 @@ namespace ToolsRig
         }
     }
 
-    bool PlacementsWidgets::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
+    bool PlacementsWidgets::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         if (interfaceState.TopMostId() == Id_SelectedModel && input.IsRelease_LButton()) {
             _browserActive = !_browserActive;
@@ -1448,7 +1452,7 @@ namespace ToolsRig
                 return true;
             }
 
-            auto result = _browser->SpecialProcessInput(interfaceState, input);
+            auto result = _browser->SpecialProcessInput(interfaceState, inputContext, input);
             if (!result._selectedModel.empty()) {
                 _selectedModel = result._selectedModel;
                 _browserActive = false; // dismiss browser on select
@@ -1486,9 +1490,15 @@ namespace ToolsRig
             return true;
         }
 
-        if (interfaceState.GetMouseOverStack().empty()
-            && _manipulators[_activeManipulatorIndex]->OnInputEvent(input, *_intersectionTestContext, *_intersectionTestScene)) {
-            return true;
+        if (interfaceState.GetMouseOverStack().empty()) {
+
+			SceneEngine::IntersectionTestContext2 intersectionContext {
+				AsCameraDesc(*_camera),
+				inputContext._viewMins, inputContext._viewMaxs,
+				_techniqueContext };
+
+            if (_manipulators[_activeManipulatorIndex]->OnInputEvent(input, intersectionContext, *_intersectionTestScene))
+				return true;
         }
 
         return false;
@@ -1531,10 +1541,11 @@ namespace ToolsRig
     }
 
     PlacementsWidgets::PlacementsWidgets(
-        std::shared_ptr<SceneEngine::PlacementsEditor> editor, 
-        std::shared_ptr<SceneEngine::PlacementsRenderer> renderer, 
-        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-        std::shared_ptr<SceneEngine::IntersectionTestScene> intersectionTestScene)
+        const std::shared_ptr<SceneEngine::PlacementsEditor>& editor, 
+        const std::shared_ptr<SceneEngine::PlacementsRenderer>& renderer, 
+        const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionTestScene,
+		const std::shared_ptr<VisCameraSettings>& camera,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     {
         auto browser = std::make_shared<ModelBrowser>("game\\model");
         _browserActive = false;
@@ -1546,12 +1557,13 @@ namespace ToolsRig
         auto manipulators = CreatePlacementManipulators(this, editor, renderer);
         manipulators[0]->SetActivationState(true);
 
-        _editor = std::move(editor);
-        _intersectionTestContext = std::move(intersectionTestContext);        
-        _intersectionTestScene = std::move(intersectionTestScene);        
+        _editor = editor;
+        _intersectionTestScene = intersectionTestScene;
         _browser = std::move(browser);
         _manipulators = std::move(manipulators);
         _selectedModel = std::move(selectedModel);
+		_camera = camera;
+		_techniqueContext = techniqueContext;
     }
     
     PlacementsWidgets::~PlacementsWidgets()
@@ -1571,7 +1583,6 @@ namespace ToolsRig
         std::shared_ptr<SceneEngine::PlacementsEditor>  _editor;
         std::shared_ptr<DebugScreensSystem>             _screens;
         std::shared_ptr<PlacementsWidgets>              _placementsDispl;
-        std::shared_ptr<SceneEngine::IntersectionTestContext>   _intersectionTestContext;
         std::shared_ptr<SceneEngine::IntersectionTestScene>     _intersectionTestScene;
     };
 
@@ -1596,21 +1607,21 @@ namespace ToolsRig
     }
 
     PlacementsManipulatorsManager::PlacementsManipulatorsManager(
-        std::shared_ptr<SceneEngine::PlacementsManager> placementsManager,
-        std::shared_ptr<SceneEngine::PlacementCellSet> placementCellSet,
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionContext)
+        const std::shared_ptr<SceneEngine::PlacementsManager>& placementsManager,
+        const std::shared_ptr<SceneEngine::PlacementCellSet>& placementCellSet,
+        const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+        const std::shared_ptr<VisCameraSettings>& camera,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     {
         auto pimpl = std::make_unique<Pimpl>();
         pimpl->_screens = std::make_shared<DebugScreensSystem>();
         pimpl->_placementsManager = placementsManager;
         pimpl->_editor = pimpl->_placementsManager->CreateEditor(placementCellSet);
-        pimpl->_intersectionTestContext = std::move(intersectionContext);
         pimpl->_intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(
             terrainManager, placementCellSet, pimpl->_editor);
         pimpl->_placementsDispl = std::make_shared<PlacementsWidgets>(
             pimpl->_editor, placementsManager->GetRenderer(),
-            pimpl->_intersectionTestContext, pimpl->_intersectionTestScene);
+            pimpl->_intersectionTestScene, camera, techniqueContext);
         pimpl->_screens->Register(pimpl->_placementsDispl, "Placements", DebugScreensSystem::SystemDisplay);
         _pimpl = std::move(pimpl);
     }

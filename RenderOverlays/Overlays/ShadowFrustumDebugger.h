@@ -21,7 +21,7 @@ namespace Overlays
 
         void    Render( RenderOverlays::IOverlayContext& context, Layout& layout, 
                         Interactables& interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
         ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingParserDelegate> scene);
         ~ShadowFrustumDebugger();

@@ -266,7 +266,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    GPUProfileDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    GPUProfileDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (interfaceState.TopMostId()) {
             if (input.IsRelease_LButton()) {

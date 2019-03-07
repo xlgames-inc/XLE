@@ -18,7 +18,7 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         GridIteratorDisplay();
         ~GridIteratorDisplay();
@@ -31,7 +31,7 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         DualContouringTest();
         ~DualContouringTest();
@@ -41,7 +41,7 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         ConservativeRasterTest();
         ~ConservativeRasterTest();
@@ -51,7 +51,7 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         RectanglePackerTest();
         ~RectanglePackerTest();

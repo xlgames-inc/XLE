@@ -141,7 +141,7 @@ namespace GUILayer
     void LayerControl::AddDefaultCameraHandler(VisCameraSettings^ settings)
     {
             // create an input listener that feeds into a stack of manipulators
-        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>();
+        auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(settings->GetUnderlying(), _pimpl->_globalTechniqueContext);
         manipulators->Register(
             ToolsRig::ManipulatorStack::CameraManipulator,
             ToolsRig::CreateCameraManipulator(settings->GetUnderlying()));

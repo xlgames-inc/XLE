@@ -99,7 +99,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    GridIteratorDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    GridIteratorDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (input.IsHeld_LButton()) {
             _currentMousePosition = input._mousePosition;
@@ -550,7 +550,7 @@ namespace PlatformRig { namespace Overlays
 
     }
 
-    bool    DualContouringTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    DualContouringTest::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }
@@ -703,7 +703,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    RectanglePackerTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    RectanglePackerTest::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (input.IsRelease_LButton() && interfaceState.TopMostId() == Hash64("Randomize")) {
             _pimpl->FillRandomly();
@@ -948,7 +948,7 @@ namespace PlatformRig { namespace Overlays
 #endif
     }
 
-    bool    ConservativeRasterTest::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ConservativeRasterTest::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

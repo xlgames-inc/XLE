@@ -190,7 +190,7 @@ namespace Overlays
 #endif
     }
 
-    bool ShadowFrustumDebugger::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
+    bool ShadowFrustumDebugger::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         return false;
     }

@@ -9,7 +9,8 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include <memory>
 
-namespace SceneEngine { class IntersectionTestContext; class IntersectionTestScene; }
+namespace SceneEngine { class IntersectionTestScene; }
+namespace RenderCore { namespace Techniques { class TechniqueContext; } }
 
 namespace ToolsRig
 {
@@ -18,24 +19,27 @@ namespace ToolsRig
 
     std::shared_ptr<IManipulator> CreateCameraManipulator(std::shared_ptr<VisCameraSettings> visCameraSettings);
 
-
     class ManipulatorStack : public PlatformRig::IInputListener
     {
     public:
         bool    OnInputEvent(const PlatformRig::InputContext& context, const PlatformRig::InputSnapshot& evnt);
         void    Register(uint64 id, std::shared_ptr<ToolsRig::IManipulator> manipulator);
 
+		void	Set(const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionScene);
+
         static const uint64 CameraManipulator = 256;
 
         ManipulatorStack(
-            std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext = nullptr,
-            std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene = nullptr);
+			const std::shared_ptr<VisCameraSettings>& camera,
+			const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~ManipulatorStack();
     protected:
         std::vector<std::shared_ptr<ToolsRig::IManipulator>> _activeManipulators;
         std::vector<std::pair<uint64, std::shared_ptr<ToolsRig::IManipulator>>> _registeredManipulators;
-        std::shared_ptr<SceneEngine::IntersectionTestContext> _intrContext;
-        std::shared_ptr<SceneEngine::IntersectionTestScene> _intrScene;
+
+        std::shared_ptr<VisCameraSettings> _camera;
+		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+		std::shared_ptr<SceneEngine::IntersectionTestScene> _intersectionScene;
     };
 
 }

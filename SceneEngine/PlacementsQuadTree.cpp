@@ -591,7 +591,7 @@ namespace SceneEngine
     }
 
     bool    PlacementsQuadTreeDebugger::ProcessInput(
-        InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
+        InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         return false;
     }

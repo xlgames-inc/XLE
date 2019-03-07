@@ -19,6 +19,7 @@
 #include "../RenderCore/IDevice.h"
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/Techniques.h"
 
 #include "../Math/Transformations.h"
 #include "../Math/Vector.h"
@@ -53,18 +54,21 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::pair<Float3, bool> FindTerrainIntersection(
-        const IntersectionTestContext& intersectionContext,
+        const IntersectionTestContext2& intersectionContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
     {
             //  create a new device context and lighting parser context, and use
             //  this to find an accurate terrain collision.
-        auto viewportDims = intersectionContext.GetViewportSize();
-        RenderCore::Metal::ViewportDesc newViewport(
-            0.f, 0.f, float(viewportDims[0]), float(viewportDims[1]), 0.f, 1.f);
-        RenderCore::Metal::DeviceContext::Get(*intersectionContext.GetThreadContext())->Bind(newViewport);
-		return FindTerrainIntersection(*intersectionContext.GetThreadContext(), parsingContext, terrainManager, worldSpaceRay);
+        RenderCore::Metal::ViewportDesc newViewport {
+            float(intersectionContext._viewportMins[0]), float(intersectionContext._viewportMins[1]),
+			float(intersectionContext._viewportMaxs[0]-intersectionContext._viewportMins[0]),
+			float(intersectionContext._viewportMaxs[1]-intersectionContext._viewportMins[1]),
+			0.f, 1.f };
+		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
+        RenderCore::Metal::DeviceContext::Get(threadContext)->Bind(newViewport);
+		return FindTerrainIntersection(threadContext, parsingContext, terrainManager, worldSpaceRay);
     }
 
     static std::vector<ModelIntersectionStateContext::ResultEntry> PlacementsIntersection(
@@ -96,14 +100,15 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     auto IntersectionTestScene::FirstRayIntersection(
-        const IntersectionTestContext& context,
+        const IntersectionTestContext2& context,
         std::pair<Float3, Float3> worldSpaceRay,
         Type::BitField filter) const -> Result
     {
         Result result;
 
-        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
-		RenderCore::Techniques::ParsingContext parsingContext(context.GetTechniqueContext());
+		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
+        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
+		RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
 
         if ((filter & Type::Terrain) && _terrainManager) {
             auto intersection = FindTerrainIntersection(
@@ -137,10 +142,9 @@ namespace SceneEngine
                 TRY
                 {
                     float rayLength = Magnitude(worldSpaceRay.second - worldSpaceRay.first);
-                    auto cam = context.GetCameraDesc();
                     ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::RayTest,
-                        *context.GetThreadContext(), parsingContext, &cam);
+                        threadContext, parsingContext, &context._cameraDesc);
                     intersectionContext.SetRay(worldSpaceRay);
 
                     // note --  we could do this all in a single render call, except that there
@@ -208,13 +212,14 @@ namespace SceneEngine
     }
 
     auto IntersectionTestScene::FrustumIntersection(
-        const IntersectionTestContext& context,
+        const IntersectionTestContext2& context,
         const Float4x4& worldToProjection,
         Type::BitField filter) const -> std::vector<Result>
     {
         std::vector<Result> result;
 
-        auto& metalContext = *RenderCore::Metal::DeviceContext::Get(*context.GetThreadContext());
+        auto& threadContext = *RenderCore::Techniques::GetThreadContext();
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
 
         if ((filter & Type::Placement) && _placements && _placementsEditor) {
             auto intersections = _placementsEditor->GetManager()->GetIntersections();
@@ -232,11 +237,10 @@ namespace SceneEngine
 
                 TRY
                 {
-                    auto cam = context.GetCameraDesc();
-					RenderCore::Techniques::ParsingContext parsingContext(context.GetTechniqueContext());
+					RenderCore::Techniques::ParsingContext parsingContext(*context._techniqueContext);
                     ModelIntersectionStateContext intersectionContext(
                         ModelIntersectionStateContext::FrustumTest,
-                        *context.GetThreadContext(), parsingContext, &cam);
+                        threadContext, parsingContext, &context._cameraDesc);
                     intersectionContext.SetFrustum(worldToProjection);
 
                     // note --  we could do this all in a single render call, except that there
@@ -291,7 +295,7 @@ namespace SceneEngine
     }
 
     auto IntersectionTestScene::UnderCursor(
-        const IntersectionTestContext& context,
+        const IntersectionTestContext2& context,
         Int2 cursorPosition, Type::BitField filter) const -> Result
     {
         return FirstRayIntersection(
@@ -385,6 +389,24 @@ namespace SceneEngine
     {}
 
     IntersectionTestContext::~IntersectionTestContext() {}
+
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
+    std::pair<Float3, Float3> IntersectionTestContext2::CalculateWorldSpaceRay(Int2 screenCoord) const
+    {
+		return IntersectionTestContext::CalculateWorldSpaceRay(_cameraDesc, screenCoord, _viewportMins, _viewportMaxs);
+    }
+
+    Float2 IntersectionTestContext2::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
+    {
+        Int2 viewport = _viewportMaxs - _viewportMins;
+        auto worldToProjection = CalculateWorldToProjection(_cameraDesc, viewport[0] / float(viewport[1]));
+        auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
+
+        return Float2(
+            _viewportMins[0] + (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * float(viewport[0]),
+            _viewportMins[1] + (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * float(viewport[1]));
+    }
 
 }
 

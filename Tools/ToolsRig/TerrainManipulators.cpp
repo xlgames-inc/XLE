@@ -49,12 +49,12 @@ namespace ToolsRig
     class RaiseLowerManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Raise and Lower"; }
 
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+		virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
 
         RaiseLowerManipulator(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
@@ -63,7 +63,7 @@ namespace ToolsRig
         float _powerValue;
     };
 
-    void    RaiseLowerManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
+    void    RaiseLowerManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
         if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
             Throw(::Exceptions::BasicLabel(HeightsLayerError));
@@ -75,7 +75,7 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             auto result = i->AdjustHeights(
-                context,
+                *RenderCore::Techniques::GetThreadContext(),
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength, _powerValue);
@@ -85,15 +85,15 @@ namespace ToolsRig
         }
     }
 
-    auto RaiseLowerManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto RaiseLowerManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&RaiseLowerManipulator::_strength), 1.f, 100.f, FloatParameter::Logarithmic, "Strength"),
-            FloatParameter(ManipulatorParameterOffset(&RaiseLowerManipulator::_size), 0.1f, 500.f, FloatParameter::Linear, "Size"),
-            FloatParameter(ManipulatorParameterOffset(&RaiseLowerManipulator::_powerValue), 1.f/8.f, 8.f, FloatParameter::Linear, "ShapeControl")
+			FloatParameter{ManipulatorParameterOffset(&RaiseLowerManipulator::_strength), 1.f, 100.f, FloatParameter::ScaleType::Logarithmic, "Strength"},
+			FloatParameter{ManipulatorParameterOffset(&RaiseLowerManipulator::_size), 0.1f, 500.f, FloatParameter::ScaleType::Linear, "Size"},
+			FloatParameter{ManipulatorParameterOffset(&RaiseLowerManipulator::_powerValue), 1.f/8.f, 8.f, FloatParameter::ScaleType::Linear, "ShapeControl"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     RaiseLowerManipulator::RaiseLowerManipulator(
@@ -110,12 +110,12 @@ namespace ToolsRig
     class SmoothManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Smooth"; }
 
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+        virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
 
         SmoothManipulator(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
@@ -126,7 +126,7 @@ namespace ToolsRig
         unsigned _flags;
     };
 
-    void    SmoothManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
+    void    SmoothManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
         if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
             Throw(::Exceptions::BasicLabel(HeightsLayerError));
@@ -134,7 +134,7 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             auto result = i->Smooth(
-                context,
+                *RenderCore::Techniques::GetThreadContext(),
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size),
                 unsigned(_filterRadius), 
@@ -145,26 +145,26 @@ namespace ToolsRig
         }
     }
 
-    auto SmoothManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto SmoothManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&SmoothManipulator::_size), 0.1f, 500.f, FloatParameter::Linear, "Size"),
-            FloatParameter(ManipulatorParameterOffset(&SmoothManipulator::_standardDeviation), 1.f, 6.f, FloatParameter::Linear, "Blurriness"),
-            FloatParameter(ManipulatorParameterOffset(&SmoothManipulator::_filterRadius), 2.f, 16.f, FloatParameter::Linear, "FilterRadius"),
-            FloatParameter(ManipulatorParameterOffset(&SmoothManipulator::_strength), 0.01f, 1.f, FloatParameter::Linear, "Strength")
+			FloatParameter{ManipulatorParameterOffset(&SmoothManipulator::_size), 0.1f, 500.f, FloatParameter::ScaleType::Linear, "Size"},
+            FloatParameter{ManipulatorParameterOffset(&SmoothManipulator::_standardDeviation), 1.f, 6.f, FloatParameter::ScaleType::Linear, "Blurriness"},
+            FloatParameter{ManipulatorParameterOffset(&SmoothManipulator::_filterRadius), 2.f, 16.f, FloatParameter::ScaleType::Linear, "FilterRadius"},
+            FloatParameter{ManipulatorParameterOffset(&SmoothManipulator::_strength), 0.01f, 1.f, FloatParameter::ScaleType::Linear, "Strength"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
-    auto SmoothManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>
+    auto SmoothManipulator::GetBoolParameters() const -> IteratorRange<const BoolParameter*>
     {
         static BoolParameter parameters[] = 
         {
-            BoolParameter(ManipulatorParameterOffset(&SmoothManipulator::_flags), 0, "SmoothUp"),
-            BoolParameter(ManipulatorParameterOffset(&SmoothManipulator::_flags), 1, "SmoothDown")
+			BoolParameter{ManipulatorParameterOffset(&SmoothManipulator::_flags), 0, "SmoothUp"},
+			BoolParameter{ManipulatorParameterOffset(&SmoothManipulator::_flags), 1, "SmoothDown"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     SmoothManipulator::SmoothManipulator(
@@ -182,17 +182,17 @@ namespace ToolsRig
     class NoiseManipulator : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Add Noise"; }
 
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+		virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
 
         NoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     };
 
-    void    NoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
+    void    NoiseManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
         if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
             Throw(::Exceptions::BasicLabel(HeightsLayerError));
@@ -200,7 +200,7 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             auto result = i->AddNoise(
-                context,
+                *RenderCore::Techniques::GetThreadContext(),
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
                 .05f * strength);
@@ -210,14 +210,14 @@ namespace ToolsRig
         }
     }
 
-    auto NoiseManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto NoiseManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&NoiseManipulator::_strength), 1.f, 100.f, FloatParameter::Logarithmic, "Strength"),
-            FloatParameter(ManipulatorParameterOffset(&NoiseManipulator::_size), 0.1f, 500.f, FloatParameter::Linear, "Size"),
+			FloatParameter{ManipulatorParameterOffset(&NoiseManipulator::_strength), 1.f, 100.f, FloatParameter::ScaleType::Logarithmic, "Strength"},
+			FloatParameter{ManipulatorParameterOffset(&NoiseManipulator::_size), 0.1f, 500.f, FloatParameter::ScaleType::Linear, "Size"},
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     NoiseManipulator::NoiseManipulator(
@@ -233,12 +233,12 @@ namespace ToolsRig
     class CopyHeight : public CommonManipulator
     {
     public:
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
+        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Copy Height"; }
 
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+        virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
 
         CopyHeight(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
     private:
@@ -246,7 +246,7 @@ namespace ToolsRig
         unsigned _flags;
     };
 
-    void CopyHeight::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
+    void CopyHeight::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
         if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
             Throw(::Exceptions::BasicLabel(HeightsLayerError));
@@ -254,7 +254,7 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i && _targetOnMouseDown.second) {
             auto result = i->CopyHeight(
-                context,
+                *RenderCore::Techniques::GetThreadContext(),
                 WorldSpaceToTerrain(Truncate(worldSpacePosition)), 
                 WorldSpaceToTerrain(Truncate(_targetOnMouseDown.first)), 
                 WorldSpaceDistanceToTerrainCoords(size), 
@@ -265,25 +265,25 @@ namespace ToolsRig
         }
     }
 
-    auto CopyHeight::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto CopyHeight::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&CopyHeight::_strength), 1.f, 100.f, FloatParameter::Logarithmic, "Strength"),
-            FloatParameter(ManipulatorParameterOffset(&CopyHeight::_size), 0.1f, 500.f, FloatParameter::Linear, "Size"),
-            FloatParameter(ManipulatorParameterOffset(&CopyHeight::_powerValue), 1.f/8.f, 8.f, FloatParameter::Linear, "ShapeControl")
+			FloatParameter{ManipulatorParameterOffset(&CopyHeight::_strength), 1.f, 100.f, FloatParameter::ScaleType::Logarithmic, "Strength"},
+			FloatParameter{ManipulatorParameterOffset(&CopyHeight::_size), 0.1f, 500.f, FloatParameter::ScaleType::Linear, "Size"},
+			FloatParameter{ManipulatorParameterOffset(&CopyHeight::_powerValue), 1.f/8.f, 8.f, FloatParameter::ScaleType::Linear, "ShapeControl"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
-    auto CopyHeight::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>
+    auto CopyHeight::GetBoolParameters() const -> IteratorRange<const BoolParameter*>
     {
         static BoolParameter parameters[] = 
         {
-            BoolParameter(ManipulatorParameterOffset(&CopyHeight::_flags), 0, "MoveUp"),
-            BoolParameter(ManipulatorParameterOffset(&CopyHeight::_flags), 1, "MoveDown")
+			BoolParameter{ManipulatorParameterOffset(&CopyHeight::_flags), 0, "MoveUp"},
+			BoolParameter{ManipulatorParameterOffset(&CopyHeight::_flags), 1, "MoveDown"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     CopyHeight::CopyHeight(
@@ -303,16 +303,16 @@ namespace ToolsRig
     public:
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestContext2& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual const char* GetName() const { return "Fine Tune"; }
         virtual std::string GetStatusText() const { return std::string(); }
 
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const; 
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const; 
+        virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+        virtual IteratorRange<const IntParameter*>   GetIntParameters() const;
         virtual void SetActivationState(bool newState);
 
         FineTuneManipulator(
@@ -329,7 +329,7 @@ namespace ToolsRig
 
     bool FineTuneManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         if (evnt._wheelDelta) {
@@ -371,7 +371,7 @@ namespace ToolsRig
                 auto *i = _terrainManager->GetHeightsInterface();
                 if (i) {
                     auto result = i->FineTune(
-                        *hitTestContext.GetThreadContext(),
+                        *RenderCore::Techniques::GetThreadContext(),
                         Truncate(_targetPoint.first), _radius, adjustmentHeightValue);
 
                     if (result != SceneEngine::TerrainToolResult::Success)
@@ -394,23 +394,23 @@ namespace ToolsRig
         }
     }
 
-    auto FineTuneManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto FineTuneManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&FineTuneManipulator::_radius), 0.5f, 40.f, FloatParameter::Logarithmic, "Radius"),
+			FloatParameter{ManipulatorParameterOffset(&FineTuneManipulator::_radius), 0.5f, 40.f, FloatParameter::ScaleType::Logarithmic, "Radius"},
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
-    auto FineTuneManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>
+    auto FineTuneManipulator::GetBoolParameters() const -> IteratorRange<const BoolParameter*>
     {
-        return std::make_pair(nullptr, 0);
+		return {};
     }
 
-    auto FineTuneManipulator::GetIntParameters() const -> std::pair<IntParameter*, size_t>
+    auto FineTuneManipulator::GetIntParameters() const -> IteratorRange<const IntParameter*>
     {
-        return std::make_pair(nullptr, 0);
+		return {};
     }
 
     void FineTuneManipulator::SetActivationState(bool newState) { _draggingManipulator = false; }
@@ -428,11 +428,11 @@ namespace ToolsRig
     class FillNoiseManipulator : public RectangleManipulator
     {
     public:
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
+        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1);
         virtual const char* GetName() const { return "Fill noise"; }
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+		virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
 
         FillNoiseManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
@@ -440,7 +440,7 @@ namespace ToolsRig
         float _baseHeight, _noiseHeight, _roughness, _fractalDetail;
     };
 
-    void    FillNoiseManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1)
+    void    FillNoiseManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
     {
         if (_manipulatorContext->_activeLayer != SceneEngine::CoverageId_Heights)
             Throw(::Exceptions::BasicLabel(HeightsLayerError));
@@ -448,7 +448,7 @@ namespace ToolsRig
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
             auto result = i->FillWithNoise(
-                context,
+                *RenderCore::Techniques::GetThreadContext(),
                 WorldSpaceToTerrain(Truncate(anchor0)), 
                 WorldSpaceToTerrain(Truncate(anchor1)), 
                 _baseHeight, _noiseHeight, _roughness, _fractalDetail);
@@ -458,16 +458,16 @@ namespace ToolsRig
         }
     }
 
-    auto FillNoiseManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto FillNoiseManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&FillNoiseManipulator::_baseHeight), 0.1f, 1000.f, FloatParameter::Logarithmic, "BaseHeight"),
-            FloatParameter(ManipulatorParameterOffset(&FillNoiseManipulator::_noiseHeight), 0.1f, 2000.f, FloatParameter::Logarithmic, "NoiseHeight"),
-            FloatParameter(ManipulatorParameterOffset(&FillNoiseManipulator::_roughness), 10.f, 1000.f, FloatParameter::Logarithmic, "Roughness"),
-            FloatParameter(ManipulatorParameterOffset(&FillNoiseManipulator::_fractalDetail), 0.1f, 0.9f, FloatParameter::Linear, "FractalDetail")
+			FloatParameter{ManipulatorParameterOffset(&FillNoiseManipulator::_baseHeight), 0.1f, 1000.f, FloatParameter::ScaleType::Logarithmic, "BaseHeight"},
+			FloatParameter{ManipulatorParameterOffset(&FillNoiseManipulator::_noiseHeight), 0.1f, 2000.f, FloatParameter::ScaleType::Logarithmic, "NoiseHeight"},
+			FloatParameter{ManipulatorParameterOffset(&FillNoiseManipulator::_roughness), 10.f, 1000.f, FloatParameter::ScaleType::Logarithmic, "Roughness"},
+			FloatParameter{ManipulatorParameterOffset(&FillNoiseManipulator::_fractalDetail), 0.1f, 0.9f, FloatParameter::ScaleType::Linear, "FractalDetail"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     FillNoiseManipulator::FillNoiseManipulator(
@@ -486,11 +486,11 @@ namespace ToolsRig
     class PaintCoverageManipulator : public CommonManipulator
     {
     public:
-        virtual void PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength);
+        virtual void PerformAction(const Float3& worldSpacePosition, float size, float strength);
         virtual const char* GetName() const { return "Paint Coverage"; }
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const;
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+		virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+        virtual IteratorRange<const IntParameter*>   GetIntParameters() const;
         virtual void SetActivationState(bool newState);
 		virtual void Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
@@ -500,7 +500,7 @@ namespace ToolsRig
         unsigned _paintValue;
     };
 
-    void PaintCoverageManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength)
+    void PaintCoverageManipulator::PerformAction(const Float3& worldSpacePosition, float size, float strength)
     {
 		auto coverageLayer = _manipulatorContext->_activeLayer;
 		if (coverageLayer == SceneEngine::CoverageId_Heights)
@@ -509,7 +509,7 @@ namespace ToolsRig
         auto* i = _terrainManager->GetCoverageInterface(coverageLayer);
         if (i) {
             auto result = i->Paint(
-                context,
+                *RenderCore::Techniques::GetThreadContext(),
                 WorldSpaceToCoverage(coverageLayer, Truncate(worldSpacePosition)), 
                 WorldSpaceToCoverageDistance(coverageLayer, size),
                 _paintValue);
@@ -521,22 +521,22 @@ namespace ToolsRig
         }
     }
 
-    auto PaintCoverageManipulator::GetIntParameters() const -> std::pair < IntParameter*, size_t >
+    auto PaintCoverageManipulator::GetIntParameters() const -> IteratorRange<const IntParameter*>
     {
         static IntParameter parameters[] = 
         {
-            IntParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_paintValue), 0i32, INT32_MAX, IntParameter::Linear, "PaintValue")
+			IntParameter{ManipulatorParameterOffset(&PaintCoverageManipulator::_paintValue), 0i32, INT32_MAX, IntParameter::ScaleType::Linear, "PaintValue"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
-    auto PaintCoverageManipulator::GetFloatParameters() const -> std::pair < FloatParameter*, size_t >
+    auto PaintCoverageManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&PaintCoverageManipulator::_size), 0.1f, 500.f, FloatParameter::Linear, "Size")
+			FloatParameter{ManipulatorParameterOffset(&PaintCoverageManipulator::_size), 0.1f, 500.f, FloatParameter::ScaleType::Linear, "Size"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     void PaintCoverageManipulator::SetActivationState(bool newState)
@@ -582,13 +582,13 @@ namespace ToolsRig
     class ErosionManipulator : public RectangleManipulator
     {
     public:
-        virtual void            PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
+        virtual void            PerformAction(const Float3& anchor0, const Float3& anchor1);
         virtual const char*     GetName() const { return "Erosion simulation"; }
         virtual void            Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+        virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const;
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
         
         ErosionManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
@@ -601,7 +601,7 @@ namespace ToolsRig
         size_t OffsetOf(const void* member) const;
     };
 
-    void    ErosionManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1)
+    void    ErosionManipulator::PerformAction(const Float3& anchor0, const Float3& anchor1)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
@@ -646,35 +646,35 @@ namespace ToolsRig
         return offset;
     }
 
-    auto ErosionManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto ErosionManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(OffsetOf(&_params._rainQuantityPerFrame), 0.f, 1.f, FloatParameter::Linear, "Rain quantity per frame"),
-            FloatParameter(OffsetOf(&_params._evaporationConstant), 0.f, 1.f, FloatParameter::Linear, "Evaporation constant"),
-            FloatParameter(OffsetOf(&_params._pressureConstant), 0.f, 1.f, FloatParameter::Linear, "Pressure constant"),
+            FloatParameter{OffsetOf(&_params._rainQuantityPerFrame), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Rain quantity per frame"},
+            FloatParameter{OffsetOf(&_params._evaporationConstant), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Evaporation constant"},
+            FloatParameter{OffsetOf(&_params._pressureConstant), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Pressure constant"},
 
-            FloatParameter(OffsetOf(&_params._kConstant), 0.f, 1.f, FloatParameter::Linear, "K constant"),
-            FloatParameter(OffsetOf(&_params._erosionRate), 0.f, 1.f, FloatParameter::Linear, "Erosion rate"),
-            FloatParameter(OffsetOf(&_params._settlingRate), 0.f, 1.f, FloatParameter::Linear, "Settling rate"),
-            FloatParameter(OffsetOf(&_params._maxSediment), 0.f, 1.f, FloatParameter::Linear, "Max sediment"),
-            FloatParameter(OffsetOf(&_params._depthMax), 0.f, 1.f, FloatParameter::Linear, "Depth max"),
-            FloatParameter(OffsetOf(&_params._sedimentShiftScalar), 0.f, 1.f, FloatParameter::Linear, "Sediment shift scalar"),
+            FloatParameter{OffsetOf(&_params._kConstant), 0.f, 1.f, FloatParameter::ScaleType::Linear, "K constant"},
+            FloatParameter{OffsetOf(&_params._erosionRate), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Erosion rate"},
+            FloatParameter{OffsetOf(&_params._settlingRate), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Settling rate"},
+            FloatParameter{OffsetOf(&_params._maxSediment), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Max sediment"},
+            FloatParameter{OffsetOf(&_params._depthMax), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Depth max"},
+            FloatParameter{OffsetOf(&_params._sedimentShiftScalar), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Sediment shift scalar"},
 
-            FloatParameter(OffsetOf(&_params._thermalSlopeAngle), 0.f, 1.f, FloatParameter::Linear, "Thermal slope angle"),
-            FloatParameter(OffsetOf(&_params._thermalErosionRate), 0.f, 1.f, FloatParameter::Linear, "Thermal erosion rate")
+            FloatParameter{OffsetOf(&_params._thermalSlopeAngle), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Thermal slope angle"},
+			FloatParameter{OffsetOf(&_params._thermalErosionRate), 0.f, 1.f, FloatParameter::ScaleType::Linear, "Thermal erosion rate"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
-    auto ErosionManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t>
+    auto ErosionManipulator::GetBoolParameters() const -> IteratorRange<const BoolParameter*>
     {
         static BoolParameter parameters[] = 
         {
-            BoolParameter(ManipulatorParameterOffset(&ErosionManipulator::_flags), 0, "Active"),
-            BoolParameter(ManipulatorParameterOffset(&ErosionManipulator::_flags), 1, "Draw water"),
+			BoolParameter{ManipulatorParameterOffset(&ErosionManipulator::_flags), 0, "Active"},
+			BoolParameter{ManipulatorParameterOffset(&ErosionManipulator::_flags), 1, "Draw water"},
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     ErosionManipulator::ErosionManipulator(
@@ -692,18 +692,18 @@ namespace ToolsRig
     class RotateManipulator : public RectangleManipulator
     {
     public:
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1);
+        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1);
         virtual const char* GetName() const { return "Rotate"; }
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
+        virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const;
+		virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+		virtual IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
         RotateManipulator(std::shared_ptr<SceneEngine::TerrainManager> terrainManager, std::shared_ptr<TerrainManipulatorContext> manipulatorContext);
 
     private:
         float _rotationDegrees;
     };
 
-    void    RotateManipulator::PerformAction(RenderCore::IThreadContext& context, const Float3&, const Float3&)
+    void    RotateManipulator::PerformAction(const Float3&, const Float3&)
     {
         auto *i = _terrainManager->GetHeightsInterface();
         if (i) {
@@ -716,19 +716,19 @@ namespace ToolsRig
             float radius = Magnitude(rotationOrigin - farPoint);
             Float2 A(farPoint[0] - rotationOrigin[0], farPoint[1] - rotationOrigin[1]);
             Float3 rotationAxis = Normalize(Float3(A[1], -A[0], 0.f));
-            auto result = i->Rotate(context, rotationOrigin, radius, rotationAxis, float(_rotationDegrees * M_PI / 180.f));
+            auto result = i->Rotate(*RenderCore::Techniques::GetThreadContext(), rotationOrigin, radius, rotationAxis, float(_rotationDegrees * M_PI / 180.f));
             if (result != SceneEngine::TerrainToolResult::Success)
                 throw TerrainManipulatorException(result);
         }
     }
 
-    auto RotateManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t>
+    auto RotateManipulator::GetFloatParameters() const -> IteratorRange<const FloatParameter*>
     {
         static FloatParameter parameters[] = 
         {
-            FloatParameter(ManipulatorParameterOffset(&RotateManipulator::_rotationDegrees), 1.0f, 70.f, FloatParameter::Logarithmic, "RotationDegrees")
+			FloatParameter{ManipulatorParameterOffset(&RotateManipulator::_rotationDegrees), 1.0f, 70.f, FloatParameter::ScaleType::Logarithmic, "RotationDegrees"}
         };
-        return std::make_pair(parameters, dimof(parameters));
+        return MakeIteratorRange(parameters);
     }
 
     RotateManipulator::RotateManipulator(

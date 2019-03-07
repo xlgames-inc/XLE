@@ -637,7 +637,7 @@ namespace PlatformRig { namespace Overlays
         DrawMenuBar(&context, menuBar, interactables, interfaceState);
     }
 
-    bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    BufferUploadDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (interfaceState.TopMostId()) {
             if (input.IsRelease_LButton()) {
@@ -935,7 +935,7 @@ namespace PlatformRig { namespace Overlays
         }
     }
 
-    bool    ResourcePoolDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ResourcePoolDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         if (interfaceState.TopMostId()) {
             if (input.IsRelease_LButton()) {
@@ -1111,7 +1111,7 @@ namespace PlatformRig { namespace Overlays
         return false;
     }
 
-    bool    BatchingDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    BatchingDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

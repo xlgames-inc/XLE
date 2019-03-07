@@ -22,7 +22,7 @@ namespace SceneEngine
 
         void    Render( RenderOverlays::IOverlayContext& context, Layout& layout, 
                         Interactables& interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
         PlacementsQuadTreeDebugger(std::shared_ptr<PlacementsManager> placementsManager, std::shared_ptr<PlacementCellSet> cells);
         ~PlacementsQuadTreeDebugger();

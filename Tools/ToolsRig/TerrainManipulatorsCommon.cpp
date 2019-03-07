@@ -21,14 +21,12 @@ static unsigned FrameRenderCount;
 
 namespace ToolsRig
 {
-    using SceneEngine::IntersectionTestContext;
-    using SceneEngine::IntersectionTestScene;
     std::pair<Float3, bool> FindTerrainIntersection(
-        const IntersectionTestContext& context, const IntersectionTestScene& scene,
+        const SceneEngine::IntersectionTestContext2& context, const SceneEngine::IntersectionTestScene& scene,
         const Int2 screenCoords)
     {
-        auto result = scene.UnderCursor(context, screenCoords, IntersectionTestScene::Type::Terrain);
-        if (result._type == IntersectionTestScene::Type::Terrain) {
+        auto result = scene.UnderCursor(context, screenCoords, SceneEngine::IntersectionTestScene::Type::Terrain);
+        if (result._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
             return std::make_pair(result._worldSpaceCollision, true);
         }
         return std::make_pair(Float3(0.f, 0.f, 0.f), false);
@@ -119,7 +117,7 @@ namespace ToolsRig
 
     bool    CommonManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         const bool shiftHeld = evnt.IsHeld(PlatformRig::KeyId_Make("shift"));
@@ -154,7 +152,7 @@ namespace ToolsRig
                 // perform action -- (like raising or lowering the terrain)
             if (_currentWorldSpaceTarget.second && (Millisecond_Now() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
 
-                PerformAction(*hitTestContext.GetThreadContext(), _currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
+                PerformAction(_currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
                 
                 _lastPerform = Millisecond_Now();
                 _lastRenderCount1 = FrameRenderCount;
@@ -197,8 +195,8 @@ namespace ToolsRig
 
     bool    RectangleManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const IntersectionTestContext& hitTestContext,
-        const IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
+        const SceneEngine::IntersectionTestScene& hitTestScene)
     {
         Int2 mousePosition(evnt._mousePosition[0], evnt._mousePosition[1]);
 
@@ -233,7 +231,7 @@ namespace ToolsRig
                     Float2 faWorld = TerrainToWorldSpace(RoundDownToInteger(terrainCoordsMins));
                     Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
-                    PerformAction(*hitTestContext.GetThreadContext(), Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
+                    PerformAction(Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
                 }
             }
 

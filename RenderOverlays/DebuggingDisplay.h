@@ -109,7 +109,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
     {
     public:
         virtual void    Render(IOverlayContext& context, Layout& layout, Interactables& interactables, InterfaceState& interfaceState) = 0;
-        virtual bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input) = 0;
+        virtual bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input) = 0;
         virtual         ~IWidget();
     };
 
@@ -211,7 +211,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Coord   ValueToPixels(float value) const;
         };
 
-        bool                ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input);
+        bool                ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
         float               CalculateCurrentOffset(const Coordinates& coordinates) const;
         float               CalculateCurrentOffset(const Coordinates& coordinates, float oldValue) const;
         InteractableId      GetID() const;
@@ -310,7 +310,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         void    RenderPanelControls(        IOverlayContext*    context,
                                             unsigned            panelIndex, const std::string& name, Layout&layout, bool allowDestroy,
                                             Interactables&      interactables, InterfaceState& interfaceState);
-        bool    ProcessInputPanelControls(  InterfaceState&     interfaceState, const PlatformRig::InputSnapshot&    evnt);
+        bool    ProcessInputPanelControls(  InterfaceState&     interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot&    evnt);
     };
 
     ///////////////////////////////////////////////////////////////////////////////////

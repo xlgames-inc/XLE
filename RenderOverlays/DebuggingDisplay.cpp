@@ -105,7 +105,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
     }
 
-    bool            ScrollBar::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
+    bool            ScrollBar::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         const bool overScrollBar = (interfaceState.TopMostId() == _id);
         _draggingScrollBar = (_draggingScrollBar || overScrollBar) && (input._mouseButtonsDown&1);
@@ -845,7 +845,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
 
         for (auto i=_systemWidgets.begin(); i!=_systemWidgets.end() && !consumedEvent; ++i) {
-            consumedEvent |= i->_widget->ProcessInput(_currentInterfaceState, evnt);
+            consumedEvent |= i->_widget->ProcessInput(_currentInterfaceState, context, evnt);
         }
 
         for (auto i=_panels.begin(); i!=_panels.end() && !consumedEvent; ++i) {
@@ -857,14 +857,14 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 }
                 
                 if (!alreadySeen) {
-                    consumedEvent |= _widgets[i->_widgetIndex]._widget->ProcessInput(_currentInterfaceState, evnt);
+                    consumedEvent |= _widgets[i->_widgetIndex]._widget->ProcessInput(_currentInterfaceState, context, evnt);
                 }
             }
         }
 
         // if (!(evnt._mouseButtonsDown & (1<<0)) && (evnt._mouseButtonsTransition & (1<<0)) && !consumedEvent) {
         if (!consumedEvent) {
-            consumedEvent |= ProcessInputPanelControls(_currentInterfaceState, evnt);
+            consumedEvent |= ProcessInputPanelControls(_currentInterfaceState, context, evnt);
         }
 
         _consumedInputEvent |= consumedEvent;
@@ -966,7 +966,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
     bool    DebugScreensSystem::ProcessInputPanelControls(  InterfaceState& interfaceState, 
-                                                            const PlatformRig::InputSnapshot& evnt)
+                                                            const PlatformRig::InputContext& inputContext,
+															const PlatformRig::InputSnapshot& evnt)
     {
         if (interfaceState.TopMostId() && evnt.IsRelease_LButton()) {
             InteractableId topMostWidget = interfaceState.TopMostId();

@@ -65,6 +65,17 @@ namespace SceneEngine
         std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
     };
 
+	class IntersectionTestContext2
+    {
+    public:
+        std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
+        Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
+
+		RenderCore::Techniques::CameraDesc _cameraDesc;
+		Int2 _viewportMins, _viewportMaxs;
+		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
+    };
+
     class IIntersectionTester;
 
     /// <summary>Resolves ray and box intersections for tools</summary>
@@ -104,17 +115,17 @@ namespace SceneEngine
         };
 
         Result FirstRayIntersection(
-            const IntersectionTestContext& context,
+            const IntersectionTestContext2& context,
             std::pair<Float3, Float3> worldSpaceRay,
             Type::BitField filter = ~Type::BitField(0)) const;
 
         std::vector<Result> FrustumIntersection(
-            const IntersectionTestContext& context,
+            const IntersectionTestContext2& context,
             const Float4x4& worldToProjection,
             Type::BitField filter = ~Type::BitField(0)) const;
 
         Result UnderCursor(
-            const IntersectionTestContext& context,
+            const IntersectionTestContext2& context,
             Int2 cursorPosition,
             Type::BitField filter = ~Type::BitField(0)) const;
 
@@ -141,12 +152,12 @@ namespace SceneEngine
     public:
         using Result = IntersectionTestScene::Result;
         virtual Result FirstRayIntersection(
-            const IntersectionTestContext& context,
+            const IntersectionTestContext2& context,
             std::pair<Float3, Float3> worldSpaceRay) const = 0;
 
         virtual void FrustumIntersection(
             std::vector<Result>& results,
-            const IntersectionTestContext& context,
+            const IntersectionTestContext2& context,
             const Float4x4& worldToProjection) const = 0;
 
         virtual ~IIntersectionTester();

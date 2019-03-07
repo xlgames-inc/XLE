@@ -20,7 +20,7 @@ namespace PlatformRig { namespace Overlays
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         ConsoleDisplay(ConsoleRig::Console& console);
         ~ConsoleDisplay();

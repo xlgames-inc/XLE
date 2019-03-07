@@ -130,7 +130,7 @@ namespace PlatformRig { namespace Overlays
     }
 
     bool DynamicImpostersDisplay::ProcessInput(
-        InterfaceState& interfaceState, const InputSnapshot& input)
+        InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

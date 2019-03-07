@@ -467,12 +467,12 @@ namespace ToolsRig
     {
     public:
         Result FirstRayIntersection(
-            const SceneEngine::IntersectionTestContext& context,
+            const SceneEngine::IntersectionTestContext2& context,
             std::pair<Float3, Float3> worldSpaceRay) const;
 
         void FrustumIntersection(
             std::vector<Result>& results,
-            const SceneEngine::IntersectionTestContext& context,
+            const SceneEngine::IntersectionTestContext2& context,
             const Float4x4& worldToProjection) const;
 
         IntersectionTester(std::shared_ptr<ObjectPlaceholders> placeHolders);
@@ -494,7 +494,7 @@ namespace ToolsRig
 	}
 
     auto ObjectPlaceholders::IntersectionTester::FirstRayIntersection(
-        const SceneEngine::IntersectionTestContext& context,
+        const SceneEngine::IntersectionTestContext2& context,
         std::pair<Float3, Float3> worldSpaceRay) const -> Result
     {
         using namespace SceneEngine;
@@ -561,7 +561,7 @@ namespace ToolsRig
 
     void ObjectPlaceholders::IntersectionTester::FrustumIntersection(
         std::vector<Result>& results,
-        const SceneEngine::IntersectionTestContext& context,
+        const SceneEngine::IntersectionTestContext2& context,
         const Float4x4& worldToProjection) const
     {}
 

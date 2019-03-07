@@ -66,7 +66,7 @@ namespace PlatformRig
     {
     public:
         void    Render(IOverlayContext& context, Layout& layout, Interactables&interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input);
 
         FrameRigDisplay(
             std::shared_ptr<DebugScreensSystem> debugSystem,
@@ -552,7 +552,7 @@ namespace PlatformRig
         }
     }
 
-    bool    FrameRigDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    FrameRigDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         auto topMost = interfaceState.TopMostWidget();
         if (input.IsPress_LButton() || input.IsRelease_LButton()) {

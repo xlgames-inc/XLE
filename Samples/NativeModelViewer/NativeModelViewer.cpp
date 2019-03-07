@@ -74,7 +74,7 @@ namespace Sample
 		AddSystem(trackingOverlay);
 
 		{
-			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(); // intersectionContext, intersectionScene);
+			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(modelLayer->GetCamera(), globals._techniqueContext);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
 				ToolsRig::CreateCameraManipulator(modelLayer->GetCamera()));

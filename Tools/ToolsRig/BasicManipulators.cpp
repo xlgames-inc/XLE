@@ -21,7 +21,7 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestContext2& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene);
         void Render(
             RenderCore::IThreadContext& context, 
@@ -30,10 +30,10 @@ namespace ToolsRig
         const char* GetName() const;
         std::string GetStatusText() const;
 
-        std::pair<FloatParameter*, size_t>  GetFloatParameters() const;
-        std::pair<BoolParameter*, size_t>   GetBoolParameters() const;
-        std::pair<IntParameter*, size_t>   GetIntParameters() const { return std::make_pair(nullptr, 0); }
-        void SetActivationState(bool newState);
+        IteratorRange<const FloatParameter*>  GetFloatParameters() const { return {}; }
+        IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
+		IteratorRange<const IntParameter*>   GetIntParameters() const { return {}; }
+		void SetActivationState(bool newState) {}
 
         CameraMovementManipulator(
             std::shared_ptr<VisCameraSettings> visCameraSettings);
@@ -48,7 +48,7 @@ namespace ToolsRig
 
     bool CameraMovementManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestContext2& hitTestContext,
         const SceneEngine::IntersectionTestScene& hitTestScene)
     {
             //  This is a simple camera manipulator
@@ -77,7 +77,7 @@ namespace ToolsRig
             if (!&hitTestContext || !&hitTestScene) return false;
 
             auto worldSpaceRay = SceneEngine::IntersectionTestContext::CalculateWorldSpaceRay(
-				AsCameraDesc(*_visCameraSettings), evnt._mousePosition, UInt2{0, 0}, hitTestContext.GetViewportSize());
+				AsCameraDesc(*_visCameraSettings), evnt._mousePosition, hitTestContext._viewportMins, hitTestContext._viewportMaxs);
 
             auto intr = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
             if (intr._type != 0) {
@@ -171,10 +171,6 @@ namespace ToolsRig
     const char* CameraMovementManipulator::GetName() const { return "Camera Movement"; }
     std::string CameraMovementManipulator::GetStatusText() const { return std::string(); }
 
-    auto CameraMovementManipulator::GetFloatParameters() const -> std::pair<FloatParameter*, size_t> { return std::make_pair(nullptr, 0); }
-    auto CameraMovementManipulator::GetBoolParameters() const -> std::pair<BoolParameter*, size_t> { return std::make_pair(nullptr, 0); }
-    void CameraMovementManipulator::SetActivationState(bool) {}
-
     CameraMovementManipulator::CameraMovementManipulator(
         std::shared_ptr<VisCameraSettings> visCameraSettings)
     : _visCameraSettings(visCameraSettings)
@@ -214,8 +210,13 @@ namespace ToolsRig
         }
 
         if (!_activeManipulators.empty()) {
+			SceneEngine::IntersectionTestContext2 intersectionContext {
+				AsCameraDesc(*_camera),
+				context._viewMins, context._viewMaxs,
+				_techniqueContext };
+
             bool r = _activeManipulators[_activeManipulators.size()-1]->OnInputEvent(
-                evnt, *_intrContext, *_intrScene);
+                evnt, intersectionContext, *_intersectionScene);
 
             if (!r) { 
                 _activeManipulators.erase(_activeManipulators.begin() + (_activeManipulators.size()-1));
@@ -235,10 +236,16 @@ namespace ToolsRig
         }
     }
 
+	void	ManipulatorStack::Set(const std::shared_ptr<SceneEngine::IntersectionTestScene>& intersectionScene)
+	{
+		_intersectionScene = intersectionScene;
+	}
+
     ManipulatorStack::ManipulatorStack(
-        std::shared_ptr<SceneEngine::IntersectionTestContext> intrContext,
-        std::shared_ptr<SceneEngine::IntersectionTestScene> intrScene)
-    : _intrContext(intrContext), _intrScene(intrScene)
+        const std::shared_ptr<VisCameraSettings>& camera,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
+    : _camera(camera)
+	, _techniqueContext(techniqueContext)
     {}
     ManipulatorStack::~ManipulatorStack()
     {}

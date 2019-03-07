@@ -74,17 +74,17 @@ namespace Overlays
         }
     }
 
-    bool    ToneMapSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
+    bool    ToneMapSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
-                if (_scrollers[c].ProcessInput(interfaceState, input))
+                if (_scrollers[c].ProcessInput(interfaceState, inputContext, input))
                     return true;
                 break;
             }
 
         for (unsigned c=0; c<dimof(_scrollers); ++c) {
-            if (_scrollers[c].ProcessInput(interfaceState, input)) {
+            if (_scrollers[c].ProcessInput(interfaceState, inputContext, input)) {
                 return true;
             }
         }
@@ -170,17 +170,17 @@ namespace Overlays
         }
     }
 
-    bool    ColorGradingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input)
+    bool    ColorGradingSettingsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
-                if (_scrollers[c].ProcessInput(interfaceState, input))
+                if (_scrollers[c].ProcessInput(interfaceState, inputContext, input))
                     return true;
                 break;
             }
 
         for (unsigned c=0; c<dimof(_scrollers); ++c) {
-            if (_scrollers[c].ProcessInput(interfaceState, input)) {
+            if (_scrollers[c].ProcessInput(interfaceState, inputContext, input)) {
                 return true;
             }
         }

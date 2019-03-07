@@ -7,11 +7,12 @@
 #pragma once
 
 #include "../../RenderCore/IThreadContext_Forward.h"
+#include "../../Utility/IteratorUtils.h"
 #include <string>
 
 namespace SceneEngine 
 {
-    class IntersectionTestContext;
+    class IntersectionTestContext2;
     class IntersectionTestScene;
 }
 
@@ -25,7 +26,7 @@ namespace ToolsRig
     public:
         virtual bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext& hitTestContext,
+			const SceneEngine::IntersectionTestContext2& hitTestContext,
             const SceneEngine::IntersectionTestScene& hitTestScene) = 0;
         virtual void Render(
             RenderCore::IThreadContext& context, 
@@ -34,40 +35,29 @@ namespace ToolsRig
         virtual const char* GetName() const = 0;
         virtual std::string GetStatusText() const = 0;
 
-        template<typename T> class Parameter
+        template<typename T> struct Parameter
         {
-        public:
-            enum ScaleType { Linear, Logarithmic };
-
-            size_t _valueOffset;
-            T _min, _max;
-            ScaleType _scaleType;
-            const char* _name;
-
-            Parameter() {}
-            Parameter(size_t valueOffset, T min, T max, ScaleType scaleType, const char name[])
-                : _valueOffset(valueOffset), _min(min), _max(max), _scaleType(scaleType), _name(name) {}
+            enum class ScaleType { Linear, Logarithmic };
+            size_t _valueOffset = 0;
+            T _min = T(0), _max = T(0);
+            ScaleType _scaleType = ScaleType::Linear;
+            const char* _name = nullptr;
         };
 
         typedef Parameter<float> FloatParameter;
         typedef Parameter<int> IntParameter;
 
-        class BoolParameter
+        struct BoolParameter
         {
-        public:
-            size_t      _valueOffset;
-            unsigned    _bitIndex;
-            const char* _name;
-
-            BoolParameter() {}
-            BoolParameter(size_t valueOffset, unsigned bitIndex, const char name[])
-                : _valueOffset(valueOffset), _bitIndex(bitIndex), _name(name) {}
+            size_t      _valueOffset = 0;
+            unsigned    _bitIndex = 0;
+            const char* _name = nullptr;
         };
 
             // (warning -- result will probably contain pointers to internal memory within this manipulator)
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const = 0;     
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const = 0;
-        virtual std::pair<IntParameter*, size_t>   GetIntParameters() const = 0;
+        virtual IteratorRange<const FloatParameter*> GetFloatParameters() const = 0;     
+        virtual IteratorRange<const BoolParameter*> GetBoolParameters() const = 0;
+        virtual IteratorRange<const IntParameter*> GetIntParameters() const = 0;
         virtual void SetActivationState(bool newState) = 0;
 
         virtual ~IManipulator();
