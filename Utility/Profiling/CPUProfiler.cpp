@@ -287,7 +287,7 @@ namespace Utility
 
     void HierarchicalCPUProfiler::EndFrame()
     {
-        assert(XlGetCurrentThreadId() == _threadId);
+        assert(Threading::CurrentThreadId() == _threadId);
         assert(_aeStackI==0);
         static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
 
@@ -345,7 +345,7 @@ namespace Utility
         _frameMarkerCount = _frameMarkerNext = 0;
 
         #if !defined(NDEBUG)
-            _threadId = XlGetCurrentThreadId();
+            _threadId = Threading::CurrentThreadId();
             XlZeroMemory(_aeStack);
             _aeStackI = 0;
         #endif

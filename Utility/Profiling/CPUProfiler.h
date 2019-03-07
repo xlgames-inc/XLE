@@ -9,6 +9,7 @@
 #include "../TimeUtils.h"
 #include "../IteratorUtils.h"
 #include "../Threading/Mutex.h"
+#include "../Threading/ThreadingUtils.h"
 #include "../../Core/Types.h"
 #include <vector>
 #include <assert.h>
@@ -142,18 +143,16 @@ namespace Utility
         unsigned _frameMarkerNext, _frameMarkerCount;
 
         #if !defined(NDEBUG)
-            size_t _threadId;
+            Threading::ThreadId _threadId;
             static const unsigned s_maxStackDepth = 16;
             uint32 _aeStack[s_maxStackDepth];
             uint32 _aeStackI;
         #endif
     };
 
-    size_t XlGetCurrentThreadId();
-
     inline unsigned HierarchicalCPUProfiler::BeginEvent(const char eventLiteral[])
     {
-        assert(XlGetCurrentThreadId() == _threadId);
+        assert(Threading::CurrentThreadId() == _threadId);
         uint64 time;
         #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
                 // special case inlined version for Windows API platforms
@@ -178,7 +177,7 @@ namespace Utility
 
     inline void HierarchicalCPUProfiler::EndEvent(unsigned eventId)
     {
-        assert(XlGetCurrentThreadId() == _threadId);
+        assert(Threading::CurrentThreadId() == _threadId);
         uint64 time;
         #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
             QueryPerformanceCounter((LARGE_INTEGER*)&time);

@@ -29,7 +29,7 @@ namespace Utility
         _workingId = 0;
 
         #if !defined(NDEBUG)
-            _threadId = XlGetCurrentThreadId();
+            _threadId = Threading::CurrentThreadId();
             _aeStackI = 0;
         #endif
     }

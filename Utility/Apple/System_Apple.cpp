@@ -27,11 +27,6 @@
 
 namespace Utility
 {
-    uint32 XlGetCurrentThreadId()
-    {
-        return pthread_mach_thread_np(pthread_self());
-    }
-
     uint64 GetPerformanceCounter()
     {
         return mach_absolute_time();
@@ -391,11 +386,6 @@ namespace Utility
 
 namespace Utility
 {
-    uint32 XlGetCurrentThreadId()
-    {
-        return 0;
-    }
-
     static const auto NSEC_PER_SEC = 1000000000ull;
 
     uint64 GetPerformanceCounter()
