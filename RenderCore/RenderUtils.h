@@ -131,8 +131,10 @@ namespace RenderCore
     {
         return MakeSubFramePkt(&input, PtrAdd(&input, sizeof(T)));
     }
-    
-    void ResetSubFrameHeap();
+
+    unsigned SubFrameHeap_ProducerFrameBarrier();
+    void SubFrameHeap_ConsumerFrameBarrier(unsigned producerBarrierId);
+    void SubFrameHeap_ProducerAndConsumerFrameBarrier();
 
     inline SharedPkt::SharedPkt(SharedPkt&& moveFrom) never_throws
     {
