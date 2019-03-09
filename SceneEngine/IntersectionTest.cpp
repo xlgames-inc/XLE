@@ -54,7 +54,7 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     static std::pair<Float3, bool> FindTerrainIntersection(
-        const IntersectionTestContext2& intersectionContext,
+        const IntersectionTestContext& intersectionContext,
 		RenderCore::Techniques::ParsingContext& parsingContext,
         TerrainManager& terrainManager,
         std::pair<Float3, Float3> worldSpaceRay)
@@ -68,6 +68,10 @@ namespace SceneEngine
 			0.f, 1.f };
 		auto& threadContext = *RenderCore::Techniques::GetThreadContext();
         RenderCore::Metal::DeviceContext::Get(threadContext)->Bind(newViewport);
+		// We need to set the camera to get correct culling and lodding of the terrain during intersection tests
+		parsingContext.GetProjectionDesc() = RenderCore::Techniques::BuildProjectionDesc(
+			intersectionContext._cameraDesc,
+			UInt2{unsigned(intersectionContext._viewportMaxs[0]-intersectionContext._viewportMins[0]), unsigned(intersectionContext._viewportMaxs[1]-intersectionContext._viewportMins[1])});
 		return FindTerrainIntersection(threadContext, parsingContext, terrainManager, worldSpaceRay);
     }
 
@@ -100,7 +104,7 @@ namespace SceneEngine
 ////////////////////////////////////////////////////////////////////////////////////////////////////////
 
     auto IntersectionTestScene::FirstRayIntersection(
-        const IntersectionTestContext2& context,
+        const IntersectionTestContext& context,
         std::pair<Float3, Float3> worldSpaceRay,
         Type::BitField filter) const -> Result
     {
@@ -212,7 +216,7 @@ namespace SceneEngine
     }
 
     auto IntersectionTestScene::FrustumIntersection(
-        const IntersectionTestContext2& context,
+        const IntersectionTestContext& context,
         const Float4x4& worldToProjection,
         Type::BitField filter) const -> std::vector<Result>
     {
@@ -295,7 +299,7 @@ namespace SceneEngine
     }
 
     auto IntersectionTestScene::UnderCursor(
-        const IntersectionTestContext2& context,
+        const IntersectionTestContext& context,
         Int2 cursorPosition, Type::BitField filter) const -> Result
     {
         return FirstRayIntersection(
@@ -346,58 +350,14 @@ namespace SceneEngine
             std::make_pair(viewMins, viewMaxs));
     }
 
+////////////////////////////////////////////////////////////////////////////////////////////////////////
+    
     std::pair<Float3, Float3> IntersectionTestContext::CalculateWorldSpaceRay(Int2 screenCoord) const
     {
-		return CalculateWorldSpaceRay(GetCameraDesc(), screenCoord, UInt2{0, 0}, GetViewportSize());
+		return CalculateWorldSpaceRay(_cameraDesc, screenCoord, _viewportMins, _viewportMaxs);
     }
 
     Float2 IntersectionTestContext::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
-    {
-        auto viewport = GetViewportSize();
-        auto worldToProjection = CalculateWorldToProjection(GetCameraDesc(), viewport[0] / float(viewport[1]));
-        auto projCoords = worldToProjection * Expand(worldSpaceCoord, 1.f);
-
-        return Float2(
-            (projCoords[0] / projCoords[3] * 0.5f + 0.5f) * float(viewport[0]),
-            (projCoords[1] / projCoords[3] * -0.5f + 0.5f) * float(viewport[1]));
-    }
-
-    UInt2 IntersectionTestContext::GetViewportSize() const
-    {
-        return UInt2(_viewportContext->_width, _viewportContext->_height);
-    }
-
-    const std::shared_ptr<RenderCore::IThreadContext>& IntersectionTestContext::GetThreadContext() const
-    {
-        return _threadContext;
-    }
-
-    RenderCore::Techniques::CameraDesc IntersectionTestContext::GetCameraDesc() const 
-    {
-        return _cameraDesc;
-    }
-
-    IntersectionTestContext::IntersectionTestContext(
-        const std::shared_ptr<RenderCore::IThreadContext>& threadContext,
-        const RenderCore::Techniques::CameraDesc& cameraDesc,
-        const std::shared_ptr<RenderCore::PresentationChainDesc>& viewportContext,
-        const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
-    : _threadContext(threadContext)
-    , _cameraDesc(cameraDesc)
-    , _techniqueContext(std::move(techniqueContext))
-    , _viewportContext(std::move(viewportContext))
-    {}
-
-    IntersectionTestContext::~IntersectionTestContext() {}
-
-////////////////////////////////////////////////////////////////////////////////////////////////////////
-    
-    std::pair<Float3, Float3> IntersectionTestContext2::CalculateWorldSpaceRay(Int2 screenCoord) const
-    {
-		return IntersectionTestContext::CalculateWorldSpaceRay(_cameraDesc, screenCoord, _viewportMins, _viewportMaxs);
-    }
-
-    Float2 IntersectionTestContext2::ProjectToScreenSpace(const Float3& worldSpaceCoord) const
     {
         Int2 viewport = _viewportMaxs - _viewportMins;
         auto worldToProjection = CalculateWorldToProjection(_cameraDesc, viewport[0] / float(viewport[1]));

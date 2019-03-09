@@ -69,6 +69,12 @@ namespace PlatformRig
         bool    IsUp_MButton() const         { return ((_mouseButtonsDown&(1<<2))==0)       && ((_mouseButtonsTransition&(1<<2))==0); }
         bool    IsDblClk_MButton() const     { return !!(_mouseButtonsDblClk & (1<<2)); }
 
+		bool    IsHeld_MouseButton(unsigned btnIdx) const       { return ((_mouseButtonsDown&(1u<<btnIdx))==(1u<<btnIdx)); }
+        bool    IsPress_MouseButton(unsigned btnIdx) const      { return ((_mouseButtonsDown&(1u<<btnIdx))==(1u<<btnIdx))	&& ((_mouseButtonsTransition&(1u<<btnIdx))==(1u<<btnIdx)); }
+        bool    IsRelease_MouseButton(unsigned btnIdx) const    { return ((_mouseButtonsDown&(1u<<btnIdx))==0u)				&& ((_mouseButtonsTransition&(1u<<btnIdx))==(1u<<btnIdx)); }
+        bool    IsUp_MouseButton(unsigned btnIdx) const         { return ((_mouseButtonsDown&(1u<<btnIdx))==0u)				&& ((_mouseButtonsTransition&(1u<<btnIdx))==0u); }
+        bool    IsDblClk_MouseButton(unsigned btnIdx) const     { return !!(_mouseButtonsDblClk & (1u<<btnIdx)); }
+
         template<typename Iterator> static bool IsHeld      (KeyId key, Iterator begin, Iterator end);
         template<typename Iterator> static bool IsPress     (KeyId key, Iterator begin, Iterator end);
         template<typename Iterator> static bool IsRelease   (KeyId key, Iterator begin, Iterator end);

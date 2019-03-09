@@ -40,13 +40,13 @@ namespace ToolsRig
     {
         auto p = _parent.lock();
         if (p) {
-			SceneEngine::IntersectionTestContext2 intersectionContext {
+			SceneEngine::IntersectionTestContext intersectionContext {
 				AsCameraDesc(*p->_camera),
 				context._viewMins, context._viewMaxs,
 				p->_techniqueContext };
 
             if (auto a = p->GetActiveManipulator()) {
-                return a->OnInputEvent(evnt, intersectionContext, *p->_intersectionTestScene);
+                return a->OnInputEvent(evnt, intersectionContext, p->_intersectionTestScene.get());
             }
         }
         return false;

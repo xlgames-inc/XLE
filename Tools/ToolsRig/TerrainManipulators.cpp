@@ -300,8 +300,8 @@ namespace ToolsRig
     public:
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext2& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual const char* GetName() const { return "Fine Tune"; }
@@ -326,9 +326,11 @@ namespace ToolsRig
 
     bool FineTuneManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const SceneEngine::IntersectionTestContext2& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
+		if (!hitTestScene) return false;
+
         if (evnt._wheelDelta) {
             float roundingPoint = .5f;
             float wheelAdjustment = XlCeil(_radius / 8.f / roundingPoint) * roundingPoint;
@@ -354,7 +356,7 @@ namespace ToolsRig
             if (isClickOnManipulatorCylinder) {
                 _draggingManipulator = true;
             } else {
-                _targetPoint = FindTerrainIntersection(hitTestContext, hitTestScene, evnt._mousePosition);
+                _targetPoint = FindTerrainIntersection(hitTestContext, *hitTestScene, evnt._mousePosition);
                 _draggingManipulator = false;
             }
             return true;

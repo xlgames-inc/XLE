@@ -22,7 +22,7 @@ static unsigned FrameRenderCount;
 namespace ToolsRig
 {
     std::pair<Float3, bool> FindTerrainIntersection(
-        const SceneEngine::IntersectionTestContext2& context, const SceneEngine::IntersectionTestScene& scene,
+        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IntersectionTestScene& scene,
         const Int2 screenCoords)
     {
         auto result = scene.UnderCursor(context, screenCoords, SceneEngine::IntersectionTestScene::Type::Terrain);
@@ -117,8 +117,8 @@ namespace ToolsRig
 
     bool    CommonManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const SceneEngine::IntersectionTestContext2& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
         const bool shiftHeld = evnt.IsHeld(PlatformRig::KeyId_Make("shift"));
         if (evnt._wheelDelta) {
@@ -135,10 +135,10 @@ namespace ToolsRig
             //  to do that is to get it from the windows HWND!
         Int2 newMouseCoords(evnt._mousePosition[0], evnt._mousePosition[1]);
             // only do the terrain test if we get some kind of movement
-        if (((XlAbs(_mouseCoords[0] - newMouseCoords[0]) > 1 || XlAbs(_mouseCoords[1] - newMouseCoords[1]) > 1)
-            && (FrameRenderCount > _lastRenderCount0)) || evnt.IsPress_LButton()) {
+        if ((((XlAbs(_mouseCoords[0] - newMouseCoords[0]) > 1 || XlAbs(_mouseCoords[1] - newMouseCoords[1]) > 1)
+            && (FrameRenderCount > _lastRenderCount0)) || evnt.IsPress_LButton()) && hitTestScene) {
 
-            _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, hitTestScene, newMouseCoords);
+            _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, *hitTestScene, newMouseCoords);
             _lastPerform = 0;
             _mouseCoords = newMouseCoords;
             _lastRenderCount0 = FrameRenderCount;
@@ -195,14 +195,14 @@ namespace ToolsRig
 
     bool    RectangleManipulator::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt, 
-        const SceneEngine::IntersectionTestContext2& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
         Int2 mousePosition(evnt._mousePosition[0], evnt._mousePosition[1]);
 
-        if (evnt.IsPress_LButton()) {
+        if (evnt.IsPress_LButton() && hitTestScene) {
                 // on lbutton press, we should place a new anchor
-            auto intersection = FindTerrainIntersection(hitTestContext, hitTestScene, mousePosition);
+            auto intersection = FindTerrainIntersection(hitTestContext, *hitTestScene, mousePosition);
             _isDragging = intersection.second;
             if (intersection.second) {
                 _firstAnchor = intersection.first;
@@ -210,11 +210,11 @@ namespace ToolsRig
             }
         }
 
-        if (_isDragging) {
+        if (_isDragging && hitTestScene) {
 
             if (evnt.IsHeld_LButton() || evnt.IsRelease_LButton()) {
                     // update the second anchor as we drag
-                _secondAnchor = FindTerrainIntersection(hitTestContext, hitTestScene, mousePosition);
+                _secondAnchor = FindTerrainIntersection(hitTestContext, *hitTestScene, mousePosition);
             }
 
             if (evnt.IsRelease_LButton()) {

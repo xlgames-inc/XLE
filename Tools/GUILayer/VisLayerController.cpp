@@ -158,7 +158,9 @@ namespace GUILayer
 			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(_pimpl->_modelLayer->GetCamera(), techContext);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
-				ToolsRig::CreateCameraManipulator(_pimpl->_modelLayer->GetCamera()));
+				ToolsRig::CreateCameraManipulator(
+					_pimpl->_modelLayer->GetCamera(), 
+					ToolsRig::CameraManipulatorMode::Blender_RightButton));
 			_pimpl->_manipulatorLayer = ToolsRig::MakeLayerForInput(manipulators);
 		}
 

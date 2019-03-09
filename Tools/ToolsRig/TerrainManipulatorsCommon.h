@@ -43,8 +43,8 @@ namespace ToolsRig
             // IManipulator interface
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext2& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
@@ -71,8 +71,8 @@ namespace ToolsRig
             // IManipulator interface
         virtual bool    OnInputEvent(
             const PlatformRig::InputSnapshot& evnt, 
-            const SceneEngine::IntersectionTestContext2& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1) = 0;

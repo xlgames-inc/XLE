@@ -33,41 +33,13 @@ namespace SceneEngine
     /// size -- because this can effect LOD as well. It's frustrating, but all 
     /// this is required!
     /// <seealso cref="IntersectionResolver" />
-    class IntersectionTestContext
+	class IntersectionTestContext
     {
     public:
-
-            // "CameraDesc" member is only require for the following utility
-            //  methods
-        std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
-        static std::pair<Float3, Float3> CalculateWorldSpaceRay(
+		static std::pair<Float3, Float3> CalculateWorldSpaceRay(
             const RenderCore::Techniques::CameraDesc& sceneCamera,
             Int2 screenCoord, UInt2 viewMins, UInt2 viewMaxs);
-        
-        Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
-        RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-        UInt2 GetViewportSize() const;
 
-            // technique context & thread context is enough for most operations
-        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
-        const std::shared_ptr<RenderCore::IThreadContext>& GetThreadContext() const;
-
-        IntersectionTestContext(
-            const std::shared_ptr<RenderCore::IThreadContext>& threadContext,
-            const RenderCore::Techniques::CameraDesc& cameraDesc,
-            const std::shared_ptr<RenderCore::PresentationChainDesc>& viewportContext,
-            const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
-        ~IntersectionTestContext();
-    protected:
-        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
-        std::shared_ptr<RenderCore::PresentationChainDesc> _viewportContext;
-        RenderCore::Techniques::CameraDesc _cameraDesc;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
-    };
-
-	class IntersectionTestContext2
-    {
-    public:
         std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
 
@@ -115,17 +87,17 @@ namespace SceneEngine
         };
 
         Result FirstRayIntersection(
-            const IntersectionTestContext2& context,
+            const IntersectionTestContext& context,
             std::pair<Float3, Float3> worldSpaceRay,
             Type::BitField filter = ~Type::BitField(0)) const;
 
         std::vector<Result> FrustumIntersection(
-            const IntersectionTestContext2& context,
+            const IntersectionTestContext& context,
             const Float4x4& worldToProjection,
             Type::BitField filter = ~Type::BitField(0)) const;
 
         Result UnderCursor(
-            const IntersectionTestContext2& context,
+            const IntersectionTestContext& context,
             Int2 cursorPosition,
             Type::BitField filter = ~Type::BitField(0)) const;
 
@@ -152,12 +124,12 @@ namespace SceneEngine
     public:
         using Result = IntersectionTestScene::Result;
         virtual Result FirstRayIntersection(
-            const IntersectionTestContext2& context,
+            const IntersectionTestContext& context,
             std::pair<Float3, Float3> worldSpaceRay) const = 0;
 
         virtual void FrustumIntersection(
             std::vector<Result>& results,
-            const IntersectionTestContext2& context,
+            const IntersectionTestContext& context,
             const Float4x4& worldToProjection) const = 0;
 
         virtual ~IIntersectionTester();

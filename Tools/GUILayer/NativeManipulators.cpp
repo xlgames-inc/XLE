@@ -130,8 +130,9 @@ namespace GUILayer
 		auto underlying = _manipContext->GetNativeManipulator();
         if (!underlying) return false;
 
-		SceneEngine::IntersectionTestContext2 intersectionContext {
-			*vc->Camera->_native,
+		msclr::auto_handle<CameraDescWrapper> cam = vc->Camera;
+		SceneEngine::IntersectionTestContext intersectionContext {
+			*cam->_native,
 			UInt2{0,0}, UInt2{(unsigned)vc->ViewportSize.Width, (unsigned)vc->ViewportSize.Height},
 			vc->TechniqueContext->_techniqueContext.GetNativePtr() };
 
@@ -142,7 +143,7 @@ namespace GUILayer
 
         TRY
         {
-		    underlying->OnInputEvent(evnt, intersectionContext, hitTestScene->GetNative());
+		    underlying->OnInputEvent(evnt, intersectionContext, &hitTestScene->GetNative());
         } 
         // We need to translate the exceptions that can be raised by native manipulators into something that
         // the .net editors can use here. C# code can't extract any of the C++ details from the except class,

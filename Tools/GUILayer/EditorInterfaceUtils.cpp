@@ -108,7 +108,7 @@ namespace GUILayer
         {
             TRY
             {
-				SceneEngine::IntersectionTestContext2 testContext {
+				SceneEngine::IntersectionTestContext testContext {
 					*camera->_native, UInt2{0,0}, UInt2{0,0},
 					techniqueContext->_techniqueContext.GetNativePtr()
 				};
@@ -155,7 +155,7 @@ namespace GUILayer
             {
                 Float4x4 worldToProjection = Transpose(AsFloat4x4(matrix));
 
-                SceneEngine::IntersectionTestContext2 testContext {
+                SceneEngine::IntersectionTestContext testContext {
 					*camera->_native, UInt2{0,0}, UInt2{0,0},
 					techniqueContext->_techniqueContext.GetNativePtr()
 				};
@@ -228,7 +228,7 @@ namespace GUILayer
             IntersectionTestSceneWrapper^ testScene,
             unsigned ptx, unsigned pty)
         {
-			SceneEngine::IntersectionTestContext2 testContext {
+			SceneEngine::IntersectionTestContext testContext {
 				*camera->_native, UInt2{0,0}, UInt2{viewportWidth,viewportHeight},
 				techniqueContext->_techniqueContext.GetNativePtr()
 			};

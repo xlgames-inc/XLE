@@ -86,8 +86,8 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
-            const SceneEngine::IntersectionTestContext2& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -188,9 +188,11 @@ namespace ToolsRig
 
     bool SelectAndEdit::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
-        const SceneEngine::IntersectionTestContext2& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
+		if (!hitTestScene) return false;
+
         bool consume = false;
         if (_transaction) {
             static const auto keyG = PlatformRig::KeyId_Make("g");
@@ -222,7 +224,7 @@ namespace ToolsRig
                 _activeSubop._cursorStart = evnt._mousePosition;
 
                 if (newSubOp == SubOperation::MoveAcrossTerrainSurface) {
-                    _activeSubop._anchorTerrainIntersection = hitTestScene.UnderCursor(
+                    _activeSubop._anchorTerrainIntersection = hitTestScene->UnderCursor(
                         hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
                 }
             }
@@ -356,7 +358,7 @@ namespace ToolsRig
                             //  We want to find an intersection point with the terrain, and then 
                             //  compare the XY coordinates of that to the anchor point
 
-                        auto collision = hitTestScene.UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+                        auto collision = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
                         if (collision._type == SceneEngine::IntersectionTestScene::Type::Terrain
                             && _activeSubop._anchorTerrainIntersection._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
                             _activeSubop._parameter = Float3(
@@ -373,7 +375,7 @@ namespace ToolsRig
                     unsigned count = _transaction->GetObjectCount();
                     for (unsigned c=0; c<count; ++c) {
                         auto& originalState = _transaction->GetObjectOriginalState(c);
-                        auto newState = TransformObject(hitTestScene, originalState);
+                        auto newState = TransformObject(*hitTestScene, originalState);
                         _transaction->SetObject(c, newState);
                     }
                 }
@@ -398,7 +400,7 @@ namespace ToolsRig
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
-                auto hitTestResult = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
+                auto hitTestResult = hitTestScene->FirstRayIntersection(hitTestContext, worldSpaceRay);
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     firstHit = hitTestResult._objectGuid;
                 }
@@ -460,7 +462,7 @@ namespace ToolsRig
                 auto worldSpaceRay = hitTestContext.CalculateWorldSpaceRay(evnt._mousePosition);
                 
                 SceneEngine::PlacementGUID firstHit(0,0);
-                auto hitTestResult = hitTestScene.FirstRayIntersection(hitTestContext, worldSpaceRay);
+                auto hitTestResult = hitTestScene->FirstRayIntersection(hitTestContext, worldSpaceRay);
                 if (hitTestResult._type == SceneEngine::IntersectionTestScene::Type::Placement) {
                     auto tempTrans = _editor->Transaction_Begin(&hitTestResult._objectGuid, &hitTestResult._objectGuid + 1);
                     if (tempTrans->GetObjectCount() == 1) {
@@ -591,8 +593,8 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
-            const SceneEngine::IntersectionTestContext2& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -666,8 +668,8 @@ namespace ToolsRig
 
     bool PlaceSingle::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
-        const SceneEngine::IntersectionTestContext2& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
         //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
@@ -680,10 +682,10 @@ namespace ToolsRig
             return false;
         }
 
-        if (_rendersSinceHitTest > 0) {
+        if (_rendersSinceHitTest > 0 && hitTestScene) {
             _rendersSinceHitTest = 0;
 
-            auto test = hitTestScene.UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+            auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
             if (test._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
 
                     //  This is a spawn event. We should add a new item of the selected model
@@ -775,8 +777,8 @@ namespace ToolsRig
     public:
         bool OnInputEvent(
             const PlatformRig::InputSnapshot& evnt,
-            const SceneEngine::IntersectionTestContext2& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
+            const SceneEngine::IntersectionTestContext& hitTestContext,
+            const SceneEngine::IntersectionTestScene* hitTestScene);
         void Render(
             RenderCore::IThreadContext& context,
             RenderCore::Techniques::ParsingContext& parserContext);
@@ -811,8 +813,8 @@ namespace ToolsRig
 
     bool ScatterPlacements::OnInputEvent(
         const PlatformRig::InputSnapshot& evnt,
-        const SceneEngine::IntersectionTestContext2& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
             //  If we get a click on the terrain, then we should perform 
             //  whatever placement operation is required (eg, creating new placements)
@@ -820,7 +822,9 @@ namespace ToolsRig
             //  However, we need to do terrain collisions every time (because we want to
             //  move the highlight/preview position
 
-        auto test = hitTestScene.UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
+		if (!hitTestScene) return false;
+
+        auto test = hitTestScene->UnderCursor(hitTestContext, evnt._mousePosition, SceneEngine::IntersectionTestScene::Type::Terrain);
         _hoverPoint = test._worldSpaceCollision;
         _hasHoverPoint = test._type == SceneEngine::IntersectionTestScene::Type::Terrain;
 
@@ -831,7 +835,7 @@ namespace ToolsRig
                 auto selectedModel = _manInterface->GetSelectedModel();
                 auto selectedMaterial = _manInterface->GetSelectedMaterial();
                 if (now >= (_spawnTimer + spawnTimeOut) && !selectedModel.empty() && !selectedMaterial.empty()) {
-                    PerformScatter(hitTestScene, test._worldSpaceCollision, selectedModel.c_str(), selectedMaterial.c_str());
+                    PerformScatter(*hitTestScene, test._worldSpaceCollision, selectedModel.c_str(), selectedMaterial.c_str());
                     _spawnTimer = now;
                 }
                 return true;
@@ -1492,12 +1496,12 @@ namespace ToolsRig
 
         if (interfaceState.GetMouseOverStack().empty()) {
 
-			SceneEngine::IntersectionTestContext2 intersectionContext {
+			SceneEngine::IntersectionTestContext intersectionContext {
 				AsCameraDesc(*_camera),
 				inputContext._viewMins, inputContext._viewMaxs,
 				_techniqueContext };
 
-            if (_manipulators[_activeManipulatorIndex]->OnInputEvent(input, intersectionContext, *_intersectionTestScene))
+            if (_manipulators[_activeManipulatorIndex]->OnInputEvent(input, intersectionContext, _intersectionTestScene.get()))
 				return true;
         }
 
