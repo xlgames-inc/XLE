@@ -8,6 +8,8 @@
 #include "LayerControl.h"
 #include "IWindowRig.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/ModelVisualisation.h"
+#include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
 #include "../../PlatformRig/InputTranslator.h"
@@ -37,6 +39,7 @@ namespace GUILayer
 		::Assets::FuturePtr<SceneEngine::IScene> _scene;
 
 		ToolsRig::ModelVisSettings _modelSettings;
+		ToolsRig::MaterialVisSettings _materialVisSettings;
     };
 
 	static void RenderTrackingOverlay(
@@ -89,6 +92,21 @@ namespace GUILayer
 	{
 		return gcnew ModelVisSettings(
 			std::make_shared<ToolsRig::ModelVisSettings>(_pimpl->_modelSettings));
+	}
+
+	void VisLayerController::SetMaterialVisSettings(MaterialVisSettings^ settings)
+	{
+		_pimpl->_materialVisSettings = *settings->GetUnderlying();
+		_pimpl->_scene = ToolsRig::MakeScene(_pimpl->_materialVisSettings);
+		_pimpl->_modelLayer->Set(_pimpl->_scene);
+		_pimpl->_visOverlay->Set(_pimpl->_scene);
+		_pimpl->_trackingLayer->Set(_pimpl->_scene);
+	}
+
+	MaterialVisSettings^ VisLayerController::SetMaterialVisSettings()
+	{
+		return gcnew MaterialVisSettings(
+			std::make_shared<ToolsRig::MaterialVisSettings>(_pimpl->_materialVisSettings));
 	}
 
 	void VisLayerController::SetOverlaySettings(VisOverlaySettings^ settings)

@@ -39,6 +39,24 @@ namespace ToolsRig
 		return Hash64(name);
 	}
 
+	class MaterialFilterDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
+	{
+	public:
+		virtual bool OnDraw( 
+			RenderCore::Metal::DeviceContext& metalContext, RenderCore::Techniques::ParsingContext&,
+			const RenderCore::Techniques::Drawable&,
+			uint64_t materialGuid, unsigned drawCallIdx) override
+		{
+			// Note that we're rejecting other draw calls very late in the pipeline here. But it
+			// helps avoid extra overhead in the more common cases
+			return materialGuid == _activeMaterial;
+		}
+
+		MaterialFilterDelegate(uint64_t activeMaterial) : _activeMaterial(activeMaterial) {}
+	private:
+		uint64_t _activeMaterial;
+	};
+
 	class ModelScene : public SceneEngine::IScene, public IVisContent
     {
     public:
@@ -89,11 +107,7 @@ namespace ToolsRig
 				for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
 					pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
 
-				if (_preDrawDelegate) {
-					_renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>(), _preDrawDelegate);
-				} else {
-					_renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>());
-				}
+				_renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>(), _preDrawDelegate);
 			}
 		}
 
@@ -198,8 +212,10 @@ namespace ToolsRig
 			if (!settings._skeletonFileName.empty())
 				skeletonFuture = ::Assets::MakeAsset<SkeletonScaffold>(settings._skeletonFileName);
 
+			uint64_t materialBindingFilter = settings._materialBindingFilter;
+
 			future.SetPollingFunction(
-				[rendererFuture, animationSetFuture, skeletonFuture](::Assets::AssetFuture<ModelScene>& thatFuture) -> bool {
+				[rendererFuture, animationSetFuture, skeletonFuture, materialBindingFilter](::Assets::AssetFuture<ModelScene>& thatFuture) -> bool {
 
 					bool stillPending = false;
 					auto rendererActual = rendererFuture->TryActualize();
@@ -254,7 +270,11 @@ namespace ToolsRig
 					if (stillPending)
 						return true;
 
-					auto newModel = std::make_shared<ModelScene>(rendererActual, animationSetActual, skeletonActual);
+					std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate> preDrawDelegate;
+					if (materialBindingFilter)
+						preDrawDelegate = std::make_shared<MaterialFilterDelegate>(materialBindingFilter);
+
+					auto newModel = std::make_shared<ModelScene>(rendererActual, animationSetActual, skeletonActual, preDrawDelegate);
 					thatFuture.SetAsset(std::move(newModel), {});
 					return false;
 				});
@@ -263,8 +283,9 @@ namespace ToolsRig
 		ModelScene(
 			const std::shared_ptr<SimpleModelRenderer>& renderer,
 			const std::shared_ptr<AnimationSetScaffold>& animationScaffold,
-			const std::shared_ptr<SkeletonScaffold>& skeletonScaffold)
-		: _renderer(renderer), _animationScaffold(animationScaffold), _skeletonScaffold(skeletonScaffold)
+			const std::shared_ptr<SkeletonScaffold>& skeletonScaffold,
+			const std::shared_ptr<SimpleModelRenderer::IPreDrawDelegate>& preDrawDelegate = nullptr)
+		: _renderer(renderer), _animationScaffold(animationScaffold), _skeletonScaffold(skeletonScaffold), _preDrawDelegate(preDrawDelegate)
 		{
 			if (!_skeletonScaffold)
 				_modelScaffoldForEmbeddedSkeleton = _renderer->GetModelScaffold();
@@ -320,18 +341,12 @@ namespace ToolsRig
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(modelScene);
 	}
 
-	std::shared_ptr<SceneEngine::IScene> TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
-	{
-		// This function exists because we can't call TryActualize() from a C++/CLR source file because
-		// of the problem related to including <mutex>
-		return future.TryActualize();
-	}
-
 	ModelVisSettings::ModelVisSettings()
     {
         _modelName = "game/model/galleon/galleon.dae";
         _materialName = "game/model/galleon/galleon.material";
 		_levelOfDetail = 0;
+		_materialBindingFilter = 0;
 
 		// _modelName = "data/meshes/actors/dragon/character assets/alduin.nif";
 		// _materialName = "data/meshes/actors/dragon/character assets/alduin.nif";

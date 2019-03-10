@@ -193,6 +193,11 @@ namespace RenderCore { namespace Assets
 		const Float4x4& localToWorld,
 		const std::shared_ptr<IPreDrawDelegate>& delegate) const
 	{
+		if (!delegate) {
+			BuildDrawables(pkts, localToWorld);
+			return;
+		}
+
 		auto* generalPkt = pkts[unsigned(Techniques::BatchFilter::General)];
 		if (!generalPkt) return;
 

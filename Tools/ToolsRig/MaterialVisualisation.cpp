@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
+#include "ModelVisualisation.h"
 #include "VisualisationUtils.h"
 #include "VisualisationGeo.h"
 
@@ -87,32 +88,9 @@ namespace ToolsRig
 		}
 	};
 
-    class MaterialVisualizationScene : public SceneEngine::IScene
+    class MaterialVisualizationScene : public SceneEngine::IScene, public IVisContent
     {
     public:
-		void PrepareScene() const
-		{
-			// if we need to reset the camera, do so now...
-			if (_settings->_pendingCameraAlignToModel) {
-				if (_settings->_geometryType == MaterialVisSettings::GeometryType::Model && !_settings->_previewModelFile.empty()) {
-						// this is more tricky... when using a model, we have to get the bounding box for the model
-					using namespace RenderCore::Assets;
-					const ::Assets::ResChar* modelFile = _settings->_previewModelFile.c_str();
-					auto modelFuture = ::Assets::MakeAsset<ModelScaffold>(modelFile);
-					modelFuture->StallWhilePending();
-					auto model = modelFuture->TryActualize();
-					if (model)
-						*_settings->_camera = AlignCameraToBoundingBox(_settings->_camera->_verticalFieldOfView, model->GetStaticBoundingBox());
-				} else {
-						// just reset camera to the default
-					*_settings->_camera = VisCameraSettings();
-					_settings->_camera->_position = Float3(-5.f, 0.f, 0.f);
-				}
-
-				_settings->_pendingCameraAlignToModel = false;
-			}
-		}
-
         void Draw(  IThreadContext& threadContext, 
                     SceneEngine::SceneExecuteContext& executeContext,
                     IteratorRange<Techniques::DrawablesPacket** const> pkts) const
@@ -126,7 +104,8 @@ namespace ToolsRig
 			auto usi = std::make_shared<UniformsStreamInterface>();
 			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
 
-            auto geoType = _settings->_geometryType;
+            auto geoType = _settings._geometryType;
+			assert(geoType != MaterialVisSettings::GeometryType::Model);
             if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
                 const Internal::Vertex3D    vertices[] = 
@@ -147,10 +126,6 @@ namespace ToolsRig
 				drawable._topology = Topology::TriangleStrip;
 				drawable._vertexCount = (unsigned)dimof(vertices);
 				drawable._uniformsInterface = usi;
-
-            } else if (geoType == MaterialVisSettings::GeometryType::Model) {
-
-                DrawModel(pkts);
 
             } else {
 
@@ -192,99 +167,59 @@ namespace ToolsRig
 			}
 		}
 
-        void DrawModel(IteratorRange<Techniques::DrawablesPacket** const> pkts) const;
+		std::pair<Float3, Float3> GetBoundingBox() const 
+		{ 
+			return { Float3{-1.0f, 1.0f, 1.0f}, Float3{1.0f, 1.0f, 1.0f} };
+		}
 
-        MaterialVisualizationScene(
-            const std::shared_ptr<MaterialVisSettings>& settings)
-        : _settings(settings) 
+		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const
 		{
+			return { {}, {} };
+		}
+		std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate> SetPreDrawDelegate(const std::shared_ptr<RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate>& delegate) { return nullptr; }
+		void RenderSkeleton(
+			RenderCore::IThreadContext& context, 
+			RenderCore::Techniques::ParsingContext& parserContext, 
+			bool drawBoneNames) const {}
+		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
+		bool HasActiveAnimation() const { return false; }
+
+        MaterialVisualizationScene(const MaterialVisSettings& settings)
+        : _settings(settings)
+		{
+			_depVal = std::make_shared<::Assets::DependencyValidation>();
 			_material = std::make_shared<RenderCore::Techniques::Material>();
 			XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
 		}
 
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
+
     protected:
-        std::shared_ptr<MaterialVisSettings>  _settings;
+        MaterialVisSettings  _settings;
 		std::shared_ptr<RenderCore::Techniques::Material> _material;
+		::Assets::DepValPtr _depVal;
     };
     
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class MaterialFilterDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
-	{
-	public:
-		virtual bool OnDraw( 
-			RenderCore::Metal::DeviceContext& metalContext, RenderCore::Techniques::ParsingContext&,
-			const RenderCore::Techniques::Drawable&,
-			uint64_t materialGuid, unsigned drawCallIdx) override
-		{
-			// Note that we're rejecting other draw calls very late in the pipeline here. But it
-			// helps avoid extra overhead in the more common cases
-			return materialGuid == _activeMaterial;
-		}
-
-		MaterialFilterDelegate(uint64_t activeMaterial) : _activeMaterial(activeMaterial) {}
-	private:
-		uint64_t _activeMaterial;
-	};
-
-    void MaterialVisualizationScene::DrawModel(IteratorRange<Techniques::DrawablesPacket** const> pkts) const
-    {
-            // This mode is a little more complex than the others. We want to
-            // load the geometry data for a model and render all the parts of
-            // that model that match a certain material assignment.
-            // We're going to do this without a ModelRenderer object... So
-            // we have to parse the ModelScaffold data directly
-            //
-            // It's a little complex. But it's a good way to test the internals of
-            // the ModelScaffold class -- because we go through all the parts and
-            // use each aspect of the model pipeline. 
-		if (_settings->_previewModelFile.empty()) return;
-
-        using namespace RenderCore::Assets;
-        auto modelFile = MakeStringSection(_settings->_previewModelFile);
-        uint64 boundMaterial = _settings->_previewMaterialBinding;
-
-        auto modelFuture = ::Assets::MakeAsset<SimpleModelRenderer>(modelFile);
-		auto state = modelFuture->StallWhilePending();
-
-		if (state != ::Assets::AssetState::Ready)
-			return;
-
-		auto& model = *modelFuture->Actualize();
-		return model.BuildDrawables(pkts, Identity<Float4x4>(), std::make_shared<MaterialFilterDelegate>(boundMaterial));
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class MaterialVisLayer::Pimpl
-    {
-    public:
-		std::shared_ptr<SceneEngine::IScene> _scene;
-		std::shared_ptr<SceneEngine::ILightingParserDelegate> _lightingParserDelegate;
-		std::shared_ptr<VisCameraSettings>_camera;
-		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::Deferred;
-    };
-
-    VisCameraSettings AlignCameraToBoundingBox(float verticalFieldOfView, const std::pair<Float3, Float3>& box);
-
-	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(DrawPreviewLightingType lightingType)
+	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
 	{
 		switch (lightingType) {
-		case DrawPreviewLightingType::Deferred:
+		case VisEnvSettings::LightingType::Deferred:
 			return SceneEngine::RenderSceneSettings::LightingModel::Deferred;
-		case DrawPreviewLightingType::Forward:
+		case VisEnvSettings::LightingType::Forward:
 			return SceneEngine::RenderSceneSettings::LightingModel::Forward;
 		default:
-		case DrawPreviewLightingType::Direct:
+		case VisEnvSettings::LightingType::Direct:
 			return SceneEngine::RenderSceneSettings::LightingModel::Direct;
 		}
 	}
 
-    bool MaterialVisLayer::Draw(
+    static bool MaterialVisLayer_Draw(
         IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
-        DrawPreviewLightingType lightingType,
+        VisEnvSettings::LightingType lightingType,
 		SceneEngine::IScene& sceneParser,
 		const SceneEngine::ILightingParserDelegate& lightingParserDelegate,
 		const RenderCore::Techniques::CameraDesc& cameraDesc)
@@ -306,7 +241,17 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void MaterialVisLayer::Render(
+#if 0
+    class MaterialVisLayer::Pimpl
+    {
+    public:
+		std::shared_ptr<SceneEngine::IScene> _scene;
+		std::shared_ptr<SceneEngine::ILightingParserDelegate> _lightingParserDelegate;
+		std::shared_ptr<VisCameraSettings>_camera;
+		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::Deferred;
+    };
+
+	void MaterialVisLayer::Render(
         IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
@@ -335,14 +280,25 @@ namespace ToolsRig
 
     MaterialVisLayer::~MaterialVisLayer()
     {}
+#endif
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::shared_ptr<SceneEngine::IScene> CreateScene(const std::shared_ptr<MaterialVisSettings>& visObject)
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject)
 	{
-		auto result = std::make_shared<MaterialVisualizationScene>(visObject);
-		result->PrepareScene();
-		return result;
+		if (visObject._geometryType == MaterialVisSettings::GeometryType::Model) {
+			ModelVisSettings modelVis;
+			modelVis._modelName = modelVis._materialName = visObject._previewModelFile;
+			modelVis._materialBindingFilter = visObject._previewMaterialBinding;
+			return MakeScene(modelVis);
+		} else {
+			MaterialVisualizationScene test(visObject);
+			static_assert(::Assets::Internal::HasDirectAutoConstructAsset<MaterialVisualizationScene, const MaterialVisSettings&>::value);
+
+			auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
+			::Assets::AutoConstructToFuture(*result, visObject);
+			return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
+		}
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -351,36 +307,23 @@ namespace ToolsRig
         RenderCore::IThreadContext& context,
 		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext,
-		const std::shared_ptr<MaterialVisSettings>& visObject,
-		const std::shared_ptr<VisEnvSettings>& envSettings,
-		DrawPreviewLightingType lightingType)
+		VisCameraSettings& cameraSettings,
+		VisEnvSettings& envSettings,
+		SceneEngine::IScene& scene)
     {
         using namespace ToolsRig;
 
         try 
         {
-            // Align the camera if we're drawing with a model...
-            if (visObject->_geometryType == MaterialVisSettings::GeometryType::Model && !visObject->_previewModelFile.empty()) {
-                auto model = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(
-                    visObject->_previewModelFile.c_str());
-                model->StallWhilePending();
-                *visObject->_camera = ToolsRig::AlignCameraToBoundingBox(
-                    visObject->_camera->_verticalFieldOfView, 
-                    model->Actualize()->GetStaticBoundingBox());
-            }
-
-			MaterialVisualizationScene scene(visObject);
-			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings->_envConfigFile);
+			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
 			future->StallWhilePending();
 			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(future->Actualize());
 
-			scene.PrepareScene();
-
-            bool result = ToolsRig::MaterialVisLayer::Draw(
+            bool result = MaterialVisLayer_Draw(
                 context, renderTarget, parserContext, 
-                lightingType, 
+                envSettings._lightingType, 
 				scene, lightingParserDelegate,
-				AsCameraDesc(*visObject->_camera));
+				AsCameraDesc(cameraSettings));
             if (parserContext.HasInvalidAssets())
 				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
 			if (parserContext.HasErrorString())

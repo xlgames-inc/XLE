@@ -10,6 +10,7 @@
 #include "../../PlatformRig/OverlaySystem.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Math/Vector.h"
+#include "../../Utility/Optional.h"
 #include <string>
 
 namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; } }
@@ -60,29 +61,30 @@ namespace ToolsRig
 	public:
 		std::string _envConfigFile;
 
+		enum class LightingType { Deferred, Forward, Direct };
+		LightingType _lightingType;
+
 		VisEnvSettings();
 		VisEnvSettings(const std::string& envConfigFile);
-		~VisEnvSettings();
 	};
 
 	class VisOverlaySettings
 	{
 	public:
-        unsigned _colourByMaterial = 0;
-		unsigned _skeletonMode = 0;
-        bool _drawNormals = false;
-        bool _drawWireframe = false;
+        unsigned		_colourByMaterial = 0;
+		unsigned		_skeletonMode = 0;
+        bool			_drawNormals = false;
+        bool			_drawWireframe = false;
     };
 
     class VisMouseOver
     {
     public:
-        bool _hasMouseOver = false;
-        Float3 _intersectionPt = Zero<Float3>();
-        unsigned _drawCallIndex = 0u;
-        uint64 _materialGuid = 0;
-
-        ChangeEvent _changeEvent;
+        bool			_hasMouseOver = false;
+        Float3			_intersectionPt = Zero<Float3>();
+        unsigned		_drawCallIndex = 0u;
+        uint64			_materialGuid = 0;
+        ChangeEvent		_changeEvent;
     };
 
 	class VisAnimationState
@@ -207,6 +209,26 @@ namespace ToolsRig
 
 	std::shared_ptr<PlatformRig::IOverlaySystem> MakeLayerForInput(
 		const std::shared_ptr<PlatformRig::IInputListener>& listener);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	enum class DrawPreviewResult
+    {
+        Error,
+        Pending,
+        Success
+    };
+
+	std::pair<DrawPreviewResult, std::string> DrawPreview(
+        RenderCore::IThreadContext& context,
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		VisCameraSettings& cameraSettings,
+		VisEnvSettings& envSettings,
+		SceneEngine::IScene& scene);
+
+	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
+	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

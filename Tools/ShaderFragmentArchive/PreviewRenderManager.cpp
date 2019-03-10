@@ -42,6 +42,8 @@
 #include <memory>
 #include <sstream>
 
+#pragma warning(disable:4505) // 'ShaderPatcherLayer::CreatePreviewMaterial': unreferenced local function has been removed
+
 using namespace System::ComponentModel::Composition;
 
 namespace ShaderPatcherLayer
@@ -239,9 +241,9 @@ namespace ShaderPatcherLayer
             ////////////
 
 		auto visSettings = std::make_shared<ToolsRig::MaterialVisSettings>();
-        visSettings->_camera = std::make_shared<ToolsRig::VisCameraSettings>();
-        visSettings->_camera->_position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
-		visSettings->_camera->_verticalFieldOfView = 90.f;
+        ToolsRig::VisCameraSettings camSettings;
+        camSettings._position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
+		camSettings._verticalFieldOfView = 90.f;
 
 		bool pretransformed = false;
 
@@ -257,7 +259,7 @@ namespace ShaderPatcherLayer
 
         case PreviewGeometry::Box:
             visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
-			visSettings->_camera->_position = Float3(-2.1f, 0, 0);
+			camSettings._position = Float3(-2.1f, 0, 0);
             break;
 
         default:
@@ -271,17 +273,32 @@ namespace ShaderPatcherLayer
         };
 
 		visSettings->_previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-		visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
-		visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
+		// visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
+		// visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
 
-		auto envSettings = std::make_shared<ToolsRig::VisEnvSettings>();
-		envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
+		auto sceneFuture = ToolsRig::MakeScene(*visSettings);
+		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
+		if (!actualScene) {
+			auto errorLog = ToolsRig::GetActualizationError(*sceneFuture);
+			if (errorLog) {
+				return GenerateErrorBitmap(errorLog.value().c_str(), size);
+			} else {
+				return nullptr;		// pending
+			}
+		}
+
+		ToolsRig::VisEnvSettings envSettings;
+		envSettings._lightingType = ToolsRig::VisEnvSettings::LightingType::Direct;
+		// envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
 
 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
 		parserContext.SetTechniqueDelegate(std::make_shared<TechniqueDelegate>(_pimpl->_shaderSource, previewConfig, pretransformed));
 		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 		// to the lighting parser.
-        auto result = DrawPreview(context, target, parserContext, visSettings, envSettings, ToolsRig::DrawPreviewLightingType::Direct);
+        auto result = DrawPreview(
+			context, target, parserContext, 
+			camSettings, envSettings,
+			*actualScene);
         if (result.first == ToolsRig::DrawPreviewResult::Error) {
             return GenerateErrorBitmap(result.second.c_str(), size);
         } else if (result.first == ToolsRig::DrawPreviewResult::Pending) {

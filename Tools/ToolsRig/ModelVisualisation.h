@@ -34,12 +34,11 @@ namespace ToolsRig
         unsigned		_levelOfDetail;
 		std::string		_animationFileName;
 		std::string		_skeletonFileName;
+		uint64_t		_materialBindingFilter;
 
 		ModelVisSettings();
 	};
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const ModelVisSettings& settings);
-
-	std::shared_ptr<SceneEngine::IScene> TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 }
 

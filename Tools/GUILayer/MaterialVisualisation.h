@@ -6,6 +6,8 @@
 
 #pragma once
 
+#if 0
+
 #include "UITypesBinding.h"
 #include "IOverlaySystem.h"
 #include "EngineForward.h"
@@ -19,37 +21,7 @@ namespace ToolsRig { class VisCameraSettings; }
 
 namespace GUILayer
 {
-    public ref class MaterialVisSettings
-    {
-    public:
-        enum class GeometryType { Sphere, Cube, Plane2D, Model };
-        enum class LightingType { Deferred, Forward, NoLightingParser };
-
-        property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
-        property LightingType Lighting;
-        property bool ResetCamera { void set(bool); }
-
-        static MaterialVisSettings^ CreateDefault();
-
-        MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
-        {
-            _object = std::move(attached);
-			Lighting = LightingType::NoLightingParser;
-        }
-
-        ~MaterialVisSettings() { /*delete _camSettings;*/ _object.reset(); }
-
-        !MaterialVisSettings()
-        {
-            // System::Diagnostics::Debug::Assert(false, "Non deterministic delete of MaterialVisSettings");
-        }
-
-        const ToolsRig::MaterialVisSettings& GetUnderlying() { return *_object.get(); }
-		const std::shared_ptr<ToolsRig::MaterialVisSettings>& GetUnderlyingPtr() { return _object.GetNativePtr(); }
-
-    protected:
-        clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;
-    };
+    
 
     ref class EnvironmentSettingsSet;
 	ref class VisCameraSettings;
@@ -91,3 +63,4 @@ namespace GUILayer
     };
 }
 
+#endif

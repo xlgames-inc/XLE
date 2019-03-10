@@ -19,7 +19,7 @@ using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
 namespace RenderCore { namespace Assets { class RawMaterial; } }
-namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; }
+namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; class MaterialVisSettings; }
 
 namespace GUILayer
 {
@@ -172,6 +172,31 @@ namespace GUILayer
 
 		void NotifyPropertyChanged(System::String^ propertyName);
 	};
+
+	public ref class MaterialVisSettings
+    {
+    public:
+        enum class GeometryType { Sphere, Cube, Plane2D, Model };
+        enum class LightingType { Deferred, Forward, Direct };
+
+        property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
+        property LightingType Lighting;
+
+        static MaterialVisSettings^ CreateDefault();
+
+        MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
+        {
+            _object = std::move(attached);
+			Lighting = LightingType::Direct;
+        }
+
+        ~MaterialVisSettings() { _object.reset(); }
+
+		const std::shared_ptr<ToolsRig::MaterialVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
+
+    protected:
+        clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;
+    };
 
 	public ref class VisOverlaySettings
 	{

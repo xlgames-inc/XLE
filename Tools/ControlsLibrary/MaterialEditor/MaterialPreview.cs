@@ -20,10 +20,10 @@ namespace ControlsLibrary.MaterialEditor
         public MaterialPreview()
         {
             InitializeComponent();
+            layerController = new GUILayer.VisLayerController();
             visSettings = GUILayer.MaterialVisSettings.CreateDefault();
-            visLayer = new GUILayer.MaterialVisLayer(visSettings);
-            _preview.Underlying.AddSystem(visLayer);
-            _preview.Underlying.AddDefaultCameraHandler(visLayer.GetCamera());
+            layerController.SetMaterialVisSettings(visSettings);
+            layerController.AttachToView(_preview.Underlying);
 
             _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
             _geoType.SelectedItem = visSettings.Geometry;
@@ -57,7 +57,7 @@ namespace ControlsLibrary.MaterialEditor
 
                 string model = ""; ulong binding = 0;
                 if (previewModel != null && previewModel.Item1 != null) { model = previewModel.Item1; binding = previewModel.Item2; }
-                visLayer.SetConfig(_attachedMaterials, model, binding);
+                // visLayer.SetConfig(_attachedMaterials, model, binding);
                 InvalidatePreview();
             }
         }
@@ -100,13 +100,13 @@ namespace ControlsLibrary.MaterialEditor
 
         private void SelectedEnvironmentChanged(object sender, System.EventArgs e)
         {
-            visLayer.SetEnvironment(envSettings, _environment.SelectedValue.ToString());
+            // visLayer.SetEnvironment(envSettings, _environment.SelectedValue.ToString());
             InvalidatePreview();
         }
 
         public void InvalidatePreview() { _preview.Invalidate(); }
 
-        protected GUILayer.MaterialVisLayer visLayer;
+        protected GUILayer.VisLayerController layerController;
         protected GUILayer.MaterialVisSettings visSettings;
         protected GUILayer.EnvironmentSettingsSet envSettings;
         protected Tuple<string, ulong> previewModel = null;

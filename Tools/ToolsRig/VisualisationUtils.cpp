@@ -87,9 +87,8 @@ namespace ToolsRig
         return result;
     }
 
-	VisEnvSettings::VisEnvSettings() : _envConfigFile("defaultenv.txt:environment") {}
+	VisEnvSettings::VisEnvSettings() : _envConfigFile("defaultenv.txt:environment"), _lightingType(LightingType::Deferred) {}
 	VisEnvSettings::VisEnvSettings(const std::string& envConfigFile) : _envConfigFile(envConfigFile) {}
-	VisEnvSettings::~VisEnvSettings() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -751,6 +750,21 @@ namespace ToolsRig
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	const std::shared_ptr<SceneEngine::IScene>& TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
+	{
+		// This function exists because we can't call TryActualize() from a C++/CLR source file because
+		// of the problem related to including <mutex>
+		return future.TryActualize();
+	}
+
+	std::optional<std::string> GetActualizationError(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
+	{
+		auto state = future.GetAssetState();
+		if (state != ::Assets::AssetState::Invalid)
+			return {};
+		return ::Assets::AsString(future.GetActualizationLog());
+	}
 
     void ChangeEvent::Invoke() 
     {

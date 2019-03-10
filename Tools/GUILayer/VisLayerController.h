@@ -26,6 +26,9 @@ namespace GUILayer
 		void SetModelSettings(ModelVisSettings^ settings);
 		ModelVisSettings^ GetModelSettings();
 
+		void SetMaterialVisSettings(MaterialVisSettings^ settings);
+		MaterialVisSettings^ SetMaterialVisSettings();
+
 		void SetOverlaySettings(VisOverlaySettings^ settings);
 		VisOverlaySettings^ GetOverlaySettings();
 

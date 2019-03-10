@@ -6,13 +6,13 @@
 
 #pragma once
 
-#include "../../PlatformRig/OverlaySystem.h"
-#include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../Assets/AssetUtils.h"
+// #include "../../PlatformRig/OverlaySystem.h"
+// #include "../../RenderCore/Assets/MaterialScaffold.h"
+#include "../../Assets/AssetsCore.h"
 #include <memory>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; class ITechniqueDelegate; class IMaterialDelegate; class CameraDesc; } }
-namespace SceneEngine { class IScene; class ILightingParserDelegate; }
+// namespace RenderCore { namespace Techniques { class TechniqueContext; class AttachmentPool; class FrameBufferPool; class ITechniqueDelegate; class IMaterialDelegate; class CameraDesc; } }
+namespace SceneEngine { class IScene; }
 
 namespace ToolsRig
 {
@@ -21,43 +21,22 @@ namespace ToolsRig
     class MaterialVisSettings
     {
     public:
-        std::shared_ptr<VisCameraSettings> _camera = std::make_shared<VisCameraSettings>();
-        
         enum class GeometryType { Sphere, Cube, Plane2D, Model };
         GeometryType _geometryType = GeometryType::Sphere;
 
-        mutable bool _pendingCameraAlignToModel = false;
-
-		RenderCore::Assets::MaterialScaffoldMaterial		_parameters;
-        ::Assets::DirectorySearchRules		_searchRules;
         ::Assets::rstring					_previewModelFile;
         uint64_t							_previewMaterialBinding = 0;
     };
 
-	// std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
-	// std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
+	// RenderCore::Assets::MaterialScaffoldMaterial		_parameters;
+	// ::Assets::DirectorySearchRules		_searchRules;
+
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject);
 
     class VisEnvSettings;
+	
 
-	enum class DrawPreviewResult
-    {
-        Error,
-        Pending,
-        Success
-    };
-
-	enum class DrawPreviewLightingType { Deferred, Forward, Direct };
-
-	std::pair<DrawPreviewResult, std::string> DrawPreview(
-        RenderCore::IThreadContext& context,
-		const RenderCore::IResourcePtr& renderTarget,
-        RenderCore::Techniques::ParsingContext& parserContext,
-		const std::shared_ptr<MaterialVisSettings>& visObject,
-		const std::shared_ptr<VisEnvSettings>& envSettings,
-		DrawPreviewLightingType lightingType = DrawPreviewLightingType::Deferred);
-
-	std::shared_ptr<SceneEngine::IScene> CreateScene(const std::shared_ptr<MaterialVisSettings>& visObject);
-
+#if 0
 ////////////////////////////////////////////////////////////////////////////////////////////////
 
 	/// <summary>Renders a visualisation of a material</summary>
@@ -90,7 +69,7 @@ namespace ToolsRig
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
-
+#endif
 
 }
 

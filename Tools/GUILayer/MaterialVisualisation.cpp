@@ -5,9 +5,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
+#include "UITypesBinding.h"
 #include "ExportedNativeTypes.h"
 #include "EditorInterfaceUtils.h"
 #include "../ToolsRig/VisualisationUtils.h"
+#include "../ToolsRig/MaterialVisualisation.h"
 #include "../../PlatformRig/BasicSceneParser.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
@@ -19,21 +21,24 @@
 #include "../../Assets/AssetTraits.h"
 #include "../../Utility/StringFormat.h"
 
+#pragma warning(disable:4505)		// 'GUILayer::AsNative': unreferenced local function has been removed)
+
 namespace GUILayer
 {
-	static ToolsRig::DrawPreviewLightingType AsNative(
+	static ToolsRig::VisEnvSettings::LightingType AsNative(
          MaterialVisSettings::LightingType input)
     {
         switch (input) {
         case MaterialVisSettings::LightingType::Deferred:
-            return ToolsRig::DrawPreviewLightingType::Deferred;
+            return ToolsRig::VisEnvSettings::LightingType::Deferred;
         case MaterialVisSettings::LightingType::Forward:
-            return ToolsRig::DrawPreviewLightingType::Forward;
+            return ToolsRig::VisEnvSettings::LightingType::Forward;
         default:
-            return ToolsRig::DrawPreviewLightingType::Direct;
+            return ToolsRig::VisEnvSettings::LightingType::Direct;
         }
     }
 
+#if 0
     void MaterialVisLayer::Render(
         RenderCore::IThreadContext& context,
 		const RenderTargetWrapper& renderTarget,
@@ -139,6 +144,7 @@ namespace GUILayer
 		_cameraSettings = nullptr;
         SetConfig(nullptr, "", 0);
     }
+#endif
 
     
     static MaterialVisSettings::GeometryType AsManaged(
@@ -181,15 +187,9 @@ namespace GUILayer
         _object->_geometryType = AsNative(value);
     }
 
-    void MaterialVisSettings::ResetCamera::set(bool value)
-    {
-        _object->_pendingCameraAlignToModel = value;
-    }
-
     MaterialVisSettings^ MaterialVisSettings::CreateDefault()
     {
         return gcnew MaterialVisSettings(std::make_shared<ToolsRig::MaterialVisSettings>());
     }
 
 }
-
