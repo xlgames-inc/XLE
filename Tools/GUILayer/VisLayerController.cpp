@@ -51,7 +51,7 @@ namespace GUILayer
         String^ matName = "matName";
 		auto* visContent = dynamic_cast<const ToolsRig::IVisContent*>(&scene);
 		if (visContent)
-			matName = clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(mouseOver._drawCallIndex)._materialName);
+			matName = clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(mouseOver._drawCallIndex, mouseOver._materialGuid)._materialName);
         DrawText(
             &context,
             Rect(Coord2(viewport._topLeft[0]+3, viewport._bottomRight[1]-textHeight-3), Coord2(viewport._bottomRight[0]-3, viewport._bottomRight[1]-3)),
@@ -68,7 +68,7 @@ namespace GUILayer
 
 	VisMouseOver^ VisLayerController::MouseOver::get()
 	{
-		return gcnew VisMouseOver(_pimpl->_mouseOver, nullptr); // _pimpl->_scene ? _pimpl->_scene->TryActualize() : nullptr);
+		return gcnew VisMouseOver(_pimpl->_mouseOver, ToolsRig::TryActualize(*_pimpl->_scene));
 	}
 
 	VisAnimationState^ VisLayerController::AnimationState::get()

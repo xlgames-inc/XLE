@@ -21,14 +21,17 @@ namespace ModelViewer
         {
             InitializeComponent();
 
+            visLayerController = new GUILayer.VisLayerController();
+            
+
             visSettings = GUILayer.ModelVisSettings.CreateDefault();
-            visResources = viewerControl.Underlying.CreateVisResources();
-            visMouseOver = viewerControl.Underlying.CreateVisMouseOver(visSettings, visResources);
-            viewerControl.Underlying.SetupDefaultVis(visSettings, visMouseOver, visResources);
+            visLayerController.SetModelSettings(visSettings);
+
+            visLayerController.AttachToView(this.viewerControl.Underlying);
 
             viewSettings.SelectedObject = visSettings;
-            // visSettings.AttachCallback(mouseOverDetails);
 
+            visMouseOver = visLayerController.MouseOver;
             if (visMouseOver != null)
             {
                 mouseOverDetails.SelectedObject = visMouseOver;
@@ -96,6 +99,6 @@ namespace ModelViewer
 
         private GUILayer.ModelVisSettings visSettings;
         private GUILayer.VisMouseOver visMouseOver;
-        private GUILayer.VisResources visResources;
+        private GUILayer.VisLayerController visLayerController;
     }
 }

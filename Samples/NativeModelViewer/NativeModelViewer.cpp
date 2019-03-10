@@ -77,7 +77,7 @@ namespace Sample
 			auto manipulators = std::make_shared<ToolsRig::ManipulatorStack>(modelLayer->GetCamera(), globals._techniqueContext);
 			manipulators->Register(
 				ToolsRig::ManipulatorStack::CameraManipulator,
-				ToolsRig::CreateCameraManipulator(modelLayer->GetCamera()));
+				ToolsRig::CreateCameraManipulator(modelLayer->GetCamera(), ToolsRig::CameraManipulatorMode::Blender_RightButton));
 			AddSystem(ToolsRig::MakeLayerForInput(manipulators));
 		}
 	}

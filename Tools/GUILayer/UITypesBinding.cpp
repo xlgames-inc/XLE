@@ -199,6 +199,18 @@ namespace GUILayer
         }
     }
 
+	static String^ DescriptiveMaterialName(String^ fullName)
+    {
+        if (fullName->Length == 0 || fullName[0] == '<') return fullName;
+        auto split = fullName->Split(';');
+        if (split && split->Length > 0) {
+            auto s = split[split->Length-1];
+            int index = s->LastIndexOf(':');
+            return s->Substring((index>=0) ? (index+1) : 0);
+        }
+        return fullName;
+    }
+
     System::String^ VisMouseOver::MaterialName::get() 
     {
         auto fullName = FullMaterialName;
@@ -212,7 +224,7 @@ namespace GUILayer
 		if (_scene) {
 			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
 			if (visContent)
-				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex)._modelName);
+				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex, _object->_materialGuid)._modelName);
 		}
 		return nullptr;
     }
@@ -227,38 +239,9 @@ namespace GUILayer
 		if (_scene) {
 			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
 			if (visContent)
-				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex)._materialName);
+				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex, _object->_materialGuid)._materialName);
 		}
 		return nullptr;
-    }
-
-    String^ VisMouseOver::BuildFullMaterialName(
-        const ToolsRig::ModelVisSettings& modelSettings,
-        uint64 materialGuid)
-    {
-        /*auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
-        if (scaffolds._material) {
-            TRY {
-                auto nativeName = scaffolds._material->GetMaterialName(materialGuid);
-                if (!nativeName.IsEmpty())
-                    return clix::marshalString<clix::E_UTF8>(nativeName);
-            }
-            CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
-            CATCH_END
-        }*/
-        return "<<unknown>>";
-    }
-
-    String^ VisMouseOver::DescriptiveMaterialName(String^ fullName)
-    {
-        if (fullName->Length == 0 || fullName[0] == '<') return fullName;
-        auto split = fullName->Split(';');
-        if (split && split->Length > 0) {
-            auto s = split[split->Length-1];
-            int index = s->LastIndexOf(':');
-            return s->Substring((index>=0) ? (index+1) : 0);
-        }
-        return fullName;
     }
 
     uint64 VisMouseOver::MaterialBindingGuid::get()

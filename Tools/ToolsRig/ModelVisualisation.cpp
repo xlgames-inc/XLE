@@ -97,9 +97,16 @@ namespace ToolsRig
 			}
 		}
 
-		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex) const
+		DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const
 		{
-			return { _modelName, _materialName };
+			if (_renderer) {
+				auto matName = _renderer->GetMaterialScaffold()->GetMaterialName(materialGuid).AsString();
+				if (matName.empty())
+					matName = _renderer->GetMaterialScaffoldName();
+				return { _renderer->GetModelScaffoldName(), matName };
+			} else {
+				return { {}, {} };
+			}
 		}
 		std::pair<Float3, Float3> GetBoundingBox() const { return _renderer->GetModelScaffold()->GetStaticBoundingBox(); }
 
@@ -292,7 +299,6 @@ namespace ToolsRig
 		std::shared_ptr<VisAnimationState>			_animationState;
 
 		::Assets::DepValPtr		_depVal;
-		std::string				_modelName, _materialName;
 
 		const SkeletonMachine* GetSkeletonMachine() const
 		{
@@ -312,6 +318,13 @@ namespace ToolsRig
 		auto modelScene = std::make_shared<::Assets::AssetFuture<ModelScene>>("ModelVisualization");
 		::Assets::AutoConstructToFuture(*modelScene, settings);
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(modelScene);
+	}
+
+	std::shared_ptr<SceneEngine::IScene> TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future)
+	{
+		// This function exists because we can't call TryActualize() from a C++/CLR source file because
+		// of the problem related to including <mutex>
+		return future.TryActualize();
 	}
 
 	ModelVisSettings::ModelVisSettings()

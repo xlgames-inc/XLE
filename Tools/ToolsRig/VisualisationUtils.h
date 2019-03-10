@@ -115,7 +115,7 @@ namespace ToolsRig
 			bool drawBoneNames) const = 0;
 
 		struct DrawCallDetails { std::string _modelName, _materialName; };
-		virtual DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex) const = 0;
+		virtual DrawCallDetails GetDrawCallDetails(unsigned drawCallIndex, uint64_t materialGuid) const = 0;
 
 		virtual void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) = 0;
 		virtual bool HasActiveAnimation() const = 0;

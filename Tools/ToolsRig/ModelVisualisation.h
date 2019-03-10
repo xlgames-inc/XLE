@@ -39,5 +39,7 @@ namespace ToolsRig
 	};
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const ModelVisSettings& settings);
+
+	std::shared_ptr<SceneEngine::IScene> TryActualize(const ::Assets::AssetFuture<SceneEngine::IScene>& future);
 }
 

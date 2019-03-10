@@ -408,9 +408,13 @@ namespace RenderCore { namespace Assets
 	SimpleModelRenderer::SimpleModelRenderer(
 		const std::shared_ptr<RenderCore::Assets::ModelScaffold>& modelScaffold,
 		const std::shared_ptr<RenderCore::Assets::MaterialScaffold>& materialScaffold,
-		IteratorRange<const DeformOperationInstantiation*> deformAttachments)
+		IteratorRange<const DeformOperationInstantiation*> deformAttachments,
+		const std::string& modelScaffoldName,
+		const std::string& materialScaffoldName)
 	: _modelScaffold(modelScaffold)
 	, _materialScaffold(materialScaffold)
+	, _modelScaffoldName(modelScaffoldName)
+	, _materialScaffoldName(materialScaffoldName)
 	{
 		using namespace RenderCore::Assets;
 
@@ -514,9 +518,9 @@ namespace RenderCore { namespace Assets
 
 	void SimpleModelRenderer::ConstructToFuture(
 		::Assets::AssetFuture<SimpleModelRenderer>& future,
-		StringSection<::Assets::ResChar> modelScaffoldName,
-		StringSection<::Assets::ResChar> materialScaffoldName,
-		StringSection<::Assets::ResChar> deformOperations)
+		StringSection<> modelScaffoldName,
+		StringSection<> materialScaffoldName,
+		StringSection<> deformOperations)
 	{
 		auto scaffoldFuture = ::Assets::MakeAsset<RenderCore::Assets::ModelScaffold>(modelScaffoldName);
 		auto materialFuture = ::Assets::MakeAsset<RenderCore::Assets::MaterialScaffold>(materialScaffoldName, modelScaffoldName);
@@ -524,8 +528,11 @@ namespace RenderCore { namespace Assets
 		if (DeformOperationFactory::HasInstance())
 			deformFuture->_pendingConstruction = deformOperations.AsString();
 
+		std::string modelScaffoldNameString = modelScaffoldName.AsString();
+		std::string materialScaffoldNameString = materialScaffoldName.AsString();
+
 		future.SetPollingFunction(
-			[scaffoldFuture, materialFuture, deformFuture](::Assets::AssetFuture<SimpleModelRenderer>& thatFuture) -> bool {
+			[scaffoldFuture, materialFuture, deformFuture, modelScaffoldNameString, materialScaffoldNameString](::Assets::AssetFuture<SimpleModelRenderer>& thatFuture) -> bool {
 
 			auto scaffoldActual = scaffoldFuture->TryActualize();
 			auto materialActual = materialFuture->TryActualize();
@@ -563,7 +570,7 @@ namespace RenderCore { namespace Assets
 				return true;
 			}
 
-			auto newModel = std::make_shared<SimpleModelRenderer>(scaffoldActual, materialActual, MakeIteratorRange(deformFuture->_deformOps));
+			auto newModel = std::make_shared<SimpleModelRenderer>(scaffoldActual, materialActual, MakeIteratorRange(deformFuture->_deformOps), modelScaffoldNameString, materialScaffoldNameString);
 			thatFuture.SetAsset(std::move(newModel), {});
 			return false;
 		});
@@ -571,7 +578,7 @@ namespace RenderCore { namespace Assets
 
 	void SimpleModelRenderer::ConstructToFuture(
 		::Assets::AssetFuture<SimpleModelRenderer>& future,
-		StringSection<::Assets::ResChar> modelScaffoldName)
+		StringSection<> modelScaffoldName)
 	{
 		ConstructToFuture(future, modelScaffoldName, modelScaffoldName);
 	}

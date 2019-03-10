@@ -529,7 +529,7 @@ namespace ToolsRig
 			result._materialName = "Material";
 			auto* visContent = dynamic_cast<IVisContent*>(&scene);
 			if (visContent) {
-				auto details = visContent->GetDrawCallDetails(result._drawCallIndex);
+				auto details = visContent->GetDrawCallDetails(result._drawCallIndex, result._materialGuid);
 				result._modelName = details._modelName;
 				result._materialName = details._materialName;
 			}

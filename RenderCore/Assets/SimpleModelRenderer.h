@@ -52,11 +52,15 @@ namespace RenderCore { namespace Assets
 
 		const std::shared_ptr<ModelScaffold>& GetModelScaffold() const { return _modelScaffold; }
 		const std::shared_ptr<MaterialScaffold>& GetMaterialScaffold() const { return _materialScaffold; }
+		const std::string& GetModelScaffoldName() const { return _modelScaffoldName; }
+		const std::string& GetMaterialScaffoldName() const { return _materialScaffoldName; }
 
 		SimpleModelRenderer(
 			const std::shared_ptr<ModelScaffold>& modelScaffold,
 			const std::shared_ptr<MaterialScaffold>& materialScaffold,
-			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {});
+			IteratorRange<const DeformOperationInstantiation*> deformAttachments = {},
+			const std::string& modelScaffoldName = {},
+			const std::string& materialScaffoldName = {});
 		~SimpleModelRenderer();
 
 		SimpleModelRenderer& operator=(const SimpleModelRenderer&) = delete;
@@ -64,13 +68,13 @@ namespace RenderCore { namespace Assets
 		
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
-			StringSection<::Assets::ResChar> modelScaffoldName,
-			StringSection<::Assets::ResChar> materialScaffoldName,
-			StringSection<::Assets::ResChar> deformOperations = {});
+			StringSection<> modelScaffoldName,
+			StringSection<> materialScaffoldName,
+			StringSection<> deformOperations = {});
 
 		static void ConstructToFuture(
 			::Assets::AssetFuture<SimpleModelRenderer>& future,
-			StringSection<::Assets::ResChar> modelScaffoldName);
+			StringSection<> modelScaffoldName);
 
 		struct DeformOp;
 	private:
@@ -90,5 +94,8 @@ namespace RenderCore { namespace Assets
 		std::vector<DeformOp> _deformOps;
 
 		std::shared_ptr<IResource> _dynVB;
+
+		std::string _modelScaffoldName;
+		std::string _materialScaffoldName;
 	};
 }}
