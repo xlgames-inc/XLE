@@ -25,7 +25,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Utility/VariantUtils.h"
 
-#include "../DX11/Metal/Buffer.h"
+// #define BAD_MATERIAL_FALLBACK
 
 #pragma warning(disable:4505)
 
@@ -76,6 +76,19 @@ namespace RenderCore { namespace Assets
         metalContext.DrawIndexed(drawable._drawCall._indexCount, drawable._drawCall._firstIndex, drawable._drawCall._firstVertex);
 	}
 
+	#if defined(BAD_MATERIAL_FALLBACK)
+		static Techniques::Material& GetDummyMaterial()
+		{
+			static Techniques::Material dummyMaterial;
+			static bool dummyMaterialIsInitialized = false;
+			if (!dummyMaterialIsInitialized) {
+				XlCopyString(dummyMaterial._techniqueConfig, "xleres/techniques/illum.tech");
+				dummyMaterialIsInitialized = true;
+			}
+			return dummyMaterial;
+		}
+	#endif
+
 	void SimpleModelRenderer::BuildDrawables(
 		IteratorRange<Techniques::DrawablesPacket** const> pkts,
 		const Float4x4& localToWorld) const
@@ -104,12 +117,15 @@ namespace RenderCore { namespace Assets
 				drawable._materialGuid = materialGuid;
 				drawable._drawCallIdx = drawCallCounter;
 
+				#if defined(BAD_MATERIAL_FALLBACK)
+					if (!drawable._material)
+						drawable._material = &GetDummyMaterial();
+					assert(drawable._material);
+				#endif
+
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
-                if (machineOutput < _baseTransformCount) {
-                    drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
-                } else {
-                    drawable._objectToWorld = localToWorld;
-                }
+                assert(machineOutput < _baseTransformCount);
+                drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
 				++drawCallCounter;
             }
@@ -138,9 +154,15 @@ namespace RenderCore { namespace Assets
 				drawable._materialGuid = materialGuid;
 				drawable._drawCallIdx = drawCallCounter;
 
-                drawable._objectToWorld = Combine(
-					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
-					localToWorld);
+				#if defined(BAD_MATERIAL_FALLBACK)
+					if (!drawable._material)
+						drawable._material = &GetDummyMaterial();
+					assert(drawable._material);
+				#endif
+
+				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
+                assert(machineOutput < _baseTransformCount);
+                drawable._objectToWorld = Combine(_baseTransforms[machineOutput], localToWorld);
 
 				++drawCallCounter;
             }
@@ -166,17 +188,6 @@ namespace RenderCore { namespace Assets
 			DrawFn_SimpleModelStatic(metalContext, parserContext, drawable, boundUniforms, shader);
 	}
 
-	static Techniques::Material& GetDummyMaterial()
-	{
-		static Techniques::Material dummyMaterial;
-		static bool dummyMaterialIsInitialized = false;
-		if (!dummyMaterialIsInitialized) {
-			XlCopyString(dummyMaterial._techniqueConfig, "xleres/techniques/illum.tech");
-			dummyMaterialIsInitialized = true;
-		}
-		return dummyMaterial;
-	}
-
 	void SimpleModelRenderer::BuildDrawables(
 		IteratorRange<Techniques::DrawablesPacket** const> pkts,
 		const Float4x4& localToWorld,
@@ -200,14 +211,18 @@ namespace RenderCore { namespace Assets
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _geos[geoCall._geoId];
 				drawable._material = _materialScaffold->GetMaterial(materialGuid);
-				if (!drawable._material)
-					drawable._material = &GetDummyMaterial();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
 				drawable._materialGuid = materialGuid;
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
+
+				#if defined(BAD_MATERIAL_FALLBACK)
+					if (!drawable._material)
+						drawable._material = &GetDummyMaterial();
+					assert(drawable._material);
+				#endif
 
 				auto machineOutput = _skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker);
                 if (machineOutput < _baseTransformCount) {
@@ -237,14 +252,18 @@ namespace RenderCore { namespace Assets
 				auto& drawable = allocatedDrawables[d];
 				drawable._geo = _boundSkinnedControllers[geoCall._geoId];
 				drawable._material = _materialScaffold->GetMaterial(materialGuid);
-				if (!drawable._material)
-					drawable._material = &GetDummyMaterial();
 				drawable._drawFn = (Techniques::Drawable::ExecuteDrawFn*)&DrawFn_SimpleModelDelegate;
 				drawable._drawCall = drawCall;
 				drawable._uniformsInterface = _usi;
 				drawable._materialGuid = materialGuid;
 				drawable._drawCallIdx = drawCallCounter;
 				drawable._delegate = delegate;
+
+				#if defined(BAD_MATERIAL_FALLBACK)
+					if (!drawable._material)
+						drawable._material = &GetDummyMaterial();
+					assert(drawable._material);
+				#endif
 
                 drawable._objectToWorld = Combine(
 					_baseTransforms[_skeletonBinding.ModelJointToMachineOutput(geoCall._transformMarker)], 
