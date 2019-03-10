@@ -729,7 +729,7 @@ namespace SceneEngine
     {
     public:
         auto Resolve(
-            const Techniques::RenderStateSet& states, 
+            const RenderCore::Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> Techniques::CompiledRenderStateSet
         {
             return Techniques::CompiledRenderStateSet{

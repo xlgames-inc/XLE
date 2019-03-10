@@ -11,16 +11,16 @@
 #include <string>
 #include <memory>
 
-namespace RenderCore { namespace Techniques 
-{ 
-    class TechniqueContext; class ParsingContext; 
-    class IRenderStateDelegate;
-    class RenderStateSet;
-    class PredefinedCBLayout;
-}}
 namespace RenderCore
 {
 	class InputElementDesc;
+	namespace Assets { class RenderStateSet; }
+	namespace Techniques 
+	{ 
+		class TechniqueContext; class ParsingContext; 
+		class IRenderStateDelegate;
+		class PredefinedCBLayout;
+	}
 }
 namespace Utility { class ParameterBox; }
 
@@ -79,7 +79,7 @@ namespace FixedFunctionModel
 
         SharedTechniqueConfig InsertTechniqueConfig(StringSection<::Assets::ResChar> shaderName);
         SharedParameterBox InsertParameterBox(const Utility::ParameterBox& box);
-        unsigned InsertRenderStateSet(const RenderCore::Techniques::RenderStateSet& states);
+        unsigned InsertRenderStateSet(const RenderCore::Assets::RenderStateSet& states);
 
 		struct BoundVariation
 		{

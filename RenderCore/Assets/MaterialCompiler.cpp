@@ -7,7 +7,6 @@
 #include "MaterialCompiler.h"
 #include "RawMaterial.h"
 #include "MaterialScaffold.h"
-#include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/CompilationThread.h"
 #include "../../Assets/BlockSerializer.h"
 #include "../../Assets/ChunkFile.h"
@@ -70,7 +69,7 @@ namespace RenderCore { namespace Assets
 				//  for each configuration, we want to build a resolved material
 				//  Note that this is a bit crazy, because we're going to be loading
 				//  and re-parsing the same files over and over again!
-			SerializableVector<std::pair<MaterialGuid, Techniques::Material>> resolved;
+			SerializableVector<std::pair<MaterialGuid, MaterialScaffold::Material>> resolved;
 			SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> resolvedNames;
 			resolved.reserve(modelMat->_configurations.size());
 
@@ -84,7 +83,7 @@ namespace RenderCore { namespace Assets
 			using Meld = StringMeld<MaxPath, ::Assets::ResChar>;
 			for (const auto& cfg:modelMat->_configurations) {
 
-				Techniques::Material resMat;
+				MaterialScaffold::Material resMat;
 				std::basic_stringstream<::Assets::ResChar> resName;
 				auto guid = MakeMaterialGuid(MakeStringSection(cfg));
 
@@ -132,7 +131,7 @@ namespace RenderCore { namespace Assets
 				resolvedNames.push_back(std::make_pair(guid, std::move(resNameVec)));
 			}
 
-			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, Techniques::Material>());
+			std::sort(resolved.begin(), resolved.end(), CompareFirst<MaterialGuid, MaterialScaffold::Material>());
 			std::sort(resolvedNames.begin(), resolvedNames.end(), CompareFirst<MaterialGuid, SerializableVector<char>>());
 
 				// "resolved" is now actually the data we want to write out

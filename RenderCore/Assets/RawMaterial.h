@@ -4,7 +4,7 @@
 
 #pragma once
 
-#include "../Techniques/RenderStateResolver.h"
+#include "MaterialScaffold.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Utility/ParameterBox.h"
@@ -20,10 +20,10 @@ namespace Assets
 }
 namespace Utility { class Data; }
 
-namespace RenderCore { namespace Techniques { class Material;  } }
-
 namespace RenderCore { namespace Assets
 {
+	RenderStateSet Merge(RenderStateSet underride, RenderStateSet override);
+
     /// <summary>Pre-resolved material settings</summary>
     /// Materials are a hierachical set of properties. Each RawMaterial
     /// object can inherit from sub RawMaterials -- and it can either
@@ -41,13 +41,12 @@ namespace RenderCore { namespace Assets
         
         ParameterBox	_resourceBindings;
         ParameterBox	_matParamBox;
-        Techniques::RenderStateSet _stateSet;
+        RenderStateSet	_stateSet;
         ParameterBox	_constants;
         AssetName		_techniqueConfig;
 
         std::vector<AssetName> _inherit;
 
-		void					MergeInto(Techniques::Material& dest) const; 
 		void					MergeInto(RawMaterial& dest) const; 
 		std::vector<AssetName>	ResolveInherited(const ::Assets::DirectorySearchRules& searchRules) const;
 
@@ -93,17 +92,21 @@ namespace RenderCore { namespace Assets
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName);
 
+	MaterialGuid MakeMaterialGuid(StringSection<utf8> name);
+
+	void MergeInto(MaterialScaffoldMaterial& dest, const RawMaterial& source); 
 
 	void MergeIn_Stall(
-		Techniques::Material& result,
+		MaterialScaffoldMaterial& result,
 		StringSection<> sourceMaterialName,
 		const ::Assets::DirectorySearchRules& searchRules,
 		std::vector<::Assets::DependentFileState>& deps);
 
 	void MergeIn_Stall(
-		RenderCore::Techniques::Material& result,
-		const RenderCore::Assets::RawMaterial& src,
+		MaterialScaffoldMaterial& result,
+		const RawMaterial& src,
 		const ::Assets::DirectorySearchRules& searchRules);
+
 
 }}
 

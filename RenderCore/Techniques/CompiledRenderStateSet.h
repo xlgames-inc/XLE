@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../Assets/MaterialScaffold.h"
 #include "../Metal/State.h"
 
 namespace RenderCore { namespace Techniques
@@ -17,6 +18,6 @@ namespace RenderCore { namespace Techniques
         Metal::RasterizerState _rasterizerState = Metal::RasterizerState::Null();
     };
 
-    Metal::RasterizerState BuildDefaultRastizerState(const RenderStateSet& states);
+    Metal::RasterizerState BuildDefaultRastizerState(const RenderCore::Assets::RenderStateSet& states);
 }}
 

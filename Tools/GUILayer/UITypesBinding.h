@@ -19,7 +19,6 @@ using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
 namespace RenderCore { namespace Assets { class RawMaterial; } }
-namespace RenderCore { namespace Techniques { class Material; } }
 namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; }
 
 namespace GUILayer
@@ -372,7 +371,7 @@ namespace GUILayer
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         System::String^ BuildInheritanceList();
-        void Resolve(RenderCore::Techniques::Material& destination);
+        // void Resolve(RenderCore::Techniques::Material& destination);
 
         void AddInheritted(System::String^);
         void RemoveInheritted(System::String^);

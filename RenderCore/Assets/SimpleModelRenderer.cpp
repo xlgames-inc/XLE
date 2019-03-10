@@ -14,7 +14,6 @@
 #include "../Techniques/TechniqueUtils.h"
 #include "../Techniques/ParsingContext.h"
 #include "../Techniques/CommonBindings.h"
-#include "../Techniques/TechniqueMaterial.h"
 #include "../Types.h"
 #include "../ResourceDesc.h"
 #include "../IDevice.h"

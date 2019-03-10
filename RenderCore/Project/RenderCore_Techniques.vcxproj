@@ -95,7 +95,6 @@
     <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
-    <ClCompile Include="..\Techniques\TechniqueMaterial.cpp" />
     <ClCompile Include="..\Techniques\Techniques.cpp" />
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
   </ItemGroup>

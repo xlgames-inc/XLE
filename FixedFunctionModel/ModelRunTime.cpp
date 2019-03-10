@@ -263,7 +263,7 @@ namespace FixedFunctionModel
                 // configure the texture bind points array & material parameters box
             for (auto i=materialResources.begin(); i!=materialResources.end(); ++i) {
                 ParameterBox materialParamBox;
-                Techniques::RenderStateSet stateSet;
+                RenderCore::Assets::RenderStateSet stateSet;
 
                     //  we need to create a list of all of the texture bind points that are referenced
                     //  by all of the materials used here. They will end up in sorted order
@@ -311,10 +311,10 @@ namespace FixedFunctionModel
                 if (stateSet._forwardBlendOp == BlendOp::NoBlending) {
                     i->second._delayStep = DelayStep::OpaqueRender;
                 } else {
-                    if (stateSet._flag & Techniques::RenderStateSet::Flag::BlendType) {
-                        switch (Techniques::RenderStateSet::BlendType(stateSet._blendType)) {
-                        case Techniques::RenderStateSet::BlendType::DeferredDecal: i->second._delayStep = DelayStep::OpaqueRender; break;
-                        case Techniques::RenderStateSet::BlendType::Ordered: i->second._delayStep = DelayStep::SortedBlending; break;
+                    if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType) {
+                        switch (RenderCore::Assets::RenderStateSet::BlendType(stateSet._blendType)) {
+                        case RenderCore::Assets::RenderStateSet::BlendType::DeferredDecal: i->second._delayStep = DelayStep::OpaqueRender; break;
+                        case RenderCore::Assets::RenderStateSet::BlendType::Ordered: i->second._delayStep = DelayStep::SortedBlending; break;
                         default: i->second._delayStep = DelayStep::PostDeferred; break;
                         }
                     } else {

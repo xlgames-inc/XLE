@@ -7,8 +7,7 @@
 #pragma once
 
 #include "../../PlatformRig/OverlaySystem.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
-#include "../../RenderCore/Metal/Forward.h"
+#include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Assets/AssetUtils.h"
 #include <memory>
 
@@ -29,7 +28,7 @@ namespace ToolsRig
 
         mutable bool _pendingCameraAlignToModel = false;
 
-		RenderCore::Techniques::Material	_parameters;
+		RenderCore::Assets::MaterialScaffoldMaterial		_parameters;
         ::Assets::DirectorySearchRules		_searchRules;
         ::Assets::rstring					_previewModelFile;
         uint64_t							_previewMaterialBinding = 0;

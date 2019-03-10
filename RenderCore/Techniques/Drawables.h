@@ -4,6 +4,7 @@
 
 #pragma once
 
+#include "TechniqueMaterial.h"
 #include "../IDevice.h"
 #include "../Metal/Forward.h"
 #include "../../Utility/VariantUtils.h"
@@ -23,7 +24,6 @@ namespace RenderCore { namespace Techniques
 	class IMaterialDelegate;
 	class ITechniqueDelegate;
 	class IRenderStateDelegate;
-	class Material;
 
 	class SequencerTechnique
 	{

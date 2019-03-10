@@ -16,18 +16,18 @@ namespace RenderCore { namespace Techniques
 
     IRenderStateDelegate::~IRenderStateDelegate() {}
 
-    Metal::RasterizerState BuildDefaultRastizerState(const RenderStateSet& states)
+    Metal::RasterizerState BuildDefaultRastizerState(const Assets::RenderStateSet& states)
     {
         auto cullMode = CullMode::Back;
         auto fillMode = FillMode::Solid;
         unsigned depthBias = 0;
-        if (states._flag & RenderStateSet::Flag::DoubleSided) {
+        if (states._flag & Assets::RenderStateSet::Flag::DoubleSided) {
             cullMode = states._doubleSided ? CullMode::None : CullMode::Back;
         }
-        if (states._flag & RenderStateSet::Flag::DepthBias) {
+        if (states._flag & Assets::RenderStateSet::Flag::DepthBias) {
             depthBias = states._depthBias;
         }
-        if (states._flag & RenderStateSet::Flag::Wireframe) {
+        if (states._flag & Assets::RenderStateSet::Flag::Wireframe) {
             fillMode = states._wireframe ? FillMode::Wireframe : FillMode::Solid;
         }
 
@@ -38,7 +38,7 @@ namespace RenderCore { namespace Techniques
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
 			return CompiledRenderStateSet { Metal::BlendState(CommonResources()._blendOpaque), BuildDefaultRastizerState(states) };
@@ -54,12 +54,12 @@ namespace RenderCore { namespace Techniques
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
             bool deferredDecal = 
-                    (states._flag & RenderStateSet::Flag::BlendType)
-                && (states._blendType == RenderStateSet::BlendType::DeferredDecal);
+                    (states._flag & Assets::RenderStateSet::Flag::BlendType)
+                && (states._blendType == Assets::RenderStateSet::BlendType::DeferredDecal);
 
             auto& blendState = deferredDecal
                 ? CommonResources()._blendStraightAlpha
@@ -75,11 +75,11 @@ namespace RenderCore { namespace Techniques
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
             CompiledRenderStateSet result;
-            if (states._flag & RenderStateSet::Flag::ForwardBlend) {
+            if (states._flag & Assets::RenderStateSet::Flag::ForwardBlend) {
                 result._blendState = Metal::BlendState(
                     states._forwardBlendOp, states._forwardBlendSrc, states._forwardBlendDst);
             } else {
@@ -97,7 +97,7 @@ namespace RenderCore { namespace Techniques
     {
     public:
         auto Resolve(
-            const RenderStateSet& states, 
+            const Assets::RenderStateSet& states, 
             unsigned techniqueIndex) -> CompiledRenderStateSet
         {
                 // When rendering the shadows, most states are constant.
@@ -106,8 +106,8 @@ namespace RenderCore { namespace Techniques
                 // wants to inherit the depth bias and slope scaled depth bias
                 // settings.
             CompiledRenderStateSet result;
-            unsigned cullDisable    = !!(states._flag & RenderStateSet::Flag::DoubleSided);
-            unsigned wireframe      = !!(states._flag & RenderStateSet::Flag::Wireframe);
+            unsigned cullDisable    = !!(states._flag & Assets::RenderStateSet::Flag::DoubleSided);
+            unsigned wireframe      = !!(states._flag & Assets::RenderStateSet::Flag::Wireframe);
             result._rasterizerState = _rs[wireframe<<1|cullDisable];
             return result;
         }

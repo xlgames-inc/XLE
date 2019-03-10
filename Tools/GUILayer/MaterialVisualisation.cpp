@@ -14,7 +14,6 @@
 #include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../SceneEngine/LightingParserContext.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetTraits.h"
@@ -42,7 +41,7 @@ namespace GUILayer
     {
 		if (_nativeVisSettingsDirty) {
 			auto& visObject = *_settings->GetUnderlyingPtr();
-			visObject._parameters = RenderCore::Techniques::Material{};
+			visObject._parameters = RenderCore::Assets::MaterialScaffoldMaterial{};
 			visObject._searchRules = ::Assets::DirectorySearchRules{};
         
 			auto previewModel = clix::marshalString<clix::E_UTF8>(_previewModel);

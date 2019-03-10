@@ -12,6 +12,7 @@
 #include "../RenderCore/Techniques/CompiledRenderStateSet.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
 #include "../RenderCore/Techniques/ResolvedTechniqueShaders.h"
+#include "../RenderCore/Assets/MaterialScaffold.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Buffer.h"
@@ -40,7 +41,7 @@ namespace FixedFunctionModel
         std::vector<ParameterBox>   _parameterBoxes;
         std::vector<uint64>         _techniqueInterfaceHashes;
 
-        std::vector<Techniques::RenderStateSet> _renderStateSets;
+        std::vector<RenderCore::Assets::RenderStateSet> _renderStateSets;
         std::vector<uint64>         _renderStateHashes;
 
         std::vector<std::pair<uint64, Techniques::CompiledRenderStateSet>>  _compiledStates;
@@ -153,7 +154,7 @@ namespace FixedFunctionModel
         }
     }
 
-    unsigned SharedStateSet::InsertRenderStateSet(const Techniques::RenderStateSet& states)
+    unsigned SharedStateSet::InsertRenderStateSet(const RenderCore::Assets::RenderStateSet& states)
     {
         //  The RenderStateSet has parameters that influence the BlendState 
         //  and RasteriserState low level graphics API objects.

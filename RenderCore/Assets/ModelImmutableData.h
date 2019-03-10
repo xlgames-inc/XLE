@@ -12,8 +12,6 @@
 #include <vector>
 #include <utility>
 
-namespace RenderCore { namespace Techniques { class Material; } }
-
 namespace RenderCore { namespace Assets
 {
     #pragma pack(push)
@@ -41,13 +39,6 @@ namespace RenderCore { namespace Assets
 
         ModelImmutableData() = delete;
         ~ModelImmutableData();
-    };
-
-    class MaterialImmutableData
-    {
-    public:
-        SerializableVector<std::pair<MaterialGuid, Techniques::Material>> _materials;
-        SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> _materialNames;
     };
 
     class ModelSupplementImmutableData
