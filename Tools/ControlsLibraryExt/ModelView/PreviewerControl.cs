@@ -22,17 +22,30 @@ namespace ControlsLibraryExt.ModelView
     {
         public GUILayer.ModelVisSettings ModelSettings
         {
-            set { LayerController.SetModelSettings(value); }
+            set
+            {
+                LayerController.SetModelSettings(value);
+                if (OnModelSettingsChange != null)
+                    OnModelSettingsChange.Invoke(this, null);
+            }
             get { return LayerController.GetModelSettings(); }
         }
 
         public GUILayer.VisOverlaySettings OverlaySettings
         {
-            set { LayerController.SetOverlaySettings(value); }
+            set
+            {
+                LayerController.SetOverlaySettings(value);
+                if (OnOverlaySettingsChange != null)
+                    OnOverlaySettingsChange.Invoke(this, null);
+            }
             get { return LayerController.GetOverlaySettings(); }
         }
         public GUILayer.VisMouseOver MouseOver { get { return LayerController.MouseOver; } }
         public GUILayer.VisLayerController LayerController { get; } = new GUILayer.VisLayerController();
+
+        public event EventHandler OnModelSettingsChange;
+        public event EventHandler OnOverlaySettingsChange;
     }
 
     [Export(typeof(PreviewerControl))]
@@ -58,6 +71,16 @@ namespace ControlsLibraryExt.ModelView
                 }
                 _view.Invalidate();
             };
+            _animationCtrls.OnInvalidateViews += (object sender, EventArgs args) => {
+                _view.Invalidate();
+            };
+            _ctrls.OnResetCamera += (object sender, EventArgs args) => {
+                var context = ContextAs<PreviewerContext>();
+                if (context != null)
+                {
+                    context.LayerController.ResetCamera();
+                }
+            };
         }
 
         public void SetContext(PreviewerContext context)
@@ -66,6 +89,8 @@ namespace ControlsLibraryExt.ModelView
             if (existingContext != null)
             {
                 existingContext.LayerController.DetachFromView(_view.Underlying);
+                existingContext.OnModelSettingsChange -= OnModelSettingsChange;
+                existingContext.OnOverlaySettingsChange -= OnOverlaySettingsChange;
             }
             Context = context;
             if (context != null)
@@ -74,6 +99,8 @@ namespace ControlsLibraryExt.ModelView
                 _ctrls.OverlaySettings = context.OverlaySettings;
                 _ctrls.ModelSettings = context.ModelSettings;
                 _animationCtrls.AnimationState = context.LayerController.AnimationState;
+                context.OnModelSettingsChange += OnModelSettingsChange;
+                context.OnOverlaySettingsChange += OnOverlaySettingsChange;
             }
         }
 
@@ -94,6 +121,24 @@ namespace ControlsLibraryExt.ModelView
                 }
             }
             base.Dispose(disposing);
+        }
+
+        private void OnModelSettingsChange(object sender, EventArgs args)
+        {
+            var context = ContextAs<PreviewerContext>();
+            if (context != null)
+            {
+                _ctrls.ModelSettings = context.ModelSettings;
+            }
+        }
+
+        private void OnOverlaySettingsChange(object sender, EventArgs args)
+        {
+            var context = ContextAs<PreviewerContext>();
+            if (context != null)
+            {
+                _ctrls.OverlaySettings = context.OverlaySettings;
+            }
         }
 
         #region ContextMenu
@@ -203,6 +248,7 @@ namespace ControlsLibraryExt.ModelView
             {
                 case Command.SelectModel:
                 case Command.SelectAnimationSet:
+                case Command.SelectSkeleton:
                     return _contextRegistry.GetActiveContext<PreviewerContext>() != null;                
             }
 
@@ -219,19 +265,28 @@ namespace ControlsLibraryExt.ModelView
                     switch ((Command)commandTag)
                     {
                         case Command.SelectModel:
-                            if (OpenFilesWithFilters(GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
+                            if (OpenFilesWithFilters(_ofd_Skin, GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
                             {
                                 var settings = context.ModelSettings;
-                                settings.ModelName = ofd.FileName;
+                                settings.ModelName = _ofd_Skin.FileName;
+                                context.ModelSettings = settings;
+                            }
+                            break;
+
+                        case Command.SelectSkeleton:
+                            if (OpenFilesWithFilters(_ofd_Skeleton, GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
+                            {
+                                var settings = context.ModelSettings;
+                                settings.SkeletonFileName = _ofd_Skeleton.FileName;
                                 context.ModelSettings = settings;
                             }
                             break;
 
                         case Command.SelectAnimationSet:
-                            if (OpenFilesWithFilters(GUILayer.Utils.GetAnimationSetExtensions()) == DialogResult.OK)
+                            if (OpenFilesWithFilters(_ofd_Animation, GUILayer.Utils.GetAnimationSetExtensions()) == DialogResult.OK)
                             {
                                 var settings = context.ModelSettings;
-                                settings.AnimationFileName = ofd.FileName;
+                                settings.AnimationFileName = _ofd_Animation.FileName;
                                 context.ModelSettings = settings;
                             }
                             break;
@@ -240,7 +295,7 @@ namespace ControlsLibraryExt.ModelView
             }
         }
 
-        private DialogResult OpenFilesWithFilters(System.Collections.Generic.IEnumerable<GUILayer.Utils.AssetExtension> filters)
+        private DialogResult OpenFilesWithFilters(OpenFileDialog ofd, System.Collections.Generic.IEnumerable<GUILayer.Utils.AssetExtension> filters)
         {
             var sb = new System.Text.StringBuilder("", 256);
             bool first = true;
@@ -271,11 +326,17 @@ namespace ControlsLibraryExt.ModelView
 
         public virtual void Initialize()
         {
+            _commandService.RegisterMenu(
+                new MenuInfo(
+                    Command.PreviewerConfigMenu,
+                    "Previewer",
+                    "Previewer configuration"));
+
             _commandService.RegisterCommand(
                 new CommandInfo(
                     Command.SelectModel,
-                    StandardMenu.File,
-                    "Previewer",
+                    Command.PreviewerConfigMenu,
+                    null,
                     "Select Model".Localize(),
                     "Select model file to display in previewer".Localize(),
                     Sce.Atf.Input.Keys.None,
@@ -286,10 +347,22 @@ namespace ControlsLibraryExt.ModelView
             _commandService.RegisterCommand(
                 new CommandInfo(
                     Command.SelectAnimationSet,
-                    StandardMenu.File,
-                    "Previewer",
+                    Command.PreviewerConfigMenu,
+                    null,
                     "Select Animation Set".Localize(),
                     "Select animation set to use in previewer".Localize(),
+                    Sce.Atf.Input.Keys.None,
+                    null,
+                    CommandVisibility.Menu),
+                this);
+
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.SelectSkeleton,
+                    Command.PreviewerConfigMenu,
+                    null,
+                    "Select Skeleton".Localize(),
+                    "Select skeleton to use in previewer".Localize(),
                     Sce.Atf.Input.Keys.None,
                     null,
                     CommandVisibility.Menu),
@@ -298,8 +371,10 @@ namespace ControlsLibraryExt.ModelView
 
         private enum Command
         {
+            PreviewerConfigMenu,
             SelectModel,
-            SelectAnimationSet
+            SelectAnimationSet,
+            SelectSkeleton
         }
 
         [Import(AllowDefault = false)]
@@ -308,6 +383,8 @@ namespace ControlsLibraryExt.ModelView
         [Import(AllowDefault = false)]
         private IContextRegistry _contextRegistry;
 
-        private OpenFileDialog ofd = new OpenFileDialog();
+        private OpenFileDialog _ofd_Skin = new OpenFileDialog();
+        private OpenFileDialog _ofd_Animation = new OpenFileDialog();
+        private OpenFileDialog _ofd_Skeleton = new OpenFileDialog();
     }
 }

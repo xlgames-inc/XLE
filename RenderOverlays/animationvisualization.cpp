@@ -130,7 +130,10 @@ namespace RenderOverlays
 			auto parentPosition = TransformPoint(localToWorld, ExtractTranslation(outputMatrices[parents[c]]));
 
 			auto axis = parentPosition - childPosition;
-			auto tangent = Normalize(Cross(cameraForward, axis));
+			Float3 tangent;
+			if (!Normalize_Checked(&tangent, Cross(cameraForward, axis)))
+				continue;
+
 			float scaleC = 0.33f * 0.01f * (worldToProjection * Expand(childPosition, 1.0f))[3] * s;	// normalize scale for screen space
 			float scaleP = 0.33f * 0.01f * (worldToProjection * Expand(parentPosition, 1.0f))[3] * s;	// normalize scale for screen space
 

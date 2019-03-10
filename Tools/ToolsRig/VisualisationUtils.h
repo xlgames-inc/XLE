@@ -137,6 +137,7 @@ namespace ToolsRig
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
+		void ResetCamera();
 
         ModelVisLayer();
         ~ModelVisLayer();

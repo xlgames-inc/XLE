@@ -29,6 +29,8 @@ namespace GUILayer
 		void SetOverlaySettings(VisOverlaySettings^ settings);
 		VisOverlaySettings^ GetOverlaySettings();
 
+		void ResetCamera();
+
 		void AttachToView(LayerControl^ view);
 		void DetachFromView(LayerControl^ view);
 

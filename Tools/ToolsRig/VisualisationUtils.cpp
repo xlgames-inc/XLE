@@ -209,6 +209,15 @@ namespace ToolsRig
 	{
 		return _pimpl->_camera;
 	}
+
+	void ModelVisLayer::ResetCamera()
+	{
+		auto* scene = dynamic_cast<ToolsRig::IVisContent*>(_pimpl->_scene.get());
+		if (scene) {
+			auto boundingBox = scene->GetBoundingBox();
+			*_pimpl->_camera = ToolsRig::AlignCameraToBoundingBox(_pimpl->_camera->_verticalFieldOfView, boundingBox);
+		}
+	}
 	
     ModelVisLayer::ModelVisLayer()
     {

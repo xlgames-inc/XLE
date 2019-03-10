@@ -72,6 +72,7 @@ namespace ControlsLibraryExt
             {
                 updateTimer.Stop();
             }
+            InvokeOnInvalidateViews();
         }
 
         private void _animationSelection_SelectedIndexChanged(object sender, EventArgs e)
@@ -92,6 +93,7 @@ namespace ControlsLibraryExt
             _playButton.Checked = _animationState.CurrentState == GUILayer.VisAnimationState.State.Playing;
             _playButton.Enabled = _animationState.CurrentState != GUILayer.VisAnimationState.State.BindPose;
             UpdateTimeBar(null, null);
+            InvokeOnInvalidateViews();
         }
 
         readonly System.Windows.Forms.Timer updateTimer = new System.Windows.Forms.Timer();
@@ -100,6 +102,7 @@ namespace ControlsLibraryExt
         {
             _animationState.AnimationTime = (_timeBar.Value / 1000000.0f) * SelectedAnimationLength;
             _animationState.AnchorTime = (uint)Environment.TickCount;
+            InvokeOnInvalidateViews();
         }
 
         public GUILayer.VisAnimationState AnimationState
@@ -129,5 +132,13 @@ namespace ControlsLibraryExt
         }
 
         private GUILayer.VisAnimationState _animationState;
+
+        public event EventHandler OnInvalidateViews;
+
+        private void InvokeOnInvalidateViews()
+        {
+            if (OnInvalidateViews != null)
+                OnInvalidateViews.Invoke(this, EventArgs.Empty);
+        }
     }
 }

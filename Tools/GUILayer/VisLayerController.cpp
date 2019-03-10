@@ -17,7 +17,6 @@
 #include "../../RenderOverlays/Font.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../SceneEngine/SceneParser.h"
-// #include "../../Assets/AssetFuture.h"
 #include "../../Utility/StringFormat.h"
 #include <iomanip>
 
@@ -100,6 +99,11 @@ namespace GUILayer
 	VisOverlaySettings^ VisLayerController::GetOverlaySettings()
 	{
 		return VisOverlaySettings::ConvertFromNative(_pimpl->_visOverlay->GetOverlaySettings());
+	}
+
+	void VisLayerController::ResetCamera()
+	{
+		_pimpl->_modelLayer->ResetCamera();
 	}
 
 	void VisLayerController::AttachToView(LayerControl^ view)

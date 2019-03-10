@@ -40,6 +40,7 @@ namespace ControlsLibraryExt.ModelView
 
         public event EventHandler OverlaySettings_OnChange;
         public event EventHandler ModelSettings_OnChange;
+        public event EventHandler OnResetCamera;
 
         private void OverlaySettings_InvokeOnChange()
         {
@@ -135,7 +136,8 @@ namespace ControlsLibraryExt.ModelView
 
         private void ResetCamClick(object sender, EventArgs e)
         {
-            System.Diagnostics.Debug.Assert(false);
+            if (OnResetCamera != null)
+                OnResetCamera.Invoke(this, null);
         }
     }
 }
