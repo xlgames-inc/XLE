@@ -33,7 +33,8 @@ namespace GUILayer
 		void SetOverlaySettings(VisOverlaySettings^ settings);
 		VisOverlaySettings^ GetOverlaySettings();
 
-		void SetOverrides(VisOverrides^ settings);
+		void SetMaterialOverrides(
+			System::Collections::Generic::IEnumerable<RawMaterial^>^ materialOverrides);
 
 		void ResetCamera();
 

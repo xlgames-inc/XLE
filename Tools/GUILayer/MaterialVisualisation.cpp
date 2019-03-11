@@ -84,10 +84,4 @@ namespace GUILayer
 		return result;
 	}
 
-	VisOverrides::VisOverrides()
-	{
-		MaterialOverrides = nullptr;
-		TechniqueConfigOverride = System::String::Empty;
-	}
-
 }

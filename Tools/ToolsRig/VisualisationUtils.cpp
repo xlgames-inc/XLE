@@ -109,6 +109,7 @@ namespace ToolsRig
 
 		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
 		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+		std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _renderStateDelegate;
 		
     };
 
@@ -263,23 +264,25 @@ namespace ToolsRig
 		RenderCore::Assets::MaterialScaffoldMaterial _material;
 	};
 
-	void ModelVisLayer::SetOverrides(const RenderCore::Assets::MaterialScaffoldMaterial& material)
+	std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>
+		MakeOverrideDelegate(const RenderCore::Assets::MaterialScaffoldMaterial& material)
 	{
-		_pimpl->_materialDelegate = std::make_shared<MaterialOverrideDelegate>(material);	
+		return std::make_shared<MaterialOverrideDelegate>(material);
 	}
 
-	void ModelVisLayer::SetOverrides(const RenderCore::Techniques::Technique& technique)
+	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& delegate)
 	{
+		_pimpl->_materialDelegate = delegate;
 	}
 
-	void ModelVisLayer::ResetMaterialOverrides()
+	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& delegate)
 	{
-		_pimpl->_materialDelegate.reset();
+		_pimpl->_techniqueDelegate = delegate;
 	}
 
-	void ModelVisLayer::ResetTechniqueOverrides()
+	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate>& delegate)
 	{
-		_pimpl->_techniqueDelegate.reset();
+		_pimpl->_renderStateDelegate = delegate;
 	}
 
 	const std::shared_ptr<VisCameraSettings>& ModelVisLayer::GetCamera()

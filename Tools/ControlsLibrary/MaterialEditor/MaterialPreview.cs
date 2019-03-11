@@ -130,11 +130,7 @@ namespace ControlsLibrary.MaterialEditor
         {
             set
             {
-                layerController.SetOverrides(
-                    new GUILayer.VisOverrides
-                    {
-                        MaterialOverrides = value
-                    });
+                layerController.SetMaterialOverrides(value);
             }
         }
 

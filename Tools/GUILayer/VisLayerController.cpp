@@ -125,10 +125,11 @@ namespace GUILayer
 	{
 		::Assets::DirectorySearchRules searchRules;		// todo -- include model directory in search path
 		auto nativeMaterial = ResolveNativeMaterial(_boundRawMaterials, searchRules);
-		_pimpl->_modelLayer->SetOverrides(nativeMaterial);
+		_pimpl->_modelLayer->SetOverrides(ToolsRig::MakeOverrideDelegate(nativeMaterial));
 	}
 
-	void VisLayerController::SetOverrides(VisOverrides^ settings)
+	void VisLayerController::SetMaterialOverrides(
+		System::Collections::Generic::IEnumerable<RawMaterial^>^ materialOverrides)
 	{
 		auto listChangeHandler = gcnew ListChangedEventHandler(this, &VisLayerController::ListChangeHandler);
 		auto propChangeHandler = gcnew PropertyChangedEventHandler(this, &VisLayerController::PropChangeHandler);
@@ -144,9 +145,9 @@ namespace GUILayer
 			_boundRawMaterials = nullptr;
 		}
 
-		if (settings && settings->MaterialOverrides) {
+		if (materialOverrides) {
 			_boundRawMaterials = gcnew System::Collections::Generic::List<RawMaterial^>();
-			for each(auto mat in settings->MaterialOverrides) {
+			for each(auto mat in materialOverrides) {
 				_boundRawMaterials->Add(mat);
 				mat->MaterialParameterBox->ListChanged += listChangeHandler;
 				mat->ShaderConstants->ListChanged += listChangeHandler;
@@ -155,7 +156,7 @@ namespace GUILayer
 			}
 			RebuildMaterialOverrides();
 		} else {
-			_pimpl->_modelLayer->ResetMaterialOverrides();
+			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
 		}
 	}
 
@@ -241,7 +242,7 @@ namespace GUILayer
 
 	VisLayerController::~VisLayerController()
 	{
-		SetOverrides(nullptr);		// unbind bound materials
+		SetMaterialOverrides(nullptr);		// unbind bound materials
 		_pimpl.reset();		
 	}
 

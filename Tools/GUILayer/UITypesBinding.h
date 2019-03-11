@@ -198,21 +198,6 @@ namespace GUILayer
 		MaterialVisSettings();
     };
 
-	ref class RawMaterial;
-
-	public ref class VisOverrides
-	{
-	public:
-		property System::Collections::Generic::IEnumerable<RawMaterial^>^ MaterialOverrides;
-		property System::String^ TechniqueConfigOverride;
-
-		VisOverrides();
-	};
-
-	RenderCore::Assets::MaterialScaffoldMaterial ResolveNativeMaterial(
-		System::Collections::Generic::IEnumerable<RawMaterial^>^ rawMaterials,
-		const ::Assets::DirectorySearchRules& searchRules);
-
 	public ref class VisOverlaySettings
 	{
 	public:
@@ -432,6 +417,10 @@ namespace GUILayer
         static RawMaterial();
         static Dictionary<System::String^, System::WeakReference^>^ s_table;
     };
+
+	RenderCore::Assets::MaterialScaffoldMaterial ResolveNativeMaterial(
+		System::Collections::Generic::IEnumerable<RawMaterial^>^ rawMaterials,
+		const ::Assets::DirectorySearchRules& searchRules);
 
     public ref class InvalidAssetList
     {
