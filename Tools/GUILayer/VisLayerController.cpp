@@ -96,17 +96,16 @@ namespace GUILayer
 
 	void VisLayerController::SetMaterialVisSettings(MaterialVisSettings^ settings)
 	{
-		_pimpl->_materialVisSettings = *settings->GetUnderlying();
+		_pimpl->_materialVisSettings = *settings->ConvertToNative();
 		_pimpl->_scene = ToolsRig::MakeScene(_pimpl->_materialVisSettings);
 		_pimpl->_modelLayer->Set(_pimpl->_scene);
 		_pimpl->_visOverlay->Set(_pimpl->_scene);
 		_pimpl->_trackingLayer->Set(_pimpl->_scene);
 	}
 
-	MaterialVisSettings^ VisLayerController::SetMaterialVisSettings()
+	MaterialVisSettings^ VisLayerController::GetMaterialVisSettings()
 	{
-		return gcnew MaterialVisSettings(
-			std::make_shared<ToolsRig::MaterialVisSettings>(_pimpl->_materialVisSettings));
+		return MaterialVisSettings::ConvertFromNative(_pimpl->_materialVisSettings);
 	}
 
 	void VisLayerController::SetOverlaySettings(VisOverlaySettings^ settings)
@@ -117,6 +116,47 @@ namespace GUILayer
 	VisOverlaySettings^ VisLayerController::GetOverlaySettings()
 	{
 		return VisOverlaySettings::ConvertFromNative(_pimpl->_visOverlay->GetOverlaySettings());
+	}
+
+	void VisLayerController::ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args) { RebuildMaterialOverrides(); }
+    void VisLayerController::PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args) { RebuildMaterialOverrides(); }
+
+	void VisLayerController::RebuildMaterialOverrides()
+	{
+		::Assets::DirectorySearchRules searchRules;		// todo -- include model directory in search path
+		auto nativeMaterial = ResolveNativeMaterial(_boundRawMaterials, searchRules);
+		_pimpl->_modelLayer->SetOverrides(nativeMaterial);
+	}
+
+	void VisLayerController::SetOverrides(VisOverrides^ settings)
+	{
+		auto listChangeHandler = gcnew ListChangedEventHandler(this, &VisLayerController::ListChangeHandler);
+		auto propChangeHandler = gcnew PropertyChangedEventHandler(this, &VisLayerController::PropChangeHandler);
+
+		if (_boundRawMaterials != nullptr) {
+			for each(auto mat in _boundRawMaterials) {
+				mat->MaterialParameterBox->ListChanged -= listChangeHandler;
+				mat->ShaderConstants->ListChanged -= listChangeHandler;
+				mat->ResourceBindings->ListChanged -= listChangeHandler;
+				mat->StateSet->PropertyChanged -= propChangeHandler;
+			}
+			delete _boundRawMaterials;
+			_boundRawMaterials = nullptr;
+		}
+
+		if (settings && settings->MaterialOverrides) {
+			_boundRawMaterials = gcnew System::Collections::Generic::List<RawMaterial^>();
+			for each(auto mat in settings->MaterialOverrides) {
+				_boundRawMaterials->Add(mat);
+				mat->MaterialParameterBox->ListChanged += listChangeHandler;
+				mat->ShaderConstants->ListChanged += listChangeHandler;
+				mat->ResourceBindings->ListChanged += listChangeHandler;
+				mat->StateSet->PropertyChanged += propChangeHandler;
+			}
+			RebuildMaterialOverrides();
+		} else {
+			_pimpl->_modelLayer->ResetMaterialOverrides();
+		}
 	}
 
 	void VisLayerController::ResetCamera()
@@ -161,6 +201,8 @@ namespace GUILayer
             _pimpl->_mouseOver);
 		_pimpl->_visOverlay->Set(_pimpl->_modelLayer->GetCamera());
 		_pimpl->_visOverlay->Set(_pimpl->_animState);
+
+		_boundRawMaterials = nullptr;
         
 		auto techContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
 		{
@@ -199,7 +241,8 @@ namespace GUILayer
 
 	VisLayerController::~VisLayerController()
 	{
-		_pimpl.reset();
+		SetOverrides(nullptr);		// unbind bound materials
+		_pimpl.reset();		
 	}
 
 	VisLayerController::!VisLayerController()

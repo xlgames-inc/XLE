@@ -162,8 +162,8 @@ namespace RenderCore { namespace Assets
 		MaterialScaffoldMaterial();
 		MaterialScaffoldMaterial(MaterialScaffoldMaterial&& moveFrom) never_throws;
 		MaterialScaffoldMaterial& operator=(MaterialScaffoldMaterial&& moveFrom) never_throws;
-		MaterialScaffoldMaterial(const MaterialScaffoldMaterial&) = delete;
-		MaterialScaffoldMaterial& operator=(const MaterialScaffoldMaterial&) = delete;
+		MaterialScaffoldMaterial(const MaterialScaffoldMaterial&);
+		MaterialScaffoldMaterial& operator=(const MaterialScaffoldMaterial&);
 	};
 
 	#pragma pack(pop)

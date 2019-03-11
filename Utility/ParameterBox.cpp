@@ -831,7 +831,7 @@ namespace Utility
 	template<>
         void ParameterBox::SetParameter(StringSection<utf8> name, const char* value)
     {
-        SetParameter(name, MakeStringSection(value));
+		SetParameter(name, value ? MakeStringSection(value) : StringSection<>{});
     }
 
 	template<>

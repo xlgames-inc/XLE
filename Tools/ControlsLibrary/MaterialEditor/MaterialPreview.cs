@@ -21,7 +21,7 @@ namespace ControlsLibrary.MaterialEditor
         {
             InitializeComponent();
             layerController = new GUILayer.VisLayerController();
-            visSettings = GUILayer.MaterialVisSettings.CreateDefault();
+            visSettings = new GUILayer.MaterialVisSettings();
             layerController.SetMaterialVisSettings(visSettings);
             layerController.AttachToView(_preview.Underlying);
 
@@ -38,7 +38,7 @@ namespace ControlsLibrary.MaterialEditor
 
         public string Object
         {
-            set 
+            set
             {
                 foreach (var m in _attachedMaterials) {
                     m.MaterialParameterBox.ListChanged -= ListChangedCallback;
@@ -69,7 +69,7 @@ namespace ControlsLibrary.MaterialEditor
 
         public GUILayer.EnvironmentSettingsSet EnvironmentSet
         {
-            set 
+            set
             {
                 envSettings = value;
                 _environment.DataSource = value.Names;
@@ -85,13 +85,13 @@ namespace ControlsLibrary.MaterialEditor
         private void ComboBoxSelectedIndexChanged(object sender, System.EventArgs e)
         {
             GUILayer.MaterialVisSettings.GeometryType newGeometry;
-            if (Enum.TryParse<GUILayer.MaterialVisSettings.GeometryType>(_geoType.SelectedValue.ToString(), out newGeometry))
+            if (Enum.TryParse(_geoType.SelectedValue.ToString(), out newGeometry))
             {
                 visSettings.Geometry = newGeometry;
             }
 
             GUILayer.MaterialVisSettings.LightingType newLighting;
-            if (Enum.TryParse<GUILayer.MaterialVisSettings.LightingType>(_lightingType.SelectedValue.ToString(), out newLighting))
+            if (Enum.TryParse(_lightingType.SelectedValue.ToString(), out newLighting))
             {
                 visSettings.Lighting = newLighting;
             }
@@ -105,6 +105,18 @@ namespace ControlsLibrary.MaterialEditor
         }
 
         public void InvalidatePreview() { _preview.Invalidate(); }
+
+        public IEnumerable<GUILayer.RawMaterial> RawMaterialList
+        {
+            set
+            {
+                layerController.SetOverrides(
+                    new GUILayer.VisOverrides
+                    {
+                        MaterialOverrides = value
+                    });
+            }
+        }
 
         protected GUILayer.VisLayerController layerController;
         protected GUILayer.MaterialVisSettings visSettings;

@@ -38,6 +38,16 @@ namespace GUILayer
         }
     }
 
+	RenderCore::Assets::MaterialScaffoldMaterial ResolveNativeMaterial(
+		System::Collections::Generic::IEnumerable<RawMaterial^>^ rawMaterials,
+		const ::Assets::DirectorySearchRules& searchRules)
+	{
+		RenderCore::Assets::MaterialScaffoldMaterial result;
+		for each(auto c in rawMaterials)
+			RenderCore::Assets::MergeIn_Stall(result, *c->GetUnderlying(), searchRules);
+		return result;
+	}
+
 #if 0
     void MaterialVisLayer::Render(
         RenderCore::IThreadContext& context,
@@ -177,7 +187,7 @@ namespace GUILayer
         }
     }
 
-    MaterialVisSettings::GeometryType MaterialVisSettings::Geometry::get()
+    /*MaterialVisSettings::GeometryType MaterialVisSettings::Geometry::get()
     {
         return AsManaged(_object->_geometryType);
     }
@@ -190,6 +200,32 @@ namespace GUILayer
     MaterialVisSettings^ MaterialVisSettings::CreateDefault()
     {
         return gcnew MaterialVisSettings(std::make_shared<ToolsRig::MaterialVisSettings>());
-    }
+    }*/
+
+	MaterialVisSettings::MaterialVisSettings()
+	{
+		Geometry = GeometryType::Sphere;
+		Lighting = LightingType::Deferred;
+	}
+
+	std::shared_ptr<ToolsRig::MaterialVisSettings> MaterialVisSettings::ConvertToNative()
+	{
+		auto result = std::make_shared<ToolsRig::MaterialVisSettings>();
+		result->_geometryType = AsNative(Geometry);
+		return result;
+	}
+
+	MaterialVisSettings^ MaterialVisSettings::ConvertFromNative(const ToolsRig::MaterialVisSettings& input)
+	{
+		MaterialVisSettings^ result = gcnew MaterialVisSettings();
+		result->Geometry = AsManaged(input._geometryType);
+		return result;
+	}
+
+	VisOverrides::VisOverrides()
+	{
+		MaterialOverrides = nullptr;
+		TechniqueConfigOverride = System::String::Empty;
+	}
 
 }

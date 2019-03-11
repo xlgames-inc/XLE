@@ -45,6 +45,18 @@ namespace ControlsLibrary.MaterialEditor
 
         public MaterialControl FocusedMatControls { get { return _materialControl; } }
 
+        public IEnumerable<GUILayer.RawMaterial> RawMaterialList
+        {
+            get
+            {
+                if (_activeObject != null)
+                {
+                    foreach (var mat in _activeObject.Split(';'))
+                        yield return GUILayer.RawMaterial.Get(mat);
+                }
+            }
+        }
+
         protected void SubMatSelectedNodeChanged(object sender, EventArgs e)
         {
                 //  When the selected node changes, we want to 

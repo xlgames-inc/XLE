@@ -18,8 +18,9 @@ using namespace System::ComponentModel;
 using namespace System::Drawing::Design;
 using namespace System::Collections::Generic;
 
-namespace RenderCore { namespace Assets { class RawMaterial; } }
+namespace RenderCore { namespace Assets { class RawMaterial; class MaterialScaffoldMaterial; } }
 namespace ToolsRig { class VisOverlaySettings; class VisMouseOver; class VisAnimationState; class MaterialVisSettings; }
+namespace Assets { class DirectorySearchRules; }
 
 namespace GUILayer
 {
@@ -164,7 +165,7 @@ namespace GUILayer
 
 		static ModelVisSettings^ CreateDefault();
 
-		virtual event PropertyChangedEventHandler^ PropertyChanged;
+		// virtual event PropertyChangedEventHandler^ PropertyChanged;
 		const std::shared_ptr<ToolsRig::ModelVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
 
 	protected:
@@ -179,32 +180,32 @@ namespace GUILayer
         enum class GeometryType { Sphere, Cube, Plane2D, Model };
         enum class LightingType { Deferred, Forward, Direct };
 
-        property GeometryType Geometry { GeometryType get(); void set(GeometryType); }
+        property GeometryType Geometry;
         property LightingType Lighting;
 
-        static MaterialVisSettings^ CreateDefault();
-
-        MaterialVisSettings(std::shared_ptr<ToolsRig::MaterialVisSettings> attached)
-        {
-            _object = std::move(attached);
-			Lighting = LightingType::Direct;
-        }
-
-        ~MaterialVisSettings() { _object.reset(); }
-
-		const std::shared_ptr<ToolsRig::MaterialVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
-
-    protected:
-        clix::shared_ptr<ToolsRig::MaterialVisSettings> _object;
+		std::shared_ptr<ToolsRig::MaterialVisSettings> ConvertToNative();
+		static MaterialVisSettings^ ConvertFromNative(const ToolsRig::MaterialVisSettings& input);
+		MaterialVisSettings();
     };
+
+	ref class RawMaterial;
+
+	public ref class VisOverrides
+	{
+	public:
+		property System::Collections::Generic::IEnumerable<RawMaterial^>^ MaterialOverrides;
+		property System::String^ TechniqueConfigOverride;
+
+		VisOverrides();
+	};
+
+	RenderCore::Assets::MaterialScaffoldMaterial ResolveNativeMaterial(
+		System::Collections::Generic::IEnumerable<RawMaterial^>^ rawMaterials,
+		const ::Assets::DirectorySearchRules& searchRules);
 
 	public ref class VisOverlaySettings
 	{
 	public:
-        // [Category("Environment")]
-        // [Description("Environment settings name")]
-        // property System::String^ EnvSettingsFile;
-
         enum class ColourByMaterialType { None, All, MouseOver };
 		enum class SkeletonModes { None, Render, BoneNames };
 

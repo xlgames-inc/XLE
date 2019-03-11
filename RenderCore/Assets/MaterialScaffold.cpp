@@ -100,6 +100,25 @@ namespace RenderCore { namespace Assets
 		return *this;
 	}
 
+	MaterialScaffoldMaterial::MaterialScaffoldMaterial(const MaterialScaffoldMaterial& cloneFrom)
+	: _bindings(cloneFrom._bindings)
+	, _matParams(cloneFrom._matParams)
+	, _stateSet(cloneFrom._stateSet)
+	, _constants(cloneFrom._constants)
+	{
+		XlCopyString(_techniqueConfig, cloneFrom._techniqueConfig);
+	}
+
+	MaterialScaffoldMaterial& MaterialScaffoldMaterial::operator=(const MaterialScaffoldMaterial& cloneFrom)
+	{
+		_bindings = cloneFrom._bindings;
+		_matParams = cloneFrom._matParams;
+		_stateSet = cloneFrom._stateSet;
+		_constants = cloneFrom._constants;
+		XlCopyString(_techniqueConfig, cloneFrom._techniqueConfig);
+		return *this;
+	}
+
 	
 
 }}

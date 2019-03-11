@@ -13,7 +13,8 @@
 #include "../../Utility/Optional.h"
 #include <string>
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class TechniqueContext; class Technique; } }
+namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace SceneEngine { class LightDesc; class GlobalLightingDesc; }
 namespace RenderOverlays { class IOverlayContext; }
 namespace RenderOverlays { namespace DebuggingDisplay { struct Rect; }}
@@ -137,6 +138,11 @@ namespace ToolsRig
 
         void Set(const VisEnvSettings& envSettings);
 		void Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene);
+
+		void SetOverrides(const RenderCore::Assets::MaterialScaffoldMaterial& material);
+		void SetOverrides(const RenderCore::Techniques::Technique& techniques);
+		void ResetMaterialOverrides();
+		void ResetTechniqueOverrides();
 
 		const std::shared_ptr<VisCameraSettings>& GetCamera();
 		void ResetCamera();

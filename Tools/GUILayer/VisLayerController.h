@@ -16,6 +16,7 @@ namespace GUILayer
 	ref class VisOverlaySettings;
 	ref class LayerControl;
 	ref class VisAnimationState;
+	ref class RawMaterial;
 
 	public ref class VisLayerController : public IOnEngineShutdown
     {
@@ -27,10 +28,12 @@ namespace GUILayer
 		ModelVisSettings^ GetModelSettings();
 
 		void SetMaterialVisSettings(MaterialVisSettings^ settings);
-		MaterialVisSettings^ SetMaterialVisSettings();
+		MaterialVisSettings^ GetMaterialVisSettings();
 
 		void SetOverlaySettings(VisOverlaySettings^ settings);
 		VisOverlaySettings^ GetOverlaySettings();
+
+		void SetOverrides(VisOverrides^ settings);
 
 		void ResetCamera();
 
@@ -44,6 +47,11 @@ namespace GUILayer
 
 	private:
 		clix::auto_ptr<VisLayerControllerPimpl> _pimpl;
+
+		void ListChangeHandler(System::Object^ sender, ListChangedEventArgs^ args);
+		void PropChangeHandler(System::Object^ sender, PropertyChangedEventArgs^ args);
+		void RebuildMaterialOverrides();
+		System::Collections::Generic::List<RawMaterial^>^ _boundRawMaterials;
 	};
 
 }

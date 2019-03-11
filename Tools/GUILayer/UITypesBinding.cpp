@@ -4,8 +4,6 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#pragma warning(disable:4512)
-
 #include "UITypesBinding.h"
 #include "EngineForward.h"
 #include "ExportedNativeTypes.h"
@@ -26,6 +24,8 @@
 #include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
+
+#pragma warning(disable:4512)
 
 using namespace System;
 
@@ -149,7 +149,7 @@ namespace GUILayer
 
 	void ModelVisSettings::NotifyPropertyChanged(System::String^ propertyName)
     {
-        PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
+        // PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -395,10 +395,6 @@ namespace GUILayer
         void PropertyPair<NameType, ValueType>::NotifyPropertyChanged(System::String^ propertyName)
     {
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
-        // _propertyChangedContext->Send(
-        //     gcnew System::Threading::SendOrPostCallback(
-        //         o => PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName))
-        //     ), nullptr);
     }
 
     public ref class BindingConv
@@ -589,14 +585,6 @@ namespace GUILayer
         }
         return nullptr;
     }
-
-    /*void RawMaterial::Resolve(RenderCore::Techniques::Material& destination)
-    {
-        if (!!_underlying) {
-			::Assets::DirectorySearchRules searchRules;
-			RenderCore::Assets::MergeIn_Stall(destination, *_underlying->GetWorkingAsset(), searchRules);
-        }
-    }*/
 
     void RawMaterial::AddInheritted(String^ item)
     {

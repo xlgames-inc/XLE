@@ -24,9 +24,6 @@ namespace RenderCore { namespace Techniques
 
         MaterialDelegate_Basic();
 		~MaterialDelegate_Basic();
-
-	private:
-		// PredefinedCBLayout _cbLayout;
     };
 
 	class TechniqueDelegate_Basic : public ITechniqueDelegate

@@ -33,6 +33,7 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/TimeUtils.h"
+#include "../../Utility/FunctionUtils.h"
 
 namespace ToolsRig
 {
@@ -105,6 +106,10 @@ namespace ToolsRig
 		std::string _envSettingsErrorMessage;
 
 		std::shared_ptr<VisCameraSettings> _camera;
+
+		std::shared_ptr<RenderCore::Techniques::IMaterialDelegate> _materialDelegate;
+		std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+		
     };
 
     void ModelVisLayer::Render(
@@ -150,7 +155,7 @@ namespace ToolsRig
 			}
 		}
 
-		if (_pimpl->_envSettings) {
+		if (_pimpl->_envSettings && _pimpl->_scene) {
 			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(_pimpl->_envSettings);
 
 			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
@@ -161,7 +166,24 @@ namespace ToolsRig
 				&lightingParserDelegate,
 				MakeIteratorRange(lightingPlugins)};
 
-			if (_pimpl->_scene) {
+			LightingParserContext lightingParserContext;
+			{
+				// Setup delegates to override the material & technique values (if we've been given overrides for them)
+				AutoCleanup materialDelegateCleanup, techniqueDelegateCleanup;
+				if (_pimpl->_materialDelegate) {
+					auto oldDelegate = parserContext.SetMaterialDelegate(_pimpl->_materialDelegate);
+					materialDelegateCleanup = AutoCleanup{[oldDelegate, &parserContext]() {
+						parserContext.SetMaterialDelegate(oldDelegate);
+					}};
+				}
+
+				if (_pimpl->_techniqueDelegate) {
+					auto oldDelegate = parserContext.SetTechniqueDelegate(_pimpl->_techniqueDelegate);
+					techniqueDelegateCleanup = AutoCleanup{[oldDelegate, &parserContext]() {
+						parserContext.SetTechniqueDelegate(oldDelegate);
+					}};
+				}
+
 				auto& screenshot = Tweakable("Screenshot", 0);
 				if (screenshot) {
 					PlatformRig::TiledScreenshot(
@@ -171,16 +193,16 @@ namespace ToolsRig
 					screenshot = 0;
 				}
 
-				auto lightingParserContext = LightingParser_ExecuteScene(
+				lightingParserContext = LightingParser_ExecuteScene(
 					threadContext, renderTarget, parserContext, 
 					*_pimpl->_scene, AsCameraDesc(*_pimpl->_camera),
 					qualSettings);
+			}
 
-				// Draw debugging overlays -- 
-				{
-					auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
-					SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
-				}
+			// Draw debugging overlays -- 
+			{
+				auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
+				SceneEngine::LightingParser_Overlays(threadContext, parserContext, lightingParserContext);
 			}
 		}
 
@@ -202,6 +224,62 @@ namespace ToolsRig
 	void ModelVisLayer::Set(const ::Assets::FuturePtr<SceneEngine::IScene>& scene)
 	{
 		_pimpl->_sceneFuture = scene;
+	}
+
+	class MaterialOverrideDelegate : public RenderCore::Techniques::MaterialDelegate_Basic
+	{
+	public:
+		virtual RenderCore::UniformsStreamInterface GetInterface(const void* objectContext) const
+		{
+			return MaterialDelegate_Basic::GetInterface(&_material);
+		}
+
+        virtual uint64_t GetInterfaceHash(const void* objectContext) const
+		{
+			return MaterialDelegate_Basic::GetInterfaceHash(&_material);
+		}
+
+		virtual const ParameterBox* GetShaderSelectors(const void* objectContext) const
+		{
+			return MaterialDelegate_Basic::GetShaderSelectors(&_material);
+		}
+
+        virtual void ApplyUniforms(
+            RenderCore::Techniques::ParsingContext& context,
+            RenderCore::Metal::DeviceContext& devContext,
+            const RenderCore::Metal::BoundUniforms& boundUniforms,
+            unsigned streamIdx,
+            const void* objectContext) const
+		{
+			MaterialDelegate_Basic::ApplyUniforms(
+				context, devContext, boundUniforms,
+				streamIdx, &_material);
+		}
+
+		MaterialOverrideDelegate(const RenderCore::Assets::MaterialScaffoldMaterial& material)
+		: _material(material) {}
+		~MaterialOverrideDelegate() {}
+	private:
+		RenderCore::Assets::MaterialScaffoldMaterial _material;
+	};
+
+	void ModelVisLayer::SetOverrides(const RenderCore::Assets::MaterialScaffoldMaterial& material)
+	{
+		_pimpl->_materialDelegate = std::make_shared<MaterialOverrideDelegate>(material);	
+	}
+
+	void ModelVisLayer::SetOverrides(const RenderCore::Techniques::Technique& technique)
+	{
+	}
+
+	void ModelVisLayer::ResetMaterialOverrides()
+	{
+		_pimpl->_materialDelegate.reset();
+	}
+
+	void ModelVisLayer::ResetTechniqueOverrides()
+	{
+		_pimpl->_techniqueDelegate.reset();
 	}
 
 	const std::shared_ptr<VisCameraSettings>& ModelVisLayer::GetCamera()

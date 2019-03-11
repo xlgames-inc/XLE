@@ -24,7 +24,10 @@ namespace ModelViewer
                 //          we need some way to handle these properly
                 _matControls.Object = value;
                 if (_preview != null)
+                {
                     _preview.Object = value;
+                    _preview.RawMaterialList = _matControls.RawMaterialList;
+                }
             }
         }
 
