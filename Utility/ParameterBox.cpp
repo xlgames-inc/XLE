@@ -1299,10 +1299,11 @@ namespace Utility
 
             auto srcIdx = std::distance(source._hashNames.cbegin(), srcHashNameI);
             auto srcOffsets = source._offsets[srcIdx];
+            const utf8* name = PtrAdd(source._names.begin(), srcOffsets.first);
             hashNameI = SetParameterHint(
                 hashNameI,
                 *srcHashNameI,
-                PtrAdd(source._names.begin(), srcOffsets.first),
+                (!name || !name[0]) ? nullptr : name, // SetParameterHint validates against empty strings
                 PtrAdd(source._values.begin(), srcOffsets.second),
                 source._types[srcIdx]);
             ++srcHashNameI;
