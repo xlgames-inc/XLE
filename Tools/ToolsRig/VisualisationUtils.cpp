@@ -306,6 +306,62 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
+	{
+		switch (lightingType) {
+		case VisEnvSettings::LightingType::Deferred:
+			return SceneEngine::RenderSceneSettings::LightingModel::Deferred;
+		case VisEnvSettings::LightingType::Forward:
+			return SceneEngine::RenderSceneSettings::LightingModel::Forward;
+		default:
+		case VisEnvSettings::LightingType::Direct:
+			return SceneEngine::RenderSceneSettings::LightingModel::Direct;
+		}
+	}
+
+	std::pair<DrawPreviewResult, std::string> DrawPreview(
+        RenderCore::IThreadContext& context,
+		const RenderCore::IResourcePtr& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		VisCameraSettings& cameraSettings,
+		VisEnvSettings& envSettings,
+		SceneEngine::IScene& scene)
+    {
+        try
+        {
+			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
+			future->StallWhilePending();
+			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(future->Actualize());
+
+			std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
+				std::make_shared<SceneEngine::LightingParserStandardPlugin>()
+			};
+			SceneEngine::RenderSceneSettings qualSettings{
+				AsLightingModel(envSettings._lightingType),
+				&lightingParserDelegate,
+				MakeIteratorRange(lightingPlugins)};
+
+			SceneEngine::LightingParser_ExecuteScene(
+				context, renderTarget, parserContext,
+				scene, AsCameraDesc(cameraSettings), qualSettings);
+
+            if (parserContext.HasInvalidAssets())
+				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
+			if (parserContext.HasErrorString())
+				return std::make_pair(DrawPreviewResult::Error, parserContext._stringHelpers->_errorString);
+            if (parserContext.HasPendingAssets())
+				return std::make_pair(DrawPreviewResult::Pending, std::string());
+
+            return std::make_pair(DrawPreviewResult::Success, std::string());
+        }
+        catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
+        catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
+
+        return std::make_pair(DrawPreviewResult::Error, std::string());
+    }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 	class StencilRefDelegate : public RenderCore::Assets::SimpleModelRenderer::IPreDrawDelegate
 	{
 	public:

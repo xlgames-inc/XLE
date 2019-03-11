@@ -151,6 +151,15 @@ namespace GUILayer
             void set(System::String^ value);
         }
 
+		[Category("Model")]
+        [Description("Material Binding Filter")]
+        [EditorAttribute(FileNameEditor::typeid, UITypeEditor::typeid)]
+		property System::UInt64 MaterialBindingFilter
+		{
+			System::UInt64 get() { return _object->_materialBindingFilter; }
+            void set(System::UInt64 value);
+		}
+
 		ModelVisSettings(const std::shared_ptr<ToolsRig::ModelVisSettings>& attached)
         {
             _object = attached;
@@ -164,6 +173,7 @@ namespace GUILayer
         ~ModelVisSettings() { _object.reset(); }
 
 		static ModelVisSettings^ CreateDefault();
+		static ModelVisSettings^ FromCommandLine(array<System::String^>^ args);
 
 		// virtual event PropertyChangedEventHandler^ PropertyChanged;
 		const std::shared_ptr<ToolsRig::ModelVisSettings>& GetUnderlying() { return _object.GetNativePtr(); }
@@ -383,8 +393,6 @@ namespace GUILayer
             BindingList<StringStringPair^>^ get();
         }
         
-        static StringStringPair^ MakePropertyPair(System::String^ name, System::String^ value) { return gcnew StringStringPair(name, value); }
-
         property RenderStateSet^ StateSet { RenderStateSet^ get() { return _renderStateSet; } }
 
         property System::String^ TechniqueConfig { System::String^ get(); void set(System::String^); }
@@ -392,8 +400,6 @@ namespace GUILayer
         const RenderCore::Assets::RawMaterial* GetUnderlying();
 
         System::String^ BuildInheritanceList();
-        // void Resolve(RenderCore::Techniques::Material& destination);
-
         void AddInheritted(System::String^);
         void RemoveInheritted(System::String^);
 
@@ -402,6 +408,8 @@ namespace GUILayer
 
         static RawMaterial^ Get(System::String^ initializer);
         static RawMaterial^ CreateUntitled();
+
+		static StringStringPair^ MakePropertyPair(System::String^ name, System::String^ value) { return gcnew StringStringPair(name, value); }
 
         ~RawMaterial();
     private:
@@ -420,7 +428,6 @@ namespace GUILayer
         RawMaterial(System::String^ initialiser);
 
 		uint32 _transId;
-		void CheckBindingInvalidation();
 
         static RawMaterial();
         static Dictionary<System::String^, System::WeakReference^>^ s_table;

@@ -21,7 +21,7 @@ using Sce.Atf.Controls.Adaptable;
 
 #pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
 
-namespace Previewer
+namespace ControlsLibraryExt.ModelView
 {
     [Export(typeof(IControlHostClient))]
     [Export(typeof(Previewer))]
@@ -199,7 +199,7 @@ namespace Previewer
 
     [Export(typeof(IInitializable))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    class GlobalPreviewerCommands : ICommandClient, IInitializable
+    public class GlobalPreviewerCommands : ICommandClient, IInitializable
     {
         public bool CanDoCommand(object commandTag)
         {
@@ -252,5 +252,158 @@ namespace Previewer
 
         [Import(AllowDefault = false)] private ICommandService _commandService;
         [Import(AllowDefault = false)] private Previewer _controlHost;
+    }
+
+    [Export(typeof(IInitializable))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class PreviewerCommands : ICommandClient, IInitializable
+    {
+        public bool CanDoCommand(object commandTag)
+        {
+            if (!(commandTag is Command))
+                return false;
+
+            switch ((Command)commandTag)
+            {
+                case Command.SelectModel:
+                case Command.SelectAnimationSet:
+                case Command.SelectSkeleton:
+                    return _contextRegistry.GetActiveContext<PreviewerContext>() != null;
+            }
+
+            return false;
+        }
+
+        public void DoCommand(object commandTag)
+        {
+            if (commandTag is Command)
+            {
+                var context = _contextRegistry.GetActiveContext<PreviewerContext>();
+                if (context != null)
+                {
+                    switch ((Command)commandTag)
+                    {
+                        case Command.SelectModel:
+                            if (OpenFilesWithFilters(_ofd_Skin, GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
+                            {
+                                var settings = context.ModelSettings;
+                                settings.ModelName = _ofd_Skin.FileName;
+                                context.ModelSettings = settings;
+                            }
+                            break;
+
+                        case Command.SelectSkeleton:
+                            if (OpenFilesWithFilters(_ofd_Skeleton, GUILayer.Utils.GetModelExtensions()) == DialogResult.OK)
+                            {
+                                var settings = context.ModelSettings;
+                                settings.SkeletonFileName = _ofd_Skeleton.FileName;
+                                context.ModelSettings = settings;
+                            }
+                            break;
+
+                        case Command.SelectAnimationSet:
+                            if (OpenFilesWithFilters(_ofd_Animation, GUILayer.Utils.GetAnimationSetExtensions()) == DialogResult.OK)
+                            {
+                                var settings = context.ModelSettings;
+                                settings.AnimationFileName = _ofd_Animation.FileName;
+                                context.ModelSettings = settings;
+                            }
+                            break;
+                    }
+                }
+            }
+        }
+
+        private DialogResult OpenFilesWithFilters(OpenFileDialog ofd, System.Collections.Generic.IEnumerable<GUILayer.Utils.AssetExtension> filters)
+        {
+            var sb = new System.Text.StringBuilder("", 256);
+            bool first = true;
+            bool folderIsAnOption = false;
+            foreach (var f in filters)
+            {
+                if (f.Extension == "folder")
+                {
+                    folderIsAnOption = true;
+                    continue;
+                }
+
+                if (!first) sb.Append("|");
+                first = false;
+                sb.Append(f.Description);
+                sb.Append("|*.");
+                sb.Append(f.Extension);
+            }
+            if (!first) sb.Append("|");
+            first = false;
+            sb.Append("All Files|*.*");
+
+            ofd.Filter = sb.ToString();
+            return ofd.ShowDialog();
+        }
+
+        public void UpdateCommand(object commandTag, CommandState state) { }
+
+        public virtual void Initialize()
+        {
+            _commandService.RegisterMenu(
+                new MenuInfo(
+                    Command.PreviewerConfigMenu,
+                    "Previewer",
+                    "Previewer configuration"));
+
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.SelectModel,
+                    Command.PreviewerConfigMenu,
+                    null,
+                    "Select Model".Localize(),
+                    "Select model file to display in previewer".Localize(),
+                    Sce.Atf.Input.Keys.None,
+                    null,
+                    CommandVisibility.Menu),
+                this);
+
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.SelectAnimationSet,
+                    Command.PreviewerConfigMenu,
+                    null,
+                    "Select Animation Set".Localize(),
+                    "Select animation set to use in previewer".Localize(),
+                    Sce.Atf.Input.Keys.None,
+                    null,
+                    CommandVisibility.Menu),
+                this);
+
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.SelectSkeleton,
+                    Command.PreviewerConfigMenu,
+                    null,
+                    "Select Skeleton".Localize(),
+                    "Select skeleton to use in previewer".Localize(),
+                    Sce.Atf.Input.Keys.None,
+                    null,
+                    CommandVisibility.Menu),
+                this);
+        }
+
+        private enum Command
+        {
+            PreviewerConfigMenu,
+            SelectModel,
+            SelectAnimationSet,
+            SelectSkeleton
+        }
+
+        [Import(AllowDefault = false)]
+        private ICommandService _commandService;
+
+        [Import(AllowDefault = false)]
+        private IContextRegistry _contextRegistry;
+
+        private OpenFileDialog _ofd_Skin = new OpenFileDialog();
+        private OpenFileDialog _ofd_Animation = new OpenFileDialog();
+        private OpenFileDialog _ofd_Skeleton = new OpenFileDialog();
     }
 }

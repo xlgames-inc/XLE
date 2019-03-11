@@ -93,9 +93,6 @@
     <ClInclude Include="..\WindowRigInternal.h">
       <Filter>BasicControls</Filter>
     </ClInclude>
-    <ClInclude Include="..\MaterialVisualisation.h">
-      <Filter>Vis</Filter>
-    </ClInclude>
     <ClInclude Include="..\UITypesBinding.h">
       <Filter>Vis</Filter>
     </ClInclude>

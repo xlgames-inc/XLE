@@ -5,33 +5,25 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialVisualisation.h"
-#include "ModelVisualisation.h"
-#include "VisualisationUtils.h"
+#include "VisualisationUtils.h"		// for IVisContent
 #include "VisualisationGeo.h"
 
-#include "../../SceneEngine/LightingParser.h"
-#include "../../SceneEngine/LightingParserContext.h"
-#include "../../SceneEngine/LightingParserStandardPlugin.h"
 #include "../../SceneEngine/SceneParser.h"
-#include "../../PlatformRig/BasicSceneParser.h"
 
+#include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
-#include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Techniques/Drawables.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
-#include "../../RenderCore/Techniques/BasicDelegates.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
-#include "../../RenderCore/Assets/SimpleModelRenderer.h"
-#include "../../RenderCore/Assets/ModelScaffold.h"
+
+#include "../../RenderCore/UniformsStream.h"
+#include "../../RenderCore/BufferView.h"
 #include "../../RenderCore/IThreadContext.h"
 
+#include "../../Math/Transformations.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../Utility/Streams/FileUtils.h"
-#include "../../Utility/VariantUtils.h"
-
 
 namespace ToolsRig
 {
@@ -82,6 +74,10 @@ namespace ToolsRig
 				boundUniforms.Apply(metalContext, 3, UniformsStream{MakeIteratorRange(cbvs)});
 			}
 
+				// disable blending to avoid problem when rendering single component stuff 
+                //  (ie, nodes that output "float", not "float4")
+            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
+
 			assert(!drawable._geo->_ib);
 			metalContext.Bind(drawable._topology);
 			metalContext.Draw(drawable._vertexCount);
@@ -95,17 +91,10 @@ namespace ToolsRig
                     SceneEngine::SceneExecuteContext& executeContext,
                     IteratorRange<Techniques::DrawablesPacket** const> pkts) const
         {
-			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-
-                // disable blending to avoid problem when rendering single component stuff 
-                //  (ie, nodes that output "float", not "float4")
-            metalContext.Bind(Techniques::CommonResources()._blendOpaque);
-
 			auto usi = std::make_shared<UniformsStreamInterface>();
 			usi->BindConstantBuffer(0, {Techniques::ObjectCB::LocalTransform});
 
             auto geoType = _settings._geometryType;
-			assert(geoType != MaterialVisSettings::GeometryType::Model);
             if (geoType == MaterialVisSettings::GeometryType::Plane2D) {
 
                 const Internal::Vertex3D    vertices[] = 
@@ -199,144 +188,13 @@ namespace ToolsRig
 		std::shared_ptr<RenderCore::Techniques::Material> _material;
 		::Assets::DepValPtr _depVal;
     };
-    
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	static SceneEngine::RenderSceneSettings::LightingModel AsLightingModel(VisEnvSettings::LightingType lightingType)
-	{
-		switch (lightingType) {
-		case VisEnvSettings::LightingType::Deferred:
-			return SceneEngine::RenderSceneSettings::LightingModel::Deferred;
-		case VisEnvSettings::LightingType::Forward:
-			return SceneEngine::RenderSceneSettings::LightingModel::Forward;
-		default:
-		case VisEnvSettings::LightingType::Direct:
-			return SceneEngine::RenderSceneSettings::LightingModel::Direct;
-		}
-	}
-
-    static bool MaterialVisLayer_Draw(
-        IThreadContext& context,
-		const RenderCore::IResourcePtr& renderTarget,
-        RenderCore::Techniques::ParsingContext& parserContext,
-        VisEnvSettings::LightingType lightingType,
-		SceneEngine::IScene& sceneParser,
-		const SceneEngine::ILightingParserDelegate& lightingParserDelegate,
-		const RenderCore::Techniques::CameraDesc& cameraDesc)
-    {
-		std::shared_ptr<SceneEngine::ILightingParserPlugin> lightingPlugins[] = {
-			std::make_shared<SceneEngine::LightingParserStandardPlugin>()
-		};
-        SceneEngine::RenderSceneSettings qualSettings{
-			AsLightingModel(lightingType),
-			&lightingParserDelegate,
-			MakeIteratorRange(lightingPlugins)};
-
-        SceneEngine::LightingParser_ExecuteScene(
-            context, renderTarget, parserContext,
-            sceneParser, cameraDesc, qualSettings);
-
-        return true;
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-#if 0
-    class MaterialVisLayer::Pimpl
-    {
-    public:
-		std::shared_ptr<SceneEngine::IScene> _scene;
-		std::shared_ptr<SceneEngine::ILightingParserDelegate> _lightingParserDelegate;
-		std::shared_ptr<VisCameraSettings>_camera;
-		DrawPreviewLightingType _lightingType = DrawPreviewLightingType::Deferred;
-    };
-
-	void MaterialVisLayer::Render(
-        IThreadContext& context,
-		const RenderCore::IResourcePtr& renderTarget,
-        RenderCore::Techniques::ParsingContext& parserContext)
-    {
-        Draw(context, renderTarget, parserContext, 
-			_pimpl->_lightingType, 
-			*_pimpl->_scene, *_pimpl->_lightingParserDelegate,
-			AsCameraDesc(*_pimpl->_camera));
-    }
-
-	void MaterialVisLayer::SetLightingType(DrawPreviewLightingType newType)
-	{
-		_pimpl->_lightingType = newType;
-	}
-
-    MaterialVisLayer::MaterialVisLayer(
-		const std::shared_ptr<SceneEngine::IScene>& scene,
-		const std::shared_ptr<SceneEngine::ILightingParserDelegate>& lightingParserDelegate,
-		const std::shared_ptr<VisCameraSettings>& camera)
-    {
-        _pimpl = std::make_unique<Pimpl>();
-		_pimpl->_scene = scene;
-		_pimpl->_lightingParserDelegate = lightingParserDelegate;
-		_pimpl->_camera = camera;
-    }
-
-    MaterialVisLayer::~MaterialVisLayer()
-    {}
-#endif
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject)
 	{
-		if (visObject._geometryType == MaterialVisSettings::GeometryType::Model) {
-			ModelVisSettings modelVis;
-			modelVis._modelName = modelVis._materialName = visObject._previewModelFile;
-			modelVis._materialBindingFilter = visObject._previewMaterialBinding;
-			return MakeScene(modelVis);
-		} else {
-			MaterialVisualizationScene test(visObject);
-			static_assert(::Assets::Internal::HasDirectAutoConstructAsset<MaterialVisualizationScene, const MaterialVisSettings&>::value);
-
-			auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
-			::Assets::AutoConstructToFuture(*result, visObject);
-			return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
-		}
+		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
+		::Assets::AutoConstructToFuture(*result, visObject);
+		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
 	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	std::pair<DrawPreviewResult, std::string> DrawPreview(
-        RenderCore::IThreadContext& context,
-		const RenderCore::IResourcePtr& renderTarget,
-        RenderCore::Techniques::ParsingContext& parserContext,
-		VisCameraSettings& cameraSettings,
-		VisEnvSettings& envSettings,
-		SceneEngine::IScene& scene)
-    {
-        using namespace ToolsRig;
-
-        try 
-        {
-			auto future = ::Assets::MakeAsset<PlatformRig::EnvironmentSettings>(envSettings._envConfigFile);
-			future->StallWhilePending();
-			PlatformRig::BasicLightingParserDelegate lightingParserDelegate(future->Actualize());
-
-            bool result = MaterialVisLayer_Draw(
-                context, renderTarget, parserContext, 
-                envSettings._lightingType, 
-				scene, lightingParserDelegate,
-				AsCameraDesc(cameraSettings));
-            if (parserContext.HasInvalidAssets())
-				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
-			if (parserContext.HasErrorString())
-				return std::make_pair(DrawPreviewResult::Error, parserContext._stringHelpers->_errorString);
-            if (parserContext.HasPendingAssets()) return std::make_pair(DrawPreviewResult::Pending, std::string());
-			if (result)
-                return std::make_pair(DrawPreviewResult::Success, std::string());
-        }
-        catch (::Assets::Exceptions::InvalidAsset& e) { return std::make_pair(DrawPreviewResult::Error, e.what()); }
-        catch (::Assets::Exceptions::PendingAsset& e) { return std::make_pair(DrawPreviewResult::Pending, e.Initializer()); }
-
-        return std::make_pair(DrawPreviewResult::Error, std::string());
-    }
 
 }
 

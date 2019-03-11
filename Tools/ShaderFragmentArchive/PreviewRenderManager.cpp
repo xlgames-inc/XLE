@@ -13,6 +13,7 @@
 #include "../GUILayer/CLIXAutoPtr.h"
 
 #include "../ToolsRig/MaterialVisualisation.h"
+#include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -240,7 +241,6 @@ namespace ShaderPatcherLayer
 
             ////////////
 
-		auto visSettings = std::make_shared<ToolsRig::MaterialVisSettings>();
         ToolsRig::VisCameraSettings camSettings;
         camSettings._position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
 		camSettings._verticalFieldOfView = 90.f;
@@ -250,33 +250,39 @@ namespace ShaderPatcherLayer
         // Select the geometry type to use.
         // In the "chart" mode, we are just going to run a pixel shader for every
         // output pixel, so we want to use a pretransformed quad covering the viewport
-        switch (geometry) {
-        case PreviewGeometry::Plane2D:
-        case PreviewGeometry::Chart:
-            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
-			pretransformed = true;
-            break;
+		::Assets::FuturePtr<SceneEngine::IScene> sceneFuture;
 
-        case PreviewGeometry::Box:
-            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
-			camSettings._position = Float3(-2.1f, 0, 0);
-            break;
+		if (geometry != PreviewGeometry::Model) {
+			ToolsRig::MaterialVisSettings visSettings;
+			switch (geometry) {
+			case PreviewGeometry::Plane2D:
+			case PreviewGeometry::Chart:
+				visSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
+				pretransformed = true;
+				break;
 
-        default:
-        case PreviewGeometry::Sphere:
-            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
-            break;
+			case PreviewGeometry::Box:
+				visSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
+				camSettings._position = Float3(-2.1f, 0, 0);
+				break;
 
-        case PreviewGeometry::Model:
-            visSettings->_geometryType = ToolsRig::MaterialVisSettings::GeometryType::Model;
-            break;
-        };
+			default:
+			case PreviewGeometry::Sphere:
+				visSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
+				break;
+			}
 
-		visSettings->_previewModelFile = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			sceneFuture = ToolsRig::MakeScene(visSettings);
+		} else {
+			ToolsRig::ModelVisSettings visSettings;
+			visSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			visSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			sceneFuture = ToolsRig::MakeScene(visSettings);
+		}
+
 		// visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
 		// visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
-
-		auto sceneFuture = ToolsRig::MakeScene(*visSettings);
+		
 		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
 		if (!actualScene) {
 			auto errorLog = ToolsRig::GetActualizationError(*sceneFuture);

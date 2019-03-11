@@ -114,10 +114,10 @@ namespace Previewer
                 typeof(ControlsLibraryExt.ModelView.PreviewerControl),
                 typeof(ControlsLibraryExt.ModelView.PreviewerContext),
                 typeof(ControlsLibraryExt.ModelView.PreviewerCommands),
+                typeof(ControlsLibraryExt.ModelView.GlobalPreviewerCommands), 
+                typeof(ControlsLibraryExt.ModelView.Previewer),
 
                 typeof(ActiveMaterialContext),
-                typeof(Previewer),
-                typeof(GlobalPreviewerCommands),
                 typeof(GameLoopService)
             );
 
@@ -154,11 +154,15 @@ namespace Previewer
             container.InitializeAll();
 
             // if there is a model filename on the command line, we will load it into our viewer
-            var initialPreviewer = container.GetExport<Previewer>().Value.OpenPreviewWindow();
-            initialPreviewer.ModelSettings = GUILayer.ModelVisSettings.CreateDefault();
+            var initialPreviewer = container.GetExport<ControlsLibraryExt.ModelView.Previewer>().Value.OpenPreviewWindow();
             if (args != null && args.Length > 0)
             {
-                var a = args[0];
+                initialPreviewer.ModelSettings = GUILayer.ModelVisSettings.FromCommandLine(args);
+            }
+            else
+            {
+                var visSettings = GUILayer.ModelVisSettings.CreateDefault();
+                initialPreviewer.ModelSettings = visSettings;
             }
 
             Application.Run(mainForm);

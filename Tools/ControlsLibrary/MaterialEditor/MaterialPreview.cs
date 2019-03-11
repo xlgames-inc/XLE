@@ -22,7 +22,7 @@ namespace ControlsLibrary.MaterialEditor
             InitializeComponent();
             layerController = new GUILayer.VisLayerController();
             visSettings = new GUILayer.MaterialVisSettings();
-            layerController.SetMaterialVisSettings(visSettings);
+            ApplyVisSettings();
             layerController.AttachToView(_preview.Underlying);
 
             _geoType.DataSource = Enum.GetValues(typeof(GUILayer.MaterialVisSettings.GeometryType));
@@ -55,9 +55,7 @@ namespace ControlsLibrary.MaterialEditor
                     _attachedMaterials.Add(m);
                 }
 
-                string model = ""; ulong binding = 0;
-                if (previewModel != null && previewModel.Item1 != null) { model = previewModel.Item1; binding = previewModel.Item2; }
-                // visLayer.SetConfig(_attachedMaterials, model, binding);
+                ApplyVisSettings();
                 InvalidatePreview();
             }
         }
@@ -95,7 +93,29 @@ namespace ControlsLibrary.MaterialEditor
             {
                 visSettings.Lighting = newLighting;
             }
+            ApplyVisSettings();
             InvalidatePreview();
+        }
+
+        private void ApplyVisSettings()
+        {
+            if (visSettings.Geometry != GUILayer.MaterialVisSettings.GeometryType.Model)
+            {
+                layerController.SetMaterialVisSettings(visSettings);
+            }
+            else if (previewModel != null && previewModel.Item1 != null)
+            {
+                var modelSettings = new GUILayer.ModelVisSettings
+                {
+                    ModelName = previewModel.Item1,
+                    MaterialBindingFilter = previewModel.Item2
+                };
+                layerController.SetModelSettings(modelSettings);
+            }
+            else 
+            {
+                layerController.SetMaterialVisSettings(new GUILayer.MaterialVisSettings());
+            }
         }
 
         private void SelectedEnvironmentChanged(object sender, System.EventArgs e)

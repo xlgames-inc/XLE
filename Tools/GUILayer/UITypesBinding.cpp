@@ -19,6 +19,7 @@
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/AssetHeap.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
@@ -28,21 +29,6 @@
 #pragma warning(disable:4512)
 
 using namespace System;
-
-namespace Assets
-{
-	// hack -- duplicate this from AssetHeap.h (because we can't include that due to <mutex> problem with C++/CLR
-	class AssetHeapRecord
-	{
-	public:
-		rstring		_initializer;
-		AssetState	_state;
-		DepValPtr	_depVal;
-		Blob		_actualizationLog;
-		uint64_t	_typeCode;
-		uint64_t	_idInAssetHeap;
-	};
-}
 
 namespace GUILayer
 {
@@ -75,6 +61,11 @@ namespace GUILayer
         auto attached = std::make_shared<ToolsRig::ModelVisSettings>();
         return gcnew ModelVisSettings(std::move(attached));
     }
+
+	ModelVisSettings^ ModelVisSettings::FromCommandLine(array<System::String^>^ args)
+	{
+		return CreateDefault();
+	}
 
     void ModelVisSettings::ModelName::set(String^ value)
     {
@@ -135,17 +126,11 @@ namespace GUILayer
         NotifyPropertyChanged("LevelOfDetail");
     }
 
-	/*void ModelVisSettings::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
+	void ModelVisSettings::MaterialBindingFilter::set(System::UInt64 value)
     {
-        _object->_changeEvent._callbacks.push_back(
-            std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
-    }*/
-
-    /*void ModelVisSettings::EnvSettingsFile::set(String^ value)
-    {
-        _object->_envSettingsFile = clix::marshalString<clix::E_UTF8>(value);
-        _object->_changeEvent.Trigger(); 
-    }*/
+        _object->_materialBindingFilter = value;
+        NotifyPropertyChanged("MaterialBindingFilter");
+    }
 
 	void ModelVisSettings::NotifyPropertyChanged(System::String^ propertyName)
     {
@@ -457,7 +442,6 @@ namespace GUILayer
         RawMaterial::MaterialParameterBox::get()
     {
         if (!_underlying) { return nullptr; }
-		CheckBindingInvalidation();
         if (!_materialParameterBox) {
             _materialParameterBox = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_matParamBox);
             _materialParameterBox->ListChanged += 
@@ -472,7 +456,6 @@ namespace GUILayer
     BindingList<StringStringPair^>^ RawMaterial::ShaderConstants::get()
     {
         if (!_underlying) { return nullptr; }
-		CheckBindingInvalidation();
         if (!_shaderConstants) {
             _shaderConstants = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_constants);
             _shaderConstants->ListChanged += 
@@ -487,7 +470,6 @@ namespace GUILayer
     BindingList<StringStringPair^>^ RawMaterial::ResourceBindings::get()
     {
         if (!_underlying) { return nullptr; }
-		CheckBindingInvalidation();
         if (!_resourceBindings) {
             _resourceBindings = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_resourceBindings);
             _resourceBindings->ListChanged += 
@@ -524,7 +506,6 @@ namespace GUILayer
         if (!!_underlying) {
 			bool isMatParams = obj == _materialParameterBox;
 			bool isMatConstants = obj == _shaderConstants;
-			CheckBindingInvalidation();
             if (isMatParams) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
                 if (transaction) {
@@ -558,7 +539,6 @@ namespace GUILayer
 
         if (!!_underlying) {
             if (obj == _resourceBindings) {
-				CheckBindingInvalidation();
 				auto transaction = _underlying->Transaction_Begin("Resource Binding");
 				if (transaction) {
 					transaction->GetAsset()._resourceBindings = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
@@ -618,7 +598,6 @@ namespace GUILayer
     {
         auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
         if (_underlying->GetWorkingAsset()->_techniqueConfig != native) {
-			CheckBindingInvalidation();
             auto transaction = _underlying->Transaction_Begin("Technique Config");
             if (transaction) {
                 transaction->GetAsset()._techniqueConfig = native;
@@ -660,20 +639,6 @@ namespace GUILayer
         static unsigned counter = 0;
         return gcnew RawMaterial("untitled" + (counter++) + ".material");
     }
-
-	void RawMaterial::CheckBindingInvalidation()
-	{
-		// If our transaction id doesn't match what we find in the divergent asset, it means
-		// that the the asset may have been modified from some other place. When this happens, 
-		// we have to dump the cached values in our BindingLists
-		/*auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
-		if (underlyingTransId != _transId) {
-			_materialParameterBox = nullptr;
-			_shaderConstants = nullptr;
-			_resourceBindings = nullptr;
-			_transId = underlyingTransId;
-		}*/
-	}
 
     RawMaterial::RawMaterial(System::String^ initialiser)
     {

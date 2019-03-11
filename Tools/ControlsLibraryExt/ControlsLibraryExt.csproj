@@ -92,6 +92,7 @@
     <Compile Include="ModelView\CtrlStrip.Designer.cs">
       <DependentUpon>CtrlStrip.cs</DependentUpon>
     </Compile>
+    <Compile Include="ModelView\Previewer.cs" />
     <Compile Include="ModelView\PreviewerControl.cs" />
     <Compile Include="ModelView\PreviewerControl.Designer.cs">
       <DependentUpon>PreviewerControl.cs</DependentUpon>

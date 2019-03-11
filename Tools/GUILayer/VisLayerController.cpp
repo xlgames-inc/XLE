@@ -71,7 +71,7 @@ namespace GUILayer
 
 	VisMouseOver^ VisLayerController::MouseOver::get()
 	{
-		return gcnew VisMouseOver(_pimpl->_mouseOver, ToolsRig::TryActualize(*_pimpl->_scene));
+		return gcnew VisMouseOver(_pimpl->_mouseOver, _pimpl->_scene ? ToolsRig::TryActualize(*_pimpl->_scene) : nullptr);
 	}
 
 	VisAnimationState^ VisLayerController::AnimationState::get()

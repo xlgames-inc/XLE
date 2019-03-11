@@ -195,7 +195,6 @@
     <ClInclude Include="..\LevelEditorScene.h" />
     <ClInclude Include="..\ManipulatorUtils.h" />
     <ClInclude Include="..\MarshalString.h" />
-    <ClInclude Include="..\MaterialVisualisation.h" />
     <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\TerrainLayer.h" />

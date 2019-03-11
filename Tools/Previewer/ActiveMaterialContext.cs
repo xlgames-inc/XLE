@@ -12,30 +12,5 @@ namespace Previewer
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ActiveMaterialContext : ControlsLibraryExt.Material.ActiveMaterialContext
     {
-        public override IEnumerable<string> AssignableTechniqueConfigs 
-        {
-            get 
-            {
-                foreach (var d in _documentRegistry.Documents)
-                {
-                    // if the document is a DiagramDocument with a TechniqueConfig
-                    // enabled, we can consider it a candidate technique config
-                    /*var doc = d as DiagramDocument;
-                    if (doc == null) continue;
-
-                    var gc = doc.GraphMetaData;
-                    if (gc.HasTechniqueConfig)
-                    {
-                        var cwd = new Uri(System.IO.Directory.GetCurrentDirectory().TrimEnd('\\') + "\\");
-                        var relTo = new Uri(cwd, "xleres/techniques/");
-                        var t = relTo.MakeRelativeUri(doc.Uri).OriginalString;
-                        yield return t;
-                    }*/
-                }
-                return Enumerable.Empty<string>();
-            } 
-        }
-
-        [Import] IDocumentRegistry _documentRegistry;
     }
 }

@@ -44,13 +44,13 @@ namespace ControlsLibraryExt.ModelView
 
         private void OverlaySettings_InvokeOnChange()
         {
-            if (OverlaySettings_OnChange != null)
+            if (OverlaySettings_OnChange != null && OverlaySettings != null)
                 OverlaySettings_OnChange.Invoke(this, EventArgs.Empty);
         }
 
         private void ModelSettings_InvokeOnChange()
         {
-            if (ModelSettings_OnChange != null)
+            if (ModelSettings_OnChange != null && ModelSettings != null)
                 ModelSettings_OnChange.Invoke(this, EventArgs.Empty);
         }
 

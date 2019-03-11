@@ -258,7 +258,7 @@ namespace RenderCore { namespace Assets
     {
 		if (typeCode != RenderCore::Assets::MaterialScaffold::CompileProcessType) return nullptr;
 
-        if (initializerCount != 2 || !initializers[0][0] || !initializers[1][0]) 
+        if (initializerCount != 2 || initializers[0].IsEmpty() || initializers[1].IsEmpty())
             Throw(::Exceptions::BasicLabel("Expecting exactly 2 initializers in MaterialScaffoldCompiler. Material filename first, then model filename"));
 
         const auto materialFilename = initializers[0], modelFilename = initializers[1];
