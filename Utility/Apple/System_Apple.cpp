@@ -2,6 +2,7 @@
 #include "SystemUtils.h"
 #include "../../Core/SelectConfiguration.h"
 #include "../../Core/Types.h"
+#include <cstdio>
 
 #if PLATFORMOS_TARGET != PLATFORMOS_ANDROID
 
@@ -120,6 +121,11 @@ namespace Utility
     const char* XlGetCommandLine() { return ""; }
 
     ModuleId GetCurrentModuleId() { return 0; }
+
+    void XlDeleteFile(const utf8 path[])
+    {
+        std::remove((const char*)path);
+    }
 
 }
 
