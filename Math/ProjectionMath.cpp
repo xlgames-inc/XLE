@@ -540,7 +540,7 @@ namespace XLEMath
                 //  This is the OpenGL view of clip space
                 //      -1<z/w<1
             result(2,2) =       -(f+n) / (f-n);
-            result(2,3) =  -(-2.f*f*n) / (f-n);
+            result(2,3) =   -(2.f*f*n) / (f-n);
         }
 
         result(3,2) =   -1.f;    // (-1 required to flip space around from -Z camera forward to (z/w) increasing with distance)
