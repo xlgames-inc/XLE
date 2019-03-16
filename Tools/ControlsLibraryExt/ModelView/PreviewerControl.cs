@@ -41,8 +41,22 @@ namespace ControlsLibraryExt.ModelView
             }
             get { return LayerController.GetOverlaySettings(); }
         }
+
         public GUILayer.VisMouseOver MouseOver { get { return LayerController.MouseOver; } }
-        public GUILayer.VisLayerController LayerController { get; } = new GUILayer.VisLayerController();
+
+        public GUILayer.VisLayerController LayerController
+        {
+            get
+            {
+                if (_layerController == null)
+                {
+                    // (Create on demand because MEF tends to create and destroy dummy versions of this object during initialization)
+                    _layerController = new GUILayer.VisLayerController();
+                }
+                return _layerController;
+            }
+        }
+        private GUILayer.VisLayerController _layerController = null;
 
         public event EventHandler OnModelSettingsChange;
         public event EventHandler OnOverlaySettingsChange;
