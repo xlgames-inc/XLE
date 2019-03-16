@@ -55,9 +55,6 @@
     <ClCompile Include="src\antlr3cyclicdfa.c">
       <Filter>Source Files</Filter>
     </ClCompile>
-    <ClCompile Include="src\antlr3debughandlers.c">
-      <Filter>Source Files</Filter>
-    </ClCompile>
     <ClCompile Include="src\antlr3encodings.c">
       <Filter>Source Files</Filter>
     </ClCompile>
