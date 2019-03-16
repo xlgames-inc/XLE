@@ -253,6 +253,8 @@ namespace ToolsRig
 					psNameSplit.AllExceptParameters(), "deferred_pass_main",
 					instParams);
 
+				fragments._sourceFragments.insert(fragments._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
+
 				std::string mergedFragments;
 				size_t mergedSize = 0;
 				for (auto&f:fragments._sourceFragments)
