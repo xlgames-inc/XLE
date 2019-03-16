@@ -7,6 +7,7 @@
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
 #include "NodeGraphProvider.h"
+#include "ShaderInstantiation.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
@@ -434,6 +435,7 @@ namespace ShaderPatcher
         NodeGraphSignature _signature;
 		InstantiationParameters _instantiationParameters;
 		bool _isGraphSyntaxFile;
+		std::shared_ptr<INodeGraphProvider> _customProvider;
     };
 
     static ResolvedFunction ResolveFunction(
@@ -457,15 +459,26 @@ namespace ShaderPatcher
             if (i!=instantiationParameters._parameterBindings.end()) {
 				result._finalArchiveName = i->second._archiveName;
 				result._instantiationParameters = i->second._parameters;
+				result._customProvider = i->second._customProvider;
             } else {
 				result._finalArchiveName = restriction.AsString();
             }
 
-			auto sigProviderResult = sigProvider.FindSignature(result._finalArchiveName);
+			std::optional<INodeGraphProvider::Signature> sigProviderResult;
+			if (result._customProvider) {
+				// Search the "custom provider" for both the archive name & the restriction
+				// If they both fail, we'll still fallback to searching the main provider
+				// (but only for the restriction)
+				sigProviderResult = result._customProvider->FindSignature(result._finalArchiveName);
+				if (!sigProviderResult)
+					sigProviderResult = result._customProvider->FindSignature(restriction);
+			} else {
+				sigProviderResult = sigProvider.FindSignature(result._finalArchiveName);
+			}
 			if (!sigProviderResult)
 				sigProviderResult = sigProvider.FindSignature(restriction);
             if (!sigProviderResult)
-                Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", restriction.AsString().c_str()));
+                Throw(::Exceptions::BasicLabel("Couldn't find signature for (%s)", result._finalArchiveName.c_str()));
 			result._signature = sigProviderResult.value()._signature;
 
 			auto p = result._finalArchiveName.find_last_of(':');
@@ -676,7 +689,7 @@ namespace ShaderPatcher
         }
 
         // Append the function call to the dependency table
-        DependencyTable::Dependency dep { sigRes._finalArchiveName, std::move(callInstantiation), sigRes._isGraphSyntaxFile };
+        DependencyTable::Dependency dep { sigRes._finalArchiveName, std::move(callInstantiation), sigRes._isGraphSyntaxFile, sigRes._customProvider };
 		auto depHash = dep._parameters.CalculateHash();
         auto existing = std::find_if(
             workingDependencyTable._dependencies.begin(), workingDependencyTable._dependencies.end(),
@@ -962,7 +975,7 @@ namespace ShaderPatcher
 		return result.str();
 	}
 
-    GeneratedFunction GenerateFunction(
+    InstantiatedShader GenerateFunction(
         const NodeGraph& graph, StringSection<char> name,
         const InstantiationParameters& instantiationParameters,
         INodeGraphProvider& sigProvider)
@@ -986,7 +999,12 @@ namespace ShaderPatcher
 		result << mainBody;
         result << "}" << std::endl;
 
-        return GeneratedFunction{result.str(), std::move(interf), std::move(depTable)};
+		std::vector<std::string> fragments;
+		fragments.emplace_back(result.str());
+        return InstantiatedShader{
+			std::move(fragments), 
+			std::move(interf), 
+			std::move(depTable)};
     }
 
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf)

@@ -100,50 +100,6 @@ namespace ShaderPatcher
 
         ///////////////////////////////////////////////////////////////
 
-    class InstantiationParameters
-    {
-    public:
-		struct Dependency;
-        std::unordered_map<std::string, Dependency> _parameterBindings;
-		bool _generateDanglingInputs = false;
-		NodeId _generateDanglingOutputs = NodeId_Interface;
-        uint64_t CalculateHash() const;
-
-		InstantiationParameters(std::initializer_list<std::pair<const std::string, Dependency>> init)
-		: _parameterBindings(init) {}
-		InstantiationParameters() {}
-    };
-
-	struct InstantiationParameters::Dependency
-	{
-		std::string _archiveName;
-		std::vector<std::string> _parametersToCurry;
-		InstantiationParameters _parameters = {};
-	};
-
-    class DependencyTable
-    {
-    public:
-        struct Dependency { std::string _archiveName; InstantiationParameters _parameters; bool _isGraphSyntaxFile; };
-        std::vector<Dependency> _dependencies;
-    };
-
-        ///////////////////////////////////////////////////////////////
-
-	class INodeGraphProvider;
-
-    struct GeneratedFunction
-    {
-    public:
-        std::string _text;
-        NodeGraphSignature _signature;
-        DependencyTable _dependencies;
-    };
-    GeneratedFunction GenerateFunction(
-        const NodeGraph& graph, StringSection<char> name, 
-        const InstantiationParameters& instantiationParameters,
-        INodeGraphProvider& sigProvider);
-
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf);
 
 	std::string GenerateGraphSyntax(const NodeGraph& graph, const NodeGraphSignature& interf, StringSection<> name);

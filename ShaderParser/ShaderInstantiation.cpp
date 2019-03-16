@@ -60,19 +60,21 @@ namespace ShaderPatcher
 					for (const auto&c:tp.second._parametersToCurry) {
 						auto name = "curried_" + tp.first + "_" + c;
 						auto instP = std::find_if(
-							instFn._signature.GetParameters().begin(), instFn._signature.GetParameters().end(),
+							instFn._entryPointSignature.GetParameters().begin(), instFn._entryPointSignature.GetParameters().end(),
 							[name](const NodeGraphSignature::Parameter& p) { return XlEqString(MakeStringSection(name), p._name); });
-						if (instP != instFn._signature.GetParameters().end())
+						if (instP != instFn._entryPointSignature.GetParameters().end())
 							scaffoldSignature.AddParameter(*instP);
 					}
 				}
 
-				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(scaffoldSignature, instFn._signature, scaffoldName, implementationName));
+				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
 			}
-			result._sourceFragments.push_back(instFn._text);
+			result._sourceFragments.insert(
+				result._sourceFragments.end(),
+				instFn._sourceFragments.begin(), instFn._sourceFragments.end());
 
 			if (entryPointInstantiation)
-				result._entryPointSignature = instFn._signature;
+				result._entryPointSignature = instFn._entryPointSignature;
 			entryPointInstantiation = false;
                 
 			for (const auto&dep:instFn._dependencies._dependencies) {
@@ -88,18 +90,30 @@ namespace ShaderPatcher
 				// if it's a graph file, then we must create a specific instantiation
 				auto instHash = dep._parameters.CalculateHash();
 				if (dep._isGraphSyntaxFile) {
+					// todo -- not taking into account the custom provider on the following line
 					if (previousInstantiation.find({dep._archiveName, instHash}) == previousInstantiation.end()) {
-						instantiations.emplace(
-							PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
-						previousInstantiation.insert({dep._archiveName, instHash});
+						if (dep._customProvider) {
+							instantiations.emplace(
+								PendingInstantiation{dep._customProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
+							previousInstantiation.insert({dep._archiveName, instHash});
+						} else {
+							instantiations.emplace(
+								PendingInstantiation{inst._graph._subProvider->FindGraph(dep._archiveName).value(), true, dep._parameters});
+							previousInstantiation.insert({dep._archiveName, instHash});
+						}
 					}
 				} else {
 					// This is just an include of a normal shader header
 					if (instHash!=0) {
 						includes.insert(std::string(StringMeld<MaxPath>() << filename + "_" << instHash));
 					} else {
-						auto sig = inst._graph._subProvider->FindSignature(dep._archiveName);
-						includes.insert(sig.value()._sourceFile);
+						if (dep._customProvider) {
+							auto sig = dep._customProvider->FindSignature(dep._archiveName);
+							includes.insert(sig.value()._sourceFile);
+						} else {
+							auto sig = inst._graph._subProvider->FindSignature(dep._archiveName);
+							includes.insert(sig.value()._sourceFile);
+						}
 					}
 				}
 			}
