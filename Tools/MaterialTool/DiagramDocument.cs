@@ -16,7 +16,7 @@ namespace MaterialTool
     [Export(typeof(NodeEditorCore.IDiagramDocument))]
     [Export(typeof(DiagramDocument))]
     [PartCreationPolicy(CreationPolicy.NonShared)]
-    public class DiagramDocument : NodeEditorCore.IDiagramDocument, IDocument
+    public class DiagramDocument : NodeEditorCore.IDiagramDocument, IDocument, ControlsLibraryExt.ISerializableDocument
     {
         #region IDiagramDocument Members
         public ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; set; }
@@ -125,6 +125,17 @@ namespace MaterialTool
 
         private Uri _uri;
 
+        #endregion
+
+        #region ISerializableDocument
+        public byte[] Serialize()
+        {
+            using (var memoryStream = new System.IO.MemoryStream())
+            {
+                NodeGraphFile.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(Uri.LocalPath), GraphMetaData);
+                return memoryStream.GetBuffer();
+            }
+        }
         #endregion
 
         public interface IViewModel

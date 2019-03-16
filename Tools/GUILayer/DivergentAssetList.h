@@ -39,7 +39,7 @@ namespace GUILayer
 			property System::String^ ErrorMessages;
 		};
 
-		CommitResult^ Commit();
+		virtual CommitResult^ Commit();
 
         PendingSaveList();
         ~PendingSaveList();

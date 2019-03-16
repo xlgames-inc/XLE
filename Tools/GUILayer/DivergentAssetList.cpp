@@ -90,6 +90,12 @@ namespace GUILayer
         {
             Label = clix::marshalString<clix::E_UTF8>(record._identifier);
         }
+
+		AssetItem(String^ label, PendingSaveList::Entry^ pendingSave) 
+		{
+			Label = label;
+			_pendingSave = pendingSave;
+		}
     };
 
     public ref class AssetTypeItem
@@ -132,6 +138,14 @@ namespace GUILayer
 			Icon = GetAssetTypeImage(typeCode);
             _action = PendingSaveList::Action::Save;
         }
+
+		AssetTypeItem(System::String^ label, System::Drawing::Image^ icon)
+		{
+			_children = gcnew List<AssetItem^>();
+			Label = label;
+			Icon = icon;
+			_action = PendingSaveList::Action::Save;
+		}
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -514,7 +528,7 @@ namespace GUILayer
     {
 		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
 		for (const auto&d : divAssetMan.GetAssets())
-			if (!d._hasChanges) return true;
+			if (d._hasChanges) return true;
 		return false;
     }
 }
