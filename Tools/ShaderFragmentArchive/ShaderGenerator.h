@@ -15,7 +15,7 @@ using namespace System::Drawing;
 using namespace System::Runtime::Serialization;
 using System::Runtime::InteropServices::OutAttribute;
 
-namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; }
+namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; class INodeGraphProvider; }
 namespace ShaderFragmentArchive { ref class Function; }
 namespace Assets { class DirectorySearchRules; }
 
@@ -194,12 +194,11 @@ namespace ShaderPatcherLayer
 			const ShaderPatcher::GraphSyntaxFile& input, 
 			const ::Assets::DirectorySearchRules& searchRules);
 
-		Tuple<String^, String^>^ 
-            GeneratePreviewShader(
-				String^ subGraphName,
-				UInt32 previewNodeId, 
-			    PreviewSettings^ settings,
-			    IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+		Tuple<String^, String^>^ GeneratePreviewShader(
+			String^ subGraphName, UInt32 previewNodeId,
+			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
+
+		std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeNodeGraphProvider();
 
 		GUILayer::DirectorySearchRules^ GetSearchRules();
 

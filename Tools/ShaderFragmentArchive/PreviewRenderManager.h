@@ -27,6 +27,14 @@ namespace ShaderPatcherLayer
 			System::Drawing::Size^ size, 
             PreviewGeometry geometry, 
 			unsigned targetToVisualize);
+
+		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphMetaData^ doc, 
+			NodeGraphPreviewConfiguration^ nodeGraphFile);
+
+		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphFile^ nodeGraph,
+			String^ subGraphName);
     };
 
 	class AttachPimpl;

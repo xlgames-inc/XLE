@@ -13,6 +13,7 @@ using System.Text;
 using Sce.Atf;
 using Sce.Atf.Applications;
 using Sce.Atf.Input;
+using Sce.Atf.Controls.Adaptable;
 
 namespace MaterialTool
 {
@@ -28,6 +29,7 @@ namespace MaterialTool
             switch ((Command)commandTag)
             {
                 case Command.DiagramSettings:
+                case Command.ShowInPreviewer:
                     return _contextRegistry.GetActiveContext<DiagramEditingContext>() != null;
             }
 
@@ -41,10 +43,40 @@ namespace MaterialTool
                 switch ((Command)commandTag)
                 {
                     case Command.DiagramSettings:
-                        var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
-                        if (context != null)
                         {
-                            (new DiagramSettings(context.Document)).ShowDialog();
+                            var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
+                            if (context != null)
+                            {
+                                (new DiagramSettings(context.Document)).ShowDialog();
+                            }
+                        }
+                        break;
+
+                    case Command.ShowInPreviewer:
+                        {
+                            var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
+                            if (context != null && context.Document.NodeGraphFile.SubGraphs.Count != 0)
+                            {
+                                foreach (var control in _controlHostService.Controls)
+                                {
+                                    var adaptableControl = control.Control as AdaptableControl;
+                                    if (adaptableControl != null)
+                                    {
+                                        var previewerContext = adaptableControl.ContextAs<ControlsLibraryExt.ModelView.PreviewerContext>();
+                                        if (previewerContext != null)
+                                        {
+                                            var previewSettings = new ShaderPatcherLayer.PreviewSettings
+                                            {
+                                                Geometry = ShaderPatcherLayer.PreviewGeometry.Model
+                                            };
+                                            previewerContext.LayerController.SetTechniqueOverrides(
+                                                _previewManager.MakeTechniqueDelegate(
+                                                    context.Document.NodeGraphFile,
+                                                    context.Document.NodeGraphFile.SubGraphs.First().Key));
+                                        }
+                                    }
+                                }
+                            }
                         }
                         break;
                 }
@@ -66,11 +98,23 @@ namespace MaterialTool
                     null,
                     CommandVisibility.Menu),
                 this);
+            _commandService.RegisterCommand(
+                new CommandInfo(
+                    Command.ShowInPreviewer,
+                    StandardMenu.Edit,
+                    "ShowInPreviewer",
+                    "Show In Previewer".Localize(),
+                    "Show this shader diagram in the previewer".Localize(),
+                    Keys.None,
+                    null,
+                    CommandVisibility.Menu),
+                this);
         }
 
         private enum Command
         {
-            DiagramSettings
+            DiagramSettings,
+            ShowInPreviewer
         }
 
         [Import(AllowDefault = false)]
@@ -78,5 +122,11 @@ namespace MaterialTool
 
         [Import(AllowDefault = false)]
         private IContextRegistry _contextRegistry;
+
+        [Import(AllowDefault = false)]
+        private IControlHostService _controlHostService;
+
+        [Import]
+        private ShaderPatcherLayer.IPreviewBuilder _previewManager;
     }
 }

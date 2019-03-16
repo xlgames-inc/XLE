@@ -508,6 +508,12 @@ namespace ShaderPatcherLayer
 		delete _searchRules;
 	}
 
+	std::shared_ptr<ShaderPatcher::INodeGraphProvider> NodeGraphFile::MakeNodeGraphProvider()
+	{
+        auto nativeFile = ConvertToNative();
+		return MakeGraphSyntaxProvider(this, nativeFile._imports, GetSearchRules()->GetNative());
+	}
+
 	Tuple<String^, String^>^ 
 		NodeGraph::GeneratePreviewShader(
 			UInt32 previewNodeId, 
@@ -519,7 +525,9 @@ namespace ShaderPatcherLayer
 		{
 			ConversionContext context;
             auto nativeGraph = ConvertToNative(context);
-			nativeGraph.Trim(previewNodeId);
+			if (previewNodeId != ~0u) {
+				nativeGraph.Trim(previewNodeId);
+			}
 
 			// We're going to need the import keys for the template restrictions on the signature for this graph.
 			// Let's just collect up all of the imports for all signatures in the node graph file
@@ -528,7 +536,8 @@ namespace ShaderPatcherLayer
 					CompressImportedName(clix::marshalString<clix::E_UTF8>(sig->Restriction), context);
 			
 			ShaderPatcher::InstantiationParameters instantiationParams {};
-			instantiationParams._generateDanglingOutputs = previewNodeId;
+			if (previewNodeId != ~0u)
+				instantiationParams._generateDanglingOutputs = previewNodeId;
 			instantiationParams._generateDanglingInputs = true;
 
 			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());

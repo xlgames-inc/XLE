@@ -8,22 +8,30 @@
 #include "VisualisationUtils.h"		// for IVisContent
 #include "VisualisationGeo.h"
 
+#include "../ShaderParser/ShaderPatcher.h"
+#include "../ShaderParser/ShaderInstantiation.h"
+
 #include "../../SceneEngine/SceneParser.h"
 
 #include "../../RenderCore/Techniques/CommonBindings.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/DrawableDelegates.h"
+#include "../../RenderCore/Techniques/ResolvedTechniqueShaders.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
+#include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
 
 #include "../../RenderCore/UniformsStream.h"
 #include "../../RenderCore/BufferView.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/ShaderService.h"
 
 #include "../../Math/Transformations.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../Utility/Streams/PathUtils.h"
 
 namespace ToolsRig
 {
@@ -194,6 +202,178 @@ namespace ToolsRig
 		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
 		::Assets::AutoConstructToFuture(*result, visObject);
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class GraphPreviewTechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
+	{
+	public:
+		virtual RenderCore::Metal::ShaderProgram* GetShader(
+			RenderCore::Techniques::ParsingContext& context,
+			StringSection<::Assets::ResChar> techniqueCfgFile,
+			const ParameterBox* shaderSelectors[],
+			unsigned techniqueIndex)
+		{
+			assert(_technique->GetDependencyValidation()->GetValidationIndex() == 0);	// hot reloading of this not supported
+
+			const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);
+			if (!shaderFuture) return nullptr;
+			return shaderFuture->TryActualize().get();
+		}
+
+		static ::Assets::FuturePtr<RenderCore::CompiledShaderByteCode> GeneratePixelPreviewShader(
+			StringSection<> psName, StringSection<> definesTable,
+			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+			const std::string& psMainName)
+		{
+			auto future = std::make_shared<::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>>(psName.AsString());
+			TRY
+			{
+				auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
+				auto defaultPerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+					"xleres/Techniques/Graph/Object_Default.graph::Default_PerPixel",
+					{},
+					{
+						{ "materialSampler", { "xleres/Techniques/Graph/Object_Default.sh::MaterialSampler_RMS" } }
+					}
+				};
+
+				auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+					psMainName, {}, {}, provider
+				};
+
+				ShaderPatcher::InstantiationParameters instParams {
+					{ "rejectionTest", earlyRejection },
+					{ "perPixel", overridePerPixel }
+					// { "perPixel", defaultPerPixel }
+				};
+				auto psNameSplit = MakeFileNameSplitter(psName);
+				auto fragments = ShaderPatcher::InstantiateShader(
+					psNameSplit.AllExceptParameters(), "deferred_pass_main",
+					instParams);
+
+				std::string mergedFragments;
+				size_t mergedSize = 0;
+				for (auto&f:fragments._sourceFragments)
+					mergedSize += f.size();
+				mergedFragments.reserve(mergedSize);
+				for (auto&f:fragments._sourceFragments)
+					mergedFragments.insert(mergedFragments.end(), f.begin(), f.end());
+
+				auto pendingCompile = RenderCore::ShaderService::GetInstance().CompileFromMemory(
+					mergedFragments, "deferred_pass_main", psNameSplit.Parameters(), definesTable);
+
+				future->SetPollingFunction(
+					[pendingCompile](::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>& thatFuture) -> bool {
+						auto state = pendingCompile->GetAssetState();
+						if (state == ::Assets::AssetState::Pending) return true;
+
+						if (state == ::Assets::AssetState::Invalid) {
+							auto artifacts = pendingCompile->GetArtifacts();
+							if (!artifacts.empty()) {
+								auto* logArtifact = artifacts[0].second.get();
+								for (const auto& e:artifacts)
+									if (e.first == "log") {
+										logArtifact = e.second.get();
+										break;
+									}
+								thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob());
+							} else {
+								thatFuture.SetInvalidAsset(nullptr, nullptr);
+							}
+							return false;
+						}
+
+						assert(state == ::Assets::AssetState::Ready);
+						auto& artifact = *pendingCompile->GetArtifacts()[0].second;
+						AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
+						return false;
+					});
+			} CATCH (const ::Assets::Exceptions::ConstructionError& e) {
+				future->SetInvalidAsset(
+					e.GetDependencyValidation(),
+					e.GetActualizationLog());
+			} CATCH (const std::exception& e) {
+				future->SetInvalidAsset(
+					std::make_shared<::Assets::DependencyValidation>(),
+					::Assets::AsBlob(e.what()));
+			} CATCH_END
+			return future;
+		}
+
+		static void TryRegisterDependency(
+			::Assets::DepValPtr& dst,
+			const std::shared_ptr<::Assets::AssetFuture<CompiledShaderByteCode>>& future)
+		{
+			auto futureDepVal = future->GetDependencyValidation();
+			if (futureDepVal)
+				::Assets::RegisterAssetDependency(dst, futureDepVal);
+		}
+
+		GraphPreviewTechniqueDelegate(
+			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+			const std::string& psMainName)
+		{
+			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>("xleres/Techniques/Graph/graph.tech");
+			future->StallWhilePending();
+			_technique = future->Actualize();
+
+			_resolvedShaders._creationFn = 
+				[provider, psMainName](
+					StringSection<> vsName,
+					StringSection<> gsName,
+					StringSection<> psName,
+					StringSection<> defines)
+				{
+					auto vsCode = ::Assets::MakeAsset<CompiledShaderByteCode>(vsName, defines);
+					assert(gsName.IsEmpty());
+					
+					::Assets::FuturePtr<CompiledShaderByteCode> psCode;
+					if (XlEqString(MakeFileNameSplitter(psName).Extension(), "graph")) {
+						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName);
+					} else {
+						psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(psName, defines);
+					}
+
+					auto future = std::make_shared<::Assets::AssetFuture<Metal::ShaderProgram>>("GraphPreviewTechniqueDelegate");
+					future->SetPollingFunction(
+						[vsCode, psCode](::Assets::AssetFuture<Metal::ShaderProgram>& thatFuture) -> bool {
+
+						auto vsActual = vsCode->TryActualize();
+						auto psActual = psCode->TryActualize();
+
+						if (!vsActual || !psActual) {
+							auto vsState = vsCode->GetAssetState();
+							auto psState = psCode->GetAssetState();
+							if (vsState == ::Assets::AssetState::Invalid || psState == ::Assets::AssetState::Invalid) {
+								auto depVal = std::make_shared<::Assets::DependencyValidation>();
+								TryRegisterDependency(depVal, vsCode);
+								TryRegisterDependency(depVal, psCode);
+								thatFuture.SetInvalidAsset(depVal, nullptr);
+								return false;
+							}
+							return true;
+						}
+
+						auto newShaderProgram = std::make_shared<Metal::ShaderProgram>(Metal::GetObjectFactory(), *vsActual, *psActual);
+						thatFuture.SetAsset(std::move(newShaderProgram), {});
+						return false;
+					});
+
+					return future;
+				};
+		}
+	private:
+		std::shared_ptr<RenderCore::Techniques::Technique> _technique;
+		Techniques::ResolvedShaderVariationSet _resolvedShaders;
+	};
+
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
+		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+		const std::string& psMainName)
+	{
+		return std::make_unique<GraphPreviewTechniqueDelegate>(provider, psMainName);
 	}
 
 }

@@ -8,6 +8,8 @@
 #include "TypeRules.h"
 #include "ShaderGenerator.h"
 
+#include "../ShaderParser/GraphSyntax.h"
+
 #include "../GUILayer/MarshalString.h"
 #include "../GUILayer/NativeEngineDevice.h"
 #include "../GUILayer/CLIXAutoPtr.h"
@@ -71,6 +73,14 @@ namespace ShaderPatcherLayer
 			System::Drawing::Size^ size, 
             PreviewGeometry geometry, 
 			unsigned targetToVisualize);
+
+		virtual GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphMetaData^ doc, 
+			NodeGraphPreviewConfiguration^ nodeGraphFile);
+
+		virtual GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphFile^ nodeGraph,
+			String^ subGraphName);
 
         Manager();
     private:
@@ -206,7 +216,7 @@ namespace ShaderPatcherLayer
 		gcroot<NodeGraphPreviewConfiguration^> _config;
 		bool _pretransformedFlag;
 	};
-
+	
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	System::Drawing::Bitmap^ Manager::BuildPreviewImage(
@@ -343,6 +353,22 @@ namespace ShaderPatcherLayer
 
         return nullptr;
     }
+
+	GUILayer::TechniqueDelegateWrapper^ Manager::MakeTechniqueDelegate(
+		NodeGraphMetaData^ doc, 
+		NodeGraphPreviewConfiguration^ nodeGraphFile)
+	{
+		bool pretransformed = false;
+		return gcnew GUILayer::TechniqueDelegateWrapper(new TechniqueDelegate(_pimpl->_shaderSource, nodeGraphFile, pretransformed));
+	}
+
+	GUILayer::TechniqueDelegateWrapper^ Manager::MakeTechniqueDelegate(
+		NodeGraphFile^ nodeGraph,
+		String^ subGraphName)
+	{
+		auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
+		return gcnew GUILayer::TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph).release());
+	}
 
 	System::Drawing::Bitmap^    Manager::GenerateErrorBitmap(const char str[], Size^ size)
     {

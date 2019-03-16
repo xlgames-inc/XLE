@@ -7,8 +7,11 @@
 #pragma once
 
 #include "../../Assets/AssetsCore.h"
+#include <memory>
 
 namespace SceneEngine { class IScene; }
+namespace RenderCore { namespace Techniques { class ITechniqueDelegate; }}
+namespace ShaderPatcher { class INodeGraphProvider; }
 
 namespace ToolsRig
 {
@@ -20,4 +23,8 @@ namespace ToolsRig
     };
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject);
+
+	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
+		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+		const std::string& psMainName);
 }
