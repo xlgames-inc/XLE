@@ -483,7 +483,7 @@ namespace HyperGraph
 			return null;
 		}
 
-        public static IElement FindElementAt(IGraphModel model, PointF location, AcceptElement acceptElement = null)
+        public static IElement FindElementAt(IGraphModel model, PointF location, AcceptElement acceptElement = null, bool testSubGraphInternalSpace = false)
 		{
             foreach (var node in model.Nodes)
 			{
@@ -564,10 +564,15 @@ namespace HyperGraph
                     if (item != null && (acceptElement == null || acceptElement(item)))
                         return item;
 
-                    // We don't ever really need to hit test against the subgraph itself
+                    // Most of the time we don't need to hit test against the subgraph itself
                     // (and it causes problems, such as when drag-selecting within the subgraph area)
-                    // if (acceptElement == null || acceptElement(subGraph))
-                    // return subGraph;
+                    // however, sometimes it's necessary (eg, for the right-click context menu). In
+                    // these cases, we should
+                    if (testSubGraphInternalSpace)
+                    {
+                        if (acceptElement == null || acceptElement(subGraph))
+                            return subGraph;
+                    }
                 }
             }
 
@@ -1543,7 +1548,7 @@ namespace HyperGraph
 							ShowElementMenu(this, eventArgs);
 							// If the owner declines (cancel == true) then we'll continue looking up the hierarchy ..
 							return !eventArgs.Cancel;
-						});
+						}, true);
 						// If we haven't found anything to click on we'll just return the event with a null pointer .. 
 						//	allowing our owner to show a generic menu
 						if (result == null)
