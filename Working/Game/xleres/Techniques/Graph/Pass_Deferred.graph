@@ -1,8 +1,8 @@
 
-import std = "xleres/Techniques/Pass_Standard.sh"
+import std = "xleres/Techniques/Graph/Pass_Standard.sh"
 import gbuffer = "xleres/gbuffer.h"
 
-auto main(
+auto deferred_pass_main(
     VSOutput geo,
     graph<std::EarlyRejectionTest> rejectionTest,
     graph<std::PerPixel> perPixel)

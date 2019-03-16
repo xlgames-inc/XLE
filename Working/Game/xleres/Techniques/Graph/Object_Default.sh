@@ -2,8 +2,10 @@
 #if !defined(OBJECT_DEFAULT_SH)
 #define OBJECT_DEFAULT_SH
 
-#include "../CommonResources.h"
-#include "../gbuffer.h"
+#include "../../MainGeometry.h"
+#include "../../Surface.h"
+#include "../../CommonResources.h"
+#include "../../gbuffer.h"
 
 float4 DiffuseSampler(VSOutput geo)
 {
@@ -12,12 +14,16 @@ float4 DiffuseSampler(VSOutput geo)
 
 float3 NormalSampler(VSOutput geo)
 {
-    return result.worldSpaceNormal = GetNormal(geo);
+    return GetNormal(geo);
 }
 
 PerPixelMaterialParam MaterialSampler(VSOutput geo)
 {
-    return DefaultMaterialValues();
+    PerPixelMaterialParam result;
+	result.roughness = 0.25;
+	result.specular = 0.05;
+	result.metal = 0.0;
+	return result;
 }
 
 GBufferValues MakeGBufferValues(float4 diffuse, float3 worldSpaceNormal, PerPixelMaterialParam material)

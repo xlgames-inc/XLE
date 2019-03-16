@@ -1,0 +1,10 @@
+
+~Inherit; ../illum.tech
+
+~Deferred_Graph
+    ~Inherit; ../illum.tech:Illum; ../shared.tech:Deferred
+    VertexShader=xleres/deferred/basic.vsh:main
+    PixelShader=xleres/Techniques/Graph/Pass_Deferred.graph
+
+~Technique
+    Deferred = Deferred_Graph
