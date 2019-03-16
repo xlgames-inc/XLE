@@ -146,6 +146,7 @@ namespace MaterialTool
                 typeof(ControlsLibraryExt.ModelView.PreviewerContext),
                 typeof(ControlsLibraryExt.ModelView.PreviewerCommands),
                 typeof(ControlsLibraryExt.ModelView.Previewer),
+                typeof(ControlsLibraryExt.GameLoopService),
 
                 typeof(ActiveMaterialContext),
                 typeof(DiagramCommands)

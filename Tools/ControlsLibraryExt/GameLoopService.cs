@@ -10,11 +10,11 @@ using Sce.Atf.Applications;
 using Sce.Atf.Controls;
 using Sce.Atf.Controls.Adaptable;
 
-namespace Previewer
+namespace ControlsLibraryExt
 {
     [Export(typeof(IInitializable))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    class GameLoopService : IInitializable
+    public class GameLoopService : IInitializable
     {
         void IInitializable.Initialize()
         {

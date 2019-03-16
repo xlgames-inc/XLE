@@ -116,9 +116,9 @@ namespace Previewer
                 typeof(ControlsLibraryExt.ModelView.PreviewerCommands),
                 typeof(ControlsLibraryExt.ModelView.GlobalPreviewerCommands), 
                 typeof(ControlsLibraryExt.ModelView.Previewer),
+                typeof(ControlsLibraryExt.GameLoopService),
 
-                typeof(ActiveMaterialContext),
-                typeof(GameLoopService)
+                typeof(ActiveMaterialContext)
             );
 
             // enable use of the system clipboard
