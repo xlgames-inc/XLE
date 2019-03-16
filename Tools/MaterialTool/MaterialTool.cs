@@ -140,7 +140,13 @@ namespace MaterialTool
             // When creating a new document, we'll pass through here with a file that
             // doesn't exist... So let's check if we need to load it now...
             if (File.Exists(uri.LocalPath))
+            {
                 doc.Load(uri);
+            }
+            else
+            {
+                doc.InitializeNew();
+            }
 
             doc.Uri = uri;
             doc.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
@@ -180,9 +186,9 @@ namespace MaterialTool
             m_documentRegistry.Remove(document);
         }
 
-#endregion
+        #endregion
 
-#region IControlHostClient Members
+        #region IControlHostClient Members
 
         public void Activate(Control control)
         {
@@ -221,7 +227,7 @@ namespace MaterialTool
             return closed;
         }
 
-#endregion
+        #endregion
 
         /// <summary>
         /// Gets and sets a string to be used as the initial directory for the open/save dialog box

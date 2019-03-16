@@ -58,6 +58,13 @@ namespace MaterialTool
             GraphMetaData = graphMetaData;
             _nodeGraphFileRepresentationRevisionIndex = 0;
         }
+
+        public void InitializeNew()
+        {
+            GraphMetaData = new ShaderPatcherLayer.NodeGraphMetaData();
+            _nodeGraphFileRepresentation = new ShaderPatcherLayer.NodeGraphFile();
+            _nodeGraphFileRepresentationRevisionIndex = 0;
+        }
         #endregion
 
         #region IDocument Members

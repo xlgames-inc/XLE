@@ -95,7 +95,8 @@ namespace NodeEditorCore
                         signature.Parameters.Add(AsSignatureParameter(interfaceItem, ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out));
                 }
 
-                signature.Implements = (n.TopItems.ElementAt(2) as HyperGraph.Items.NodeTextBoxItem).Text;
+                if (n.Tag is ShaderSubGraphNodeTag)
+                    signature.Implements = (n.Tag as ShaderSubGraphNodeTag).Implements;
 
                 result.SubGraphs.Add(
                     n.SubGraphTag as string,
@@ -399,20 +400,21 @@ namespace NodeEditorCore
             {
                     // --------< SubGraph >--------
                 var subGraphTag = inputSubGraph.Key;
-                Node subgraph = _nodeCreator.CreateSubGraph(subGraphTag, inputSubGraph.Value.Signature.Implements);
+                Node subgraph = _nodeCreator.CreateSubGraph(graphFile, subGraphTag, inputSubGraph.Value.Signature.Implements);
                 subgraph.SubGraphTag = subGraphTag;
                 graph.AddSubGraph(subgraph);
 
                 foreach (var param in inputSubGraph.Value.Signature.Parameters)
                 {
-                    var item = new ShaderFragmentInterfaceParameterItem(param.Name, param.Type)
-                    {
-                        Semantic = param.Semantic,
-                        Default = param.Default,
-                        Direction = (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? InterfaceDirection.In : InterfaceDirection.Out
-                    };
-                    // Note that OutputItems/InputItems are flipped for the subgraph nodes (because of how connectors interface with them)
-                    subgraph.AddItem(item, (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? Node.Dock.Output : Node.Dock.Input);
+                    var srcItem = FindOrCreateNodeItem(
+                        subgraph, (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? Node.Dock.Output : Node.Dock.Input,
+                        (item) => (item is ShaderFragmentInterfaceParameterItem && ((ShaderFragmentInterfaceParameterItem)item).Name.Equals(param.Name)),
+                        () => new ShaderFragmentInterfaceParameterItem(param.Name, param.Type)
+                        {
+                            Semantic = param.Semantic,
+                            Default = param.Default,
+                            Direction = (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In) ? InterfaceDirection.In : InterfaceDirection.Out
+                        });
                 }
 
                     // --------< Basic Nodes >--------

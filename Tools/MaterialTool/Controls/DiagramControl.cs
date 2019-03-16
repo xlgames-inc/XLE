@@ -148,9 +148,7 @@ namespace MaterialTool.Controls
             var p = GetNodePreviewContext(sender);
             var graphContext = ContextAs<DiagramEditingContext>();
             var shader = graphContext.Document.NodeGraphFile.GeneratePreviewShader(
-                p.SubGraph,
-                p.NodeId,
-                p.PreviewSettings,
+                p.SubGraph, p.NodeId, p.PreviewSettings,
                 graphContext.Document.GraphMetaData.Variables);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
@@ -630,7 +628,7 @@ namespace MaterialTool.Controls
                 {
                     if (!HasSubGraphNamed(dialog.InputText))
                     {
-                        var n = _nodeFactory.CreateSubGraph(dialog.InputText, string.Empty);
+                        var n = _nodeFactory.CreateSubGraph(Document.NodeGraphFile, dialog.InputText, string.Empty);
                         var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
                         if (tag is System.Drawing.PointF)
                             n.Location = (System.Drawing.PointF)tag;

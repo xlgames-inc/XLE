@@ -40,9 +40,10 @@ namespace NodeEditorCore
         void SetProcedureNodeType(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
         ProcedureNodeType GetProcedureNodeType(Node node);
         void UpdateProcedureNode(ShaderPatcherLayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
+        void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph);
 
         Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
-        Node CreateSubGraph(String name, String implements);
+        Node CreateSubGraph(ShaderPatcherLayer.NodeGraphFile diagramContext, String name, String implements);
 
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
@@ -467,7 +468,10 @@ namespace NodeEditorCore
         public ShaderCapturesNodeTag(string captureGroupName) : base(captureGroupName) { }
     }
 
-    public class ShaderSubGraphNodeTag { }
+    public class ShaderSubGraphNodeTag
+    {
+        public string Implements;
+    }
 
     [Export(typeof(INodeFactory))]
     [PartCreationPolicy(CreationPolicy.Shared)]
@@ -641,7 +645,17 @@ namespace NodeEditorCore
 
         private void UpdateProcedureNodeDock(Node node, ShaderPatcherLayer.NodeGraphSignature signature, InterfaceDirection interfaceDirection)
         {
-            var dock = ShaderFragmentNodeConnector.GetDirectionalColumn(interfaceDirection);
+            bool isSubGraph = (node.Tag is ShaderSubGraphNodeTag);
+            Node.Dock dock;
+            if (isSubGraph)
+            {
+                // dock is flipped in the subgraph case
+                dock = ShaderFragmentNodeConnector.GetDirectionalColumn(interfaceDirection == InterfaceDirection.In ? InterfaceDirection.Out : InterfaceDirection.In);
+            }
+            else
+            {
+                dock = ShaderFragmentNodeConnector.GetDirectionalColumn(interfaceDirection);
+            }
             var paramDir = ShaderFragmentNodeConnector.AsParameterDirection(interfaceDirection);
 
             var procTag = node.Tag as ShaderProcedureNodeTag;
@@ -686,7 +700,7 @@ namespace NodeEditorCore
 
             var existingItems = node.ItemsForDock(dock);
 
-            if (interfaceDirection == InterfaceDirection.In)
+            if ((!isSubGraph) && (interfaceDirection == InterfaceDirection.In)) // (don't do this for subgraphs)
             {
                 foreach (var param in signature.TemplateParameters)
                 {
@@ -742,7 +756,15 @@ namespace NodeEditorCore
 
                 if (existing == null)
                 {
-                    existing = new ShaderFragmentNodeConnector(param.Name, param.Type);
+                    if (isSubGraph)
+                    {
+                        existing = new ShaderFragmentInterfaceParameterItem(param.Name, param.Type);
+                    }
+                    else
+                    {
+                        existing = new ShaderFragmentNodeConnector(param.Name, param.Type);
+                    }
+                    
                     node.AddItem(existing, dock);
                 }
 
@@ -884,15 +906,34 @@ namespace NodeEditorCore
             return node;
         }
 
-        public Node CreateSubGraph(String name, String implements)
+        public Node CreateSubGraph(ShaderPatcherLayer.NodeGraphFile context, String name, String implements)
         {
-            var node = new Node {};
-            node.Tag = new ShaderSubGraphNodeTag();
+            var node = new Node { };
+            var tag = new ShaderSubGraphNodeTag { Implements = implements };
+            node.Tag = tag;
             node.SubGraphTag = name;
             node.AddItem(new HyperGraph.Items.NodeTextBoxItem(name), Node.Dock.Top);
             node.AddItem(new HyperGraph.Items.NodeTitleItem { Title = " implements " }, Node.Dock.Top);
-            node.AddItem(new HyperGraph.Items.NodeTextBoxItem(implements), Node.Dock.Top);
+            var implementsItem = new HyperGraph.Items.NodeTextBoxItem(implements);
+            implementsItem.TextChanged += (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => tag.Implements = args.Text;
+            node.AddItem(implementsItem, Node.Dock.Top);
+            UpdateSubGraphNode(context, node);
             return node;
+        }
+
+        public void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph)
+        {
+            ShaderSubGraphNodeTag tag = subGraph.Tag as ShaderSubGraphNodeTag;
+            if (tag == null) return;
+
+            var archiveNameForImplements = tag.Implements;
+
+            var signature = FindSignature(context, archiveNameForImplements);
+            if (signature != null)
+            {
+                UpdateProcedureNodeDock(subGraph, signature, InterfaceDirection.In);
+                UpdateProcedureNodeDock(subGraph, signature, InterfaceDirection.Out);
+            }
         }
 
         public Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id)
