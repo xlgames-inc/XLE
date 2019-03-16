@@ -9,6 +9,7 @@
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
+#include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -59,27 +60,38 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    TechniqueContextWrapper::TechniqueContextWrapper(
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
-    {
-        _techniqueContext = std::move(techniqueContext);
-    }
+    TechniqueContextWrapper::TechniqueContextWrapper(const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
+	: _techniqueContext(techniqueContext)
+    {}
 
     TechniqueContextWrapper::~TechniqueContextWrapper()
     {
         _techniqueContext.reset();
     }
 
-	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
-		std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate)
+	: _techniqueDelegate(techniqueDelegate)
+	{}
+
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate)
+	: _techniqueDelegate(techniqueDelegate)
+	{
+	}
+
+    TechniqueDelegateWrapper::~TechniqueDelegateWrapper()
+	{
+		_techniqueDelegate.reset();
+	}
+
+	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene)
 	{
 		_scene = std::move(scene);
 	}
 
     IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::PlacementCellSet> placements,
-        std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+        const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+        const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
+        const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
         std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters)
     {
 		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(

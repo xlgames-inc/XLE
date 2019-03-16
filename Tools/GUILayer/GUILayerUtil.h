@@ -9,7 +9,7 @@
 #include "CLIXAutoPtr.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; } }
 namespace SceneEngine 
 {
     class IntersectionTestScene; 
@@ -45,9 +45,19 @@ namespace GUILayer
     public:
         clix::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 
-        TechniqueContextWrapper(std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+        TechniqueContextWrapper(const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~TechniqueContextWrapper();
     };
+
+	public ref class TechniqueDelegateWrapper
+	{
+	public:
+		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
+
+        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate);
+		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate);
+        ~TechniqueDelegateWrapper();
+	};
 
 	public ref class IntersectionTestSceneWrapper
 	{
@@ -55,11 +65,12 @@ namespace GUILayer
 		clix::shared_ptr<SceneEngine::IntersectionTestScene> _scene;
 
 		SceneEngine::IntersectionTestScene& GetNative();
-		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
+		IntersectionTestSceneWrapper(
+			const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene);
         IntersectionTestSceneWrapper(
-            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::PlacementCellSet> placements,
-            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+            const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+            const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
+            const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
             std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();

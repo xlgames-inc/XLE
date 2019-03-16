@@ -261,7 +261,7 @@ namespace SceneEngine
 		auto tech = techFuture->TryActualize();
 		if (!tech) return nullptr;
 
-		auto shaderFuture = _resolvedShaders.FindVariation(tech->GetEntry(techniqueIndex), shaderSelectors);
+		const auto& shaderFuture = _resolvedShaders.FindVariation(tech->GetEntry(techniqueIndex), shaderSelectors);
 		if (!shaderFuture) return nullptr;
 		return shaderFuture->TryActualize().get();
 	}

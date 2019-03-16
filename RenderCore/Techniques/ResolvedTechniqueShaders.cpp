@@ -152,7 +152,7 @@ namespace RenderCore { namespace Techniques
 		return inputHash;
 	}
 
-	::Assets::FuturePtr<Metal::ShaderProgram> ResolvedShaderVariationSet::FindVariation(
+	const ::Assets::FuturePtr<Metal::ShaderProgram>& ResolvedShaderVariationSet::FindVariation(
 		const TechniqueEntry& techEntry,
 		const ParameterBox* shaderSelectors[ShaderSelectors::Source::Max]) const
 	{

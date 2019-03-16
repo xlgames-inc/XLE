@@ -65,7 +65,7 @@ namespace RenderCore { namespace Techniques
 	{
 	public:
 		using ShaderFuture = ::Assets::FuturePtr<Metal::ShaderProgram>;
-		ShaderFuture FindVariation(
+		const ShaderFuture& FindVariation(
 			const TechniqueEntry& techEntry,
 			const ParameterBox* globalState[ShaderSelectors::Source::Max]) const;
 

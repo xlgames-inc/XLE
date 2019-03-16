@@ -7,6 +7,7 @@
 #include "VisLayerController.h"
 #include "LayerControl.h"
 #include "IWindowRig.h"
+#include "GUILayerUtil.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/MaterialVisualisation.h"
@@ -157,6 +158,15 @@ namespace GUILayer
 			RebuildMaterialOverrides();
 		} else {
 			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>{});
+		}
+	}
+
+	void VisLayerController::SetTechniqueOverrides(TechniqueDelegateWrapper^ techniqueDelegate)
+	{
+		if (techniqueDelegate) {
+			_pimpl->_modelLayer->SetOverrides(techniqueDelegate->_techniqueDelegate.GetNativePtr());
+		} else {
+			_pimpl->_modelLayer->SetOverrides(std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>{});
 		}
 	}
 
