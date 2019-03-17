@@ -81,7 +81,7 @@ namespace ShaderPatcherLayer
 		virtual GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
 			NodeGraphFile^ nodeGraph,
 			String^ subGraphName,
-			DelegateActualizationMessagesWrapper^ logMessages);
+			MessageRelayWrapper^ logMessages);
 
         Manager();
     private:
@@ -366,7 +366,7 @@ namespace ShaderPatcherLayer
 	GUILayer::TechniqueDelegateWrapper^ Manager::MakeTechniqueDelegate(
 		NodeGraphFile^ nodeGraph,
 		String^ subGraphName,
-		DelegateActualizationMessagesWrapper^ logMessages)
+		MessageRelayWrapper^ logMessages)
 	{
 		auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
 		return gcnew GUILayer::TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
@@ -410,7 +410,7 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class DelegateLogMessagesWrapper_Helper : public Utility::OnChangeCallback
+	class MessageRelayWrapper_Helper : public Utility::OnChangeCallback
 	{
 	public:
 		virtual void    OnChange()
@@ -419,36 +419,33 @@ namespace ShaderPatcherLayer
 				_managed->OnChangeEvent(_managed.get(), nullptr);
 		}
 
-		msclr::auto_gcroot<DelegateActualizationMessagesWrapper^> _managed;
-		DelegateLogMessagesWrapper_Helper(DelegateActualizationMessagesWrapper^ managed) : _managed(managed) {}
+		msclr::auto_gcroot<MessageRelayWrapper^> _managed;
+		MessageRelayWrapper_Helper(MessageRelayWrapper^ managed) : _managed(managed) {}
 	};
 
-	System::Collections::Generic::IEnumerable<System::String^>^ DelegateActualizationMessagesWrapper::GetMessages()
+	System::String^ MessageRelayWrapper::Messages::get()
 	{
-		auto result = gcnew System::Collections::Generic::List<System::String^>();
 		auto nativeMsgs = _native->GetMessages();
-		for (const auto&m:nativeMsgs)
-			result->Add(clix::marshalString<clix::E_UTF8>(m));
-		return result;
+		return clix::marshalString<clix::E_UTF8>(nativeMsgs);
 	}
 
-	DelegateActualizationMessagesWrapper::DelegateActualizationMessagesWrapper(const std::shared_ptr<ToolsRig::DelegateActualizationMessages>& techniqueDelegate)
+	MessageRelayWrapper::MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate)
 	{
 		_native = techniqueDelegate;
 		_callbackId = _native->AddCallback(
-			std::shared_ptr<Utility::OnChangeCallback>(new DelegateLogMessagesWrapper_Helper(this)));
+			std::shared_ptr<Utility::OnChangeCallback>(new MessageRelayWrapper_Helper(this)));
 	}
 
-	DelegateActualizationMessagesWrapper::DelegateActualizationMessagesWrapper(ToolsRig::DelegateActualizationMessages* techniqueDelegate)
-	: DelegateActualizationMessagesWrapper(std::shared_ptr<ToolsRig::DelegateActualizationMessages>(techniqueDelegate))
+	MessageRelayWrapper::MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate)
+	: MessageRelayWrapper(std::shared_ptr<ToolsRig::MessageRelay>(techniqueDelegate))
 	{
 	}
 
-	DelegateActualizationMessagesWrapper::DelegateActualizationMessagesWrapper()
-	: DelegateActualizationMessagesWrapper(std::make_shared<ToolsRig::DelegateActualizationMessages>())
+	MessageRelayWrapper::MessageRelayWrapper()
+	: MessageRelayWrapper(std::make_shared<ToolsRig::MessageRelay>())
 	{}
 
-    DelegateActualizationMessagesWrapper::~DelegateActualizationMessagesWrapper()
+    MessageRelayWrapper::~MessageRelayWrapper()
 	{
 	}
 

@@ -450,17 +450,25 @@ namespace Assets
 		, _depVal(depVal)
 		, _actualizationLog(actualizationLog)
         {
-        }
+			std::stringstream str;
+			if (_actualizationLog) {
+				str << "Invalid asset (" << Initializer() << "):" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end()));
+			} else {
+				str << "Invalid asset (" << Initializer() << ")";
+			}
+			_whatString = str.str();
+		}
 
         bool InvalidAsset::CustomReport() const
         {
-			if (_actualizationLog) {
-				Log(Error) << "Invalid asset (" << Initializer() << "):" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
-			} else {
-				Log(Error) << "Invalid asset (" << Initializer() << std::endl;
-			}
+			Log(Error) << _whatString << std::endl;
             return true;
         }
+
+		const char* InvalidAsset::what() const
+		{
+			return _whatString.c_str();
+		}
 
         auto InvalidAsset::State() const -> AssetState { return AssetState::Invalid; }
 
@@ -477,6 +485,11 @@ namespace Assets
         }
 
         auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
+
+		const char* PendingAsset::what() const
+		{
+			return Initializer();
+		}
 
 		bool ConstructionError::CustomReport() const
 		{

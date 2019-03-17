@@ -43,7 +43,7 @@ namespace Assets
 		/// This type of exception (including InvalidAsset and PendingAsset) should only be thrown
 		/// from an asset heap implementation. Asset types can use standard exceptions, or ConstructionError
 		/// to signal errors during asset construction.
-        class RetrievalError : public ::Exceptions::BasicLabel
+        class RetrievalError : public std::exception
         {
         public:
             const ResChar* Initializer() const { return _initializer; }
@@ -68,11 +68,13 @@ namespace Assets
             virtual AssetState State() const;
 			const DepValPtr& GetDependencyValidation() const { return _depVal; }
 			const Blob& GetActualizationLog() const { return _actualizationLog; }
+			virtual const char* what() const;
 
             InvalidAsset(StringSection<ResChar> initializer, const DepValPtr&, const Blob& actualizationLog) never_throws;
 		private:
 			DepValPtr _depVal;
 			Blob _actualizationLog;
+			std::string _whatString;
         };
 
         /// <summary>An asset is still being loaded</summary>
@@ -87,6 +89,7 @@ namespace Assets
         public: 
             virtual bool CustomReport() const;
             virtual AssetState State() const;
+			virtual const char* what() const;
 
             PendingAsset(StringSection<ResChar> initializer) never_throws;
         };
@@ -99,7 +102,7 @@ namespace Assets
 		/// changes, and reattempt if those files change.
 		///
 		/// Furthermore, on UnsupportedVersion errors, the system can attempt a recompile of the asset.
-        class ConstructionError : public ::Exceptions::BasicLabel
+        class ConstructionError : public std::exception
         {
         public:
             enum class Reason

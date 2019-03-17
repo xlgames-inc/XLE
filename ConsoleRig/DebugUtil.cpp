@@ -95,7 +95,7 @@ namespace ConsoleRig
         static std::basic_streambuf<char>* s_oldCoutStreamBuf = nullptr;
     #endif
 
-    static void SendExceptionToLogger(const ::Exceptions::BasicLabel&);
+    static void SendExceptionToLogger(const ::Exceptions::CustomReportableException&);
 
     void DebugUtil_Startup()
     {
@@ -181,7 +181,7 @@ namespace ConsoleRig
         };
     #endif
 
-    static void SendExceptionToLogger(const ::Exceptions::BasicLabel& e)
+    static void SendExceptionToLogger(const ::Exceptions::CustomReportableException& e)
     {
         TRY
         {

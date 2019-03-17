@@ -75,7 +75,7 @@ namespace MaterialTool
 
                                 if (previewerContext != null)
                                 {
-                                    var actualizationMsgs = new ShaderPatcherLayer.DelegateActualizationMessagesWrapper();
+                                    var actualizationMsgs = new ShaderPatcherLayer.MessageRelayWrapper();
                                     previewerContext.TechniqueOverrides =
                                         _previewManager.MakeTechniqueDelegate(
                                             context.Document.NodeGraphFile,

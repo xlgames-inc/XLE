@@ -22,6 +22,8 @@
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/AssetUtils.h"
+#include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/MinimalShaderSource.h"
 
 #include "../../RenderCore/UniformsStream.h"
 #include "../../RenderCore/BufferView.h"
@@ -227,7 +229,8 @@ namespace ToolsRig
 			StringSection<> psName, StringSection<> definesTable,
 			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
 			const std::string& psMainName,
-			const std::shared_ptr<DelegateActualizationMessages>& logMessages)
+			const std::shared_ptr<MessageRelay>& logMessages,
+			RenderCore::ShaderService::IShaderSource& shaderSource)
 		{
 			auto future = std::make_shared<::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>>(psName.AsString());
 			TRY
@@ -257,7 +260,7 @@ namespace ToolsRig
 				for (auto&f:fragments._sourceFragments)
 					mergedFragments.insert(mergedFragments.end(), f.begin(), f.end());
 
-				auto pendingCompile = RenderCore::ShaderService::GetInstance().CompileFromMemory(
+				auto pendingCompile = shaderSource.CompileFromMemory(
 					mergedFragments, "deferred_pass_main", psNameSplit.Parameters(), definesTable);
 
 				future->SetPollingFunction(
@@ -276,7 +279,7 @@ namespace ToolsRig
 									}
 								thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob());
 								if (logMessages)
-									logMessages->AddMessage(std::string("Got error during shader compile: ") + ::Assets::AsString(logArtifact->GetBlob()) + "\n");
+									logMessages->AddMessage(std::string("Got error during shader compile:\n") + ::Assets::AsString(logArtifact->GetBlob()) + "\n");
 							} else {
 								thatFuture.SetInvalidAsset(nullptr, nullptr);
 							}
@@ -288,7 +291,7 @@ namespace ToolsRig
 						AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
 						if (logMessages) {
 							std::stringstream str;
-							str << "Completed shader: " << std::endl;
+							str << "Completed shader:\n" << std::endl;
 							str << mergedFragments << std::endl;
 							logMessages->AddMessage(str.str());
 						}
@@ -299,13 +302,13 @@ namespace ToolsRig
 					e.GetDependencyValidation(),
 					e.GetActualizationLog());
 				if (logMessages)
-					logMessages->AddMessage(std::string("Got exception during shader construction: ") + ::Assets::AsString(e.GetActualizationLog()) + "\n");
+					logMessages->AddMessage(std::string("Got exception during shader construction:\n") + ::Assets::AsString(e.GetActualizationLog()) + "\n");
 			} CATCH (const std::exception& e) {
 				future->SetInvalidAsset(
 					std::make_shared<::Assets::DependencyValidation>(),
 					::Assets::AsBlob(e.what()));
 				if (logMessages)
-					logMessages->AddMessage(std::string("Got exception during shader construction: ") + e.what() + "\n");
+					logMessages->AddMessage(std::string("Got exception during shader construction:\n") + e.what() + "\n");
 			} CATCH_END
 			return future;
 		}
@@ -322,7 +325,7 @@ namespace ToolsRig
 		GraphPreviewTechniqueDelegate(
 			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
 			const std::string& psMainName,
-			const std::shared_ptr<DelegateActualizationMessages>& logMessages)
+			const std::shared_ptr<MessageRelay>& logMessages)
 		{
 			const char techFile[] = "xleres/Techniques/Graph/graph.tech";
 			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(techFile);
@@ -335,8 +338,12 @@ namespace ToolsRig
 				logMessages->AddMessage(str.str());
 			}
 
+			auto shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
+				RenderCore::Metal::CreateLowLevelShaderCompiler(RenderCore::Assets::Services::GetDevice()),
+				RenderCore::MinimalShaderSource::Flags::CompileInBackground);
+
 			_resolvedShaders._creationFn = 
-				[provider, psMainName, logMessages](
+				[provider, psMainName, logMessages, shaderSource](
 					StringSection<> vsName,
 					StringSection<> gsName,
 					StringSection<> psName,
@@ -347,7 +354,7 @@ namespace ToolsRig
 					
 					::Assets::FuturePtr<CompiledShaderByteCode> psCode;
 					if (XlEqString(MakeFileNameSplitter(psName).Extension(), "graph")) {
-						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName, logMessages);
+						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName, logMessages, *shaderSource);
 					} else {
 						psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(psName, defines);
 					}
@@ -388,14 +395,14 @@ namespace ToolsRig
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
 		const std::string& psMainName,
-		const std::shared_ptr<DelegateActualizationMessages>& logMessages)
+		const std::shared_ptr<MessageRelay>& logMessages)
 	{
 		return std::make_unique<GraphPreviewTechniqueDelegate>(provider, psMainName, logMessages);
 	}
 
 /////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class DelegateActualizationMessages::Pimpl
+	class MessageRelay::Pimpl
 	{
 	public:
 		std::vector<std::string> _messages;
@@ -405,21 +412,27 @@ namespace ToolsRig
 		unsigned _nextCallbackId = 1;
 	};
 
-	std::vector<std::string> DelegateActualizationMessages::GetMessages() const
+	std::string MessageRelay::GetMessages() const
 	{
 		ScopedLock(_pimpl->_lock);
-		auto copy = _pimpl->_messages;
-		return copy;
+		size_t length = 0;
+		for (const auto&m:_pimpl->_messages)
+			length += m.size();
+		std::string result;
+		result.reserve(length);
+		for (const auto&m:_pimpl->_messages)
+			result.insert(result.end(), m.begin(), m.end());
+		return result;
 	}
 
-	unsigned DelegateActualizationMessages::AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback)
+	unsigned MessageRelay::AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback)
 	{
 		ScopedLock(_pimpl->_lock);
 		_pimpl->_callbacks.push_back(std::make_pair(_pimpl->_nextCallbackId, callback));
 		return _pimpl->_nextCallbackId++;
 	}
 
-	void DelegateActualizationMessages::RemoveCallback(unsigned id)
+	void MessageRelay::RemoveCallback(unsigned id)
 	{
 		ScopedLock(_pimpl->_lock);
 		auto i = std::find_if(
@@ -428,7 +441,7 @@ namespace ToolsRig
 		_pimpl->_callbacks.erase(i);
 	}
 
-	void DelegateActualizationMessages::AddMessage(const std::string& msg)
+	void MessageRelay::AddMessage(const std::string& msg)
 	{
 		ScopedLock(_pimpl->_lock);
 		_pimpl->_messages.push_back(msg);
@@ -436,12 +449,12 @@ namespace ToolsRig
 			cb.second->OnChange();
 	}
 
-	DelegateActualizationMessages::DelegateActualizationMessages()
+	MessageRelay::MessageRelay()
 	{
 		_pimpl = std::make_unique<Pimpl>();
 	}
 
-	DelegateActualizationMessages::~DelegateActualizationMessages()
+	MessageRelay::~MessageRelay()
 	{}
 
 }

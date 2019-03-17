@@ -23,14 +23,15 @@ namespace MaterialTool.Controls
             _readout.WordWrap = true;
             _readout.Multiline = true;
             _readout.ScrollBars = ScrollBars.Vertical;
+            _readout.ReadOnly = true;
             Controls.Add(_readout);
         }
 
         private TextBox _readout;
 
-        public void SetContext(ShaderPatcherLayer.DelegateActualizationMessagesWrapper context)
+        public void SetContext(ShaderPatcherLayer.MessageRelayWrapper context)
         {
-            var existingContext = ContextAs<ShaderPatcherLayer.DelegateActualizationMessagesWrapper>();
+            var existingContext = ContextAs<ShaderPatcherLayer.MessageRelayWrapper>();
             if (existingContext != null)
             {
                 existingContext.OnChangeEvent -= OnChangeEvent;
@@ -67,19 +68,14 @@ namespace MaterialTool.Controls
 
         private void UpdateText()
         {
-            var context = ContextAs<ShaderPatcherLayer.DelegateActualizationMessagesWrapper>();
+            var context = ContextAs<ShaderPatcherLayer.MessageRelayWrapper>();
             if (context == null)
             {
                 _readout.Text = string.Empty;
                 return;
             }
 
-            var msgs = context.GetMessages();
-            var sb = new StringBuilder();
-            foreach (var m in msgs)
-                sb.Append(m);
-            var str = System.Text.RegularExpressions.Regex.Replace(sb.ToString(), @"\r\n|\n\r|\n|\r", System.Environment.NewLine);        // (make sure we to convert the line endings into windows form)
-            _readout.Text = str;
+            _readout.Text = System.Text.RegularExpressions.Regex.Replace(context.Messages, @"\r\n|\n\r|\n|\r", System.Environment.NewLine);        // (make sure we to convert the line endings into windows form);
         }
 
         #region IInitializable Members

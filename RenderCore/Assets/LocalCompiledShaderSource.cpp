@@ -554,7 +554,7 @@ namespace RenderCore { namespace Assets
 
 			TRY
 			{
-				ResId resId { "memory", entryPoint, shaderModel };
+				ResId resId { "", entryPoint, shaderModel };
 				success = c->DoLowLevelCompile(
 					payload, errors, deps,
 					shaderInMemory.data(), shaderInMemory.size(), resId,

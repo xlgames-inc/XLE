@@ -15,27 +15,27 @@ using System::String;
 using System::Object;
 using namespace System::Runtime::Serialization;
 
-namespace ToolsRig { class DelegateActualizationMessages; }
+namespace ToolsRig { class MessageRelay; }
 
 namespace ShaderPatcherLayer
 {
 	ref class NodeGraphPreviewConfiguration;
     
-	public ref class DelegateActualizationMessagesWrapper
+	public ref class MessageRelayWrapper
 	{
 	public:
-		System::Collections::Generic::IEnumerable<System::String^>^ GetMessages();
+		property System::String^ Messages { System::String^ get(); };
 
 		delegate void OnChangeEventHandler(System::Object^ sender, System::EventArgs^ args);
 		property OnChangeEventHandler^ OnChangeEvent;
 
-		clix::shared_ptr<ToolsRig::DelegateActualizationMessages> _native;
+		clix::shared_ptr<ToolsRig::MessageRelay> _native;
 		unsigned _callbackId;
 
-		DelegateActualizationMessagesWrapper(const std::shared_ptr<ToolsRig::DelegateActualizationMessages>& techniqueDelegate);
-		DelegateActualizationMessagesWrapper(ToolsRig::DelegateActualizationMessages* techniqueDelegate);
-		DelegateActualizationMessagesWrapper();
-        ~DelegateActualizationMessagesWrapper();
+		MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate);
+		MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate);
+		MessageRelayWrapper();
+        ~MessageRelayWrapper();
 	};
 
     public interface class IPreviewBuilder
@@ -55,7 +55,7 @@ namespace ShaderPatcherLayer
 		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
 			NodeGraphFile^ nodeGraph,
 			String^ subGraphName,
-			DelegateActualizationMessagesWrapper^ logMessages);
+			MessageRelayWrapper^ logMessages);
     };
 
 	class AttachPimpl;

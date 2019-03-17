@@ -81,8 +81,15 @@ namespace RenderCore { namespace Techniques
             dimof(_stringHelpers->_pendingAssets) == dimof(_stringHelpers->_invalidAssets),
             "Assuming pending and invalid asset buffers are the same length");
 
-        if (!XlFindStringI(bufferStart, id))
+        if (!XlFindStringI(bufferStart, id)) {
             StringMeldAppend(bufferStart, bufferStart + dimof(_stringHelpers->_pendingAssets)) << "," << id;
+
+			if (e.State() == ::Assets::AssetState::Invalid) {
+				// Writing the exception string into "_errorString" here can help to pass shader error message 
+				// back to the PreviewRenderManager for the material tool
+				StringMeldAppend(_stringHelpers->_errorString, ArrayEnd(_stringHelpers->_errorString)) << e.what() << "\n";
+			}
+		}
     }
 
     std::shared_ptr<IRenderStateDelegate> ParsingContext::SetRenderStateDelegate(

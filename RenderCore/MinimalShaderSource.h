@@ -7,6 +7,7 @@
 #pragma once
 
 #include "ShaderService.h"
+#include "../Utility/IteratorUtils.h"
 #include <memory>
 
 namespace RenderCore
@@ -24,14 +25,21 @@ namespace RenderCore
 
 		void ClearCaches();
 
-        MinimalShaderSource(std::shared_ptr<ILowLevelCompiler> compiler);
+		struct Flags
+		{
+			enum Bits { CompileInBackground = 1<<0 };
+			using BitField = unsigned;
+		};
+
+        MinimalShaderSource(const std::shared_ptr<ILowLevelCompiler>& compiler, Flags::BitField flags = 0);
         ~MinimalShaderSource();
 
     protected:
         std::shared_ptr<ILowLevelCompiler> _compiler;
+		unsigned _flags;
 
         std::shared_ptr<::Assets::ArtifactFuture> Compile(
-            const void* shaderInMemory, size_t size,
+            IteratorRange<const void*> shaderInMemory,
             const ILowLevelCompiler::ResId& resId,
 			StringSection<::Assets::ResChar> definesTable) const;
     };

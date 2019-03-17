@@ -71,11 +71,16 @@
 
 namespace Exceptions
 {
-    class BasicLabel : public std::exception
+	class CustomReportableException : public std::exception
+	{
+	public:
+		virtual bool CustomReport() const { return false; }
+	};
+
+    class BasicLabel : public CustomReportableException
     {
     public:
         virtual const char* what() const never_throws /*override*/ { return _buffer; }
-        virtual bool CustomReport() const { return false; }
         
         BasicLabel(const char format[], ...) never_throws;
         BasicLabel(const char format[], va_list args) never_throws;
@@ -135,17 +140,17 @@ namespace Utility
         inline void Throw(...) {}
     #else
         #if FEATURE_EXCEPTIONS
-            typedef void (*OnThrowCallback)(const ::Exceptions::BasicLabel&);
+            typedef void (*OnThrowCallback)(const ::Exceptions::CustomReportableException&);
             inline OnThrowCallback& GlobalOnThrowCallback()
             {
                 static OnThrowCallback s_result = nullptr;
                 return s_result;
             }
 
-            template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
+            template <class E, typename std::enable_if<std::is_base_of<::Exceptions::CustomReportableException, E>::value>::type* = nullptr>
                 inline NO_RETURN_PREFIX void Throw(const E& e) NO_RETURN_POSTFIX;
 
-            template <class E, typename std::enable_if<std::is_base_of<::Exceptions::BasicLabel, E>::value>::type*>
+            template <class E, typename std::enable_if<std::is_base_of<::Exceptions::CustomReportableException, E>::value>::type*>
                 inline NO_RETURN_PREFIX void Throw(const E& e)
             {
                 auto* callback = GlobalOnThrowCallback();
@@ -153,10 +158,10 @@ namespace Utility
                 throw e;
             }
 
-            template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type* = nullptr>
+            template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::CustomReportableException, E>::value>::type* = nullptr>
                 NO_RETURN_PREFIX void Throw(const E& e) NO_RETURN_POSTFIX;
 
-            template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::BasicLabel, E>::value>::type*>
+            template <class E, typename std::enable_if<!std::is_base_of<::Exceptions::CustomReportableException, E>::value>::type*>
                 inline NO_RETURN_PREFIX void Throw(const E& e)
             {
                 throw e;

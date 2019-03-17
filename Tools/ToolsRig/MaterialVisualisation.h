@@ -25,18 +25,18 @@ namespace ToolsRig
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject);
 
-	class DelegateActualizationMessages
+	class MessageRelay
 	{
 	public:
-		std::vector<std::string> GetMessages() const;
+		std::string GetMessages() const;
 
 		unsigned AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback);
 		void RemoveCallback(unsigned);
 
 		void AddMessage(const std::string& msg);
 
-		DelegateActualizationMessages();
-		~DelegateActualizationMessages();
+		MessageRelay();
+		~MessageRelay();
 	private:
 		class Pimpl;
 		std::unique_ptr<Pimpl> _pimpl;
@@ -45,5 +45,5 @@ namespace ToolsRig
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
 		const std::string& psMainName,
-		const std::shared_ptr<DelegateActualizationMessages>& logMessages);
+		const std::shared_ptr<MessageRelay>& logMessages);
 }

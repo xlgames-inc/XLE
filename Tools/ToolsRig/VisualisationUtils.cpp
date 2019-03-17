@@ -348,10 +348,10 @@ namespace ToolsRig
 				context, renderTarget, parserContext,
 				scene, AsCameraDesc(cameraSettings), qualSettings);
 
-            if (parserContext.HasInvalidAssets())
-				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
-			if (parserContext.HasErrorString())
+            if (parserContext.HasErrorString())
 				return std::make_pair(DrawPreviewResult::Error, parserContext._stringHelpers->_errorString);
+			if (parserContext.HasInvalidAssets())
+				return std::make_pair(DrawPreviewResult::Error, "Invalid assets encountered");
             if (parserContext.HasPendingAssets())
 				return std::make_pair(DrawPreviewResult::Pending, std::string());
 
