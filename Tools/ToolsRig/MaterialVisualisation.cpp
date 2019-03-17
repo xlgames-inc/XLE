@@ -218,7 +218,11 @@ namespace ToolsRig
 			const ParameterBox* shaderSelectors[],
 			unsigned techniqueIndex)
 		{
-			assert(_technique->GetDependencyValidation()->GetValidationIndex() == 0);	// hot reloading of this not supported
+			if (_technique->GetDependencyValidation()->GetValidationIndex() != 0) {
+				auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(s_techFile);
+				future->StallWhilePending();
+				_technique = future->Actualize();
+			}
 
 			const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);
 			if (!shaderFuture) return nullptr;
@@ -238,20 +242,47 @@ namespace ToolsRig
 			auto future = std::make_shared<::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>>(psName.AsString());
 			TRY
 			{
-				auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
+				enum class StructureType { DeferredPass, ColorFromWorldCoords };
+				StructureType structureType = StructureType::DeferredPass;
 
-				auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
-					psMainName, {}, {}, provider
-				};
+				auto sig = provider->FindSignature(psMainName);
+				if (sig.has_value()) {
+					const auto& sigValue = sig.value();
+					if (XlFindString(sigValue._signature.GetImplements(), "CoordinatesToColor"))
+						structureType = StructureType::ColorFromWorldCoords;
+				}
 
-				ShaderPatcher::InstantiationParameters instParams {
-					{ "rejectionTest", earlyRejection },
-					{ "perPixel", overridePerPixel }
-				};
+				ShaderPatcher::InstantiatedShader fragments;
+
 				auto psNameSplit = MakeFileNameSplitter(psName);
-				auto fragments = ShaderPatcher::InstantiateShader(
-					psNameSplit.AllExceptParameters(), "deferred_pass_main",
-					instParams);
+				const char* entryPoint;
+				if (structureType == StructureType::DeferredPass) {
+					auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
+
+					auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+						psMainName, {}, {}, provider
+					};
+
+					ShaderPatcher::InstantiationParameters instParams {
+						{ "rejectionTest", earlyRejection },
+						{ "perPixel", overridePerPixel }
+					};
+					entryPoint = "deferred_pass_main";
+					fragments = ShaderPatcher::InstantiateShader(
+						psNameSplit.AllExceptParameters(), entryPoint,
+						instParams);
+				} else {
+					auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+						psMainName, {}, {}, provider
+					};
+
+					entryPoint = "deferred_pass_color_from_worldcoords";
+					fragments = ShaderPatcher::InstantiateShader(
+						psNameSplit.AllExceptParameters(), entryPoint,
+						ShaderPatcher::InstantiationParameters {
+							{ "perPixel", overridePerPixel }
+						});
+				}
 
 				fragments._sourceFragments.insert(fragments._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
 
@@ -264,7 +295,7 @@ namespace ToolsRig
 					mergedFragments.insert(mergedFragments.end(), f.begin(), f.end());
 
 				auto pendingCompile = shaderSource.CompileFromMemory(
-					mergedFragments, "deferred_pass_main", psNameSplit.Parameters(), definesTable);
+					mergedFragments, entryPoint, psNameSplit.Parameters(), definesTable);
 
 				future->SetPollingFunction(
 					[pendingCompile, logMessages, mergedFragments](::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>& thatFuture) -> bool {
@@ -330,14 +361,13 @@ namespace ToolsRig
 			const std::string& psMainName,
 			const std::shared_ptr<MessageRelay>& logMessages)
 		{
-			const char techFile[] = "xleres/Techniques/Graph/graph.tech";
-			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(techFile);
+			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(s_techFile);
 			auto state = future->StallWhilePending();
 			if (state == ::Assets::AssetState::Ready) {
 				_technique = future->Actualize();
 			} else {
 				std::stringstream str;
-				str << "Failed loading technique file (" << techFile << ") with message (" << ::Assets::AsString(future->GetActualizationLog()) << ")";
+				str << "Failed loading technique file (" << s_techFile << ") with message (" << ::Assets::AsString(future->GetActualizationLog()) << ")";
 				logMessages->AddMessage(str.str());
 			}
 
@@ -393,7 +423,10 @@ namespace ToolsRig
 	private:
 		std::shared_ptr<RenderCore::Techniques::Technique> _technique;
 		Techniques::ResolvedShaderVariationSet _resolvedShaders;
+		static const char s_techFile[];
 	};
+
+	const char GraphPreviewTechniqueDelegate::s_techFile[] = "xleres/Techniques/Graph/graph.tech";
 
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,

@@ -40,9 +40,10 @@
             // 
             this._okButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._okButton.DialogResult = System.Windows.Forms.DialogResult.OK;
-            this._okButton.Location = new System.Drawing.Point(1036, 93);
+            this._okButton.Location = new System.Drawing.Point(478, 50);
+            this._okButton.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this._okButton.Name = "_okButton";
-            this._okButton.Size = new System.Drawing.Size(162, 40);
+            this._okButton.Size = new System.Drawing.Size(75, 22);
             this._okButton.TabIndex = 0;
             this._okButton.Text = "OK";
             this._okButton.UseVisualStyleBackColor = true;
@@ -51,26 +52,29 @@
             // 
             this._cancelButton.Anchor = ((System.Windows.Forms.AnchorStyles)((System.Windows.Forms.AnchorStyles.Bottom | System.Windows.Forms.AnchorStyles.Right)));
             this._cancelButton.DialogResult = System.Windows.Forms.DialogResult.Cancel;
-            this._cancelButton.Location = new System.Drawing.Point(868, 93);
+            this._cancelButton.Location = new System.Drawing.Point(401, 50);
+            this._cancelButton.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this._cancelButton.Name = "_cancelButton";
-            this._cancelButton.Size = new System.Drawing.Size(162, 40);
+            this._cancelButton.Size = new System.Drawing.Size(75, 22);
             this._cancelButton.TabIndex = 1;
             this._cancelButton.Text = "Cancel";
             this._cancelButton.UseVisualStyleBackColor = true;
             // 
             // _nameBox
             // 
-            this._nameBox.Location = new System.Drawing.Point(12, 36);
+            this._nameBox.Location = new System.Drawing.Point(5, 21);
+            this._nameBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this._nameBox.Name = "_nameBox";
-            this._nameBox.Size = new System.Drawing.Size(312, 35);
+            this._nameBox.Size = new System.Drawing.Size(146, 20);
             this._nameBox.TabIndex = 2;
             // 
             // label1
             // 
             this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(12, 9);
+            this.label1.Location = new System.Drawing.Point(6, 5);
+            this.label1.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(67, 24);
+            this.label1.Size = new System.Drawing.Size(35, 13);
             this.label1.TabIndex = 3;
             this.label1.Text = "Name";
             // 
@@ -81,28 +85,32 @@
             this._implementsBox.FormattingEnabled = true;
             this._implementsBox.Items.AddRange(new object[] {
             "",
-            "xleres/techniques/graph/pass_standard.sh:PerPixel"});
-            this._implementsBox.Location = new System.Drawing.Point(331, 38);
+            "xleres/nodes/templates.sh:CoordinatesToColor",
+            "xleres/nodes/templates.sh:PerPixel",
+            "xleres/nodes/templates.sh:EarlyRejectionTest"});
+            this._implementsBox.Location = new System.Drawing.Point(153, 21);
+            this._implementsBox.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this._implementsBox.Name = "_implementsBox";
-            this._implementsBox.Size = new System.Drawing.Size(867, 32);
+            this._implementsBox.Size = new System.Drawing.Size(402, 21);
             this._implementsBox.TabIndex = 4;
             // 
             // label2
             // 
             this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(331, 8);
+            this.label2.Location = new System.Drawing.Point(153, 4);
+            this.label2.Margin = new System.Windows.Forms.Padding(1, 0, 1, 0);
             this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(124, 24);
+            this.label2.Size = new System.Drawing.Size(60, 13);
             this.label2.TabIndex = 5;
             this.label2.Text = "Implements";
             // 
             // SubGraphPropertiesForm
             // 
             this.AcceptButton = this._okButton;
-            this.AutoScaleDimensions = new System.Drawing.SizeF(13F, 24F);
+            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.CancelButton = this._cancelButton;
-            this.ClientSize = new System.Drawing.Size(1210, 145);
+            this.ClientSize = new System.Drawing.Size(558, 79);
             this.ControlBox = false;
             this.Controls.Add(this.label2);
             this.Controls.Add(this._implementsBox);
@@ -110,6 +118,7 @@
             this.Controls.Add(this._nameBox);
             this.Controls.Add(this._cancelButton);
             this.Controls.Add(this._okButton);
+            this.Margin = new System.Windows.Forms.Padding(1, 2, 1, 2);
             this.MaximizeBox = false;
             this.MinimizeBox = false;
             this.Name = "SubGraphPropertiesForm";

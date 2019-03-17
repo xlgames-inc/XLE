@@ -3,6 +3,9 @@
 
 ~Deferred_Graph
     ~Inherit; ../illum.tech:Illum; ../shared.tech:Deferred
+    ~Parameters
+        ~Geometry
+            OUTPUT_WORLD_POSITION=1
     VertexShader=xleres/deferred/basic.vsh:main
     PixelShader=xleres/Techniques/Graph/Pass_Deferred.graph
 
