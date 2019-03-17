@@ -1,6 +1,7 @@
 
 import std = "xleres/Techniques/Graph/Pass_Standard.sh"
 import gbuffer = "xleres/gbuffer.h"
+import output = "xleres/Nodes/Output.sh"
 
 auto deferred_pass_main(
     VSOutput geo,
@@ -14,3 +15,26 @@ auto deferred_pass_main(
 	node perPixelEval = perPixel(geo:geo);
     return gbuffer::Encode(values:perPixelEval.result).result;
 }
+
+auto deferred_pass_main_separate(
+    VSOutput geo,
+    graph<std::EarlyRejectionTest> rejectionTest,
+    graph<std::PerPixel2> perPixel)
+{
+    /*if (rejectionTest(geo:geo).result) {
+        discard;
+    }*/
+
+	node perPixelEval = perPixel(geo:geo);
+    node gbufferValues = output::Output_PerPixel(
+        diffuseAlbedo:perPixelEval.diffuseAlbedo,
+        worldSpaceNormal:perPixelEval.worldSpaceNormal,
+        material:perPixelEval.material,
+        blendingAlpha:perPixelEval.blendingAlpha,
+        normalMapAccuracy:perPixelEval.normalMapAccuracy,
+        cookedAmbientOcclusion:perPixelEval.cookedAmbientOcclusion,
+        cookedLightOcclusion:perPixelEval.cookedLightOcclusion,
+        transmission:perPixelEval.transmission);
+    return gbuffer::Encode(values:gbufferValues.result).result;
+}
+
