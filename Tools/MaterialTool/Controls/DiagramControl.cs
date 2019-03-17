@@ -223,24 +223,30 @@ namespace MaterialTool.Controls
 
         private ContextMenuStrip CreateSubGraphMenu()
         {
-            var item0 = new ToolStripMenuItem() { Text = "Create Input" };
-            item0.Click += new EventHandler(this.OnCreateInputParameterNode);
+            var item0 = new ToolStripMenuItem() { Text = "Set Sub-Graph Properties" };
+            item0.Click += new EventHandler(this.OnSetSubGraphProperties);
 
-            var item1 = new ToolStripMenuItem() { Text = "Create Output" };
-            item1.Click += new EventHandler(this.OnCreateOutputParameterNode);
+            var item1 = new ToolStripMenuItem() { Text = "Create Input" };
+            item1.Click += new EventHandler(this.OnCreateInputParameterNode);
 
-            var item2 = new ToolStripMenuItem() { Text = "Create Captures Group" };
-            item2.Click += new EventHandler(this.OnCreateCapturesGroup);
+            var item2 = new ToolStripMenuItem() { Text = "Create Output" };
+            item2.Click += new EventHandler(this.OnCreateOutputParameterNode);
+
+            var item3 = new ToolStripMenuItem() { Text = "Create Captures Group" };
+            item3.Click += new EventHandler(this.OnCreateCapturesGroup);
+
+            var item4 = new ToolStripMenuItem() { Text = "Delete Sub-Graph" };
+            item4.Click += new EventHandler(this.OnDeleteSubGraph);
 
             return new ContextMenuStrip(this._components)
             {
-                Items = { item0, item1, item2 }
+                Items = { item0, item1, item2, item3, item4 }
             };
         }
 
         private ContextMenuStrip CreateEmptySpaceMenu()
         {
-            var item2 = new ToolStripMenuItem() { Text = "Create new sub-graph" };
+            var item2 = new ToolStripMenuItem() { Text = "Create New Sub-Graph" };
             item2.Click += new EventHandler(this.OnCreateSubGraph);
 
             return new ContextMenuStrip(this._components)
@@ -604,6 +610,51 @@ namespace MaterialTool.Controls
             }
         }
 
+        private void OnSetSubGraphProperties(object sender, EventArgs e)
+        {
+            object subgraphTag = AttachedSubGraphTag(sender);
+            var subgraph = ViewModel.SubGraphs.Where(x => x.SubGraphTag == subgraphTag).FirstOrDefault();
+            if (subgraph == null) return;
+
+            _nodeFactory.GetSubGraphProperties(subgraph, out string name, out string implements);
+
+            using (var dialog = new NodeEditorCore.SubGraphPropertiesForm { Name = name, Implements = implements })
+            {
+                var result = dialog.ShowDialog();
+                if (result == DialogResult.OK)
+                {
+                    if (!dialog.Name.Equals(name) && HasSubGraphNamed(dialog.Name))
+                    {
+                        MessageBox.Show("Cannot rename sub-graph to (" + dialog.Name + ") because a sub-graph with that name already exists");
+                    }
+                    else
+                    {
+                        _nodeFactory.SetSubGraphProperties(Document.NodeGraphFile, subgraph, dialog.Name, dialog.Implements);
+
+                        var newTag = subgraph.SubGraphTag;
+                        foreach (var node in ViewModel.Nodes)
+                            if (node.SubGraphTag == subgraphTag)
+                                node.SubGraphTag = newTag;
+                        ViewModel.InvokeMiscChange(true);
+                    }
+                }
+            }
+        }
+
+        private void OnDeleteSubGraph(object sender, EventArgs e)
+        {
+            object subgraphTag = AttachedSubGraphTag(sender);
+            var subgraph = ViewModel.SubGraphs.Where(x => x.SubGraphTag == subgraphTag).FirstOrDefault();
+            if (subgraph == null) return;
+
+            List<HyperGraph.Node> nodesToRemove = new List<HyperGraph.Node>();
+            foreach (var node in ViewModel.Nodes)
+                if (node.SubGraphTag == subgraphTag)
+                    nodesToRemove.Add(node);
+            nodesToRemove.Add(subgraph);
+            ViewModel.RemoveNodes(nodesToRemove);
+        }
+
         private bool HasSubGraphNamed(string name)
         {
             return ViewModel.SubGraphs.Where(x => string.Compare(x.SubGraphTag as string, name) == 0).Any();
@@ -622,13 +673,13 @@ namespace MaterialTool.Controls
                 }
             }
 
-            using (var dialog = new HyperGraph.TextEditForm { InputText = name, Text = "New sub-graph name" })
+            using (var dialog = new NodeEditorCore.SubGraphPropertiesForm { Name = name })
             {
                 if (dialog.ShowDialog() == DialogResult.OK)
                 {
-                    if (!HasSubGraphNamed(dialog.InputText))
+                    if (!HasSubGraphNamed(dialog.Name))
                     {
-                        var n = _nodeFactory.CreateSubGraph(Document.NodeGraphFile, dialog.InputText, string.Empty);
+                        var n = _nodeFactory.CreateSubGraph(Document.NodeGraphFile, dialog.Name, dialog.Implements);
                         var tag = ((ToolStripMenuItem)sender).GetCurrentParent().Tag;
                         if (tag is System.Drawing.PointF)
                             n.Location = (System.Drawing.PointF)tag;
@@ -636,7 +687,7 @@ namespace MaterialTool.Controls
                     }
                     else
                     {
-                        MessageBox.Show("Cannot create sub-graph with name (" + dialog.InputText + ") because a sub-graph with that name already exists");
+                        MessageBox.Show("Cannot create sub-graph with name (" + dialog.Name + ") because a sub-graph with that name already exists");
                     }
                 }
             }

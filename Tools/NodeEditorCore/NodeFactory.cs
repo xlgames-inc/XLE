@@ -40,10 +40,13 @@ namespace NodeEditorCore
         void SetProcedureNodeType(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
         ProcedureNodeType GetProcedureNodeType(Node node);
         void UpdateProcedureNode(ShaderPatcherLayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
-        void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph);
 
         Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
+
         Node CreateSubGraph(ShaderPatcherLayer.NodeGraphFile diagramContext, String name, String implements);
+        void SetSubGraphProperties(ShaderPatcherLayer.NodeGraphFile context, Node subGraph, String name, String implements);
+        void GetSubGraphProperties(Node subGraph, out String name, out String implements);
+        void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph);
 
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
@@ -912,13 +915,43 @@ namespace NodeEditorCore
             var tag = new ShaderSubGraphNodeTag { Implements = implements };
             node.Tag = tag;
             node.SubGraphTag = name;
-            node.AddItem(new HyperGraph.Items.NodeTextBoxItem(name), Node.Dock.Top);
-            node.AddItem(new HyperGraph.Items.NodeTitleItem { Title = " implements " }, Node.Dock.Top);
-            var implementsItem = new HyperGraph.Items.NodeTextBoxItem(implements);
-            implementsItem.TextChanged += (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => tag.Implements = args.Text;
-            node.AddItem(implementsItem, Node.Dock.Top);
+
+            var title = name;
+            if (!String.IsNullOrEmpty(implements))
+                title += " [implements " + implements + "]";
+            node.AddItem(new HyperGraph.Items.NodeTitleItem { Title = title }, Node.Dock.Top);            
             UpdateSubGraphNode(context, node);
             return node;
+        }
+
+        public void SetSubGraphProperties(ShaderPatcherLayer.NodeGraphFile context, Node subGraph, String name, String implements)
+        {
+            var tag = subGraph.Tag as ShaderSubGraphNodeTag;
+            if (tag == null) return;
+
+            tag.Implements = implements;
+            var title = subGraph.TopItems.ElementAt(0) as HyperGraph.Items.NodeTitleItem;
+            if (title != null)
+            {
+                title.Title = name;
+                if (!String.IsNullOrEmpty(implements))
+                    title.Title += " implements " + implements;
+            }
+
+            UpdateSubGraphNode(context, subGraph);
+        }
+
+        public void GetSubGraphProperties(Node subGraph, out String name, out String implements)
+        {
+            var tag = subGraph.Tag as ShaderSubGraphNodeTag;
+            if (tag == null)
+            {
+                name = implements = null;
+                return;
+            }
+
+            name = subGraph.SubGraphTag as string;
+            implements = tag.Implements;
         }
 
         public void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph)
