@@ -8,16 +8,36 @@
 
 #include "ShaderGenerator.h"
 #include "../GUILayer/CLIXAutoPtr.h"
+#include <memory>
 
 using System::Collections::Generic::Dictionary;
 using System::String;
 using System::Object;
 using namespace System::Runtime::Serialization;
 
+namespace ToolsRig { class DelegateActualizationMessages; }
+
 namespace ShaderPatcherLayer
 {
 	ref class NodeGraphPreviewConfiguration;
     
+	public ref class DelegateActualizationMessagesWrapper
+	{
+	public:
+		System::Collections::Generic::IEnumerable<System::String^>^ GetMessages();
+
+		delegate void OnChangeEventHandler(System::Object^ sender, System::EventArgs^ args);
+		property OnChangeEventHandler^ OnChangeEvent;
+
+		clix::shared_ptr<ToolsRig::DelegateActualizationMessages> _native;
+		unsigned _callbackId;
+
+		DelegateActualizationMessagesWrapper(const std::shared_ptr<ToolsRig::DelegateActualizationMessages>& techniqueDelegate);
+		DelegateActualizationMessagesWrapper(ToolsRig::DelegateActualizationMessages* techniqueDelegate);
+		DelegateActualizationMessagesWrapper();
+        ~DelegateActualizationMessagesWrapper();
+	};
+
     public interface class IPreviewBuilder
     {
 	public:
@@ -34,7 +54,8 @@ namespace ShaderPatcherLayer
 
 		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
 			NodeGraphFile^ nodeGraph,
-			String^ subGraphName);
+			String^ subGraphName,
+			DelegateActualizationMessagesWrapper^ logMessages);
     };
 
 	class AttachPimpl;

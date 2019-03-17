@@ -57,24 +57,33 @@ namespace MaterialTool
                             var context = _contextRegistry.GetActiveContext<DiagramEditingContext>();
                             if (context != null && context.Document.NodeGraphFile.SubGraphs.Count != 0)
                             {
+                                ControlsLibraryExt.ModelView.PreviewerContext previewerContext = null;
+                                Controls.ActualizationMessagesWindow msgsWindow = null;
+
                                 foreach (var control in _controlHostService.Controls)
                                 {
                                     var adaptableControl = control.Control as AdaptableControl;
-                                    if (adaptableControl != null)
-                                    {
-                                        var previewerContext = adaptableControl.ContextAs<ControlsLibraryExt.ModelView.PreviewerContext>();
-                                        if (previewerContext != null)
-                                        {
-                                            var previewSettings = new ShaderPatcherLayer.PreviewSettings
-                                            {
-                                                Geometry = ShaderPatcherLayer.PreviewGeometry.Model
-                                            };
-                                            previewerContext.LayerController.SetTechniqueOverrides(
-                                                _previewManager.MakeTechniqueDelegate(
-                                                    context.Document.NodeGraphFile,
-                                                    context.Document.NodeGraphFile.SubGraphs.First().Key));
-                                        }
+                                    if (adaptableControl != null) {
+                                        var c = adaptableControl.ContextAs<ControlsLibraryExt.ModelView.PreviewerContext>();
+                                        if (c != null) previewerContext = c;
                                     }
+
+                                    var mw = control.Control as Controls.ActualizationMessagesWindow;
+                                    if (mw != null)
+                                        msgsWindow = mw;
+                                }
+
+                                if (previewerContext != null)
+                                {
+                                    var actualizationMsgs = new ShaderPatcherLayer.DelegateActualizationMessagesWrapper();
+                                    previewerContext.TechniqueOverrides =
+                                        _previewManager.MakeTechniqueDelegate(
+                                            context.Document.NodeGraphFile,
+                                            context.Document.NodeGraphFile.SubGraphs.First().Key,
+                                            actualizationMsgs);
+
+                                    if (msgsWindow!=null)
+                                        msgsWindow.SetContext(actualizationMsgs);
                                 }
                             }
                         }

@@ -25,8 +25,7 @@ namespace ControlsLibraryExt.ModelView
             set
             {
                 LayerController.SetModelSettings(value);
-                if (OnModelSettingsChange != null)
-                    OnModelSettingsChange.Invoke(this, null);
+                OnModelSettingsChange?.Invoke(this, null);
             }
             get { return LayerController.GetModelSettings(); }
         }
@@ -36,8 +35,7 @@ namespace ControlsLibraryExt.ModelView
             set
             {
                 LayerController.SetOverlaySettings(value);
-                if (OnOverlaySettingsChange != null)
-                    OnOverlaySettingsChange.Invoke(this, null);
+                OnOverlaySettingsChange?.Invoke(this, null);
             }
             get { return LayerController.GetOverlaySettings(); }
         }
@@ -58,8 +56,18 @@ namespace ControlsLibraryExt.ModelView
         }
         private GUILayer.VisLayerController _layerController = null;
 
+        public GUILayer.TechniqueDelegateWrapper TechniqueOverrides
+        {
+            set
+            {
+                LayerController.SetTechniqueOverrides(value);
+                OnMiscChange?.Invoke(this, null);
+            }
+        }
+
         public event EventHandler OnModelSettingsChange;
         public event EventHandler OnOverlaySettingsChange;
+        public event EventHandler OnMiscChange;
     }
 
     [Export(typeof(PreviewerControl))]
@@ -105,6 +113,7 @@ namespace ControlsLibraryExt.ModelView
                 existingContext.LayerController.DetachFromView(_view.Underlying);
                 existingContext.OnModelSettingsChange -= OnModelSettingsChange;
                 existingContext.OnOverlaySettingsChange -= OnOverlaySettingsChange;
+                existingContext.OnMiscChange -= OnMiscChange;
             }
             Context = context;
             if (context != null)
@@ -115,7 +124,9 @@ namespace ControlsLibraryExt.ModelView
                 _animationCtrls.AnimationState = context.LayerController.AnimationState;
                 context.OnModelSettingsChange += OnModelSettingsChange;
                 context.OnOverlaySettingsChange += OnOverlaySettingsChange;
+                context.OnMiscChange += OnMiscChange;
             }
+            _view.Invalidate();
         }
 
         public Material.ActiveMaterialContext ActiveMaterialContext { get; set; }
@@ -153,6 +164,11 @@ namespace ControlsLibraryExt.ModelView
             {
                 _ctrls.OverlaySettings = context.OverlaySettings;
             }
+        }
+
+        private void OnMiscChange(object sender, EventArgs args)
+        {
+            _view.Invalidate();
         }
 
         #region ContextMenu

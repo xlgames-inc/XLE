@@ -132,6 +132,7 @@ namespace MaterialTool
                 typeof(Controls.SubGraphControl),
                 typeof(Controls.ShaderFragmentArchiveControl),
                 typeof(Controls.DiagramLister),
+                typeof(Controls.ActualizationMessagesWindow),
 
                 typeof(ControlsLibrary.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),

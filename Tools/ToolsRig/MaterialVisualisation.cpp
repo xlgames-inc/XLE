@@ -32,6 +32,7 @@
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/ResourceBox.h"
 #include "../../Utility/Streams/PathUtils.h"
+#include "../../Utility/Threading/Mutex.h"
 
 namespace ToolsRig
 {
@@ -225,19 +226,13 @@ namespace ToolsRig
 		static ::Assets::FuturePtr<RenderCore::CompiledShaderByteCode> GeneratePixelPreviewShader(
 			StringSection<> psName, StringSection<> definesTable,
 			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
-			const std::string& psMainName)
+			const std::string& psMainName,
+			const std::shared_ptr<DelegateActualizationMessages>& logMessages)
 		{
 			auto future = std::make_shared<::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>>(psName.AsString());
 			TRY
 			{
 				auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
-				auto defaultPerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
-					"xleres/Techniques/Graph/Object_Default.graph::Default_PerPixel",
-					{},
-					{
-						{ "materialSampler", { "xleres/Techniques/Graph/Object_Default.sh::MaterialSampler_RMS" } }
-					}
-				};
 
 				auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
 					psMainName, {}, {}, provider
@@ -246,7 +241,6 @@ namespace ToolsRig
 				ShaderPatcher::InstantiationParameters instParams {
 					{ "rejectionTest", earlyRejection },
 					{ "perPixel", overridePerPixel }
-					// { "perPixel", defaultPerPixel }
 				};
 				auto psNameSplit = MakeFileNameSplitter(psName);
 				auto fragments = ShaderPatcher::InstantiateShader(
@@ -267,7 +261,7 @@ namespace ToolsRig
 					mergedFragments, "deferred_pass_main", psNameSplit.Parameters(), definesTable);
 
 				future->SetPollingFunction(
-					[pendingCompile](::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>& thatFuture) -> bool {
+					[pendingCompile, logMessages, mergedFragments](::Assets::AssetFuture<RenderCore::CompiledShaderByteCode>& thatFuture) -> bool {
 						auto state = pendingCompile->GetAssetState();
 						if (state == ::Assets::AssetState::Pending) return true;
 
@@ -281,6 +275,8 @@ namespace ToolsRig
 										break;
 									}
 								thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob());
+								if (logMessages)
+									logMessages->AddMessage(std::string("Got error during shader compile: ") + ::Assets::AsString(logArtifact->GetBlob()) + "\n");
 							} else {
 								thatFuture.SetInvalidAsset(nullptr, nullptr);
 							}
@@ -290,16 +286,26 @@ namespace ToolsRig
 						assert(state == ::Assets::AssetState::Ready);
 						auto& artifact = *pendingCompile->GetArtifacts()[0].second;
 						AutoConstructToFutureDirect(thatFuture, artifact.GetBlob(), artifact.GetDependencyValidation(), artifact.GetRequestParameters());
+						if (logMessages) {
+							std::stringstream str;
+							str << "Completed shader: " << std::endl;
+							str << mergedFragments << std::endl;
+							logMessages->AddMessage(str.str());
+						}
 						return false;
 					});
 			} CATCH (const ::Assets::Exceptions::ConstructionError& e) {
 				future->SetInvalidAsset(
 					e.GetDependencyValidation(),
 					e.GetActualizationLog());
+				if (logMessages)
+					logMessages->AddMessage(std::string("Got exception during shader construction: ") + ::Assets::AsString(e.GetActualizationLog()) + "\n");
 			} CATCH (const std::exception& e) {
 				future->SetInvalidAsset(
 					std::make_shared<::Assets::DependencyValidation>(),
 					::Assets::AsBlob(e.what()));
+				if (logMessages)
+					logMessages->AddMessage(std::string("Got exception during shader construction: ") + e.what() + "\n");
 			} CATCH_END
 			return future;
 		}
@@ -315,14 +321,22 @@ namespace ToolsRig
 
 		GraphPreviewTechniqueDelegate(
 			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
-			const std::string& psMainName)
+			const std::string& psMainName,
+			const std::shared_ptr<DelegateActualizationMessages>& logMessages)
 		{
-			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>("xleres/Techniques/Graph/graph.tech");
-			future->StallWhilePending();
-			_technique = future->Actualize();
+			const char techFile[] = "xleres/Techniques/Graph/graph.tech";
+			auto future = ::Assets::MakeAsset<RenderCore::Techniques::Technique>(techFile);
+			auto state = future->StallWhilePending();
+			if (state == ::Assets::AssetState::Ready) {
+				_technique = future->Actualize();
+			} else {
+				std::stringstream str;
+				str << "Failed loading technique file (" << techFile << ") with message (" << ::Assets::AsString(future->GetActualizationLog()) << ")";
+				logMessages->AddMessage(str.str());
+			}
 
 			_resolvedShaders._creationFn = 
-				[provider, psMainName](
+				[provider, psMainName, logMessages](
 					StringSection<> vsName,
 					StringSection<> gsName,
 					StringSection<> psName,
@@ -333,7 +347,7 @@ namespace ToolsRig
 					
 					::Assets::FuturePtr<CompiledShaderByteCode> psCode;
 					if (XlEqString(MakeFileNameSplitter(psName).Extension(), "graph")) {
-						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName);
+						psCode = GeneratePixelPreviewShader(psName, defines, provider, psMainName, logMessages);
 					} else {
 						psCode = ::Assets::MakeAsset<CompiledShaderByteCode>(psName, defines);
 					}
@@ -373,10 +387,62 @@ namespace ToolsRig
 
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
-		const std::string& psMainName)
+		const std::string& psMainName,
+		const std::shared_ptr<DelegateActualizationMessages>& logMessages)
 	{
-		return std::make_unique<GraphPreviewTechniqueDelegate>(provider, psMainName);
+		return std::make_unique<GraphPreviewTechniqueDelegate>(provider, psMainName, logMessages);
 	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class DelegateActualizationMessages::Pimpl
+	{
+	public:
+		std::vector<std::string> _messages;
+		Threading::RecursiveMutex _lock;
+
+		std::vector<std::pair<unsigned, std::shared_ptr<Utility::OnChangeCallback>>> _callbacks;
+		unsigned _nextCallbackId = 1;
+	};
+
+	std::vector<std::string> DelegateActualizationMessages::GetMessages() const
+	{
+		ScopedLock(_pimpl->_lock);
+		auto copy = _pimpl->_messages;
+		return copy;
+	}
+
+	unsigned DelegateActualizationMessages::AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback)
+	{
+		ScopedLock(_pimpl->_lock);
+		_pimpl->_callbacks.push_back(std::make_pair(_pimpl->_nextCallbackId, callback));
+		return _pimpl->_nextCallbackId++;
+	}
+
+	void DelegateActualizationMessages::RemoveCallback(unsigned id)
+	{
+		ScopedLock(_pimpl->_lock);
+		auto i = std::find_if(
+			_pimpl->_callbacks.begin(), _pimpl->_callbacks.end(),
+			[id](const std::pair<unsigned, std::shared_ptr<Utility::OnChangeCallback>>& p) { return p.first == id; } );
+		_pimpl->_callbacks.erase(i);
+	}
+
+	void DelegateActualizationMessages::AddMessage(const std::string& msg)
+	{
+		ScopedLock(_pimpl->_lock);
+		_pimpl->_messages.push_back(msg);
+		for (const auto&cb:_pimpl->_callbacks)
+			cb.second->OnChange();
+	}
+
+	DelegateActualizationMessages::DelegateActualizationMessages()
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
+
+	DelegateActualizationMessages::~DelegateActualizationMessages()
+	{}
 
 }
 

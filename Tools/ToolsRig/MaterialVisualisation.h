@@ -12,6 +12,7 @@
 namespace SceneEngine { class IScene; }
 namespace RenderCore { namespace Techniques { class ITechniqueDelegate; }}
 namespace ShaderPatcher { class INodeGraphProvider; }
+namespace Utility { class OnChangeCallback; }
 
 namespace ToolsRig
 {
@@ -24,7 +25,25 @@ namespace ToolsRig
 
 	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject);
 
+	class DelegateActualizationMessages
+	{
+	public:
+		std::vector<std::string> GetMessages() const;
+
+		unsigned AddCallback(const std::shared_ptr<Utility::OnChangeCallback>& callback);
+		void RemoveCallback(unsigned);
+
+		void AddMessage(const std::string& msg);
+
+		DelegateActualizationMessages();
+		~DelegateActualizationMessages();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+	};
+
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
 		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
-		const std::string& psMainName);
+		const std::string& psMainName,
+		const std::shared_ptr<DelegateActualizationMessages>& logMessages);
 }
