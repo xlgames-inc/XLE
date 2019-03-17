@@ -222,7 +222,10 @@ namespace ToolsRig
 
 			const auto& shaderFuture = _resolvedShaders.FindVariation(_technique->GetEntry(techniqueIndex), shaderSelectors);
 			if (!shaderFuture) return nullptr;
-			return shaderFuture->TryActualize().get();
+			// In this case we want invalid / pending shaders to get registered as such. So use the "throwing" version of
+			// the Actualize call
+			shaderFuture->OnFrameBarrier();		// hack -- we still need to invoke the OnFrameBarrier call, because the future is not registered with the asset manager
+			return shaderFuture->Actualize().get();
 		}
 
 		static ::Assets::FuturePtr<RenderCore::CompiledShaderByteCode> GeneratePixelPreviewShader(

@@ -114,7 +114,7 @@ namespace MaterialTool
                     "ShowInPreviewer",
                     "Show In Previewer".Localize(),
                     "Show this shader diagram in the previewer".Localize(),
-                    Keys.None,
+                    Keys.P,
                     null,
                     CommandVisibility.Menu),
                 this);
