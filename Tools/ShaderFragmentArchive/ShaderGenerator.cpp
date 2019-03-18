@@ -489,7 +489,7 @@ namespace ShaderPatcherLayer
 	{
 		SubGraph^ subGraph = nullptr;
 		if (SubGraphs->TryGetValue(subGraphName, subGraph))
-			return subGraph->Graph->GeneratePreviewShader(previewNodeId, this, settings, variableRestrictions);
+			return subGraph->Graph->GeneratePreviewShader(previewNodeId, subGraph->Signature, this, settings, variableRestrictions);
 		return gcnew Tuple<String^, String^>(String::Empty, String::Empty);
 	}
 
@@ -517,6 +517,7 @@ namespace ShaderPatcherLayer
 	Tuple<String^, String^>^ 
 		NodeGraph::GeneratePreviewShader(
 			UInt32 previewNodeId, 
+			NodeGraphSignature^ signature,
 			NodeGraphFile^ nodeGraphFile,
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
@@ -542,7 +543,8 @@ namespace ShaderPatcherLayer
 
 			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());
 			auto mainInstantiation = ShaderPatcher::InstantiateShader(
-				"preview_graph", nativeGraph,  provider,
+				ShaderPatcher::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), provider },
+				false,
 				instantiationParams);
 
 			ShaderPatcher::PreviewOptions options {

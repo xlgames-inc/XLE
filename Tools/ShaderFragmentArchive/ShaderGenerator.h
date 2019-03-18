@@ -96,6 +96,8 @@ namespace ShaderPatcherLayer
 	};
 
         ///////////////////////////////////////////////////////////////
+	ref class NodeGraphSignature;
+
     public ref class NodeGraph
     {
     public:
@@ -113,6 +115,7 @@ namespace ShaderPatcherLayer
 		Tuple<String^, String^>^ 
 			GeneratePreviewShader(
 				UInt32 previewNodeId, 
+				NodeGraphSignature^ signature,
 				NodeGraphFile^ nodeGraphFile,
 				PreviewSettings^ settings,
 				IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);

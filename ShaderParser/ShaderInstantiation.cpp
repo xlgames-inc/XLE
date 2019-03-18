@@ -20,7 +20,7 @@ namespace ShaderPatcher
         return baseName + "_" + std::to_string(instantiationHash);
     }
 
-	static InstantiatedShader InstantiateShader(
+	InstantiatedShader InstantiateShader(
         const ShaderPatcher::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
 		const ShaderPatcher::InstantiationParameters& instantiationParameters)
@@ -69,9 +69,19 @@ namespace ShaderPatcher
 
 				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
 			}
+
 			result._sourceFragments.insert(
 				result._sourceFragments.end(),
 				instFn._sourceFragments.begin(), instFn._sourceFragments.end());
+
+			{
+				// write captured parameters into a cbuffer (todo -- merge captures from all instantiations)
+				std::stringstream str;
+				str << ShaderPatcher::GenerateMaterialCBuffer(inst._graph._signature);
+				auto fragment = str.str();
+				if (!fragment.empty())
+					result._sourceFragments.push_back(fragment);
+			}
 
 			if (entryPointInstantiation)
 				result._entryPointSignature = instFn._entryPointSignature;
@@ -138,27 +148,6 @@ namespace ShaderPatcher
 	{
 		return InstantiateShader(
 			ShaderPatcher::LoadGraph(entryFile, entryFn), true,
-			instantiationParameters);
-	}
-
-	InstantiatedShader InstantiateShader(
-		const INodeGraphProvider::NodeGraph& initialGraph,
-		const ShaderPatcher::InstantiationParameters& instantiationParameters)
-	{
-		return InstantiateShader(
-			initialGraph, true,
-			instantiationParameters);
-	}
-
-	InstantiatedShader InstantiateShader(
-		StringSection<> shaderName,
-		const NodeGraph& graph,
-		const std::shared_ptr<INodeGraphProvider>& subProvider,
-		const InstantiationParameters& instantiationParameters)
-	{
-		return InstantiateShader(
-			INodeGraphProvider::NodeGraph { shaderName.AsString(), graph, {}, subProvider }, 
-			false,
 			instantiationParameters);
 	}
 }

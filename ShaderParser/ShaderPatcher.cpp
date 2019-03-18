@@ -265,6 +265,7 @@ namespace ShaderPatcher
 		IteratorRange<const NodeGraphSignature::Parameter*>		_predefinedParameters;
 		std::vector<NodeGraphSignature::Parameter>				_dangingParameters;		// these are input/outputs from nodes in the graph that aren't connected to anything
 		std::vector<NodeGraphSignature::Parameter>				_additionalParameters;	// these are interface parameters referenced in the graph that don't match anything in the fixed interface
+		std::vector<NodeGraphSignature::Parameter>				_capturedParameters;
 
 		std::vector<std::pair<std::string, NodeGraphSignature::Parameter>>	_curriedParameters;
 	};
@@ -281,7 +282,8 @@ namespace ShaderPatcher
 		unsigned suffix = 0;
 		for (;;) {
 			if (	!HasParameterWithName(testName, MakeIteratorRange(interfContext._additionalParameters))
-				&&	!HasParameterWithName(testName, MakeIteratorRange(interfContext._dangingParameters))) {
+				&&	!HasParameterWithName(testName, MakeIteratorRange(interfContext._dangingParameters))
+				&&	!HasParameterWithName(testName, MakeIteratorRange(interfContext._capturedParameters))) {
 				return testName;
 			} else {
 				std::stringstream str;
@@ -324,31 +326,64 @@ namespace ShaderPatcher
 
 		} else if (connection.InputNodeId() == NodeId_Interface) {
 
+			NodeGraphSignature::Parameter param { expectedType, connection.InputParameterName() };
+
+			// If we have an entry for this param in the "predefinedParameters" list, then we must
+			// take the type and semantic from there.
+			auto predefined = std::find_if(
+				interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
+				[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
+			if (predefined != interfContext._predefinedParameters.end()) {
+				param = *predefined;
+				if (param._type.empty() || XlEqString(param._type, "auto"))	// fallback to the expectedType if the predefined param has no type sets
+					param._type = expectedType;
+			}
+
 			auto existing = std::find_if(
 				interfContext._additionalParameters.begin(), interfContext._additionalParameters.end(),
 				[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
 			if (existing == interfContext._additionalParameters.end()) {
-				auto p = std::find_if(
-					interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
-					[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
-				if (p != interfContext._predefinedParameters.end()) {
-					NodeGraphSignature::Parameter newParam = *p;
-					if (newParam._type.empty() || XlEqString(newParam._type, "auto"))
-						newParam._type = expectedType;
-					existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), newParam);
-				} else {
-					existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), {expectedType, connection.InputParameterName()});
-				}
+				existing = interfContext._additionalParameters.insert(interfContext._additionalParameters.end(), param);
+			} else {
+				assert(XlEqString(MakeStringSection(param._type), existing->_type));
 			}
 
-			finalType = WriteCastExpression(str, {existing->_name, existing->_type}, expectedType);
+			finalType = WriteCastExpression(str, {param._name, param._type}, expectedType);
 
 		} else {
 
 			auto n = nodeGraph.GetNode(connection.InputNodeId());
 			if (n) {
-				auto type = TypeFromShaderFragment(n->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider);
-				finalType = WriteCastExpression(str, {OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type}, expectedType);
+				ExpressionString expr;
+				if (n->GetType() == Node::Type::Procedure) {
+					auto type = TypeFromShaderFragment(n->ArchiveName(), connection.InputParameterName(), ParameterDirection::Out, sigProvider);
+					expr = {OutputTemporaryForNode(connection.InputNodeId(), connection.InputParameterName()), type};
+				} else {
+					assert(n->GetType() == Node::Type::Captures);
+
+					NodeGraphSignature::Parameter param { expectedType, connection.InputParameterName() };
+
+					auto predefined = std::find_if(
+						interfContext._predefinedParameters.begin(), interfContext._predefinedParameters.end(),
+						[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
+					if (predefined != interfContext._predefinedParameters.end()) {
+						param = *predefined;
+						if (param._type.empty() || XlEqString(param._type, "auto"))
+							param._type = expectedType;
+					}
+
+					auto existing = std::find_if(
+						interfContext._capturedParameters.begin(), interfContext._capturedParameters.end(),
+						[&connection](const NodeGraphSignature::Parameter& param) { return param._direction == ParameterDirection::In && XlEqString(MakeStringSection(connection.InputParameterName()), param._name); });
+					if (existing == interfContext._capturedParameters.end()) {
+						existing = interfContext._capturedParameters.insert(interfContext._capturedParameters.end(), param);
+					} else {
+						assert(XlEqString(MakeStringSection(param._type), existing->_type));
+					}
+
+					expr = ExpressionString { param._name, param._type };
+				}
+				finalType = WriteCastExpression(str, expr, expectedType);
 			} else {
 				// str << "// ERROR: could not find node for parameter expression. Looking for node id (" << connection.InputNodeId() << ") and input parameter (" << connection.InputParameterName() << ")" << std::endl;
 				str << "DefaultValue_" << expectedType << "()";
@@ -1007,6 +1042,14 @@ namespace ShaderPatcher
 			std::move(depTable)};
     }
 
+	static std::string MakeGlobalName(const std::string& str)
+	{
+		auto i = str.find('.');
+		if (i != std::string::npos)
+			return str.substr(i+1);
+		return str;
+	}
+
 	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf)
 	{
 		std::stringstream result;
@@ -1019,7 +1062,10 @@ namespace ShaderPatcher
         bool hasMaterialConstants = false;
         for(auto i:interf.GetCapturedParameters()) {
             if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
-                result << i._type << " " << i._name << ";" << std::endl;
+				auto name = MakeGlobalName(i._name);
+				// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
+				if (!XlEqString(name, "DiffuseTexture") && !XlEqString(name, "NormalsTexture"))
+					result << i._type << " " << name << ";" << std::endl;
             } else
                 hasMaterialConstants = true;
         }
@@ -1031,7 +1077,7 @@ namespace ShaderPatcher
             result << "{" << std::endl;
             for (const auto& i:interf.GetCapturedParameters())
                 if (CanBeStoredInCBuffer(MakeStringSection(i._type)))
-                    result << "\t" << i._type << " " << i._name << ";" << std::endl;
+                    result << "\t" << i._type << " " << MakeGlobalName(i._name) << ";" << std::endl;
             result << "}" << std::endl;
         }
 		result << std::endl;
@@ -1147,7 +1193,6 @@ namespace ShaderPatcher
 		{
 			std::stringstream header;
 			header << "/////// Scaffold function for: " << implementationFunctionName << " ///////" << std::endl;
-			header << GenerateMaterialCBuffer(generatedFunctionSignature);
 			header << GenerateSignature(slotSignature, scaffoldFunctionName) << std::endl;
 
 			return header.str() + result.str();
@@ -1252,14 +1297,15 @@ namespace ShaderPatcher
 			unsigned outputCount = 0;
 			for (const auto&i:graph.GetConnections())
 				if (i.InputNodeId() == id) ++outputCount;
+
+			auto i2 = std::find_if(graph.GetNodes().cbegin(), graph.GetNodes().cend(), [id](const Node& n) { return n.NodeId() == id; });
+            if (i2 == graph.GetNodes().cend()) continue;
+
 			// No need to instantiate nodes that have exactly 1 output connection. These will be instantiated in-place
 			// when the connected node is instantiated. We do actually want to instantiate nodes with zero output connections
 			// -- these are redundant to the final product, but if we don't create them here, they will disappear from the
 			// graph entirely
-			if (outputCount == 1) continue;
-
-			auto i2 = std::find_if(graph.GetNodes().cbegin(), graph.GetNodes().cend(), [id](const Node& n) { return n.NodeId() == id; });
-            if (i2 == graph.GetNodes().cend()) continue;
+			if (outputCount == 1 && i2->GetType() == Node::Type::Procedure) continue;
 
 			assert(instantiatedNodes.find(id) == instantiatedNodes.end());
 			std::string nodeName;

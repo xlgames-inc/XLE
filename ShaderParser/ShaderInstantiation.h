@@ -61,12 +61,7 @@ namespace ShaderPatcher
 
 	InstantiatedShader InstantiateShader(
 		const INodeGraphProvider::NodeGraph& initialGraph,
-		const InstantiationParameters& instantiationParameters);
-
-	InstantiatedShader InstantiateShader(
-		StringSection<> shaderName,
-		const NodeGraph& graph,
-		const std::shared_ptr<INodeGraphProvider>& subProvider,
+		bool useScaffoldFunction,
 		const InstantiationParameters& instantiationParameters);
 
         ///////////////////////////////////////////////////////////////
