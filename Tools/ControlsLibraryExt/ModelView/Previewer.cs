@@ -188,6 +188,7 @@ namespace ControlsLibraryExt.ModelView
         {
             var context = _exportProvider.GetExport<ControlsLibraryExt.ModelView.PreviewerContext>().Value;
             var control = _exportProvider.GetExport<ControlsLibraryExt.ModelView.PreviewerControl>().Value;
+            control.ActiveMaterialContext = _activeMaterialContext;
             control.SetContext(context);
             _exportProvider.GetExport<IControlHostService>().Value.RegisterControl(
                 control.As<Control>(),

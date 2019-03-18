@@ -11,6 +11,7 @@
 
 namespace SceneEngine { class IScene; }
 namespace RenderCore { namespace Techniques { class ITechniqueDelegate; }}
+namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
 namespace ShaderPatcher { class INodeGraphProvider; }
 namespace Utility { class OnChangeCallback; }
 
@@ -23,7 +24,9 @@ namespace ToolsRig
         GeometryType _geometryType = GeometryType::Sphere;
     };
 
-	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject);
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const MaterialVisSettings& visObject, 
+		const std::shared_ptr<RenderCore::Assets::MaterialScaffoldMaterial>& material = nullptr);
 
 	class MessageRelay
 	{

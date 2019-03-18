@@ -184,12 +184,16 @@ namespace ToolsRig
 		void BindAnimationState(const std::shared_ptr<VisAnimationState>& animState) {}
 		bool HasActiveAnimation() const { return false; }
 
-        MaterialVisualizationScene(const MaterialVisSettings& settings)
-        : _settings(settings)
+        MaterialVisualizationScene(
+			const MaterialVisSettings& settings,
+			const std::shared_ptr<RenderCore::Techniques::Material>& material)
+        : _settings(settings), _material(material)
 		{
 			_depVal = std::make_shared<::Assets::DependencyValidation>();
-			_material = std::make_shared<RenderCore::Techniques::Material>();
-			XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
+			if (!_material) {
+				_material = std::make_shared<RenderCore::Techniques::Material>();
+				XlCopyString(_material->_techniqueConfig, "xleres/techniques/illum.tech");
+			}
 		}
 
 		const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
@@ -200,10 +204,12 @@ namespace ToolsRig
 		::Assets::DepValPtr _depVal;
     };
 
-	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(const MaterialVisSettings& visObject)
+	::Assets::FuturePtr<SceneEngine::IScene> MakeScene(
+		const MaterialVisSettings& visObject,
+		const std::shared_ptr<RenderCore::Techniques::Material>& material)
 	{
 		auto result = std::make_shared<::Assets::AssetFuture<MaterialVisualizationScene>>("MaterialVisualization");
-		::Assets::AutoConstructToFuture(*result, visObject);
+		::Assets::AutoConstructToFuture(*result, visObject, material);
 		return std::reinterpret_pointer_cast<::Assets::AssetFuture<SceneEngine::IScene>>(result);
 	}
 

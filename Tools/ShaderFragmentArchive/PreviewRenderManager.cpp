@@ -93,9 +93,9 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static RenderCore::Techniques::Material CreatePreviewMaterial(ShaderPatcherLayer::NodeGraphMetaData^ doc, const ::Assets::DirectorySearchRules& searchRules)
+	static std::shared_ptr<RenderCore::Techniques::Material> CreatePreviewMaterial(ShaderPatcherLayer::NodeGraphMetaData^ doc, const ::Assets::DirectorySearchRules& searchRules)
 	{
-		RenderCore::Techniques::Material result;
+		auto result = std::make_shared<RenderCore::Techniques::Material>();
 
         // Our default material settings come from the "Document" object. This
         // give us our starting material and shader properties.
@@ -105,16 +105,16 @@ namespace ShaderPatcherLayer
             for each(auto s in split) {
                 auto nativeName = clix::marshalString<clix::E_UTF8>(s);
 				RenderCore::Assets::MergeIn_Stall(
-					result,
+					*result,
 					MakeStringSection(nativeName),
 					searchRules,
 					finalMatDeps);
             }
         }
-        result._matParams.SetParameter(u("SHADER_NODE_EDITOR"), MakeStringSection("1"));
+        result->_matParams.SetParameter(u("SHADER_NODE_EDITOR"), MakeStringSection("1"));
 
         for each(auto i in doc->ShaderParameters)
-            result._matParams.SetParameter(
+            result->_matParams.SetParameter(
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(i.Key)).Cast<utf8>(),
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(i.Value)));
 
@@ -283,7 +283,8 @@ namespace ShaderPatcherLayer
 				break;
 			}
 
-			sceneFuture = ToolsRig::MakeScene(visSettings);
+			auto material = CreatePreviewMaterial(doc, ::Assets::DirectorySearchRules{});
+			sceneFuture = ToolsRig::MakeScene(visSettings, material);
 		} else {
 			ToolsRig::ModelVisSettings visSettings;
 			visSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
@@ -292,7 +293,6 @@ namespace ShaderPatcherLayer
 		}
 
 		// visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
-		// visSettings->_parameters = CreatePreviewMaterial(doc, visSettings->_searchRules);
 		
 		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
 		if (!actualScene) {

@@ -169,8 +169,6 @@ namespace MaterialTool.Controls
             var context = ContextAs<DiagramEditingContext>();
             if (context.Document.GraphMetaData.DefaultsMaterial != _activeMaterialContext.MaterialName) {
                 context.Document.GraphMetaData.DefaultsMaterial = _activeMaterialContext.MaterialName;
-                System.Diagnostics.Debug.Assert(false);
-                // doc.ContainingDocument.Invalidate();
             }
             GUILayer.EngineDevice.GetInstance().ForegroundUpdate();
         }
