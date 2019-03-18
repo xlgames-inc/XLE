@@ -78,6 +78,8 @@ namespace ControlsLibraryExt.ModelView
         {
             InitializeComponent();
             _view.MouseClick += OnViewerMouseClick;
+            _view.MouseDown += OnViewerMouseDown;
+            _view.MouseMove += OnViewerMouseMove;
             _ctrls.OverlaySettings_OnChange += (object sender, EventArgs args) => {
                 var previewContext = ContextAs<PreviewerContext>();
                 if (previewContext != null) {
@@ -103,6 +105,19 @@ namespace ControlsLibraryExt.ModelView
                     context.LayerController.ResetCamera();
                 }
             };
+        }
+
+        private bool _isContextMenuPrimed = false;
+
+        private void OnViewerMouseMove(object sender, MouseEventArgs e)
+        {
+            _isContextMenuPrimed = false;
+        }
+
+        private void OnViewerMouseDown(object sender, MouseEventArgs e)
+        {
+            if (e.Button == MouseButtons.Right)
+                _isContextMenuPrimed = true;
         }
 
         public void SetContext(PreviewerContext context)
@@ -208,26 +223,31 @@ namespace ControlsLibraryExt.ModelView
         {
             if (e.Button == MouseButtons.Right)
             {
-                var context = ContextAs<PreviewerContext>();
-                if (context != null && context.MouseOver.HasMouseOver && ActiveMaterialContext != null)
+                if (_isContextMenuPrimed)
                 {
-                    ContextMenu cm = new ContextMenu();
-                    var matName = context.MouseOver.MaterialName;
-                    if (!string.IsNullOrEmpty(matName) && matName[0] != '<')
+                    var context = ContextAs<PreviewerContext>();
+                    if (context != null && context.MouseOver.HasMouseOver && ActiveMaterialContext != null)
                     {
-                        cm.MenuItems.Add(
-                            new MenuItem("Pick &Material (" + context.MouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial)) { Tag = context.MouseOver.FullMaterialName });
-
-                        foreach (var t in ActiveMaterialContext.AssignableTechniqueConfigs)
+                        ContextMenu cm = new ContextMenu();
+                        var matName = context.MouseOver.MaterialName;
+                        if (!string.IsNullOrEmpty(matName) && matName[0] != '<')
                         {
                             cm.MenuItems.Add(
-                                new MenuItem("Assign Technique (" + t + ")",
-                                new EventHandler(ContextMenu_AssignTechnique)) { Tag = new Tuple<string, string>(context.MouseOver.FullMaterialName, t) });
-                        }
-                    }
+                                new MenuItem("Pick &Material (" + context.MouseOver.MaterialName + ")", new EventHandler(ContextMenu_EditMaterial)) { Tag = context.MouseOver.FullMaterialName });
 
-                    cm.Show(this, e.Location);
+                            foreach (var t in ActiveMaterialContext.AssignableTechniqueConfigs)
+                            {
+                                cm.MenuItems.Add(
+                                    new MenuItem("Assign Technique (" + t + ")",
+                                    new EventHandler(ContextMenu_AssignTechnique))
+                                    { Tag = new Tuple<string, string>(context.MouseOver.FullMaterialName, t) });
+                            }
+                        }
+
+                        cm.Show(this, e.Location);
+                    }
                 }
+                _isContextMenuPrimed = false;
             }
         }
         #endregion
