@@ -297,19 +297,19 @@ namespace RenderCore { namespace Metal_OpenGLES
                     capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
                 }
             } else {
-                #if GL_ARB_instanced_arrays
                     auto differences = (capture->_instancedVertexAttrib & _attributeState) | instanceFlags;
                     if (differences) {
-                        int firstActive = xl_ctz4(differences);
-                        int lastActive = 32u - xl_clz4(differences);
-                        for (int c=firstActive; c<lastActive; ++c)
-                            if (_attributeState & (1<<c))
-                                glVertexAttribDivisorARB(c, instanceDataRate[c]);
-                        capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                        #if GL_ARB_instanced_arrays
+                            int firstActive = xl_ctz4(differences);
+                            int lastActive = 32u - xl_clz4(differences);
+                            for (int c=firstActive; c<lastActive; ++c)
+                                if (_attributeState & (1<<c))
+                                    glVertexAttribDivisorARB(c, instanceDataRate[c]);
+                            capture->_instancedVertexAttrib = (capture->_instancedVertexAttrib & ~_attributeState) | instanceFlags;
+                        #else
+                            assert(0);  // no hardware support for variable rate input attributes
+                        #endif
                     }
-                #else
-                    assert(0);  // no hardware support for variable rate input attributes
-                #endif
             }
 
             // set enable/disable flags --
