@@ -1,14 +1,9 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#include "../Core/Prefix.h"
-#include "../Core/Exceptions.h"
-#include "../Utility/UTFUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/IteratorUtils.h"
 #include <vector>
@@ -79,13 +74,5 @@ namespace GraphLanguage
         std::vector<std::pair<std::string, NodeGraphSignature>>		_functions;
         std::vector<UniformBufferSignature>							_uniformBuffers;
     };
-
-	
-	extern const std::string s_resultName;
-}
-
-namespace ShaderSourceParser
-{
-    GraphLanguage::ShaderFragmentSignature     ParseHLSL(StringSection<char> sourceCode);
 }
 

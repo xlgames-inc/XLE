@@ -1,8 +1,11 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 #pragma once
 
-#include "InterfaceSignature.h"
-#include "ShaderPatcher.h"
+#include "NodeGraph.h"
+#include "NodeGraphSignature.h"
 #include "../Utility/StringUtils.h"
 #include <unordered_map>
 #include <optional>

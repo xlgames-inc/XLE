@@ -8,6 +8,7 @@
 #include "ShaderPatcher.h"
 #include "ShaderPatcher_Internal.h"
 #include "NodeGraphProvider.h"
+#include "NodeGraphSignature.h"
 #include "AntlrHelper.h"
 #include "Grammar/GraphSyntaxLexer.h"
 #include "Grammar/GraphSyntaxParser.h"
@@ -110,28 +111,7 @@ namespace GraphLanguage
 			result._attributeTables.insert({at.first, std::move(at.second)});
 		return result;
     }
-
-	std::ostream& Serialize(std::ostream& str, const GraphSyntaxFile& graphSyntaxFile)
-	{
-		for (auto& i:graphSyntaxFile._imports)
-			str << "import " << i.first << " = \"" << i.second << "\"" << std::endl;
-		if (!graphSyntaxFile._imports.empty()) str << std::endl;
-		for (auto& sg:graphSyntaxFile._subGraphs)
-			str << GraphLanguage::GenerateGraphSyntax(sg.second._graph, sg.second._signature, sg.first);
-
-		for (auto& at:graphSyntaxFile._attributeTables) {
-			str << "attributes " << at.first << "(";
-			bool first = true;
-			for (auto& key:at.second) {
-				if (!first) str << ", ";
-				first = false;
-				str << key.first << ":\"" << key.second << "\"";
-			}
-			str << ");" << std::endl;
-		}
-		return str;
-	}
-
+	
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class GraphNodeGraphProvider : public BasicNodeGraphProvider, public std::enable_shared_from_this<INodeGraphProvider>

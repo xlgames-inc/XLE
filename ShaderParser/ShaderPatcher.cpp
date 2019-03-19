@@ -5,8 +5,11 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderPatcher.h"
+#include "NodeGraph.h"
 #include "NodeGraphProvider.h"
+#include "NodeGraphSignature.h"
 #include "ShaderInstantiation.h"
+#include "GraphSyntax.h"		// (for GenerateSignature)
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
@@ -25,158 +28,11 @@
 #include <regex>
 #include <map>
 
-namespace GraphLanguage
+namespace ShaderSourceParser
 {
-
-    const std::string s_resultName = "result";
-	std::string ParameterName_NodeInstantiation = "<instantiation>";
-    static const NodeId s_nodeId_Invalid = ~0u;
-
-        ///////////////////////////////////////////////////////////////
-
-    NodeGraph::NodeGraph() {}
-    NodeGraph::~NodeGraph() {}
-
-    void NodeGraph::Add(Node&& a) { _nodes.emplace_back(std::move(a)); }
-    void NodeGraph::Add(Connection&& a) { _connections.emplace_back(std::move(a)); }
-
-    bool NodeGraph::IsUpstream(NodeId startNode, NodeId searchingForNode)
-    {
-            //  Starting at 'startNode', search upstream and see if we find 'searchingForNode'
-        if (startNode == searchingForNode) {
-            return true;
-        }
-
-        for (auto i=_connections.cbegin(); i!=_connections.cend(); ++i) {
-            if (i->OutputNodeId() == startNode) {
-				auto inputNode = i->InputNodeId();
-                if (inputNode != NodeId_Interface && inputNode != NodeId_Constant && IsUpstream(i->InputNodeId(), searchingForNode)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    bool NodeGraph::IsDownstream(
-        NodeId startNode,
-        const NodeId* searchingForNodesStart, const NodeId* searchingForNodesEnd)
-    {
-        if (std::find(searchingForNodesStart, searchingForNodesEnd, startNode) != searchingForNodesEnd) {
-            return true;
-        }
-
-        for (auto i=_connections.cbegin(); i!=_connections.cend(); ++i) {
-            if (i->InputNodeId() == startNode) {
-				auto outputNode = i->OutputNodeId();
-                if (outputNode != NodeId_Interface && outputNode != NodeId_Constant && IsDownstream(outputNode, searchingForNodesStart, searchingForNodesEnd)) {
-                    return true;
-                }
-            }
-        }
-
-        return false;
-    }
-
-    bool            NodeGraph::HasNode(NodeId nodeId)
-    {
-		// Special case node ids are considered to always exist (particularly required when called from Trim())
-		if (nodeId == NodeId_Interface || nodeId == NodeId_Constant) return true;
-        return std::find_if(_nodes.begin(), _nodes.end(),
-            [=](const Node& node) { return node.NodeId() == nodeId; }) != _nodes.end();
-    }
-
-    const Node*     NodeGraph::GetNode(NodeId nodeId) const
-    {
-        auto res = std::find_if(
-            _nodes.cbegin(), _nodes.cend(),
-            [=](const Node& n) { return n.NodeId() == nodeId; });
-        if (res != _nodes.cend()) {
-            return &*res;
-        }
-        return nullptr;
-    }
-
-    void NodeGraph::Trim(NodeId previewNode)
-    {
-        Trim(&previewNode, &previewNode+1);
-    }
-
-    void NodeGraph::Trim(const NodeId* trimNodesBegin, const NodeId* trimNodesEnd)
-    {
-            //
-            //      Trim out all of the nodes that are upstream of
-            //      'previewNode' (except for output nodes that are
-            //      directly written by one of the trim nodes)
-            //
-            //      Simply
-            //          1.  remove all nodes, unless they are downstream
-            //              of 'previewNode'
-            //          2.  remove all connections that refer to nodes
-            //              that no longer exist
-            //
-            //      Generally, there won't be an output connection attached
-            //      to the previewNode at the end of the process. So, we
-            //      may need to create one.
-            //
-
-        _nodes.erase(
-            std::remove_if(
-                _nodes.begin(), _nodes.end(),
-                [=](const Node& node) { return !IsDownstream(node.NodeId(), trimNodesBegin, trimNodesEnd); }),
-            _nodes.end());
-
-        _connections.erase(
-            std::remove_if(
-                _connections.begin(), _connections.end(),
-                [=](const Connection& connection)
-                    { return !HasNode(connection.InputNodeId()) || !HasNode(connection.OutputNodeId()) || connection.OutputNodeId() == NodeId_Interface; }),
-            _connections.end());
-    }
+	using namespace GraphLanguage;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	static void OrderNodes(IteratorRange<NodeId*> range)
-	{
-		// We need to sort the upstreams in some way that maintains a
-		// consistant ordering. The simplied way is just to use node id.
-		// However we may sometimes want to set priorities for nodes.
-		// For example, nodes that can "discard" pixels should be priortized
-		// higher.
-		std::sort(range.begin(), range.end());
-	}
-
-    static bool SortNodesFunction(
-        NodeId                  node,
-        std::vector<NodeId>&    presorted,
-        std::vector<NodeId>&    sorted,
-        std::vector<NodeId>&    marks,
-        const NodeGraph&        graph)
-    {
-        if (std::find(presorted.begin(), presorted.end(), node) == presorted.end()) {
-            return false;   // hit a cycle
-        }
-        if (std::find(marks.begin(), marks.end(), node) != marks.end()) {
-            return false;   // hit a cycle
-        }
-
-        marks.push_back(node);
-
-		std::vector<NodeId> upstream;
-		upstream.reserve(graph.GetConnections().size());
-        for (const auto& i:graph.GetConnections())
-            if (i.OutputNodeId() == node)
-				upstream.push_back(i.InputNodeId());
-
-		OrderNodes(MakeIteratorRange(upstream));
-		for (const auto& i2:upstream)
-			SortNodesFunction(i2, presorted, sorted, marks, graph);
-
-        sorted.push_back(node);
-        presorted.erase(std::find(presorted.begin(), presorted.end(), node));
-        return true;
-    }
 
     static std::string AsString(uint32_t i)
     {
@@ -293,11 +149,11 @@ namespace GraphLanguage
 		}
     }
 
+	static std::regex s_templateRestrictionFilter(R"--((\w*)<.*>)--");
 	static std::string RemoveTemplateRestrictions(const std::string& input)
 	{
-		static std::regex filter(R"--((\w*)<.*>)--");
 		std::smatch matchResult;
-        if (std::regex_match(input, matchResult, filter) && matchResult.size() > 1)
+        if (std::regex_match(input, matchResult, s_templateRestrictionFilter) && matchResult.size() > 1)
 			return matchResult[1];
 		return input;
 	}
@@ -743,73 +599,6 @@ namespace GraphLanguage
 		return false;
 	}
 
-	static std::vector<NodeId> SortNodes(const NodeGraph& graph, bool& isAcyclic)
-	{
-            /*
-
-                We need to create a directed acyclic graph from the nodes in 'graph'
-                    -- and then we need to do a topological sort.
-
-                This will tell us the order in which to call each function
-
-                Basic algorithms:
-
-                    L <- Empty list that will contain the sorted elements
-                    S <- Set of all nodes with no incoming edges
-                    while S is non-empty do
-                        remove a node n from S
-                        add n to tail of L
-                        for each node m with an edge e from n to m do
-                            remove edge e from the graph
-                            if m has no other incoming edges then
-                                insert m into S
-                    if graph has edges then
-                        return error (graph has at least one cycle)
-                    else
-                        return L (a topologically sorted order)
-
-                Depth first sort:
-
-                    L <- Empty list that will contain the sorted nodes
-                    while there are unmarked nodes do
-                        select an unmarked node n
-                        visit(n)
-                    function visit(node n)
-                        if n has a temporary mark then stop (not a DAG)
-                        if n is not marked (i.e. has not been visited yet) then
-                            mark n temporarily
-                            for each node m with an edge from n to m do
-                                visit(m)
-                            mark n permanently
-                            add n to head of L
-
-            */
-
-        std::vector<NodeId> presortedNodes, sortedNodes;
-        sortedNodes.reserve(graph.GetNodes().size());
-
-        for (const auto& i:graph.GetNodes())
-            presortedNodes.push_back(i.NodeId());
-
-		OrderNodes(MakeIteratorRange(presortedNodes));
-
-        isAcyclic = true;
-		while (!presortedNodes.empty()) {
-            std::vector<NodeId> temporaryMarks;
-            bool sortReturn = SortNodesFunction(
-                presortedNodes[0],
-                presortedNodes, sortedNodes,
-                temporaryMarks, graph);
-
-            if (!sortReturn) {
-                isAcyclic = false;
-                break;
-            }
-        }
-
-		return sortedNodes;
-	}
-
     static std::tuple<std::string, NodeGraphSignature, DependencyTable> GenerateMainFunctionBody(
         const NodeGraph& graph,
 		IteratorRange<const NodeGraphSignature::Parameter*> predefinedParameters,
@@ -884,82 +673,6 @@ namespace GraphLanguage
         return std::make_tuple(result.str(), std::move(finalInterface), std::move(depTable));
     }
 
-    static void AddWithExistingCheck(
-        std::vector<NodeGraphSignature::Parameter>& dst,
-        const NodeGraphSignature::Parameter& param)
-    {
-	    // Look for another parameter with the same name...
-	    auto existing = std::find_if(dst.begin(), dst.end(),
-		    [&param](const NodeGraphSignature::Parameter& p) { return p._name == param._name && p._direction == param._direction; });
-	    if (existing != dst.end()) {
-		    // If we have 2 parameters with the same name, we're going to expect they
-		    // also have the same type and semantic (otherwise we would need to adjust
-		    // the name to avoid conflicts).
-		    if (existing->_type != param._type || existing->_semantic != param._semantic) {
-			    // Throw(::Exceptions::BasicLabel("Main function parameters with the same name, but different types/semantics (%s)", param._name.c_str()));
-				Log(Debug) << "Main function parameters with the same name, but different types/semantics (" << param._name << ")" << std::endl;
-			}
-	    } else {
-		    dst.push_back(param);
-	    }
-    }
-
-	void NodeGraphSignature::AddParameter(const Parameter& param) { AddWithExistingCheck(_functionParameters, param); }
-	void NodeGraphSignature::AddCapturedParameter(const Parameter& param) { AddWithExistingCheck(_capturedParameters, param); }
-    void NodeGraphSignature::AddTemplateParameter(const TemplateParameter& param) { return _templateParameters.push_back(param); }
-
-    NodeGraphSignature::NodeGraphSignature() {}
-    NodeGraphSignature::~NodeGraphSignature() {}
-
-    static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
-
-    static std::string GenerateSignature(const NodeGraphSignature& sig, StringSection<char> name, bool useReturnType = true, bool includeTemplateParameters = false)
-	{
-        std::string returnType, returnSemantic;
-
-		std::stringstream mainFunctionDeclParameters;
-		for (const auto& i:sig.GetParameters()) {
-            if (useReturnType && i._name == s_resultName && i._direction == ParameterDirection::Out) {
-                assert(returnType.empty() && returnSemantic.empty());
-                returnType = i._type;
-                returnSemantic = i._semantic;
-                continue;
-            }
-
-			//
-            //      Our graph function is always a "void" function, and all of the output
-            //      parameters are just function parameters with the "out" keyword. This is
-            //      convenient for writing out generated functions
-            //      We don't want to put the "node id" in the name -- because node ids can
-            MaybeComma(mainFunctionDeclParameters);
-			if (i._direction == ParameterDirection::Out) {
-				mainFunctionDeclParameters << "out ";
-			}
-            mainFunctionDeclParameters << i._type << " " << i._name;
-			if (!i._semantic.empty())
-				mainFunctionDeclParameters << " : " << i._semantic;
-        }
-
-		if (includeTemplateParameters) {
-			for (const auto& i:sig.GetTemplateParameters()) {
-				MaybeComma(mainFunctionDeclParameters);
-				mainFunctionDeclParameters << "graph<" << i._restriction << "> " << i._name;
-			}
-		}
-
-        std::stringstream result;
-		if (!returnType.empty()) result << returnType << " ";
-		else result << "void ";
-        result << name << "(" << mainFunctionDeclParameters.str() << ")";
-		if (!returnSemantic.empty())
-			result << " : " << returnSemantic;
-
-		if (includeTemplateParameters && !sig.GetImplements().empty())
-			result << " implements " << sig.GetImplements();
-
-		return result.str();
-	}
-
     InstantiatedShader GenerateFunction(
         const NodeGraph& graph, StringSection<char> name,
         const InstantiationParameters& instantiationParameters,
@@ -991,6 +704,8 @@ namespace GraphLanguage
 			std::move(interf), 
 			std::move(depTable)};
     }
+
+	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
 	std::string GenerateScaffoldFunction(
 		const NodeGraphSignature& inputSlotSignature, 
@@ -1105,181 +820,4 @@ namespace GraphLanguage
 			return header.str() + result.str();
 		}
 	}
-
-	static void GenerateGraphSyntaxInstantiation(
-		std::ostream& result,
-		const NodeGraph& graph,
-		const NodeGraphSignature& interf,
-		NodeId nodeId,
-		std::unordered_map<NodeId, std::string>& instantiatedNodes);
-
-	static void GenerateConnectionInstantiation(
-		std::ostream& result,
-		const NodeGraph& graph,
-		const NodeGraphSignature& interf,
-		const Connection& connection,
-		std::unordered_map<NodeId, std::string>& instantiatedNodes)
-	{
-		result << connection.OutputParameterName() << ":";
-
-		if (connection.InputNodeId() == NodeId_Interface) {
-			result << connection.InputParameterName();
-		} else if (connection.InputNodeId() == NodeId_Constant) {
-			result << "\"" << connection.InputParameterName() << "\"";
-		} else {
-			GenerateGraphSyntaxInstantiation(result, graph, interf, connection.InputNodeId(), instantiatedNodes);
-			if (!XlEqString(MakeStringSection(connection.InputParameterName()), MakeStringSection(ParameterName_NodeInstantiation)))
-				result << "." << connection.InputParameterName();
-		}
-	}
-
-	static void GenerateGraphSyntaxInstantiation(
-		std::ostream& result,
-		const NodeGraph& graph,
-		const NodeGraphSignature& interf,
-		NodeId nodeId,
-		std::unordered_map<NodeId, std::string>& instantiatedNodes)
-	{
-		auto instantiation = instantiatedNodes.find(nodeId);
-		if (instantiation != instantiatedNodes.end()) {
-			result << instantiation->second;
-			return;
-		}
-
-		auto n = graph.GetNode(nodeId);
-
-		if (!n->AttributeTableName().empty())
-			result << "[[" << n->AttributeTableName() << "]]";
-
-		if (n->GetType() == Node::Type::Procedure) {
-			result << RemoveTemplateRestrictions(n->ArchiveName()) << "(";
-
-			bool atLeastOneParam = false;
-			for (const auto&i:graph.GetConnections()) {
-				if (i.OutputNodeId() != nodeId) continue;
-				if (!i._condition.empty()) continue;
-				if (atLeastOneParam) result << ", ";
-				atLeastOneParam = true;
-				GenerateConnectionInstantiation(result, graph, interf, i, instantiatedNodes);
-			}
-		} else {
-			result << "(";
-			assert(n->GetType() == Node::Type::Captures);
-			// We must get the list of capture parameters from the graph signature itself. The names of the parameters & their default
-			// values should be there
-			bool atLeastOneParam = false;
-			for (const auto& p:interf.GetCapturedParameters()) {
-				auto firstDot = std::find(p._name.begin(), p._name.end(), '.');
-				if (firstDot == p._name.end()) continue;
-				if (!XlEqString(MakeStringSection(p._name.begin(), firstDot), MakeStringSection(n->ArchiveName()))) continue;
-
-				if (atLeastOneParam) result << ", ";
-				atLeastOneParam = true;
-
-				result << p._type << " " << std::string(firstDot+1, p._name.end());
-				if (!p._default.empty())
-					result << " = \"" << p._default << "\"";
-			}
-		}
-
-		result << ")";
-	}
-
-	std::string GenerateGraphSyntax(const NodeGraph& graph, const NodeGraphSignature& interf, StringSection<> name)
-	{
-		std::stringstream result;
-
-		result << GenerateSignature(interf, name, true, true) << std::endl;
-		result << "{" << std::endl;
-
-		bool acyclic = false;
-		auto sortedNodes = SortNodes(graph, acyclic);
-		if (!acyclic) {
-            result << "// Warning! found a cycle in the graph of nodes. Result will be incomplete!" << std::endl;
-        }
-
-		std::unordered_map<NodeId, std::string> instantiatedNodes;
-		unsigned n = 0;
-		for (auto id:sortedNodes) {
-			unsigned outputCount = 0;
-			for (const auto&i:graph.GetConnections())
-				if (i.InputNodeId() == id) ++outputCount;
-
-			auto i2 = std::find_if(graph.GetNodes().cbegin(), graph.GetNodes().cend(), [id](const Node& n) { return n.NodeId() == id; });
-            if (i2 == graph.GetNodes().cend()) continue;
-
-			// No need to instantiate nodes that have exactly 1 output connection. These will be instantiated in-place
-			// when the connected node is instantiated. We do actually want to instantiate nodes with zero output connections
-			// -- these are redundant to the final product, but if we don't create them here, they will disappear from the
-			// graph entirely
-			if (outputCount == 1 && i2->GetType() == Node::Type::Procedure) continue;
-
-			assert(instantiatedNodes.find(id) == instantiatedNodes.end());
-			std::string nodeName;
-			if (i2->GetType() == Node::Type::Procedure) {
-				nodeName = "node_" + std::to_string(n); ++n;
-				result << "\tnode " << nodeName;
-			} else {
-				assert(i2->GetType() == Node::Type::Captures);
-				nodeName = i2->ArchiveName();
-				result << "\tcaptures " << nodeName;
-			}
-			result << " = ";
-			GenerateGraphSyntaxInstantiation(result, graph, interf, id, instantiatedNodes);
-			result << ";" << std::endl;
-
-			instantiatedNodes.insert(std::make_pair(id, nodeName));
-		}
-
-		for (const auto&i:graph.GetConnections()) {
-			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() == GraphLanguage::s_resultName) continue;
-			result << "\t" << i.OutputParameterName() << " = ";
-			GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
-			result << "." << i.InputParameterName() << ";" << std::endl;
-		}
-
-		for (const auto&i:graph.GetConnections()) {
-			if (i._condition.empty() || i.OutputParameterName() == GraphLanguage::s_resultName) continue;
-			result << "\tif \"" << i._condition << "\"" << std::endl;
-			result << "\t\t" << instantiatedNodes[i.OutputNodeId()] << ".";
-			GenerateConnectionInstantiation(result, graph, interf, i, instantiatedNodes);
-			result << ";" << std::endl;
-		}
-
-		for (const auto&i:graph.GetConnections()) {
-			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() != GraphLanguage::s_resultName) continue;
-			if (!i._condition.empty()) {
-				result << "\tif \"" << i._condition << "\"" << std::endl << "\t\treturn ";
-			} else
-				result << "\treturn ";
-			GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
-			result << "." << i.InputParameterName() << ";" << std::endl;
-		}
-
-		result << "}" << std::endl;
-
-		return result.str();
-	}
-
-	static uint64_t CalculateHash(const InstantiationParameters::Dependency& dep, uint64_t seed = DefaultSeed64)
-	{
-		uint64_t result = Hash64(dep._archiveName);
-		// todo -- ordering of parameters matters to the hash here
-		for (const auto& d:dep._parameters._parameterBindings)
-			result = Hash64(d.first, CalculateHash(d.second, result));
-		return result;
-	}
-
-    uint64_t InstantiationParameters::CalculateHash() const
-    {
-        if (_parameterBindings.empty()) return 0;
-        uint64 result = DefaultSeed64;
-		// todo -- ordering of parameters matters to the hash here
-        for (const auto&p:_parameterBindings) {
-            result = Hash64(p.first, GraphLanguage::CalculateHash(p.second, result));
-			for (const auto&pc:p.second._parametersToCurry)
-				result = Hash64(pc, result);
-		}
-        return result;
-    }
 }

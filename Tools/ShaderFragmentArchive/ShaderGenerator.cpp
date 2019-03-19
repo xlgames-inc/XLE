@@ -536,21 +536,21 @@ namespace ShaderPatcherLayer
 				for each(auto sig in sg.Value->Signature->TemplateParameters)
 					CompressImportedName(clix::marshalString<clix::E_UTF8>(sig->Restriction), context);
 			
-			GraphLanguage::InstantiationParameters instantiationParams {};
+			ShaderSourceParser::InstantiationParameters instantiationParams {};
 			if (previewNodeId != ~0u)
 				instantiationParams._generateDanglingOutputs = previewNodeId;
 			instantiationParams._generateDanglingInputs = true;
 
 			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());
-			auto mainInstantiation = GraphLanguage::InstantiateShader(
+			auto mainInstantiation = ShaderSourceParser::InstantiateShader(
 				GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), provider },
 				false,
 				instantiationParams);
 
-			GraphLanguage::PreviewOptions options {
-				(settings->Geometry == PreviewGeometry::Chart) ? GraphLanguage::PreviewOptions::Type::Chart : GraphLanguage::PreviewOptions::Type::Object,
+			ShaderSourceParser::PreviewOptions options {
+				(settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object,
 				String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : marshalString<E_UTF8>(settings->OutputToVisualize),
-				GraphLanguage::PreviewOptions::VariableRestrictions() };
+				ShaderSourceParser::PreviewOptions::VariableRestrictions() };
 
 			if (variableRestrictions)
 				for each(auto v in variableRestrictions)
@@ -571,7 +571,7 @@ namespace ShaderPatcherLayer
 
             return gcnew Tuple<String^,String^>(
                 marshalString<E_UTF8>(str.str()),
-                marshalString<E_UTF8>(GraphLanguage::GenerateMaterialCBuffer(mainInstantiation._entryPointSignature)));
+                marshalString<E_UTF8>(ShaderSourceParser::GenerateMaterialCBuffer(mainInstantiation._entryPointSignature)));
         } catch (const std::exception& e) {
             return gcnew Tuple<String^,String^>(
                 "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),
@@ -747,7 +747,7 @@ namespace ShaderPatcherLayer
 				sw->WriteLine();
 
 				try {
-					auto str = GraphLanguage::GenerateStructureForTechniqueConfig(interf, "main");
+					auto str = ShaderSourceParser::GenerateStructureForTechniqueConfig(interf, "main");
 					sw->Write(clix::marshalString<clix::E_UTF8>(str));
 				} catch (const std::exception& e) {
 					sw->Write("Exception while generating technique entry points: " + clix::marshalString<clix::E_UTF8>(e.what()));
@@ -771,7 +771,7 @@ namespace ShaderPatcherLayer
 			}
 
 				// write out a cb layout, as well (sometimes required even if it's not a technique config)
-			auto cbLayout = GraphLanguage::GenerateMaterialCBuffer(interf);
+			auto cbLayout = ShaderSourceParser::GenerateMaterialCBuffer(interf);
 			if (!cbLayout.empty()) {
 				sw->Write("/* <<Chunk:CBLayout:main>>--("); sw->WriteLine();
 				sw->Write(clix::marshalString<clix::E_UTF8>(cbLayout)); sw->WriteLine();

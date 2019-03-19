@@ -105,8 +105,11 @@
     <ClCompile Include="..\Grammar\ShaderLexer.c" />
     <ClCompile Include="..\Grammar\ShaderParser.c" />
     <ClCompile Include="..\Grammar\ShaderTreeWalk.c" />
-    <ClCompile Include="..\GraphSyntax.cpp" />
-    <ClCompile Include="..\InterfaceSignature.cpp" />
+    <ClCompile Include="..\GraphSyntaxInstantiate.cpp" />
+    <ClCompile Include="..\GraphSyntaxParse.cpp" />
+    <ClCompile Include="..\NodeGraph.cpp" />
+    <ClCompile Include="..\NodeGraphSignature.cpp" />
+    <ClCompile Include="..\ShaderSignatureParser.cpp" />
     <ClCompile Include="..\ShaderInstantiation.cpp" />
     <ClCompile Include="..\ShaderPatcher.cpp" />
     <ClCompile Include="..\NodeGraphProvider.cpp" />
@@ -122,10 +125,12 @@
     <ClInclude Include="..\Grammar\ShaderParser.h" />
     <ClInclude Include="..\Grammar\ShaderTreeWalk.h" />
     <ClInclude Include="..\GraphSyntax.h" />
-    <ClInclude Include="..\InterfaceSignature.h" />
+    <ClInclude Include="..\NodeGraphSignature.h" />
+    <ClInclude Include="..\NodeGraph.h" />
     <ClInclude Include="..\ShaderInstantiation.h" />
     <ClInclude Include="..\ShaderPatcher.h" />
     <ClInclude Include="..\NodeGraphProvider.h" />
+    <ClInclude Include="..\ShaderSignatureParser.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Foreign\Antlr-3.4\libantlr3c-3.4\C.vcxproj">

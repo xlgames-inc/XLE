@@ -1,7 +1,10 @@
+// Distributed under the MIT License (See
+// accompanying file "LICENSE" or the website
+// http://www.opensource.org/licenses/mit-license.php)
 
 #include "NodeGraphProvider.h"
-#include "InterfaceSignature.h"
 #include "GraphSyntax.h"
+#include "ShaderSignatureParser.h"
 #include "../Assets/IFileSystem.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
@@ -9,7 +12,6 @@
 
 namespace GraphLanguage
 {
-
     static std::string LoadSourceFile(StringSection<char> sourceFileName)
     {
         TRY {

@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-namespace GraphLanguage
+namespace ShaderSourceParser
 {
 	class InstantiationParameters
     {
@@ -17,7 +17,7 @@ namespace GraphLanguage
 		struct Dependency;
         std::unordered_map<std::string, Dependency> _parameterBindings;
 		bool _generateDanglingInputs = false;
-		NodeId _generateDanglingOutputs = NodeId_Interface;
+		GraphLanguage::NodeId _generateDanglingOutputs = GraphLanguage::NodeId_Interface;
         uint64_t CalculateHash() const;
 
 		InstantiationParameters(std::initializer_list<std::pair<const std::string, Dependency>> init)
@@ -30,7 +30,7 @@ namespace GraphLanguage
 		std::string _archiveName;
 		std::vector<std::string> _parametersToCurry;
 		InstantiationParameters _parameters = {};
-		std::shared_ptr<INodeGraphProvider> _customProvider;
+		std::shared_ptr<GraphLanguage::INodeGraphProvider> _customProvider;
 	};
 
     class DependencyTable
@@ -41,7 +41,7 @@ namespace GraphLanguage
 			std::string _archiveName; 
 			InstantiationParameters _parameters; 
 			bool _isGraphSyntaxFile;
-			std::shared_ptr<INodeGraphProvider> _customProvider;
+			std::shared_ptr<GraphLanguage::INodeGraphProvider> _customProvider;
 		};
         std::vector<Dependency> _dependencies;
     };
@@ -50,7 +50,7 @@ namespace GraphLanguage
 	{
 	public:
 		std::vector<std::string> _sourceFragments;
-		NodeGraphSignature _entryPointSignature;
+		GraphLanguage::NodeGraphSignature _entryPointSignature;
 		DependencyTable _dependencies;
 	};
 
@@ -60,15 +60,15 @@ namespace GraphLanguage
 		const InstantiationParameters& instantiationParameters);
 
 	InstantiatedShader InstantiateShader(
-		const INodeGraphProvider::NodeGraph& initialGraph,
+		const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
 		const InstantiationParameters& instantiationParameters);
 
         ///////////////////////////////////////////////////////////////
 
     InstantiatedShader GenerateFunction(
-        const NodeGraph& graph, StringSection<char> name, 
+        const GraphLanguage::NodeGraph& graph, StringSection<char> name, 
         const InstantiationParameters& instantiationParameters,
-        INodeGraphProvider& sigProvider);
+        GraphLanguage::INodeGraphProvider& sigProvider);
 
 }

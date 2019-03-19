@@ -4,6 +4,7 @@
 
 #include "ShaderInstantiation.h"
 #include "GraphSyntax.h"
+#include "NodeGraphSignature.h"
 #include "../Utility/Streams/PathUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -12,7 +13,7 @@
 #include <regex>
 #include <sstream>
 
-namespace GraphLanguage
+namespace ShaderSourceParser
 {
 	static std::string MakeGraphName(const std::string& baseName, uint64_t instantiationHash = 0)
     {
@@ -23,7 +24,7 @@ namespace GraphLanguage
 	InstantiatedShader InstantiateShader(
         const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
-		const GraphLanguage::InstantiationParameters& instantiationParameters)
+		const InstantiationParameters& instantiationParameters)
 	{
 		std::set<std::string> includes;
 
@@ -31,7 +32,7 @@ namespace GraphLanguage
 		{
 			GraphLanguage::INodeGraphProvider::NodeGraph _graph;
 			bool _useScaffoldFunction;
-			GraphLanguage::InstantiationParameters _instantiationParams;
+			InstantiationParameters _instantiationParams;
 		};
 
         InstantiatedShader result;
@@ -50,7 +51,7 @@ namespace GraphLanguage
 			// to have the same name as the original request
 			auto scaffoldName = entryPointInstantiation ? inst._graph._name : MakeGraphName(inst._graph._name, inst._instantiationParams.CalculateHash());
 			auto implementationName = inst._useScaffoldFunction ? (scaffoldName + "_impl") : scaffoldName;
-			auto instFn = GraphLanguage::GenerateFunction(
+			auto instFn = GenerateFunction(
 				inst._graph._graph, implementationName, 
 				inst._instantiationParams, *inst._graph._subProvider);
 
@@ -61,13 +62,13 @@ namespace GraphLanguage
 						auto name = "curried_" + tp.first + "_" + c;
 						auto instP = std::find_if(
 							instFn._entryPointSignature.GetParameters().begin(), instFn._entryPointSignature.GetParameters().end(),
-							[name](const NodeGraphSignature::Parameter& p) { return XlEqString(MakeStringSection(name), p._name); });
+							[name](const GraphLanguage::NodeGraphSignature::Parameter& p) { return XlEqString(MakeStringSection(name), p._name); });
 						if (instP != instFn._entryPointSignature.GetParameters().end())
 							scaffoldSignature.AddParameter(*instP);
 					}
 				}
 
-				result._sourceFragments.push_back(GraphLanguage::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
+				result._sourceFragments.push_back(ShaderSourceParser::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
 			}
 
 			result._sourceFragments.insert(
@@ -77,7 +78,7 @@ namespace GraphLanguage
 			{
 				// write captured parameters into a cbuffer (todo -- merge captures from all instantiations)
 				std::stringstream str;
-				str << GraphLanguage::GenerateMaterialCBuffer(inst._graph._signature);
+				str << ShaderSourceParser::GenerateMaterialCBuffer(inst._graph._signature);
 				auto fragment = str.str();
 				if (!fragment.empty())
 					result._sourceFragments.push_back(fragment);
@@ -144,10 +145,32 @@ namespace GraphLanguage
 	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
-		const GraphLanguage::InstantiationParameters& instantiationParameters)
+		const InstantiationParameters& instantiationParameters)
 	{
 		return InstantiateShader(
 			GraphLanguage::LoadGraphSyntaxFile(entryFile, entryFn), true,
 			instantiationParameters);
 	}
+
+	static uint64_t CalculateDepHash(const InstantiationParameters::Dependency& dep, uint64_t seed = DefaultSeed64)
+	{
+		uint64_t result = Hash64(dep._archiveName);
+		// todo -- ordering of parameters matters to the hash here
+		for (const auto& d:dep._parameters._parameterBindings)
+			result = Hash64(d.first, CalculateDepHash(d.second, result));
+		return result;
+	}
+
+    uint64_t InstantiationParameters::CalculateHash() const
+    {
+        if (_parameterBindings.empty()) return 0;
+        uint64 result = DefaultSeed64;
+		// todo -- ordering of parameters matters to the hash here
+        for (const auto&p:_parameterBindings) {
+            result = Hash64(p.first, CalculateDepHash(p.second, result));
+			for (const auto&pc:p.second._parametersToCurry)
+				result = Hash64(pc, result);
+		}
+        return result;
+    }
 }

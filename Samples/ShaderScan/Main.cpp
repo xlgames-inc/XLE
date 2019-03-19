@@ -4,7 +4,7 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "ShaderParser/InterfaceSignature.h"
+#include "ShaderParser/ShaderSignatureParser.h"
 #include "ShaderParser/Exceptions.h"
 #include "ShaderParser/ShaderInstantiation.h"
 #include "ShaderParser/ShaderPatcher.h"
@@ -66,8 +66,8 @@ namespace ShaderScan
 	{
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
-		auto earlyRejection = GraphLanguage::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
-		auto perPixel = GraphLanguage::InstantiationParameters::Dependency { 
+		auto earlyRejection = ShaderSourceParser::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
+		auto perPixel = ShaderSourceParser::InstantiationParameters::Dependency { 
 			"xleres/Techniques/Object_Default.graph::Default_PerPixel",
 			{},
 			{
@@ -75,11 +75,11 @@ namespace ShaderScan
 			}
 		};
 
-		GraphLanguage::InstantiationParameters instParams {
+		ShaderSourceParser::InstantiationParameters instParams {
 			{ "rejectionTest", earlyRejection },
 			{ "perPixel", perPixel }
 		};
-		auto fragments = GraphLanguage::InstantiateShader("xleres/Techniques/Pass_Deferred.graph", "main", instParams);
+		auto fragments = ShaderSourceParser::InstantiateShader("xleres/Techniques/Pass_Deferred.graph", "main", instParams);
 
         Log(Verbose) << "--- Output ---" << std::endl;
         for (auto frag=fragments._sourceFragments.rbegin(); frag!=fragments._sourceFragments.rend(); ++frag)

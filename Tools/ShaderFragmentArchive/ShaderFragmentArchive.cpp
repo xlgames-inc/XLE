@@ -6,7 +6,7 @@
 
 #include "ShaderFragmentArchive.h"
 #include "../GUILayer/MarshalString.h"
-#include "../../ShaderParser/InterfaceSignature.h"
+#include "../../ShaderParser/ShaderSignatureParser.h"
 #include "../../ShaderParser/ParameterSignature.h"
 #include "../../ShaderParser/GraphSyntax.h"
 #include "../../ShaderParser/Exceptions.h"

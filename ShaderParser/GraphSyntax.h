@@ -5,6 +5,7 @@
 #pragma once
 
 #include "ShaderPatcher.h"
+#include "NodeGraph.h"
 #include "NodeGraphProvider.h"
 #include "../Utility/StringUtils.h"
 #include <vector>
@@ -36,5 +37,8 @@ namespace GraphLanguage
 		const ::Assets::DirectorySearchRules& searchRules);
 
 	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint);
+
+	std::string GenerateGraphSyntax(const NodeGraph& graph, const NodeGraphSignature& interf, StringSection<> name);
+	std::string GenerateSignature(const NodeGraphSignature& sig, StringSection<char> name, bool useReturnType = true, bool includeTemplateParameters = false);
 }
 

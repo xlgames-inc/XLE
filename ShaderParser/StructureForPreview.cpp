@@ -3,7 +3,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderPatcher.h"
-#include "InterfaceSignature.h"
+#include "NodeGraph.h"
+#include "NodeGraphSignature.h"
+#include "ShaderSignatureParser.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ConfigFileContainer.h"
@@ -17,8 +19,10 @@
 
 #include "plustache/template.hpp"
 
-namespace GraphLanguage
+namespace ShaderSourceParser
 {
+	using namespace GraphLanguage;
+
 	static bool CanBeStoredInCBuffer(const StringSection<char> type);
 
 	class TemplateItem
