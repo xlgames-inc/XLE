@@ -47,6 +47,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         void        Bind(Topology topology);
 
+		void		UnbindInputLayout();
+
         VulkanUniquePtr<VkPipeline> CreatePipeline(
             const ObjectFactory& factory,
             VkPipelineCache pipelineCache,
@@ -199,8 +201,6 @@ namespace RenderCore { namespace Metal_Vulkan
         using GraphicsPipelineBuilder::Bind;        // we need to expose the "Bind" functions in the base class, as well
         using ComputePipelineBuilder::Bind;
 
-		T1(Type) void   Unbind() {}
-
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
         void        DrawAuto();
@@ -213,8 +213,7 @@ namespace RenderCore { namespace Metal_Vulkan
         void        ClearFloat(const UnorderedAccessView& unorderedAccess, const VectorPattern<float,4>& clearColour) {}
         void        ClearStencil(const DepthStencilView& depthStencil, unsigned stencil) {}
 
-		NumericUniformsInterface& GetNumericUniforms_Graphics();
-		NumericUniformsInterface& GetNumericUniforms_Compute();
+		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
 		std::shared_ptr<DeviceContext> Fork();

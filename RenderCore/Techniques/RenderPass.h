@@ -159,6 +159,7 @@ namespace RenderCore { namespace Techniques
         auto GetDesc(AttachmentName resName) const -> const AttachmentDesc*;
         auto GetResource(AttachmentName resName) const -> IResourcePtr;
         auto GetSRV(AttachmentName resName, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+		AttachmentName RemapAttachmentName(AttachmentName inputName) const;
 
         RenderPassInstance(
             IThreadContext& context,
@@ -196,7 +197,8 @@ namespace RenderCore { namespace Techniques
     {
     public:
         using PassAndSlot = std::pair<unsigned, unsigned>;
-        std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
+        std::vector<std::pair<PassAndSlot, AttachmentName>> _outputAttachmentMapping;
+		std::vector<std::pair<PassAndSlot, AttachmentName>> _inputAttachmentMapping;
         unsigned _subpassCount;
     };
 
@@ -231,6 +233,7 @@ namespace RenderCore { namespace Techniques
         auto GetInputAttachmentDesc(unsigned inputAttachmentSlot) const -> const AttachmentDesc*;
         auto GetInputAttachmentResource(unsigned inputAttachmentSlot) const -> IResourcePtr;
         auto GetInputAttachmentSRV(unsigned inputAttachmentSlot, const TextureViewDesc& window = {}) const -> Metal::ShaderResourceView*;
+		auto GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*;
 
         void NextSubpass();
 

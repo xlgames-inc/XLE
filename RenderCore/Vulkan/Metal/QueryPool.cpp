@@ -30,7 +30,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		auto& b = _buffers[_activeBuffer];
 		if (b._pendingReadback) {
-			LogWarning << "Query pool eating it's tail. Insufficient buffers.";
+			Log(Warning) << "Query pool eating it's tail. Insufficient buffers." << std::endl;
 			return FrameId_Invalid;
 		}
 		if (b._pendingReset) {

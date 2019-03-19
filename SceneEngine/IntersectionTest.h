@@ -18,7 +18,6 @@ namespace RenderCore { class PresentationChainDesc; }
 
 namespace SceneEngine
 {
-    class ISceneParser;
     class TerrainManager;
     class PlacementsEditor;
     class PlacementCellSet;
@@ -34,43 +33,19 @@ namespace SceneEngine
     /// size -- because this can effect LOD as well. It's frustrating, but all 
     /// this is required!
     /// <seealso cref="IntersectionResolver" />
-    class IntersectionTestContext
+	class IntersectionTestContext
     {
     public:
-
-            // "CameraDesc" member is only require for the following utility
-            //  methods
-        std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
-        static std::pair<Float3, Float3> CalculateWorldSpaceRay(
+		static std::pair<Float3, Float3> CalculateWorldSpaceRay(
             const RenderCore::Techniques::CameraDesc& sceneCamera,
-            Int2 screenCoord, UInt2 viewportDimes);
-        
+            Int2 screenCoord, UInt2 viewMins, UInt2 viewMaxs);
+
+        std::pair<Float3, Float3> CalculateWorldSpaceRay(Int2 screenCoord) const;
         Float2 ProjectToScreenSpace(const Float3& worldSpaceCoord) const;
-        RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-        ISceneParser* GetSceneParser() const { return _sceneParser.get(); }
-        UInt2 GetViewportSize() const;
 
-            // technique context & thread context is enough for most operations
-        const RenderCore::Techniques::TechniqueContext& GetTechniqueContext() const { return *_techniqueContext.get(); }
-        const std::shared_ptr<RenderCore::IThreadContext>& GetThreadContext() const;
-
-        IntersectionTestContext(
-            std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            const RenderCore::Techniques::CameraDesc& cameraDesc,
-            std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
-        IntersectionTestContext(
-            std::shared_ptr<RenderCore::IThreadContext> threadContext,
-            std::shared_ptr<SceneEngine::ISceneParser> sceneParser,
-            std::shared_ptr<RenderCore::PresentationChainDesc> viewportContext,
-            std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
-        ~IntersectionTestContext();
-    protected:
-        std::shared_ptr<RenderCore::IThreadContext> _threadContext;
-        std::shared_ptr<ISceneParser> _sceneParser;
-        std::shared_ptr<RenderCore::PresentationChainDesc> _viewportContext;
-        RenderCore::Techniques::CameraDesc _cameraDesc;
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext>  _techniqueContext;
+		RenderCore::Techniques::CameraDesc _cameraDesc;
+		Int2 _viewportMins, _viewportMaxs;
+		std::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
     };
 
     class IIntersectionTester;
@@ -101,19 +76,14 @@ namespace SceneEngine
         class Result
         {
         public:
-            Type::Enum                  _type;
-            Float3                      _worldSpaceCollision;
-            std::pair<uint64, uint64>   _objectGuid;
-            float                       _distance;
-            unsigned                    _drawCallIndex;
-            uint64                      _materialGuid;
-            ::Assets::rstring           _materialName;
-            ::Assets::rstring           _modelName;
-
-            Result() 
-            : _type(Type::Enum(0)), _worldSpaceCollision(0.f, 0.f, 0.f)
-            , _objectGuid(0ull, 0ull), _distance(FLT_MAX)
-            , _materialGuid(0), _drawCallIndex(0) {}
+            Type::Enum						_type = Type::Enum(0);
+            Float3							_worldSpaceCollision;
+			std::pair<uint64_t, uint64_t>   _objectGuid = {0ull, 0ull};
+            float							_distance = FLT_MAX;
+            unsigned						_drawCallIndex = ~0u;
+            uint64_t						_materialGuid = 0;
+            ::Assets::rstring				_materialName;
+            ::Assets::rstring				_modelName;
         };
 
         Result FirstRayIntersection(

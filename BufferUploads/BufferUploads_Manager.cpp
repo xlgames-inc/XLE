@@ -15,6 +15,7 @@
 #include "../RenderCore/ResourceUtils.h"
 #include "../ConsoleRig/Log.h"
 #include "../ConsoleRig/GlobalServices.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/Threading/ThreadingUtils.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/PtrUtils.h"
@@ -1219,7 +1220,7 @@ namespace BufferUploads
                 // ... check temporary transactions ...
             for (unsigned c=0; c<temporaryCount; ++c) {
                 Transaction& transaction = _transactions[c];
-                if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
+                if (transaction._finalResource->GetUnderlying().get() == e->_originalResource.get()) {
                     auto size = RenderCore::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
@@ -1239,7 +1240,7 @@ namespace BufferUploads
                 #else
                     Transaction& transaction = _transactions[_transactions.size()-c-1];
                 #endif
-                if (transaction._finalResource->GetUnderlying() == e->_originalResource.get()) {
+                if (transaction._finalResource->GetUnderlying().get() == e->_originalResource.get()) {
                     auto size = RenderCore::ByteCount(transaction._desc);
 
                     intrusive_ptr<ResourceLocator> oldLocator = std::move(transaction._finalResource);
@@ -1355,7 +1356,7 @@ namespace BufferUploads
                         if (batchedResource && !batchedResource->IsEmpty()) {
                             break;
                         }
-                        LogWarning << "Resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again";
+                        Log(Warning) << "Resource creationg failed inBatchedResources::Allocate(). Sleeping and attempting again" << std::endl;
                         Threading::Sleep(16);
                     }
 
@@ -1387,7 +1388,7 @@ namespace BufferUploads
                             CopyIntoBatchedBuffer(
                                 PtrAdd(midwayBuffer.GetData(),-ptrdiff_t(batchedResource->Offset())), 
                                 AsPointer(batchingStart), AsPointer(batchingI), 
-                                batchedResource->GetUnderlying(), batchedResource->Offset(), 
+                                batchedResource->GetUnderlying().get(), batchedResource->Offset(), 
                                 AsPointer(offsets.begin()), metricsUnderConstruction);
 
                             assert(_resourceSource.GetBatchedResources().GetPrototype()._type == BufferDesc::Type::LinearBuffer);
@@ -1408,7 +1409,7 @@ namespace BufferUploads
                         CopyIntoBatchedBuffer(
                             PtrAdd(midwayBuffer->GetData(),-ptrdiff_t(batchedResource->Offset())), 
                             AsPointer(batchingStart), AsPointer(batchingI), 
-                            batchedResource->GetUnderlying(), batchedResource->Offset(), 
+                            batchedResource->GetUnderlying().get(), batchedResource->Offset(), 
                             AsPointer(offsets.begin()), metricsUnderConstruction);
                         context.GetCommitStepUnderConstruction().Add(
                             CommitStep::DeferredCopy(batchedResource, currentBatchSize, std::move(midwayBuffer)));
@@ -1424,7 +1425,7 @@ namespace BufferUploads
                     for (auto i=batchingStart; i!=batchingI; ++i, ++o) {
                         Transaction* transaction = GetTransaction(i->_id);
                         transaction->_finalResource = make_intrusive<ResourceLocator>(
-                            batchedResource->ShareUnderlying(), *o, RenderCore::ByteCount(i->_creationDesc),
+                            batchedResource->GetUnderlying(), *o, RenderCore::ByteCount(i->_creationDesc),
                             batchedResource->Pool(), batchedResource->PoolMarker());
                         ReleaseTransaction(transaction, context);
                     }
@@ -1796,7 +1797,12 @@ namespace BufferUploads
                 if (!stallOnPending)
                     return false; // still waiting
 
-                currentState = step._marker->StallWhilePending();
+                auto res = step._marker->StallWhilePending();
+				if (!res.has_value()) {
+					ReleaseTransaction(transaction, context, true);
+					return false;
+				}
+				currentState = res.value();
             }
 
             if (currentState == Assets::AssetState::Ready) {
@@ -2570,7 +2576,7 @@ namespace BufferUploads
         bool multithreadingOk = true; // CRenderer::CV_r_BufferUpload_Enable!=2;
         bool doBatchingUploadInForeground = !PlatformInterface::CanDoNooverwriteMapInBackground;
 
-        const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
+        const auto nsightMode = ConsoleRig::CrossModule::GetInstance()._services.CallDefault(Hash64("nsight"), false);
         if (nsightMode)
             multithreadingOk = false;
 
@@ -2651,20 +2657,24 @@ namespace BufferUploads
     }
 
     #if OUTPUT_DLL
-        static ConsoleRig::AttachRef<ConsoleRig::GlobalServices> s_attachRef;
-        void AttachLibrary(ConsoleRig::GlobalServices& globalServices)
+        static ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> s_attachRef;
+        void AttachLibrary(ConsoleRig::CrossModule& globalServices)
         {
-            s_attachRef = globalServices.Attach();
+			ConsoleRig::CrossModule::SetInstance(crossModule);
+            s_attachRef = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
+			auto versionDesc = ConsoleRig::GetLibVersionDesc();
+			Log(Verbose) << "Attached Buffer Uploads DLL: {" << versionDesc._versionString << "} -- {" << versionDesc._buildDateString << "}" << std::endl;
         }
 
         void DetachLibrary()
         {
-            s_attachRef.Detach();
+            s_attachRef.reset();
+			ConsoleRig::CrossModule::ReleaseInstance();
         }
     #else
-        void AttachLibrary(ConsoleRig::GlobalServices& globalServices)
+        void AttachLibrary(ConsoleRig::CrossModule& globalServices)
         {
-            assert(&globalServices == &ConsoleRig::GlobalServices::GetInstance());
+            assert(&globalServices == &ConsoleRig::CrossModule::GetInstance());
         }
         void DetachLibrary() {}
     #endif

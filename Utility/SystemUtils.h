@@ -9,6 +9,7 @@
 #include "UTFUtils.h"
 #include "../Core/Prefix.h"
 #include "../Core/Types.h"
+#include <string>
 
 namespace Utility
 {
@@ -32,6 +33,8 @@ namespace Utility
 
     typedef size_t ModuleId;
     ModuleId GetCurrentModuleId();
+
+    std::string SystemErrorCodeAsString(int errorCode);
 }
 
 

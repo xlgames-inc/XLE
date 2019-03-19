@@ -19,6 +19,7 @@
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/Data.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/Conversion.h"
 #include "MarshalString.h"
@@ -27,6 +28,7 @@
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include <sstream>
 
+using namespace System;
 using namespace System::Collections::Generic;
 
 namespace GUILayer
@@ -88,6 +90,12 @@ namespace GUILayer
         {
             Label = clix::marshalString<clix::E_UTF8>(record._identifier);
         }
+
+		AssetItem(String^ label, PendingSaveList::Entry^ pendingSave) 
+		{
+			Label = label;
+			_pendingSave = pendingSave;
+		}
     };
 
     public ref class AssetTypeItem
@@ -130,6 +138,14 @@ namespace GUILayer
 			Icon = GetAssetTypeImage(typeCode);
             _action = PendingSaveList::Action::Save;
         }
+
+		AssetTypeItem(System::String^ label, System::Drawing::Image^ icon)
+		{
+			_children = gcnew List<AssetItem^>();
+			Label = label;
+			Icon = icon;
+			_action = PendingSaveList::Action::Save;
+		}
     };
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -231,7 +247,6 @@ namespace GUILayer
     DivergentAssetList::DivergentAssetList(EngineDevice^ engine, PendingSaveList^ saveList)
     {
         _assetSets = &engine->GetNative().GetAssetServices()->GetAssetSets();
-        _undoQueue = nullptr;
         _saveList = saveList;
     }
 
@@ -513,7 +528,7 @@ namespace GUILayer
     {
 		auto& divAssetMan = ToolsRig::DivergentAssetManager::GetInstance();
 		for (const auto&d : divAssetMan.GetAssets())
-			if (!d._hasChanges) return true;
+			if (d._hasChanges) return true;
 		return false;
     }
 }

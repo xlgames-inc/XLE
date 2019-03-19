@@ -117,7 +117,7 @@ namespace RenderCore { namespace Techniques
 
                     uint8 buffer0[256], buffer1[256];
                     auto defaultType = ImpliedTyping::Parse(
-                        match[4].first, match[4].second,
+                        MakeStringSection(match[4].first, match[4].second),
                         buffer0, dimof(buffer0));
 
                     if (!(defaultType == e._type)) {
@@ -128,12 +128,12 @@ namespace RenderCore { namespace Techniques
                             buffer1, dimof(buffer1), e._type,
                             buffer0, defaultType);
                         if (castSuccess) {
-                            _defaults.SetParameter((const utf8*)e._name.c_str(), buffer1, e._type);
+							_defaults.SetParameter(MakeStringSection(e._name).Cast<utf8>(), {buffer1, PtrAdd(buffer1, std::min(sizeof(buffer1), (size_t)e._type.GetSize()))}, e._type);
                         } else {
                             Log(Warning) << "Default initialiser can't be cast to same type as variable in PredefinedCBLayout: " << std::string(lineStart, iterator) << std::endl;
                         }
                     } else {
-                        _defaults.SetParameter((const utf8*)e._name.c_str(), buffer0, defaultType);
+                        _defaults.SetParameter(MakeStringSection(e._name).Cast<utf8>(), {buffer0, PtrAdd(buffer0, std::min(sizeof(buffer0), (size_t)defaultType.GetSize()))}, defaultType);
                     }
                 }
             } else {
@@ -148,7 +148,7 @@ namespace RenderCore { namespace Techniques
     void PredefinedCBLayout::WriteBuffer(void* dst, const ParameterBox& parameters) const
     {
         for (auto c=_elements.cbegin(); c!=_elements.cend(); ++c) {
-            for (auto e=0; e<c->_arrayElementCount; e++) {
+            for (auto e=0u; e<c->_arrayElementCount; e++) {
                 bool gotValue = parameters.GetParameter(
                     c->_hash + e, PtrAdd(dst, c->_offset + e * c->_arrayElementStride),
                     c->_type);

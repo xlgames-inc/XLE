@@ -19,11 +19,10 @@ namespace SceneEngine
         typedef RenderOverlays::DebuggingDisplay::Layout Layout;
         typedef RenderOverlays::DebuggingDisplay::Interactables Interactables;
         typedef RenderOverlays::DebuggingDisplay::InterfaceState InterfaceState;
-        typedef RenderOverlays::DebuggingDisplay::InputSnapshot InputSnapshot;
 
         void    Render( RenderOverlays::IOverlayContext& context, Layout& layout, 
                         Interactables& interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
         PlacementsQuadTreeDebugger(std::shared_ptr<PlacementsManager> placementsManager, std::shared_ptr<PlacementCellSet> cells);
         ~PlacementsQuadTreeDebugger();

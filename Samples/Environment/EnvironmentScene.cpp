@@ -23,10 +23,13 @@
 
 #include "../../RenderCore/IAnnotator.h"
 #include "../../RenderCore/Assets/ModelCache.h"
+#include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../Tools/EntityInterface/RetainedEntities.h"
 
 #include "../../Assets/ConfigFileContainer.h"
 #include "../../Assets/IFileSystem.h"
+#include "../../Assets/DepVal.h"
+#include "../../Assets/AssetTraits.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/PathUtils.h"
@@ -131,9 +134,9 @@ namespace Sample
             p->PrepareFrame(context, parserContext);
     }
 
-    static const char* PlacementsRenderName(SceneEngine::SceneParseSettings::BatchFilter batchFilter)
+    static const char* PlacementsRenderName(RenderCore::Techniques::BatchFilter batchFilter)
     {
-        using BF = SceneEngine::SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         switch (batchFilter) {
         case BF::General: return "PlacementsRender-General";
         case BF::Transparent:
@@ -148,7 +151,7 @@ namespace Sample
 
     void EnvironmentSceneParser::PrepareScene(
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         SceneEngine::PreparedScene& preparedPackets) const
     {
         #if defined(ENABLE_TERRAIN)
@@ -166,11 +169,11 @@ namespace Sample
         SceneEngine::PreparedScene& preparedPackets,
         unsigned techniqueIndex) const
     {
-        CPUProfileEvent pEvnt("ExecuteScene", g_cpuProfiler);
+        CPUProfileEvent pEvnt2("ExecuteScene", g_cpuProfiler);
         
 		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
         using Toggles = SceneParseSettings::Toggles;
-        using BF = SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         #if defined(ENABLE_TERRAIN)
             if (    parseSettings._toggles & Toggles::Terrain
                 &&  parseSettings._batchFilter == BF::General) {
@@ -211,7 +214,7 @@ namespace Sample
 
     bool EnvironmentSceneParser::HasContent(const SceneParseSettings& parseSettings) const
     {
-        using BF = SceneParseSettings::BatchFilter;
+        using BF = RenderCore::Techniques::BatchFilter;
         auto batchFilter = parseSettings._batchFilter;
         if (batchFilter == BF::Transparent || batchFilter == BF::TransparentPreDepth || batchFilter == BF::OITransparent) {
             if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {

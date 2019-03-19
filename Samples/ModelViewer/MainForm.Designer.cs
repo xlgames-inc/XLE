@@ -27,10 +27,16 @@ namespace ModelViewer
                 viewSettings.SelectedObject = null;
                 mouseOverDetails.SelectedObject = null;
 
+                if (visLayerController != null)
+                {
+                    visLayerController.DetachFromView(viewerControl.Underlying);
+                    visLayerController.Dispose();
+                    visLayerController = null;
+                }
+
                 if (components != null)     components.Dispose();
                 if (visSettings != null)    visSettings.Dispose();
-                if (visMouseOver != null)   visMouseOver.Dispose();
-                if (visResources != null)   visResources.Dispose();
+                if (visMouseOver != null)   visMouseOver.Dispose();                
             }
             base.Dispose(disposing);
         }

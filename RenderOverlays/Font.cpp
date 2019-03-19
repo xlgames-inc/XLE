@@ -6,301 +6,251 @@
 
 #include "Font.h"
 #include "FT_Font.h"
+#include "../Utility/UTFUtils.h"
 #include <assert.h>
 
 namespace RenderOverlays
 {
 
-Font::Font()
-{
-    _path[0] = 0;
-    _size = 0;
-}
+	Font::~Font() {}
 
-Font::~Font()
-{
-}
+	template<typename CharType>
+		static ucs4 NextCharacter(StringSection<CharType>& text)
+		{
+			if (text.IsEmpty()) return 0;
+			return (ucs4)*text._start++;
+		}
 
-    // DavidJ -- hack! subvert massive virtual call overload by putting in some quick overloads
-std::shared_ptr<const Font> Font::GetSubFont(ucs4) const { return shared_from_this(); }
-bool Font::IsMultiFontAdapter() const { return false; }
+	template<>
+		ucs4 NextCharacter(StringSection<utf8>& text)
+		{
+			return utf8_nextchar(text._start, text._end);
+		}
 
-float Font::StringWidth(const ucs4* text, int maxLen, float spaceExtra, bool outline)
-{
-    if (!text)
-        return 0.0f;
+	template<typename CharType>
+		float StringWidth(const Font& font, StringSection<CharType> text, float spaceExtra, bool outline)
+	{
+		int prevGlyph = 0;
+		float x = 0.0f, prevMaxX = 0.0f;
+		while (!text.IsEmpty()) {
+			ucs4 ch = NextCharacter(text);
+			if (ch == '\n') {
+				prevMaxX = std::max(x, prevMaxX);
+				prevGlyph = 0;
+				x = 0;
+				continue;
+			}
 
-    int prevGlyph = 0;
+			int curGlyph;
+			x += font.GetKerning(prevGlyph, ch, &curGlyph)[0];
+			prevGlyph = curGlyph;
+			x += font.GetGlyphProperties(ch)._xAdvance;
 
-    float x = 0.0f;
+			if(outline) x += 2.0f;
+			if(ch == ' ') x += spaceExtra;
+		}
 
-        // DavidJ -- Hack -- this function is resulting in virtual call overload. But we
-        //                  can simplify by specialising for "FTFontGroup" type implementations
-    if (IsMultiFontAdapter()) {
-        for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-            int ch = text[i];
-            if (!ch) break;
-            if( ch == '\n') continue;
+		return std::max(x, prevMaxX);
+	}
 
-            int curGlyph;
-            auto subFont = GetSubFont(ch);
-            if (subFont) {
-                x += subFont->GetKerning(prevGlyph, ch, &curGlyph)[0];
+	template<typename CharType>
+		int CharCountFromWidth(const Font& font, StringSection<CharType> text, float width, float spaceExtra, bool outline)
+	{
+		int prevGlyph = 0;
+		int charCount = 0;
 
-                const FontChar* chr = subFont->GetChar(ch).first;
-                if(chr) {
-                    x += chr->xAdvance;
+		float x = 0.0f;
+		while (!text.IsEmpty()) {
+			ucs4 ch = NextCharacter(text);
+			if (ch == '\n') {
+				prevGlyph = 0;
+				x = 0;
+				continue;
+			}
 
-                    if(outline) {
-                        x += 2.0f;
-                    }
-                    if(ch == ' ') {
-                        x += spaceExtra;
-                    }
-                }
-                prevGlyph = curGlyph;
-            }
-        }
-    } else {
-        for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-            int ch = text[i];
-            if (!ch) break;
-            if( ch == '\n') continue;
+			int curGlyph;
+			x += font.GetKerning(prevGlyph, ch, &curGlyph)[0];
+			prevGlyph = curGlyph;
+			x += font.GetGlyphProperties(ch)._xAdvance;
 
-            int curGlyph;
-            x += GetKerning(prevGlyph, ch, &curGlyph)[0];
+			if(outline) x += 2.0f;
+			if(ch == ' ') x += spaceExtra;
 
-            const FontChar* chr = GetChar(ch).first;
-            if(chr) {
-                x += chr->xAdvance;
+			if (width < x) {
+				return charCount;
+			}
 
-                if(outline) {
-                    x += 2.0f;
-                }
-                if(ch == ' ') {
-                    x += spaceExtra;
-                }
-            }
-            prevGlyph = curGlyph;
-        }
-    }
+			++charCount;
+		}
 
-    return x;
-}
+		return charCount;
+	}
 
-int Font::CharCountFromWidth(const ucs4* text, float width, int maxLen, float spaceExtra, bool outline)
-{
-    if (!text)
-        return 0;
+	#pragma warning(disable:4706)   // C4706: assignment within conditional expression
 
-    int prevGlyph = 0;
-    int charCount = 0;
+	template<typename CharType>
+		static void CopyString(CharType* dst, int count, const CharType* src)
+	{
+		if (!count)
+			return;
 
-    float x = 0.0f;
+		if (!src) {
+			*dst = 0;
+			return;
+		}
 
-    for (uint32 i = 0; i < (uint32)maxLen; ++i) {
-        int ch = text[i];
-        if (!ch) break;
-        if( ch == '\n') continue;
+		while (--count && (*dst++ = *src++))
+			;
+		*dst = 0;
+	}
 
-        int curGlyph;
-        x += GetKerning(prevGlyph, ch, &curGlyph)[0];
-        prevGlyph = curGlyph;
+	template<typename CharType>
+		float StringEllipsis(const Font& font, StringSection<CharType> inText, CharType* outText, size_t outTextSize, float width, float spaceExtra, bool outline)
+	{
+		if (width <= 0.0f)
+			return 0.0f;
 
-        const FontChar* fc = GetChar(ch).first;
-        if(fc) {
+		int prevGlyph = 0;
+		float x = 0.0f;
+		auto text = inText;
+		while (!text.IsEmpty()) {
+			auto i = text.begin();
+			ucs4 ch = NextCharacter(text);
+			if (ch == '\n') {
+				prevGlyph = 0;
+				x = 0.0f;
+				continue;
+			}
 
-            x += fc->xAdvance;
+			int curGlyph;
+			x += font.GetKerning(prevGlyph, ch, &curGlyph)[0];
+			prevGlyph = curGlyph;
+			x += font.GetGlyphProperties(ch)._xAdvance;
 
-            if(outline) {
-                x += 2.0f;
-            }
-            if(ch == ' ') {
-                x += spaceExtra;
-            }
-        }
+			if(outline) x += 2.0f;
+			if(ch == ' ') x += spaceExtra;
 
-        if (width < x) {
-            return charCount;
-        }
+			if (x > width) {
+				size_t count = size_t(i - inText.begin());
+				if (count > outTextSize - 2) {
+					return x;
+				}
 
-        ++charCount;
-    }
+				CopyString(outText, (int)count, inText.begin());
+				outText[count - 1] = '.';
+				outText[count] = '.';
+				outText[count + 1] = 0;
 
-    return charCount;
-}
+				return StringWidth(font, MakeStringSection(outText, &outText[count + 1]), spaceExtra, outline);
+			}
+		}
 
-#pragma warning(disable:4706)   // C4706: assignment within conditional expression
+		return x;
+	}
 
-static void CopyString(ucs4* dst, int count, const ucs4* src)
-{
-    if (!count)
-        return;
+	float CharWidth(const Font& font, ucs4 ch, ucs4 prev)
+	{
+		float x = 0.0f;
+		if (prev) {
+			x += font.GetKerning(prev, ch);
+		}
 
-    if (!src) {
-        *dst = 0;
-        return;
-    }
+		x += font.GetGlyphProperties(ch)._xAdvance;
 
-    while (--count && (*dst++ = *src++))
-        ;
-    *dst = 0;
-}
+		return x;
+	}
 
-float Font::StringEllipsis(const ucs4* inText, ucs4* outText, size_t outTextSize, float width, float spaceExtra, bool outline)
-{
-    if (!inText || !outText)
-        return 0.0f;
+	static Float2 GetAlignPos(const Quad& q, const Float2& extent, TextAlignment align)
+	{
+		Float2 pos;
+		pos[0] = q.min[0];
+		pos[1] = q.min[1];
+		switch (align) {
+		case TextAlignment::TopLeft:
+			pos[0] = q.min[0];
+			pos[1] = q.min[1];
+			break;
+		case TextAlignment::Top:
+			pos[0] = 0.5f * (q.min[0] + q.max[0] - extent[0]);
+			pos[1] = q.min[1];
+			break;
+		case TextAlignment::TopRight:
+			pos[0] = q.max[0] - extent[0];
+			pos[1] = q.min[1];
+			break;
+		case TextAlignment::Left:
+			pos[0] = q.min[0];
+			pos[1] = 0.5f * (q.min[1] + q.max[1] - extent[1]);
+			break;
+		case TextAlignment::Center:
+			pos[0] = 0.5f * (q.min[0] + q.max[0] - extent[0]);
+			pos[1] = 0.5f * (q.min[1] + q.max[1] - extent[1]);
+			break;
+		case TextAlignment::Right:
+			pos[0] = q.max[0] - extent[0];
+			pos[1] = 0.5f * (q.min[1] + q.max[1] - extent[1]);
+			break;
+		case TextAlignment::BottomLeft:
+			pos[0] = q.min[0];
+			pos[1] = q.max[1] - extent[1];
+			break;
+		case TextAlignment::Bottom:
+			pos[0] = 0.5f * (q.min[0] + q.max[0] - extent[0]);
+			pos[1] = q.max[1] - extent[1];
+			break;
+		case TextAlignment::BottomRight:
+			pos[0] = q.max[0] - extent[0];
+			pos[1] = q.max[1] - extent[1];
+			break;
+		}
+		return pos;
+	}
 
-    if (width <= 0.0f) {
-        return 0.0f;
-    }
+	static Float2 AlignText(const Quad& q, const Font& font, float stringWidth, float indent, TextAlignment align)
+	{
+		auto fontProps = font.GetFontProperties();
+		Float2 extent = Float2(stringWidth, fontProps._ascenderExcludingAccent);
+		Float2 pos = GetAlignPos(q, extent, align);
+		pos[0] += indent;
+		pos[1] += extent[1];
+		switch (align) {
+		case TextAlignment::TopLeft:
+		case TextAlignment::Top:
+		case TextAlignment::TopRight:
+			pos[1] += fontProps._ascender - extent[1];
+			break;
+		case TextAlignment::BottomLeft:
+		case TextAlignment::Bottom:
+		case TextAlignment::BottomRight:
+			pos[1] -= fontProps._descender;
+			break;
+		}
+		return pos;
+	}
 
-    int prevGlyph = 0;
+	Float2 AlignText(const Font& font, const Quad& q, TextAlignment align, StringSection<ucs4> text)
+	{
+		return AlignText(q, font, StringWidth(font, text), 0, align);
+	}
 
-    float x = 0.0f;
+	Float2 AlignText(const Font& font, const Quad& q, TextAlignment align, float width, float indent)
+	{
+		return AlignText(q, font, width, indent, align);
+	}
 
-    for (uint32 i = 0 ; i < (uint32)-1 ; ++i) {
-        int ch = inText[i];
-        if (!ch) break;
-        if( ch == '\n') continue;
+	template float StringWidth(const Font&, StringSection<utf8>, float, bool);
+	template float StringWidth(const Font&, StringSection<char>, float, bool);
+	template float StringWidth(const Font&, StringSection<ucs2>, float, bool);
+	template float StringWidth(const Font&, StringSection<ucs4>, float, bool);
 
-        int curGlyph;
-        x += GetKerning(prevGlyph, ch, &curGlyph)[0];
-        prevGlyph = curGlyph;
+	template int CharCountFromWidth(const Font&, StringSection<utf8> text, float width, float spaceExtra, bool outline);
+	template int CharCountFromWidth(const Font&, StringSection<char> text, float width, float spaceExtra, bool outline);
+	template int CharCountFromWidth(const Font&, StringSection<ucs2> text, float width, float spaceExtra, bool outline);
+	template int CharCountFromWidth(const Font&, StringSection<ucs4> text, float width, float spaceExtra, bool outline);
 
-        const FontChar* fc = GetChar(ch).first;
-        if(fc) {
-
-            x += fc->xAdvance;
-
-            if(outline) {
-                x += 2.0f;
-            }
-            if(ch == ' ') {
-                x += spaceExtra;
-            }
-        }
-
-        if (x > width) {
-            size_t count = size_t(i);
-            if (count > outTextSize - 2) {
-                return x;
-            }
-
-            CopyString(outText, (int)count, inText);
-            outText[count - 1] = '.';
-            outText[count] = '.';
-            outText[count + 1] = 0;
-
-            return StringWidth(outText, -1, spaceExtra, outline);
-        }
-    }
-
-    return x;
-}
-
-float Font::CharWidth(ucs4 ch, ucs4 prev) const
-{
-    float x = 0.0f;
-    if (prev) {
-        x += GetKerning(prev, ch);
-    }
-
-    const FontChar* fc = GetChar(ch).first;
-    if(fc) {
-        x += fc->xAdvance;
-    }
-
-    return x;
-}
-
-FontChar::FontChar(int ich)
-{
-    ch = ich;
-    u0 = 0.0f;
-    v0 = 0.0f;
-    u1 = 1.0f;
-    v1 = 1.0f;
-    left = 0.0f;
-    top = 0.0f;
-    width = 0.0f;
-    height = 0.0f;
-    xAdvance = 0.0f;
-
-    offsetX = 0;
-    offsetY = 0;
-
-    usedTime = 0; // desktop.time;
-    needTexUpdate = false;
-}
-
-std::shared_ptr<Font> GetX2Font(const char* path, int size, FontTexKind kind)
-{
-    switch (kind) {
-    case FTK_DAMAGEDISPLAY: 
-    case FTK_GENERAL: 
-        return GetX2FTFont(path, size, kind);
-
-//    case FTK_IMAGETEXT: 
-//        return GetX2ImageTextFont(path, size);
-    }
-
-    return nullptr;
-}
-
-static float                garbageCollectTime = 0.0f;
-BufferUploads::IManager*    gBufferUploads = nullptr;
-RenderCore::IDevice*        gRenderDevice = nullptr;
-
-bool InitFontSystem(RenderCore::IDevice* device, BufferUploads::IManager* bufferUploads)
-{
-    garbageCollectTime = 0.0f;
-    gRenderDevice = device;
-    gBufferUploads = bufferUploads;
-
-    if(!InitFTFontSystem()) {
-        return false;
-    }
-
-    // if(!InitImageTextFontSystem()) {
-    //     return false;
-    // }
-
-    return true;
-}
-
-void CleanupFontSystem()
-{
-    CleanupFTFontSystem();
-    // CleanupImageTextFontSystem();
-    gBufferUploads = nullptr;
-    gRenderDevice = nullptr;
-}
-
-void CheckResetFontSystem()
-{
-    CheckResetFTFontSystem();
-}
-
-int GetFontCount(FontTexKind kind)
-{
-    switch (kind) {
-    case FTK_DAMAGEDISPLAY:
-    case FTK_GENERAL:
-        return GetFTFontCount(kind);
-
-    // case FTK_IMAGETEXT:
-    //     return GetImageTextFontCount();
-    }
-
-    return 0;
-}
-
-int GetFontFileCount()
-{
-    return GetFTFontFileCount(); // + GetImageTextFontFileCount();
-}
-
+	template float StringEllipsis(const Font&, StringSection<utf8>, utf8*, size_t, float, float, bool);
+	template float StringEllipsis(const Font&, StringSection<char>, char*, size_t, float, float, bool);
+	template float StringEllipsis(const Font&, StringSection<ucs2>, ucs2*, size_t, float, float, bool);
+	template float StringEllipsis(const Font&, StringSection<ucs4>, ucs4*, size_t, float, float, bool);
 }
 

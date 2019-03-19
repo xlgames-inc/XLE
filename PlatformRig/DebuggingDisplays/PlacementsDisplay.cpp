@@ -47,7 +47,7 @@ namespace PlatformRig { namespace Overlays
 #endif
     }
 
-    bool    PlacementsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    PlacementsDisplay::ProcessInput(InterfaceState& interfaceState, const InputContext& inputContext, const InputSnapshot& input)
     {
         return false;
     }

@@ -6,12 +6,8 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="../Stdafx.h">
-      <Filter>System</Filter>
-    </ClInclude>
     <ClInclude Include="../TypeRules.h" />
     <ClInclude Include="../PreviewRenderManager.h" />
-    <ClInclude Include="../ShaderDiagramDocument.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />
     <ClInclude Include="../ShaderGenerator.h" />
   </ItemGroup>
@@ -19,12 +15,8 @@
     <ClCompile Include="../AssemblyInfo.cpp">
       <Filter>System</Filter>
     </ClCompile>
-    <ClCompile Include="../Stdafx.cpp">
-      <Filter>System</Filter>
-    </ClCompile>
     <ClCompile Include="../PreviewRenderManager.cpp" />
     <ClCompile Include="../TypeRules.cpp" />
-    <ClCompile Include="../ShaderDiagramDocument.cpp" />
     <ClCompile Include="../ShaderFragmentArchive.cpp" />
     <ClCompile Include="../ShaderGenerator.cpp" />
   </ItemGroup>

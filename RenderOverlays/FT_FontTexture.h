@@ -6,84 +6,67 @@
 
 #pragma once
 
-#include "FontPrimitives.h"
+#include "OverlayPrimitives.h"
+#include "../RenderCore/Format.h"
+#include "../RenderCore/Metal/TextureView.h"
+#include "../Utility/UTFUtils.h"
+#include "../Utility/IteratorUtils.h"
+#include "../Utility/IntrusivePtr.h"
 #include <vector>
 #include <memory>
 
+namespace RenderCore { class IResource; class Box2D; }
+namespace BufferUploads { class IManager; class ResourceLocator; class DataPacket; using TransactionID = uint64_t; }
+
 namespace RenderOverlays
 {
+	class FontTexture2D
+	{
+	public:
+		void UpdateToTexture(BufferUploads::DataPacket& packet, const RenderCore::Box2D& destBox);
+		const std::shared_ptr<RenderCore::IResource>& GetUnderlying() const;
+		const RenderCore::Metal::ShaderResourceView& GetSRV() const;
 
-struct FontChar;
+		FontTexture2D(unsigned width, unsigned height, RenderCore::Format pixelFormat);
+		~FontTexture2D();
 
-class FTFont;
-class CharSlotArray;
-class TextureHeap;
+		FontTexture2D(FontTexture2D&&) = default;
+		FontTexture2D& operator=(FontTexture2D&&) = default;
 
-class FontTexture2D;
+	private:
+		mutable BufferUploads::TransactionID					_transaction;
+		mutable intrusive_ptr<BufferUploads::ResourceLocator>	_locator;
+		mutable RenderCore::Metal::ShaderResourceView			_srv;
 
-class FT_FontTextureMgr
-{
-public:
-    bool            Init(int texWidth, int texHeight);
-    void            CheckTextureValidate(FT_Face face, int size, FontChar *fc);
+		void Resolve() const;
+	};
 
-    bool            IsNeedReset() const;
-    void            RequestReset();
-    void            Reset();
+	class FT_FontTextureMgr
+	{
+	public:
+		struct Glyph
+		{
+			UInt2 _topLeft = UInt2{0, 0};
+			UInt2 _bottomRight = UInt2{0, 0};
+			FontBitmapId _glyphId = FontBitmapId_Invalid;
+		};
 
-    typedef std::vector<std::unique_ptr<CharSlotArray>> CharSlotArrayList;
-    struct FontCharTable
-    {
-        std::vector<std::vector<std::pair<ucs4, FontCharID> > >  _table;
-        FontCharID&         operator[](ucs4 ch);
-        void                ClearTable();
-        FontCharTable();
-        ~FontCharTable();
-    };
+		Glyph		CreateChar(
+			unsigned width, unsigned height,
+			IteratorRange<const void*> data);
 
-    class FontFace
-    {
-    public:
-        const FontChar*     GetChar(int ch, FontTexKind kind);
-        FontCharID          CreateChar(int ch, FontTexKind kind);
-        void                DeleteChar(FontCharID fc);
-        const FontTexture2D*    GetTexture() const { return _texture; }
-
-        FontFace(TextureHeap* texHeap, FontTexture2D* texture, int texWidth, int texHeight);
+		const FontTexture2D& GetFontTexture();
+		UInt2 GetTextureDimensions();
     
-        CharSlotArrayList   _slotList;
-        FT_Face             _face;
-        int                 _size;
+		FT_FontTextureMgr();
+		~FT_FontTextureMgr();
 
-    private:
-        FontCharTable       _table;
+	private:
+		class Pimpl;
+		std::shared_ptr<Pimpl> _pimpl;
+	};
 
-        int                 _texWidth, _texHeight;
-        TextureHeap *       _texHeap;
-        FontTexture2D *     _texture;
-
-        FontCharID          FindEmptyCharSlot(const FontChar& fc, int *x, int *y, FontTexKind kind);
-    };
-
-    FontFace*       FindFontFace(FT_Face face, int size);
-    FontFace*       CreateFontFace(FT_Face face, int size);
-    void            DeleteFontFace(FTFont* font);
-
-    FT_FontTextureMgr();
-    virtual ~FT_FontTextureMgr();
-
-private:
-    typedef std::vector<std::unique_ptr<FontFace>> FontFaceList;
-
-    CharSlotArray*      OverwriteLRUChar(FontFace* face, FontTexKind kind);
-    void                ClearFontTextureRegion(int height, int heightEnd);
-
-    int                             _texWidth, _texHeight;
-    FontFaceList                    _faceList;
-    std::unique_ptr<TextureHeap>    _texHeap;
-    std::unique_ptr<FontTexture2D>  _texture;
-    bool                            _needReset;
-};
+	FT_FontTextureMgr& GetFontTextureMgr();
 
 }
 

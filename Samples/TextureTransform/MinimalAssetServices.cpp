@@ -11,7 +11,7 @@
 #include "../../RenderCore/MinimalShaderSource.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/MemoryUtils.h"
@@ -31,11 +31,9 @@ namespace Samples
         _shaderService->AddShaderSource(shaderSource);
 
         if (device) {
-            BufferUploads::AttachLibrary(ConsoleRig::GlobalServices::GetInstance());
+            BufferUploads::AttachLibrary(ConsoleRig::CrossModule::GetInstance());
             _bufferUploads = BufferUploads::CreateManager(*device);
         }
-
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*this);
     }
 
     MinimalAssetServices::~MinimalAssetServices()
@@ -44,8 +42,6 @@ namespace Samples
             _bufferUploads.reset();
             BufferUploads::DetachLibrary();
         }
-
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*this);
     }
 
     void MinimalAssetServices::AttachCurrentModule()

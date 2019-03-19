@@ -23,10 +23,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		return vulkanDevice ? vulkanDevice->GetUnderlyingDevice() : nullptr;
     }
 
-	static Resource& AsResource(IResource& input)
+	Resource& AsResource(IResource& res)
 	{
-		assert(input.QueryInterface(typeid(Resource).hash_code()));
-		return *(Resource*)&input;
+		auto* r = (Resource*)res.QueryInterface(typeid(Resource).hash_code());
+		assert(r);
+		return *r;
 	}
 
 	static VkBufferUsageFlags AsBufferUsageFlags(BindFlag::BitField bindFlags)
@@ -417,6 +418,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	static uint64_t s_nextResourceGUID = 1;
+
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
 		const SubResourceInitData& initData)
@@ -425,6 +428,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
     Resource::Resource(VkImage image, const Desc& desc)
     : _desc(desc)
+	, _guid(s_nextResourceGUID++)
     {
         // do not destroy the image, even on the last release --
         //      this is used with the presentation chain images, which are only
@@ -432,7 +436,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _underlyingImage = VulkanSharedPtr<VkImage>(image, [](const VkImage) {});
     }
 
-	Resource::Resource() {}
+	Resource::Resource() : _guid(s_nextResourceGUID++) {}
 	Resource::~Resource() {}
 
 	void* Resource::QueryInterface(size_t guid)
@@ -456,7 +460,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	RenderCore::ResourcePtr ExtractResource(const TextureView& res)
 	{
-		return res.ShareResource();
+		return res.GetResource();
 	}
 
     namespace Internal

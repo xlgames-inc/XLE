@@ -7,6 +7,7 @@
 #include "AssetsCore.h"
 #include "ChunkFile.h"
 #include "BlockSerializer.h"
+#include "ICompileOperation.h"
 #include "../ConsoleRig/AttachableLibrary.h"	// (for LibVersionDesc)
 #include "../Utility/IteratorUtils.h"
 #include "../Core/Prefix.h"
@@ -21,24 +22,24 @@ namespace Assets
 	{
 	public:
 		Serialization::ChunkFile::ChunkHeader _hdr;
-		::Assets::Blob _data;
+		Blob _data;
 	};
 
 	using NascentChunkArray = std::shared_ptr<std::vector<NascentChunk>>;
 	NascentChunkArray MakeNascentChunkArray(const std::initializer_list<NascentChunk>& inits);
 
-	::Assets::Blob AsBlob(const Serialization::NascentBlockSerializer& serializer);
-	::Assets::Blob AsBlob(IteratorRange<const void*>);
+	Blob AsBlob(const Serialization::NascentBlockSerializer& serializer);
+	Blob AsBlob(IteratorRange<const void*>);
 
 	template<typename Char>
-		static ::Assets::Blob AsBlob(std::basic_stringstream<Char>& stream)
+		static Blob AsBlob(std::basic_stringstream<Char>& stream)
 	{
 		auto str = stream.str();
 		return AsBlob(MakeIteratorRange(AsPointer(str.begin()), AsPointer(str.end())));
 	}
 
 	template<typename Type>
-		static ::Assets::Blob SerializeToBlob(const Type& obj)
+		static Blob SerializeToBlob(const Type& obj)
 	{
 		Serialization::NascentBlockSerializer serializer;
 		::Serialize(serializer, obj);
@@ -47,7 +48,13 @@ namespace Assets
 
 	void BuildChunkFile(
 		IFileInterface& file,
-		IteratorRange<NascentChunk*> chunks,
+		IteratorRange<const NascentChunk*> chunks,
 		const ConsoleRig::LibVersionDesc& versionInfo,
-		std::function<bool(const ::Assets::NascentChunk&)> predicate = {});
+		std::function<bool(const NascentChunk&)> predicate = {});
+
+	void BuildChunkFile(
+		IFileInterface& file,
+		IteratorRange<const ICompileOperation::OperationResult*> chunks,
+		const ConsoleRig::LibVersionDesc& versionInfo,
+		std::function<bool(const ICompileOperation::OperationResult&)> predicate = {});
 }

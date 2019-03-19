@@ -6,7 +6,6 @@
 
 #include "RawMaterial.h"
 #include "../Types.h"
-#include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
 #include "../../Assets/DeferredConstruction.h"
@@ -18,6 +17,8 @@
 
 namespace RenderCore { namespace Assets
 {
+
+	static const auto s_MaterialCompileProcessType = ConstHash64<'RawM', 'at'>::Value;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -84,9 +85,8 @@ namespace RenderCore { namespace Assets
         return BlendOp::NoBlending;
     }
 
-    static Techniques::RenderStateSet DeserializeStateSet(InputStreamFormatter<utf8>& formatter)
+    static RenderStateSet DeserializeStateSet(InputStreamFormatter<utf8>& formatter)
     {
-        using RenderStateSet = Techniques::RenderStateSet;
         RenderStateSet result;
 
         Document<InputStreamFormatter<utf8>> doc(formatter);
@@ -144,13 +144,13 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    static const utf8* AsString(Techniques::RenderStateSet::BlendType blend)
+    static const utf8* AsString(RenderStateSet::BlendType blend)
     {
         switch (blend) {
-        case Techniques::RenderStateSet::BlendType::DeferredDecal: return u("decal");
-        case Techniques::RenderStateSet::BlendType::Ordered: return u("ordered");
+        case RenderStateSet::BlendType::DeferredDecal: return u("decal");
+        case RenderStateSet::BlendType::Ordered: return u("ordered");
         default:
-        case Techniques::RenderStateSet::BlendType::Basic: return u("basic");
+        case RenderStateSet::BlendType::Basic: return u("basic");
         }
     }
 
@@ -181,14 +181,13 @@ namespace RenderCore { namespace Assets
                 ImpliedTyping::AsString(type, true));
         }
 
-    static bool HasSomethingToSerialize(const Techniques::RenderStateSet& stateSet)
+    static bool HasSomethingToSerialize(const RenderStateSet& stateSet)
     {
         return stateSet._flag != 0;
     }
 
-    static void SerializeStateSet(OutputStreamFormatter& formatter, const Techniques::RenderStateSet& stateSet)
+    static void SerializeStateSet(OutputStreamFormatter& formatter, const RenderStateSet& stateSet)
     {
-        using RenderStateSet = Techniques::RenderStateSet;
         if (stateSet._flag & RenderStateSet::Flag::DoubleSided)
             formatter.WriteAttribute(u("DoubleSided"), AutoAsString(stateSet._doubleSided));
 
@@ -213,37 +212,34 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    static Techniques::RenderStateSet Merge(
-        Techniques::RenderStateSet underride,
-        Techniques::RenderStateSet override)
+    RenderStateSet Merge(RenderStateSet underride, RenderStateSet override)
     {
-        using StateSet = Techniques::RenderStateSet;
-        StateSet result = underride;
-        if (override._flag & StateSet::Flag::DoubleSided) {
+        RenderStateSet result = underride;
+        if (override._flag & RenderStateSet::Flag::DoubleSided) {
             result._doubleSided = override._doubleSided;
-            result._flag |= StateSet::Flag::DoubleSided;
+            result._flag |= RenderStateSet::Flag::DoubleSided;
         }
-        if (override._flag & StateSet::Flag::Wireframe) {
+        if (override._flag & RenderStateSet::Flag::Wireframe) {
             result._wireframe = override._wireframe;
-            result._flag |= StateSet::Flag::Wireframe;
+            result._flag |= RenderStateSet::Flag::Wireframe;
         }
-        if (override._flag & StateSet::Flag::WriteMask) {
+        if (override._flag & RenderStateSet::Flag::WriteMask) {
             result._writeMask = override._writeMask;
-            result._flag |= StateSet::Flag::WriteMask;
+            result._flag |= RenderStateSet::Flag::WriteMask;
         }
-        if (override._flag & StateSet::Flag::BlendType) {
+        if (override._flag & RenderStateSet::Flag::BlendType) {
             result._blendType = override._blendType;
-            result._flag |= StateSet::Flag::BlendType;
+            result._flag |= RenderStateSet::Flag::BlendType;
         }
-        if (override._flag & StateSet::Flag::ForwardBlend) {
+        if (override._flag & RenderStateSet::Flag::ForwardBlend) {
             result._forwardBlendSrc = override._forwardBlendSrc;
             result._forwardBlendDst = override._forwardBlendDst;
             result._forwardBlendOp = override._forwardBlendOp;
-            result._flag |= StateSet::Flag::ForwardBlend;
+            result._flag |= RenderStateSet::Flag::ForwardBlend;
         }
-        if (override._flag & StateSet::Flag::DepthBias) {
+        if (override._flag & RenderStateSet::Flag::DepthBias) {
             result._depthBias = override._depthBias;
-            result._flag |= StateSet::Flag::DepthBias;
+            result._flag |= RenderStateSet::Flag::DepthBias;
         }
         return result;
     }
@@ -389,32 +385,23 @@ namespace RenderCore { namespace Assets
         }
     }
 
-    void RawMaterial::MergeInto(Techniques::Material& dest) const
-    {
-        dest._matParams.MergeIn(_matParamBox);
+	void RawMaterial::MergeInto(RawMaterial& dest) const
+	{
+		dest._matParamBox.MergeIn(_matParamBox);
         dest._stateSet = Merge(dest._stateSet, _stateSet);
         dest._constants.MergeIn(_constants);
-        dest._bindings.MergeIn(_resourceBindings);
-
-        if (!_techniqueConfig.empty()) {
-            // Shader names in "ResolvedMaterial" are kept very short. We
-            // want the material object to be fairly light-weight. 
-            if (_techniqueConfig.size() > (dimof(dest._techniqueConfig)-1))
-                Throw(::Exceptions::BasicLabel("Shader name is too long during resolve"));
-
-            XlCopyString(dest._techniqueConfig, _techniqueConfig);
-        }
-    }
+        dest._resourceBindings.MergeIn(_resourceBindings);
+        if (!_techniqueConfig.empty())
+            dest._techniqueConfig = _techniqueConfig;
+	}
 
 	void ResolveMaterialFilename(
         ::Assets::ResChar resolvedFile[], unsigned resolvedFileCount,
         const ::Assets::DirectorySearchRules& searchRules, StringSection<char> baseMatName)
     {
-        if (baseMatName.begin() != resolvedFile)
-            XlCopyString(resolvedFile, resolvedFileCount, baseMatName);
-        if (!XlExtension(resolvedFile))
-            XlCatString(resolvedFile, resolvedFileCount, ".material");
-        searchRules.ResolveFile(resolvedFile, resolvedFileCount, resolvedFile);
+		auto splitName = MakeFileNameSplitter(baseMatName);
+        searchRules.ResolveFile(resolvedFile, resolvedFileCount, splitName.AllExceptParameters());
+		XlCatString(resolvedFile, resolvedFileCount, splitName.ParametersWithDivider());
     }
 
     auto RawMaterial::ResolveInherited(
@@ -442,7 +429,108 @@ namespace RenderCore { namespace Assets
         return result;
     }
 
-    static void AddDep(
+	RawMatConfigurations::RawMatConfigurations(
+		const ::Assets::Blob& blob,
+		const ::Assets::DepValPtr& depVal,
+		StringSection<::Assets::ResChar>)
+    {
+            //  Get associated "raw" material information. This is should contain the material information attached
+            //  to the geometry export (eg, .dae file).
+
+        if (!blob || blob->size() == 0)
+            Throw(::Exceptions::BasicLabel("Missing or empty file"));
+
+        InputStreamFormatter<utf8> formatter(
+            MemoryMappedInputStream(MakeIteratorRange(*blob)));
+        Document<decltype(formatter)> doc(formatter);
+            
+        for (auto config=doc.FirstChild(); config; config=config.NextSibling()) {
+            auto name = config.Name();
+            if (name.IsEmpty()) continue;
+            _configurations.push_back(name.AsString());
+        }
+
+        _validationCallback = depVal;
+    }
+
+	static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
+
+	void RawMaterial::ConstructToFuture(
+		::Assets::AssetFuture<RawMaterial>& future,
+		StringSection<::Assets::ResChar> initializer)
+	{
+		// If we're loading from a .material file, then just go head and use the
+		// default asset construction
+		// Otherwise, we need to invoke a compile and load of a ConfigFileContainer
+		auto splitName = MakeFileNameSplitter(initializer);
+		if (IsMaterialFile(splitName.Extension())) {
+			AutoConstructToFutureDirect(future, initializer);
+			return;
+		}
+
+		// 
+		auto containerInitializer = splitName.AllExceptParameters();
+		auto containerFuture = std::make_shared<::Assets::AssetFuture<::Assets::ConfigFileContainer<>>>(containerInitializer.AsString());
+		::Assets::DefaultCompilerConstruction(
+			*containerFuture, 
+			&containerInitializer, 1,
+			s_MaterialCompileProcessType);
+
+		std::string containerInitializerString = containerInitializer.AsString();
+		std::string section = splitName.Parameters().AsString();
+		future.SetPollingFunction(
+			[containerFuture, section, containerInitializerString](::Assets::AssetFuture<RawMaterial>& thatFuture) -> bool {
+
+			auto containerActual = containerFuture->TryActualize();
+			if (!containerActual) {
+				auto containerState = containerFuture->GetAssetState();
+				if (containerState == ::Assets::AssetState::Invalid) {
+					thatFuture.SetInvalidAsset(containerFuture->GetDependencyValidation(), nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto fmttr = containerActual->GetFormatter(MakeStringSection(section).Cast<utf8>());
+			auto newShader = std::make_shared<RawMaterial>(
+				fmttr, 
+				::Assets::DefaultDirectorySearchRules(containerInitializerString),
+				containerActual->GetDependencyValidation());
+			thatFuture.SetAsset(std::move(newShader), {});
+			return false;
+		});
+
+	}
+
+	void MergeInto(MaterialScaffold::Material& dest, const RawMaterial& source)
+    {
+        dest._matParams.MergeIn(source._matParamBox);
+        dest._stateSet = Merge(dest._stateSet, source._stateSet);
+        dest._constants.MergeIn(source._constants);
+
+		// Resolve all of the directory names here, as we write into the Techniques::Material
+		for (const auto&b:source._resourceBindings) {
+			auto unresolvedName = b.ValueAsString();
+			if (!unresolvedName.empty()) {
+				char resolvedName[MaxPath];
+				source.GetDirectorySearchRules().ResolveFile(resolvedName, unresolvedName);
+				dest._bindings.SetParameter(b.Name(), MakeStringSection(resolvedName));
+			} else {
+				dest._bindings.SetParameter(b.Name(), MakeStringSection(unresolvedName));
+			}
+		}
+
+        if (!source._techniqueConfig.empty()) {
+            // Shader names in "ResolvedMaterial" are kept very short. We
+            // want the material object to be fairly light-weight. 
+            if (source._techniqueConfig.size() > (dimof(dest._techniqueConfig)-1))
+                Throw(::Exceptions::BasicLabel("Shader name is too long during resolve"));
+
+            XlCopyString(dest._techniqueConfig, source._techniqueConfig);
+        }
+    }
+
+	static void AddDep(
         std::vector<::Assets::DependentFileState>& deps,
         StringSection<::Assets::ResChar> newDep)
     {
@@ -456,24 +544,8 @@ namespace RenderCore { namespace Assets
             deps.push_back(depState);
     }
 
-    static bool IsMaterialFile(StringSection<::Assets::ResChar> extension) { return XlEqStringI(extension, "material"); }
-    
-
-#if defined(HAS_XLE_FULLASSETS)
-    auto RawMaterial::GetDivergentAsset(StringSection<::Assets::ResChar> initializer)
-        -> const std::shared_ptr<::Assets::DivergentAsset<RawMaterial>>&
-    {
-
-        if (!IsMaterialFile(FileNameSplitter<::Assets::ResChar>(initializer).Extension())) {
-            return ::Assets::GetDivergentAssetComp<RawMaterial>(initializer);
-        } else {
-            return ::Assets::GetDivergentAsset<RawMaterial>(initializer);
-        }
-    }
-#endif
-
 	void MergeIn_Stall(
-		Techniques::Material& result,
+		MaterialScaffold::Material& result,
 		StringSection<> sourceMaterialName,
         const ::Assets::DirectorySearchRules& searchRules,
         std::vector<::Assets::DependentFileState>& deps)
@@ -497,12 +569,12 @@ namespace RenderCore { namespace Assets
 			for (const auto& child: source->ResolveInherited(searchRules))
 				MergeIn_Stall(result, child, childSearchRules, deps);
 
-			source->MergeInto(result);
+			MergeInto(result, *source);
 		}
     }
 
 	void MergeIn_Stall(
-		RenderCore::Techniques::Material& result,
+		MaterialScaffold::Material& result,
 		const RenderCore::Assets::RawMaterial& src,
 		const ::Assets::DirectorySearchRules& searchRules)
 	{
@@ -510,16 +582,25 @@ namespace RenderCore { namespace Assets
 		childSearchRules.Merge(src.GetDirectorySearchRules());
 
 		for (const auto& child : src.ResolveInherited(childSearchRules)) {
-			auto dependencyMat = ::Assets::MakeAsset<RenderCore::Assets::RawMaterial>(child);
+			auto dependencyMat = ::Assets::MakeAsset<RawMaterial>(child);
 			auto state = dependencyMat->StallWhilePending();
 			if (state == ::Assets::AssetState::Ready) {
 				MergeIn_Stall(result, *dependencyMat->Actualize(), childSearchRules);
 			}
 		}
 
-		src.MergeInto(result);
+		MergeInto(result, src);
 	}
 
+	MaterialGuid MakeMaterialGuid(StringSection<utf8> name)
+	{
+		//  If the material name is just a number, then we will use that
+		//  as the guid. Otherwise we hash the name.
+		const char* parseEnd = nullptr;
+		uint64 hashId = XlAtoI64((const char*)name.begin(), &parseEnd, 16);
+		if (!parseEnd || parseEnd != (const char*)name.end()) { hashId = Hash64(name.begin(), name.end()); }
+		return hashId;
+	}
 
 }}
 

@@ -51,6 +51,14 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
+	void		GraphicsPipelineBuilder::UnbindInputLayout()
+	{
+		if (_inputLayout) {
+			_pipelineStale = true;
+			_inputLayout = nullptr;
+		}
+	}
+
 	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
     {
         if (_shaderProgram != &shaderProgram) {
@@ -375,6 +383,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 _graphicsDescriptors._numericBindingsSlot, descSets[0]);
         }
 
+		// GetTemporaryBufferSpace().WriteBarrier(*this);
+
         if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
 
 		if (!_renderPass) {
@@ -640,14 +650,20 @@ namespace RenderCore { namespace Metal_Vulkan
         ++_renderPassSubpass;
     }
 
-	NumericUniformsInterface& DeviceContext::GetNumericUniforms_Graphics()
+	NumericUniformsInterface& DeviceContext::GetNumericUniforms(ShaderStage stage)
 	{
-		return _graphicsDescriptors._numericBindings;
-	}
-
-	NumericUniformsInterface& DeviceContext::GetNumericUniforms_Compute()
-	{
-		return _computeDescriptors._numericBindings;
+		switch (stage) {
+		case ShaderStage::Pixel:
+			return _graphicsDescriptors._numericBindings;
+		case ShaderStage::Compute:
+			return _computeDescriptors._numericBindings;
+		default:
+			// since the numeric uniforms are associated with a descriptor set, we don't
+			// distinguish between different shader stages (unlike some APIs where constants
+			// are set for each stage independantly)
+			// Hence we can't return anything sensible here.
+			Throw(::Exceptions::BasicLabel("Numeric uniforms only supported for pixel shader in Vulkan"));
+		}
 	}
 
 	DeviceContext::DeviceContext(

@@ -11,7 +11,6 @@
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../SceneEngine/IntersectionTest.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Terrain.h"
 #include "../../SceneEngine/TerrainConfig.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
@@ -22,14 +21,12 @@ static unsigned FrameRenderCount;
 
 namespace ToolsRig
 {
-    using SceneEngine::IntersectionTestContext;
-    using SceneEngine::IntersectionTestScene;
     std::pair<Float3, bool> FindTerrainIntersection(
-        const IntersectionTestContext& context, const IntersectionTestScene& scene,
+        const SceneEngine::IntersectionTestContext& context, const SceneEngine::IntersectionTestScene& scene,
         const Int2 screenCoords)
     {
-        auto result = scene.UnderCursor(context, screenCoords, IntersectionTestScene::Type::Terrain);
-        if (result._type == IntersectionTestScene::Type::Terrain) {
+        auto result = scene.UnderCursor(context, screenCoords, SceneEngine::IntersectionTestScene::Type::Terrain);
+        if (result._type == SceneEngine::IntersectionTestScene::Type::Terrain) {
             return std::make_pair(result._worldSpaceCollision, true);
         }
         return std::make_pair(Float3(0.f, 0.f, 0.f), false);
@@ -89,7 +86,7 @@ namespace ToolsRig
         return input * scale;
     }
 
-	void TerrainManipulatorBase::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+	void TerrainManipulatorBase::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
 	{
         if (_manipulatorContext && _manipulatorContext->_showLockedArea) {
             // If there is a "lock" for the currently visualised layer, we should draw a rectangle to visualize it
@@ -119,11 +116,11 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool    CommonManipulator::OnInputEvent(
-        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+        const PlatformRig::InputSnapshot& evnt, 
         const SceneEngine::IntersectionTestContext& hitTestContext,
-        const SceneEngine::IntersectionTestScene& hitTestScene)
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
-        const bool shiftHeld = evnt.IsHeld(RenderOverlays::DebuggingDisplay::KeyId_Make("shift"));
+        const bool shiftHeld = evnt.IsHeld(PlatformRig::KeyId_Make("shift"));
         if (evnt._wheelDelta) {
                 // on wheel delta, change effect size
             if (shiftHeld) {
@@ -138,10 +135,10 @@ namespace ToolsRig
             //  to do that is to get it from the windows HWND!
         Int2 newMouseCoords(evnt._mousePosition[0], evnt._mousePosition[1]);
             // only do the terrain test if we get some kind of movement
-        if (((XlAbs(_mouseCoords[0] - newMouseCoords[0]) > 1 || XlAbs(_mouseCoords[1] - newMouseCoords[1]) > 1)
-            && (FrameRenderCount > _lastRenderCount0)) || evnt.IsPress_LButton()) {
+        if ((((XlAbs(_mouseCoords[0] - newMouseCoords[0]) > 1 || XlAbs(_mouseCoords[1] - newMouseCoords[1]) > 1)
+            && (FrameRenderCount > _lastRenderCount0)) || evnt.IsPress_LButton()) && hitTestScene) {
 
-            _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, hitTestScene, newMouseCoords);
+            _currentWorldSpaceTarget = FindTerrainIntersection(hitTestContext, *hitTestScene, newMouseCoords);
             _lastPerform = 0;
             _mouseCoords = newMouseCoords;
             _lastRenderCount0 = FrameRenderCount;
@@ -155,7 +152,7 @@ namespace ToolsRig
                 // perform action -- (like raising or lowering the terrain)
             if (_currentWorldSpaceTarget.second && (Millisecond_Now() - _lastPerform) > 33 && (FrameRenderCount > _lastRenderCount1)) {
 
-                PerformAction(*hitTestContext.GetThreadContext(), _currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
+                PerformAction(_currentWorldSpaceTarget.first, _size, shiftHeld?(-_strength):_strength);
                 
                 _lastPerform = Millisecond_Now();
                 _lastRenderCount1 = FrameRenderCount;
@@ -167,7 +164,7 @@ namespace ToolsRig
 
     void    CommonManipulator::Render(
                     RenderCore::IThreadContext& context, 
-                    SceneEngine::LightingParserContext& parserContext)
+                    RenderCore::Techniques::ParsingContext& parserContext)
     {
 		TerrainManipulatorBase::Render(context, parserContext);
             //  Draw a highlight on the area that we're going to modify. Since we want this to behave like a decal, 
@@ -197,15 +194,15 @@ namespace ToolsRig
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     bool    RectangleManipulator::OnInputEvent(
-        const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
-        const IntersectionTestContext& hitTestContext,
-        const IntersectionTestScene& hitTestScene)
+        const PlatformRig::InputSnapshot& evnt, 
+        const SceneEngine::IntersectionTestContext& hitTestContext,
+        const SceneEngine::IntersectionTestScene* hitTestScene)
     {
         Int2 mousePosition(evnt._mousePosition[0], evnt._mousePosition[1]);
 
-        if (evnt.IsPress_LButton()) {
+        if (evnt.IsPress_LButton() && hitTestScene) {
                 // on lbutton press, we should place a new anchor
-            auto intersection = FindTerrainIntersection(hitTestContext, hitTestScene, mousePosition);
+            auto intersection = FindTerrainIntersection(hitTestContext, *hitTestScene, mousePosition);
             _isDragging = intersection.second;
             if (intersection.second) {
                 _firstAnchor = intersection.first;
@@ -213,11 +210,11 @@ namespace ToolsRig
             }
         }
 
-        if (_isDragging) {
+        if (_isDragging && hitTestScene) {
 
             if (evnt.IsHeld_LButton() || evnt.IsRelease_LButton()) {
                     // update the second anchor as we drag
-                _secondAnchor = FindTerrainIntersection(hitTestContext, hitTestScene, mousePosition);
+                _secondAnchor = FindTerrainIntersection(hitTestContext, *hitTestScene, mousePosition);
             }
 
             if (evnt.IsRelease_LButton()) {
@@ -234,7 +231,7 @@ namespace ToolsRig
                     Float2 faWorld = TerrainToWorldSpace(RoundDownToInteger(terrainCoordsMins));
                     Float2 fsWorld = TerrainToWorldSpace(RoundUpToInteger(terrainCoordsMaxs));
 
-                    PerformAction(*hitTestContext.GetThreadContext(), Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
+                    PerformAction(Expand(faWorld, 0.f), Expand(fsWorld, 0.f));
                 }
             }
 
@@ -243,7 +240,7 @@ namespace ToolsRig
         return false;
     }
 
-    void    RectangleManipulator::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void    RectangleManipulator::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
 		TerrainManipulatorBase::Render(context, parserContext);
 

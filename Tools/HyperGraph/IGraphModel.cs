@@ -50,19 +50,26 @@ namespace HyperGraph
         public NodeConnection Connection { get; private set; }
     }
 
+    public sealed class MiscChangeEventArgs : EventArgs
+    {
+        public MiscChangeEventArgs(bool invalidateShaders) { InvalidateShaders = invalidateShaders;  }
+        public bool InvalidateShaders { get; private set; }
+    }
+
     public interface IGraphModel
     {
         IEnumerable<Node> Nodes { get; }
+        IEnumerable<Node> SubGraphs { get; }
 
         void BringElementToFront(IElement element);
         bool AddNode(Node node);
         bool AddNodes(IEnumerable<Node> nodes);
         void RemoveNode(Node node);
         bool RemoveNodes(IEnumerable<Node> nodes);
+        bool AddSubGraph(Node subGraph);
         void InvokeMiscChange(bool rebuildShaders);
 
-        NodeConnection Connect(NodeItem from, NodeItem to, string name = "");
-        NodeConnection Connect(NodeConnector from, NodeConnector to, string name = "");
+        NodeConnection Connect(NodeConnector from, NodeConnector to, string text = "");
         bool Disconnect(NodeConnection connection);
         bool DisconnectAll(Node node);
         bool ConnectionIsAllowed(NodeConnector from, NodeConnector to);
@@ -78,7 +85,7 @@ namespace HyperGraph
         event EventHandler<AcceptNodeConnectionEventArgs>   ConnectionAdded;
         event EventHandler<AcceptNodeConnectionEventArgs>   ConnectionRemoving;
         event EventHandler<NodeConnectionEventArgs>         ConnectionRemoved;
-        event EventHandler<EventArgs>                       MiscChange;
+        event EventHandler<MiscChangeEventArgs>             MiscChange;
         event EventHandler<EventArgs>                       InvalidateViews;
     }
 

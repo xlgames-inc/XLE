@@ -17,6 +17,12 @@
     <ClCompile Include="..\Vulkan\Metal\PipelineLayout.cpp" />
     <ClCompile Include="..\Vulkan\Metal\QueryPool.cpp" />
     <ClCompile Include="..\Vulkan\Metal\NumericInterface.cpp" />
+    <ClCompile Include="..\Vulkan\DeviceVulkan.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
+    <ClCompile Include="..\Vulkan\Annotator.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
@@ -39,5 +45,16 @@
     <ClInclude Include="..\Vulkan\Metal\PipelineLayout.h" />
     <ClInclude Include="..\Vulkan\Metal\VulkanForward.h" />
     <ClInclude Include="..\Vulkan\Metal\QueryPool.h" />
+    <ClInclude Include="..\Vulkan\IDeviceVulkan.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="..\Vulkan\Device.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Device">
+      <UniqueIdentifier>{b133abeb-ccfd-4421-9065-eab6cbf9a094}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

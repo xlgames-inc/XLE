@@ -51,19 +51,19 @@ namespace UnitTests
                     std::make_pair((const utf8*)"ColorParam", "{.5f, .5f, .5f}c")
                 });
 
-            Assert::AreEqual(test.GetParameter<unsigned>((const utf8*)"SomeParam").second, 1u, L"String parsing and constructor");
-            Assert::AreEqual(test.GetParameter<float>((const utf8*)"SomeParam1").second, .4f, L"String parsing and constructor");
-            Assert::AreEqual(test.GetParameter<float>((const utf8*)"SomeParam2").second, 344.f, 0.001f, L"String parsing and constructor");
-            Assert::AreEqual(test.GetParameter<float>((const utf8*)"SomeParam3").second, .56f, 0.001f, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<unsigned>(MakeStringSection((const utf8*)"SomeParam")).second, 1u, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<float>(MakeStringSection((const utf8*)"SomeParam1")).second, .4f, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<float>(MakeStringSection((const utf8*)"SomeParam2")).second, 344.f, 0.001f, L"String parsing and constructor");
+            Assert::AreEqual(test.GetParameter<float>(MakeStringSection((const utf8*)"SomeParam3")).second, .56f, 0.001f, L"String parsing and constructor");
 
             test.SetParameter((const utf8*)"AParam", false);
             test.SetParameter((const utf8*)"AParam", 5);
             test.SetParameter((const utf8*)"AParam", 5.f);
             test.SetParameter((const utf8*)"AParam", 500.f);
-            Assert::AreEqual(test.GetParameter<float>((const utf8*)"AParam").second, 500.f, 0.001f, L"Changing parameter types");
+            Assert::AreEqual(test.GetParameter<float>(MakeStringSection((const utf8*)"AParam")).second, 500.f, 0.001f, L"Changing parameter types");
 
             test.SetParameter((const utf8*)"ShouldBeTrue", true);
-            Assert::AreEqual(test.GetParameter<bool>((const utf8*)"ShouldBeTrue").second, true, L"Store/retrieve boolean");
+            Assert::AreEqual(test.GetParameter<bool>(MakeStringSection((const utf8*)"ShouldBeTrue")).second, true, L"Store/retrieve boolean");
 
             std::vector<std::pair<const utf8*, std::string>> stringTable;
             BuildStringTable(stringTable, test);

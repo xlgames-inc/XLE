@@ -76,6 +76,8 @@ namespace LevelEditor
             List<DomNode> rootNodes = new List<DomNode>();
             foreach (Uri resourceUri in resourceUris)
             {
+                if (!resourceUri.IsAbsoluteUri) continue;
+
                 string reExt = System.IO.Path.GetExtension(resourceUri.LocalPath).ToLower();
 
                 ResourceMetadataInfo resInfo;

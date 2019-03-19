@@ -32,18 +32,21 @@ namespace HyperGraph
 	public static class GraphConstants
 	{
 		public const int MinimumItemWidth		= 64+8;
-		public const int MinimumItemHeight		= 20;
+		public const int MinimumItemHeight		= 12;
 		public const int TitleHeight			= 20;
-		public const int ItemSpacing			= 3;
-		public const int TopHeight				= 6;
-        public const int BottomHeight           = 6;
-        public const int CornerSize             = 3; 
+		public const int ItemSpacing			= 2;
+		public const int TopHeight				= 2;
+        public const int BottomHeight           = 2;
+        public const int TopHeightCollapsed     = 6;
+        public const int BottomHeightCollapsed  = 6;
+        public const int CornerSize             = 4;
+        public const int SubGraphCornerSize     = 64;
         public const int ConnectorCornerSize    = 12;
 		public const int ConnectorWidth			= 128;
         public const int ConnectorWidthCollapsed= 8;
 		public const int HorizontalSpacing		= 8;
         public const int NodeExtraWidth         = GraphConstants.HorizontalSpacing * 2;
-        public const float ConnectionWidth      = 4.0f;
+        public const float ConnectionWidth      = 1.5f;
 
         public const TextFormatFlags TitleTextFlags =       TextFormatFlags.ExternalLeading |
 															TextFormatFlags.GlyphOverhangPadding |

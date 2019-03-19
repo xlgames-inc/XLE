@@ -129,19 +129,25 @@ namespace MaterialTool
                 typeof(ShaderPatcherLayer.Manager),
                 typeof(ShaderFragmentArchive.Archive),
                
-                typeof(Controls.DiagramControl),
+                typeof(Controls.SubGraphControl),
                 typeof(Controls.ShaderFragmentArchiveControl),
                 typeof(Controls.DiagramLister),
+                typeof(Controls.ActualizationMessagesWindow),
 
-                typeof(NodeEditorCore.ShaderFragmentArchiveModel),
+                typeof(ControlsLibrary.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
-                typeof(NodeEditorCore.DiagramDocument),
+                typeof(DiagramDocument),
+                typeof(DiagramEditingContext),
 
                 typeof(ControlsLibraryExt.Commands.CommonCommands),
                 typeof(ControlsLibraryExt.Material.MaterialInspector),
                 typeof(ControlsLibraryExt.Material.MaterialSchemaLoader),
-                typeof(ControlsLibraryExt.ModelView.ActiveModelView),
+                typeof(ControlsLibraryExt.ModelView.PreviewerControl),
+                typeof(ControlsLibraryExt.ModelView.PreviewerContext),
+                typeof(ControlsLibraryExt.ModelView.PreviewerCommands),
+                typeof(ControlsLibraryExt.ModelView.Previewer),
+                typeof(ControlsLibraryExt.GameLoopService),
 
                 typeof(ActiveMaterialContext),
                 typeof(DiagramCommands)
@@ -180,30 +186,15 @@ namespace MaterialTool
 
             container.InitializeAll();
 
-            // if there is a model filename on the command line, we will load it into our viewer
+            var initialPreviewer = container.GetExport<ControlsLibraryExt.ModelView.Previewer>().Value.OpenPreviewWindow();
             if (args != null && args.Length > 0)
             {
-                var a = args[0];
-                if (string.Equals(System.IO.Path.GetExtension(a), ".dae", StringComparison.OrdinalIgnoreCase))
-                {
-                    // Insert a delegate to be executed after the AutoDocumentService has run. That is attached
-                    // to the "Loaded" event in the main form, also -- so this should occur afterwards
-                    // This way we can pop our window to the top, after the auto load documents appear
-                    mainForm.Loaded += delegate (object o, EventArgs eventArgs)
-                        {
-                            var modelView = container.GetExport<ControlsLibraryExt.ModelView.ActiveModelView>().Value;
-                            if (modelView != null)
-                            {
-                                modelView.LoadFromCommandLine(a);
-
-                                var hostService = container.GetExport<IControlHostService>().Value;
-                                if (hostService != null)
-                                    hostService.Show(modelView.Control);
-
-                                // unfortunately we can't suppress the autoload documents stuff from here!
-                            }
-                        };
-                }
+                initialPreviewer.ModelSettings = GUILayer.ModelVisSettings.FromCommandLine(args);
+            }
+            else
+            {
+                var visSettings = GUILayer.ModelVisSettings.CreateDefault();
+                initialPreviewer.ModelSettings = visSettings;
             }
 
             Application.Run(mainForm);
@@ -212,7 +203,7 @@ namespace MaterialTool
 
             logRedirect.Dispose();
             engineDevice.PrepareForShutdown();
-            XLEBridgeUtils.Utils.DetachLibrary();
+            XLEBridgeUtils.Utils.DetachLibrary(engineDevice);
             attach0.Dispose();
             engineDevice.Dispose();
         }

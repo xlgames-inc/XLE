@@ -10,7 +10,7 @@
 
 #if COMPILER_ACTIVE == COMPILER_TYPE_MSVC
 
-    #define never_throws    throw()
+    #define never_throws    noexcept
     #define force_inline    __forceinline
     #define dll_export      __declspec(dllexport)
     #define dll_import      __declspec(dllimport)

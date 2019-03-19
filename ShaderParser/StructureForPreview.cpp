@@ -3,13 +3,15 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderPatcher.h"
-#include "ShaderPatcher_Internal.h"
-#include "InterfaceSignature.h"
+#include "NodeGraph.h"
+#include "NodeGraphSignature.h"
+#include "ShaderSignatureParser.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/AssetUtils.h"
 #include "../Assets/ConfigFileContainer.h"
 #include "../Assets/DepVal.h"
 #include "../Assets/Assets.h"
+#include "../Assets/IFileSystem.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/Conversion.h"
 #include <regex>
@@ -17,8 +19,12 @@
 
 #include "plustache/template.hpp"
 
-namespace ShaderPatcher
+namespace ShaderSourceParser
 {
+	using namespace GraphLanguage;
+
+	static bool CanBeStoredInCBuffer(const StringSection<char> type);
+
 	class TemplateItem
     {
     public:
@@ -75,7 +81,7 @@ namespace ShaderPatcher
         ParameterMachine();
         ~ParameterMachine();
     private:
-        ShaderSourceParser::ShaderFragmentSignature _systemHeader;
+        GraphLanguage::ShaderFragmentSignature _systemHeader;
     };
 
     auto ParameterMachine::GetBuildInterpolator(const NodeGraphSignature::Parameter& param) const
@@ -85,14 +91,14 @@ namespace ShaderPatcher
         auto i = std::find_if(
             _systemHeader._functions.cbegin(),
             _systemHeader._functions.cend(),
-            [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+            [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
 
         if (i == _systemHeader._functions.cend()) {
             searchName = "BuildInterpolator_" + param._name;
             i = std::find_if(
                 _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
-                [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+                [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
         }
 
         if (i == _systemHeader._functions.cend()) {
@@ -100,22 +106,27 @@ namespace ShaderPatcher
             i = std::find_if(
                 _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
-                [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+                [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
         }
 
         if (i != _systemHeader._functions.cend()) {
+			auto p = std::find_if(i->second.GetParameters().begin(), i->second.GetParameters().end(),
+				[](const GraphLanguage::NodeGraphSignature::Parameter& p) { 
+					return p._direction == GraphLanguage::ParameterDirection::Out 
+						&& XlEqString(MakeStringSection(p._name), MakeStringSection(GraphLanguage::s_resultName));
+				});
             VaryingParamsFlags::BitField flags = 0;
-            if (!i->_returnSemantic.empty()) {
+            if (p != i->second.GetParameters().end() && !p->_semantic.empty()) {
                     // using regex, convert the semantic value into a series of flags...
                 static std::regex FlagsParse(R"--(NE(?:_([^_]*))*)--");
                 std::smatch match;
-                if (std::regex_match(i->_returnSemantic.begin(), i->_returnSemantic.end(), match, FlagsParse))
+                if (std::regex_match(p->_semantic.begin(), p->_semantic.end(), match, FlagsParse))
                     for (unsigned c=1; c<match.size(); ++c)
                         if (XlEqString(MakeStringSection(AsPointer(match[c].first), AsPointer(match[c].second)), "WritesVSOutput"))
                             flags |= VaryingParamsFlags::WritesVSOutput;
             }
 
-            return std::make_pair(i->_name, flags);
+            return std::make_pair(i->first, flags);
         }
 
         return std::make_pair(std::string(), 0);
@@ -126,16 +137,20 @@ namespace ShaderPatcher
         std::string searchName = "BuildSystem_" + param._type;
         auto i = std::find_if(
             _systemHeader._functions.cbegin(), _systemHeader._functions.cend(),
-            [searchName](const ShaderSourceParser::FunctionSignature& sig) { return sig._name == searchName; });
+            [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
         if (i != _systemHeader._functions.cend())
-            return i->_name;
+            return i->first;
         return std::string();
     }
 
     ParameterMachine::ParameterMachine()
     {
-        auto buildInterpolatorsSource = LoadSourceFile("xleres/System/BuildInterpolators.h");
-        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(buildInterpolatorsSource));
+		size_t fileSize = 0;
+        auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/System/BuildInterpolators.h", &fileSize);
+        _systemHeader = ShaderSourceParser::ParseHLSL(
+			MakeStringSection(
+				(const char*)buildInterpolatorsSource.get(),
+				(const char*)PtrAdd(buildInterpolatorsSource.get(), fileSize)));
     }
 
     ParameterMachine::~ParameterMachine() {}
@@ -164,6 +179,14 @@ namespace ShaderPatcher
 
 		const PreviewOptions* _previewOptions;
     };
+
+	static bool IsStructType(StringSection<char> typeName)
+    {
+        // If it's not recognized as a built-in shader language type, then we
+        // need to assume this is a struct type. There is no typedef in HLSL, but
+        // it could be a #define -- but let's assume it isn't.
+        return RenderCore::ShaderLangTypeNameAsTypeDesc(typeName)._type == ImpliedTyping::TypeCat::Void;
+    }
 
     std::string ParameterGenerator::VaryingStructSignature(unsigned index) const
     {
@@ -244,6 +267,8 @@ namespace ShaderPatcher
 						return "float2(localPosition.x * 0.5 + 0.5, localPosition.y * -0.5 + 0.5)";
 					} else if (dimensionality == 3) {
 						return "worldPosition.xyz";
+					} else if (dimensionality == 4) {
+						return "float4(worldPosition.xyz, 1.0)";
 					}
 				}
             }
@@ -288,7 +313,6 @@ namespace ShaderPatcher
 
     std::string         GenerateStructureForPreview(
         const StringSection<char> graphName, const NodeGraphSignature& interf,
-		const ::Assets::DirectorySearchRules& searchRules,
         const PreviewOptions& previewOptions)
     {
             //
@@ -426,34 +450,15 @@ namespace ShaderPatcher
                     for (const auto& i:interf.GetParameters()) {
 						if (i._direction != ParameterDirection::Out) continue;
 
-                        assert(0);
-                        #if 0
-                            const auto& signature = LoadParameterStructSignature(SplitArchiveName(i._archiveName), searchRules);
-                            if (!signature._name.empty()) {
-                                for (auto p=signature._parameters.cbegin(); p!=signature._parameters.cend(); ++p) {
-                                        // todo -- what if this is also a parameter struct?
-                                    auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(p->_type));
-                                    auto dim = type._arrayCount;
-                                    for (unsigned c=0; c<dim; ++c) {
-                                        std::stringstream str;
-                                        str << i._name << "." << p->_name;
-                                        if (dim != 1) str << "[" << c << "]";
-                                        chartLines.push_back(
-                                            PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
-                                    }
-                                }
-                            } else {
-                                auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
-                                auto dim = type._arrayCount;
-                                for (unsigned c=0; c<dim; ++c) {
-                                    std::stringstream str;
-                                    str << i._name;
-                                    if (dim != 1) str << "[" << c << "]";
-                                    chartLines.push_back(
-                                        PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
-                                }
-                            }
-                        #endif
+                        auto type = RenderCore::ShaderLangTypeNameAsTypeDesc(MakeStringSection(i._type));
+                        auto dim = type._arrayCount;
+                        for (unsigned c=0; c<dim; ++c) {
+                            std::stringstream str;
+                            str << i._name;
+                            if (dim != 1) str << "[" << c << "]";
+                            chartLines.push_back(
+                                PlustacheTypes::ObjectType { std::make_pair("Item", str.str()) });
+                        }
                     }
                 }
 
@@ -482,6 +487,92 @@ namespace ShaderPatcher
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static bool CanBeStoredInCBuffer(const StringSection<char> type)
+    {
+        // HLSL keywords are not case sensitive. We could assume that
+        // a type name that does not begin with one of the scalar type
+        // prefixes is a global resource (like a texture, etc). This
+        // should provide some flexibility with new DX12 types, and perhaps
+        // allow for manipulating custom "interface" types...?
+        //
+        // However, that isn't going to work well with struct types (which
+        // can be contained with cbuffers and be passed to functions like
+        // scalars)
+        //
+        // const char* scalarTypePrefixes[] =
+        // {
+        //     "bool", "int", "uint", "half", "float", "double"
+        // };
+        //
+        // Note that we only check the prefix -- to catch variations on
+        // texture and RWTexture (and <> arguments like Texture2D<float4>)
+
+        const char* resourceTypePrefixes[] =
+        {
+            "cbuffer", "tbuffer",
+            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer",
+            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer",
+
+            "sampler", // SamplerState, SamplerComparisonState
+            "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
+            "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
+
+            // special .fx file types:
+            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView",
+        };
+        // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
+
+        for (unsigned c=0; c<dimof(resourceTypePrefixes); ++c)
+            if (XlBeginsWithI(type, MakeStringSection(resourceTypePrefixes[c])))
+                return false;
+        return true;
+    }
+
+	static std::string MakeGlobalName(const std::string& str)
+	{
+		auto i = str.find('.');
+		if (i != std::string::npos)
+			return str.substr(i+1);
+		return str;
+	}
+
+	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf)
+	{
+		std::stringstream result;
+
+		    //
+            //      We need to write the global parameters as part of the shader body.
+            //      Global resources (like textures) appear first. But we put all shader
+            //      constants together in a single cbuffer called "BasicMaterialConstants"
+            //
+        bool hasMaterialConstants = false;
+        for(auto i:interf.GetCapturedParameters()) {
+            if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
+				auto name = MakeGlobalName(i._name);
+				// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
+				if (!XlEqString(name, "DiffuseTexture") && !XlEqString(name, "NormalsTexture"))
+					result << i._type << " " << name << ";" << std::endl;
+            } else
+                hasMaterialConstants = true;
+        }
+
+        if (hasMaterialConstants) {
+                // in XLE, the cbuffer name "BasicMaterialConstants" is reserved for this purpose.
+                // But it is not assigned to a fixed cbuffer register.
+            result << "cbuffer BasicMaterialConstants" << std::endl;
+            result << "{" << std::endl;
+            for (const auto& i:interf.GetCapturedParameters())
+                if (CanBeStoredInCBuffer(MakeStringSection(i._type)))
+                    result << "\t" << i._type << " " << MakeGlobalName(i._name) << ";" << std::endl;
+            result << "}" << std::endl;
+        }
+		result << std::endl;
+
+		return result.str();
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
 	static std::string GetTechniqueTemplate(const char templateName[])
     {
         StringMeld<MaxPath, Assets::ResChar> str;
@@ -491,7 +582,7 @@ namespace ShaderPatcher
 
 	static void MaybeComma(std::stringstream& stream) { if (stream.tellp() != std::stringstream::pos_type(0)) stream << ", "; }
 
-	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, const char graphName[])
+	std::string GenerateStructureForTechniqueConfig(const NodeGraphSignature& interf, StringSection<char> graphName)
 	{
 		std::stringstream mainFunctionParameterSignature;
 		std::stringstream forwardMainParameters;
@@ -508,7 +599,7 @@ namespace ShaderPatcher
 		Plustache::Context context;
 		context.add("MainFunctionParameterSignature", mainFunctionParameterSignature.str());
 		context.add("ForwardMainParameters", forwardMainParameters.str());
-		context.add("GraphName", graphName);
+		context.add("GraphName", graphName.AsString());
 
 		std::stringstream result;
 		Plustache::template_t preprocessor;

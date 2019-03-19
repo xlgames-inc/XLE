@@ -10,11 +10,13 @@
 #include "TerrainUberSurface.h"
 #include "TerrainScaffold.h"
 #include "GestaltResource.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/BufferView.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -70,14 +72,19 @@ namespace SceneEngine
         auto encodedGradientFlags = desc._gradientFlagsEnable;
         if (encodedGradientFlags) defines << ";ENCODED_GRADIENT_FLAGS=1";
 
-        auto& byteCode = ::Assets::GetAssetDep<CompiledShaderByteCode>(firstPassShader, defines.get());
         _cs0 = &::Assets::GetAssetDep<Metal::ComputeShader>(firstPassShader, defines.get());
         _cs1 = &::Assets::GetAssetDep<Metal::ComputeShader>(secondPassShader, defines.get());
         _cs2 = &::Assets::GetAssetDep<Metal::ComputeShader>("xleres/ui/copyterraintile.sh:DirectToFinal:cs_*", defines.get());
 
-        _boundLayout = Metal::BoundUniforms(byteCode);
-        _boundLayout.BindConstantBuffers(1, {"Parameters"});
-        _boundLayout.BindShaderResources(1, {"Input", "OldHeights"});
+		UniformsStreamInterface usi;
+        usi.BindConstantBuffer(0, {Hash64("Parameters")});
+        usi.BindShaderResource(0, Hash64("Input"));
+		usi.BindShaderResource(1, Hash64("OldHeights"));
+		_boundLayout = Metal::BoundUniforms(
+			*_cs0,
+			Metal::PipelineLayoutConfig{},
+			UniformsStreamInterface{},
+			usi);
 
         _tileCoordsBuffer = GestaltTypes::UAV(
             BufferUploads::LinearBufferDesc::Create(32, 32),
@@ -167,7 +174,7 @@ namespace SceneEngine
             };
 
             metalContext.GetUnderlying()->UpdateSubresource(
-                Metal::UnderlyingResourcePtr(box._tileCoordsBuffer.Locator().GetUnderlying()).get(),
+                Metal::AsResource(*box._tileCoordsBuffer.Locator().GetUnderlying()).GetUnderlying().get(),
                 0, nullptr, &tileCoords, sizeof(TileCoords), sizeof(TileCoords));
 #endif
 
@@ -194,16 +201,19 @@ namespace SceneEngine
                 _gradientFlagsSettings._elementSpacing,
                 { _gradientFlagsSettings._slopeThresholds[0], _gradientFlagsSettings._slopeThresholds[1], _gradientFlagsSettings._slopeThresholds[2] }
             };
-            Metal::ConstantBufferPacket pkts[] = { RenderCore::MakeSharedPkt(parameters) };
+            ConstantBufferView pkts[] = { RenderCore::MakeSharedPkt(parameters) };
             const Metal::ShaderResourceView* srv[] = { upd._srv.get(), &tileSet->GetShaderResource() };
 
-            box._boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(pkts, srv));
+			box._boundLayout.Apply(metalContext, 1, 
+				UniformsStream{
+					MakeIteratorRange(pkts), 
+					UniformsStream::MakeResources(MakeIteratorRange(srv))});
 
             const unsigned threadGroupWidth = 6;
             if (format == Format::Unknown) {
                     // go via a midway buffer and handle the min/max quantization
                 auto& midwayBox = ConsoleRig::FindCachedBox2<ShortCircuitMidwayBox>(UInt2(tile._width, tile._height));
-                metalContext.BindCS(
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(
                     MakeResourceList(1, midwayBox._midwayBuffer.UAV(), midwayBox._midwayGradFlags.UAV(), box._tileCoordsBuffer.UAV()));
 
                 metalContext.Bind(*box._cs0);
@@ -214,7 +224,7 @@ namespace SceneEngine
                     //  if everything is ok up to this point, we can commit to the final
                     //  output --
 				box._boundLayout.UnbindShaderResources(metalContext, 1);
-                metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(tileSet->GetUnorderedAccessView()));
                 metalContext.Bind(*box._cs1);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
@@ -235,14 +245,14 @@ namespace SceneEngine
                 }
             } else {
                     // just write directly
-                metalContext.BindCS(MakeResourceList(tileSet->GetUnorderedAccessView()));
+                metalContext.GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(tileSet->GetUnorderedAccessView()));
                 metalContext.Bind(*box._cs2);
                 metalContext.Dispatch( 
                     unsigned(XlCeil(tile._width /float(threadGroupWidth))), 
                     unsigned(XlCeil(tile._height/float(threadGroupWidth))));
             }
 
-            metalContext.UnbindCS<Metal::UnorderedAccessView>(0, 4);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(metalContext, 0, 4);
         } CATCH (...) {
             // note, it's a real problem when we get a invalid resource get... 
             //  We should ideally stall until all the required resources are loaded

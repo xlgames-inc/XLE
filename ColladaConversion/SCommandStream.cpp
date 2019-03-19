@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SCommandStream.h"
-#include "STransformationMachine.h"
 #include "SRawGeometry.h"
 #include "SAnimation.h"
 
@@ -15,8 +14,6 @@
 #include "../RenderCore/GeoProc/NascentCommandStream.h"
 #include "../RenderCore/GeoProc/NascentRawGeometry.h"
 #include "../RenderCore/GeoProc/NascentAnimController.h"
-#include "../RenderCore/GeoProc/NascentGeometryObjects.h"
-#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/GeoProc/GeoProcUtil.h"
 
 #include "../RenderCore/Assets/MaterialScaffold.h"  // for MakeMaterialGuid
@@ -28,23 +25,11 @@
 
 namespace ColladaConversion
 {
-    std::vector<std::basic_string<utf8>> GetJointNames(const SkinController& controller, const URIResolveContext& resolveContext);
-
-    static std::string  SkeletonBindingName(const Node& node);
-    static NascentObjectGuid   AsObjectGuid(const Node& node);
-    static bool         IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences);
+    static RenderCore::Assets::GeoProc::NascentObjectGuid   AsObjectGuid(const Node& node);
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    struct LODDesc
-    {
-    public:
-        unsigned                _lod;
-        bool                    _isLODRoot;
-        StringSection<utf8>     _remainingName;
-    };
-
-    static LODDesc GetLevelOfDetail(const ::ColladaConversion::Node& node)
+    LODDesc GetLevelOfDetail(const ::ColladaConversion::Node& node)
     {
         // We're going assign a level of detail to this node based on naming conventions. We'll
         // look at the name of the node (rather than the name of the geometry object) and look
@@ -59,189 +44,267 @@ namespace ColladaConversion
             auto* parseEnd = FastParseElement(lod, nextSection.begin(), nextSection.end());
             if (parseEnd < nextSection.end() && *parseEnd == '_')
                 return LODDesc { lod, true, MakeStringSection(parseEnd+1, node.GetName().end()) };
-            LogWarning << "Node name (" << Conversion::Convert<std::string>(node.GetName().AsString()) << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0.";
+            Log(Warning) << "Node name (" << Conversion::Convert<std::string>(node.GetName().AsString()) << ") looks like it contains a lod index, but parse failed. Defaulting to lod 0." << std::endl;
         }
         return LODDesc { 0, false, StringSection<utf8>() };
     }
 
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static void BuildSkeleton(
-        NascentSkeleton& skeleton,
-        const Node& node,
-        SkeletonRegistry& skeletonReferences,
-        int ignoreTransforms, bool terminateOnLODNodes, bool fullSkeleton)
+	//#pragma warning(disable:4505) // 'RenderCore::ColladaConversion::FloatBits' : unreferenced local function has been removed)
+    static unsigned int FloatBits(float input)
     {
-        if (!fullSkeleton && !IsUseful(node, skeletonReferences)) return;
+            // (or just use a reinterpret cast)
+        union Converter { float f; unsigned int i; };
+        Converter c; c.f = float(input); 
+        return c.i;
+    }
+    //
+    //static unsigned int FloatBits(double input)
+    //{
+    //        // (or just use a reinterpret cast)
+    //    union Converter { float f; unsigned int i; };
+    //    Converter c; c.f = float(input); 
+    //    return c.i;
+    //}
 
-        auto nodeId = AsObjectGuid(node);
-		auto nodeDesc = skeletonReferences.GetNode(nodeId);
-        auto bindingName = nodeDesc._bindingName;
-        if (bindingName.empty()) bindingName = SkeletonBindingName(node);
+    unsigned PushTransformations(
+        RenderCore::Assets::GeoProc::NascentSkeletonMachine& dst,
+		RenderCore::Assets::TransformationParameterSet& defaultParameters,
+        const Transformation& transformations,
+        const char nodeName[],
+        const std::function<bool(StringSection<>)>& predicate)
+    {
+		using RenderCore::Assets::TransformStackCommand;
 
-        auto pushCount = 0u;
-        if (ignoreTransforms <= 0) {
-                // Sometimes we will ignore the top most transform(s)
-                // so ignoreTransforms is a countdown on the depth of
-                // the node in the hierarchy.
-            pushCount = PushTransformations(
-                skeleton.GetSkeletonMachine(),
-				skeleton.GetInterface(),
-				skeleton.GetDefaultParameters(),
-                node.GetFirstTransform(), bindingName.c_str(),
-                skeletonReferences, fullSkeleton);
-        }
+        dst.ResolvePendingPops();
 
-        bool isReferenced = fullSkeleton || skeletonReferences.IsImportant(nodeId);
-        if (isReferenced) {
-                // (prevent a reference if the transformation machine is completely empty)
-            if (!skeleton.GetSkeletonMachine().IsEmpty()) {
-				uint32 outputMarker = ~0u;
-				if (skeleton.GetInterface().TryRegisterJointName(outputMarker, MakeStringSection(nodeDesc._bindingName))) {
-					skeleton.GetSkeletonMachine().WriteOutputMarker(outputMarker);
-					skeletonReferences.TryRegisterNode(nodeId, bindingName.c_str());
-				} else {
-					Throw(::Exceptions::BasicLabel("Couldn't register joint name in skeleton interface for node (%s)", nodeDesc._bindingName.c_str()));
-				}
+        if (!transformations)
+            return 0;
+
+            //
+            //      Push in the commands for this node
+            //
+
+        dst.PushCommand(TransformStackCommand::PushLocalToWorld);
+        const unsigned pushCount = 1;
+
+        #if defined(_DEBUG)
+            unsigned typesOfEachTransform[7] = {0,0,0,0,0,0};
+        #endif
+
+            //
+            //      First, push in the transformations information.
+            //      We're going to push in just the raw data from Collada
+            //      This is most useful for animating stuff; because we
+            //      can just change the parameters exactly as they appear
+            //      in the raw data stream.
+            //
+
+        Transformation trans = transformations;
+        for (; trans; trans = trans.GetNext()) {
+            auto type = trans.GetType();
+            if (type == TransformationSet::Type::None) continue;
+
+            #if defined(_DEBUG)
+                unsigned typeIndex = 0;
+                if (unsigned(type) < dimof(typesOfEachTransform)) {
+                    typeIndex = typesOfEachTransform[(unsigned)type];
+                    ++typesOfEachTransform[(unsigned)type];
+                }
+            #endif
+
+                //
+                //      Sometimes the transformation is static -- and it's better
+                //      to combine multiple transforms into one. 
+                //
+                //      However, we should do this after the full transformation
+                //      stream has been made. That way we can use the same logic
+                //      to combine transformations from multiple nodes into one.
+                //
+
+            enum ParameterType
+            {
+                ParameterType_Embedded,
+                ParameterType_AnimationConstant,
+                ParameterType_Animated
+            } parameterType;
+
+                // Note -- in Collada, we can assume that any transform without a "sid" is not
+                //  animated (because normally the animation controller should use the sid to
+                //  reference it)
+            auto paramName = std::string(nodeName) + "/" + AsString(trans.GetSid());
+            const bool isAnimated = !trans.GetSid().IsEmpty() && predicate(paramName);
+            parameterType = isAnimated ? ParameterType_Animated : ParameterType_Embedded;
+
+                // We ignore transforms that are too close to their identity...
+            const auto transformThreshold   = 1e-3f;
+            const auto translationThreshold = 1e-3f;
+            const auto rotationThreshold    = 1e-3f;    // (in radians)
+            const auto scaleThreshold       = 1e-3f;
+
+            if  (type == TransformationSet::Type::Matrix4x4) {
+
+                    //
+                    //      Do we need 128 bit alignment for this matrix?
+                    //
+                uint32 paramIndex = ~0u;
+                if (    parameterType != ParameterType_Embedded
+                    &&  dst.TryAddParameter<Float4x4>(paramIndex, MakeStringSection(paramName))) {
+
+					defaultParameters.Set(paramIndex, *(const Float4x4*)trans.GetUnionData());
+                    dst.PushCommand(TransformStackCommand::TransformFloat4x4_Parameter);
+                    dst.PushCommand(paramIndex);
+                } else {
+                    if (Equivalent(*(Float4x4*)trans.GetUnionData(), Identity<Float4x4>(), transformThreshold)) {
+                        // ignore transform by identity
+                    } else {
+                        dst.PushCommand(TransformStackCommand::TransformFloat4x4_Static);
+                        dst.PushCommand(trans.GetUnionData(), sizeof(Float4x4));
+                    }
+                }
+
+            } else if (type == TransformationSet::Type::Translate) {
+
+                uint32 paramIndex = ~0u;
+                if (    parameterType != ParameterType_Embedded
+                    &&  dst.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName))) {
+
+					defaultParameters.Set(paramIndex, *(const Float3*)trans.GetUnionData());
+                    dst.PushCommand(TransformStackCommand::Translate_Parameter);
+                    dst.PushCommand(paramIndex);
+                } else {
+                    if (Equivalent(*(Float3*)trans.GetUnionData(), Float3(0.f, 0.f, 0.f), translationThreshold)) {
+                        // ignore translate by zero
+                    } else {
+                        dst.PushCommand(TransformStackCommand::Translate_Static);
+                        dst.PushCommand(trans.GetUnionData(), sizeof(Float3));
+                    }
+                }
+
+            } else if (type == TransformationSet::Type::Rotate) {
+
+                const auto& rot = *(const ArbitraryRotation*)trans.GetUnionData();
+                uint32 paramIndex = ~0u;
+                if (    parameterType != ParameterType_Embedded
+                    &&  dst.TryAddParameter<Float4>(paramIndex, MakeStringSection(paramName))) {
+
+					defaultParameters.Set(paramIndex, *(const Float4*)&rot);
+
+                        // Post animation, this may become a rotation around any axis. So
+                        // we can't perform an optimisation to squish it to rotation around
+                        // one of the cardinal axes
+                    dst.PushCommand(TransformStackCommand::Rotate_Parameter);
+                    dst.PushCommand(paramIndex);
+
+                } else {
+
+                    if (Equivalent(rot._angle, 0.f, rotationThreshold)) {
+                        // the angle is too small -- just ignore it
+                    } else if (signed x = rot.IsRotationX()) {
+                        dst.PushCommand(TransformStackCommand::RotateX_Static);
+                        dst.PushCommand(FloatBits(float(x) * rot._angle));
+                    } else if (signed y = rot.IsRotationY()) {
+                        dst.PushCommand(TransformStackCommand::RotateY_Static);
+                        dst.PushCommand(FloatBits(float(y) * rot._angle));
+                    } else if (signed z = rot.IsRotationZ()) {
+                        dst.PushCommand(TransformStackCommand::RotateZ_Static);
+                        dst.PushCommand(FloatBits(float(z) * rot._angle));
+                    } else {
+                        dst.PushCommand(TransformStackCommand::Rotate_Static);
+                        dst.PushCommand(&rot, sizeof(rot));
+                    }
+
+                }
+                        
+            } else if (type == TransformationSet::Type::Scale) {
+
+                    //
+                    //      If the scale values start out uniform, let's assume
+                    //      they stay uniform over all animations.
+                    //
+                    //      We can't guarantee that case. For example, and object
+                    //      may start with (1,1,1) scale, and change to (2,1,1)
+                    //
+                    //      But, let's just ignore that possibility for the moment.
+                    //
+                auto scale = *(const Float3*)trans.GetUnionData();
+                bool isUniform = Equivalent(scale[0], scale[1], scaleThreshold) && Equivalent(scale[0], scale[2], scaleThreshold);
+                bool writeEmbedded = true;
+
+                if (parameterType != ParameterType_Embedded) {
+                    uint32 paramIndex = ~0u;
+                    if (isUniform) {
+                        if (dst.TryAddParameter<float>(paramIndex, MakeStringSection(paramName))) {
+							defaultParameters.Set(paramIndex, scale[0]);
+                            dst.PushCommand(TransformStackCommand::UniformScale_Parameter);
+                            dst.PushCommand(paramIndex);
+                            writeEmbedded = false;
+                        }
+                    } else {
+                        if (dst.TryAddParameter<Float3>(paramIndex, MakeStringSection(paramName))) {
+							defaultParameters.Set(paramIndex, scale);
+                            dst.PushCommand(TransformStackCommand::ArbitraryScale_Parameter);
+                            dst.PushCommand(paramIndex);
+                            writeEmbedded = false;
+                        }
+                    }
+                }
+
+                if (writeEmbedded) {
+                    if (Equivalent(scale, Float3(1.f, 1.f, 1.f), scaleThreshold)) {
+                        // scaling by 1 -- just ignore
+                    } else if (isUniform) {
+                        dst.PushCommand(TransformStackCommand::UniformScale_Static);
+                        dst.PushCommand(FloatBits(scale[0]));
+                    } else {
+                        dst.PushCommand(TransformStackCommand::ArbitraryScale_Static);
+                        dst.PushCommand(&scale, sizeof(scale));
+                    }
+                }
+
+            } else {
+
+				Log(Warning) << "Warning -- unsupported transformation type found in node (" << nodeName << ") -- type (" << (unsigned)type << ")" << std::endl;
+
             }
         }
+
+        return pushCount;
+    }
+
+	void BuildSkeleton(RenderCore::Assets::GeoProc::NascentSkeleton& skeleton, const Node& node, StringSection<> skeletonName)
+    {
+        auto nodeId = AsObjectGuid(node);
+        auto bindingName = SkeletonBindingName(node);
+
+		auto pushCount = PushTransformations(
+			skeleton.GetSkeletonMachine(),
+			skeleton.GetDefaultParameters(),
+			node.GetFirstTransform(), bindingName.c_str(),
+			[](StringSection<>) { return true; });
+
+		skeleton.GetSkeletonMachine().WriteOutputMarker(skeletonName, bindingName);
 
             // note -- also consider instance_nodes?
 
         auto child = node.GetFirstChild();
         while (child) {
-            if (terminateOnLODNodes && GetLevelOfDetail(child)._isLODRoot) { child = child.GetNextSibling(); continue; }
-
-            BuildSkeleton(skeleton, child, skeletonReferences, ignoreTransforms-1, terminateOnLODNodes, fullSkeleton);
+			BuildSkeleton(skeleton, child, skeletonName);
             child = child.GetNextSibling();
         }
 
         skeleton.GetSkeletonMachine().Pop(pushCount);
     }
 
-    void BuildSkeleton(
-        NascentSkeleton& skeleton,
-        const ::ColladaConversion::Node& sceneRoot,
-        StringSection<utf8> rootNode,
-        SkeletonRegistry& skeletonReferences,
-        bool fullSkeleton)
-    {
-        if (rootNode.IsEmpty()) {
-            BuildSkeleton(skeleton, sceneRoot, skeletonReferences, 0, false, fullSkeleton);
-        } else {
-            // Scan through look for a node that matches the name exactly, or is an 
-            // LOD of that node.
-            auto roots = sceneRoot.FindAllBreadthFirst(
-                [rootNode](const Node& n)
-                {
-                    if (XlEqString(n.GetName(), rootNode)) return true;
-                    auto desc = GetLevelOfDetail(n);
-                    return desc._isLODRoot && XlEqString(desc._remainingName, rootNode);
-                });
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
-            for (const auto&r:roots)
-                BuildSkeleton(skeleton, r, skeletonReferences, 1, true, fullSkeleton);
-        }
-    }
-
-    bool ReferencedGeometries::Gather(
-        const ::ColladaConversion::Node& sceneRoot,
-        StringSection<utf8> rootNode,
-        SkeletonRegistry& nodeRefs)
-    {
-        if (rootNode.IsEmpty()) {
-            Gather(sceneRoot, nodeRefs);
-            return true;
-        } else {
-            // Scan through look for a node that matches the name exactly, or is an 
-            // LOD of that node.
-            auto roots = sceneRoot.FindAllBreadthFirst(
-                [rootNode](const Node& n)
-                {
-                    if (XlEqString(n.GetName(), rootNode)) return true;
-                    auto desc = GetLevelOfDetail(n);
-                    return desc._isLODRoot && XlEqString(desc._remainingName, rootNode);
-                });
-            if (roots.empty()) return false;
-
-            for (const auto&r:roots)
-                Gather(r, nodeRefs, true);
-            return true;
-        }
-    }
-
-    void ReferencedGeometries::Gather(
-        const ::ColladaConversion::Node& node,
-        SkeletonRegistry& nodeRefs,
-        bool terminateOnLODNodes)
-    {
-            // Just collect all of the instanced geometries and instanced controllers
-            // that hang off this node (or any children).
-        bool gotAttachment = false;
-        auto nodeAsGuid = AsObjectGuid(node);
-        const auto& scene = node.GetScene();
-        for (unsigned c=0; c<scene.GetInstanceGeometryCount(); ++c)
-            if (scene.GetInstanceGeometry_Attach(c).GetIndex() == node.GetIndex()) {
-                _meshes.push_back(AttachedObject{nodeAsGuid, c, GetLevelOfDetail(node)._lod});
-                gotAttachment = true;
-            }
-
-        for (unsigned c=0; c<scene.GetInstanceControllerCount(); ++c)
-            if (scene.GetInstanceController_Attach(c).GetIndex() == node.GetIndex()) {
-                _skinControllers.push_back(AttachedObject{nodeAsGuid, c, GetLevelOfDetail(node)._lod});
-                gotAttachment = true;
-            }
-
-            // Register the names with attachments node -- early on
-            // Note that if we get a resolve failure (or compile failure) then the
-            // node will remain registered in the skeleton
-        if (gotAttachment)
-            nodeRefs.TryRegisterNode(nodeAsGuid, SkeletonBindingName(node).c_str());
-
-        auto child = node.GetFirstChild();
-        while (child) {
-            if (terminateOnLODNodes && GetLevelOfDetail(child)._isLODRoot) { child = child.GetNextSibling(); continue; }
-
-            Gather(child, nodeRefs, terminateOnLODNodes);
-            child = child.GetNextSibling();
-        }
-    }
-
-    void ReferencedGeometries::FindSkinJoints(
-        const VisualScene& scene, 
-        const URIResolveContext& resolveContext,
-        SkeletonRegistry& nodeRefs)
-    {
-        for (auto c:_skinControllers) {
-            const auto& instGeo = scene.GetInstanceController(c._objectIndex);
-            GuidReference controllerRef(instGeo._reference);
-            NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
-            auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
-            if (scaffoldController) {
-                auto skeleton = FindElement(instGeo.GetSkeleton(), resolveContext, &IDocScopeIdResolver::FindNode);
-                if (skeleton) {
-                    auto jointNames = GetJointNames(*scaffoldController, resolveContext);
-                    for (auto& j:jointNames) {
-                        auto compareSection = MakeStringSection(j);
-                        Node node = skeleton.FindBreadthFirst(
-                            [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
-
-                        if (node)
-                            nodeRefs.TryRegisterNode(AsObjectGuid(node), SkeletonBindingName(node).c_str());
-                    }
-                }
-            }
-        }
-    }
-
-    static auto BuildMaterialTable(
-        const InstanceGeometry::MaterialBinding* bindingStart, 
-        const InstanceGeometry::MaterialBinding* bindingEnd,
+	auto BuildMaterialTableStrings(
+        IteratorRange<const InstanceGeometry::MaterialBinding*> bindings,
         const std::vector<uint64>& rawGeoBindingSymbols,
         const URIResolveContext& resolveContext)
 
-        -> std::vector<NascentModelCommandStream::MaterialGuid>
+        -> std::vector<std::string>
     {
 
             //
@@ -250,13 +313,10 @@ namespace ColladaConversion
             //      We have to map it via the binding table in the InstanceGeometry
             //
                         
-        using MaterialGuid = NascentModelCommandStream::MaterialGuid;
-        auto invalidGuid = NascentModelCommandStream::s_materialGuid_Invalid;
+        std::vector<std::string> materialGuids;
+        materialGuids.resize(rawGeoBindingSymbols.size());
 
-        std::vector<MaterialGuid> materialGuids;
-        materialGuids.resize(rawGeoBindingSymbols.size(), invalidGuid);
-
-        for (auto b=bindingStart; b<bindingEnd; ++b) {
+        for (auto b=bindings.begin(); b<bindings.end(); ++b) {
             auto hashedSymbol = Hash64(b->_bindingSymbol._start, b->_bindingSymbol._end);
 
             for (auto i=rawGeoBindingSymbols.cbegin(); i!=rawGeoBindingSymbols.cend(); ++i) {
@@ -264,20 +324,19 @@ namespace ColladaConversion
             
                 auto index = std::distance(rawGeoBindingSymbols.cbegin(), i);
 
-                auto newMaterialGuid = invalidGuid;
+                std::string newMaterialGuid;
 
                 GuidReference ref(b->_reference);
                 auto* file = resolveContext.FindFile(ref._fileHash);
                 if (file) {
                     const auto* mat = file->FindMaterial(ref._id);
                     if (mat) {
-                        newMaterialGuid = 
-                            RenderCore::Assets::MakeMaterialGuid(mat->_name);
+                        newMaterialGuid = mat->_name.Cast<char>().AsString();
                     }
                 }
 
 
-                if (materialGuids[index] != invalidGuid && materialGuids[index] != newMaterialGuid) {
+                if (!materialGuids[index].empty() && materialGuids[index] != newMaterialGuid) {
 
                         // Some collada files can actually have multiple instance_material elements for
                         // the same binding symbol. Let's throw an exception in this case (but only
@@ -292,168 +351,23 @@ namespace ColladaConversion
         return std::move(materialGuids);
     }
 
-	InstantiatedGeo InstantiateGeometry(
-        const ::ColladaConversion::InstanceGeometry& instGeo,
-        const URIResolveContext& resolveContext,
-		const Float4x4& mergedTransform,
-        NascentGeometryObjects& objects,
-        const ImportConfiguration& cfg)
-    {
-        GuidReference refGuid(instGeo._reference);
-        NascentObjectGuid geoId(refGuid._id, refGuid._fileHash);
-        auto geo = objects.GetGeo(geoId);
-        if (geo == ~unsigned(0x0)) {
-            auto* scaffoldGeo = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
-            if (!scaffoldGeo) {
-                    // look for a skin controller instead... We will use the geometry object that is referenced
-                    // by the controller
-                auto* scaffoldController = FindElement(refGuid, resolveContext, &IDocScopeIdResolver::FindSkinController);
-
-                GuidReference sourceMeshRefGuid(scaffoldController->GetBaseMesh());
-                geo = objects.GetGeo(NascentObjectGuid(sourceMeshRefGuid._id, refGuid._fileHash));
-                if (geo == ~unsigned(0x0))
-                    scaffoldGeo = FindElement(sourceMeshRefGuid, resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
-            }
-
-            if (geo == ~unsigned(0x0)) {
-                if (!scaffoldGeo)
-                    Throw(::Exceptions::BasicLabel("Could not found geometry object to instantiate (%s)",
-                        instGeo._reference.AsString().c_str()));
-
-                auto convertedMesh = Convert(*scaffoldGeo, mergedTransform, resolveContext, cfg);
-                if (convertedMesh._mainDrawCalls.empty()) {
-                    
-                        // everything else should be empty as well...
-                    assert(convertedMesh._vertices.empty());
-                    assert(convertedMesh._indices.empty());
-                    assert(convertedMesh._matBindingSymbols.empty());
-                    assert(convertedMesh._unifiedVertexIndexToPositionIndex.empty());
-                
-                    Throw(::Exceptions::BasicLabel(
-                        "Geometry object is empty (%s)", instGeo._reference.AsString().c_str()));
-                }
-
-                objects._rawGeos.push_back(std::make_pair(geoId, std::move(convertedMesh)));
-                geo = unsigned(objects._rawGeos.size()-1);
-            }
-        }
-        
-        auto materials = BuildMaterialTable(
-            AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
-            objects._rawGeos[geo].second._matBindingSymbols, resolveContext);
-
-        return InstantiatedGeo{geo, std::move(materials)};
-    }
-
-    static DynamicArray<uint16> BuildJointArray(
-        const GuidReference skeletonRef,
-        const UnboundSkinController& unboundController,
-        const URIResolveContext& resolveContext,
-		const JointToTransformMarker& jointToTransformMarker)
-    {
-            // Build the joints array for the given controller instantiation
-            // the <instance_controller> references a skeleton, which contains
-            // nodes that map on to the joints array in the <controller>
-            // We want to find the node guids for each of those objects, can then
-            // build transformation machine output indices for each of them.
-        auto skeleton = FindElement(skeletonRef, resolveContext, &IDocScopeIdResolver::FindNode);
-        if (!skeleton) return DynamicArray<uint16>();
-
-            // data is stored in xml list format, with whitespace deliminated elements
-            // there should be an <accessor> that describes how to read this list
-            // But we're going to assume it just contains a single entry like:
-            //      <param name="JOINT" type="name"/>
-        const auto& jointNames = unboundController._jointNames;
-        auto count = unboundController._jointNames.size();
-        DynamicArray<uint16> result(std::make_unique<uint16[]>(count), count);
-        for (unsigned c=0; c<count; ++c) {
-            
-            auto compareSection = MakeStringSection(jointNames[c]);
-            Node node = skeleton.FindBreadthFirst(
-                [&compareSection](const Node& compare) { return XlEqString(compare.GetSid(), compareSection); });
-
-            if (node) {
-                auto objectGuid = AsObjectGuid(node);
-				// We need to transform from this guid value to the skeleton machine output marker.
-                result[c] = (uint16)jointToTransformMarker(objectGuid);
-            } else {
-                result[c] = (uint16)~uint16(0);
-            }
-        }
-
-        return std::move(result);
-    }
-
-	InstantiatedGeo InstantiateController(
-        const ::ColladaConversion::InstanceController& instGeo,
-        const URIResolveContext& resolveContext,
-		const JointToTransformMarker& jointToTransformMarker,
-		NascentGeometryObjects& objects,
-        const ImportConfiguration& cfg)
-    {
-        GuidReference controllerRef(instGeo._reference);
-        NascentObjectGuid controllerId(controllerRef._id, controllerRef._fileHash);
-        auto* scaffoldController = FindElement(controllerRef, resolveContext, &IDocScopeIdResolver::FindSkinController);
-        if (!scaffoldController)
-            Throw(::Exceptions::BasicLabel("Could not find controller object to instantiate (%s)",
-                instGeo._reference.AsString().c_str()));
-
-        auto controller = Convert(*scaffoldController, resolveContext, cfg);
-
-        auto jointMatrices = BuildJointArray(instGeo.GetSkeleton(), controller, resolveContext, jointToTransformMarker);
-        if (!jointMatrices.size() || !jointMatrices.get())
-            Throw(::Exceptions::BasicLabel("Skin controller object has no joints. Cannot instantiate as skinned object. (%s)",
-                instGeo._reference.AsString().c_str()));
-
-            // If the the raw geometry object is already converted, then we should use it. Otherwise
-            // we need to do the conversion (but store it only in a temporary -- we don't need to
-            // write it to disk)
-        NascentRawGeometry* source = nullptr;
-        NascentRawGeometry tempBuffer;
-        {
-            auto geo = objects.GetGeo(controller._sourceRef);
-            if (geo == ~unsigned(0x0)) {
-                auto* scaffoldGeo = FindElement(
-                    GuidReference(controller._sourceRef._objectId, controller._sourceRef._namespaceId),
-                    resolveContext, &IDocScopeIdResolver::FindMeshGeometry);
-                if (!scaffoldGeo)
-                    Throw(::Exceptions::BasicLabel("Could not find geometry object to instantiate (%s)",
-                        instGeo._reference.AsString().c_str()));
-                tempBuffer = Convert(*scaffoldGeo, Identity<Float4x4>(), resolveContext, cfg);
-                source = &tempBuffer;
-            } else {
-                source = &objects._rawGeos[geo].second;
-            }
-        }
-
-        auto materials = BuildMaterialTable(
-            AsPointer(instGeo._matBindings.cbegin()), AsPointer(instGeo._matBindings.cend()),
-            source->_matBindingSymbols, resolveContext);
-
-        objects._skinnedGeos.push_back(
-            std::make_pair(
-                controllerId,
-                BindController(
-                    *source, controller, std::move(jointMatrices),
-                    ColladaConversion::AsString(instGeo._reference).c_str())));
-
-		return InstantiatedGeo{unsigned(objects._skinnedGeos.size()-1), std::move(materials)};
-    }
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static std::string SkeletonBindingName(const Node& node)    
+    std::string SkeletonBindingName(const Node& node)
     {
-            // Both "name" and "id" are optional. Let's prioritize "name"
-            //  -- if it exists. If there is no name, we'll fall back to "id"
-        if (node.GetName()._end > node.GetName()._start)
+        // Both "name" and "id" are optional.
+		// It turns out we must priortize the name here, because of cross-file binding.
+		// There's no real guarantee that 2 nodes will have the same ids in different files,
+		// since the ids are algorithmically generated from the names.
+		// However if we keep to a convention of not duplicating names, we 
+        if (!node.GetName().IsEmpty())
             return ColladaConversion::AsString(node.GetName()); 
-        if (!node.GetId().IsEmpty())
+		if (!node.GetId().IsEmpty())
             return ColladaConversion::AsString(node.GetId().GetOriginal());
         return XlDynFormatString("Unnamed%i", (unsigned)node.GetIndex());
     }
 
-    static NascentObjectGuid AsObjectGuid(const Node& node)
+    static RenderCore::Assets::GeoProc::NascentObjectGuid AsObjectGuid(const Node& node)
     { 
         if (!node.GetId().IsEmpty())
             return node.GetId().GetHash(); 
@@ -463,19 +377,7 @@ namespace ColladaConversion
         // If we have no name & no id -- it is truly anonymous. 
         // We can just use the index of the node, it's the only unique
         // thing we have.
-        return NascentObjectGuid(node.GetIndex());
-    }
-
-    static bool IsUseful(const Node& node, const SkeletonRegistry& skeletonReferences)
-    {
-        if (skeletonReferences.IsImportant(AsObjectGuid(node))) return true;
-
-        auto child = node.GetFirstChild();
-        while (child) {
-            if (IsUseful(child, skeletonReferences)) return true;
-            child = child.GetNextSibling();
-        }
-        return false;
+        return RenderCore::Assets::GeoProc::NascentObjectGuid(node.GetIndex());
     }
 
 }

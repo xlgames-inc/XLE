@@ -16,9 +16,13 @@
 #include "../../SceneEngine/TerrainUberSurface.h"
 #include "../../SceneEngine/Fluid.h"
 #include "../../SceneEngine/CloudsForm.h"
+#include "../../SceneEngine/RenderStepUtils.h"
+#include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Math/Transformations.h"
 #include "../../Assets/AssetsCore.h"
@@ -37,13 +41,10 @@ namespace GUILayer
     ref class ErosionOverlay : public IOverlaySystem
     {
     public:
-        virtual void RenderToScene(
+        virtual void Render(
             RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) override;
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parsingContext) override;
-        virtual void SetActivationState(bool newState) override {}
+			const RenderTargetWrapper& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) override;
 
         ErosionOverlay(
             std::shared_ptr<SceneEngine::ErosionSimulation> sim,
@@ -67,8 +68,8 @@ namespace GUILayer
     }
 
     static void SetGlobalTransform(
-        RenderCore::Metal::DeviceContext& metalContext,
-        SceneEngine::LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         Float2 worldDims)
     {
         auto camToWorld = MakeCameraToWorld(
@@ -76,28 +77,26 @@ namespace GUILayer
             Float3(0.f, 1.f, 0.f),
             Float3(0.f, 0.f, 0.f));
         SceneEngine::LightingParser_SetGlobalTransform(
-            metalContext, parserContext, 
-            SceneEngine::BuildProjectionDesc(
+            context, parserContext, 
+            RenderCore::Techniques::BuildOrthogonalProjectionDesc(
                 camToWorld, 
                 0.f, worldDims[1], worldDims[0], 0.f, 
                 -4096.f, 4096.f));
-        SceneEngine::SetFrameGlobalStates(metalContext);
+        SceneEngine::SetFrameGlobalStates(*RenderCore::Metal::DeviceContext::Get(context));
     }
 
-    void ErosionOverlay::RenderToScene(
-        RenderCore::IThreadContext& device,
-        SceneEngine::LightingParserContext& parserContext)
+    void ErosionOverlay::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderTargetWrapper& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget._renderTarget, parserContext);
         Float2 worldDims = _sim->GetDimensions() * _sim->GetWorldSpaceSpacing();
-        SetGlobalTransform(*metalContext, parserContext, worldDims);
+        SetGlobalTransform(threadContext, parserContext, worldDims);
+
+		auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
         _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
     }
-
-    void ErosionOverlay::RenderWidgets(
-        RenderCore::IThreadContext& device,
-        RenderCore::Techniques::ParsingContext& parsingContext)
-    {}
 
     ErosionOverlay::ErosionOverlay(
         std::shared_ptr<SceneEngine::ErosionSimulation> sim,
@@ -166,17 +165,17 @@ namespace GUILayer
             auto v = *dynamic_cast<System::Single^>(value);
             return _accessors->TryOpaqueSet(
                 _type.get(), Hash64(nativeString.c_str()),
-                &v, ImpliedTyping::TypeOf<decltype(v)>());
+                AsOpaqueIteratorRange(v), ImpliedTyping::TypeOf<decltype(v)>());
         } else if (value->GetType() == System::UInt32::typeid) {
             auto v = *dynamic_cast<System::UInt32^>(value);
             return _accessors->TryOpaqueSet(
                 _type.get(), Hash64(nativeString.c_str()),
-                &v, ImpliedTyping::TypeOf<decltype(v)>());
+                AsOpaqueIteratorRange(v), ImpliedTyping::TypeOf<decltype(v)>());
         } else if (value->GetType() == System::Int32::typeid) {
             auto v = *dynamic_cast<System::Int32^>(value);
             return _accessors->TryOpaqueSet(
                 _type.get(), Hash64(nativeString.c_str()),
-                &v, ImpliedTyping::TypeOf<decltype(v)>());
+                AsOpaqueIteratorRange(v), ImpliedTyping::TypeOf<decltype(v)>());
         }
         return false;
     }
@@ -214,7 +213,7 @@ namespace GUILayer
         } CATCH_END
     }
 
-    ErosionIterativeSystem::ErosionIterativeSystem(String^ sourceHeights)
+    ErosionIterativeSystem::ErosionIterativeSystem(System::String^ sourceHeights)
     {
         using namespace SceneEngine;
         _pimpl.reset(new ErosionIterativeSystemPimpl);
@@ -244,7 +243,7 @@ namespace GUILayer
                 resLoc = interf.CopyToGPU(UInt2(0,0), dims);
             }
 
-            RenderCore::Metal::ShaderResourceView srv(resLoc->ShareUnderlying());
+            RenderCore::Metal::ShaderResourceView srv(resLoc->GetUnderlying());
             _pimpl->_sim->InitHeights(
                 *GetImmediateContext(), srv,
                 UInt2(0,0), dims);
@@ -283,19 +282,12 @@ namespace GUILayer
     ref class CFDOverlay : public IOverlaySystem
     {
     public:
-        virtual void RenderToScene(
+        virtual void Render(
             RenderCore::IThreadContext& device, 
-            SceneEngine::LightingParserContext& parserContext) override;
-        virtual void RenderWidgets(
-            RenderCore::IThreadContext& device, 
-            RenderCore::Techniques::ParsingContext& parsingContext) override;
-        virtual void SetActivationState(bool newState) override {}
+			const RenderTargetWrapper& renderTarget,
+            RenderCore::Techniques::ParsingContext& parserContext) override;
 
         using RenderFn = std::function<void(
-            RenderCore::Metal::DeviceContext&,
-            SceneEngine::LightingParserContext&,
-            void*)>;
-        using RenderWidgetsFn = std::function<void(
             RenderCore::IThreadContext&,
             RenderCore::Techniques::ParsingContext&,
             void*)>;
@@ -303,14 +295,12 @@ namespace GUILayer
         CFDOverlay(
             std::shared_ptr<void> sim, 
             RenderFn&& renderFn,
-            RenderWidgetsFn&& renderWidgetsFn,
             Float2 dims);
         !CFDOverlay();
         ~CFDOverlay();
     private:
         clix::shared_ptr<void> _sim;
         clix::auto_ptr<RenderFn> _renderFn;
-        clix::auto_ptr<RenderWidgetsFn> _renderWidgetsFn;
         array<float>^ _worldDims;
     };
 
@@ -327,39 +317,29 @@ namespace GUILayer
         }
     }
 
-    void CFDOverlay::RenderToScene(
-        RenderCore::IThreadContext& device,
-        SceneEngine::LightingParserContext& parserContext)
+    void CFDOverlay::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderTargetWrapper& renderTarget,
+        RenderCore::Techniques::ParsingContext& parserContext)
     {
         if (!(*_renderFn)) return;
 
-        auto metalContext = RenderCore::Metal::DeviceContext::Get(device);
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget._renderTarget, parserContext);
         Float2 worldDims = Float2(_worldDims[0], _worldDims[1]);
-        SetGlobalTransform(*metalContext, parserContext, worldDims);
+        SetGlobalTransform(threadContext, parserContext, worldDims);
 
-        // _sim->RenderDebugging(*metalContext, parserContext, AsDebugMode(_previewSettings->ActivePreview));
         (*_renderFn)(
-            *metalContext, parserContext,
+            threadContext, parserContext,
             _sim.get());
-    }
-
-    void CFDOverlay::RenderWidgets(
-        RenderCore::IThreadContext& device,
-        RenderCore::Techniques::ParsingContext& parsingContext)
-    {
-        if (!(*_renderWidgetsFn)) return;
-        (*_renderWidgetsFn)(device, parsingContext, _sim.get());
     }
 
     CFDOverlay::CFDOverlay(
         std::shared_ptr<void> sim,
         RenderFn&& renderFn,
-        RenderWidgetsFn&& renderWidgetsFn,
         Float2 dims)
     : _sim(sim)
     {
         _renderFn.reset(new RenderFn(std::move(renderFn)));
-        _renderWidgetsFn.reset(new RenderWidgetsFn(std::move(renderWidgetsFn)));
         _worldDims = gcnew array<float>(2);
         _worldDims[0] = dims[0];
         _worldDims[1] = dims[1];
@@ -372,11 +352,11 @@ namespace GUILayer
 
     template<typename SimObject>
         static CFDOverlay::RenderFn MakeRenderFn(
-            gcroot<CFDPreviewSettings^> settings)
+            msclr::gcroot<CFDPreviewSettings^> settings)
     {
         return [settings](
-                RenderCore::Metal::DeviceContext& device,
-                SceneEngine::LightingParserContext& parserContext,
+                RenderCore::IThreadContext& device,
+                RenderCore::Techniques::ParsingContext& parserContext,
                 void* sim)
             {
                 ((SimObject*)sim)->RenderDebugging(
@@ -386,7 +366,7 @@ namespace GUILayer
     }
 
     template<typename SimObject>
-        static CFDOverlay::RenderWidgetsFn MakeRenderWidgetsFn()
+        static CFDOverlay::RenderFn MakeRenderWidgetsFn()
     {
         return [](
                 RenderCore::IThreadContext& device,
@@ -465,7 +445,6 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<FluidSolver>(_settings),
-            CFDOverlay::RenderWidgetsFn(),
             _pimpl->_sim->GetDimensions());
     }
 
@@ -541,6 +520,10 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<CloudsForm2D>(_settings),
+            _pimpl->_sim->GetDimensions());
+
+		_widgetsOverlay = gcnew CFDOverlay(
+            _pimpl->_sim, 
             MakeRenderWidgetsFn<CloudsForm2D>(),
             _pimpl->_sim->GetDimensions());
     }
@@ -549,6 +532,7 @@ namespace GUILayer
     {
         _pimpl.reset();
         delete _overlay; _overlay = nullptr;
+		delete _widgetsOverlay; _widgetsOverlay = nullptr;
         delete _getAndSetProperties; _getAndSetProperties = nullptr;
     }
 
@@ -556,6 +540,7 @@ namespace GUILayer
     {
         _pimpl.reset();
         delete _overlay; _overlay = nullptr;
+		delete _widgetsOverlay; _widgetsOverlay = nullptr;
         delete _getAndSetProperties; _getAndSetProperties = nullptr;
     }
 
@@ -611,7 +596,6 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<FluidSolver3D>(_settings),
-            CFDOverlay::RenderWidgetsFn(),
             Truncate(_pimpl->_sim->GetDimensions()));
     }
 
@@ -686,7 +670,6 @@ namespace GUILayer
         _overlay = gcnew CFDOverlay(
             _pimpl->_sim, 
             MakeRenderFn<RefFluidSolver>(_settings),
-            CFDOverlay::RenderWidgetsFn(),
             _pimpl->_sim->GetDimensions());
     }
 

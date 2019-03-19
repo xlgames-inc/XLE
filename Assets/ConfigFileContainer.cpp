@@ -24,7 +24,7 @@ namespace Assets
 		Formatter ConfigFileContainer<Formatter>::GetRootFormatter() const
 	{
 		if (!_fileData) return Formatter {};
-		return Formatter(MemoryMappedInputStream(AsPointer(_fileData->begin()), AsPointer(_fileData->end())));
+		return Formatter(MemoryMappedInputStream(MakeIteratorRange(*_fileData)));
 	}
 
 	template<typename Formatter>
@@ -32,12 +32,13 @@ namespace Assets
 	{
 		if (!_fileData) return Formatter {};
 
-		bool gotConfig = false;
-
 		// search through for the specific element we need (ignoring other elements)
-		Formatter formatter(MemoryMappedInputStream(AsPointer(_fileData->begin()), AsPointer(_fileData->end())));
+		Formatter formatter(MemoryMappedInputStream(MakeIteratorRange(*_fileData)));
 
-		while (!gotConfig) {
+		auto immediateConfigName = configName;
+		immediateConfigName._end = std::find(immediateConfigName.begin(), configName.end(), ':');
+
+		for (;;) {
 			switch (formatter.PeekNext()) {
 			case Formatter::Blob::BeginElement:
 				{
@@ -45,14 +46,22 @@ namespace Assets
 					if (!formatter.TryBeginElement(eleName))
 						Throw(Utility::FormatException("Poorly formed begin element in config file", formatter.GetLocation()));
 
-					if (XlEqStringI(eleName, configName)) {
-						return formatter;
+					if (XlEqStringI(eleName, immediateConfigName)) {
+						// We can access a nested item using ':' as a separator
+						// For example, "first:second:third" will look for "first" at
+						// the top level with "second" nested within and then "third"
+						// nested within that.
+						immediateConfigName._start = immediateConfigName.end()+1;
+						if (immediateConfigName.begin() < configName.end())
+							immediateConfigName._end = std::find(immediateConfigName.begin(), configName.end(), ':');
+						if (immediateConfigName.begin() >= immediateConfigName.end())
+							return formatter;
+						// else continue searching for the next config name
 					} else {
 						formatter.SkipElement();    // skip the whole element; it's not required
+						if (!formatter.TryEndElement())
+							Throw(Utility::FormatException("Expecting end element in config file", formatter.GetLocation()));
 					}
-
-					if (!formatter.TryEndElement())
-						Throw(Utility::FormatException("Expecting end element in config file", formatter.GetLocation()));
 
 					continue;
 				}

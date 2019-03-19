@@ -31,7 +31,7 @@ namespace SceneEngine
 
         auto    GetBufferUploads() -> BufferUploads::IManager&                      { return *_bufferUploads; }
         auto    GetShaderResource() -> RenderCore::Metal::ShaderResourceView&       { return _shaderResource; }
-        auto    GetUnorderedAccessView() -> RenderCore::Metal::UnorderedAccessView& { assert(_uav.GetUnderlying()); return _uav; }
+        auto    GetUnorderedAccessView() -> RenderCore::Metal::UnorderedAccessView& { assert(_uav.IsGood()); return _uav; }
 
         Int2    GetTileSize() const { return _elementSize; }
         auto    GetFormat() const -> RenderCore::Format { return _format; }

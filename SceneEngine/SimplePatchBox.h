@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/IDevice.h"
 
 namespace SceneEngine
 {
@@ -24,8 +24,8 @@ namespace SceneEngine
         SimplePatchBox(const Desc& desc);
         ~SimplePatchBox();
 
-        RenderCore::Metal::IndexBuffer  _simplePatchIndexBuffer;
-        unsigned                        _simplePatchIndexCount;
+        RenderCore::IResourcePtr	_simplePatchIndexBuffer;
+        unsigned					_simplePatchIndexCount;
     };
 }
 

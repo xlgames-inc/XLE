@@ -176,7 +176,7 @@ namespace BufferUploads
         auto* o = &_overlappedStatus;
             // this should be a very quick operation -- it might be best to put it in a
             // separate thread pool from the long operations
-        ConsoleRig::GlobalServices::GetShortTaskThreadPool().Enqueue(
+        ConsoleRig::GlobalServices::GetInstance().GetShortTaskThreadPool().Enqueue(
             [o]()
             {
                 auto* pkt = o->_returnPointer.get();
@@ -346,7 +346,7 @@ namespace BufferUploads
         _marker = std::make_shared<Marker>();
         _returnPointer = this;      // hold a reference while the background operation is occurring
 
-        ConsoleRig::GlobalServices::GetLongTaskThreadPool().Enqueue(
+        ConsoleRig::GlobalServices::GetInstance().GetLongTaskThreadPool().Enqueue(
             [this]()
             {
                 using namespace DirectX;
@@ -383,13 +383,13 @@ namespace BufferUploads
 						auto ioResult = ::Assets::MainFileSystem::TryOpen(srcFile, (const utf16*)filename, 0ull, "r");
 						if (ioResult == ::Assets::IFileSystem::IOReason::Success) {
 							if (fmt == TexFmt::DDS) {
-								hresult = LoadFromDDSMemory(srcFile.GetData(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
+								hresult = LoadFromDDSMemory(srcFile.GetData().begin(), srcFile.GetSize(), DDS_FLAGS_NONE, &_texMetadata, _image);
 							} else if (fmt == TexFmt::TGA) {
-								hresult = LoadFromTGAMemory(srcFile.GetData(), srcFile.GetSize(), &_texMetadata, _image);
+								hresult = LoadFromTGAMemory(srcFile.GetData().begin(), srcFile.GetSize(), &_texMetadata, _image);
 							} else if (fmt == TexFmt::WIC) {
-								hresult = LoadFromWICMemory(srcFile.GetData(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
+								hresult = LoadFromWICMemory(srcFile.GetData().begin(), srcFile.GetSize(), WIC_FLAGS_NONE, &_texMetadata, _image);
 							} else {
-								LogWarning << "Texture format not apparent from filename (" << filename << ")";
+								Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
 							}
 						}
 					} else {
@@ -400,7 +400,7 @@ namespace BufferUploads
 						} else if (fmt == TexFmt::WIC) {
 							hresult = LoadFromWICFile(filename, WIC_FLAGS_NONE, &_texMetadata, _image);
 						} else {
-							LogWarning << "Texture format not apparent from filename (" << filename << ")";
+							Log(Warning) << "Texture format not apparent from filename (" << filename << ")" << std::endl;
 						}
 					}
 
@@ -428,7 +428,7 @@ namespace BufferUploads
                             this->_image = std::move(newImage);
                             desc._textureDesc._mipCount = uint8(this->_image.GetMetadata().mipLevels);
                         } else {
-                            LogWarning << "Failed while building mip-maps for texture: " << filename;
+                            Log(Warning) << "Failed while building mip-maps for texture: " << filename << std::endl;
                         }
                     }
 
@@ -485,7 +485,7 @@ namespace BufferUploads
         } else if (fmt == TexFmt::WIC) {
             hresult = GetMetadataFromWICFile((const wchar_t*)wfilename, WIC_FLAGS_NONE, metadata);
         } else {
-            LogWarning << "Texture format not apparent from filename (" << filename.AsString().c_str() << ")";
+            Log(Warning) << "Texture format not apparent from filename (" << filename.AsString().c_str() << ")" << std::endl;
         }
 
         if (SUCCEEDED(hresult)) {

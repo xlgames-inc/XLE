@@ -4,12 +4,15 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#if 0
+
 #include "VegetationSpawn.h"
 #include "SceneEngineUtils.h"
 #include "LightingParserContext.h"
 #include "LightingParser.h"
 #include "SceneParser.h"
 #include "Noise.h"
+#include "MetalStubs.h"
 
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -17,11 +20,11 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Metal/Buffer.h"
+#include "../RenderCore/Metal/Resource.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/IAnnotator.h"
-
-#include "../RenderCore/Assets/ModelCache.h"
 
 #include "../BufferUploads/IBufferUploads.h"
 #include "../BufferUploads/DataPacket.h"
@@ -34,10 +37,12 @@
 #include "../Utility/FunctionUtils.h"
 #include "../Math/Transformations.h"
 
-#include "../RenderCore/Assets/ModelRunTime.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"
-#include "../RenderCore/Assets/SharedStateSet.h"
+#include "../FixedFunctionModel/ModelCache.h"
+#include "../FixedFunctionModel/ModelRunTime.h"
+#include "../FixedFunctionModel/DelayedDrawCall.h"
+#include "../FixedFunctionModel/SharedStateSet.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 
 #include "../RenderCore/Metal/DeviceContextImpl.h"
 #include "../RenderCore/DX11/Metal/DX11Utils.h"
@@ -72,7 +77,7 @@ namespace SceneEngine
         IndirectDrawBuffer();
         ~IndirectDrawBuffer();
     private:
-        Metal::VertexBuffer     _indirectArgsBuffer;
+        IResourcePtr     _indirectArgsBuffer;
     };
 
     class VegetationSpawnResources
@@ -87,7 +92,7 @@ namespace SceneEngine
             : _bufferCount(bufferCount), _alignToTerrainUp(alignToTerrainUp) {}
         };
 
-        Metal::VertexBuffer         _streamOutputBuffers[2];
+        IResourcePtr				_streamOutputBuffers[2];
         Metal::ShaderResourceView   _streamOutputSRV[2];
         intrusive_ptr<ID3D::Query>  _streamOutputCountsQuery;
 
@@ -134,8 +139,8 @@ namespace SceneEngine
         XlSetMemory(clearedBufferData->GetData(), 0, clearedBufferData->GetDataSize());
         auto clearedTypesResource = uploads.Transaction_Immediate(bufferDesc, clearedBufferData.get());
 
-        Metal::ShaderResourceView so0srv(so0r->ShareUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32G32B32A32_FLOAT);
-        Metal::ShaderResourceView so1srv(so1r->ShareUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32_UINT);
+        Metal::ShaderResourceView so0srv(so0r->GetUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32G32B32A32_FLOAT);
+        Metal::ShaderResourceView so1srv(so1r->GetUnderlying(), {Format::R32_TYPELESS}); // NativeFormat::R32_UINT);
 
             // create the true instancing buffers
             //      Note that it might be ideal if these were vertex buffers! But we can't make a buffer that is both a vertex buffer and structured buffer
@@ -150,12 +155,13 @@ namespace SceneEngine
         std::vector<Metal::ShaderResourceView> instanceBufferSRVs; instanceBufferSRVs.reserve(desc._bufferCount);
         for (unsigned c=0; c<desc._bufferCount; ++c) {
             auto res = uploads.Transaction_Immediate(bufferDesc);
-			auto window = TextureViewDesc(
-				Format::Unknown, TextureDesc::Dimensionality::Undefined,
+			auto window = TextureViewDesc{
+				Format::Unknown,
 				TextureViewDesc::SubResourceRange{0,1}, TextureViewDesc::All,
-				TextureViewDesc::Flags::AppendBuffer);
-            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->ShareUnderlying(), window));
-            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->ShareUnderlying()));
+				TextureDesc::Dimensionality::Undefined,
+				TextureViewDesc::Flags::AppendBuffer};
+            instanceBufferUAVs.push_back(Metal::UnorderedAccessView(res->GetUnderlying(), window));
+            instanceBufferSRVs.push_back(Metal::ShaderResourceView(res->GetUnderlying()));
         }
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
@@ -165,8 +171,8 @@ namespace SceneEngine
 		_streamOutputCountsQuery = Metal::GetObjectFactory().CreateQuery(&queryDesc);
 #endif
 
-        _streamOutputBuffers[0] = Metal::VertexBuffer(so0r->GetUnderlying());
-        _streamOutputBuffers[1] = Metal::VertexBuffer(so1r->GetUnderlying());
+        _streamOutputBuffers[0] = so0r->GetUnderlying();
+        _streamOutputBuffers[1] = so1r->GetUnderlying();
         _streamOutputResources[0] = std::move(so0r);
         _streamOutputResources[1] = std::move(so1r);
         _streamOutputSRV[0] = std::move(so0srv);
@@ -205,7 +211,9 @@ namespace SceneEngine
 
     void VegetationSpawn_Prepare(
         RenderCore::IThreadContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
+		LightingParserContext& lightingParserContext,
+		ISceneParser& sceneParser,
         PreparedScene& preparedScene,
         const VegetationSpawnConfig& cfg, VegetationSpawnResources& res)
     {
@@ -219,22 +227,22 @@ namespace SceneEngine
 
         using namespace RenderCore;
 		auto metalContext = RenderCore::Metal::DeviceContext::Get(context);
-        auto oldSO = Metal::GeometryShader::GetDefaultStreamOutputInitializers();
+        auto oldSO = MetalStubs::GeometryShader::GetDefaultStreamOutputInitializers();
         ID3D::Query* begunQuery = nullptr; (void)begunQuery;
 
         auto oldCamera = parserContext.GetProjectionDesc();
 
         CATCH_ASSETS_BEGIN
             auto& perlinNoiseRes = ConsoleRig::FindCachedBox2<SceneEngine::PerlinNoiseResources>();
-            metalContext->BindGS(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
-            metalContext->BindGS(MakeResourceList(Metal::SamplerState()));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(Metal::SamplerState()));
 
                 //  we have to clear vertex input "3", because this is the instancing input slot -- and 
                 //  we're going to be writing to buffers that will be used for instancing.
             // ID3D::Buffer* nullBuffer = nullptr; unsigned zero = 0;
             // context->GetUnderlying()->IASetVertexBuffers(3, 1, &nullBuffer, &zero, &zero);
-            metalContext->Unbind<Metal::VertexBuffer>();
-            metalContext->UnbindVS<Metal::ShaderResourceView>(15, 1);
+            metalContext->UnbindInputLayout();
+            MetalStubs::UnbindVS<Metal::ShaderResourceView>(*metalContext, 15, 1);
 
             float maxDrawDistance = 0.f;
             for (const auto& m:cfg._materials)
@@ -266,7 +274,7 @@ namespace SceneEngine
                 instanceSpawnConstants._suppressionNoiseParams[mi][2] = cfg._materials[mi]._suppressionLacunarity;
             }
 
-            metalContext->BindGS(MakeResourceList(5, Metal::ConstantBuffer(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
+            metalContext->GetNumericUniforms(ShaderStage::Geometry).Bind(MakeResourceList(5, MakeMetalCB(&instanceSpawnConstants, sizeof(InstanceSpawnConstants))));
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
             const bool needQuery = false;
@@ -299,22 +307,22 @@ namespace SceneEngine
 
                 //  How do we clear an SO buffer? We can't make it an unorderedaccess view or render target.
                 //  The only obvious way is to use CopyResource, and copy from a prepared "cleared" buffer
-            Metal::Copy(*metalContext, res._streamOutputResources[1]->GetUnderlying(), res._clearedTypesResource->GetUnderlying());
+            Metal::Copy(*metalContext, Metal::AsResource(*res._streamOutputResources[1]->GetUnderlying()), Metal::AsResource(*res._clearedTypesResource->GetUnderlying()));
 
             const bool alignToTerrainUp = res._alignToTerrainUp;
             if (alignToTerrainUp) {
                 unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize_TerrainAlign };
-                Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-                    Metal::GeometryShader::StreamOutputInitializers(elesTerrainNormal, dimof(elesTerrainNormal), strides, 2));
+                MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+                    MetalStubs::GeometryShader::StreamOutputInitializers(elesTerrainNormal, dimof(elesTerrainNormal), strides, 2));
             } else {
                 unsigned strides[2] = { Stream0VertexSize, Stream1VertexSize_NoAlign };
-                Metal::GeometryShader::SetDefaultStreamOutputInitializers(
-                    Metal::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
+                MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(
+                    MetalStubs::GeometryShader::StreamOutputInitializers(eles, dimof(eles), strides, 2));
             }
             g_TerrainVegetationSpawn_AlignToTerrainUp = alignToTerrainUp;
 
             SceneParseSettings parseSettings(
-                SceneParseSettings::BatchFilter::General,
+                Techniques::BatchFilter::General,
                 SceneParseSettings::Toggles::Terrain);
 
                 // Adjust the far clip so that it's very close...
@@ -327,11 +335,11 @@ namespace SceneEngine
                 //  We have to call "SetGlobalTransform" to force the camera changes to have effect.
                 //  Ideally there would be a cleaner way to automatically update the constants
                 //  when the bound camera changes...
-            LightingParser_SetGlobalTransform(*metalContext, parserContext, newProjDesc);
+            LightingParser_SetGlobalTransform(context, parserContext, newProjDesc);
 
-            metalContext->BindSO(MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
-            parserContext.GetSceneParser()->ExecuteScene(context, parserContext, parseSettings, preparedScene, 5);
-            metalContext->UnbindSO();
+            MetalStubs::BindSO(*metalContext, MakeResourceList(res._streamOutputBuffers[0], res._streamOutputBuffers[1]));
+            sceneParser.ExecuteScene(context, parserContext, lightingParserContext, parseSettings, preparedScene, 5);
+            MetalStubs::UnbindSO(*metalContext);
 
                 //  After the scene execute, we need to use a compute shader to separate the 
                 //  stream output data into it's bins.
@@ -348,7 +356,7 @@ namespace SceneEngine
                 outputBins[c] = res._instanceBufferUAVs[c].GetUnderlying();
             }
 
-            metalContext->BindCS(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
+            metalContext->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(res._streamOutputSRV[0], res._streamOutputSRV[1]));
             metalContext->GetUnderlying()->CSSetUnorderedAccessViews(0, outputBinCount, outputBins, initialCounts);
 #endif
 
@@ -389,9 +397,9 @@ namespace SceneEngine
             if (alignToTerrainUp)
                 shaderParams << ";TERRAIN_NORMAL=1";
 
-            metalContext->BindCS(MakeResourceList(
+            metalContext->GetNumericUniforms(ShaderStage::Compute).Bind(MakeResourceList(
                 parserContext.GetGlobalTransformCB(),
-                Metal::ConstantBuffer(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
+                MakeMetalCB(&instanceSeparateConstants, sizeof(instanceSeparateConstants))));
 
             metalContext->Bind(::Assets::GetAssetDep<Metal::ComputeShader>(
                 "xleres/Vegetation/InstanceSpawnSeparate.csh:main:cs_*", 
@@ -400,8 +408,8 @@ namespace SceneEngine
 
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
                 // unbind all of the UAVs again
-            metalContext->UnbindCS<Metal::UnorderedAccessView>(0, outputBinCount);
-            metalContext->UnbindCS<Metal::ShaderResourceView>(0, 2);
+            MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*metalContext, 0, outputBinCount);
+            MetalStubs::UnbindCS<Metal::ShaderResourceView>(*metalContext, 0, 2);
 #endif
 
             res._isPrepared = true;
@@ -414,10 +422,10 @@ namespace SceneEngine
 #endif
 
             // (reset the camera transform if it's changed)
-        LightingParser_SetGlobalTransform(*metalContext, parserContext, oldCamera);
+        LightingParser_SetGlobalTransform(context, parserContext, oldCamera);
 
-        metalContext->UnbindSO();
-        Metal::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
+        MetalStubs::UnbindSO(*metalContext);
+        MetalStubs::GeometryShader::SetDefaultStreamOutputInitializers(oldSO);
         // oldTargets.ResetToOldTargets(context);
     }
 
@@ -434,7 +442,7 @@ namespace SceneEngine
 #endif
     }
 
-    bool VegetationSpawn_DrawInstances(
+    static bool VegetationSpawn_DrawInstances(
         Metal::DeviceContext& context,
         VegetationSpawnResources& res,
         unsigned instanceId, unsigned indexCount, unsigned startIndexLocation, unsigned baseVertexLocation)
@@ -520,7 +528,7 @@ namespace SceneEngine
         // auto* buffer = res._instanceBuffers[instanceId].get();
         // const unsigned slotForVertexInput = 3;
         // context->GetUnderlying()->IASetVertexBuffers(slotForVertexInput, 1, &buffer, &stride, &offset);
-        context.BindVS(MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
+        context.GetNumericUniforms(ShaderStage::Vertex).Bind(MakeResourceList(15, res._instanceBufferSRVs[instanceId]));
 
             // finally -- draw
         res._indirectDrawBuffer.Draw(context);
@@ -531,13 +539,13 @@ namespace SceneEngine
     class VegetationSpawnManager::Pimpl
     {
     public:
-        std::shared_ptr<RenderCore::Assets::ModelCache>     _modelCache;
+        std::shared_ptr<FixedFunctionModel::ModelCache>     _modelCache;
         std::shared_ptr<VegetationSpawnPlugin>              _parserPlugin;
         std::unique_ptr<VegetationSpawnResources>           _resources;
         VegetationSpawnConfig _cfg;
 
         using DepVal = std::shared_ptr<::Assets::DependencyValidation>;
-        std::vector<RenderCore::Assets::DelayedDrawCallSet> _drawCallSets;
+        std::vector<FixedFunctionModel::DelayedDrawCallSet> _drawCallSets;
         std::vector<DepVal> _drawCallSetDepVals;
 
         uint32 _modelCacheReloadId;
@@ -551,15 +559,17 @@ namespace SceneEngine
     {
     public:
         virtual void OnPreScenePrepare(
-            RenderCore::IThreadContext&, LightingParserContext&, PreparedScene&) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			ISceneParser&, PreparedScene&) const;
         virtual void OnLightingResolvePrepare(
-            Metal::DeviceContext& context, LightingParserContext& parserContext,
-            LightingResolveContext& resolveContext) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&,
+            ISceneParser&, LightingResolveContext& resolveContext) const;
         virtual void OnPostSceneRender(
-            Metal::DeviceContext& context, LightingParserContext& parserContext, 
-            const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+            ISceneParser&, const SceneParseSettings& parseSettings, unsigned techniqueIndex) const;
         virtual void InitBasicLightEnvironment(
-            Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const;
+            RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+			ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const;
 
         VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl);
         ~VegetationSpawnPlugin();
@@ -569,25 +579,26 @@ namespace SceneEngine
     };
 
     void VegetationSpawnPlugin::OnPreScenePrepare(
-        RenderCore::IThreadContext& context, LightingParserContext& parserContext, 
-        PreparedScene& preparedScene) const
+        RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
+		LightingParserContext& lightingParserContext,
+        ISceneParser& sceneParser, PreparedScene& preparedScene) const
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
         GPUAnnotation anno(context, "VegetationSpawn");
-        VegetationSpawn_Prepare(context, parserContext, preparedScene, _pimpl->_cfg, *_pimpl->_resources.get()); 
+        VegetationSpawn_Prepare(context, parserContext, lightingParserContext, sceneParser, preparedScene, _pimpl->_cfg, *_pimpl->_resources.get()); 
     }
 
     void VegetationSpawnPlugin::OnLightingResolvePrepare(
-        Metal::DeviceContext& context, LightingParserContext& parserContext,
-        LightingResolveContext& resolveContext) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&,
+        ISceneParser&, LightingResolveContext& resolveContext) const {}
 
     void VegetationSpawnPlugin::OnPostSceneRender(
-        Metal::DeviceContext& context, LightingParserContext& parserContext, 
-        const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, 
+        ISceneParser&, const SceneParseSettings& parseSettings, unsigned techniqueIndex) const {}
 
     void VegetationSpawnPlugin::InitBasicLightEnvironment(
-        Metal::DeviceContext&, LightingParserContext&, ShaderLightDesc::BasicEnvironment& env) const {}
+        RenderCore::IThreadContext&, RenderCore::Techniques::ParsingContext&, LightingParserContext&, ISceneParser&, ShaderLightDesc::BasicEnvironment& env) const {}
 
     VegetationSpawnPlugin::VegetationSpawnPlugin(VegetationSpawnManager::Pimpl& pimpl)
     : _pimpl(&pimpl) {}
@@ -595,8 +606,8 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    using DelayedDrawCallSet = RenderCore::Assets::DelayedDrawCallSet;
-    using ModelRenderer = RenderCore::Assets::ModelRenderer;
+    using DelayedDrawCallSet = FixedFunctionModel::DelayedDrawCallSet;
+    using ModelRenderer = FixedFunctionModel::ModelRenderer;
 
     void VegetationSpawnManager::Pimpl::FillInDrawCallSets()
     {
@@ -629,7 +640,7 @@ namespace SceneEngine
 
                 model._renderer->Prepare(
                     _drawCallSets[b], sharedStates, Identity<Float4x4>(), 
-                    RenderCore::Assets::MeshToModel(*model._model));
+                    FixedFunctionModel::MeshToModel(*model._model));
                 ModelRenderer::Sort(_drawCallSets[b]);
                 _drawCallSetDepVals[b] = model._renderer->GetDependencyValidation();
             } CATCH(const ::Assets::Exceptions::RetrievalError&) {}
@@ -644,17 +655,19 @@ namespace SceneEngine
     }
 
     void VegetationSpawnManager::Render(
-        Metal::DeviceContext& context, LightingParserContext& parserContext,
-        unsigned techniqueIndex, RenderCore::Assets::DelayStep delayStep)
+        RenderCore::IThreadContext& threadContext, RenderCore::Techniques::ParsingContext& parserContext,
+        unsigned techniqueIndex, FixedFunctionModel::DelayStep delayStep)
     {
         if (_pimpl->_cfg._objectTypes.empty()) return;
 
         _pimpl->FillInDrawCallSets();
 
+		auto& context = *RenderCore::Metal::DeviceContext::Get(threadContext);
+
         auto& sharedStates = _pimpl->_modelCache->GetSharedStateSet();
         auto captureMarker = sharedStates.CaptureState(
-            context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
-        auto& state = parserContext.GetTechniqueContext()._runtimeState;
+			context, parserContext.GetRenderStateDelegate(), {});
+        auto& state = parserContext.GetSubframeShaderSelectors();
         state.SetParameter(u("SPAWNED_INSTANCE"), 1);
         state.SetParameter(u("GEO_INSTANCE_ALIGN_UP"), unsigned(_pimpl->_resources->_alignToTerrainUp));
         auto cleanup = MakeAutoCleanup(
@@ -663,7 +676,7 @@ namespace SceneEngine
         auto& resources = *_pimpl->_resources;
         for (unsigned b=0; b<unsigned(_pimpl->_drawCallSets.size()); ++b)
             ModelRenderer::RenderPrepared(
-                RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+                FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
                 sharedStates, _pimpl->_drawCallSets[b], delayStep,
                 [&context, b, &resources](ModelRenderer::DrawCallEvent evnt)
                 {
@@ -673,7 +686,7 @@ namespace SceneEngine
                 });
     }
 
-    bool VegetationSpawnManager::HasContent(RenderCore::Assets::DelayStep delayStep) const
+    bool VegetationSpawnManager::HasContent(FixedFunctionModel::DelayStep delayStep) const
     {
         if (_pimpl->_cfg._objectTypes.empty()) return false;
 
@@ -712,7 +725,7 @@ namespace SceneEngine
         return _pimpl->_parserPlugin;
     }
 
-    VegetationSpawnManager::VegetationSpawnManager(std::shared_ptr<RenderCore::Assets::ModelCache> modelCache)
+    VegetationSpawnManager::VegetationSpawnManager(std::shared_ptr<FixedFunctionModel::ModelCache> modelCache)
     {
         _pimpl = std::make_unique<Pimpl>();
         _pimpl->_modelCache = std::move(modelCache);
@@ -732,7 +745,10 @@ namespace SceneEngine
 #if GFXAPI_ACTIVE == GFXAPI_DX11	// platformtemp
     void IndirectDrawBuffer::Draw(Metal::DeviceContext& metalContext)
     {
-        metalContext.GetUnderlying()->DrawIndexedInstancedIndirect(_indirectArgsBuffer.GetUnderlying(), 0);
+		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();
+        metalContext.GetUnderlying()->DrawIndexedInstancedIndirect(
+			Metal::QueryInterfaceCast<ID3D::Buffer>(res).get(), 
+			0);
     }
 
     bool IndirectDrawBuffer::WriteParams(
@@ -740,8 +756,10 @@ namespace SceneEngine
         unsigned indexCountPerinstance, unsigned startIndexLocation, 
         unsigned baseVertexLocation, unsigned instanceCount)
     {
+		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();
+
         D3D11_MAPPED_SUBRESOURCE mappedSub;
-        auto hresult = metalContext.GetUnderlying()->Map(_indirectArgsBuffer.GetUnderlying(), 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
+        auto hresult = metalContext.GetUnderlying()->Map(res, 0, D3D11_MAP_WRITE_DISCARD, 0, &mappedSub);
         if (!SUCCEEDED(hresult))
             return false;
 
@@ -751,15 +769,16 @@ namespace SceneEngine
         args.BaseVertexLocation = baseVertexLocation;
         args.StartInstanceLocation = 0;
         args.InstanceCount = instanceCount;
-        metalContext.GetUnderlying()->Unmap(_indirectArgsBuffer.GetUnderlying(), 0);
+        metalContext.GetUnderlying()->Unmap(res, 0);
         return true;
     }
 
     void IndirectDrawBuffer::CopyInstanceCount(Metal::DeviceContext& metalContext, Metal::UnorderedAccessView& src)
     {
             // copy the "structure count" from the UAV into the indirect args buffer
+		auto* res = Metal::AsResource(*_indirectArgsBuffer).GetUnderlying().get();
         metalContext.GetUnderlying()->CopyStructureCount(
-            _indirectArgsBuffer.GetUnderlying(), 
+            Metal::QueryInterfaceCast<ID3D::Buffer>(res).get(), 
             (unsigned)(size_t)&((DrawIndexedInstancedIndirectArgs*)nullptr)->InstanceCount, 
             src.GetUnderlying());
     }
@@ -774,7 +793,7 @@ namespace SceneEngine
 
         auto& uploads = GetBufferUploads();
         auto indirectArgsRes = uploads.Transaction_Immediate(indirectArgsBufferDesc);
-        _indirectArgsBuffer = Metal::VertexBuffer(indirectArgsRes->GetUnderlying());
+        _indirectArgsBuffer = indirectArgsRes->GetUnderlying();
     }
 
     IndirectDrawBuffer::~IndirectDrawBuffer()
@@ -791,3 +810,21 @@ namespace SceneEngine
 	IndirectDrawBuffer::~IndirectDrawBuffer(){}
 #endif
 }
+
+#else
+
+#include "VegetationSpawn.h"
+
+namespace SceneEngine
+{
+	const VegetationSpawnConfig& VegetationSpawnManager::GetConfig() const
+	{
+		static VegetationSpawnConfig cfg;
+		return cfg;
+	}
+	VegetationSpawnManager::VegetationSpawnManager(
+		std::shared_ptr<FixedFunctionModel::ModelCache> modelCache) {}
+	VegetationSpawnManager::~VegetationSpawnManager() {}
+}
+
+#endif

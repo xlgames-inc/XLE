@@ -6,11 +6,9 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include "ManipulatorUtils.h"       // for IGetAndSetProperties
 
-using namespace System;
 using namespace System::ComponentModel;
 
 namespace GUILayer
@@ -40,7 +38,7 @@ namespace GUILayer
 
         void Tick();
 
-        ErosionIterativeSystem(String^ sourceHeights);
+        ErosionIterativeSystem(System::String^ sourceHeights);
         !ErosionIterativeSystem();
         ~ErosionIterativeSystem();
 
@@ -72,11 +70,12 @@ namespace GUILayer
         CFDPreviewSettings();
     };
 
-    public interface class IterativeSystem : public IDisposable
+    public interface class IterativeSystem : public System::IDisposable
     {
     public:
         property Object^ PreviewSettings { Object^ get(); }
         property IOverlaySystem^ Overlay { IOverlaySystem^ get(); }
+		property IOverlaySystem^ WidgetsOverlay { IOverlaySystem^ get(); }
         property IGetAndSetProperties^ SimulationSettings { IGetAndSetProperties^ get(); }
 
         virtual void Tick();
@@ -93,6 +92,7 @@ namespace GUILayer
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return nullptr; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
@@ -116,6 +116,7 @@ namespace GUILayer
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return nullptr; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
@@ -139,6 +140,7 @@ namespace GUILayer
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return nullptr; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();
@@ -158,11 +160,13 @@ namespace GUILayer
     {
     public:
         IOverlaySystem^ _overlay;
+		IOverlaySystem^ _widgetsOverlay;
         IGetAndSetProperties^ _getAndSetProperties;
         CFDPreviewSettings^ _settings;
 
         property Object^ PreviewSettings { virtual Object^ get() { return _settings; } }
         property IOverlaySystem^ Overlay { virtual IOverlaySystem^ get() { return _overlay; } }
+		property IOverlaySystem^ WidgetsOverlay { virtual IOverlaySystem^ get() { return _widgetsOverlay; } }
         property IGetAndSetProperties^ SimulationSettings { virtual IGetAndSetProperties^ get() { return _getAndSetProperties; } }
 
         virtual void Tick();

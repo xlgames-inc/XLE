@@ -8,17 +8,20 @@
 
 #include "../RenderCore/Metal/Forward.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
+
 namespace SceneEngine
 {
-    class LightingParserContext;
+    class MetricsBox;
     class TransparencyTargetsBox;
     TransparencyTargetsBox* OrderIndependentTransparency_Prepare(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         const RenderCore::Metal::ShaderResourceView& depthBufferDupe);
     void OrderIndependentTransparency_Resolve(  
         RenderCore::Metal::DeviceContext& context,
-        LightingParserContext& parserContext,
+        RenderCore::Techniques::ParsingContext& parserContext,
         TransparencyTargetsBox& targets,
-        const RenderCore::Metal::ShaderResourceView& originalDepthStencilSRV);
+        const RenderCore::Metal::ShaderResourceView& originalDepthStencilSRV,
+		MetricsBox& metricsBox);
 }

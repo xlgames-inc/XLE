@@ -94,8 +94,13 @@ tokens
 			// or underscores
 		pANTLR3_STRING text = token->getText(token);
 		pANTLR3_UINT8 chrs = text->chars;
-		for (unsigned c=0; c<text->len; ++c)
-			if ((chrs[c] < 'A' || chrs[c] > 'Z') && chrs[c] != '_')
+		if (!text->len) return 0;
+
+		if ((chrs[0] < 'A' || chrs[0] > 'Z') && chrs[0] != '_')
+			return 0;
+
+		for (unsigned c=1; c<text->len; ++c)
+			if (!(chrs[c] >= 'A' && chrs[c] <= 'Z') && chrs[c] != '_' && !(chrs[c] >= '0' && chrs[c] <= '9'))
 				return 0;
 		return 1;
 	}
@@ -145,7 +150,10 @@ subscript
 
 registerValue : ident;
 
-registerAssignment : ':' 'register' '(' registerValue ')';
+registerAssignment 
+	: ':' 'register' '(' registerValue ')'
+	| isolated_macro
+	;
 	
 structure
 	:	'struct' ident '{' fields+=structure_field* '}' ';' 
@@ -213,6 +221,7 @@ semantic
 	:	':' n=Identifier -> ^(SEMANTIC $n)
 	;
 
+/*
 sampler_type_name : 'sampler' | 'sampler1D' | 'sampler2D' | 'sampler3D' | 'samplerCUBE' | 'sampler_state' | 'SamplerState' | 'SamplerComparisonState' ;
 
 texture_type_name	: 'texture' 
@@ -228,17 +237,25 @@ texture_type_name	: 'texture'
 
 structuredBufferTypeName : 'StructuredBuffer' | 'RWStructuredBuffer' | 'AppendStructuredBuffer';
 
-streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream';
+streamOutputObject : 'PointStream' | 'LineStream' | 'TriangleStream'; 
 
 type_name
 	:	sampler_type_name										-> ^(TYPE_NAME sampler_type_name)
-	|	texture_type_name ('<' staticExpressionList '>')?		-> ^(TYPE_NAME texture_type_name staticExpressionList)
+	|	texture_type_name										-> ^(TYPE_NAME texture_type_name)
+	|	texture_type_name ('<' staticExpressionList '>')		-> ^(TYPE_NAME texture_type_name staticExpressionList)
 	|	structuredBufferTypeName '<' staticExpressionList '>'	-> ^(TYPE_NAME structuredBufferTypeName staticExpressionList)
 	|	streamOutputObject '<' staticExpressionList '>'			-> ^(TYPE_NAME streamOutputObject staticExpressionList)
 	|	'InputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'InputPatch' staticExpressionList)
 	|	'OutputPatch' '<' staticExpressionList '>'				-> ^(TYPE_NAME 'OutputPatch' staticExpressionList)
 	|	ident													-> ^(TYPE_NAME ident)
 	;
+*/
+
+type_name
+	:	ident										-> ^(TYPE_NAME ident)
+	|	ident ('<' staticExpressionList '>')		-> ^(TYPE_NAME ident staticExpressionList)
+	;
+
 	
 ident
 	:	id=Identifier

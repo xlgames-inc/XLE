@@ -5,9 +5,14 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "TechniqueUtils.h"
+#include "DrawableDelegates.h"
 #include "../../RenderCore/Metal/Forward.h"
+#include "../../RenderCore/Metal/State.h"			// (required for Metal::SamplerState size)
+#include "../../RenderCore/Metal/TextureView.h"
+#include "../../RenderCore/Types.h"
 #include "../../Math/Transformations.h"
 #include "../../Math/ProjectionMath.h"
+#include "../../Utility/ParameterBox.h"
 #include "../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Techniques
@@ -173,7 +178,6 @@ namespace RenderCore { namespace Techniques
         CopyTransform(localTransform._localToWorld, localToWorld);
         auto worldToLocal = InvertOrthonormalTransform(localToWorld);
         localTransform._localSpaceView = TransformPoint(worldToLocal, worldSpaceCameraPosition);
-        localTransform._materialGuid = ~0x0ull;
         return localTransform;
     }
 
@@ -188,6 +192,79 @@ namespace RenderCore { namespace Techniques
         return det > 0.0f;
     }
 
+	IUniformBufferDelegate::~IUniformBufferDelegate() {}
+	IShaderResourceDelegate::~IShaderResourceDelegate() {}
+	IMaterialDelegate::~IMaterialDelegate() {}
+	ITechniqueDelegate::~ITechniqueDelegate() {}
+
+	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const InputElementDesc*> ia)
+	{
+		if (HasElement(ia, "TEXCOORD"))     { geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
+        if (HasElement(ia, "COLOR"))        { geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
+        if (HasElement(ia, "NORMAL"))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
+        if (HasElement(ia, "TEXTANGENT"))      { geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
+        if (HasElement(ia, "TEXBITANGENT"))    { geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+        if (HasElement(ia, "BONEINDICES") && HasElement(ia, "BONEWEIGHTS"))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+        if (HasElement(ia, "PER_VERTEX_AO"))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
+	}
+
+	void SetGeoSelectors(ParameterBox& geoParameters, IteratorRange<const MiniInputElementDesc*> ia)
+	{
+		static auto TEXCOORD = Hash64("TEXCOORD");
+		static auto COLOR = Hash64("COLOR");
+		static auto NORMAL = Hash64("NORMAL");
+		static auto TEXTANGENT = Hash64("TEXTANGENT");
+		static auto TEXBITANGENT = Hash64("TEXBITANGENT");
+		static auto BONEINDICES = Hash64("BONEINDICES");
+		static auto BONEWEIGHTS = Hash64("BONEWEIGHTS");
+		static auto PER_VERTEX_AO = Hash64("PER_VERTEX_AO");
+
+		if (HasElement(ia, TEXCOORD))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TEXCOORD", 1); }
+        if (HasElement(ia, COLOR))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_COLOUR", 1); }
+        if (HasElement(ia, NORMAL))				{ geoParameters.SetParameter((const utf8*)"GEO_HAS_NORMAL", 1); }
+        if (HasElement(ia, TEXTANGENT))			{ geoParameters.SetParameter((const utf8*)"GEO_HAS_TANGENT_FRAME", 1); }
+        if (HasElement(ia, TEXBITANGENT))		{ geoParameters.SetParameter((const utf8*)"GEO_HAS_BITANGENT", 1); }
+        if (HasElement(ia, BONEINDICES) && HasElement(ia, BONEWEIGHTS))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_SKIN_WEIGHTS", 1); }
+        if (HasElement(ia, PER_VERTEX_AO))
+            { geoParameters.SetParameter((const utf8*)"GEO_HAS_PER_VERTEX_AO", 1); }
+	}
+
+	ProjectionDesc BuildProjectionDesc(const CameraDesc& sceneCamera, UInt2 viewportDims)
+    {
+        const float aspectRatio = viewportDims[0] / float(viewportDims[1]);
+        auto cameraToProjection = Techniques::Projection(sceneCamera, aspectRatio);
+
+        RenderCore::Techniques::ProjectionDesc projDesc;
+        projDesc._verticalFov = sceneCamera._verticalFieldOfView;
+        projDesc._aspectRatio = aspectRatio;
+        projDesc._nearClip = sceneCamera._nearClip;
+        projDesc._farClip = sceneCamera._farClip;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(sceneCamera._cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = sceneCamera._cameraToWorld;
+        return projDesc;
+    }
+
+    ProjectionDesc BuildOrthogonalProjectionDesc(
+        const Float4x4& cameraToWorld,
+        float l, float t, float r, float b,
+        float nearClip, float farClip)
+    {
+        auto cameraToProjection = OrthogonalProjection(l, t, r, b, nearClip, farClip, Techniques::GetDefaultClipSpaceType());
+
+        RenderCore::Techniques::ProjectionDesc projDesc;
+        projDesc._verticalFov = 0.f;
+        projDesc._aspectRatio = 1.f;
+        projDesc._nearClip = nearClip;
+        projDesc._farClip = farClip;
+        projDesc._worldToProjection = Combine(InvertOrthonormalTransform(cameraToWorld), cameraToProjection);
+        projDesc._cameraToProjection = cameraToProjection;
+        projDesc._cameraToWorld = cameraToWorld;
+        return projDesc;
+    }
 
 }}
 

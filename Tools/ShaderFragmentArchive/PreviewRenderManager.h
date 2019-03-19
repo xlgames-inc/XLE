@@ -6,29 +6,56 @@
 
 #pragma once
 
+#include "ShaderGenerator.h"
 #include "../GUILayer/CLIXAutoPtr.h"
+#include <memory>
+
+using System::Collections::Generic::Dictionary;
+using System::String;
+using System::Object;
+using namespace System::Runtime::Serialization;
+
+namespace ToolsRig { class MessageRelay; }
 
 namespace ShaderPatcherLayer
 {
-    ref class NodeGraphContext;
-
-    public enum class PreviewGeometry
-    {
-        Chart, Plane2D, Box, Sphere, Model
-    };
+	ref class NodeGraphPreviewConfiguration;
     
+	public ref class MessageRelayWrapper
+	{
+	public:
+		property System::String^ Messages { System::String^ get(); };
+
+		delegate void OnChangeEventHandler(System::Object^ sender, System::EventArgs^ args);
+		property OnChangeEventHandler^ OnChangeEvent;
+
+		clix::shared_ptr<ToolsRig::MessageRelay> _native;
+		unsigned _callbackId;
+
+		MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate);
+		MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate);
+		MessageRelayWrapper();
+        ~MessageRelayWrapper();
+	};
+
     public interface class IPreviewBuilder
     {
-    public:
-        System::Drawing::Bitmap^ Build(
-            NodeGraphContext^ doc, System::Drawing::Size^ size, 
-            PreviewGeometry geometry, unsigned targetToVisualize);
-    };
+	public:
+		System::Drawing::Bitmap^ BuildPreviewImage(
+            NodeGraphMetaData^ doc, 
+			NodeGraphPreviewConfiguration^ nodeGraphFile,
+			System::Drawing::Size^ size, 
+            PreviewGeometry geometry, 
+			unsigned targetToVisualize);
 
-    public interface class IManager
-    {
-        using ShaderText = System::Tuple<System::String^, System::String^>;
-        IPreviewBuilder^ CreatePreviewBuilder(ShaderText^ shaderText);
+		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphMetaData^ doc, 
+			NodeGraphPreviewConfiguration^ nodeGraphFile);
+
+		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+			NodeGraphFile^ nodeGraph,
+			String^ subGraphName,
+			MessageRelayWrapper^ logMessages);
     };
 
 	class AttachPimpl;

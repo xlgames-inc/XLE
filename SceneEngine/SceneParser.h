@@ -7,8 +7,10 @@
 #pragma once
 
 #include "../RenderCore/IThreadContext_Forward.h"
+#include "../RenderCore/Techniques/Drawables.h"
+#include "../RenderCore/Techniques/TechniqueUtils.h"
 
-namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ProjectionDesc; class ParsingContext; class DrawablesPacket; enum class BatchFilter; } }
 
 namespace SceneEngine
 {
@@ -19,70 +21,55 @@ namespace SceneEngine
     class ToneMapSettings;
     class PreparedScene;
 
-    class SceneParseSettings
+	class SceneView
+	{
+	public:
+		enum class Type { Normal, Shadow, Other };
+
+		RenderCore::Techniques::ProjectionDesc _projection;
+		Type _type = SceneView::Type::Normal;
+	};
+
+	class IViewDelegate;
+
+	class SceneExecuteContext
+	{
+	public:
+		IteratorRange<const SceneView*> GetViews() const { return MakeIteratorRange(_views); }
+		IteratorRange<const std::shared_ptr<IViewDelegate>*> GetViewDelegates();
+		RenderCore::Techniques::DrawablesPacket* GetDrawablesPacket(unsigned viewIndex, RenderCore::Techniques::BatchFilter batch);
+		PreparedScene& GetPreparedScene();
+
+		void AddView(
+			const SceneView& view,
+			const std::shared_ptr<IViewDelegate>& delegate);
+
+		SceneExecuteContext();
+		virtual ~SceneExecuteContext();
+	private:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+
+		std::vector<SceneView> _views;
+	};
+
+    class IScene
     {
     public:
-        struct Toggles
-        {
-            enum Enum
-            {
-                NonTerrain  = 1<<0,
-                Terrain     = 1<<1
-            };
-            typedef unsigned BitField;
-        };
-        enum class BatchFilter
-        {
-            General,                // general rendering batch
-            PreDepth,               // objects that should get a pre-depth pass
-            Transparent,            // transparent objects (particularly those that require some object based sorting)
-            OITransparent,          // order independent transparent
-            TransparentPreDepth,    // pre-depth pass for objects considered "transparent" (ie, opaque parts of transparent objects)
-            DMShadows,              // depth map shadows
-            RayTracedShadows        // objects enabled for rendering into ray traced shadows
-        };
-
-        BatchFilter         _batchFilter;
-        Toggles::BitField   _toggles;
-        unsigned            _projectionIndex;
-
-        SceneParseSettings(BatchFilter batchFilter, Toggles::BitField toggles=~0u, unsigned projectionIndex=0)
-        : _batchFilter(batchFilter), _toggles(toggles), _projectionIndex(projectionIndex) {}
-    };
-
-    class ISceneParser
-    {
-    public:
-        virtual auto GetCameraDesc() const -> RenderCore::Techniques::CameraDesc = 0;
         virtual void ExecuteScene(
-            RenderCore::IThreadContext& context,
-            LightingParserContext& parserContext, 
-            const SceneParseSettings& parseSettings,
-            PreparedScene& preparedPackets,
-            unsigned techniqueIndex) const = 0;
-        virtual void PrepareScene(
-            RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext,
-            PreparedScene& preparedPackets) const = 0;
-        virtual bool HasContent(const SceneParseSettings& parseSettings) const = 0;
+            RenderCore::IThreadContext& threadContext,
+			SceneExecuteContext& executeContext) const = 0;
 
-        using ProjectionDesc    = RenderCore::Techniques::ProjectionDesc;
-        using ShadowProjIndex   = unsigned;
-        using LightIndex        = unsigned;
+		virtual ~IScene();
+	};
 
-        virtual ShadowProjIndex GetShadowProjectionCount() const = 0;
-        virtual auto            GetShadowProjectionDesc(ShadowProjIndex index, const ProjectionDesc& mainSceneProj) const
-            -> ShadowProjectionDesc = 0;
-
-        virtual LightIndex  GetLightCount() const = 0;
-        virtual auto        GetLightDesc(LightIndex index) const -> const LightDesc& = 0;
-        virtual auto        GetGlobalLightingDesc() const -> GlobalLightingDesc = 0;
-        virtual auto        GetToneMapSettings() const -> ToneMapSettings = 0;
-
-        virtual float       GetTimeValue() const = 0;
-
-        virtual ~ISceneParser();
-    };
+	void ExecuteSceneRaw(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parserContext,
+		const RenderCore::Techniques::SequencerTechnique& sequencerTechnique,
+		unsigned techniqueIndex,
+		const SceneView& view,
+		IScene& scene);
 
 }
 

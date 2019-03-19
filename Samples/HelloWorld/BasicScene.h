@@ -6,60 +6,54 @@
 
 #pragma once
 
+#include "../../SceneEngine/LightingParser.h"
 #include "../../SceneEngine/SceneParser.h"
-#include "../../SceneEngine/PreparedScene.h"
-#include "../../RenderCore/Metal/Forward.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets { class ModelRenderer; class SharedStateSet; } }
-namespace SceneEngine { class PreparedScene; }
+namespace SceneEngine { class ILightingParserDelegate; }
 
 namespace Sample
 {
-    class BasicSceneParser : public SceneEngine::ISceneParser
+    class BasicSceneParser : public SceneEngine::IScene
     {
     public:
-        void PrepareFrame(RenderCore::IThreadContext& context);
-        void Update(float deltaTime);
-
-        typedef SceneEngine::ShadowProjectionDesc   ShadowProjectionDesc;
-        typedef SceneEngine::LightingParserContext  LightingParserContext;
-        typedef SceneEngine::SceneParseSettings     SceneParseSettings;
-        typedef SceneEngine::LightDesc              LightDesc;
-        typedef SceneEngine::GlobalLightingDesc     GlobalLightingDesc;
-        typedef SceneEngine::ToneMapSettings        ToneMapSettings;
-
-        RenderCore::Techniques::CameraDesc GetCameraDesc() const;
-
-        void ExecuteScene(
+		void ExecuteScene(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext, 
-            const SceneParseSettings& parseSettings,
-            SceneEngine::PreparedScene& preparedPackets,
-            unsigned techniqueIndex) const;
-        void PrepareScene(
-            RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext,
-            SceneEngine::PreparedScene& preparedPackets) const;
-        bool HasContent(const SceneParseSettings& parseSettings) const;
+            SceneEngine::SceneExecuteContext& executeContext) const;
 
-        unsigned GetShadowProjectionCount() const;
-        ShadowProjectionDesc GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const;
-        unsigned GetLightCount() const;
-        const LightDesc& GetLightDesc(unsigned index) const;
+		BasicSceneParser();
+		~BasicSceneParser();
+	protected:
+		class Model;
+        std::unique_ptr<Model> _model;
+	};
 
-        GlobalLightingDesc GetGlobalLightingDesc() const;
-        ToneMapSettings GetToneMapSettings() const;
-        float GetTimeValue() const;
 
-        BasicSceneParser();
-        ~BasicSceneParser();
+	class SampleLightingDelegate : public SceneEngine::ILightingParserDelegate
+	{
+	public:
+        unsigned GetShadowProjectionCount() const override;
+        SceneEngine::ShadowProjectionDesc GetShadowProjectionDesc(
+			unsigned index, 
+			const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const override;
+
+        unsigned GetLightCount() const override;
+        const SceneEngine::LightDesc& GetLightDesc(unsigned index) const override;
+
+        SceneEngine::GlobalLightingDesc GetGlobalLightingDesc() const override;
+        SceneEngine::ToneMapSettings GetToneMapSettings() const override;
+        float GetTimeValue() const override;
+
+		void Update(float deltaTime);
+
+        SampleLightingDelegate();
+        ~SampleLightingDelegate();
 
     protected:
-        class Model;
-        std::unique_ptr<Model> _model;
         float _time;
     };
+
+	RenderCore::Techniques::CameraDesc CalculateCameraDesc(Float2 rotations, float zoomFactor, float time);
 
 }
 

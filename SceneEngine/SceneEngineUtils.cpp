@@ -5,16 +5,21 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
+#include "Noise.h"
 
-#include "LightingParserContext.h"
 #include "../BufferUploads/ResourceLocator.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/RenderPass.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Assets/Services.h"
-#include "../RenderCore/Assets/DelayedDrawCall.h"
+#include "../FixedFunctionModel/DelayedDrawCall.h"
 #include "../RenderOverlays/Font.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -26,6 +31,64 @@
 namespace SceneEngine
 {
     using namespace RenderCore;
+
+	        //
+        //      Reserve some states as global states
+        //      These remain with some fixed value throughout
+        //      the entire scene. Don't change the values bound
+        //      here -- we are expecting these to be set once, and 
+        //      remain bound
+        //
+        //          PS t14 -- normals fitting texture
+        //          CS t14 -- normals fitting texture
+        //          
+        //          PS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
+        //          VS s0, s1, s2, s4 -- default sampler, clamping sampler, anisotropic wrapping sampler, point sampler
+        //          PS s6 -- samplerWrapU
+        //
+    void SetFrameGlobalStates(Metal::DeviceContext& context)
+    {
+        Metal::SamplerState 
+            samplerDefault, 
+            samplerClamp(FilterMode::Trilinear, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp), 
+            samplerAnisotrophic(FilterMode::Anisotropic),
+            samplerPoint(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp),
+            samplerWrapU(FilterMode::Trilinear, AddressMode::Wrap, AddressMode::Clamp);
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(samplerDefault, samplerClamp, samplerAnisotrophic, samplerPoint));
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(6, samplerWrapU));
+
+        const auto& normalsFittingResource = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/normalsfitting.dds:LT")->Actualize()->GetShaderResource();
+		const auto& distintColors = ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/distinctcolors.dds:T")->Actualize()->GetShaderResource();
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(14, normalsFittingResource, distintColors));
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Compute).Bind(RenderCore::MakeResourceList(14, normalsFittingResource));
+
+            // perlin noise resources in standard slots
+        auto& perlinNoiseRes = ConsoleRig::FindCachedBox2<PerlinNoiseResources>();
+        MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(12, perlinNoiseRes._gradShaderResource, perlinNoiseRes._permShaderResource));
+
+            // procedural scratch texture for scratches test
+        // context.BindPS(MakeResourceList(18, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchnorm.dds:L").GetShaderResource()));
+        // context.BindPS(MakeResourceList(19, Assets::GetAssetDep<Techniques::DeferredShaderResource>("xleres/scratchocc.dds:L").GetShaderResource()));
+    }
+
+    void ReturnToSteadyState(Metal::DeviceContext& context)
+    {
+            //
+            //      Change some frequently changed states back
+            //      to their defaults.
+            //      Most rendering operations assume these states
+            //      are at their defaults.
+            //
+
+        context.Bind(Techniques::CommonResources()._dssReadWrite);
+        context.Bind(Techniques::CommonResources()._blendOpaque);
+        context.Bind(Techniques::CommonResources()._defaultRasterizer);
+        context.Bind(Topology::TriangleList);
+        context.GetNumericUniforms(ShaderStage::Vertex).Bind(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(RenderCore::MakeResourceList(Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer(), Metal::ConstantBuffer()));
+        MetalStubs::UnbindGeometryShader(context);
+    }
 
     BufferUploads::IManager& GetBufferUploads()
     {
@@ -128,8 +191,7 @@ namespace SceneEngine
     void SetupVertexGeneratorShader(Metal::DeviceContext& context)
     {
         context.Bind(Topology::TriangleStrip);
-        context.Unbind<Metal::VertexBuffer>();
-        context.Unbind<Metal::BoundInputLayout>();
+        context.UnbindInputLayout();
     }
 
     void BuildGaussianFilteringWeights(float result[], float standardDeviation, unsigned weightsCount)
@@ -181,11 +243,12 @@ namespace SceneEngine
             }
 
             operator const ucs4*() const { return _buffer; }
+			const ucs4* get() const { return _buffer; }
         };
 
     void DrawPendingResources(   
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext, 
+        SceneEngine::Techniques::ParsingContext& parserContext, 
         const std::shared_ptr<RenderOverlays::Font>& font)
     {
         if (    !parserContext._stringHelpers->_pendingAssets[0]
@@ -194,23 +257,24 @@ namespace SceneEngine
             return;
 
         {
-            auto metalContext = Metal::DeviceContext::Get(context);
-            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
+            auto& metalContext = *Metal::DeviceContext::Get(context);
+            metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
         }
 
         using namespace RenderOverlays;
-        TextStyle   style(font); 
+        TextStyle style; 
         Float2 textPosition(16.f, 16.f);
-        float lineHeight = font->LineHeight();
-        const UiAlign alignment = UIALIGN_TOP_LEFT;
+        float lineHeight = font->GetFontProperties()._lineHeight;
+        const auto alignment = TextAlignment::TopLeft;
         const unsigned colour = 0xff7f7f7fu;
 
         if (parserContext._stringHelpers->_pendingAssets[0]) {
             UCS4Buffer<64> text("Pending assets:");
-            Float2 alignedPosition2 = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
-            style.Draw(
-                context, alignedPosition2[0], alignedPosition2[1], text, -1,
-                0.f, 1.f, 0.f, 0.f, 0xffff7f7f, UI_TEXT_STATE_NORMAL, true, nullptr);
+            Float2 alignedPosition2 = AlignText(*font, Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text.get());
+            Draw(
+                context, *font, style,
+				alignedPosition2[0], alignedPosition2[1], text.get(),
+                0.f, 1.f, 0.f, 0.f, 0xffff7f7f, true, nullptr);
             textPosition[1] += lineHeight;
 
             auto i = parserContext._stringHelpers->_pendingAssets;
@@ -221,20 +285,22 @@ namespace SceneEngine
                 if (start == i) break;
 
                 UCS4Buffer<256> text2(start, i);
-                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2);
-                style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                Float2 alignedPosition = AlignText(*font, Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2.get());
+                Draw(
+                    context, *font, style, 
+					alignedPosition[0], alignedPosition[1], text2.get(),
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
 
         if (parserContext._stringHelpers->_invalidAssets[0]) {
             UCS4Buffer<64> text("Invalid assets:");
-            Float2 alignedPosition2 = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text);
-            style.Draw(
-                context, alignedPosition2[0], alignedPosition2[1], text, -1,
-                0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+            Float2 alignedPosition2 = AlignText(*font, Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text.get());
+            Draw(
+                context, *font, style,
+				alignedPosition2[0], alignedPosition2[1], text.get(),
+                0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
             textPosition[1] += lineHeight;
 
             auto i = parserContext._stringHelpers->_invalidAssets;
@@ -245,10 +311,11 @@ namespace SceneEngine
                 if (start == i) break;
 
                 UCS4Buffer<256> text2(start, i);
-                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2);
-                style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                Float2 alignedPosition = AlignText(*font, Quad::MinMax(textPosition + Float2(32.f, 0.f), Float2(1024.f, 1024.f)), alignment, text2.get());
+                Draw(
+                    context, *font, style,
+					alignedPosition[0], alignedPosition[1], text2.get(),
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
@@ -262,10 +329,11 @@ namespace SceneEngine
                 if (start == i) break;
 
                 UCS4Buffer<512> text2(start, i);
-                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2);
-                style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
+                Float2 alignedPosition = AlignText(*font, Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2.get());
+                Draw(
+                    context, *font, style,
+					alignedPosition[0], alignedPosition[1], text2.get(),
+                    0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
                 textPosition[1] += lineHeight;
             }
         }
@@ -273,34 +341,42 @@ namespace SceneEngine
 
     void DrawQuickMetrics(   
         RenderCore::IThreadContext& context, 
-        SceneEngine::LightingParserContext& parserContext, 
+        SceneEngine::Techniques::ParsingContext& parserContext, 
 		const std::shared_ptr<RenderOverlays::Font>& font)
+	{
+		if (parserContext._stringHelpers->_quickMetrics[0])
+			DrawString(context, font, parserContext._stringHelpers->_quickMetrics);
+	}
+
+	void DrawString(   
+        RenderCore::IThreadContext& context, 
+		const std::shared_ptr<RenderOverlays::Font>& font,
+		StringSection<> string)
     {
-        if (parserContext._stringHelpers->_quickMetrics[0]) {
-            auto metalContext = Metal::DeviceContext::Get(context);
-            metalContext->Bind(Techniques::CommonResources()._blendStraightAlpha);
+        auto& metalContext = *Metal::DeviceContext::Get(context);
+        metalContext.Bind(Techniques::CommonResources()._blendStraightAlpha);
 
-            using namespace RenderOverlays;
-            TextStyle style(font);
-            Float2 textPosition(16.f, 150.f);
-            float lineHeight = font->LineHeight();
-            const UiAlign alignment = UIALIGN_TOP_LEFT;
-            const unsigned colour = 0xffcfcfcfu;
+        using namespace RenderOverlays;
+        TextStyle style;
+        Float2 textPosition(16.f, 150.f);
+        float lineHeight = font->GetFontProperties()._lineHeight;
+        const auto alignment = TextAlignment::TopLeft;
+        const unsigned colour = 0xffcfcfcfu;
 
-            auto i = parserContext._stringHelpers->_quickMetrics;
-            for (;;) {
-                while (*i && (*i == '\n' || *i == '\r')) ++i;
-                auto* start = i;
-                while (*i && *i != '\n' && *i != '\r') ++i;
-                if (start == i) break;
+        auto i = string.begin(), end = string.end();
+        for (;;) {
+            while (i != end && (*i == '\n' || *i == '\r')) ++i;
+            auto* start = i;
+            while (i != end && *i != '\n' && *i != '\r') ++i;
+            if (start == i) break;
 
-                UCS4Buffer<512> text2(start, i);
-                Float2 alignedPosition = style.AlignText(Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2);
-                style.Draw(
-                    context, alignedPosition[0], alignedPosition[1], text2, -1,
-                    0.f, 1.f, 0.f, 0.f, colour, UI_TEXT_STATE_NORMAL, true, nullptr);
-                textPosition[1] += lineHeight;
-            }
+            UCS4Buffer<512> text2(start, i);
+            Float2 alignedPosition = AlignText(*font, Quad::MinMax(textPosition, Float2(1024.f, 1024.f)), alignment, text2.get());
+            Draw(
+                context, *font, style,
+				alignedPosition[0], alignedPosition[1], text2.get(),
+                0.f, 1.f, 0.f, 0.f, colour, true, nullptr);
+            textPosition[1] += lineHeight;
         }
     }
 
@@ -331,12 +407,12 @@ namespace SceneEngine
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    IteratorRange<RenderCore::Assets::DelayStep*> AsDelaySteps(
-        SceneParseSettings::BatchFilter filter)
+    IteratorRange<FixedFunctionModel::DelayStep*> AsDelaySteps(
+        Techniques::BatchFilter filter)
     {
-        using BF = SceneEngine::SceneParseSettings::BatchFilter;
-        using V = std::vector<RenderCore::Assets::DelayStep>;
-        using DelayStep = RenderCore::Assets::DelayStep;
+        using BF = Techniques::BatchFilter;
+        using V = std::vector<FixedFunctionModel::DelayStep>;
+        using DelayStep = FixedFunctionModel::DelayStep;
 
         switch (filter) {
         case BF::General:
@@ -364,15 +440,15 @@ namespace SceneEngine
                 return MakeIteratorRange(result);
             }
         
-        case BF::DMShadows:
+        /*case BF::DMShadows:
         case BF::RayTracedShadows:
             {
                 static DelayStep result[] { DelayStep::OpaqueRender, DelayStep::PostDeferred, DelayStep::SortedBlending };
                 return MakeIteratorRange(result);
-            }
+            }*/
         }
 
-        return IteratorRange<RenderCore::Assets::DelayStep*>();
+        return IteratorRange<FixedFunctionModel::DelayStep*>();
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -503,7 +579,7 @@ namespace SceneEngine
 				if (_states & States::RasterizerState)
 					_context->Bind(_rasterizerState);
 				if (_states & States::InputLayout)
-					_context->Bind(_inputLayout);
+					_inputLayout.Apply(*_context, {});
 
 				if (_states & States::VertexBuffer) {
 					ID3D::Buffer* rawptrs[s_vbCount];
@@ -551,10 +627,10 @@ namespace SceneEngine
             ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2d.vsh:fullscreen:vs_*",
                 "xleres/basic.psh:copy_depth:ps_*"));
-        context.BindPS(MakeResourceList(src));
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
-        context.UnbindPS<Metal::ShaderResourceView>(0, 1);
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
     }
 
     class ShaderBasedCopyRes
@@ -598,8 +674,13 @@ namespace SceneEngine
                     "xleres/basic.psh:copy_bilinear:ps_*");
                 break;
             }
-            _uniforms = Metal::BoundUniforms(*_shader);
-            _uniforms.BindConstantBuffers(1, {"ScreenSpaceOutput"});
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {Hash64("ScreenSpaceOutput")});
+            _uniforms = Metal::BoundUniforms(
+				*_shader,
+				Metal::PipelineLayoutConfig{},
+				UniformsStreamInterface{},
+				usi);
 
             _validationCallback = _shader->GetDependencyValidation();
         }
@@ -647,14 +728,46 @@ namespace SceneEngine
         context.Bind(MakeResourceList(dest), nullptr);
         context.Bind(Techniques::CommonResources()._dssWriteOnly);
         context.Bind(*res._shader);
-        res._uniforms.Apply(
-            context, Metal::UniformsStream(), 
-            Metal::UniformsStream({MakeSharedPkt(coords)}, {}));
-        context.BindPS(MakeResourceList(src));
+		ConstantBufferView cbvs[] = {MakeSharedPkt(coords)};
+		res._uniforms.Apply(context, 1, UniformsStream{MakeIteratorRange(cbvs)});
+        context.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(src));
         SetupVertexGeneratorShader(context);
         context.Draw(4);
-        context.UnbindPS<Metal::ShaderResourceView>(0, 1);
+		MetalStubs::UnbindPS<Metal::ShaderResourceView>(context, 0, 1);
     }
 
+	RenderCore::Metal::Buffer MakeMetalCB(const void* data, size_t size)
+	{
+		if (data) {
+			return RenderCore::Metal::MakeConstantBuffer(
+				RenderCore::Metal::GetObjectFactory(),
+				MakeIteratorRange(data, PtrAdd(data, size)));
+		} else {
+			return RenderCore::Metal::Buffer(
+				RenderCore::Metal::GetObjectFactory(),
+				CreateDesc(
+					BindFlag::ConstantBuffer,
+					CPUAccess::WriteDynamic,
+					GPUAccess::Read,
+					LinearBufferDesc::Create(unsigned(size)),
+					"buf"),
+				IteratorRange<const void*>{});
+		}
+	}
+
+	RenderCore::Metal::Buffer MakeMetalVB(const void* data, size_t size)
+	{
+		return RenderCore::Metal::MakeVertexBuffer(
+			RenderCore::Metal::GetObjectFactory(),
+			MakeIteratorRange(data, PtrAdd(data, size)));
+	}
+
+	RenderCore::Metal::Buffer MakeMetalIB(const void* data, size_t size)
+	{
+		return RenderCore::Metal::MakeIndexBuffer(
+			RenderCore::Metal::GetObjectFactory(),
+			MakeIteratorRange(data, PtrAdd(data, size)));
+	}
+	
 }
 

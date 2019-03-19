@@ -1,0 +1,31 @@
+// CompoundDocument:1
+import color = "xleres/nodes/color.sh"
+import templates = "xleres/nodes/templates.sh"
+import woodrings002 = "xleres/objects/example/procwood/woodrings002.graph"
+import woodgnarlgrainstain = "xleres/objects/example/procwood/woodgnarlgrainstain.graph"
+import woodplanks = "xleres/objects/example/procwood/woodplanks.graph"
+import basic = "xleres/nodes/basic.sh"
+
+float3 Wood_04_G(float3 coords) implements templates::CoordinatesToColor
+{
+	node node_0 = [[visualNode2]]color::RGB(r:".307", g:".122", b:".042");
+	node node_1 = [[visualNode3]]woodgnarlgrainstain::WoodGnarlGrainStain(coords:[[visualNode4]]woodplanks::WoodPlanks(offcenter:"5", width:".5", height:".15", shift1:".4", shift2:".1", shift3:".333", length:"2", coords:coords).plankCoords, gnarlStrength:".2", stain:"4", gnarlDensity:".5", grainStrength:"4", grainDensity:"100");
+	return [[visualNode5]]basic::Mix3(factor:[[visualNode0]]woodrings002::WoodRings002(coords:node_1.gnarledCoords, strength:".5", density:"50", shape:"2.5").rings, rhs:[[visualNode6]]basic::Mix3(lhs:node_0.result, factor:node_1.grain, rhs:[[visualNode7]]color::RGB(r:"1", g:".606", b:".284").result).result, lhs:[[visualNode8]]basic::Mix3(lhs:[[visualNode1]]color::RGB(r:".073", g:".011", b:"0").result, rhs:node_0.result, factor:node_1.grain).result).result;
+}
+attributes visualNode8(PreviewGeometry:"sphere", X:"1511", Y:"682", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode0(PreviewGeometry:"plane2d", X:"1461", Y:"-53", State:"Normal", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"plane2d", X:"936", Y:"699", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"plane2d", X:"928", Y:"753", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"plane2d", X:"905", Y:"161", State:"Normal", OutputToVisualize:"gnarledCoords");
+attributes visualNode4(PreviewGeometry:"plane2d", X:"310", Y:"364", State:"Normal", OutputToVisualize:"");
+attributes visualNode5(PreviewGeometry:"sphere", X:"1984", Y:"546", State:"Normal", OutputToVisualize:"");
+attributes visualNode6(PreviewGeometry:"sphere", X:"1515", Y:"783", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode7(PreviewGeometry:"sphere", X:"923", Y:"815", State:"Collapsed", OutputToVisualize:"");
+/* <<Chunk:NodeGraphMetaData:Wood_04_G>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+	<HasTechniqueConfig>false</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+</NodeGraphMetaData>
+)-- */

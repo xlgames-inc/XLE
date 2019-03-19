@@ -16,8 +16,8 @@ namespace HyperGraph.Compatibility {
 		/// <returns><see langword="true"/> if the connection is valid; <see langword="false"/> otherwise</returns>
         public HyperGraph.Compatibility.ConnectionType CanConnect(NodeConnector from, NodeConnector to) 
 		{
-            if (null == from.Item.Tag || null == to.Item.Tag) return ConnectionType.Incompatible;
-			if (from.Item.Tag.GetType() == to.Item.Tag.GetType())
+            if (null == from.Tag || null == to.Tag) return ConnectionType.Incompatible;
+			if (from.Tag.GetType() == to.Tag.GetType())
 			{
                 return HyperGraph.Compatibility.ConnectionType.Compatible;
 			}

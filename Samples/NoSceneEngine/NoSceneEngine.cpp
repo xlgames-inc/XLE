@@ -21,7 +21,7 @@
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../PlatformRig/DebugHotKeys.h"
 #include "../../BufferUploads/IBufferUploads.h"
 
 #include "../../Assets/AssetServices.h"
@@ -35,7 +35,7 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
@@ -63,7 +63,7 @@
 #include "../../RenderCore/Vulkan/Metal/FrameBuffer.h"
 #include "../../RenderCore/Vulkan/Metal/ObjectFactory.h"
 
-#include "../../RenderCore/Assets/DeferredShaderResource.h"
+#include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../Tools/ToolsRig/VisualisationGeo.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
@@ -222,7 +222,7 @@ namespace VulkanTest
 		auto dxContext = RenderCore::Metal_DX11::DeviceContext::Get(threadContext);
 		if (dxContext) {
 			Metal_DX11::Copy(
-				*dxContext, Metal_DX11::AsID3DResource(*gpuResource), Metal_DX11::AsID3DResource(*stagingResource),
+				*dxContext, Metal_DX11::AsResource(*gpuResource), Metal_DX11::AsResource(*stagingResource),
 				Metal_DX11::ImageLayout::TransferDstOptimal, Metal_DX11::ImageLayout::TransferSrcOptimal);
 		} else {
 #if 0
@@ -247,7 +247,6 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -353,7 +352,7 @@ namespace Sample
 				const Metal_Vulkan::ConstantBuffer* cbs[] = { &globalTransBuffer, &localTransBuffer };
                 
                 #if GFXAPI_ACTIVE == GFXAPI_VULKAN
-                    auto& tex = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L");
+                    auto& tex = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("game/xleres/DefaultResources/DiffuseTexture.dds:L")->Actualize();
                     const Metal_Vulkan::ShaderResourceView* srvs[] = { &tex.GetShaderResource() };
                 #else
                     auto& factory = vkContext->GetFactory();
@@ -524,12 +523,12 @@ namespace Sample
 
                 auto captureMarker = box._sharedStateSet->CaptureState(
                     *metalContext, 
-                    parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+					parserContext.GetRenderStateDelegate(), {});
 
                 metalContext->Bind(Metal::DepthStencilState(true, true));
 				metalContext->Bind(Metal::RasterizerState());
                 metalContext->Bind(Metal::BlendState());
-				metalContext->GetNumericUniforms_Graphics().Bind(MakeResourceList(Metal::SamplerState(), Metal::SamplerState()));
+				metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(Metal::SamplerState(), Metal::SamplerState()));
 
                     //  Finally, we can render the object!
                 box._modelRenderer->Render(
@@ -545,7 +544,6 @@ namespace Sample
     static void RunRenderPassTest(
         RenderCore::IThreadContext& genericThreadContext,
         RenderCore::Techniques::ParsingContext& parserContext,
-        RenderCore::Techniques::AttachmentPool& namedResources,
         const RenderCore::TextureSamples& samples)
     {
         TRY
@@ -599,6 +597,7 @@ namespace Sample
 					AttachmentDesc::DimensionsMode::OutputRelative,
                     AttachmentDesc::Flags::Multisampled | AttachmentDesc::Flags::RenderTarget | AttachmentDesc::Flags::ShaderResource };
 
+			auto& namedResources = parserContext.GetNamedResources();
 			namedResources.DefineAttachment(MainDepthStencil, d_mainDepthStencil);
 			namedResources.DefineAttachment(GBufferDiffuse, d_diffuse);
 			namedResources.DefineAttachment(GBufferNormals, d_normals);
@@ -627,8 +626,10 @@ namespace Sample
 			auto clearValues = {MakeClearValue(1.f,0.f,0.f,1.f), MakeClearValue(1.f, 0), MakeClearValue(1.f, 0)};
             {
                 Techniques::RenderPassInstance rpi(
-                    *metalContext, fbLayout,
-                    0u, namedResources, 
+                    genericThreadContext, 
+					parserContext.GetFrameBufferPool().BuildFrameBuffer(fbLayout, namedResources),
+					fbLayout,
+                    namedResources, 
 					MakeIteratorRange(clearValues));
 
 				// First, render gbuffer subpass
@@ -636,7 +637,7 @@ namespace Sample
                     auto& box = ConsoleRig::FindCachedBoxDep2<ModelTestBox>();
                     auto captureMarker = box._sharedStateSet->CaptureState(
                         *metalContext, 
-                        parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+						parserContext.GetRenderStateDelegate(), {});
                     box._modelRenderer->Render(
                         RenderCore::Assets::ModelRendererContext(*metalContext, parserContext, RenderCore::Techniques::TechniqueIndex::Deferred),
                         *box._sharedStateSet, Identity<Float4x4>());
@@ -645,7 +646,7 @@ namespace Sample
 
                 // This is the lighting resolve. 
                 {
-                    metalContext->GetNumericUniforms_Graphics().Bind(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
+                    metalContext->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(*namedResources.GetSRV(GBufferDiffuse), *namedResources.GetSRV(GBufferNormals)));
 
                     auto& resolveShdr = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "xleres/basic2D.vsh:fullscreen:vs_*", 
@@ -656,7 +657,7 @@ namespace Sample
                     metalContext->Bind(resolveShdr);
                     metalContext->Draw(4);
 
-					metalContext->GetNumericUniforms_Graphics().Reset();
+					metalContext->GetNumericUniforms(ShaderStage::Pixel).Reset();
                 }
             }
 
@@ -686,15 +687,15 @@ namespace Sample
             //
             // Note that the render device should be created first, so that the window
             // object is destroyed before the device is destroyed.
-        LogInfo << "Building primary managers" << std::endl;
-        auto renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
+        Log(Verbose) << "Building primary managers" << std::endl;
+        auto renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
 
         PlatformRig::OverlappedWindow window;
         auto clientRect = window.GetRect();
         std::shared_ptr<RenderCore::IPresentationChain> presentationChain = 
             renderDevice->CreatePresentationChain(
                 window.GetUnderlyingHandle(), 
-                clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
+				RenderCore::PresentationChainDesc { unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1]) });
 
         auto assetServices = std::make_unique<::Assets::Services>(0);
 		assetServices->AttachCurrentModule();
@@ -718,8 +719,6 @@ namespace Sample
             //  * the font system needs an explicit init (and shutdown)
             //  * the global technique context contains some global rendering settings
         renderAssetServices->InitModelCompilers();
-        g_gpuProfiler = RenderCore::CreateAnnotator(*renderDevice);
-        RenderOverlays::InitFontSystem(renderDevice.get(), &renderAssetServices->GetBufferUploads());
         auto globalTechniqueContext = std::make_shared<PlatformRig::GlobalTechniqueContext>();
         
         {
@@ -728,7 +727,6 @@ namespace Sample
                 {
                     texObj._resource.reset();
                     assetServices->GetAssetSets().Clear();
-                    RenderOverlays::CleanupFontSystem();
                     TerminateFileSystemMonitoring();
                 });
 
@@ -740,7 +738,7 @@ namespace Sample
                 //  If we have any custom displays to add, we can add them here. Often it's 
                 //  useful to create a debugging display to go along with any new feature. 
                 //  It just provides a convenient architecture for visualizing important information.
-            LogInfo << "Setup tools and debugging";
+            Log(Verbose) << "Setup tools and debugging";
             FrameRig frameRig;
             // InitDebugDisplays(*frameRig.GetDebugSystem());
             InitProfilerDisplays(*frameRig.GetDebugSystem());
@@ -753,7 +751,7 @@ namespace Sample
                 //      * We create a main input handler, and tie that to the window to receive inputs
                 //      * We can add secondary input handles to the main input handler as required
                 //      * The order in which we add handlers determines their priority in intercepting messages
-            LogInfo << "Setup input";
+            Log(Verbose) << "Setup input";
             auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
             mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("game/xleres/hotkey.txt"));
             mainInputHandler->AddListener(frameRig.GetMainOverlaySystem()->GetInputListener());
@@ -767,7 +765,7 @@ namespace Sample
                 //      * the FrameRig schedules continuous rendering. It will take care
                 //          of timing and some thread management taskes
                 //      * the DeviceContext provides the methods we need for rendering.
-            LogInfo << "Setup frame rig and rendering context";
+            Log(Verbose) << "Setup frame rig and rendering context";
             auto context = renderDevice->GetImmediateContext();
 
 #if 0
@@ -821,6 +819,7 @@ namespace Sample
             RenderCore::FrameBufferDesc fbLayout(MakeIteratorRange(subpasses));*/
 
             RenderCore::Techniques::AttachmentPool namedResources;
+			RenderCore::Techniques::FrameBufferPool frameBufferPool;
             // namedResources.Bind(presentationChain->GetDesc()->_samples);
             namedResources.DefineAttachment(RenderCore::Techniques::Attachments::MainDepthStencil, d_mainDepthStencil);
 
@@ -844,14 +843,13 @@ namespace Sample
                 //     {RenderCore::MakeClearValue(.5f, .3f, .1f, 1.f), RenderCore::MakeClearValue(1.f, 0)});
 
                 // RunShaderTest(*context);
-                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources);
+                RenderCore::Techniques::ParsingContext parserContext(*globalTechniqueContext, &namedResources, &frameBufferPool);
                 SetupLightingParser(*context, parserContext);
 				RenderCore::Metal::DeviceContext::Get(*context)->Bind(RenderCore::Metal::ViewportDesc(0.f, 0.f, (float)presDims[0], (float)presDims[1]));
                 // RunModelTest(*context, parserContext);
                 // context->EndRenderPass();
 				RunRenderPassTest(
                     *context, parserContext, 
-                    namedResources,
                     RenderCore::TextureSamples::Create()); // 2));
                 context->Present(*presentationChain);
 
@@ -862,8 +860,6 @@ namespace Sample
 
 			texObj._resource.reset();
         }
-
-        g_gpuProfiler.reset();
 
         renderAssetServices.reset();
 		ConsoleRig::GlobalServices::GetCrossModule().Withhold(*assetServices);

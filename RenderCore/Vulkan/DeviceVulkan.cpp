@@ -7,14 +7,17 @@
 #include "Device.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
+#include "../Init.h"
 #include "Metal/VulkanCore.h"
 #include "Metal/ObjectFactory.h"
 #include "Metal/Format.h"
 #include "Metal/Pools.h"
 #include "Metal/Resource.h"
 #include "Metal/PipelineLayout.h"
+#include "Metal/Shader.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/Log.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/Threading/ThreadingUtils.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/PtrUtils.h"
@@ -25,18 +28,17 @@
     #define ENABLE_DEBUG_EXTENSIONS
 #endif
 
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
+// #define HACK_FORCE_SYNC
 
 namespace RenderCore { namespace ImplVulkan
 {
     using VulkanAPIFailure = Metal_Vulkan::VulkanAPIFailure;
 
+	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice& device);
+
 	static std::string GetApplicationName()
 	{
-		return ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault<std::string>(
+		return ConsoleRig::CrossModule::GetInstance()._services.CallDefault<std::string>(
 			ConstHash64<'appn', 'ame'>::Value, std::string("<<unnamed>>"));
 	}
 
@@ -714,7 +716,7 @@ namespace RenderCore { namespace ImplVulkan
     }
 
     std::unique_ptr<IPresentationChain> Device::CreatePresentationChain(
-		const void* platformValue, unsigned width, unsigned height)
+		const void* platformValue, const PresentationChainDesc& desc)
     {
 		auto surface = CreateSurface(_instance.get(), platformValue);
 		DoSecondStageInit(surface.get());
@@ -727,7 +729,7 @@ namespace RenderCore { namespace ImplVulkan
             Throw(::Exceptions::BasicLabel("Presentation surface is not compatible with selected physical device. This may occur if the wrong physical device is selected, and it cannot render to the output window."));
         
         auto finalChain = std::make_unique<PresentationChain>(
-            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{width, height}, _physDev._renderingQueueFamily, platformValue);
+            _objectFactory, std::move(surface), VectorPattern<unsigned, 2>{desc._width, desc._height}, _physDev._renderingQueueFamily, platformValue);
 
         // (synchronously) set the initial layouts for the presentation chain images
         // It's a bit odd, but the Vulkan samples do this
@@ -770,11 +772,22 @@ namespace RenderCore { namespace ImplVulkan
 		return Metal_Vulkan::CreateResource(_objectFactory, desc, initData);
 	}
 
+	FormatCapability    Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+	{
+		return FormatCapability::Supported;
+	}
+
+	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
+	{
+		return Metal_Vulkan::CreateLowLevelShaderCompiler(*this);
+	}
+
     static const char* s_underlyingApi = "Vulkan";
         
     DeviceDesc Device::GetDesc()
     {
-        return DeviceDesc{s_underlyingApi, VersionString, BuildDateString};
+		auto libVersion = ConsoleRig::GetLibVersionDesc();
+        return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
@@ -831,7 +844,7 @@ namespace RenderCore { namespace ImplVulkan
         _swapChain = CreateUnderlyingSwapChain(_device.get(), _surface.get(), props);
         _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));    
 
-        *_desc = { VectorPattern<unsigned, 2>(_bufferDesc._width, _bufferDesc._height), _bufferDesc._format, _bufferDesc._samples };
+        *_desc = { _bufferDesc._width, _bufferDesc._height, _bufferDesc._format, _bufferDesc._samples };
 
         BuildImages();
     }
@@ -843,6 +856,11 @@ namespace RenderCore { namespace ImplVulkan
 
     Metal_Vulkan::RenderTargetView* PresentationChain::AcquireNextImage()
     {
+		#if defined(HACK_FORCE_SYNC)
+			// hack -- just slow us down
+			Threading::Sleep(16);
+		#endif
+
         _activePresentSync = (_activePresentSync+1) % dimof(_presentSyncs);
         auto& sync = _presentSyncs[_activePresentSync];
 		if (sync._fenceHasBeenQueued) {
@@ -970,7 +988,7 @@ namespace RenderCore { namespace ImplVulkan
 
         _bufferDesc = TextureDesc::Plain2D(props._extent.width, props._extent.height, Metal_Vulkan::AsFormat(props._fmt));
 		_desc = std::make_shared<PresentationChainDesc>(
-            VectorPattern<unsigned, 2>(_bufferDesc._width, _bufferDesc._height),
+            _bufferDesc._width, _bufferDesc._height,
             _bufferDesc._format, _bufferDesc._samples);
 
         // We need to get pointers to each image and build the synchronization semaphores
@@ -1074,6 +1092,11 @@ namespace RenderCore { namespace ImplVulkan
 		if (_gpuTracker)
 			_gpuTracker->IncrementProducerFrame();
 
+		#if defined(HACK_FORCE_SYNC)
+			// Hack -- complete GPU synchronize
+			vkQueueWaitIdle(_queue);
+		#endif
+
 		PresentationChain* swapChain = checked_cast<PresentationChain*>(&presentationChain);
 		auto nextImage = swapChain->AcquireNextImage();
 		{
@@ -1085,7 +1108,7 @@ namespace RenderCore { namespace ImplVulkan
 			_metalContext->BeginCommandList(std::move(cmdList));
 		}
         _metalContext->Bind(Metal_Vulkan::ViewportDesc(0.f, 0.f, (float)swapChain->GetBufferDesc()._width, (float)swapChain->GetBufferDesc()._height));
-        return nextImage->ShareResource();
+        return nextImage->GetResource();
 	}
 
 	void            ThreadContext::Present(IPresentationChain& chain)
@@ -1267,6 +1290,12 @@ namespace RenderCore { namespace ImplVulkan
 
 	ThreadContextVulkan::~ThreadContextVulkan() {}
 
+
+	void RegisterCreation()
+	{
+		static_constructor<&RegisterCreation>::c;
+		RegisterDeviceCreationFunction(UnderlyingAPI::Vulkan, &CreateDevice);
+	}
 }}
 
 namespace RenderCore

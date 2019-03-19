@@ -7,6 +7,7 @@
 #include "../../../PlatformRig/AllocationProfiler.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Core/Exceptions.h"
@@ -43,8 +44,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         //  But it's also a convenient place for log files (since it's excluded from
         //  git and it contains only temporary data).
         //  Note that we overwrite the log file every time, destroying previous data.
-    ConsoleRig::GlobalServices services("environmentsample");
-    LogInfo << "------------------------------------------------------------------------------------------";
+	auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>("environmentsample");
+    Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
 
     auto finalsDirectory = lpCmdLine;
     if (!finalsDirectory[0]
@@ -61,8 +62,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         XlOutputDebugString(e.what());
         XlOutputDebugString("\n");
 
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
+        Log(Error) << e.what() << std::endl;
         XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 

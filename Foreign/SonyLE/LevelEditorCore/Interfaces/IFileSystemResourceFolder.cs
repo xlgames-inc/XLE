@@ -4,7 +4,7 @@ using Sce.Atf;
 
 namespace LevelEditorCore
 {
-    public interface IFileSystemResourceFolder : IResourceFolder
+    public interface IFileSystemResourceFolder : IOpaqueResourceFolder
     {
 
         /// <summary>

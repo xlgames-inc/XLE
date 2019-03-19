@@ -359,7 +359,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto& b = _pimpl->_cb;
 		if (b._lastBarrierContext != &context) {
 			if (b._lastBarrierContext != nullptr)
-				LogWarning << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better";
+				Log(Warning) << "Temporary buffer used with multiple device contexts. This is an inefficient case, we need improved interface to handle this case better" << std::endl;
 
 			// full barrier
 			startRegion = 0;

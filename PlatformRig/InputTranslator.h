@@ -10,26 +10,24 @@
 #include "../Utility/UTFUtils.h"
 #include <vector>
 
-namespace RenderOverlays { namespace DebuggingDisplay { class IInputListener; class InputSnapshot; } }
-
 namespace PlatformRig
 {
+	class IInputListener; class InputContext; class InputSnapshot;
+
     class InputTranslator
     {
     public:
-        void    OnMouseMove         (signed newX,       signed newY);
-        void    OnMouseButtonChange (unsigned index,    bool newState);
-        void    OnMouseButtonDblClk (unsigned index);
-        void    OnKeyChange         (unsigned keyCode,  bool newState);
-        void    OnChar              (ucs2 chr);
-        void    OnMouseWheel        (signed wheelDelta);
-        void    OnFocusChange       ();
+        void    OnMouseMove         (const InputContext& context, signed newX,       signed newY);
+        void    OnMouseButtonChange (const InputContext& context, signed newX, signed newY, unsigned index,    bool newState);
+        void    OnMouseButtonDblClk (const InputContext& context, signed newX, signed newY, unsigned index);
+        void    OnKeyChange         (const InputContext& context, unsigned keyCode,  bool newState);
+        void    OnChar              (const InputContext& context, ucs2 chr);
+        void    OnMouseWheel        (const InputContext& context, signed wheelDelta);
+        void    OnFocusChange       (const InputContext& context);
 
-        void    AddListener         (std::weak_ptr<RenderOverlays::DebuggingDisplay::IInputListener> listener);
+        void    AddListener         (std::weak_ptr<IInputListener> listener);
 
         Int2    GetMousePosition();
-
-        static UInt2 s_hackWindowSize;
 
         InputTranslator();
         ~InputTranslator();
@@ -40,7 +38,9 @@ namespace PlatformRig
 
         unsigned        GetMouseButtonState() const;
 
-        void            Publish(const RenderOverlays::DebuggingDisplay::InputSnapshot& snapShot);
+        void            Publish(
+			const InputContext& context, 
+			const InputSnapshot& snapShot);
         const char*     AsKeyName(unsigned keyCode);
     };
 }

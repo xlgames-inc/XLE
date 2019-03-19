@@ -9,7 +9,7 @@
 #include "Resource.h"
 #include "../IDeviceDX11.h"
 #include "../../RenderUtils.h"
-#include "../../../ConsoleRig/AttachableInternal.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
 
@@ -114,30 +114,36 @@ namespace RenderCore { namespace Metal_DX11
         return D3DDevice_FinalizeCreate(tempPtr, hresult, name);
     }
 
+	class ObjectFactory::Pimpl
+	{
+	public:
+		Threading::Mutex _creationLock;
+	};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
         /// @{
         /// Basic states
     intrusive_ptr<ID3D::BlendState> ObjectFactory::CreateBlendState(const D3D11_BLEND_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::BlendState>(_device, &ID3D::Device::CreateBlendState, desc);
     }
 
     intrusive_ptr<ID3D::DepthStencilState> ObjectFactory::CreateDepthStencilState(const D3D11_DEPTH_STENCIL_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::DepthStencilState>(_device, &ID3D::Device::CreateDepthStencilState, desc);
     }
 
     intrusive_ptr<ID3D::RasterizerState> ObjectFactory::CreateRasterizerState(const D3D11_RASTERIZER_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::RasterizerState>(_device, &ID3D::Device::CreateRasterizerState, desc);
     }
 
     intrusive_ptr<ID3D::SamplerState> ObjectFactory::CreateSamplerState(const D3D11_SAMPLER_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::SamplerState>(_device, &ID3D::Device::CreateSamplerState, desc);
     }
         /// @}
@@ -147,25 +153,25 @@ namespace RenderCore { namespace Metal_DX11
         /// Resources
     intrusive_ptr<ID3D::Buffer> ObjectFactory::CreateBuffer(const D3D11_BUFFER_DESC* desc, const D3D11_SUBRESOURCE_DATA* subResData, const char[]) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::Buffer>(_device, &ID3D::Device::CreateBuffer, desc, subResData);
     }
 
     intrusive_ptr<ID3D::Texture1D> ObjectFactory::CreateTexture1D(const D3D11_TEXTURE1D_DESC* desc, const D3D11_SUBRESOURCE_DATA* subResData, const char[]) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::Texture1D>(_device, &ID3D::Device::CreateTexture1D, desc, subResData);
     }
 
     intrusive_ptr<ID3D::Texture2D> ObjectFactory::CreateTexture2D(const D3D11_TEXTURE2D_DESC* desc, const D3D11_SUBRESOURCE_DATA* subResData, const char[]) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::Texture2D>(_device, &ID3D::Device::CreateTexture2D, desc, subResData);
     }
 
     intrusive_ptr<ID3D::Texture3D> ObjectFactory::CreateTexture3D(const D3D11_TEXTURE3D_DESC* desc, const D3D11_SUBRESOURCE_DATA* subResData, const char[]) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::Texture3D>(_device, &ID3D::Device::CreateTexture3D, desc, subResData);
     }
         /// @}
@@ -175,25 +181,25 @@ namespace RenderCore { namespace Metal_DX11
         /// Resource views
     intrusive_ptr<ID3D::RenderTargetView> ObjectFactory::CreateRenderTargetView(ID3D::Resource* resource, const D3D11_RENDER_TARGET_VIEW_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::RenderTargetView>(_device, &ID3D::Device::CreateRenderTargetView, resource, desc);
     }
 
     intrusive_ptr<ID3D::ShaderResourceView> ObjectFactory::CreateShaderResourceView(ID3D::Resource* resource, const D3D11_SHADER_RESOURCE_VIEW_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::ShaderResourceView>(_device, &ID3D::Device::CreateShaderResourceView, resource, desc);
     }
 
     intrusive_ptr<ID3D::UnorderedAccessView> ObjectFactory::CreateUnorderedAccessView(ID3D11Resource* resource, const D3D11_UNORDERED_ACCESS_VIEW_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::UnorderedAccessView>(_device, &ID3D::Device::CreateUnorderedAccessView, resource, desc);
     }
 
     intrusive_ptr<ID3D::DepthStencilView> ObjectFactory::CreateDepthStencilView(ID3D::Resource* resource, const D3D11_DEPTH_STENCIL_VIEW_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::DepthStencilView>(_device, &ID3D::Device::CreateDepthStencilView, resource, desc);
     }
         /// @}
@@ -203,25 +209,25 @@ namespace RenderCore { namespace Metal_DX11
         /// Shaders
     intrusive_ptr<ID3D::VertexShader> ObjectFactory::CreateVertexShader(const void* data, size_t size, ID3D11ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::VertexShader>(_device, &ID3D::Device::CreateVertexShader, data, size, linkage);
     }
 
     intrusive_ptr<ID3D::PixelShader> ObjectFactory::CreatePixelShader(const void* data, size_t size, ID3D11ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::PixelShader>(_device, &ID3D::Device::CreatePixelShader, data, size, linkage);
     }
 
     intrusive_ptr<ID3D::ComputeShader> ObjectFactory::CreateComputeShader(const void* data, size_t size, ID3D11ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::ComputeShader>(_device, &ID3D::Device::CreateComputeShader, data, size, linkage);
     }
 
     intrusive_ptr<ID3D::GeometryShader> ObjectFactory::CreateGeometryShader(const void* data, size_t size, ID3D11ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::GeometryShader>(_device, &ID3D::Device::CreateGeometryShader, data, size, linkage);
     }
 
@@ -231,7 +237,7 @@ namespace RenderCore { namespace Metal_DX11
         unsigned declEntryCount, const unsigned bufferStrides[], unsigned stridesCount,
         unsigned rasterizedStreamIndex, ID3D::ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         ID3D::GeometryShader* tempPtr = nullptr;
         auto hresult = _device->CreateGeometryShaderWithStreamOutput(
             data, size, declEntries, declEntryCount, bufferStrides, stridesCount,
@@ -241,13 +247,13 @@ namespace RenderCore { namespace Metal_DX11
 
     intrusive_ptr<ID3D::DomainShader> ObjectFactory::CreateDomainShader(const void* data, size_t size, ID3D11ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::DomainShader>(_device, &ID3D::Device::CreateDomainShader, data, size, linkage);
     }
 
     intrusive_ptr<ID3D::HullShader> ObjectFactory::CreateHullShader(const void* data, size_t size, ID3D11ClassLinkage* linkage) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::HullShader>(_device, &ID3D::Device::CreateHullShader, data, size, linkage);
     }
         /// @}
@@ -257,7 +263,7 @@ namespace RenderCore { namespace Metal_DX11
         /// Shader dynamic linking
     intrusive_ptr<ID3D::ClassLinkage> ObjectFactory::CreateClassLinkage() const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         ID3D::ClassLinkage* tempPtr = 0;
         auto hresult = _device->CreateClassLinkage(&tempPtr);
         return D3DDevice_FinalizeCreate(tempPtr, hresult, nullptr);
@@ -269,7 +275,7 @@ namespace RenderCore { namespace Metal_DX11
         /// Misc
     intrusive_ptr<ID3D::DeviceContext> ObjectFactory::CreateDeferredContext() const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         ID3D::DeviceContext* tempPtr = nullptr;
         auto hresult = _device->CreateDeferredContext(0, &tempPtr);
         return D3DDevice_FinalizeCreate(tempPtr, hresult, nullptr);
@@ -279,7 +285,7 @@ namespace RenderCore { namespace Metal_DX11
         const D3D11_INPUT_ELEMENT_DESC inputElements[], unsigned inputElementsCount,
         const void * byteCode, size_t byteCodeSize) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         ID3D::InputLayout* tempPtr = nullptr;
         auto hresult = _device->CreateInputLayout(inputElements, inputElementsCount, byteCode, byteCodeSize, &tempPtr);
         return D3DDevice_FinalizeCreate(tempPtr, hresult, nullptr);
@@ -287,12 +293,15 @@ namespace RenderCore { namespace Metal_DX11
 
     intrusive_ptr<ID3D::Query> ObjectFactory::CreateQuery(const D3D11_QUERY_DESC* desc) const
     {
-        ScopedLock(_creationLock);
+        ScopedLock(_pimpl->_creationLock);
         return D3DDeviceCreate<ID3D::Query>(_device, &ID3D::Device::CreateQuery, desc);
     }
         /// @}
 
-	ObjectFactory::ObjectFactory(ID3D::Device& dev) : _device(&dev) {}
+	ObjectFactory::ObjectFactory(ID3D::Device& dev) : _device(&dev) 
+	{
+		_pimpl = std::make_unique<Pimpl>();
+	}
 
     static ID3D::Device* s_defaultDevice = nullptr;
 

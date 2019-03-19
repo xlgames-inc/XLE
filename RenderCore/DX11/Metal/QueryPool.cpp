@@ -22,13 +22,12 @@ namespace RenderCore { namespace Metal_DX11
     {
         auto hresult = context.GetUnderlying()->GetData(
             &query, destination, destinationSize, D3D11_ASYNC_GETDATA_DONOTFLUSH );
-		return SUCCEEDED(hresult);
+		return hresult == S_OK;
     }
 
     bool GetDisjointData(DeviceContext& context, ID3D::Query& query, D3D11_QUERY_DATA_TIMESTAMP_DISJOINT& destination)
     {
-        auto hresult = GetDataNoFlush(context, query, &destination, sizeof(destination));
-		return SUCCEEDED(hresult);
+        return GetDataNoFlush(context, query, &destination, sizeof(destination));
     }
 
     intrusive_ptr<ID3D::Query> CreateQuery(ObjectFactory& factory, bool disjoint)
@@ -77,7 +76,6 @@ namespace RenderCore { namespace Metal_DX11
 					hresult = context.GetUnderlying()->GetData(&query, &result.second, sizeof(result.second), 0);
 				} while (hresult != S_OK);
 			}
-
 		}
 
 		return result;
@@ -98,7 +96,7 @@ namespace RenderCore { namespace Metal_DX11
 	{
 		auto& b = _buffers[_activeBuffer];
 		if (b._pendingReadback) {
-			LogWarning << "Query pool eating it's tail. Insufficient buffers.";
+			Log(Warning) << "Query pool eating it's tail. Insufficient buffers." << std::endl;
 			return FrameId_Invalid;
 		}
 		if (b._pendingReset) {
@@ -130,7 +128,6 @@ namespace RenderCore { namespace Metal_DX11
 		auto& b = _buffers[_activeBuffer];
 		b._pendingReadback = true;
 		b._queryEnd = _nextAllocation;
-		assert(!_allocatedCount || b._queryEnd != b._queryStart);	// problems if we allocate all queries in a single frame currently
 		EndQuery(context, *b._disjointQuery);
 		// roll forward to the next buffer
 		_activeBuffer = (_activeBuffer + 1) % s_bufferCount;
@@ -153,32 +150,33 @@ namespace RenderCore { namespace Metal_DX11
 				bool gotFailureReadingQuery = false;
 				unsigned q = b._queryStart;
 				for (; q != b._queryEnd && q != _queryCount; ++q) {
-					auto hresult = GetDataNoFlush(context, *_timeStamps[q], &_timestampsBuffer[q], sizeof(uint64));
-					if (!hresult) {
+					auto success = GetDataNoFlush(context, *_timeStamps[q], &_timestampsBuffer[q], sizeof(uint64));
+					if (!success) {
 						_timestampsBuffer[q] = ~0x0ull;
 						gotFailureReadingQuery = true;
 					}
 				}
 				if (q > b._queryEnd) {
 					for (q = 0; q != b._queryEnd; ++q) {
-						auto hresult = GetDataNoFlush(context, *_timeStamps[q], &_timestampsBuffer[q], sizeof(uint64));
-						if (!hresult) {
+						auto success = GetDataNoFlush(context, *_timeStamps[q], &_timestampsBuffer[q], sizeof(uint64));
+						if (!success) {
 							_timestampsBuffer[q] = ~0x0ull;
 							gotFailureReadingQuery = true;
 						}
 					}
 				}
-				assert(!gotFailureReadingQuery);
 
-				// Now we can release all of the allocated queries.
-				// (actually, we could release them here -- but to follow the pattern used with the Vulkan implementation,
-				// we'll do it in BeginFrame)
-				b._pendingReadback = false;
-				b._pendingReset = true;
-				return FrameResults{
-					true, !!disjointData.Disjoint,
-					_timestampsBuffer.get(), &_timestampsBuffer[_queryCount],
-					disjointData.Frequency };
+				if (!gotFailureReadingQuery) {
+					// Now we can release all of the allocated queries.
+					// (actually, we could release them here -- but to follow the pattern used with the Vulkan implementation,
+					// we'll do it in BeginFrame)
+					b._pendingReadback = false;
+					b._pendingReset = true;
+					return FrameResults{
+						true, !!disjointData.Disjoint,
+						_timestampsBuffer.get(), &_timestampsBuffer[_queryCount],
+						disjointData.Frequency };
+				}
 			}
 		}
 

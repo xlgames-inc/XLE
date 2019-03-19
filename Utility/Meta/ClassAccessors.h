@@ -131,12 +131,12 @@ namespace Utility
 
         bool TryOpaqueSet(
             void* dst, uint64 id,
-            const void* src, ImpliedTyping::TypeDesc srcType,
+            IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType,
             bool stringForm = false) const;
 
         bool TryOpaqueSet(
             void* dst, uint64 id, size_t arrayIndex,
-            const void* src, ImpliedTyping::TypeDesc srcType,
+            IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType,
             bool stringForm = false) const;
 
         bool TryGetNaturalType(ImpliedTyping::TypeDesc& result, uint64 id) const;
@@ -144,7 +144,7 @@ namespace Utility
         template<typename Type>
             bool TrySet(
                 Type& dst, uint64 id,
-                const void* src, ImpliedTyping::TypeDesc srcType,
+                IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType,
                 bool stringForm = false) const;
 
         template<typename ValueType, typename Type>
@@ -188,7 +188,7 @@ namespace Utility
     template<typename Type>
         bool ClassAccessors::TrySet(
             Type& dst,
-            uint64 id, const void* src,
+            uint64 id, IteratorRange<const void*> src,
             ImpliedTyping::TypeDesc srcType, bool stringForm) const
         {
             assert(typeid(Type).hash_code() == _associatedType);

@@ -154,6 +154,8 @@ namespace RenderCore { namespace ImplOpenGLES
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+    static const bool s_useFakeBackbuffer = true;
+
     PresentationChain::PresentationChain(Metal_OpenGLES::ObjectFactory& objFactory, CGLContextObj sharedContext, const void* platformValue, const PresentationChainDesc& desc)
     {
         auto textureDesc = TextureDesc::Plain2D(desc._width, desc._height, desc._format, 1, 0, desc._samples);

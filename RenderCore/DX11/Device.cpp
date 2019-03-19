@@ -8,6 +8,7 @@
 #include "../IAnnotator.h"
 #include "../Format.h"
 #include "../RenderUtils.h"		// (for Exceptions::GenericFailure)
+#include "../Init.h"
 #include "Metal/DeviceContext.h"
 #include "Metal/State.h"
 #include "Metal/ObjectFactory.h"
@@ -15,14 +16,16 @@
 #include "Metal/Format.h"
 #include "Metal/TextureView.h"
 #include "Metal/ObjectFactory.h"
+#include "Metal/Shader.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../ConsoleRig/LogUtil.h"
 #include "../../ConsoleRig/GlobalServices.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/FunctionUtils.h"
 #include "../../Core/Exceptions.h"
 #include <type_traits>
 #include <assert.h>
@@ -32,14 +35,11 @@
 #include <dxgi.h>
 #include <dxgidebug.h>
 
-namespace RenderCore { 
-    extern char VersionString[];
-    extern char BuildDateString[];
-}
-
 namespace RenderCore { namespace ImplDX11
 {
     static void DumpAllDXGIObjects();
+
+	std::unique_ptr<IAnnotator> CreateAnnotator(IDevice& device);
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -99,7 +99,7 @@ namespace RenderCore { namespace ImplDX11
         auto adapter = SelectAdapter();
 
         #if defined(_DEBUG)
-            const auto nsightMode = ConsoleRig::GlobalServices::GetCrossModule()._services.CallDefault(Hash64("nsight"), false);
+            const auto nsightMode = ConsoleRig::CrossModule::GetInstance()._services.CallDefault(Hash64("nsight"), false);
             unsigned deviceCreationFlags = nsightMode?0:D3D11_CREATE_DEVICE_DEBUG;
         #else
             unsigned deviceCreationFlags = 0;
@@ -143,9 +143,7 @@ namespace RenderCore { namespace ImplDX11
         }
 
         // Metal_DX11::ObjectFactory::PrepareDevice(*underlying);
-        _mainFactory = std::make_unique<Metal_DX11::ObjectFactory>(*underlying);
-        ConsoleRig::GlobalServices::GetCrossModule().Publish(*_mainFactory);
-		_mainFactory->AttachCurrentModule();
+        _mainFactory = ConsoleRig::MakeAttachablePtr<Metal_DX11::ObjectFactory>(std::ref(*underlying));
 
             //  Once we know there can be no more exceptions thrown, we can commit
             //  locals to the members.
@@ -155,7 +153,6 @@ namespace RenderCore { namespace ImplDX11
 
     Device::~Device()
     {
-        ConsoleRig::GlobalServices::GetCrossModule().Withhold(*_mainFactory);
         _mainFactory.reset();
         Metal_DX11::ObjectFactory::ReleaseDevice(*_underlying);
 
@@ -218,7 +215,7 @@ namespace RenderCore { namespace ImplDX11
         return intrusive_ptr<IDXGI::Factory>();
     }
 
-    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, unsigned width, unsigned height)
+    std::unique_ptr<IPresentationChain>   Device::CreatePresentationChain(const void* platformValue, const PresentationChainDesc& desc)
     {
         intrusive_ptr<IDXGI::Factory> factory = GetDXGIFactory();
         if (!factory) {
@@ -226,7 +223,7 @@ namespace RenderCore { namespace ImplDX11
         }
 
         DXGI_MODE_DESC modeDesc = {
-            width, height, {0,0}, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 
+            desc._width, desc._height, {0,0}, DXGI_FORMAT_R8G8B8A8_UNORM_SRGB, 
             DXGI_MODE_SCANLINE_ORDER_UNSPECIFIED, DXGI_MODE_SCALING_UNSPECIFIED };
         DXGI_SAMPLE_DESC sampleDesc  = { 1, 0 };     // (no multi-sampling)
         const auto backBufferCount   = 2u;
@@ -339,12 +336,23 @@ namespace RenderCore { namespace ImplDX11
 		}
 	}
 
+	FormatCapability    Device::QueryFormatCapability(Format format, BindFlag::BitField bindingType)
+	{
+		return FormatCapability::Supported;
+	}
+
     static const char* s_underlyingApi = "DX11";
         
     DeviceDesc Device::GetDesc()
     {
-        return DeviceDesc{s_underlyingApi, VersionString, BuildDateString};
+		auto libVersion = ConsoleRig::GetLibVersionDesc();
+        return DeviceDesc{s_underlyingApi, libVersion._versionString, libVersion._buildDateString};
     }
+
+	std::shared_ptr<ILowLevelCompiler>		Device::CreateShaderCompiler()
+	{
+		return Metal_DX11::CreateLowLevelShaderCompiler(*this);
+	}
 
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -417,6 +425,9 @@ namespace RenderCore { namespace ImplDX11
             }
         }
 
+		_lastBackBuffer.reset();
+		_lastBackBufferResource.reset();
+
         const auto backBufferCount = 2u;
         _underlying->ResizeBuffers(
             backBufferCount, newWidth, newHeight, 
@@ -458,6 +469,22 @@ namespace RenderCore { namespace ImplDX11
         }
     }
 
+	ResourcePtr PresentationChain::GetPresentationResource()
+	{
+		ID3D::Texture2D* backBuffer0Temp = nullptr;
+        HRESULT hresult = _underlying->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
+        intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
+        if (SUCCEEDED(hresult)) {
+			if (_lastBackBuffer != backBuffer0) {
+				_lastBackBuffer = std::move(backBuffer0);
+				_lastBackBufferResource = Metal_DX11::AsResourcePtr((ID3D::Resource*)_lastBackBuffer.get());
+			}
+            return _lastBackBufferResource;
+		}
+        
+        return nullptr;
+	}
+
     //////////////////////////////////////////////////////////////////////////////////////////////////
 
     render_dll_export std::shared_ptr<IDevice>    CreateDevice()
@@ -474,13 +501,7 @@ namespace RenderCore { namespace ImplDX11
         swapChain->AttachToContext(*_underlying, Metal_DX11::GetObjectFactory(*d->GetUnderlyingDevice()));
         IncrFrameId();
 
-        ID3D::Texture2D* backBuffer0Temp = nullptr;
-        HRESULT hresult = swapChain->GetUnderlying()->GetBuffer(0, __uuidof(ID3D::Texture2D), (void**)&backBuffer0Temp);
-        intrusive_ptr<ID3D::Texture2D> backBuffer0 = moveptr(backBuffer0Temp);
-        if (SUCCEEDED(hresult))
-            return Metal_DX11::AsResourcePtr((ID3D::Resource*)backBuffer0.get());
-        
-        return nullptr;
+		return swapChain->GetPresentationResource();
     }
 
     void            ThreadContext::Present(IPresentationChain& presentationChain)
@@ -575,6 +596,13 @@ namespace RenderCore { namespace ImplDX11
     {}
 
     ThreadContextDX11::~ThreadContextDX11() {}
+
+
+	void RegisterCreation()
+	{
+		static_constructor<&RegisterCreation>::c;
+		RegisterDeviceCreationFunction(UnderlyingAPI::DX11, &CreateDevice);
+	}
 
 }}
 

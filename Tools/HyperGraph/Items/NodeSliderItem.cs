@@ -35,8 +35,7 @@ namespace HyperGraph.Items
 		public event EventHandler<NodeItemEventArgs> Clicked;
 		public event EventHandler<NodeItemEventArgs> ValueChanged;
 
-		public NodeSliderItem(string text, float sliderSize, float textSize, float minValue, float maxValue, float defaultValue, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
+		public NodeSliderItem(string text, float sliderSize, float textSize, float minValue, float maxValue, float defaultValue)
 		{
 			this.Text = text;
 			this.MinimumSliderSize = sliderSize;
@@ -149,18 +148,14 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
-
 			var sliderOffset	= Spacing + this.textSize.Width;
-			var sliderWidth		= size.Width - (Spacing + this.textSize.Width);
+			var sliderWidth		= boundary.Width - (Spacing + this.textSize.Width);
 
-			var textRect	= new RectangleF(location, size);
-			var sliderBox	= new RectangleF(location, size);
-			var sliderRect	= new RectangleF(location, size);
+			var textRect	= boundary;
+			var sliderBox	= boundary;
+			var sliderRect	= boundary;
 			sliderRect.X =		 sliderRect.Right - sliderWidth;
 			sliderRect.Y		+= ((sliderRect.Bottom - sliderRect.Top) - SliderHeight) / 2.0f;
 			sliderRect.Width	= sliderWidth;
@@ -192,7 +187,5 @@ namespace HyperGraph.Items
 			else
 				graphics.DrawRectangle(Pens.Black, sliderBox.X, sliderBox.Y, sliderBox.Width, sliderBox.Height);
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Console.h"
+#include "Plugins.h"
 #include "../Utility/PtrUtils.h"
 #include "../../Utility/Mixins.h"
 #include "../../Utility/StringFormat.h"
@@ -740,8 +741,7 @@ namespace ConsoleRig
     template class ConsoleVariable<Float3>;
     template class ConsoleVariable<Float4>;
 
-
+    IStartupShutdownPlugin::~IStartupShutdownPlugin() {}
 
 }
-
 

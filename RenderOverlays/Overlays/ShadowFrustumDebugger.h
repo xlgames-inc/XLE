@@ -8,7 +8,7 @@
 
 #include "../DebuggingDisplay.h"
 
-namespace SceneEngine { class ISceneParser; }
+namespace SceneEngine { class ILightingParserDelegate; }
 
 namespace Overlays
 {
@@ -18,16 +18,15 @@ namespace Overlays
         typedef RenderOverlays::DebuggingDisplay::Layout Layout;
         typedef RenderOverlays::DebuggingDisplay::Interactables Interactables;
         typedef RenderOverlays::DebuggingDisplay::InterfaceState InterfaceState;
-        typedef RenderOverlays::DebuggingDisplay::InputSnapshot InputSnapshot;
 
         void    Render( RenderOverlays::IOverlayContext& context, Layout& layout, 
                         Interactables& interactables, InterfaceState& interfaceState);
-        bool    ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input);
+        bool    ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input);
 
-        ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ISceneParser> scene);
+        ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingParserDelegate> scene);
         ~ShadowFrustumDebugger();
     protected:
-        std::shared_ptr<SceneEngine::ISceneParser> _scene;
+        std::shared_ptr<SceneEngine::ILightingParserDelegate> _scene;
     };
 }
 

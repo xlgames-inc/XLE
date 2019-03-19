@@ -70,7 +70,7 @@ namespace ToolsRig
                         c->_coverageUber[layerIndex].first, c->_coverageUber[layerIndex].second, 
                         cfg.CellTreeDepth(), layer._overlap);
                 } CATCH(...) {
-                    LogAlwaysError << "Error while writing cell coverage file to: " << cellFile;
+                    Log(Error) << "Error while writing cell coverage file to: " << cellFile << std::endl;
                 } CATCH_END
             }
 
@@ -317,7 +317,7 @@ namespace ToolsRig
         // suppress warnings
         char buffer[1024];
         _vsnprintf_s(buffer, dimof(buffer), _TRUNCATE, fmt, args);
-        LogWarning << "Tiff reader warning: " << buffer;
+        Log(Warning) << "Tiff reader warning: " << buffer << std::endl;
 
         if (s_tiffWarningVector) {
             s_tiffWarningVector->push_back(buffer);
@@ -329,7 +329,7 @@ namespace ToolsRig
         // suppress warnings
         char buffer[1024];
         _vsnprintf_s(buffer, dimof(buffer), _TRUNCATE, fmt, args);
-        LogWarning << "Tiff reader error: " << buffer;
+        Log(Warning) << "Tiff reader error: " << buffer << std::endl;
 
         if (s_tiffWarningVector) {
             s_tiffWarningVector->push_back(buffer);
@@ -568,7 +568,7 @@ namespace ToolsRig
 
         auto outputUberFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(outputUberFileName, resultSize, "w");
 
-        auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
+        auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData().begin();
         hdr._magic  = TerrainUberHeader::Magic;
         hdr._width  = finalDims[0];
         hdr._height = finalDims[1];
@@ -576,7 +576,7 @@ namespace ToolsRig
         hdr._typeArrayCount = 1;
         hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2]  = 0;
 
-        void* outputArray = PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
+        void* outputArray = PtrAdd(outputUberFile.GetData().begin(), sizeof(TerrainUberHeader));
 
         auto ext = XlExtension(op._sourceFile.c_str());
         if (ext && (!XlCompareStringI(ext, "hdr") || !XlCompareStringI(ext, "flt"))) {
@@ -597,7 +597,7 @@ namespace ToolsRig
             const unsigned progressStep = 16;
             auto copyStep = progress ? progress->BeginStep("Create uber surface data", copyRows / progressStep, true) : nullptr;
 
-            auto inputArray = (const float*)inputFileData.GetData();
+            auto inputArray = (const float*)inputFileData.GetData().begin();
 
             unsigned yoff = op._importMins[1];
             unsigned y2=0;
@@ -849,7 +849,7 @@ namespace ToolsRig
 
         auto outputUberFile = ::Assets::MainFileSystem::OpenMemoryMappedFile(outputUberFileName, resultSize, "w");
 
-        auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData();
+        auto& hdr   = *(TerrainUberHeader*)outputUberFile.GetData().begin();
         hdr._magic  = TerrainUberHeader::Magic;
         hdr._width  = finalDims[0];
         hdr._height = finalDims[1];
@@ -857,7 +857,7 @@ namespace ToolsRig
         hdr._typeArrayCount = 1;
         hdr._dummy[0] = hdr._dummy[1] = hdr._dummy[2]  = 0;
 
-        float* outputArray = (float*)PtrAdd(outputUberFile.GetData(), sizeof(TerrainUberHeader));
+        float* outputArray = (float*)PtrAdd(outputUberFile.GetData().begin(), sizeof(TerrainUberHeader));
         std::fill(
             outputArray,
             &outputArray[finalDims[0] * finalDims[1]],

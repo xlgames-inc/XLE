@@ -74,7 +74,7 @@ namespace LevelEditor
             try
             {
 
-                string fileName = uri.LocalPath;
+                string fileName = uri.IsAbsoluteUri ? uri.LocalPath : uri.OriginalString;
                 string ext = Path.GetExtension(fileName).ToLower();
                 if (ext == m_ext)
                 {

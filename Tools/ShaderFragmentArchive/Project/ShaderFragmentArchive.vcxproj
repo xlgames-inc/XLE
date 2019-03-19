@@ -53,16 +53,49 @@
     <Import Project="..\..\..\Foreign\CommonForClients.props" />
     <Import Project="..\..\GUILayer\Project\GUILayer.props" />
   </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
+  <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+  </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
+    <Link>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+    </Link>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <ClCompile>
       <RuntimeTypeInfo>true</RuntimeTypeInfo>
     </ClCompile>
+    <Link>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
+    <Link>
+      <AdditionalDependencies>dxguid.lib;wsock32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
+      <OptimizeReferences>false</OptimizeReferences>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <Link>
+      <GenerateDebugInformation>DebugFull</GenerateDebugInformation>
+      <EnableCOMDATFolding>false</EnableCOMDATFolding>
+      <OptimizeReferences>false</OptimizeReferences>
+    </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
     <Reference Include="System" />
@@ -75,24 +108,15 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="../PreviewRenderManager.h" />
-    <ClInclude Include="../ShaderDiagramDocument.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />
     <ClInclude Include="../ShaderGenerator.h" />
-    <ClInclude Include="../Stdafx.h" />
     <ClInclude Include="../TypeRules.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../AssemblyInfo.cpp" />
     <ClCompile Include="../PreviewRenderManager.cpp" />
-    <ClCompile Include="../ShaderDiagramDocument.cpp" />
     <ClCompile Include="../ShaderFragmentArchive.cpp" />
     <ClCompile Include="../ShaderGenerator.cpp" />
-    <ClCompile Include="../Stdafx.cpp">
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">Create</PrecompiledHeader>
-      <PrecompiledHeader Condition="'$(Configuration)|$(Platform)'=='Release|x64'">Create</PrecompiledHeader>
-    </ClCompile>
     <ClCompile Include="../TypeRules.cpp" />
   </ItemGroup>
   <ItemGroup>
@@ -101,6 +125,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\ConsoleRig\Project\ConsoleRig.vcxproj">
       <Project>{587a5b72-36e9-ff50-36f4-c0e96bbfa841}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\FixedFunctionModel\Project\FixedFunctionModel.vcxproj">
+      <Project>{be4b2816-52ba-4a12-ac28-d338da574cd2}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Foreign\Project\Foreign.vcxproj">
       <Project>{9f01282b-6297-4f87-a309-287c2c574b76}</Project>
@@ -131,6 +158,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\EntityInterface\Project\EntityInterface.vcxproj">
+      <Project>{a3ec21db-3586-490f-b30b-5da403d908b5}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\GUILayer\Project\GUILayer.vcxproj">
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>

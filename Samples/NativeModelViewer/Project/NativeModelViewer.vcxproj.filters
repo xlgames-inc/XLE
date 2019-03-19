@@ -1,0 +1,26 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ItemGroup>
+    <Filter Include="WinAPI">
+      <UniqueIdentifier>{103a60f5-c84f-4cd2-8d62-bed0469c26e1}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{79fcf4ca-03a2-4836-8ba2-fa2a6a8d2486}</UniqueIdentifier>
+    </Filter>
+  </ItemGroup>
+  <ItemGroup>
+    <ClCompile Include="..\WinAPI\WindowStartup.cpp">
+      <Filter>WinAPI</Filter>
+    </ClCompile>
+    <ClCompile Include="..\..\Shared\SampleRig.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NativeModelViewer.cpp" />
+  </ItemGroup>
+  <ItemGroup>
+    <ClInclude Include="..\..\Shared\SampleRig.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NativeModelViewer.h" />
+  </ItemGroup>
+</Project>

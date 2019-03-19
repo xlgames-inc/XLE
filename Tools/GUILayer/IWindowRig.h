@@ -20,10 +20,7 @@ namespace GUILayer
     public:
         virtual PlatformRig::FrameRig& GetFrameRig() = 0;
         virtual std::shared_ptr<RenderCore::IPresentationChain>& GetPresentationChain() = 0;
-
         virtual void AddWindowHandler(std::shared_ptr<PlatformRig::IWindowHandler> windowHandler) = 0;
-        virtual void OnResize(unsigned newWidth, unsigned newHeight) = 0;
-
         virtual ~IWindowRig();
     };
 }

@@ -22,9 +22,6 @@ namespace Assets
 
         std::vector<AssetHeapRecord>        LogRecords() const;
 
-        void            SetCacheSize(unsigned cacheSize);
-        unsigned        GetCacheSize() const;
-
         AssetHeapLRU(unsigned cacheSize);
         ~AssetHeapLRU();
         AssetHeapLRU(const AssetHeapLRU&) = delete;
@@ -142,20 +139,6 @@ namespace Assets
         unsigned cacheSize = _assets.GetCacheSize();
         _assets = LRUCache<AssetFuture<AssetType>>{cacheSize};
         _shadowingAssets.clear();
-    }
-
-    template<typename AssetType>
-        void AssetHeapLRU<AssetType>::SetCacheSize(unsigned newCacheSize)
-    {
-        ScopedLock(_lock);
-        _assets = LRUCache<AssetFuture<AssetType>>{newCacheSize};
-    }
-
-    template<typename AssetType>
-        unsigned AssetHeapLRU<AssetType>::GetCacheSize() const
-    {
-        ScopedLock(_lock);      // only have to lock if we suspect another thread might clear or change the size of the heap
-        return _assets.GetCacheSize();
     }
 
     template<typename AssetType>

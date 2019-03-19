@@ -6,7 +6,6 @@
 
 #include "DepthWeightedTransparency.h"
 #include "GestaltResource.h"
-#include "LightingParserContext.h"
 #include "SceneEngineUtils.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Metal/State.h"
@@ -17,6 +16,7 @@
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/Techniques.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../BufferUploads/IBufferUploads.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../Assets/Assets.h"
@@ -137,19 +137,24 @@ namespace SceneEngine
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2d.vsh:fullscreen:vs_*",
                 "xleres/forward/transparency/depthweighted.sh:resolve:ps_*");
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-            uniforms.BindShaderResources(1, {"Accumulator", "Modulator", "Refraction"});
-            uniforms.Apply(
-                *_context,
-                _parserContext->GetGlobalUniformsStream(),
-                Metal::UniformsStream(
-                    {},
-                    {
-                        &_box->_accumulationBuffer.SRV(),
-                        &_box->_modulationBuffer.SRV(),
-                        &_box->_refractionBuffer.SRV()
-                    }));
+
+			UniformsStreamInterface usi;
+			usi.BindShaderResource(0, Hash64("Accumulator"));
+            usi.BindShaderResource(1, Hash64("Modulator"));
+            usi.BindShaderResource(2, Hash64("Refraction"));
+
+            Metal::BoundUniforms uniforms{
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi};
+            uniforms.Apply(*_context, 0, _parserContext->GetGlobalUniformsStream());
+			const Metal::ShaderResourceView* srvs[] {
+                &_box->_accumulationBuffer.SRV(),
+                &_box->_modulationBuffer.SRV(),
+                &_box->_refractionBuffer.SRV() };
+			uniforms.Apply(*_context, 1, 
+                UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
             _context->Bind(Techniques::CommonResources()._blendOneSrcAlpha);
             _context->Bind(shader);
@@ -159,7 +164,7 @@ namespace SceneEngine
 
     DepthWeightedTransparencyOp::DepthWeightedTransparencyOp(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext) 
+        RenderCore::Techniques::ParsingContext& parserContext) 
     : _context(&context)
     , _parserContext(&parserContext)
     , _box(nullptr)

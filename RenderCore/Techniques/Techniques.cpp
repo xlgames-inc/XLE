@@ -5,340 +5,37 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "Techniques.h"
-#include "ParsingContext.h"
 #include "RenderStateResolver.h"
-#include "../Types.h"
-#include "../Metal/Shader.h"
-#include "../Metal/InputLayout.h"
-#include "../Metal/DeviceContext.h"
-#include "../../Assets/AssetUtils.h"
-#include "../../Assets/AssetServices.h"
-#include "../../Assets/ConfigFileContainer.h"
-#include "../../Assets/IFileSystem.h"
+#include "../UniformsStream.h"
+#include "../Metal/Metal.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/DepVal.h"
-#include "../../Math/Vector.h"
-#include "../../Math/Matrix.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/StringUtils.h"
 #include "../../Utility/Conversion.h"
+#include "../../Utility/PtrUtils.h"
 #include <algorithm>
 
 namespace RenderCore { namespace Techniques
 {
-        ///////////////////////   T E C H N I Q U E   I N T E R F A C E   ///////////////////////////
+	class TechniqueSetFile
+	{
+	public:
+		std::vector<std::pair<uint64_t, TechniqueEntry>> _settings;
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-    class TechniqueInterface::Pimpl
-    {
-    public:
-        std::vector<InputElementDesc>			_vertexInputLayout;
-        std::vector<UniformsStreamInterface>    _uniformStreams;
-
-        uint64 _hashValue;
-        Pimpl() : _hashValue(0) {}
-
-        void        UpdateHashValue();
-    };
-
-    void        TechniqueInterface::Pimpl::UpdateHashValue()
-    {
-		_hashValue = 0;
-		for (const auto& i : _uniformStreams)
-			_hashValue = HashCombine(i.GetHash(), _hashValue);
-
-        unsigned index = 0;
-        for (auto i=_vertexInputLayout.cbegin(); i!=_vertexInputLayout.cend(); ++i, ++index) {
-            struct PartialDesc
-            {
-                unsigned        _semanticIndex;
-                Format			_nativeFormat;
-                unsigned        _inputSlot;
-                unsigned        _alignedByteOffset;
-                InputDataRate	_inputSlotClass;
-                unsigned        _instanceDataStepRate;
-            } partialDesc;
-
-            partialDesc._semanticIndex          = i->_semanticIndex;
-            partialDesc._nativeFormat           = i->_nativeFormat;
-            partialDesc._inputSlot              = i->_inputSlot;
-            partialDesc._alignedByteOffset      = i->_alignedByteOffset;        // could get a better hash if we convert this to a true offset, here (if it's the default offset marker)
-            partialDesc._inputSlotClass         = i->_inputSlotClass;
-            partialDesc._instanceDataStepRate   = i->_instanceDataStepRate;
-
-            auto elementHash = 
-                Hash64(&partialDesc, PtrAdd(&partialDesc, sizeof(partialDesc)))
-                ^ Hash64(i->_semanticName);
-            _hashValue ^= (elementHash<<(2*index));     // index is a slight problem here. two different interfaces with the same elements, but in reversed order would come to the same hash. We can shift it slightly to true to avoid this
-        }
-    }
-
-    void    TechniqueInterface::BindUniformsStream(unsigned streamIndex, const UniformsStreamInterface& interf)
-    {
-		if (_pimpl->_uniformStreams.size() <= streamIndex)
-			_pimpl->_uniformStreams.resize(streamIndex + 1);
-		_pimpl->_uniformStreams[streamIndex] = interf;
-		_pimpl->UpdateHashValue();
-    }
-
-    uint64  TechniqueInterface::GetHashValue() const
-    {
-        return _pimpl->_hashValue;
-    }
-
-    TechniqueInterface::TechniqueInterface() 
-    {
-        _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
-    }
-
-    TechniqueInterface::TechniqueInterface(InputLayout vertexInputLayout)
-    {
-        _pimpl = std::make_unique<TechniqueInterface::Pimpl>();
-        _pimpl->_vertexInputLayout.insert(
-            _pimpl->_vertexInputLayout.begin(),
-            vertexInputLayout.begin(), vertexInputLayout.end());
-        _pimpl->UpdateHashValue();
-    }
-
-    TechniqueInterface::~TechniqueInterface()
-    {}
-
-    TechniqueInterface::TechniqueInterface(TechniqueInterface&& moveFrom) never_throws
-    {
-        _pimpl = std::move(moveFrom._pimpl);
-    }
-
-    TechniqueInterface&TechniqueInterface::operator=(TechniqueInterface&& moveFrom) never_throws
-    {
-        _pimpl = std::move(moveFrom._pimpl);
-        return *this;
-    }
-
-        ///////////////////////   T E C H N I Q U E   I N T E R F A C E   ///////////////////////////
-
-    #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-        ShaderType::TechniqueObj::HashConflictTest::HashConflictTest(const ParameterBox* globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
-        {
-            _rawHash = rawHash; _filteredHash = filteredHash; _interfaceHash = interfaceHash;
-            for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-                _globalState[c] = *globalState[c];
-            }
-        }
-
-        ShaderType::TechniqueObj::HashConflictTest::HashConflictTest(const ParameterBox globalState[ShaderParameters::Source::Max], uint64 rawHash, uint64 filteredHash, uint64 interfaceHash)
-        {
-            _rawHash = rawHash; _filteredHash = filteredHash; _interfaceHash = interfaceHash;
-            for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-                _globalState[c] = globalState[c];
-            }
-        }
-
-        ShaderType::TechniqueObj::HashConflictTest::HashConflictTest() {}
-
-        void ShaderType::TechniqueObj::TestHashConflict(const ParameterBox* globalState[ShaderParameters::Source::Max], const HashConflictTest& comparison) const
-        {
-                // check to make sure the parameter names in both of these boxes is the same
-                // note -- this isn't exactly correctly. we need to filter out parameters that are not relevant to this technique
-            // for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-            //     assert(globalState[c]->AreParameterNamesEqual(comparison._globalState[c]));
-            // }
-        }
-
-        static std::string BuildParamsAsString(
-            const ShaderParameters& baseParameters,
-            const ParameterBox globalState[ShaderParameters::Source::Max])
-        {
-            std::vector<std::pair<const char*, std::string>> defines;
-            baseParameters.BuildStringTable(defines);
-            for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-                globalState[c].OverrideStringTable(defines);
-            }
-
-            std::string combinedStrings;
-            size_t size = 0;
-            std::for_each(defines.cbegin(), defines.cend(), 
-                [&size](const std::pair<std::string, std::string>& object) { size += 2 + object.first.size() + object.second.size(); });
-            combinedStrings.reserve(size);
-            std::for_each(defines.cbegin(), defines.cend(), 
-                [&combinedStrings](const std::pair<std::string, std::string>& object) 
-                {
-                    combinedStrings.insert(combinedStrings.end(), object.first.cbegin(), object.first.cend()); 
-                    combinedStrings.push_back('=');
-                    combinedStrings.insert(combinedStrings.end(), object.second.cbegin(), object.second.cend()); 
-                    combinedStrings.push_back(';');
-                });
-            return combinedStrings;
-        }
-    #endif
-
-    ResolvedShader      ShaderType::TechniqueObj::FindVariation(	const ParameterBox* globalState[ShaderParameters::Source::Max],
-																	const TechniqueInterface& techniqueInterface) const
-    {
-            //
-            //      todo --     It would be cool if the caller passed in some kind of binding desc
-            //                  object... That would affect the binding part of the resolved shader
-            //                  (vertex layout, shader constants and resources), but not the shader
-            //                  itself. This could allow us to have different bindings without worrying
-            //                  about invoking redundant shader compiles.
-            //
-        uint64 inputHash = 0;
-		const bool simpleHash = false;
-		if (constant_expression<simpleHash>::result()) {
-			for (unsigned c = 0; c < ShaderParameters::Source::Max; ++c) {
-				inputHash ^= globalState[c]->GetParameterNamesHash();
-				inputHash ^= globalState[c]->GetHash() << (c * 6);    // we have to be careful of cases where the values in one box is very similar to the values in another
-			}
-		} else {
-			inputHash = HashCombine(globalState[0]->GetHash(), globalState[0]->GetParameterNamesHash());
-			for (unsigned c = 1; c < ShaderParameters::Source::Max; ++c) {
-				inputHash = HashCombine(globalState[c]->GetParameterNamesHash(), inputHash);
-				inputHash = HashCombine(globalState[c]->GetHash(), inputHash);
-			}
-		}
-        
-        uint64 globalHashWithInterface = inputHash ^ techniqueInterface.GetHashValue();
-        auto i = std::lower_bound(_globalToResolved.begin(), _globalToResolved.end(), globalHashWithInterface, CompareFirst<uint64, ResolvedShader>());
-        if (i!=_globalToResolved.cend() && i->first == globalHashWithInterface) {
-            if (i->second._shaderProgram && (i->second._shaderProgram->GetDependencyValidation()->GetValidationIndex()!=0)) {
-                ResolveAndBind(i->second, globalState, techniqueInterface);
-            }
-
-            #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-                auto ti = std::lower_bound(_globalToResolvedTest.begin(), _globalToResolvedTest.end(), globalHashWithInterface, CompareFirst<uint64, HashConflictTest>());
-                assert(ti!=_globalToResolvedTest.cend() && ti->first == globalHashWithInterface);
-                TestHashConflict(globalState, ti->second);
-
-                OutputDebugString((BuildParamsAsString(_baseParameters, ti->second._globalState) + "\r\n").c_str());
-            #endif
-            return i->second;
-        }
-
-        uint64 filteredHashValue = _technique._baseParameters.CalculateFilteredHash(inputHash, globalState);
-        uint64 filteredHashWithInterface = filteredHashValue ^ techniqueInterface.GetHashValue();
-        auto i2 = std::lower_bound(_filteredToResolved.begin(), _filteredToResolved.end(), filteredHashWithInterface, CompareFirst<uint64, ResolvedShader>());
-        if (i2!=_filteredToResolved.cend() && i2->first == filteredHashWithInterface) {
-            _globalToResolved.insert(i, std::make_pair(globalHashWithInterface, i2->second));
-            if (i2->second._shaderProgram && (i2->second._shaderProgram->GetDependencyValidation()->GetValidationIndex()!=0)) {
-                ResolveAndBind(i2->second, globalState, techniqueInterface);
-            }
-
-            #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-                auto lti = std::lower_bound(_localToResolvedTest.begin(), _localToResolvedTest.end(), filteredHashWithInterface, CompareFirst<uint64, HashConflictTest>());
-                assert(lti!=_localToResolvedTest.cend() && lti->first == filteredHashWithInterface);
-				TestHashConflict(globalState, lti->second);
-
-                auto gti = std::lower_bound(_globalToResolvedTest.begin(), _globalToResolvedTest.end(), globalHashWithInterface, CompareFirst<uint64, HashConflictTest>());
-                _globalToResolvedTest.insert(gti, std::make_pair(globalHashWithInterface, HashConflictTest(lti->second._globalState, inputHash, filteredHashValue, techniqueInterface.GetHashValue())));
-
-                OutputDebugString((BuildParamsAsString(_baseParameters, lti->second._globalState) + "\r\n").c_str());
-            #endif
-            return i2->second;
-        }
-
-        ResolvedShader newResolvedShader;
-        newResolvedShader._variationHash = filteredHashValue;
-        ResolveAndBind(newResolvedShader, globalState, techniqueInterface);
-        _filteredToResolved.insert(i2, std::make_pair(filteredHashWithInterface, newResolvedShader));
-        _globalToResolved.insert(i, std::make_pair(globalHashWithInterface, newResolvedShader));
-
-        #if defined(CHECK_TECHNIQUE_HASH_CONFLICTS)
-            auto gti = std::lower_bound(_globalToResolvedTest.begin(), _globalToResolvedTest.end(), globalHashWithInterface, CompareFirst<uint64, HashConflictTest>());
-            _globalToResolvedTest.insert(gti, std::make_pair(globalHashWithInterface, HashConflictTest(globalState, inputHash, filteredHashValue, techniqueInterface.GetHashValue())));
-
-            auto lti = std::lower_bound(_localToResolvedTest.begin(), _localToResolvedTest.end(), filteredHashWithInterface, CompareFirst<uint64, HashConflictTest>());
-            _localToResolvedTest.insert(lti, std::make_pair(filteredHashWithInterface, HashConflictTest(globalState, inputHash, filteredHashValue, techniqueInterface.GetHashValue())));
-        #endif
-        return newResolvedShader;
-    }
-
-    void        ShaderType::TechniqueObj::ResolveAndBind(	ResolvedShader& resolvedShader, 
-															const ParameterBox* globalState[ShaderParameters::Source::Max],
-															const TechniqueInterface& techniqueInterface) const
-    {
-        std::vector<std::pair<const utf8*, std::string>> defines;
-        _technique._baseParameters.BuildStringTable(defines);
-        for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-            OverrideStringTable(defines, *globalState[c]);
-        }
-
-        auto combinedStrings = FlattenStringTable(defines);
-
-        std::string vsShaderModel, psShaderModel, gsShaderModel;
-        auto vsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"vs_", CompareFirst<const utf8*, std::string>());
-        if (vsi != defines.cend() && !XlCompareString(vsi->first, (const utf8*)"vs_")) {
-            char buffer[32];
-            int integerValue = Utility::XlAtoI32(vsi->second.c_str());
-            sprintf_s(buffer, dimof(buffer), ":vs_%i_%i", integerValue/10, integerValue%10);
-            vsShaderModel = buffer;
-        } else {
-            vsShaderModel = ":" VS_DefShaderModel;
-        }
-        auto psi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"ps_", CompareFirst<const utf8*, std::string>());
-        if (psi != defines.cend() && !XlCompareString(psi->first, (const utf8*)"ps_")) {
-            char buffer[32];
-            int integerValue = Utility::XlAtoI32(psi->second.c_str());
-            sprintf_s(buffer, dimof(buffer), ":ps_%i_%i", integerValue/10, integerValue%10);
-            psShaderModel = buffer;
-        } else {
-            psShaderModel = ":" PS_DefShaderModel;
-        }
-        auto gsi = std::lower_bound(defines.cbegin(), defines.cend(), (const utf8*)"gs_", CompareFirst<const utf8*, std::string>());
-        if (gsi != defines.cend() && !XlCompareString(gsi->first, (const utf8*)"gs_")) {
-            char buffer[32];
-            int integerValue = Utility::XlAtoI32(psi->second.c_str());
-            sprintf_s(buffer, dimof(buffer), ":gs_%i_%i", integerValue/10, integerValue%10);
-            gsShaderModel = buffer;
-        } else {
-            gsShaderModel = ":" GS_DefShaderModel;
-        }
-
-        using namespace Metal;
-    
-        std::shared_ptr<::Assets::AssetFuture<ShaderProgram>> shaderProgramFuture;
-        std::unique_ptr<BoundUniforms> boundUniforms;
-        std::unique_ptr<BoundInputLayout> boundInputLayout;
-
-        if (_technique._geometryShaderName.empty()) {
-            shaderProgramFuture = ::Assets::MakeAsset<ShaderProgram>(
-                (_technique._vertexShaderName + vsShaderModel).c_str(), 
-                (_technique._pixelShaderName + psShaderModel).c_str(), 
-                combinedStrings.c_str());
-        } else {
-            shaderProgramFuture = ::Assets::MakeAsset<ShaderProgram>(
-                (_technique._vertexShaderName + vsShaderModel).c_str(), 
-                (_technique._geometryShaderName + gsShaderModel).c_str(), 
-                (_technique._pixelShaderName + psShaderModel).c_str(), 
-                combinedStrings.c_str());
-        }
-
-		shaderProgramFuture->StallWhilePending();
-		auto shaderProgram = shaderProgramFuture->Actualize();
-
-		PipelineLayoutConfig dummy;
-		UniformsStreamInterface streamInterfaces[4];
-		for (unsigned c=0; c<std::min(dimof(streamInterfaces), techniqueInterface._pimpl->_uniformStreams.size()); ++c)
-			streamInterfaces[c] = techniqueInterface._pimpl->_uniformStreams[c];
-
-		boundUniforms = std::make_unique<BoundUniforms>(
-			std::ref(*shaderProgram),
-			dummy,
-			streamInterfaces[0],
-			streamInterfaces[1],
-			streamInterfaces[2],
-			streamInterfaces[3]);
-
-        boundInputLayout = std::make_unique<BoundInputLayout>(
-			MakeIteratorRange(techniqueInterface._pimpl->_vertexInputLayout), std::ref(*shaderProgram));
-
-        resolvedShader._shaderProgram = shaderProgram.get();
-        resolvedShader._boundUniforms = boundUniforms.get();
-        resolvedShader._boundLayout = boundInputLayout.get();
-        _resolvedShaderPrograms.push_back(std::move(shaderProgram));
-        _resolvedBoundUniforms.push_back(std::move(boundUniforms));
-        _resolvedBoundInputLayouts.push_back(std::move(boundInputLayout));
-    }
+		TechniqueSetFile(
+            Utility::InputStreamFormatter<utf8>& formatter, 
+			const ::Assets::DirectorySearchRules& searchRules, 
+			const ::Assets::DepValPtr& depVal);
+		~TechniqueSetFile();
+	private:
+		::Assets::DepValPtr _depVal;
+	};
 
     static const char* s_parameterBoxNames[] = 
         { "Geometry", "GlobalEnvironment", "Runtime", "Material" };
@@ -355,10 +52,11 @@ namespace RenderCore { namespace Techniques
         return std::basic_string<Formatter::value_type>(input._start, input._end);
     }
 
-    void TechniqueSetFile::LoadInheritedParameterBoxes(
-        Technique& dst, Formatter& source, 
+    static void LoadInheritedParameterBoxes(
+        TechniqueEntry& dst, Formatter& source, 
+		IteratorRange<const std::pair<uint64_t, TechniqueEntry>*> localSettings,
         const ::Assets::DirectorySearchRules& searchRules,
-		std::vector<::Assets::DepValPtr> inherited)
+		std::vector<::Assets::DepValPtr>& inherited)
     {
             //  We will serialize in a list of 
             //  shareable settings that we can inherit from
@@ -397,8 +95,8 @@ namespace RenderCore { namespace Techniques
 			} else {
 				// this setting is in the same file
 				auto settingHash = Hash64(name._start, name._end);
-				auto s = LowerBound(_settings, settingHash);
-				if (s != _settings.end() && s->first == settingHash) {
+				auto s = std::lower_bound(localSettings.begin(), localSettings.end(), settingHash, CompareFirst<uint64_t, TechniqueEntry>());
+				if (s != localSettings.end() && s->first == settingHash) {
 					dst.MergeIn(s->second);
 				} else
 					Throw(FormatException("Inheritted object not found", source.GetLocation()));
@@ -425,7 +123,7 @@ namespace RenderCore { namespace Techniques
                         // This works well with the C preprocessor; it just means
                         // things will generally default to off
                     unsigned zero = 0u;
-                    dst[q].MergeIn(ParameterBox(source, &zero, ImpliedTyping::TypeOf<unsigned>()));
+                    dst[q].MergeIn(ParameterBox(source, AsOpaqueIteratorRange(zero), ImpliedTyping::TypeOf<unsigned>()));
                     matched = true;
                 }
 
@@ -437,62 +135,15 @@ namespace RenderCore { namespace Techniques
         }
     }
     
-	TechniqueSetFile::TechniqueSetFile(
-		Utility::InputStreamFormatter<utf8>& formatter, 
+    static TechniqueEntry ParseTechniqueEntry(
+		Formatter& formatter, 
+		IteratorRange<const std::pair<uint64_t, TechniqueEntry>*> localSettings,
 		const ::Assets::DirectorySearchRules& searchRules, 
-		const ::Assets::DepValPtr& depVal)
-	: _depVal(depVal)
-    {
-		std::vector<::Assets::DepValPtr> inherited;
-            
-            //  each top-level entry is a "Setting", which can contain parameter
-            //  boxes (and possibly inherit statements and shaders)
-
-        for (;;) {
-            bool cleanQuit = false;
-            switch (formatter.PeekNext()) {
-            case Formatter::Blob::BeginElement:
-                {
-                    Formatter::InteriorSection settingName;
-                    if (!formatter.TryBeginElement(settingName)) break;
-
-					if (XlEqString(settingName, u("Inherit")) || XlEqString(settingName, u("Technique"))) {
-						formatter.SkipElement();
-					} else {
-						auto hash = Hash64(settingName._start, settingName._end);
-						auto i = LowerBound(_settings, hash);
-						_settings.insert(i, std::make_pair(hash, ParseTechnique(formatter, searchRules, inherited)));
-					}
-
-                    if (!formatter.TryEndElement()) break;
-                }
-                continue;
-
-            case Formatter::Blob::None:
-                cleanQuit = true;
-                break;
-
-            default:
-                break;
-            }
-
-            if (!cleanQuit)
-                Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
-            break;
-        }
-
-        for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
-            ::Assets::RegisterAssetDependency(_depVal, *i);
-        }
-    }
-
-	TechniqueSetFile::~TechniqueSetFile() {}
-
-    Technique TechniqueSetFile::ParseTechnique(Formatter& formatter, const ::Assets::DirectorySearchRules& searchRules, std::vector<::Assets::DepValPtr> inherited)
+		std::vector<::Assets::DepValPtr>& inherited)
     {
         using ParsingString = std::basic_string<Formatter::value_type>;
 
-		Technique result;
+		TechniqueEntry result;
         for (;;) {
             switch (formatter.PeekNext())
             {
@@ -502,9 +153,9 @@ namespace RenderCore { namespace Techniques
                     if (!formatter.TryBeginElement(eleName)) break;
 
                     if (Is("Inherit", eleName)) {
-                        LoadInheritedParameterBoxes(result, formatter, searchRules, inherited);
+                        LoadInheritedParameterBoxes(result, formatter, localSettings, searchRules, inherited);
                     } else if (Is("Parameters", eleName)) {
-                        LoadParameterBoxes(formatter, result._baseParameters._parameters);
+                        LoadParameterBoxes(formatter, result._baseSelectors._selectors);
                     } else break;
 
                     if (!formatter.TryEndElement()) break;
@@ -534,16 +185,68 @@ namespace RenderCore { namespace Techniques
         }
     }
 
-    void Technique::MergeIn(const Technique& source)
+	TechniqueSetFile::TechniqueSetFile(
+		Utility::InputStreamFormatter<utf8>& formatter, 
+		const ::Assets::DirectorySearchRules& searchRules, 
+		const ::Assets::DepValPtr& depVal)
+	: _depVal(depVal)
+    {
+		std::vector<::Assets::DepValPtr> inherited;
+            
+            //  each top-level entry is a "Setting", which can contain parameter
+            //  boxes (and possibly inherit statements and shaders)
+
+        for (;;) {
+            bool cleanQuit = false;
+            switch (formatter.PeekNext()) {
+            case Formatter::Blob::BeginElement:
+                {
+                    Formatter::InteriorSection settingName;
+                    if (!formatter.TryBeginElement(settingName)) break;
+
+					if (XlEqString(settingName, u("Inherit")) || XlEqString(settingName, u("Technique"))) {
+						formatter.SkipElement();
+					} else {
+						auto hash = Hash64(settingName._start, settingName._end);
+						auto i = LowerBound(_settings, hash);
+						_settings.insert(i, std::make_pair(hash, ParseTechniqueEntry(formatter, MakeIteratorRange(_settings), searchRules, inherited)));
+					}
+
+                    if (!formatter.TryEndElement()) break;
+                }
+                continue;
+
+            case Formatter::Blob::None:
+                cleanQuit = true;
+                break;
+
+            default:
+                break;
+            }
+
+            if (!cleanQuit)
+                Throw(FormatException("Unexpected blob while reading stream", formatter.GetLocation()));
+            break;
+        }
+
+        for (auto i=inherited.begin(); i!=inherited.end(); ++i) {
+            ::Assets::RegisterAssetDependency(_depVal, *i);
+        }
+    }
+
+	TechniqueSetFile::~TechniqueSetFile() {}
+
+
+    void TechniqueEntry::MergeIn(const TechniqueEntry& source)
     {
         if (!source._vertexShaderName.empty()) _vertexShaderName = source._vertexShaderName;
         if (!source._pixelShaderName.empty()) _pixelShaderName = source._pixelShaderName;
         if (!source._geometryShaderName.empty()) _geometryShaderName = source._geometryShaderName;
 
-        for (unsigned c=0; c<ShaderParameters::Source::Max; ++c) {
-            const auto& s = source._baseParameters._parameters[c];
-            auto& d = _baseParameters._parameters[c];
-            for (auto i = s.Begin(); !i.IsEnd(); ++i)
+        for (unsigned c=0; c<ShaderSelectors::Source::Max; ++c) {
+            const auto& s = source._baseSelectors._selectors[c];
+            auto& d = _baseSelectors._selectors[c];
+            for (const auto& i:s)
                 d.SetParameter(i.Name(), i.RawValue(), i.Type());
         }
     }
@@ -563,40 +266,26 @@ namespace RenderCore { namespace Techniques
 			}
 		}
 
-	void Technique::ReplaceSelfReference(StringSection<::Assets::ResChar> filename)
+	static void ReplaceSelfReference(TechniqueEntry& entry, StringSection<::Assets::ResChar> filename)
 	{
 		auto selfRef = MakeStringSection("<.>");
-		ReplaceInString(_vertexShaderName, selfRef, filename);
-		ReplaceInString(_pixelShaderName, selfRef, filename);
-		ReplaceInString(_geometryShaderName, selfRef, filename);
+		ReplaceInString(entry._vertexShaderName, selfRef, filename);
+		ReplaceInString(entry._pixelShaderName, selfRef, filename);
+		ReplaceInString(entry._geometryShaderName, selfRef, filename);
 	}
 
-    Technique::Technique() 
+    TechniqueEntry::TechniqueEntry() 
 	{
 			//
             //      There are some parameters that will we always have an effect on the
             //      binding. We need to make sure these are initialized with sensible
             //      values.
             //
-        auto& globalParam = _baseParameters._parameters[ShaderParameters::Source::GlobalEnvironment];
+        auto& globalParam = _baseSelectors._selectors[ShaderSelectors::Source::GlobalEnvironment];
         globalParam.SetParameter((const utf8*)"vs_", 50);
         globalParam.SetParameter((const utf8*)"ps_", 50);
 	}
-    Technique::~Technique() {}
-
-
-
-    ///////////////////////   S H A D E R   T Y P E   ///////////////////////////
-
-    ResolvedShader ShaderType::FindVariation(  
-		int techniqueIndex, 
-        const ParameterBox* globalState[ShaderParameters::Source::Max],
-        const TechniqueInterface& techniqueInterface) const
-    {
-        if (techniqueIndex >= dimof(_techniques) || !_techniques[techniqueIndex]._technique.IsValid())
-            return ResolvedShader();
-        return _techniques[techniqueIndex].FindVariation(globalState, techniqueInterface);
-    }
+    TechniqueEntry::~TechniqueEntry() {}
 
     T1(Pair) class CompareFirstString
     {
@@ -635,7 +324,7 @@ namespace RenderCore { namespace Techniques
         return ~0u;
     }
 
-    ShaderType::ShaderType(StringSection<::Assets::ResChar> resourceName)
+    Technique::Technique(StringSection<::Assets::ResChar> resourceName)
     {
 		_validationCallback = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_validationCallback, resourceName);
@@ -670,8 +359,8 @@ namespace RenderCore { namespace Techniques
 					// we want to replace <.> with the name of the asset
 					// This allows the asset to reference itself (without complications
 					// for related to directories, etc)
-				for (unsigned c=0; c<dimof(_techniques); ++c)
-					_techniques[c]._technique.ReplaceSelfReference(resourceName);
+				for (unsigned c=0; c<dimof(_entries); ++c)
+					ReplaceSelfReference(_entries[c], resourceName);
 
 				for (auto i=inheritedAssets.begin(); i!=inheritedAssets.end(); ++i)
 					::Assets::RegisterAssetDependency(_validationCallback, *i);
@@ -683,10 +372,10 @@ namespace RenderCore { namespace Techniques
 		} CATCH_END
     }
 
-    ShaderType::~ShaderType()
+    Technique::~Technique()
     {}
 
-    void ShaderType::ParseConfigFile(
+    void Technique::ParseConfigFile(
         Formatter& formatter, 
 		StringSection<::Assets::ResChar> containingFileName,
         const ::Assets::DirectorySearchRules& searchRules,
@@ -717,20 +406,19 @@ namespace RenderCore { namespace Techniques
                             searchRules.ResolveFile(resolvedFile, resolvedFile);
 
                             // exceptions thrown by from the inheritted asset will not be suppressed
-                            const auto& inheritFrom = ::Assets::GetAssetDep<ShaderType>(resolvedFile);
+                            const auto& inheritFrom = ::Assets::GetAssetDep<Technique>(resolvedFile);
                             inheritedAssets.push_back(inheritFrom.GetDependencyValidation());
 
                             // we should merge in the content from all the inheritted's assets
-                            for (unsigned c=0; c<dimof(_techniques); ++c)
-                                _techniques[c]._technique.MergeIn(inheritFrom._techniques[c]._technique);
+                            for (unsigned c=0; c<dimof(_entries); ++c)
+                                _entries[c].MergeIn(inheritFrom._entries[c]);
 							_cbLayout = inheritFrom._cbLayout;
                         }
                     } else if (XlEqString(eleName, u("Technique"))) {
 						// We should find a list of the actual techniques to use, as attributes
 						// The attribute name defines the how to apply the technique, and the attribute value is
 						// the name of the technique itself
-						for (;;)
-						{
+						for (;;) {
 							auto next = formatter.PeekNext();
                             if (next == Formatter::Blob::EndElement) break;
                             if (next != Formatter::Blob::AttributeName)
@@ -760,7 +448,7 @@ namespace RenderCore { namespace Techniques
 									auto hash = Hash64(settingName);
 									auto i = LowerBound(setFile._settings, hash);
 									if (i != setFile._settings.end() && i->first == hash) {
-										_techniques[index]._technique = i->second;		// (don't merge in; this a replace)
+										_entries[index] = i->second;		// (don't merge in; this a replace)
 									} else 
 										Throw(FormatException("Could not resolve requested technique setting", formatter.GetLocation()));
 
@@ -770,6 +458,11 @@ namespace RenderCore { namespace Techniques
 								}
 							}
 						}
+					} else if (XlEqString(eleName, u("*"))) {
+						// This is an override that applies to all techniques in this file
+						auto overrideTechnique = ParseTechniqueEntry(formatter, {}, searchRules, inheritedAssets);
+						for (unsigned c=0; c<dimof(_entries); ++c) 
+							_entries[c].MergeIn(overrideTechnique);
 					} else {
 						// other elements are packed in here, as well (such as the actual technique definitions)
 						formatter.SkipElement();
@@ -793,20 +486,32 @@ namespace RenderCore { namespace Techniques
         }
     }
 
+	TechniqueEntry& Technique::GetEntry(unsigned idx)
+	{
+		assert(idx < dimof(_entries));
+		return _entries[idx];
+	}
+
+	const TechniqueEntry& Technique::GetEntry(unsigned idx) const
+	{
+		assert(idx < dimof(_entries));
+		return _entries[idx];
+	}
+
         //////////////////////-------//////////////////////
 
-    uint64      ShaderParameters::CalculateFilteredHash(const ParameterBox* globalState[Source::Max]) const
+    uint64      ShaderSelectors::CalculateFilteredHash(const ParameterBox* globalState[Source::Max]) const
     {
-		uint64 filteredState = _parameters[0].CalculateFilteredHashValue(*globalState[0]);
+		uint64 filteredState = _selectors[0].CalculateFilteredHashValue(*globalState[0]);
         for (unsigned c=1; c<Source::Max; ++c) {
-              // filteredState ^= _parameters[c].TranslateHash(*globalState[c]) << (c*6);     // we have to be careful of cases where 2 boxes have their filtered tables sort of swapped... Those cases should produce distinctive hashes
+              // filteredState ^= _selectors[c].TranslateHash(*globalState[c]) << (c*6);     // we have to be careful of cases where 2 boxes have their filtered tables sort of swapped... Those cases should produce distinctive hashes
 
-			filteredState = HashCombine(_parameters[c].CalculateFilteredHashValue(*globalState[c]), filteredState);
+			filteredState = HashCombine(_selectors[c].CalculateFilteredHashValue(*globalState[c]), filteredState);
         }
         return filteredState;
     }
 
-    uint64      ShaderParameters::CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const
+    uint64      ShaderSelectors::CalculateFilteredHash(uint64 inputHash, const ParameterBox* globalState[Source::Max]) const
     {
             //      Find a local state to match
         auto i = LowerBound(_globalToFilteredTable, inputHash);
@@ -822,40 +527,14 @@ namespace RenderCore { namespace Techniques
         return filteredState;
     }
 
-    void        ShaderParameters::BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
+    void        ShaderSelectors::BuildStringTable(std::vector<std::pair<const utf8*, std::string>>& defines) const
     {
-        for (unsigned c=0; c<dimof(_parameters); ++c) {
-            Utility::BuildStringTable(defines, _parameters[c]);
+        for (unsigned c=0; c<dimof(_selectors); ++c) {
+            Utility::BuildStringTable(defines, _selectors[c]);
         }
     }
 
-    void ResolvedShader::Apply(
-        Metal::DeviceContext& devContext,
-        ParsingContext& parserContext,
-		const std::initializer_list<VertexBufferView>& vbs) const
-    {
-		_boundUniforms->Apply(devContext, 0, parserContext.GetGlobalUniformsStream());
-		_boundLayout->Apply(devContext, MakeIteratorRange(vbs.begin(), vbs.end()));
-        devContext.Bind(*_shaderProgram);
-    }
-
-	void ResolvedShader::ApplyUniforms(
-		Metal::DeviceContext& devContext,
-		unsigned streamIdx,
-		const UniformsStream& stream) const
-	{
-		_boundUniforms->Apply(devContext, streamIdx, stream);
-	}
-
-    ResolvedShader::ResolvedShader()
-    {
-        _variationHash = 0;
-        _shaderProgram = nullptr;
-        _boundUniforms = nullptr;
-        _boundLayout = nullptr;
-    }
-
-        //////////////////////-------//////////////////////
+		        //////////////////////-------//////////////////////
 
 	const UniformsStreamInterface& TechniqueContext::GetGlobalUniformsStreamInterface()
 	{
@@ -867,7 +546,7 @@ namespace RenderCore { namespace Techniques
 		static auto HashOrthoShadowProjection = Hash64("OrthogonalShadowProjection");
 		static auto HashBasicLightingEnvironment = Hash64("BasicLightingEnvironment");
 		static UniformsStreamInterface globalUniforms;
-		static bool setupGlobalUniforms;
+		static bool setupGlobalUniforms = false;
 		if (!setupGlobalUniforms) {
 			globalUniforms.BindConstantBuffer(CB_GlobalTransform, { HashGlobalTransform });
 			globalUniforms.BindConstantBuffer(CB_GlobalState, { HashGlobalState });
@@ -879,15 +558,30 @@ namespace RenderCore { namespace Techniques
 		return globalUniforms;
 	}
 
-    void     TechniqueContext::BindGlobalUniforms(TechniqueInterface& binding)
-    {
-		binding.BindUniformsStream(0, GetGlobalUniformsStreamInterface());
-    }
-
     TechniqueContext::TechniqueContext()
     {
-        _defaultStateSetResolver = CreateStateSetResolver_Default();
+        _defaultRenderStateDelegate = CreateRenderStateDelegate_Default();
     }
+
+	UnderlyingAPI GetTargetAPI()
+    {
+        #if GFXAPI_ACTIVE == GFXAPI_VULKAN
+            return RenderCore::UnderlyingAPI::Vulkan;
+        #else
+            return RenderCore::UnderlyingAPI::DX11;
+        #endif
+    }
+
+	static thread_local std::weak_ptr<IThreadContext> s_mainThreadContext;
+	std::shared_ptr<IThreadContext> GetThreadContext()
+	{
+		return s_mainThreadContext.lock();
+	}
+
+	void SetThreadContext(const std::shared_ptr<IThreadContext>& threadContext)
+	{
+		s_mainThreadContext = threadContext;
+	}
 
 }}
 

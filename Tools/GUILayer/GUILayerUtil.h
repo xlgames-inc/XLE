@@ -6,14 +6,12 @@
 
 #pragma once
 
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 #include <functional>
 
-namespace RenderCore { namespace Techniques { class TechniqueContext; } }
+namespace RenderCore { namespace Techniques { class TechniqueContext; class ITechniqueDelegate; } }
 namespace SceneEngine 
 {
-    class IntersectionTestContext; 
     class IntersectionTestScene; 
     class TerrainManager;
     class PlacementsEditor;
@@ -32,6 +30,14 @@ namespace GUILayer
 	public:
 		static System::String^ MakeAssetName(System::String^ input);
 		static System::UInt64 HashID(System::String^ string);
+
+		ref struct AssetExtension
+		{
+			System::String^ Extension;
+			System::String^ Description;
+		};
+		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetModelExtensions();
+		static System::Collections::Generic::IEnumerable<AssetExtension^>^ GetAnimationSetExtensions();
 	};
 
     public ref class TechniqueContextWrapper
@@ -39,19 +45,19 @@ namespace GUILayer
     public:
         clix::shared_ptr<RenderCore::Techniques::TechniqueContext> _techniqueContext;
 
-        TechniqueContextWrapper(std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext);
+        TechniqueContextWrapper(const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext);
         ~TechniqueContextWrapper();
     };
 
-    public ref class IntersectionTestContextWrapper
-    {
-    public:
-        clix::shared_ptr<SceneEngine::IntersectionTestContext> _context;
+	public ref class TechniqueDelegateWrapper
+	{
+	public:
+		clix::shared_ptr<RenderCore::Techniques::ITechniqueDelegate> _techniqueDelegate;
 
-		SceneEngine::IntersectionTestContext& GetNative();
-        IntersectionTestContextWrapper(std::shared_ptr<SceneEngine::IntersectionTestContext> context);
-        ~IntersectionTestContextWrapper();
-    };
+        TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate);
+		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate);
+        ~TechniqueDelegateWrapper();
+	};
 
 	public ref class IntersectionTestSceneWrapper
 	{
@@ -59,11 +65,12 @@ namespace GUILayer
 		clix::shared_ptr<SceneEngine::IntersectionTestScene> _scene;
 
 		SceneEngine::IntersectionTestScene& GetNative();
-		IntersectionTestSceneWrapper(std::shared_ptr<SceneEngine::IntersectionTestScene> scene);
+		IntersectionTestSceneWrapper(
+			const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene);
         IntersectionTestSceneWrapper(
-            std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-            std::shared_ptr<SceneEngine::PlacementCellSet> placements,
-            std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+            const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+            const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
+            const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
             std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters);
         ~IntersectionTestSceneWrapper();
         !IntersectionTestSceneWrapper();

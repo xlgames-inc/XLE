@@ -14,6 +14,12 @@
     <ClCompile Include="..\DX11\Metal\TextureView.cpp" />
     <ClCompile Include="..\DX11\Metal\FrameBuffer.cpp" />
     <ClCompile Include="..\DX11\Metal\QueryPool.cpp" />
+    <ClCompile Include="..\DX11\Device.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
+    <ClCompile Include="..\DX11\Annotator.cpp">
+      <Filter>Device</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DX11\Metal\DX11.h" />
@@ -34,5 +40,16 @@
     <ClInclude Include="..\DX11\Metal\TextureView.h" />
     <ClInclude Include="..\DX11\Metal\FrameBuffer.h" />
     <ClInclude Include="..\DX11\Metal\QueryPool.h" />
+    <ClInclude Include="..\DX11\Device.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+    <ClInclude Include="..\DX11\IDeviceDX11.h">
+      <Filter>Device</Filter>
+    </ClInclude>
+  </ItemGroup>
+  <ItemGroup>
+    <Filter Include="Device">
+      <UniqueIdentifier>{76540336-ba7f-43e6-b585-719c4cf275dd}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
 </Project>

@@ -11,19 +11,19 @@
 #include "../Math/Vector.h"
 #include "../Assets/AssetsCore.h"
 
-namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace RenderCore { namespace Techniques { class CameraDesc; class ParsingContext; } }
+namespace RenderCore { class IThreadContext; }
 namespace Utility { class OutputStream; }
 namespace ConsoleRig { class IProgress; }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-    class TechniqueContext;
     class PreparedScene;
     class HeightsUberSurfaceInterface;
     class CoverageUberSurfaceInterface;
     class ITerrainFormat;
     class ISurfaceHeightsProvider;
+	class ILightingParserDelegate;
     
     class TerrainConfig;
     class TerrainCoordinateSystem;
@@ -37,12 +37,13 @@ namespace SceneEngine
     {
     public:
         void Prepare(
-            RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext,
+            RenderCore::IThreadContext& context,
+            RenderCore::Techniques::ParsingContext& parserContext,
             PreparedScene& preparedPackets);
         void Render(
-            RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext,
+            RenderCore::IThreadContext& context,
+            RenderCore::Techniques::ParsingContext& parserContext,
+			const ILightingParserDelegate* lightingParserDelegate,
             PreparedScene& preparedPackets,
             unsigned techniqueIndex);
 
@@ -77,8 +78,8 @@ namespace SceneEngine
             IntersectionResult intersections[],
             unsigned maxIntersections,
             std::pair<Float3, Float3> ray,
-            RenderCore::Metal::DeviceContext* context,
-            LightingParserContext& parserContext);
+            RenderCore::IThreadContext& context,
+            RenderCore::Techniques::ParsingContext& parserContext);
 
         HeightsUberSurfaceInterface*    GetHeightsInterface();
         CoverageUberSurfaceInterface*   GetCoverageInterface(TerrainCoverageId id);

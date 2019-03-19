@@ -83,6 +83,8 @@ namespace RenderCore { namespace Metal_Vulkan
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
+	using DeepShaderProgram = ShaderProgram;
+
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
     class ComputeShader
@@ -103,5 +105,5 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 }}

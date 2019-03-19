@@ -359,7 +359,8 @@ namespace LevelEditor
 
                 Globals.ResourceRoot = uri;
 
-                IResourceFolder rootResourceFolder = new CustomFileSystemResourceFolder(Globals.ResourceRoot.LocalPath);                
+                // IOpaqueResourceFolder rootResourceFolder = new CustomFileSystemResourceFolder(Globals.ResourceRoot.LocalPath);
+                IOpaqueResourceFolder rootResourceFolder = LevelEditorXLE.Patches.CreateRootResourceFolder(Globals.ResourceRoot.LocalPath);
                 if (m_resourceLister != null)
                     m_resourceLister.SetRootFolder(rootResourceFolder);
             }

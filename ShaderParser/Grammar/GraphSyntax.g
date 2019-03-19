@@ -11,21 +11,30 @@ tokens
 	TOPLEVEL;
 
 	NODE_DECL;
-	// SLOT_DECL;
+	CAPTURES_DECL;
 
 	FUNCTION_PATH;
 	FUNCTION_CALL;
 
-	PARAMETER_DECLARATION;
+	IN_PARAMETER_DECLARATION;
+	OUT_PARAMETER_DECLARATION;
 	GRAPH_SIGNATURE;
 	GRAPH_DEFINITION;
+	IMPLEMENTS;
 
 	CONNECTION;
 	FUNCTION_CALL_CONNECTION;			// this is a connection expressed in function call syntax; eg -- graph(lhs:rhs)
 	RCONNECTION_INLINE_FUNCTION_CALL;	// this is a rconnection which involves an inline function call; eg -- graph(lhs:graph2().result)
 	RCONNECTION_REF;					// this is a reference to a node and connector
-	RCONNECTION_FUNCTION_PATH;
+	RCONNECTION_IDENTIFIER;
+	RCONNECTION_PARTIAL_INSTANTIATION;
 	RETURN_CONNECTION;
+	OUTPUT_CONNECTION;
+	CONDITIONAL_CONNECTION;
+
+	ATTRIBUTE_TABLE_NAME;
+	ATTRIBUTE_TABLE;
+	ATTRIBUTE;
 
 	GRAPH_TYPE;
 
@@ -58,57 +67,98 @@ tokens
 }
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+
+// ------ B A S I C   C O M P O N E N T S ---------------------------------------------------------
+
 functionPath 
 	: i=Identifier '::' f=Identifier -> ^(FUNCTION_PATH $i $f)
 	| f=Identifier -> ^(FUNCTION_PATH $f)
 	;
-functionCall : f=functionPath '(' (functionCallConnection (',' functionCallConnection)*)? ')' -> ^(FUNCTION_CALL $f functionCallConnection*);
-
-lconnection : n=Identifier -> $n;
-rconnection
-	: f=functionCall '.' n0=Identifier -> ^(RCONNECTION_INLINE_FUNCTION_CALL $f $n0)
-	| frag=Identifier '.' n1=Identifier -> ^(RCONNECTION_REF $frag $n1)
-	| c=StringLiteral -> ^(LITERAL $c)
-	| ident=functionPath -> ^(RCONNECTION_FUNCTION_PATH $ident)
-	;
-functionCallConnection : l=lconnection ':' r=rconnection -> ^(FUNCTION_CALL_CONNECTION $l $r);
+functionCall : ('[[' attributeTableTable=Identifier ']]')? f=functionPath '(' (functionCallConnection (',' functionCallConnection)*)? ')' -> ^(FUNCTION_CALL $f ^(ATTRIBUTE_TABLE_NAME $attributeTableTable)? functionCallConnection*);
 
 typeName
 	: Identifier
 	| 'graph' '<' functionPath '>' -> ^(GRAPH_TYPE functionPath)
 	;
 
-declaration
-	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
+numberLiteral : HexLiteral | DecimalLiteral | OctalLiteral | FloatingPointLiteral;
+
+valueLiteral
+	: StringLiteral
+	| numberLiteral
+	| '{' numberLiteral (',' numberLiteral)* '}'
 	;
 
-connection 
-	: n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r)
-	| 'return' r=rconnection -> ^(RETURN_CONNECTION $r)
+// ------ S I G N A T U R E S ---------------------------------------------------------------------
+
+signatureParameter
+	: ('in')? type=typeName name=Identifier ('=' StringLiteral)? -> ^(IN_PARAMETER_DECLARATION $name $type StringLiteral?)
+	| 'out' type=typeName name=Identifier -> ^(OUT_PARAMETER_DECLARATION $name $type)
 	;
 
-graphStatement
-	:	declaration ';'? -> declaration
-	|	connection ';'? -> connection
+signatureParameters
+	: '(' parameters += signatureParameter (',' parameters += signatureParameter)* ')' -> $parameters*
+	| '(' ')' ->
 	;
 
 implementsQualifier
-	: 'implements' functionPath
-	;
-
-parameterDeclaration
-	: type=typeName name=Identifier implementsQualifier? -> ^(PARAMETER_DECLARATION $name $type)
+	: 'implements' fn=functionPath -> ^(IMPLEMENTS $fn)
 	;
 
 graphSignature
-	: returnType=Identifier name=Identifier '(' (parameters += parameterDeclaration (',' parameters += parameterDeclaration)*)? ')' implementsQualifier?
-		-> ^(GRAPH_SIGNATURE $name $returnType $parameters*)
+	: returnType=Identifier name=Identifier params=signatureParameters impl=implementsQualifier?
+		-> ^(GRAPH_SIGNATURE $name $returnType $impl $params)
+	;
+
+// ------ M A I N   B O D Y -----------------------------------------------------------------------
+
+lconnection : n=Identifier -> $n;
+rconnection
+	: f=functionCall 
+		(
+			'.' n0=Identifier		-> ^(RCONNECTION_INLINE_FUNCTION_CALL $f $n0)
+			|						-> ^(RCONNECTION_PARTIAL_INSTANTIATION $f)
+		)
+	
+	| frag=Identifier '.' n1=Identifier		-> ^(RCONNECTION_REF $frag $n1)
+	| c=StringLiteral						-> ^(LITERAL $c)
+	| ident=Identifier						-> ^(RCONNECTION_IDENTIFIER $ident)
+	;
+functionCallConnection : l=lconnection ':' r=rconnection -> ^(FUNCTION_CALL_CONNECTION $l $r);
+
+nodeDeclaration
+	:	'node' n1=Identifier '=' f=functionCall -> ^(NODE_DECL $n1 $f)
+	;
+
+connection
+	: n=Identifier '.' l=lconnection ':' r=rconnection -> ^(CONNECTION $n $l $r)
+	| out=Identifier '=' r=rconnection -> ^(OUTPUT_CONNECTION $out $r)
+	| 'return' r=rconnection -> ^(RETURN_CONNECTION $r)
+	;
+
+capturesDeclaration
+	: 'captures' Identifier '=' ('[[' attributeTableTable=Identifier ']]')? signatureParameters -> ^(CAPTURES_DECL Identifier ^(ATTRIBUTE_TABLE_NAME $attributeTableTable)? signatureParameters)
+	;
+
+graphStatement
+	:	nodeDeclaration ';'? -> nodeDeclaration
+	|	capturesDeclaration ';'? -> capturesDeclaration
+	|	connection ';'? -> connection
+	|   'if' c=StringLiteral cnct=connection ';'? -> ^(CONDITIONAL_CONNECTION $c $cnct)
+	;
+
+attributeDeclaration
+	: attribute=Identifier ':' value=StringLiteral
+		-> ^(ATTRIBUTE $attribute $value)
 	;
 
 toplevel
-	:	'import' name=Identifier '=' source=StringLiteral -> ^(IMPORT $name $source)
+	:	'import' name=Identifier '=' source=StringLiteral 
+			-> ^(IMPORT $name $source)
 	|	sig=graphSignature '{' statements += graphStatement* '}'
 			-> ^(GRAPH_DEFINITION $sig $statements*)
+	|	'attributes' name=Identifier '(' (attributes += attributeDeclaration (',' attributes += attributeDeclaration)*)? ')'
+			-> ^(ATTRIBUTE_TABLE $name $attributes*)
 	;
 
 entrypoint
@@ -119,11 +169,25 @@ entrypoint
 //						L E X E R 
 //------------------------------------------------------------------------------
 
+HexLiteral : '0' ('x'|'X') HexDigit+ IntegerTypeSuffix? ;
+
 DecimalLiteral : ('0' | '1'..'9' '0'..'9'*) IntegerTypeSuffix? ;
+
+OctalLiteral : '0' ('0'..'7')+ IntegerTypeSuffix? ;
 
 fragment HexDigit : ('0'..'9'|'a'..'f'|'A'..'F') ;
 
 fragment IntegerTypeSuffix : ('l'|'L'|'u'|'U'|'ul'|'UL') ;
+
+FloatingPointLiteral
+	:	('0'..'9')+ '.' ('0'..'9')* Exponent? FloatTypeSuffix?
+	|	'.' ('0'..'9')+ Exponent? FloatTypeSuffix?
+	|	('0'..'9')+ Exponent? FloatTypeSuffix?
+	;
+
+fragment Exponent : ('e'|'E') ('+'|'-')? ('0'..'9')+ ;
+
+fragment FloatTypeSuffix : ('f'|'F'|'d'|'D') ;
 
 fragment EscapeSequence
 	:	'\\' ('b'|'t'|'n'|'f'|'r'|'\"'|'\''|'\\')

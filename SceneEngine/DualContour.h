@@ -12,8 +12,6 @@
 namespace SceneEngine
 {
 
-    class LightingParserContext;
-
         ////////////////////////////////////////////////////////
     
     class IVolumeDensityFunction

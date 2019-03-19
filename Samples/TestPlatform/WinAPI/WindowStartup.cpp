@@ -43,7 +43,7 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         //  git and it contains only temporary data).
         //  Note that we overwrite the log file every time, destroying previous data.
     ConsoleRig::GlobalServices services("testplatform");
-    LogInfo << "------------------------------------------------------------------------------------------";
+    Log(Verbose) << "------------------------------------------------------------------------------------------";
 
     TRY {
         Sample::ExecuteSample();
@@ -52,8 +52,8 @@ int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, PSTR lpCmdLine,
         XlOutputDebugString(e.what());
         XlOutputDebugString("\n");
 
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        Log(Error) << "Hit top level exception. Aborting program!";
+        Log(Error) << e.what();
         XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 

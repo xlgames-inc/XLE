@@ -8,7 +8,11 @@
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
 #include "../../SceneEngine/IntersectionTest.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
+#include "../../RenderCore/Techniques/DrawableDelegates.h"
+#include "../../Assets/AssetServices.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/MemoryUtils.h"
 
@@ -27,43 +31,67 @@ namespace GUILayer
 		return clix::marshalString<clix::E_UTF8>(resName._fn);
 	}
 
-    TechniqueContextWrapper::TechniqueContextWrapper(
-        std::shared_ptr<RenderCore::Techniques::TechniqueContext> techniqueContext)
-    {
-        _techniqueContext = std::move(techniqueContext);
-    }
+	static System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ ToManaged(
+		IteratorRange<const std::pair<std::string, std::string>*> range)
+	{
+		auto result = gcnew System::Collections::Generic::List<Utils::AssetExtension^>();
+		for (const auto&i:range) {
+			auto ext = gcnew Utils::AssetExtension();
+			ext->Extension = clix::marshalString<clix::E_UTF8>(i.first);
+			ext->Description = clix::marshalString<clix::E_UTF8>(i.second);
+			result->Add(ext);
+		}
+		return result;
+	}
+
+	System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ Utils::GetModelExtensions()
+	{
+		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
+			RenderCore::Assets::ModelScaffold::CompileProcessType);
+		return ToManaged(MakeIteratorRange(exts));
+	}
+
+	System::Collections::Generic::IEnumerable<Utils::AssetExtension^>^ Utils::GetAnimationSetExtensions()
+	{
+		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
+			RenderCore::Assets::AnimationSetScaffold::CompileProcessType);
+		return ToManaged(MakeIteratorRange(exts));
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    TechniqueContextWrapper::TechniqueContextWrapper(const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
+	: _techniqueContext(techniqueContext)
+    {}
 
     TechniqueContextWrapper::~TechniqueContextWrapper()
     {
         _techniqueContext.reset();
     }
 
-    IntersectionTestContextWrapper::IntersectionTestContextWrapper(
-        std::shared_ptr<SceneEngine::IntersectionTestContext> context)
-    {
-        _context = std::move(context);
-    }
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate)
+	: _techniqueDelegate(techniqueDelegate)
+	{}
 
-    IntersectionTestContextWrapper::~IntersectionTestContextWrapper()
-    {
-        _context.reset();
-    }
-
-	SceneEngine::IntersectionTestContext& IntersectionTestContextWrapper::GetNative()
+	TechniqueDelegateWrapper::TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate)
+	: _techniqueDelegate(techniqueDelegate)
 	{
-		return *_context.get();
 	}
 
-	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
-		std::shared_ptr<SceneEngine::IntersectionTestScene> scene)
+    TechniqueDelegateWrapper::~TechniqueDelegateWrapper()
+	{
+		_techniqueDelegate.reset();
+	}
+
+	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene)
 	{
 		_scene = std::move(scene);
 	}
 
     IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<SceneEngine::PlacementCellSet> placements,
-        std::shared_ptr<SceneEngine::PlacementsEditor> placementsEditor,
+        const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+        const std::shared_ptr<SceneEngine::PlacementCellSet>& placements,
+        const std::shared_ptr<SceneEngine::PlacementsEditor>& placementsEditor,
         std::initializer_list<std::shared_ptr<SceneEngine::IIntersectionTester>> extraTesters)
     {
 		_scene = std::make_shared<SceneEngine::IntersectionTestScene>(
@@ -144,7 +172,7 @@ namespace GUILayer
         StepAdapter(GUILayer::IStep^ adapted);
         ~StepAdapter();
     protected:
-        gcroot<GUILayer::IStep^> _adapted;
+        msclr::gcroot<GUILayer::IStep^> _adapted;
     };
 
     void StepAdapter::SetProgress(unsigned progress)
@@ -178,7 +206,7 @@ namespace GUILayer
         ProgressAdapter(GUILayer::IProgress^ adapted);
         ~ProgressAdapter();
     protected:
-        gcroot<GUILayer::IProgress^> _adapted;
+        msclr::gcroot<GUILayer::IProgress^> _adapted;
     };
 
     std::shared_ptr<ConsoleRig::IStep> ProgressAdapter::BeginStep(const char name[], unsigned progressMax, bool cancellable)

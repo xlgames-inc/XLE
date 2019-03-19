@@ -7,19 +7,21 @@
 #include "ManipulatorsRender.h"
 #include "../../SceneEngine/PlacementsManager.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
+#include "../../SceneEngine/MetalStubs.h"
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/ShaderVariationSet.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
-#include "../../RenderCore/Assets/DeferredShaderResource.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/ShaderVariationSet.h"
+#include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/PredefinedCBLayout.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderOverlays/HighlightEffects.h"
 #include "../../Assets/Assets.h"
@@ -42,7 +44,6 @@ namespace ToolsRig
         const SceneEngine::PlacementGUID* filterEnd,
         uint64 materialGuid)
     {
-        using namespace RenderCore::Assets;
         auto metalContext = RenderCore::Metal::DeviceContext::Get(threadContext);
         if (materialGuid == ~0ull) {
             renderer.RenderFiltered(*metalContext.get(), parserContext, techniqueIndex, cellSet, filterBegin, filterEnd);
@@ -51,8 +52,8 @@ namespace ToolsRig
                 //  the given value
             renderer.RenderFiltered(
                 *metalContext, parserContext, techniqueIndex, cellSet, filterBegin, filterEnd,
-                [=](const DelayedDrawCall& e) { 
-                    return ((const ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
+                [=](const FixedFunctionModel::DelayedDrawCall& e) { 
+                    return ((const FixedFunctionModel::ModelRenderer*)e._renderer)->GetMaterialBindingForDrawCall(e._drawCallIndex) == materialGuid; 
                 });
         }
     }
@@ -67,7 +68,7 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
             Placements_RenderFiltered(
                 threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
@@ -85,7 +86,7 @@ namespace ToolsRig
         uint64 materialGuid)
     {
         CATCH_ASSETS_BEGIN
-            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetNamedResources());
+            RenderOverlays::BinaryHighlight highlight(threadContext, parserContext.GetFrameBufferPool(), parserContext.GetNamedResources());
             Placements_RenderFiltered(
                 threadContext, parserContext, RenderCore::Techniques::TechniqueIndex::Forward,
                 renderer, cellSet, filterBegin, filterEnd, materialGuid);
@@ -98,19 +99,22 @@ namespace ToolsRig
         Techniques::ParsingContext& parserContext,
         const Float3& centre, float radius)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
-        auto& metalContext = *Metal::DeviceContext::Get(threadContext);
+		std::vector<FrameBufferDesc::Attachment> attachments {
+			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
+		};
+		SubpassDesc mainPass;
+		mainPass.SetName("RenderCylinderHighlight");
+		mainPass.AppendOutput(0);
+		mainPass.AppendInput(1);
+		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
+		Techniques::RenderPassInstance rpi {
+			threadContext, fbDesc, 
+			parserContext.GetFrameBufferPool(),
+			parserContext.GetNamedResources() };
 
-            // unbind the depth buffer
-        SceneEngine::SavedTargets savedTargets(metalContext);
-        metalContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
-
-            // create shader resource view for the depth buffer
-        Metal::ShaderResourceView depthSrv;
-        if (savedTargets.GetDepthStencilView())
-            depthSrv = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
-                savedTargets.GetDepthStencilView()).get(), 
-                TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
+        auto depthSrv = rpi.GetSRV(1, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
+        if (!depthSrv || !depthSrv->IsGood()) return;
 
         TRY
         {
@@ -124,22 +128,30 @@ namespace ToolsRig
                 Float3 _center;
                 float _radius;
             } highlightParameters = { centre, radius };
-            Metal::ConstantBufferPacket constantBufferPackets[2];
+            ConstantBufferView constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L");
-            const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
+            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
+            const Metal::ShaderResourceView* resources[] = { depthSrv, &circleHighlight.GetShaderResource() };
 
-            Metal::BoundUniforms boundLayout(shaderProgram);
-            RenderCore::Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
-            boundLayout.BindConstantBuffer(Hash64("CircleHighlightParameters"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {Hash64("CircleHighlightParameters")});
+            usi.BindShaderResource(0, Hash64("DepthTexture"));
+            usi.BindShaderResource(1, Hash64("HighlightResource"));
 
+			Metal::BoundUniforms boundLayout(
+				shaderProgram,
+				{},
+				RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+
+			auto& metalContext = *Metal::DeviceContext::Get(threadContext);
             metalContext.Bind(shaderProgram);
-            boundLayout.Apply(metalContext, 
-                parserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
+            boundLayout.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+			boundLayout.Apply(metalContext, 1, UniformsStream{
+				MakeIteratorRange(constantBufferPackets),
+				UniformsStream::MakeResources(MakeIteratorRange(resources))
+				});
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
@@ -151,15 +163,11 @@ namespace ToolsRig
                 //          tools, so the easy way should be fine.
             metalContext.Draw(4);
 
-            ID3D::ShaderResourceView* srv = nullptr;
-            metalContext.GetUnderlying()->PSSetShaderResources(3, 1, &srv);
+            SceneEngine::MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3, 1);
         } 
         CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
-
-        savedTargets.ResetToOldTargets(metalContext);
-#endif
     }
 
     void RenderRectangleHighlight(
@@ -168,19 +176,22 @@ namespace ToolsRig
         const Float3& mins, const Float3& maxs,
 		RectangleHighlightType type)
     {
-#if GFXAPI_ACTIVE == GFXAPI_DX11
-        auto& metalContext = *Metal::DeviceContext::Get(threadContext);
-                
-            // unbind the depth buffer
-        SceneEngine::SavedTargets savedTargets(metalContext);
-        metalContext.GetUnderlying()->OMSetRenderTargets(1, savedTargets.GetRenderTargets(), nullptr);
+		std::vector<FrameBufferDesc::Attachment> attachments {
+			{ Techniques::AttachmentSemantics::ColorLDR, AsAttachmentDesc(parserContext.GetNamedResources().GetBoundResource(RenderCore::Techniques::AttachmentSemantics::ColorLDR)->GetDesc()) },
+			{ Techniques::AttachmentSemantics::MultisampleDepth, Format::D24_UNORM_S8_UINT }
+		};
+		SubpassDesc mainPass;
+		mainPass.SetName("RenderCylinderHighlight");
+		mainPass.AppendOutput(0);
+		mainPass.AppendInput(1);
+		FrameBufferDesc fbDesc{ std::move(attachments), {mainPass} };
+		Techniques::RenderPassInstance rpi {
+			threadContext, fbDesc, 
+			parserContext.GetFrameBufferPool(),
+			parserContext.GetNamedResources() };
 
-            // create shader resource view for the depth buffer
-        Metal::ShaderResourceView depthSrv;
-        if (savedTargets.GetDepthStencilView())
-            depthSrv = Metal::ShaderResourceView(Metal::ExtractResource<ID3D::Resource>(
-                savedTargets.GetDepthStencilView()).get(), 
-				TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
+        auto depthSrv = rpi.GetSRV(1, TextureViewDesc{{TextureViewDesc::Aspect::Depth}});
+        if (!depthSrv || !depthSrv->IsGood()) return;
 
         TRY
         {
@@ -198,23 +209,30 @@ namespace ToolsRig
             } highlightParameters = {
                 mins, 0.f, maxs, 0.f
             };
-            Metal::ConstantBufferPacket constantBufferPackets[2];
+            ConstantBufferView constantBufferPackets[2];
             constantBufferPackets[0] = MakeSharedPkt(highlightParameters);
 
-            auto& circleHighlight = ::Assets::GetAssetDep<RenderCore::Assets::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L");
-            const Metal::ShaderResourceView* resources[] = { &depthSrv, &circleHighlight.GetShaderResource() };
+            auto& circleHighlight = *::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/circlehighlight.png:L")->Actualize();
+            const Metal::ShaderResourceView* resources[] = { depthSrv, &circleHighlight.GetShaderResource() };
 
-            Metal::BoundUniforms boundLayout(shaderProgram);
-            Techniques::TechniqueContext::BindGlobalUniforms(boundLayout);
-            boundLayout.BindConstantBuffer(Hash64("RectangleHighlightParameters"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("DepthTexture"), 0, 1);
-            boundLayout.BindShaderResource(Hash64("HighlightResource"), 1, 1);
+			UniformsStreamInterface usi;
+			usi.BindConstantBuffer(0, {Hash64("RectangleHighlightParameters")});
+            usi.BindShaderResource(0, Hash64("DepthTexture"));
+            usi.BindShaderResource(1, Hash64("HighlightResource"));
 
-            metalContext.Bind(shaderProgram);
-            boundLayout.Apply(
-                metalContext, 
-                parserContext.GetGlobalUniformsStream(),
-                Metal::UniformsStream(constantBufferPackets, nullptr, dimof(constantBufferPackets), resources, dimof(resources)));
+			Metal::BoundUniforms boundLayout(
+				shaderProgram,
+				{},
+				RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+
+            auto& metalContext = *RenderCore::Metal::DeviceContext::Get(threadContext);
+			metalContext.Bind(shaderProgram);
+			boundLayout.Apply(metalContext, 0, parserContext.GetGlobalUniformsStream());
+			boundLayout.Apply(metalContext, 1, UniformsStream{
+				MakeIteratorRange(constantBufferPackets),
+				UniformsStream::MakeResources(MakeIteratorRange(resources))
+				});
 
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
@@ -226,15 +244,11 @@ namespace ToolsRig
                 //          tools, so the easy way should be fine.
             metalContext.Draw(4);
 
-            ID3D::ShaderResourceView* srv = nullptr;
-            metalContext.GetUnderlying()->PSSetShaderResources(3, 1, &srv);
+            SceneEngine::MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 3, 1);
         } 
         CATCH_ASSETS(parserContext)
         CATCH(...) {} 
         CATCH_END
-
-        savedTargets.ResetToOldTargets(metalContext);
-#endif
     }
 
     class ManipulatorResBox
@@ -244,7 +258,7 @@ namespace ToolsRig
 
         const ::Assets::DepValPtr& GetDependencyValidation() { return _depVal; }
 
-        RenderCore::Assets::ShaderVariationSet _materialGenCylinder;
+        FixedFunctionModel::ShaderVariationSet _materialGenCylinder;
 
         ManipulatorResBox(const Desc&);
     private:
@@ -281,7 +295,7 @@ namespace ToolsRig
 
             auto shader = box._materialGenCylinder.FindVariation(
                 parserContext, Techniques::TechniqueIndex::Forward, 
-                "xleres/ui/objgen/arealight");
+                "xleres/ui/objgen/arealight.tech");
             
             if (shader._shader._shaderProgram) {
                 auto& metalContext = *Metal::DeviceContext::Get(threadContext);
@@ -291,13 +305,15 @@ namespace ToolsRig
                 auto transformPacket = Techniques::MakeLocalTransformPacket(
                     localToWorld, ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
                 shader._shader.Apply(
-                    metalContext, parserContext, 
-                    { transformPacket, shader._cbLayout->BuildCBDataAsPkt(matParams) });
+					metalContext, parserContext, {});
+
+				ConstantBufferView cbvs[] = { transformPacket, shader._cbLayout->BuildCBDataAsPkt(matParams) };
+				shader._shader._boundUniforms->Apply(metalContext, 1, { MakeIteratorRange(cbvs) });
 
                 auto& commonRes = Techniques::CommonResources();
                 metalContext.Bind(commonRes._blendStraightAlpha);
                 metalContext.Bind(commonRes._dssReadOnly);
-                metalContext.Unbind<Metal::VertexBuffer>();
+                // metalContext.Unbind<Metal::VertexBuffer>();
                 metalContext.Bind(Topology::TriangleList);
                 
                 const unsigned vertexCount = 32 * 6;	// (must agree with the shader!)
@@ -330,31 +346,33 @@ namespace ToolsRig
             InputElementDesc( "TEXCOORD", 0, Format::R32G32_FLOAT )
         };
 
-        Metal::VertexBuffer vertexBuffer(vertices, sizeof(vertices));
-        metalContext.Bind(MakeResourceList(vertexBuffer), sizeof(Vertex), 0);
+        auto vertexBuffer = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vertices));
 
         const auto& shaderProgram = ::Assets::GetAssetDep<Metal::ShaderProgram>(
             "xleres/basic2D.vsh:P2T:" VS_DefShaderModel, 
             "xleres/basic.psh:copy_bilinear:" PS_DefShaderModel);
-        Metal::BoundInputLayout boundVertexInputLayout(std::make_pair(vertexInputLayout, dimof(vertexInputLayout)), shaderProgram);
-        metalContext.Bind(boundVertexInputLayout);
+        Metal::BoundInputLayout boundVertexInputLayout(MakeIteratorRange(vertexInputLayout), shaderProgram);
+		VertexBufferView vbvs[] = {&vertexBuffer};
+        boundVertexInputLayout.Apply(metalContext, MakeIteratorRange(vbvs));
         metalContext.Bind(shaderProgram);
 
         Metal::ViewportDesc viewport(metalContext);
         float constants[] = { 1.f / viewport.Width, 1.f / viewport.Height, 0.f, 0.f };
-        Metal::ConstantBuffer reciprocalViewportDimensions(constants, sizeof(constants));
+        auto reciprocalViewportDimensions = MakeSharedPkt(constants);
         const Metal::ShaderResourceView* resources[] = { &srv };
-        const Metal::ConstantBuffer* cnsts[] = { &reciprocalViewportDimensions };
-        Metal::BoundUniforms boundLayout(shaderProgram);
-        boundLayout.BindConstantBuffer(Hash64("ReciprocalViewportDimensionsCB"), 0, 1);
-        boundLayout.BindShaderResource(Hash64("DiffuseTexture"), 0, 1);
-        boundLayout.Apply(metalContext, Metal::UniformsStream(), Metal::UniformsStream(nullptr, cnsts, dimof(cnsts), resources, dimof(resources)));
+        ConstantBufferView cbvs[] = { reciprocalViewportDimensions };
+		UniformsStreamInterface interf;
+		interf.BindConstantBuffer(0, {Hash64("ReciprocalViewportDimensionsCB")});
+        interf.BindShaderResource(0, Hash64("DiffuseTexture"));
+
+		Metal::BoundUniforms boundLayout(shaderProgram, Metal::PipelineLayoutConfig{}, {}, interf);
+		boundLayout.Apply(metalContext, 1, {MakeIteratorRange(cbvs), UniformsStream::MakeResources(MakeIteratorRange(resources))});
 
         metalContext.Bind(Metal::BlendState(BlendOp::Add, Blend::SrcAlpha, Blend::InvSrcAlpha));
         metalContext.Bind(Topology::TriangleStrip);
         metalContext.Draw(dimof(vertices));
 
-        metalContext.UnbindPS<Metal::ShaderResourceView>(0, 1);
+		boundLayout.UnbindShaderResources(metalContext, 1);
     }
 }
 

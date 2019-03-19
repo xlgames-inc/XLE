@@ -7,9 +7,7 @@
 #include "../Core/Types.h"
 #include "../Math/Transformations.h"
 
-namespace RenderOverlays { namespace DebuggingDisplay {
-    class InputSnapshot;
-}}
+namespace PlatformRig { class InputSnapshot; }
 
 namespace PlatformRig { namespace Camera
 {
@@ -122,8 +120,7 @@ namespace PlatformRig { namespace Camera
         };
         void InitUnitCamera(ClientUnit* unit);
         void AlignUnitToCamera(ClientUnit* unit, float yaw);
-        OutputCamera UpdateUnitCamera(float dt, ClientUnit* myUnit,
-            const RenderOverlays::DebuggingDisplay::InputSnapshot& snapShot);
+        OutputCamera UpdateUnitCamera(float dt, ClientUnit* myUnit, const InputSnapshot& snapShot);
 
         float GetCameraMaxDistance() const;
         float GetCameraMaxDistanceScaleFactor() const;

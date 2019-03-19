@@ -15,6 +15,7 @@
 
 #include "../ConsoleRig/GlobalServices.h"
 #include "../ConsoleRig/Log.h"
+#include "../ConsoleRig/AttachablePtr.h"
 #include "../Utility/StringFormat.h"
 #include "../Utility/MemoryUtils.h"
 #include "../Utility/Threading/ThreadingUtils.h"
@@ -355,7 +356,7 @@ namespace RenderCore
                 // initialize our global from the global services
                 // this will ensure that the same object will be used across multiple DLLs
             static auto Fn_GetStorage = ConstHash64<'gets', 'hare', 'dpkt', 'heap'>::Value;
-            auto& services = ConsoleRig::GlobalServices::GetCrossModule()._services;
+            auto& services = ConsoleRig::CrossModule::GetInstance()._services;
             if (!services.Has<MiniHeap*()>(Fn_GetStorage)) {
                 auto newMiniHeap = std::make_shared<MiniHeap>();
                 services.Add(Fn_GetStorage,
@@ -505,6 +506,14 @@ namespace RenderCore
                 return unsigned(i - range.begin());
         return ~0u;
     }
+
+	bool HasElement(IteratorRange<const MiniInputElementDesc*> elements, uint64 semanticHash)
+	{
+		for (const auto&e:elements)
+			if (e._semanticHash == semanticHash)
+				return true;
+		return false;
+	}
 
 	unsigned CalculateVertexStride(IteratorRange<const MiniInputElementDesc*> elements, bool enforceAlignment)
 	{

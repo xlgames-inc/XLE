@@ -63,6 +63,8 @@ float3 GetParametersTexture(VSOutput geo)
 {
     #if (OUTPUT_TEXCOORD==1) && (RES_HAS_ParametersTexture!=0)
         return ParametersTexture.Sample(DefaultSampler, geo.texCoord).rgb;
+    #else
+        return float3(1.f, 1.f, 1.f);
     #endif
 }
 

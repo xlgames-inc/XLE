@@ -39,7 +39,7 @@ namespace RenderCore { namespace Metal_DX11
 
     static const auto s_shaderReflectionInterfaceGuid = IID_ID3D11ShaderReflection; // __uuidof(ID3D::ShaderReflection); // 
 
-    class D3DShaderCompiler : public ShaderService::ILowLevelCompiler
+    class D3DShaderCompiler : public ILowLevelCompiler
     {
     public:
         virtual void AdaptShaderModel(
@@ -52,8 +52,9 @@ namespace RenderCore { namespace Metal_DX11
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            const ShaderService::ResId& shaderPath,
-			StringSection<::Assets::ResChar> definesTable) const;
+            const ResId& shaderPath,
+			StringSection<::Assets::ResChar> definesTable,
+			IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
 
         virtual std::string MakeShaderMetricsString(
             const void* byteCode, size_t byteCodeSize) const;
@@ -102,7 +103,7 @@ namespace RenderCore { namespace Metal_DX11
         HMODULE GetShaderCompileModule() const;
 
         static std::weak_ptr<D3DShaderCompiler> s_instance;
-        friend std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+        friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 
         std::vector<D3D10_SHADER_MACRO> _fixedDefines;
     };
@@ -205,7 +206,7 @@ namespace RenderCore { namespace Metal_DX11
 				auto ioResult = ::Assets::MainFileSystem::TryOpen(fileInterface, path, "rb", FileShareMode::Read | FileShareMode::Write);
 				if (ioResult == ::Assets::IFileSystem::IOReason::Success && fileInterface) {
 					auto desc = fileInterface->GetDesc();
-                    size = desc._size;
+                    size = (size_t)desc._size;
                     timeMarker._timeMarker = desc._modificationTime;
 
                     file = std::make_unique<uint8[]>(size);
@@ -499,12 +500,14 @@ namespace RenderCore { namespace Metal_DX11
     public:
         ID3D11Module* GetUnderlying() { return _module.get(); }
         ID3D11LibraryReflection* GetReflection() { return _reflection.get(); }
+		const ::Assets::DepValPtr& GetDependencyValidation() const { return _dependencyValidation; }
 
         FunctionLinkingModule(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> defines);
         ~FunctionLinkingModule();
     private:
         intrusive_ptr<ID3D11Module> _module;
         intrusive_ptr<ID3D11LibraryReflection> _reflection;
+		::Assets::DepValPtr _dependencyValidation;
     };
 
     FunctionLinkingModule::FunctionLinkingModule(StringSection<::Assets::ResChar> initializer, StringSection<::Assets::ResChar> defines)
@@ -533,6 +536,7 @@ namespace RenderCore { namespace Metal_DX11
         ID3D11LibraryReflection* reflectionRaw = nullptr;
         compiler->D3DReflectLibrary_Wrapper(code.begin(), code.size(), IID_ID3D11LibraryReflection, (void**)&reflectionRaw);
         _reflection = moveptr(reflectionRaw);
+		_dependencyValidation = byteCode->GetDependencyValidation();
     }
 
     FunctionLinkingModule::~FunctionLinkingModule() {}
@@ -568,7 +572,10 @@ namespace RenderCore { namespace Metal_DX11
 			::Assets::Blob& payload,
 			::Assets::Blob& errors,
             std::vector<::Assets::DependentFileState>& dependencies,
+			StringSection<> identifier,
             const char shaderModel[]);
+
+		const ::Assets::DepValPtr& GetDependencyValidation() { return _dependencyValidation; }
 
         using Section = StringSection<char>;
         FunctionLinkingGraph(Section script, Section shaderProfile, Section defines, const ::Assets::DirectorySearchRules& searchRules);
@@ -590,6 +597,7 @@ namespace RenderCore { namespace Metal_DX11
         std::vector<std::pair<std::string, AliasTarget>> _aliases;
 
         std::vector<::Assets::DependentFileState> _depFiles;
+		::Assets::DepValPtr _dependencyValidation;
         std::vector<std::pair<Section, Section>> _referencedFunctions;
 
         std::string _shaderProfile, _defines;
@@ -608,59 +616,68 @@ namespace RenderCore { namespace Metal_DX11
             Throw(::Exceptions::BasicLabel::BasicLabel("Failure while creating D3D function linking graph"));
         _graph = moveptr(graphRaw);
 
-        using Blob = FLGFormatter::Blob;
-        FLGFormatter formatter(script);
-        for (;;) {
-            auto next = formatter.PeekNext();
-            if (next.first == Blob::End) break;
+		_dependencyValidation = std::make_shared<::Assets::DependencyValidation>();
+
+		TRY
+		{
+			using Blob = FLGFormatter::Blob;
+			FLGFormatter formatter(script);
+			for (;;) {
+				auto next = formatter.PeekNext();
+				if (next.first == Blob::End) break;
             
-                // Will we parse a statement at a time.
-                // There are only 2 types of statements.
-                // Assignments  -- <<variable>> = <<Module/Input/Output/Call>
-                // Bindings     -- PassValue(<<node>>.<<parameter>>, <<node>>.<<parameter>>))
-            switch (next.first) {
-            case Blob::Token:
-                {
-                        // expecting an '=' token after this
-                    formatter.SetPosition(next.second.end());
-                    auto expectingAssignment = formatter.PeekNext();
-                    if (expectingAssignment.first != Blob::Assignment)
-                        Throw(FormatException("Expecting assignment after variable name", formatter.GetStreamLocation()));
-                    formatter.SetPosition(expectingAssignment.second.end());
+					// Will we parse a statement at a time.
+					// There are only 2 types of statements.
+					// Assignments  -- <<variable>> = <<Module/Input/Output/Call>
+					// Bindings     -- PassValue(<<node>>.<<parameter>>, <<node>>.<<parameter>>))
+				switch (next.first) {
+				case Blob::Token:
+					{
+							// expecting an '=' token after this
+						formatter.SetPosition(next.second.end());
+						auto expectingAssignment = formatter.PeekNext();
+						if (expectingAssignment.first != Blob::Assignment)
+							Throw(FormatException("Expecting assignment after variable name", formatter.GetStreamLocation()));
+						formatter.SetPosition(expectingAssignment.second.end());
 
-                    ParseAssignmentExpression(formatter, next.second, searchRules);
-                    break;
-                }
+						ParseAssignmentExpression(formatter, next.second, searchRules);
+						break;
+					}
 
-            case Blob::PassValue:
-                {
-                    auto startLocation = formatter.GetStreamLocation();
-                    formatter.SetPosition(next.second.end());
-                    auto expectingParameters = formatter.PeekNext();
-                    if (expectingParameters.first != Blob::ParameterBlock)
-                        Throw(FormatException("Expecting parameters block for PassValue statement", formatter.GetStreamLocation()));
-                    formatter.SetPosition(expectingParameters.second.end());
+				case Blob::PassValue:
+					{
+						auto startLocation = formatter.GetStreamLocation();
+						formatter.SetPosition(next.second.end());
+						auto expectingParameters = formatter.PeekNext();
+						if (expectingParameters.first != Blob::ParameterBlock)
+							Throw(FormatException("Expecting parameters block for PassValue statement", formatter.GetStreamLocation()));
+						formatter.SetPosition(expectingParameters.second.end());
 
-                    std::match_results<const char*> match;
-                    bool a = std::regex_match(
-                        expectingParameters.second.begin(), expectingParameters.second.end(), 
-                        match, PassValueParametersParse);
-                    if (a && match.size() >= 3) {
-                        ParsePassValue(
-                            MakeStringSection(match[1].first, match[1].second),
-                            MakeStringSection(match[2].first, match[2].second),
-                            startLocation);
-                    } else {
-                        Throw(FormatException("Couldn't parser parameters block for PassValue statement", formatter.GetStreamLocation()));
-                    }
+						std::match_results<const char*> match;
+						bool a = std::regex_match(
+							expectingParameters.second.begin(), expectingParameters.second.end(), 
+							match, PassValueParametersParse);
+						if (a && match.size() >= 3) {
+							ParsePassValue(
+								MakeStringSection(match[1].first, match[1].second),
+								MakeStringSection(match[2].first, match[2].second),
+								startLocation);
+						} else {
+							Throw(FormatException("Couldn't parser parameters block for PassValue statement", formatter.GetStreamLocation()));
+						}
 
-                    break;
-                }
+						break;
+					}
 
-            default:
-                Throw(FormatException("Unexpected token. Statements should start with either an assignment or PassValue instruction", formatter.GetStreamLocation()));
-            }
-        }
+				default:
+					Throw(FormatException("Unexpected token. Statements should start with either an assignment or PassValue instruction", formatter.GetStreamLocation()));
+				}
+			}
+		} CATCH (const ::Assets::Exceptions::ConstructionError& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _dependencyValidation));
+		} CATCH (const std::exception& e) {
+			Throw(::Assets::Exceptions::ConstructionError(e, _dependencyValidation));
+		} CATCH_END
     }
 
     FunctionLinkingGraph::~FunctionLinkingGraph() {}
@@ -669,6 +686,7 @@ namespace RenderCore { namespace Metal_DX11
 		::Assets::Blob& payload,
 		::Assets::Blob& errors,
         std::vector<::Assets::DependentFileState>& dependencies,
+		StringSection<> identifier,
         const char shaderModel[])
     {
         ID3D11Linker* linkerRaw = nullptr;
@@ -763,7 +781,7 @@ namespace RenderCore { namespace Metal_DX11
 
         CreatePayloadFromBlobs(
             payload, errors, resultBlob.get(), errorsBlob1.get(), 
-            ShaderService::ShaderHeader { shaderModel });
+            ShaderService::ShaderHeader { identifier, shaderModel, false });
 
         dependencies.insert(dependencies.end(), _depFiles.begin(), _depFiles.end());
         return true;
@@ -926,6 +944,7 @@ namespace RenderCore { namespace Metal_DX11
                     Throw(FormatException("Attempting to reassign module that is already assigned. Check for naming conflicts.", startLoc));
 
                 auto module = ParseModuleExpression(parameterBlock, searchRules, startLoc);
+				::Assets::RegisterAssetDependency(_dependencyValidation, module.GetDependencyValidation());
                 _modules.insert(i, std::make_pair(variableName, std::move(module)));
             }
             break;
@@ -1183,8 +1202,9 @@ namespace RenderCore { namespace Metal_DX11
         /*out*/ ::Assets::Blob& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        const ShaderService::ResId& shaderPath,
-		StringSection<::Assets::ResChar> definesTable) const
+        const ResId& shaderPath,
+		StringSection<::Assets::ResChar> definesTable,
+		IteratorRange<const SourceLineMarker*> sourceLineMarkers) const
     {
             // This is called (typically in a background thread)
             // after the shader data has been loaded from disk.
@@ -1198,6 +1218,9 @@ namespace RenderCore { namespace Metal_DX11
 
         ResChar shaderModel[64];
         AdaptShaderModel(shaderModel, dimof(shaderModel), shaderPath._shaderModel);
+
+		StringMeld<dimof(ShaderService::ShaderHeader::_identifier)> identifier;
+		identifier << shaderPath._filename << "-" << shaderPath._entryPoint;
 
             // If this is a compound text document, look for a chunk that contains a 
             // function linking graph with the right name. We can embedded different
@@ -1215,60 +1238,47 @@ namespace RenderCore { namespace Metal_DX11
             dependencies.push_back(
                 ::Assets::IntermediateAssets::Store::GetDependentFileState(shaderPath._filename));
 
-            try
-            {
+                // This a FunctionLinkingGraph definition
+                // look for the version number, and then parse this file as
+                // a simple script language.
+            const char* i = chunk->_content.begin();
+            const char* e = chunk->_content.end();
 
-                    // This a FunctionLinkingGraph definition
-                    // look for the version number, and then parse this file as
-                    // a simple script language.
-                const char* i = chunk->_content.begin();
-                const char* e = chunk->_content.end();
-
-                    // A version number may follow -- but it's optional
-                if (i < e && *i == ':') {
-                    ++i;
-                    auto versionStart = i;
-                    while (i < e && *i != '\n' && *i != '\r') ++i;
-                    if (StringToUnsigned(MakeStringSection(versionStart, i)) != 1)
-                        Throw(::Exceptions::BasicLabel("Function linking graph script version unsupported (%s)", MakeStringSection(versionStart, i).AsString().c_str()));
-                }
-
-                // we need to remove the initial part of the shader model (eg, ps_, vs_)
-                ResChar shortenedModel[64];
-                XlCopyString(shortenedModel, shaderModel);
-                const char* firstUnderscore = shortenedModel;
-                while (*firstUnderscore != '\0' && *firstUnderscore != '_') ++firstUnderscore;
-                if (firstUnderscore != 0)
-                    XlMoveMemory(shortenedModel, firstUnderscore+1, XlStringEnd(shortenedModel) - firstUnderscore);
-                
-                // We must first process the string using a string templating/interpolation library
-                // this adds a kind of pre-processing step that allows us to customize the shader graph
-                // that will be generated.
-                // Unfortunately the string processing step is a little inefficient. Other than using a 
-                // C preprocessor, there doesn't seem to be a highly efficient string templating
-                // library for C++ (without dependencies on other libraries such as boost). Maybe google ctemplates?
-                auto finalSection = MakeStringSection(i, e);
-                std::string customizedString;
-                const bool doStringTemplating = true;
-                if (constant_expression<doStringTemplating>::result()) {
-                    Plustache::template_t templ;
-                    auto obj = CreateTemplateContext(MakeIteratorRange(arrayOfDefines));
-                    customizedString = templ.render(std::string(i, e), obj);
-                    finalSection = MakeStringSection(customizedString);
-                }
-            
-                FunctionLinkingGraph flg(finalSection, shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
-                return flg.TryLink(payload, errors, dependencies, shaderModel);
-
-            } catch (const std::exception& e) {
-
-                    // We have to suppress any exceptions that occur during the linking
-                    // step. We can get parsing errors here, as well as linking errors
-                auto* what = e.what();
-                errors = std::make_shared<std::vector<uint8>>(what, XlStringEnd(what)+1);
-                return false;
-
+                // A version number may follow -- but it's optional
+            if (i < e && *i == ':') {
+                ++i;
+                auto versionStart = i;
+                while (i < e && *i != '\n' && *i != '\r') ++i;
+                if (StringToUnsigned(MakeStringSection(versionStart, i)) != 1)
+                    Throw(::Exceptions::BasicLabel("Function linking graph script version unsupported (%s)", MakeStringSection(versionStart, i).AsString().c_str()));
             }
+
+            // we need to remove the initial part of the shader model (eg, ps_, vs_)
+            ResChar shortenedModel[64];
+            XlCopyString(shortenedModel, shaderModel);
+            const char* firstUnderscore = shortenedModel;
+            while (*firstUnderscore != '\0' && *firstUnderscore != '_') ++firstUnderscore;
+            if (firstUnderscore != 0)
+                XlMoveMemory(shortenedModel, firstUnderscore+1, XlStringEnd(shortenedModel) - firstUnderscore);
+                
+            // We must first process the string using a string templating/interpolation library
+            // this adds a kind of pre-processing step that allows us to customize the shader graph
+            // that will be generated.
+            // Unfortunately the string processing step is a little inefficient. Other than using a 
+            // C preprocessor, there doesn't seem to be a highly efficient string templating
+            // library for C++ (without dependencies on other libraries such as boost). Maybe google ctemplates?
+            auto finalSection = MakeStringSection(i, e);
+            std::string customizedString;
+            const bool doStringTemplating = true;
+            if (constant_expression<doStringTemplating>::result()) {
+                Plustache::template_t templ;
+                auto obj = CreateTemplateContext(MakeIteratorRange(arrayOfDefines));
+                customizedString = templ.render(std::string(i, e), obj);
+                finalSection = MakeStringSection(customizedString);
+            }
+            
+            FunctionLinkingGraph flg(finalSection, shortenedModel, definesTable, ::Assets::DefaultDirectorySearchRules(shaderPath._filename));
+            return flg.TryLink(payload, errors, dependencies, identifier.AsStringSection(), shaderModel);
 
         } else {
 
@@ -1293,6 +1303,7 @@ namespace RenderCore { namespace Metal_DX11
             CreatePayloadFromBlobs(
                 payload, errors, codeResult, errorResult, 
                 ShaderService::ShaderHeader {
+					identifier.AsStringSection(),
                     shaderPath._shaderModel, shaderPath._dynamicLinkageEnabled
                 });
 
@@ -1359,7 +1370,7 @@ namespace RenderCore { namespace Metal_DX11
         auto compiler = GetShaderCompileModule();
         if (!compiler || compiler == INVALID_HANDLE_VALUE) {
 			assert(0 && "d3dcompiler_47.dll is missing. Please make sure this dll is in the same directory as your executable, or reachable path");
-            LogAlwaysError << "Could not load d3dcompiler_47.dll. This is required to compile shaders. Please make sure this dll is in the same directory as your executable, or reachable path" << std::endl;
+            Log(Error) << "Could not load d3dcompiler_47.dll. This is required to compile shaders. Please make sure this dll is in the same directory as your executable, or reachable path" << std::endl;
             return E_NOINTERFACE;
         }
 
@@ -1572,7 +1583,7 @@ namespace RenderCore { namespace Metal_DX11
         return moveptr(reflectionTemp);
     }
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device)
     {
         auto result = D3DShaderCompiler::s_instance.lock();
         if (result) return std::move(result);
@@ -1588,7 +1599,7 @@ namespace RenderCore { namespace Metal_DX11
         return std::move(result);
     }
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateVulkanPrecompiler()
+    std::shared_ptr<ILowLevelCompiler> CreateVulkanPrecompiler()
     {
         D3D10_SHADER_MACRO fixedDefines[] = { 
             MakeShaderMacro("VULKAN", "1")

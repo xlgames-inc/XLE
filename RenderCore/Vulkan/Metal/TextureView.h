@@ -35,8 +35,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		bool					IsGood() const { return _imageView != nullptr; }
 
-		Resource*							GetResource() const { return _image.get(); }
-		const std::shared_ptr<Resource>&	ShareResource() const { return _image; }
+		const std::shared_ptr<Resource>&	GetResource() const { return _image; }
         VkImageView							GetImageView() const { return _imageView.get(); }
 
     private:

@@ -84,13 +84,13 @@ namespace Utility
                 return (type.*ptrToMember)[arrayIndex]; 
             }
 
-        #define DefaultGetArray(InType, Member)                                                                             \
-            [](const InType& t, size_t index)                                                                               \
+        #define DefaultGetArray(InType, Member, Idx)                                                                        \
+            [](const InType& t)																								\
             {                                                                                                               \
                 using namespace Utility::Internal;                                                                          \
                 using ArrayType = decltype(std::declval<const InType>().*(&InType::Member));                                \
                 using ElementType = MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type;     \
-                return DefaultGetArrayImp<ElementType>(t, index, &InType::Member, sizeof(ArrayType) / sizeof(ElementType)); \
+                return DefaultGetArrayImp<ElementType>(t, Idx, &InType::Member, sizeof(ArrayType) / sizeof(ElementType));	\
             }                                                                                                               \
             /**/
 
@@ -104,14 +104,14 @@ namespace Utility
                 (type.*ptrToMember)[arrayIndex] = value;
             }
 
-        #define DefaultSetArray(InType, Member)                                                                                             \
-            [](InType& t, size_t index, Utility::Internal::MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type value)           \
+        #define DefaultSetArray(InType, Member, Idx)                                                                                        \
+            [](InType& t, Utility::Internal::MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type value)           \
             {                                                                                                                               \
                 using namespace Utility::Internal;                                                                                          \
                 using ArrayType = decltype(std::declval<const InType>().*(&InType::Member));                                                \
                 using ElementType = MaybeRemoveRef<decltype(*(std::declval<const InType>().*(&InType::Member)))>::Type;                     \
                 return DefaultSetArrayImp<ElementType>(                                                                                     \
-                    t, index, &InType::Member, sizeof(ArrayType) / sizeof(ElementType),                                                     \
+                    t, Idx, &InType::Member, sizeof(ArrayType) / sizeof(ElementType),														\
                     std::forward<ElementType>(value));                                                                                      \
             }                                                                                                                               \
             /**/
@@ -260,7 +260,7 @@ namespace Utility
                 if (srcStringForm) {
                     char buffer2[ParseBufferSize];
                     auto parsedType = ImpliedTyping::Parse(
-                        (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
+                        MakeStringSection((const char*)src, (const char*)PtrAdd(src, srcType.GetSize())),
                         buffer2, sizeof(buffer2));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
 
@@ -314,7 +314,7 @@ namespace Utility
                 if (srcStringForm) {
                     char buffer2[ParseBufferSize];
                     auto parsedType = ImpliedTyping::Parse(
-                        (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
+                        MakeStringSection((const char*)src, (const char*)PtrAdd(src, srcType.GetSize())),
                         buffer2, sizeof(buffer2));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
 
@@ -379,7 +379,7 @@ namespace Utility
             } else {
                 char parseBuffer[ParseBufferSize];
                 auto parseType = ImpliedTyping::Parse(
-                    AsPointer(src.cbegin()), AsPointer(src.cend()),
+                    MakeStringSection(src),
                     parseBuffer, sizeof(parseBuffer));
                 if (parseType._type == ImpliedTyping::TypeCat::Void) return false;
                 return ImpliedTyping::Cast(dst, dstSize, dstType, parseBuffer, parseType);

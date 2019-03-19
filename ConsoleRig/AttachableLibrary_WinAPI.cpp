@@ -6,8 +6,11 @@
 
 #include "AttachableLibrary.h"
 #include "GlobalServices.h"
+#include "AttachablePtr.h"
+#include "../Utility/SystemUtils.h"
 #include "../Core/WinAPI/IncludeWindows.h"
 #include <string>
+#include <sstream>
 #include <assert.h>
 
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
@@ -27,7 +30,7 @@ namespace ConsoleRig
         bool _versionInfoValid;
     };
 
-    bool AttachableLibrary::TryAttach()
+    bool AttachableLibrary::TryAttach(std::string& errorMsg)
     {
         if (!_pimpl->_attachCount) {
             assert(_pimpl->_library == LibraryHandle_Invalid);
@@ -37,18 +40,35 @@ namespace ConsoleRig
 
                 // if LoadLibrary failed, the attach must also fail
                 // this is most often caused by a missing dll file
-            if (_pimpl->_library == LibraryHandle_Invalid)
+            if (_pimpl->_library == LibraryHandle_Invalid) {
+
+				auto errorCode = GetLastError();
+				std::stringstream errorMsgStream;
+				switch (errorCode) {
+				case 126:
+					errorMsgStream << "Could not attach library (" << _pimpl->_filename << ") because of error code 126, which usually means a subdependency of the DLL couldn't be found or loaded";
+					break;
+				case 193:
+					errorMsgStream << "Could not attach library (" << _pimpl->_filename << ") because of error code 192, which usually means that the platform or instruction set for the DLL doesn't match this executable (for example, 64 bit app loading 32 bit dll)";
+					break;
+				default:
+					errorMsgStream << "Could not attach library (" << _pimpl->_filename << ") because of error code " << errorCode << ", which is unknown but translates to (" << SystemErrorCodeAsString(errorCode) << ")";
+					break;
+				}
+
+				errorMsg = errorMsgStream.str();
                 return false;
+			}
 
                 // Look for an "AttachLibrary" function, and call it.
                 // Also, call the "GetVersionInformation" function.
                 // If either is missing, we still succeed. The AttachLibrary
                 // function is only required for dlls that want to use our
                 // global services (like logging, console, etc)
-            auto attachFn = (void (*)(ConsoleRig::GlobalServices&))(*Windows::Fn_GetProcAddress)(_pimpl->_library, "AttachLibrary");
+            auto attachFn = (void (*)(ConsoleRig::CrossModule&))(*Windows::Fn_GetProcAddress)(_pimpl->_library, "AttachLibrary");
             auto getVersionInfoFn = (LibVersionDesc (*)())(*Windows::Fn_GetProcAddress)(_pimpl->_library, "GetVersionInformation");
             if (attachFn) {
-				(*attachFn)(ConsoleRig::GlobalServices::GetInstance());
+				(*attachFn)(ConsoleRig::CrossModule::GetInstance());
 			}
 
             if (getVersionInfoFn) {

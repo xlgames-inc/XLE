@@ -18,8 +18,8 @@ namespace RenderCore
         // flags / desc ?
 
         ConstantBufferView() : _prebuiltBuffer(nullptr) {}
-        ConstantBufferView(const SharedPkt& pkt) : _packet(pkt) {}
-        ConstantBufferView(SharedPkt&& pkt) : _packet(std::move(pkt)) {}
+        ConstantBufferView(const SharedPkt& pkt) : _packet(pkt), _prebuiltBuffer(nullptr) {}
+        ConstantBufferView(SharedPkt&& pkt) : _packet(std::move(pkt)), _prebuiltBuffer(nullptr) {}
         ConstantBufferView(const IResourcePtr& prebuilt) : _prebuiltBuffer(prebuilt.get()) {}
         ConstantBufferView(const IResource* prebuilt) : _prebuiltBuffer(prebuilt) {}
     };

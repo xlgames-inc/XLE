@@ -9,18 +9,20 @@
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/TextureView.h"
 
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
-    class LightingParserContext;
     RenderCore::Metal::ShaderResourceView TiledLighting_CalculateLighting(
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& lightingParserContext,
+        RenderCore::Techniques::ParsingContext& parsingContext,
         const RenderCore::Metal::ShaderResourceView& depthsSRV, 
-        const RenderCore::Metal::ShaderResourceView& normalsSRV);
+        const RenderCore::Metal::ShaderResourceView& normalsSRV,
+		RenderCore::Metal::UnorderedAccessView& metricBufferUAV);
 
     void TiledLighting_RenderBeamsDebugging(  
         RenderCore::Metal::DeviceContext* context, 
-        LightingParserContext& lightingParserContext,
+        RenderCore::Techniques::ParsingContext& parsingContext,
         bool active, unsigned mainViewportWidth, unsigned mainViewportHeight, 
         unsigned techniqueIndex);
 }

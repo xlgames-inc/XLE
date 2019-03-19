@@ -58,6 +58,7 @@
       <HintPath>..\..\Foreign\ForeignControls\Release\DropDownControls.dll</HintPath>
     </Reference>
     <Reference Include="System" />
+    <Reference Include="System.ComponentModel.Composition" />
     <Reference Include="System.Core" />
     <Reference Include="System.Drawing" />
     <Reference Include="System.Windows.Forms" />
@@ -144,6 +145,7 @@
     <Compile Include="ModifiedAssetsDialog.Designer.cs">
       <DependentUpon>ModifiedAssetsDialog.cs</DependentUpon>
     </Compile>
+    <Compile Include="ShaderTree\ShaderFragmentArchiveModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="BasicControls\ExceptionReport.resx">
@@ -190,6 +192,31 @@
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
       <Name>GUILayer</Name>
     </ProjectReference>
+    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
+      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
+      <Name>ShaderFragmentArchive</Name>
+    </ProjectReference>
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_circle.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_hexagon.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_oval.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_paper.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_roundedrect.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_square.png" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="Resources\icon_triangle.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

@@ -11,13 +11,14 @@ namespace Utility
 {
     bool ClassAccessors::TryOpaqueSet(
         void* dst, uint64 id,
-        const void* src, ImpliedTyping::TypeDesc srcType,
+        IteratorRange<const void*> src, ImpliedTyping::TypeDesc srcType,
         bool stringForm) const
     {
+		assert(src.size() == srcType.GetSize());
         auto i = LowerBound(_properties, id);
         if (i!=_properties.end() && i->first == id) {
             if (i->second._castFrom)
-                return i->second._castFrom(dst, src, srcType, stringForm);
+                return i->second._castFrom(dst, src.begin(), srcType, stringForm);
 
             if (i->second._castFromArray) {
                     // If there is an array form, then we can try to
@@ -28,19 +29,20 @@ namespace Utility
                 char buffer[256];
                 if (stringForm) {
                     auto parsedType = ImpliedTyping::Parse(
-                        (const char*)src, (const char*)PtrAdd(src, srcType.GetSize()),
+                        MakeStringSection((const char*)src.begin(), (const char*)src.end()),
                         buffer, sizeof(buffer));
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
 
                     srcType = parsedType;
-                    src = buffer;
+					src = {buffer, PtrAdd(buffer, srcType.GetSize())};
                 }
 
                 bool result = false;
                 auto elementDesc = ImpliedTyping::TypeDesc(srcType._type);
                 auto elementSize = ImpliedTyping::TypeDesc(srcType._type).GetSize();
                 for (unsigned c=0; c<srcType._arrayCount; ++c) {
-                    auto* e = PtrAdd(src, c*elementSize);
+                    auto* e = PtrAdd(src.begin(), c*elementSize);
+					assert(PtrAdd(e, elementDesc.GetSize()) <= src.end());
                     result |= i->second._castFromArray(dst, c, e, elementDesc, false);
                 }
                 return result;
@@ -53,13 +55,14 @@ namespace Utility
     bool ClassAccessors::TryOpaqueSet(
         void* dst,
         uint64 id, size_t arrayIndex,
-        const void* src,
+        IteratorRange<const void*> src,
         ImpliedTyping::TypeDesc srcType,
         bool stringForm) const
     {
+		assert(src.size() == srcType.GetSize());
         auto i = LowerBound(_properties, id);
         if (i!=_properties.end() && i->first == id)
-            return i->second._castFromArray(dst, arrayIndex, src, srcType, stringForm);
+            return i->second._castFromArray(dst, arrayIndex, src.begin(), srcType, stringForm);
         return false;
     }
 

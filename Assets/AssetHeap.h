@@ -1,9 +1,11 @@
 #pragma once
 
+#include "DepVal.h"
+#if !defined(__CLR_VER)
 #include "AssetFuture.h"
 #include "DeferredConstruction.h"
-#include "DepVal.h"
 #include "../Utility/Threading/Mutex.h"
+#endif
 #include <memory>
 
 namespace Assets
@@ -37,6 +39,7 @@ namespace Assets
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined(__CLR_VER)
 	template<typename AssetType>
 		class DefaultAssetHeap : public IDefaultAssetHeap
 	{
@@ -187,5 +190,7 @@ namespace Assets
 		{
 			return typeid(AssetType).name();
 		}
+
+#endif
 
 }

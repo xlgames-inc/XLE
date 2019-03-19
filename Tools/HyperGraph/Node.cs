@@ -20,22 +20,16 @@
 // THE SOFTWARE.
 #endregion
 
-using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using System.Drawing;
-using System.ComponentModel;
 using HyperGraph.Items;
 
 namespace HyperGraph
 {
 	public class Node : IElement
 	{
-		public string			Title			{ get { return titleItem.Title; } set { titleItem.Title = value; } }
-
-		#region Collapsed
-		internal bool			internalCollapsed;
+        #region Collapsed
+        private bool			internalCollapsed;
 		public bool				Collapsed		
 		{ 
 			get 
@@ -51,27 +45,46 @@ namespace HyperGraph
 			{
 				var oldValue = Collapsed;
 				internalCollapsed = value;
-				if (Collapsed != oldValue)
-					titleItem.ForceResize();
 			} 
 		}
 		#endregion
 
-		public bool				HasNoItems		{ get { return nodeItems.Count == 0; } }
+		public bool				HasNoItems		{ get { return (inputItems.Count == 0) && (centerItems.Count == 0) && (outputItems.Count == 0); } }
 
 		public PointF			Location		{ get; set; }
 		public object			Tag				{ get; set; }
 
+        public object           SubGraphTag     { get; set; }
+
 		public IEnumerable<NodeConnection>	Connections { get { return connections; } }
-		public IEnumerable<NodeItem>		Items		{ get { return nodeItems; } }
+
+		public IEnumerable<NodeItem>		InputItems		{ get { return inputItems; } }
+        public IEnumerable<NodeItem>        TopItems        { get { return topItems; } }
+        public IEnumerable<NodeItem>        CenterItems     { get { return centerItems; } }
+        public IEnumerable<NodeItem>        BottomItems     { get { return bottomItems; } }
+        public IEnumerable<NodeItem>        OutputItems     { get { return outputItems; } }
+
+        public enum Dock {  Input, Top, Center, Bottom, Output };
+        public IEnumerable<NodeItem>        ItemsForDock(Dock c)
+        {
+            if (c == Dock.Input) return InputItems;
+            if (c == Dock.Top) return TopItems;
+            if (c == Dock.Center) return CenterItems;
+            if (c == Dock.Bottom) return BottomItems;
+            if (c == Dock.Output) return OutputItems;
+            return null;
+        }
 
         public IEnumerable<NodeConnector>   InputConnectors
         {
             get
             {
-                foreach (var i in nodeItems)
-                    if (i.Input != null && i.Input.Enabled)
-                        yield return i.Input;
+                foreach (var i in InputItems)
+                {
+                    var c = i as NodeConnector;
+                    if (c != null)
+                        yield return c;
+                }
             }
         }
 
@@ -79,10 +92,42 @@ namespace HyperGraph
         {
             get
             {
-                foreach (var i in nodeItems)
-                    if (i.Output != null && i.Output.Enabled)
-                        yield return i.Output;
+                foreach (var i in OutputItems)
+                {
+                    var c = i as NodeConnector;
+                    if (c != null)
+                        yield return c;
+                }
             }
+        }
+
+        public enum LayoutType { Rectangular, Circular };
+        public LayoutType Layout { get; set; }
+
+        private NodeItem titleItem_ = null;
+        public NodeItem TitleItem
+        {
+            get { return titleItem_; }
+            set
+            {
+                if (titleItem_ != null)
+                    RemoveItem(titleItem_);
+                if (value.Node != null)
+                    value.Node.RemoveItem(value);
+                topItems.Insert(0, value);
+                value.Node = this;
+                titleItem_ = value;
+            }
+        }
+
+        public string Title
+        {
+            get
+            {
+                var titleItem = TitleItem as NodeTitleItem;
+                return (titleItem != null) ? titleItem.Title : string.Empty;
+            }
+            set { TitleItem = new NodeTitleItem { Title = value }; }
         }
 
         public RectangleF		bounds;
@@ -91,32 +136,74 @@ namespace HyperGraph
 		internal RenderState	outputState		= RenderState.None;
 
 		private readonly List<NodeConnection>	connections			= new List<NodeConnection>();
-		internal readonly NodeTitleItem			titleItem			= new NodeTitleItem();
-		private readonly List<NodeItem>			nodeItems			= new List<NodeItem>();
+		private readonly List<NodeItem>			inputItems			= new List<NodeItem>();
+        private readonly List<NodeItem>         topItems            = new List<NodeItem>();
+        private readonly List<NodeItem>         centerItems         = new List<NodeItem>();
+        private readonly List<NodeItem>         bottomItems         = new List<NodeItem>();
+        private readonly List<NodeItem>         outputItems         = new List<NodeItem>();
 
-		public Node(string title)
+		public void AddItem(NodeItem item, Dock column)
 		{
-			this.Title = title;
-			titleItem.Node = this;
-		}
-
-		public void AddItem(NodeItem item)
-		{
-			if (nodeItems.Contains(item))
-				return;
 			if (item.Node != null)
 				item.Node.RemoveItem(item);
-			nodeItems.Add(item);
+            switch (column)
+            {
+            case Dock.Input: inputItems.Add(item); break;
+            case Dock.Top: topItems.Add(item); break;
+            case Dock.Center: centerItems.Add(item); break;
+            case Dock.Bottom: bottomItems.Add(item); break;
+            case Dock.Output: outputItems.Add(item); break;
+            }
 			item.Node = this;
 		}
 
 		public void RemoveItem(NodeItem item)
 		{
-			if (!nodeItems.Contains(item))
-				return;
+            for (int c = 0; c < connections.Count;)
+            {
+                if (connections[c].To == item)
+                {
+                    if (connections[c].From != null && connections[c].From.Node != null)
+                        connections[c].From.Node.RemoveConnection(connections[c]);
+                    connections.RemoveAt(c);
+                }
+                else if (connections[c].From == item)
+                {
+                    if (connections[c].To != null && connections[c].To.Node != null)
+                        connections[c].To.Node.RemoveConnection(connections[c]);
+                    connections.RemoveAt(c);
+                }
+                else
+                    ++c;
+            }
 			item.Node = null;
-			nodeItems.Remove(item);
-		}
+
+			inputItems.Remove(item);
+            topItems.Remove(item);
+            centerItems.Remove(item);
+            bottomItems.Remove(item);
+            outputItems.Remove(item);
+        }
+
+        public void MoveItemToTop(NodeItem item)
+        {
+            List<List<NodeItem>> lists = new List<List<NodeItem>>
+            {
+                inputItems, topItems, centerItems, bottomItems, outputItems
+            };
+
+            bool foundSomewhere = false;
+            foreach (var list in lists)
+            {
+                if (list.Contains(item))
+                {
+                    list.Remove(item);
+                    list.Insert(0, item);
+                    foundSomewhere = true;
+                }
+            }
+            System.Diagnostics.Debug.Assert(foundSomewhere);
+        }
 
         public void AddConnection(NodeConnection newConnection)
         {
@@ -136,46 +223,8 @@ namespace HyperGraph
             return true;
         }
 
-        // Returns true if there are some connections that aren't connected
-        public bool AnyConnectorsDisconnected
-		{
-			get
-			{
-				foreach (var item in nodeItems)
-				{
-					if (item.Input.Enabled && !item.Input.HasConnection)
-						return true;
-					if (item.Output.Enabled && !item.Output.HasConnection)
-						return true;
-				}
-				return false;
-			}
-		}
-
-		// Returns true if there are some output connections that aren't connected
-		public bool AnyOutputConnectorsDisconnected
-		{
-			get
-			{
-				foreach (var item in nodeItems)
-					if (item.Output.Enabled && !item.Output.HasConnection)
-						return true;
-				return false;
-			}
-		}
-
-		// Returns true if there are some input connections that aren't connected
-		public bool AnyInputConnectorsDisconnected
-		{
-			get
-			{
-				foreach (var item in nodeItems)
-					if (item.Input.Enabled && !item.Input.HasConnection)
-						return true;
-				return false;
-			}
-		}
-
 		public ElementType ElementType { get { return ElementType.Node; } }
+
+        public Node() { Layout = LayoutType.Rectangular; }
 	}
 }

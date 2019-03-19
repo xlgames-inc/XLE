@@ -69,6 +69,9 @@
       <PreprocessorDefinitions>PROJECT_COLLADA_CONVERSION;%(PreprocessorDefinitions)</PreprocessorDefinitions>
     </ClCompile>
     <ProjectReference />
+    <PostBuildEvent>
+      <Command>copy $(TargetPath) $(ProjectDir)\..\..\Working\$(TargetFileName)</Command>
+    </PostBuildEvent>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <ClCompile>
@@ -92,11 +95,11 @@
     <ClCompile Include="..\..\RenderCore\GeoProc\MeshDatabase.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentAnimController.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentCommandStream.cpp" />
-    <ClCompile Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentModel.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.cpp" />
     <ClCompile Include="..\..\RenderCore\GeoProc\NascentRawGeometry.cpp" />
-    <ClCompile Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.cpp" />
-    <ClCompile Include="..\..\RenderCore\GeoProc\SkeletonRegistry.cpp" />
+    <ClCompile Include="..\..\RenderCore\GeoProc\NascentSkeletonMachine.cpp" />
+    <ClCompile Include="..\ColladaConversion.cpp" />
     <ClCompile Include="..\ColladaDocument.cpp" />
     <ClCompile Include="..\ConversionConfig.cpp" />
     <ClCompile Include="..\DLLInterface.cpp" />
@@ -105,8 +108,6 @@
     <ClCompile Include="..\SCommandStream.cpp" />
     <ClCompile Include="..\SEffect.cpp" />
     <ClCompile Include="..\SRawGeometry.cpp" />
-    <ClCompile Include="..\STransformationMachine.cpp" />
-    <ClCompile Include="..\Version.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\..\RenderCore\Assets\MaterialScaffold.h" />
@@ -118,13 +119,12 @@
     <ClInclude Include="..\..\RenderCore\GeoProc\MeshDatabase.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentAnimController.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentCommandStream.h" />
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentGeometryObjects.h" />
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentMaterial.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentModel.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectGuid.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentObjectsSerialize.h" />
     <ClInclude Include="..\..\RenderCore\GeoProc\NascentRawGeometry.h" />
-    <ClInclude Include="..\..\RenderCore\GeoProc\NascentTransformationMachine.h" />
-    <ClInclude Include="..\..\RenderCore\GeoProc\SkeletonRegistry.h" />
+    <ClInclude Include="..\..\RenderCore\GeoProc\NascentSkeletonMachine.h" />
+    <ClInclude Include="..\ColladaConversion.h" />
     <ClInclude Include="..\ConversionConfig.h" />
     <ClInclude Include="..\ScaffoldParsingUtil.h" />
     <ClInclude Include="..\SAnimation.h" />
@@ -133,7 +133,6 @@
     <ClInclude Include="..\SCommandStream.h" />
     <ClInclude Include="..\SEffect.h" />
     <ClInclude Include="..\SRawGeometry.h" />
-    <ClInclude Include="..\STransformationMachine.h" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">

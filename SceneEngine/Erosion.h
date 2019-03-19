@@ -10,10 +10,11 @@
 #include "../Math/Vector.h"
 #include <memory>
 
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
-    class LightingParserContext;
-
     class ErosionSimulation
     {
     public:
@@ -50,7 +51,7 @@ namespace SceneEngine
         };
         void RenderDebugging(
             RenderCore::Metal::DeviceContext& metalContext,
-            LightingParserContext& parserContext,
+            RenderCore::Techniques::ParsingContext& parserContext,
             RenderDebugMode mode,
             const Float2& worldSpaceOffset = Float2(0.f, 0.f));
 

@@ -5,11 +5,10 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "LocalCompiledShaderSource.h"
-#include "../Metal/Shader.h"
 
 #include "../IDevice.h"
 #include "../../Assets/ChunkFile.h"
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/IArtifact.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/ArchiveCache.h"
@@ -33,9 +32,9 @@
 
 namespace RenderCore { namespace Assets 
 {
-    static const bool CompileInBackground = false;
+    static const bool CompileInBackground = true;
     using ::Assets::ResChar;
-    using ResId = ShaderService::ResId;
+    using ResId = ILowLevelCompiler::ResId;
 
         ////////////////////////////////////////////////////////////
 
@@ -252,21 +251,21 @@ namespace RenderCore { namespace Assets
 
         ////////////////////////////////////////////////////////////
 
-    class LocalCompiledShaderSource::Marker : public ::Assets::ICompileMarker
+    class LocalCompiledShaderSource::Marker : public ::Assets::IArtifactCompileMarker
     {
     public:
         std::shared_ptr<::Assets::IArtifact> GetExistingAsset() const;
-        std::shared_ptr<::Assets::CompileFuture> InvokeCompile() const;
+        std::shared_ptr<::Assets::ArtifactFuture> InvokeCompile() const;
         StringSection<::Assets::ResChar> Initializer() const;
 
         Marker(
             StringSection<::Assets::ResChar> initializer, 
-            const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
+            const ILowLevelCompiler::ResId& res, StringSection<::Assets::ResChar> definesTable,
             const ::Assets::IntermediateAssets::Store& store,
             std::shared_ptr<LocalCompiledShaderSource> compiler);
         ~Marker();
     protected:
-        ShaderService::ResId _res;
+        ILowLevelCompiler::ResId _res;
         ::Assets::rstring _definesTable;
         ::Assets::rstring _initializer;
         std::weak_ptr<LocalCompiledShaderSource> _compiler;
@@ -274,7 +273,7 @@ namespace RenderCore { namespace Assets
     };
 
     static uint64 GetTarget(
-		const ShaderService::ResId& res, const ::Assets::rstring& definesTable,
+		const ILowLevelCompiler::ResId& res, const ::Assets::rstring& definesTable,
         /*out*/ ::Assets::ResChar archiveName[], size_t archiveNameCount,
         /*out*/ ::Assets::ResChar depName[], size_t depNameCount)
     {
@@ -286,8 +285,6 @@ namespace RenderCore { namespace Assets
 
     std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
     {
-		return nullptr;
-
         auto c = _compiler.lock();
         if (!c) return nullptr;
 
@@ -303,19 +300,19 @@ namespace RenderCore { namespace Assets
             nullptr, nullptr);
     }
 
-    std::shared_ptr<::Assets::CompileFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
+    std::shared_ptr<::Assets::ArtifactFuture> LocalCompiledShaderSource::Marker::InvokeCompile() const
     {
         if (!_compiler.lock()) return nullptr;
 
-        auto futureRes = std::make_shared<::Assets::CompileFuture>();
+        auto futureRes = std::make_shared<::Assets::ArtifactFuture>();
 
         auto store = _store;
         auto compiler = _compiler;
         auto definesTable = _definesTable;
         auto resId = _res;
 
-        std::function<void(::Assets::CompileFuture&)> operation =
-            [store, compiler, definesTable, resId] (::Assets::CompileFuture& future) {
+        std::function<void(::Assets::ArtifactFuture&)> operation =
+            [store, compiler, definesTable, resId] (::Assets::ArtifactFuture& future) {
 
             auto c = compiler.lock();
             if (!c)
@@ -337,7 +334,7 @@ namespace RenderCore { namespace Assets
 					success = c->_compiler->DoLowLevelCompile(
 						payload, errors, deps,
 						preprocessedOutput._processedSource.data(), preprocessedOutput._processedSource.size(), resId,
-						definesTable.c_str(),
+						definesTable,
                         MakeIteratorRange(preprocessedOutput._lineMarkers));
 
 				} else {
@@ -357,7 +354,7 @@ namespace RenderCore { namespace Assets
 					success = c->_compiler->DoLowLevelCompile(
 						payload, errors, deps,
 						fileData.get(), fileSize, resId,
-						definesTable.c_str());
+						definesTable);
 				}
 			}
 				// embue any exceptions with the dependency validation
@@ -446,7 +443,7 @@ namespace RenderCore { namespace Assets
             future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
             future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
 
-                // give the CompileFuture object the same state
+                // give the ArtifactFuture object the same state
             assert(future.GetArtifacts().size() != 0);
             future.SetState(newState);
         };
@@ -466,7 +463,7 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::Marker::Marker(
-        StringSection<::Assets::ResChar> initializer, const ShaderService::ResId& res, StringSection<::Assets::ResChar> definesTable,
+        StringSection<::Assets::ResChar> initializer, const ILowLevelCompiler::ResId& res, StringSection<::Assets::ResChar> definesTable,
         const ::Assets::IntermediateAssets::Store& store,
         std::shared_ptr<LocalCompiledShaderSource> compiler)
     : _initializer(initializer.AsString()), _res(res), _definesTable(definesTable.AsString()), _compiler(std::move(compiler)), _store(&store)
@@ -474,9 +471,8 @@ namespace RenderCore { namespace Assets
 
     LocalCompiledShaderSource::Marker::~Marker() {}
     
-    std::shared_ptr<::Assets::ICompileMarker> LocalCompiledShaderSource::PrepareAsset(
-        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount,
-        const ::Assets::IntermediateAssets::Store& destinationStore)
+    std::shared_ptr<::Assets::IArtifactCompileMarker> LocalCompiledShaderSource::Prepare(
+        uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount)
     {
             //  Execute an offline compile. This should happen in the background
             //  When it's complete, we'll write the result into the appropriate
@@ -504,15 +500,27 @@ namespace RenderCore { namespace Assets
             //  We just have to be careful about multiple threads or multiple processes accessing the
             //  same file at the same time (particularly if one is doing a read, and another is doing
             //  a write that changes the offsets within the file).
+		if (typeCode != CompiledShaderByteCode::CompileProcessType) return nullptr;
 
+		assert(initializerCount >= 1 && !initializers[0].IsEmpty());
         auto shaderId = ShaderService::MakeResId(initializers[0], _compiler.get());
 		StringSection<ResChar> definesTable = (initializerCount > 1)?initializers[1]:StringSection<ResChar>();
-        return std::make_shared<Marker>(initializers[0], shaderId, definesTable, destinationStore, shared_from_this());
+        return std::make_shared<Marker>(initializers[0], shaderId, definesTable, *::Assets::Services::GetAsyncMan().GetIntermediateStore(), shared_from_this());
     }
+
+	std::vector<uint64_t> LocalCompiledShaderSource::GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount)
+	{
+		return {};
+	}
+
+	std::vector<std::pair<std::string, std::string>> LocalCompiledShaderSource::GetExtensionsForType(uint64_t typeCode)
+	{
+		return {};
+	}
 
     auto LocalCompiledShaderSource::CompileFromFile(
         StringSection<ResChar> resource, 
-        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
         auto resId = ShaderService::MakeResId(resource, _compiler.get());
@@ -523,14 +531,65 @@ namespace RenderCore { namespace Assets
     }
             
     auto LocalCompiledShaderSource::CompileFromMemory(
-        StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
-        StringSection<char> shaderModel, StringSection<ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<char> pShaderInMemory, StringSection<char> pEntryPoint, 
+        StringSection<char> pShaderModel, StringSection<ResChar> pDefinesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
-        /*auto compileHelper = std::make_shared<ShaderCompileMarker>(_compiler, _preprocessor);
-        compileHelper->Enqueue(shaderInMemory, entryPoint, shaderModel, definesTable); 
-        return compileHelper;*/
-        assert(0);
-        return nullptr;
+        std::weak_ptr<ILowLevelCompiler> compiler = _compiler;
+        std::string shaderInMemory = pShaderInMemory.AsString();
+		std::string entryPoint = pEntryPoint.AsString();
+		std::string shaderModel = pShaderModel.AsString();
+		std::string definesTable = pDefinesTable.AsString();
+
+        auto futureRes = std::make_shared<::Assets::ArtifactFuture>();
+		std::function<void(::Assets::ArtifactFuture&)> operation =
+            [compiler, shaderInMemory, entryPoint, shaderModel, definesTable] (::Assets::ArtifactFuture& future) {
+
+            auto c = compiler.lock();
+            if (!c)
+                Throw(std::runtime_error("Low level shader compiler has been destroyed before compile operation completed"));
+
+			std::vector<::Assets::DependentFileState> deps;
+			Blob errors, payload;
+			bool success = false;
+
+			TRY
+			{
+				ResId resId { "", entryPoint, shaderModel };
+				success = c->DoLowLevelCompile(
+					payload, errors, deps,
+					shaderInMemory.data(), shaderInMemory.size(), resId,
+					definesTable);
+			}
+				// embue any exceptions with the dependency validation
+			CATCH(const ::Assets::Exceptions::ConstructionError& e)
+			{
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+			}
+			CATCH(const std::exception& e)
+			{
+				Throw(::Assets::Exceptions::ConstructionError(e, ::Assets::AsDepVal(MakeIteratorRange(deps))));
+			}
+			CATCH_END
+
+                // Create the artifact and add it to the compile marker
+			auto depVal = ::Assets::AsDepVal(MakeIteratorRange(deps));
+			auto newState = success ? ::Assets::AssetState::Ready : ::Assets::AssetState::Invalid;
+
+            future.AddArtifact("main", std::make_shared<::Assets::BlobArtifact>(payload, depVal));
+            future.AddArtifact("log", std::make_shared<::Assets::BlobArtifact>(errors, depVal));
+
+                // give the ArtifactFuture object the same state
+            assert(future.GetArtifacts().size() != 0);
+            future.SetState(newState);
+        };
+
+        if (CompileInBackground) {
+            ::Assets::QueueCompileOperation(futureRes, std::move(operation));
+        } else {
+            operation(*futureRes);
+        }
+
+        return futureRes;
     }
 
     void LocalCompiledShaderSource::ClearCaches() {
@@ -542,7 +601,7 @@ namespace RenderCore { namespace Assets
     }
 
     LocalCompiledShaderSource::LocalCompiledShaderSource(
-        std::shared_ptr<ShaderService::ILowLevelCompiler> compiler,
+        std::shared_ptr<ILowLevelCompiler> compiler,
         std::shared_ptr<ISourceCodePreprocessor> preprocessor,
         const DeviceDesc& devDesc)
     : _compiler(std::move(compiler))

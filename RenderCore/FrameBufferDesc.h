@@ -46,8 +46,6 @@ namespace RenderCore
         float _width = 1.0f, _height = 1.0f;
         unsigned _arrayLayerCount = 0u;
 
-        TextureViewDesc::Aspect _defaultAspect = TextureViewDesc::Aspect::UndefinedAspect;
-
         enum class DimensionsMode
         {
             Absolute,                   ///< _width and _height define absolute pixel values
@@ -187,6 +185,8 @@ namespace RenderCore
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const = 0;
 		virtual ~INamedAttachments();
 	};
+
+	TextureViewDesc CompleteTextureViewDesc(const AttachmentDesc& attachmentDesc, const TextureViewDesc& viewDesc, TextureViewDesc::Aspect defaultAspect = TextureViewDesc::Aspect::UndefinedAspect);
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////
 

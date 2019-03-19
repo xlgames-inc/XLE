@@ -14,8 +14,6 @@ using Sce.Atf;
 using Sce.Atf.Applications;
 using LevelEditorCore;
 
-using ModelView = ControlsLibraryExt.ModelView.ModelView;
-
 namespace LevelEditorXLE.AssetMan
 {
     [Export(typeof(IInitializable))]
@@ -29,10 +27,12 @@ namespace LevelEditorXLE.AssetMan
 
             _resourceLister.SelectionChanged += resourceLister_SelectionChanged;
 
-            _settings = GUILayer.ModelVisSettings.CreateDefault();
-            _controls = new ModelView { Object = _settings, _activeMaterialContext = this._activeMaterialContext };
+            _previewerContext = new ControlsLibraryExt.ModelView.PreviewerContext();
+            _previewerControl = new ControlsLibraryExt.ModelView.PreviewerControl();
+            // { Object = _settings, _activeMaterialContext = this._activeMaterialContext };
+            _previewerControl.SetContext(_previewerContext);
             _controlHostService.RegisterControl(
-                _controls,
+                _previewerControl,
                 new ControlInfo(
                     "Resource Preview".Localize(),
                     "Preview selected 3d resource".Localize(),
@@ -56,19 +56,29 @@ namespace LevelEditorXLE.AssetMan
 
         private void resourceLister_SelectionChanged(object sender, EventArgs e)
         {
-            Uri resourceUri = _resourceLister.LastSelected;
-            if (resourceUri == null) return;
+            var resourceDesc = _resourceLister.LastSelected;
+            if (!resourceDesc.HasValue) return;
 
-            var ext = Path.GetExtension(resourceUri.AbsolutePath);
-            if (_fileExtensions.Where(x => string.Equals(x, ext, StringComparison.OrdinalIgnoreCase)).FirstOrDefault() != null)
+            if ((resourceDesc.Value.Types & (uint)ResourceTypeFlags.Model) != 0)
             {
                 // It's a model extension. Pass it through to the current settings object
-                var name = _assetService.StripExtension(_assetService.AsAssetName(resourceUri));
-                _settings.ModelName = name;
-                _settings.MaterialName = name;
-                _settings.Supplements = "";
-                _settings.ResetCamera = true;
-                _controls.Invalidate3DView();
+                var name = _assetService.AsAssetName(resourceDesc.Value);
+                var modelSettings = _previewerContext.ModelSettings;
+                modelSettings.ModelName = name;
+                modelSettings.MaterialName = name;
+                modelSettings.Supplements = "";
+                _previewerContext.ModelSettings = modelSettings;
+                // _settings.ResetCamera = true;
+                _previewerControl.Invalidate3DView();
+            }
+
+            if ((resourceDesc.Value.Types & (uint)ResourceTypeFlags.Animation) != 0)
+            {
+                var name = _assetService.AsAssetName(resourceDesc.Value);
+                var modelSettings = _previewerContext.ModelSettings;
+                modelSettings.AnimationFileName = name;
+                _previewerContext.ModelSettings = modelSettings;
+                _previewerControl.Invalidate3DView();
             }
         }
 
@@ -80,9 +90,8 @@ namespace LevelEditorXLE.AssetMan
 
         [Import(AllowDefault = true)]
         private ControlsLibraryExt.Material.ActiveMaterialContext _activeMaterialContext;
-        private ModelView _controls;
-
-        private GUILayer.ModelVisSettings _settings;
+        private ControlsLibraryExt.ModelView.PreviewerControl _previewerControl;
+        private ControlsLibraryExt.ModelView.PreviewerContext _previewerContext;
 
         private IEnumerable<string> _fileExtensions;
 

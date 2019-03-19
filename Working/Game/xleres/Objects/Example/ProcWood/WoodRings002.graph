@@ -1,0 +1,31 @@
+// CompoundDocument:1
+import basic = "xleres/nodes/basic.sh"
+
+void WoodRings002(out float rings, float3 coords, float density, float strength, float shape)
+{
+	node node_0 = [[visualNode2]]basic::Separate3(input:coords);
+	node node_1 = [[visualNode3]]basic::Multiply1(lhs:[[visualNode4]]basic::Power1(base:[[visualNode5]]basic::Add1(lhs:[[visualNode6]]basic::Multiply1(lhs:node_0.g, rhs:node_0.g).result, rhs:[[visualNode7]]basic::Multiply1(lhs:node_0.b, rhs:node_0.b).result).result, exponent:".5").result, rhs:density);
+	rings = [[visualNode0]]basic::Add1(lhs:[[visualNode8]]basic::Multiply1(lhs:[[visualNode9]]basic::Cosine1(x:[[visualNode10]]basic::Multiply1(lhs:[[visualNode11]]basic::Power1(base:[[visualNode12]]basic::Add1(lhs:[[visualNode13]]basic::Subtract1(rhs:[[visualNode1]]basic::Round1(value:node_1.result).result, lhs:node_1.result).result, rhs:".5").result, exponent:shape).result, rhs:"6.283").result).result, rhs:strength).result, rhs:".5").result;
+}
+attributes visualNode8(PreviewGeometry:"plane2d", X:"809", Y:"755", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode0(PreviewGeometry:"sphere", X:"984", Y:"754", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"plane2d", X:"509", Y:"547", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"plane2d", X:"364", Y:"263", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"plane2d", X:"373", Y:"474", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(PreviewGeometry:"plane2d", X:"859", Y:"264", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode5(PreviewGeometry:"chart", X:"712", Y:"265", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode6(PreviewGeometry:"chart", X:"550", Y:"221", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode7(PreviewGeometry:"sphere", X:"548", Y:"302", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode9(PreviewGeometry:"chart", X:"629", Y:"750", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode10(PreviewGeometry:"sphere", X:"492", Y:"746", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode11(PreviewGeometry:"sphere", X:"352", Y:"745", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode12(PreviewGeometry:"plane2d", X:"814", Y:"474", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode13(PreviewGeometry:"plane2d", X:"655", Y:"475", State:"Collapsed", OutputToVisualize:"");
+/* <<Chunk:NodeGraphMetaData:WoodRings002>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+	<HasTechniqueConfig>false</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+</NodeGraphMetaData>
+)-- */

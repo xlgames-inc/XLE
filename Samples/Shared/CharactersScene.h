@@ -18,7 +18,7 @@ namespace Sample
     class AnimationNames;
     class CharacterInputFiles;
 
-    class IPlayerCharacter : public RenderOverlays::DebuggingDisplay::IInputListener, public PlatformRig::Camera::ICameraAttach
+    class IPlayerCharacter : public PlatformRig::IInputListener, public PlatformRig::Camera::ICameraAttach
     {
     public:
         virtual bool IsPresent() const = 0;

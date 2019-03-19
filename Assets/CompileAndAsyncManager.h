@@ -17,7 +17,7 @@
 namespace Assets
 {
     class DependencyValidation; class DependentFileState; 
-    namespace IntermediateAssets { class CompilerSet; class Store; }
+    namespace IntermediateAssets { class Store; }
     class ArchiveCache;
 
     class IPollingAsyncProcess
@@ -30,12 +30,40 @@ namespace Assets
         virtual ~IPollingAsyncProcess();
     };
 
-    class IThreadPump
-    {
-    public:
-        virtual void Update() = 0;
-        virtual ~IThreadPump();
-    };
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class IArtifactCompileMarker;
+
+	class IAssetCompiler
+	{
+	public:
+		virtual std::shared_ptr<IArtifactCompileMarker> Prepare(
+			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
+		virtual std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount) = 0;
+		virtual std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode) = 0;
+		virtual void StallOnPendingOperations(bool cancelAll) = 0;
+		virtual ~IAssetCompiler();
+	};
+
+	class CompilerSet
+	{
+	public:
+		void AddCompiler(const std::shared_ptr<IAssetCompiler>& processor);
+        void RemoveCompiler(const IAssetCompiler& compiler);
+		std::shared_ptr<IArtifactCompileMarker> Prepare(
+			uint64_t typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::vector<uint64_t> GetTypesForAsset(const StringSection<ResChar> initializers[], unsigned initializerCount);
+		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
+		void StallOnPendingOperations(bool cancelAll);
+
+		CompilerSet();
+		~CompilerSet();
+	protected:
+		class Pimpl;
+		std::unique_ptr<Pimpl> _pimpl;
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class CompileAndAsyncManager
     {
@@ -43,11 +71,11 @@ namespace Assets
         void Update();
 
         void Add(const std::shared_ptr<IPollingAsyncProcess>& pollingProcess);
-        void Add(std::unique_ptr<IThreadPump>&& threadPump);
 
-        IntermediateAssets::Store&			GetIntermediateStore();
-        IntermediateAssets::CompilerSet&	GetIntermediateCompilers();
-		IntermediateAssets::Store&			GetShadowingStore();
+		CompilerSet& GetIntermediateCompilers();
+
+        const std::shared_ptr<IntermediateAssets::Store>&	GetIntermediateStore();
+		const std::shared_ptr<IntermediateAssets::Store>&	GetShadowingStore();
 
         CompileAndAsyncManager();
         ~CompileAndAsyncManager();

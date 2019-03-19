@@ -9,6 +9,7 @@
 #include "DeepOceanSim.h"
 #include "RefractionsBuffer.h"
 #include "SceneEngineUtils.h"
+#include "MetalStubs.h"
 #include "../SceneEngine/SceneParser.h"
 #include "../SceneEngine/Sky.h"
 #include "../SceneEngine/LightDesc.h"
@@ -17,7 +18,8 @@
 #include "../RenderCore/Techniques/CommonBindings.h"
 #include "../RenderCore/Techniques/CommonResources.h"
 #include "../RenderCore/Techniques/PredefinedCBLayout.h"
-#include "../RenderCore/Assets/ShaderVariationSet.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
+#include "../FixedFunctionModel/ShaderVariationSet.h"
 #include "../RenderCore/Format.h"
 #include "../ConsoleRig/ResourceBox.h"
 #include "../ConsoleRig/Console.h"
@@ -120,14 +122,14 @@ namespace SceneEngine
         class SimGrid
         {
         public:
-            Metal::IndexBuffer _ib;
+            Metal::Buffer _ib;
             Float4x4 _gridToWorld;
             unsigned _indexCount;
             Int2 _gridCoord;
         };
 
-        Metal::IndexBuffer _defaultIB;
-        Metal::IndexBuffer _unsimDefaultIB;
+        Metal::Buffer _defaultIB;
+        Metal::Buffer _unsimDefaultIB;
         std::vector<SimGrid> _simGrids;
         std::vector<Int2> _validGridList;
         std::unique_ptr<ShallowWaterSim> _sim;
@@ -279,7 +281,7 @@ namespace SceneEngine
             }
         }
 
-        _pimpl->_defaultIB = Metal::IndexBuffer(
+        _pimpl->_defaultIB = MakeMetalIB(
             AsPointer(ibData.cbegin()), 
             ibData.size() * sizeof(unsigned short));
 
@@ -297,7 +299,7 @@ namespace SceneEngine
                 (uint16)b,
                 (uint16)d
             };
-            _pimpl->_unsimDefaultIB = Metal::IndexBuffer(ibData2, sizeof(ibData2));
+            _pimpl->_unsimDefaultIB = MakeMetalIB(ibData2, sizeof(ibData2));
         }
     }
 
@@ -352,7 +354,7 @@ namespace SceneEngine
 
             if (ibData.empty()) return; // no cells in this one
 
-            simGrid._ib = Metal::IndexBuffer(
+            simGrid._ib = MakeMetalIB(
                 AsPointer(ibData.cbegin()), 
                 ibData.size() * sizeof(unsigned short));
             simGrid._indexCount = (unsigned)ibData.size();
@@ -373,7 +375,7 @@ namespace SceneEngine
 
     void ShallowSurface::UpdateSimulation(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         ISurfaceHeightsProvider* surfaceHeights)
     {
         _pimpl->_bufferCounter = (_pimpl->_bufferCounter+1)%3;
@@ -434,7 +436,7 @@ namespace SceneEngine
 
     void ShallowSurface::RenderDebugging(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
         unsigned skyProjType, bool refractionsEnable)
     {
@@ -445,14 +447,14 @@ namespace SceneEngine
             _pimpl->_cfg._simGridDims);
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
         matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
-        RenderCore::Assets::ShaderVariationSet simMaterial(
+        FixedFunctionModel::ShaderVariationSet simMaterial(
             InputLayout(nullptr, 0),
             {   ObjectCB::LocalTransform,
                 Hash64("ShallowWaterCellConstants"), Hash64("ShallowWaterLighting") },
             matParam);
 
         matParam.SetParameter((const utf8*)"SHALLOW_WATER_IS_SIMULATED", 0);
-		RenderCore::Assets::ShaderVariationSet unsimMaterial(
+		FixedFunctionModel::ShaderVariationSet unsimMaterial(
             InputLayout(nullptr, 0),
             { ObjectCB::LocalTransform, Hash64("ShallowWaterLighting") },
             matParam);
@@ -460,8 +462,7 @@ namespace SceneEngine
             // set up basic render state
         metalContext.Bind(Topology::TriangleList);
         metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
-        metalContext.Unbind<Metal::VertexBuffer>();
-        metalContext.Unbind<Metal::BoundInputLayout>();
+        metalContext.UnbindInputLayout();
         _pimpl->_sim->BindForOceanRender(metalContext, _pimpl->_bufferCounter);
 
         auto lightingConstantsBuffer = MakeLightingConstants(_pimpl->_lightingCfg);
@@ -480,14 +481,15 @@ namespace SceneEngine
                     continue;
                 }
 
-                shader._shader.Apply(
-                    metalContext, parserContext, 
-                    {
-                        MakeLocalTransformPacket(
-                            i->_gridToWorld,
-                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        page, lightingConstantsBuffer
-                    });
+				shader._shader.ApplyUniforms(metalContext, 0, parserContext.GetGlobalUniformsStream());
+				ConstantBufferView cbvs[] {
+                    MakeLocalTransformPacket(
+                        i->_gridToWorld,
+                        ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                    page, lightingConstantsBuffer
+                };
+				shader._shader.ApplyUniforms(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
+                shader._shader.Apply(metalContext, parserContext, {});
 
                 if (i->_ib.GetUnderlying()) {
                     metalContext.Bind(i->_ib, Format::R16_UINT);
@@ -508,14 +510,15 @@ namespace SceneEngine
                 auto gridToWorld = grid._gridToWorld;
                 gridToWorld(2, 3) = _pimpl->_cfg._baseHeight;   // apply base height to the grid-to-world transform
 
-                unsimShader._shader.Apply(
-                    metalContext, parserContext, 
-                    {
-                        MakeLocalTransformPacket(
-                            gridToWorld,
-                            ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                        lightingConstantsBuffer
-                    });
+				unsimShader._shader.ApplyUniforms(metalContext, 0, parserContext.GetGlobalUniformsStream());
+				ConstantBufferView cbvs[] {
+                    MakeLocalTransformPacket(
+                        gridToWorld,
+                        ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
+                    lightingConstantsBuffer
+                };
+				unsimShader._shader.ApplyUniforms(metalContext, 1, UniformsStream{MakeIteratorRange(cbvs)});
+                unsimShader._shader.Apply(metalContext, parserContext, {});
 
                 if (grid._ib.GetUnderlying()) {
                     metalContext.Bind(grid._ib, Format::R16_UINT);
@@ -551,7 +554,7 @@ namespace SceneEngine
 
     static bool BindRefractions(
         Metal::DeviceContext& metalContext, 
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         float refractionStdDev, bool doStepDown)
     {
         Metal::ViewportDesc mainViewportDesc(metalContext);
@@ -565,20 +568,23 @@ namespace SceneEngine
         SavedTargets targets(metalContext);
         if (!targets.GetDepthStencilView()) return false;
 
-        auto duplicatedDepthBuffer = Metal::Duplicate(metalContext, Metal::ExtractResource(targets.GetDepthStencilView()));
-        Metal::ShaderResourceView secondaryDepthBufferSRV(duplicatedDepthBuffer, 
+		auto depthResource = Metal::ExtractResource<ID3D::Resource>(targets.GetDepthStencilView());
+        auto duplicatedDepthBuffer = Metal::Duplicate(metalContext, depthResource);
+        Metal::ShaderResourceView secondaryDepthBufferSRV(
+			Metal::AsResourcePtr(std::move(duplicatedDepthBuffer)), 
             {{TextureViewDesc::Aspect::Depth}});
 
-        metalContext.BindPS(MakeResourceList(9, refractionBox.GetSRV(), secondaryDepthBufferSRV));
+        metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(9, refractionBox.GetSRV(), secondaryDepthBufferSRV));
 #endif
 		return true;
     }
 
     void ShallowSurfaceManager::RenderDebugging(
         Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex,
-        ISurfaceHeightsProvider* surfaceHeights)
+        ISurfaceHeightsProvider* surfaceHeights,
+		const GlobalLightingDesc& globalLightingDesc)
     {
         if (_pimpl->_surfaces.empty()) return;
         if (!Tweakable("DoShallowSurface", true)) return;
@@ -605,12 +611,12 @@ namespace SceneEngine
                 _pimpl->_oceanSim->Update(
                     &metalContext, parserContext,
                     deepOceanSettings, 0);
-                metalContext.BindPS(MakeResourceList(1, _pimpl->_oceanSim->_normalsTextureSRV));
+                metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(1, _pimpl->_oceanSim->_normalsTextureSRV));
             }
 
-            auto skyProjectionType = SkyTextureParts(parserContext.GetSceneParser()->GetGlobalLightingDesc()).BindPS(metalContext, 11);
+            auto skyProjectionType = SkyTextureParts(globalLightingDesc).BindPS(metalContext, 11);
 
-            metalContext.BindPS(MakeResourceList(4,
+            metalContext.GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(4,
 				*ConsoleRig::FindCachedBox2<WaterNoiseTexture>()._srv));
 
             for (auto i : _pimpl->_surfaces)
@@ -619,7 +625,7 @@ namespace SceneEngine
                     skyProjectionType, refractionsEnable);
 
                 // unbind refractions
-            metalContext.UnbindPS<Metal::ShaderResourceView>(9, 2);
+            MetalStubs::UnbindPS<Metal::ShaderResourceView>(metalContext, 9, 2);
         CATCH_ASSETS_END(parserContext)
     }
 

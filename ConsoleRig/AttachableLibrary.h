@@ -12,17 +12,12 @@
 
 namespace ConsoleRig
 {
-    class LibVersionDesc
-    {
-    public:
-        const char* _versionString;
-        const char* _buildDateString;
-    };
+	class LibVersionDesc;
 
     class AttachableLibrary
     {
     public:
-        bool TryAttach();
+        bool TryAttach(std::string& errorMsg);
         void Detach();
 
         bool TryGetVersion(LibVersionDesc&);

@@ -4,9 +4,15 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "../HelloWorld.h"
+#include "../../Shared/SampleRig.h"
 #include "../../../PlatformRig/AllocationProfiler.h"
+#include "../../../Assets/IFileSystem.h"
+#include "../../../Assets/OSFileSystem.h"
+#include "../../../Assets/MountingTree.h"
 #include "../../../ConsoleRig/Log.h"
 #include "../../../ConsoleRig/GlobalServices.h"
+#include "../../../ConsoleRig/AttachablePtr.h"
 #include "../../../Assets/CompileAndAsyncManager.h"
 #include "../../../Utility/SystemUtils.h"
 #include "../../../Core/Exceptions.h"
@@ -18,19 +24,12 @@
     //  (this is only actually required for the "WinMain" signature)
 #include "../../../Core/WinAPI/IncludeWindows.h"
 
-namespace Sample
-{
-    void ExecuteSample();
-}
-
 int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow)
 {
     #if CLIBRARIES_ACTIVE == CLIBRARIES_MSVC && defined(_DEBUG)
         _CrtSetDbgFlag(_CRTDBG_ALLOC_MEM_DF | /*_CRTDBG_CHECK_CRT_DF |*/ /*_CRTDBG_CHECK_EVERY_16_DF |*/ _CRTDBG_LEAK_CHECK_DF /*| _CRTDBG_CHECK_ALWAYS_DF*/);
         // _CrtSetBreakAlloc(18160);
     #endif
-
-    using namespace Sample;
 
         //  There maybe a few basic platform-specific initialisation steps we might need to
         //  perform. We can do these here, before calling into platform-specific code.
@@ -41,24 +40,19 @@ int APIENTRY WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLi
         //  startup allocation counts.
     PlatformRig::AccumulatedAllocations accumulatedAllocations;
 
-    ConsoleRig::GlobalServices services;
-    LogInfo << "------------------------------------------------------------------------------------------";
-
-    // TestParser3();
-    // TestParser2();
-    // TestParser();
-
-    // ParserPerformanceTest();
+    auto services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>();
+    Log(Verbose) << "------------------------------------------------------------------------------------------" << std::endl;
 
     TRY {
-        Sample::ExecuteSample();
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
+        Sample::ExecuteSample(std::make_shared<Sample::HelloWorldOverlay>());
     } CATCH (const std::exception& e) {
         XlOutputDebugString("Hit top-level exception: ");
         XlOutputDebugString(e.what());
         XlOutputDebugString("\n");
 
-        LogAlwaysError << "Hit top level exception. Aborting program!";
-        LogAlwaysError << e.what();
+        Log(Error) << "Hit top level exception. Aborting program!" << std::endl;
+        Log(Error) << e.what() << std::endl;
         XlMessageBox(e.what(), "Top level exception");
     } CATCH_END
 

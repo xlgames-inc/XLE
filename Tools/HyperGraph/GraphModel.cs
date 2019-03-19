@@ -13,9 +13,14 @@ namespace HyperGraph
             get { return _graphNodes; }
         }
 
+        public IEnumerable<Node> SubGraphs
+        {
+            get { return _subGraphNodes; }
+        }
+
         private readonly List<Node> _graphNodes = new List<Node>();
+        private readonly List<Node> _subGraphNodes = new List<Node>();
         private static uint _nextRevisionIndex = 1;
-        private uint _revisionIndex;
 
         public ICompatibilityStrategy CompatibilityStrategy { get; set; }
 
@@ -41,7 +46,7 @@ namespace HyperGraph
                         var selection = element as NodeSelection;
                         foreach (var node in selection.Nodes.Reverse<Node>())
                         {
-                            if (_graphNodes[0] != node)
+                            if (_graphNodes.Contains(node) && _graphNodes[0] != node)
                             {
                                 _graphNodes.Remove(node);
                                 _graphNodes.Insert(0, node);
@@ -53,7 +58,7 @@ namespace HyperGraph
                 case ElementType.Node:
                     {
                         var node = element as Node;
-                        if (_graphNodes[0] != node)
+                        if (_graphNodes.Contains(node) && _graphNodes[0] != node)
                         {
                             _graphNodes.Remove(node);
                             _graphNodes.Insert(0, node);
@@ -61,8 +66,7 @@ namespace HyperGraph
                         }
                         break;
                     }
-                case ElementType.InputConnector:
-                case ElementType.OutputConnector:
+                case ElementType.Connector:
                     var connector = element as NodeConnector;
                     BringElementToFront(connector.Node);
                     break;
@@ -168,6 +172,7 @@ namespace HyperGraph
 
             DisconnectAll(node);
             _graphNodes.Remove(node);
+            _subGraphNodes.Remove(node);
             UpdateRevisionIndex();
             if (InvalidateViews != null) 
                 InvalidateViews(this, EventArgs.Empty);
@@ -199,6 +204,7 @@ namespace HyperGraph
 
                 DisconnectAll(node);
                 _graphNodes.Remove(node);
+                _subGraphNodes.Remove(node);
                 modified = true;
 
                 if (NodeRemoved != null)
@@ -211,16 +217,49 @@ namespace HyperGraph
             }
             return modified;
         }
+
+        public bool AddSubGraph(Node subGraph)
+        {
+            if (subGraph == null ||
+                _subGraphNodes.Contains(subGraph))
+                return false;
+
+            _subGraphNodes.Insert(0, subGraph);
+            if (NodeAdded != null)
+            {
+                var eventArgs = new AcceptNodeEventArgs(subGraph);
+                NodeAdded(this, eventArgs);
+                if (eventArgs.Cancel)
+                {
+                    _subGraphNodes.Remove(subGraph);
+                    return false;
+                }
+            }
+
+            BringElementToFront(subGraph);
+            // FocusElement = node;
+            UpdateRevisionIndex();
+            if (InvalidateViews != null)
+                InvalidateViews(this, EventArgs.Empty);
+            return true;
+        }
         #endregion
 
         #region Connect / Disconnect
-        public NodeConnection Connect(NodeItem from, NodeItem to, string name)
+        private bool IsInputConnector(NodeConnector connector)
         {
-            return Connect(from.Output, to.Input, name);
+            return connector.Node.InputConnectors.Contains(connector);
         }
 
-        public NodeConnection Connect(NodeConnector from, NodeConnector to, string name)
+        public NodeConnection Connect(NodeConnector from, NodeConnector to, string text)
         {
+            if (!IsInputConnector(to))
+            {
+                var temp = from;
+                from = to;
+                to = temp;
+                System.Diagnostics.Debug.Assert(IsInputConnector(to));
+            }
             if (from != null)
             {
                 foreach (var other in from.Node.Connections)
@@ -244,7 +283,7 @@ namespace HyperGraph
             var connection = new NodeConnection();
             connection.From = from;
             connection.To = to;
-            connection.Name = name;
+            connection.Text = text;
 
             if (from != null)
                 from.Node.AddConnection(connection);
@@ -320,6 +359,13 @@ namespace HyperGraph
 
         public bool ConnectionIsAllowed(NodeConnector from, NodeConnector to)
         {
+            if (!IsInputConnector(to))
+            {
+                var temp = from;
+                from = to;
+                to = temp;
+                System.Diagnostics.Debug.Assert(IsInputConnector(to));
+            }
             if (null != CompatibilityStrategy)
             {
                 if (CompatibilityStrategy.CanConnect(from, to) == ConnectionType.Incompatible)
@@ -353,16 +399,16 @@ namespace HyperGraph
         public event EventHandler<AcceptNodeConnectionEventArgs> ConnectionAdded;
         public event EventHandler<AcceptNodeConnectionEventArgs> ConnectionRemoving;
         public event EventHandler<NodeConnectionEventArgs> ConnectionRemoved;
-        public event EventHandler<EventArgs> MiscChange;
+        public event EventHandler<MiscChangeEventArgs> MiscChange;
         public event EventHandler<EventArgs> InvalidateViews;
         #endregion
 
         public GraphModel() { UpdateRevisionIndex(); }
 
-        private void UpdateRevisionIndex() { _revisionIndex = _nextRevisionIndex++; }
-        public uint GlobalRevisionIndex { get { return _revisionIndex; } }
+        private void UpdateRevisionIndex() { GlobalRevisionIndex = _nextRevisionIndex++; }
+        public uint GlobalRevisionIndex { get; private set; }
 
-        public void InvokeMiscChange(bool rebuildShaders) { if (rebuildShaders) UpdateRevisionIndex(); MiscChange.Invoke(this, EventArgs.Empty); }
+        public void InvokeMiscChange(bool rebuildShaders) { if (rebuildShaders) UpdateRevisionIndex(); MiscChange.Invoke(this, new MiscChangeEventArgs(rebuildShaders)); }
     }
 
     public class GraphSelection : IGraphSelection
@@ -426,8 +472,7 @@ namespace HyperGraph
 				    case ElementType.NodeItem:
 					    var focusItem = e as NodeItem;
 					    return (focusItem.Node == element);
-				    case ElementType.InputConnector:
-				    case ElementType.OutputConnector:
+				    case ElementType.Connector:
 					    var focusConnector = e as NodeConnector;
 					    return (focusConnector.Node == element);
 				    case ElementType.NodeSelection:

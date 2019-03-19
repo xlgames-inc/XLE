@@ -105,7 +105,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
     }
 
-    bool            ScrollBar::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool            ScrollBar::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         const bool overScrollBar = (interfaceState.TopMostId() == _id);
         _draggingScrollBar = (_draggingScrollBar || overScrollBar) && (input._mouseButtonsDown&1);
@@ -396,24 +396,24 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, TextStyle* textStyle, ColorB colour, StringSection<> text)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
+		return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, TextAlignment::Left, text);
     }
 
     Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, StringSection<> text)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, TextAlignment::Left, text);
+        return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, TextAlignment::Left, text);
     }
 
-    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, StringSection<> text)
+    Coord DrawText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment alignment, StringSection<> text)
     {
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, text);
+        return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, alignment, text);
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], va_list args)
+    Coord DrawFormatText(IOverlayContext* context, const Rect& rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment alignment, const char text[], va_list args)
     {
         char buffer[4096];
         vsnprintf(buffer, dimof(buffer), text, args);
-        return (Coord)context->DrawText(AsPixelCoords(rect), textStyle, colour, alignment, buffer);
+        return (Coord)context->DrawText(AsPixelCoords(rect), GetDefaultFont(), textStyle ? *textStyle : TextStyle{}, colour, alignment, buffer);
     }
 
     Coord DrawFormatText(IOverlayContext* context, const Rect & rect, TextStyle* textStyle, ColorB colour, const char text[], ...)
@@ -434,7 +434,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         return result;
     }
 
-    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment::Enum alignment, const char text[], ...)
+    Coord DrawFormatText(IOverlayContext* context, const Rect & rect, float depth, TextStyle* textStyle, ColorB colour, TextAlignment alignment, const char text[], ...)
     {
         va_list args;
         va_start(args, text);
@@ -607,9 +607,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Float2(0.f, 0.f), Float2(0.f, 0.f),
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
-        TextStyle style(
-            ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont,
-            DrawTextOptions(false, true));
+        TextStyle style{DrawTextOptions(false, true)};
 
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
@@ -626,7 +624,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 r._topLeft[0] += 8;
 
                 const ColorB colour = HeaderTextColor;
-                context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, MakeStringSection(i->first));
+                context->DrawText(AsPixelCoords(r), ConsoleRig::FindCachedBox2<TableFontBox>()._headerFont, style, colour, TextAlignment::Left, MakeStringSection(i->first));
 
                 if (interactables)
                     interactables->Register(Interactables::Widget(r, InteractableId_Make(MakeStringSection(i->first))));
@@ -651,9 +649,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
             Float2(0.f, 0.f), Float2(0.f, 0.f),
             "ui\\dd\\shapes.sh:Paint,Shape=RectShape,Fill=RaisedRefactiveFill,Outline=SolidFill");
 
-        TextStyle style(
-            ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont,
-            DrawTextOptions(true, false));
+        TextStyle style{DrawTextOptions(true, false)};
 
         Layout tempLayout(rect);
         tempLayout._paddingInternalBorder = 0;
@@ -673,7 +669,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
 
                     const ColorB colour = TextColor;
                     // DrawRectangle(context, r, s->second._bkColour);
-                    context->DrawText(AsPixelCoords(r), &style, colour, TextAlignment::Left, MakeStringSection(s->second._label));
+                    context->DrawText(AsPixelCoords(r), ConsoleRig::FindCachedBox2<TableFontBox>()._valuesFont, style, colour, TextAlignment::Left, MakeStringSection(s->second._label));
                 }
             }
         }
@@ -835,13 +831,11 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
     ///////////////////////////////////////////////////////////////////////////////////
-    IInputListener::~IInputListener() {}
     IWidget::~IWidget() {}
 
     InteractableId  InteractableId_Make(StringSection<char> name)   { return Hash64(name.begin(), name.end()); }
-    KeyId           KeyId_Make(StringSection<char> name)            { return Hash32(name.begin(), name.end()); }
 
-    bool DebugScreensSystem::OnInputEvent(const InputSnapshot& evnt)
+    bool DebugScreensSystem::OnInputEvent(const PlatformRig::InputContext& context, const PlatformRig::InputSnapshot& evnt)
     {
         bool consumedEvent      = false;
         _currentMouseHeld       = evnt._mouseButtonsDown;
@@ -851,7 +845,7 @@ namespace RenderOverlays { namespace DebuggingDisplay
         }
 
         for (auto i=_systemWidgets.begin(); i!=_systemWidgets.end() && !consumedEvent; ++i) {
-            consumedEvent |= i->_widget->ProcessInput(_currentInterfaceState, evnt);
+            consumedEvent |= i->_widget->ProcessInput(_currentInterfaceState, context, evnt);
         }
 
         for (auto i=_panels.begin(); i!=_panels.end() && !consumedEvent; ++i) {
@@ -863,14 +857,14 @@ namespace RenderOverlays { namespace DebuggingDisplay
                 }
                 
                 if (!alreadySeen) {
-                    consumedEvent |= _widgets[i->_widgetIndex]._widget->ProcessInput(_currentInterfaceState, evnt);
+                    consumedEvent |= _widgets[i->_widgetIndex]._widget->ProcessInput(_currentInterfaceState, context, evnt);
                 }
             }
         }
 
         // if (!(evnt._mouseButtonsDown & (1<<0)) && (evnt._mouseButtonsTransition & (1<<0)) && !consumedEvent) {
         if (!consumedEvent) {
-            consumedEvent |= ProcessInputPanelControls(_currentInterfaceState, evnt);
+            consumedEvent |= ProcessInputPanelControls(_currentInterfaceState, context, evnt);
         }
 
         _consumedInputEvent |= consumedEvent;
@@ -972,7 +966,8 @@ namespace RenderOverlays { namespace DebuggingDisplay
     }
 
     bool    DebugScreensSystem::ProcessInputPanelControls(  InterfaceState& interfaceState, 
-                                                            const InputSnapshot& evnt)
+                                                            const PlatformRig::InputContext& inputContext,
+															const PlatformRig::InputSnapshot& evnt)
     {
         if (interfaceState.TopMostId() && evnt.IsRelease_LButton()) {
             InteractableId topMostWidget = interfaceState.TopMostId();
@@ -1024,9 +1019,9 @@ namespace RenderOverlays { namespace DebuggingDisplay
             }
         }
 
-        const KeyId ctrl    = KeyId_Make("control");
-        const KeyId left    = KeyId_Make("left");
-        const KeyId right   = KeyId_Make("right");
+        const KeyId ctrl    = PlatformRig::KeyId_Make("control");
+        const KeyId left    = PlatformRig::KeyId_Make("left");
+        const KeyId right   = PlatformRig::KeyId_Make("right");
         if (evnt.IsHeld(ctrl) && !_widgets.empty()) {
             if (evnt.IsPress(left)) {
                 const unsigned panelIndex = 0;
@@ -1298,74 +1293,6 @@ namespace RenderOverlays { namespace DebuggingDisplay
             }
         }
         return false;
-    }
-
-    ///////////////////////////////////////////////////////////////////////////////////
-
-    static void AddOrChangeButton(std::vector<InputSnapshot::ActiveButton>& container, const InputSnapshot::ActiveButton& newButton)
-    {
-        for (auto i=container.begin(); i!=container.end(); ++i) {
-            if (i->_name == newButton._name) {
-                *i = newButton;
-                return;
-            }
-        }
-        container.push_back(newButton);
-    }
-
-    void    InputSnapshot::Accumulate(const InputSnapshot& newEvnts, const InputSnapshot& lastFrameState)
-    {
-        for (unsigned c=0; c<32; ++c) {
-            if (newEvnts._mouseButtonsTransition & (1<<c)) {
-                _mouseButtonsDown = (_mouseButtonsDown & ~(1<<c)) | (newEvnts._mouseButtonsDown & (1<<c));
-                if ((newEvnts._mouseButtonsDown & (1<<c)) != (lastFrameState._mouseButtonsDown & (1<<c))) {
-                    _mouseButtonsTransition |= (1<<c);
-                } else {
-                    _mouseButtonsTransition &= ~(1<<c);
-                }
-            }
-        }
-
-        _mouseButtonsDblClk |= newEvnts._mouseButtonsDblClk;
-
-        for (auto a=newEvnts._activeButtons.begin(); a!=newEvnts._activeButtons.end(); ++a) {
-            if (a->_transition) {
-                bool lastFrameKeyState = false;
-                for (auto i=lastFrameState._activeButtons.begin(); i!=lastFrameState._activeButtons.end(); ++i) {
-                    if (i->_name == a->_name) {
-                        lastFrameKeyState = i->_state;
-                        break;
-                    }
-                }
-
-                AddOrChangeButton(
-                    _activeButtons,
-                    ActiveButton(a->_name, a->_state != lastFrameKeyState, a->_state));
-            }
-        }
-
-        _mousePosition = newEvnts._mousePosition;
-        _mouseDelta += newEvnts._mouseDelta;
-        _wheelDelta += newEvnts._wheelDelta;
-        _pressedChar = newEvnts._pressedChar;
-    }
-
-    void    InputSnapshot::Reset()
-    {
-            // clear "transition" flags (and remove any buttons that transitioned up)
-        _mouseButtonsTransition = 0;
-        _mouseButtonsDblClk = 0;
-        _pressedChar = 0;
-        _wheelDelta = 0;
-        _mouseDelta = Int2(0,0);
-        for (auto a = _activeButtons.begin(); a!=_activeButtons.end();) {
-            if (a->_state) {
-                a->_transition = false;
-                ++a;
-            } else {
-                a = _activeButtons.erase(a);
-            }
-        }
     }
 
     ///////////////////////////////////////////////////////////////////////////////////

@@ -13,7 +13,7 @@
 #include <vector>
 
 namespace Tools { class IManipulator; }
-namespace SceneEngine { class TerrainManager; class TerrainMaterialConfig; }
+namespace SceneEngine { class TerrainManager; }
 
 namespace EntityInterface
 {

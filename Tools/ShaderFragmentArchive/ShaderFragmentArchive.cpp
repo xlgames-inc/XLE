@@ -4,55 +4,36 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "stdafx.h"
-
 #include "ShaderFragmentArchive.h"
 #include "../GUILayer/MarshalString.h"
-#include "../../ShaderParser/InterfaceSignature.h"
+#include "../../ShaderParser/ShaderSignatureParser.h"
 #include "../../ShaderParser/ParameterSignature.h"
+#include "../../ShaderParser/GraphSyntax.h"
 #include "../../ShaderParser/Exceptions.h"
+#include "../../Assets/IFileSystem.h"
 #include "../../Utility/Streams/FileSystemMonitor.h"
 #include "../../Utility/Streams/PathUtils.h"
 
 namespace ShaderFragmentArchive
 {
 
-    Function::Function(ShaderSourceParser::FunctionSignature& function)
+    Function::Function(StringSection<> name, const GraphLanguage::NodeGraphSignature& function)
     {
-        InputParameters = gcnew List<Parameter^>();
-        Outputs = gcnew List<Parameter^>();
-
-        using namespace clix;
-        for (auto i=function._parameters.begin(); i!=function._parameters.end(); ++i) {
-            Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>(i->_name);
-            p->Type = marshalString<E_UTF8>(i->_type);
-            p->Semantic = marshalString<E_UTF8>(i->_semantic);
-
-            if (i->_direction & ShaderSourceParser::FunctionSignature::Parameter::In)
-                InputParameters->Add(p);
-            if (i->_direction & ShaderSourceParser::FunctionSignature::Parameter::Out)
-                Outputs->Add(p);
-        }
-
-        if (!function._returnType.empty() && function._returnType != "void") {
-            Parameter^ p = gcnew Parameter;
-            p->Name = marshalString<E_UTF8>("result");
-            p->Type = marshalString<E_UTF8>(function._returnType);
-            Outputs->Add(p);
-        }
-
-        Name = marshalString<E_UTF8>(function._name);
+		ShaderPatcherLayer::ConversionContext convContext;
+		Signature = ShaderPatcherLayer::NodeGraphSignature::ConvertFromNative(function, convContext);
+        Name = clix::marshalString<clix::E_UTF8>(name);
     }
 
-    Function::~Function() { delete InputParameters; delete Outputs; }
+    Function::~Function() {}
 
-    String^     Function::BuildParametersString()
+    System::String^     Function::BuildParametersString()
     {
         System::Text::StringBuilder stringBuilder;
         stringBuilder.Append("(");
         bool first = true;
-        for each(Parameter^ p in InputParameters) {
+        for each(auto p in Signature->Parameters) {
+			if (p->Direction != ShaderPatcherLayer::NodeGraphSignature::ParameterDirection::In) continue;
+
             if (!first) stringBuilder.Append(", ");
             first = false;
 
@@ -68,13 +49,13 @@ namespace ShaderFragmentArchive
         return stringBuilder.ToString();
     }
 
-    ParameterStruct::ParameterStruct(ShaderSourceParser::ParameterStructSignature& parameterStruct)
+    ParameterStruct::ParameterStruct(const GraphLanguage::UniformBufferSignature& parameterStruct)
     {
         Parameters = gcnew List<Parameter^>();
 
         using namespace clix;
         for (auto i=parameterStruct._parameters.begin(); i!=parameterStruct._parameters.end(); ++i) {
-            Parameter^ p = gcnew Parameter("");
+            Parameter^ p = gcnew Parameter();
             p->Name = marshalString<E_UTF8>(i->_name);
             p->Type = marshalString<E_UTF8>(i->_type);
             p->Semantic = marshalString<E_UTF8>(i->_semantic);
@@ -87,7 +68,7 @@ namespace ShaderFragmentArchive
 
     ParameterStruct::~ParameterStruct() { delete Parameters; }
 
-    String^ ParameterStruct::BuildBodyString()
+    System::String^ ParameterStruct::BuildBodyString()
     {
         System::Text::StringBuilder stringBuilder;
         stringBuilder.Append("{");
@@ -112,8 +93,8 @@ namespace ShaderFragmentArchive
         ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread);
         virtual ~ShaderFragmentChangeCallback();
     private:
-        gcroot<WeakReference^> _shaderFragment;
-        gcroot<System::Threading::SynchronizationContext^> _mainThread;
+        msclr::gcroot<System::WeakReference^> _shaderFragment;
+        msclr::gcroot<System::Threading::SynchronizationContext^> _mainThread;
     };
 
     void    ShaderFragmentChangeCallback::OnChange() 
@@ -124,26 +105,20 @@ namespace ShaderFragmentArchive
     }
 
     ShaderFragmentChangeCallback::ShaderFragmentChangeCallback(ShaderFragment^ shaderFragment, System::Threading::SynchronizationContext^ mainThread)
-        : _shaderFragment(gcnew WeakReference(shaderFragment))
+        : _shaderFragment(gcnew System::WeakReference(shaderFragment))
         , _mainThread(mainThread)
     {}
 
     ShaderFragmentChangeCallback::~ShaderFragmentChangeCallback()
     {}
 
-    static void RegisterFileDependency(std::shared_ptr<Utility::OnChangeCallback> validationIndex, const utf8 filename[])
-    {
-		auto splitter = MakeFileNameSplitter(filename);
-        Utility::AttachFileSystemMonitor(splitter.DriveAndPath(), splitter.FileAndExtension(), validationIndex);
-    }
-
     void ShaderFragment::OnChange(Object^obj)
     {
         ++_changeMarker;
-        ChangeEvent(obj, EventArgs::Empty);
+        ChangeEvent(obj, System::EventArgs::Empty);
     }
 
-    ShaderFragment::ShaderFragment(String^ sourceFile)
+    ShaderFragment::ShaderFragment(System::String^ sourceFile)
     {
         _fileChangeCallback = nullptr;
         _changeMarker = 0;
@@ -156,44 +131,54 @@ namespace ShaderFragmentArchive
             //      we're mostly just marshaling the data into a format
             //      that suits us.
             //
-        Name = System::IO::Path::GetFileNameWithoutExtension(sourceFile);
         Functions = gcnew List<Function^>();
         ParameterStructs = gcnew List<ParameterStruct^>();
 
-        using namespace clix;
-        std::string nativeString;
+		std::string nativeFilename;
+
+		size_t size = 0;
+        std::unique_ptr<uint8[]> file;
         try
         {
-
-            auto contents = System::IO::File::ReadAllText(sourceFile);
-            nativeString = marshalString<E_UTF8>(contents);
-
+			Name = System::IO::Path::GetFileNameWithoutExtension(sourceFile);
+			nativeFilename = clix::marshalString<clix::E_UTF8>(sourceFile);
+            file = ::Assets::TryLoadFileAsMemoryBlock(nativeFilename, &size);
         } catch (System::IO::IOException^) {
 
                 //      Hit an exception! Most likely, the file just doesn't
                 //      exist.
             ExceptionString = "Failed while opening file";
 
-        }
+        } catch (System::ArgumentException^) {
+			ExceptionString = "Failed while opening file (probably bad filename)";
+		}
             
-        if (!nativeString.empty()) {
+        if (file && size != 0) {
 
+			auto srcCode = MakeStringSection((const char*)file.get(), (const char*)PtrAdd(file.get(), size));
             try {
-                auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(nativeString));
+				if (XlEqStringI(MakeFileNameSplitter(nativeFilename).Extension(), "graph")) {
 
-                    //
-                    //      \todo -- support compilation errors in the shader code!
-                    //
+					auto graphSyntax = GraphLanguage::ParseGraphSyntax(srcCode);
+					for (const auto& subGraph:graphSyntax._subGraphs) {
+						Function^ function = gcnew Function(MakeStringSection(subGraph.first), subGraph.second._signature);
+						Functions->Add(function);
+					}
 
-                for (auto i=nativeSignature._functions.begin(); i!=nativeSignature._functions.end(); ++i) {
-                    Function^ function = gcnew Function(*i);
-                    Functions->Add(function);
-                }
+				} else {
 
-                for (auto i=nativeSignature._parameterStructs.begin(); i!=nativeSignature._parameterStructs.end(); ++i) {
-                    ParameterStruct^ pstruct = gcnew ParameterStruct(*i);
-                    ParameterStructs->Add(pstruct);
-                }
+					auto nativeSignature = ShaderSourceParser::ParseHLSL(srcCode);
+
+					for (const auto& fn:nativeSignature._functions) {
+						Function^ function = gcnew Function(MakeStringSection(fn.first), fn.second);
+						Functions->Add(function);
+					}
+
+					for (const auto& ps:nativeSignature._uniformBuffers) {
+						ParameterStruct^ pstruct = gcnew ParameterStruct(ps);
+						ParameterStructs->Add(pstruct);
+					}
+				}
             } catch (const ShaderSourceParser::Exceptions::ParsingFailure& ) {
                 ExceptionString = "Failed during parsing. Look for compilation errors.";
             }
@@ -202,7 +187,7 @@ namespace ShaderFragmentArchive
 
         std::shared_ptr<ShaderFragmentChangeCallback> changeCallback(
             new ShaderFragmentChangeCallback(this, System::Threading::SynchronizationContext::Current));
-        RegisterFileDependency(changeCallback, (const utf8*)marshalString<E_UTF8>(sourceFile).c_str());
+		::Assets::MainFileSystem::TryMonitor(MakeStringSection(clix::marshalString<clix::E_UTF8>(sourceFile)), changeCallback);
         _fileChangeCallback = changeCallback;
     }
 
@@ -215,71 +200,7 @@ namespace ShaderFragmentArchive
         _fileChangeCallback.reset();
     }
 
-    Parameter::Parameter(String^ archiveName)
-    {
-        using namespace clix;
-        ArchiveName = archiveName;
-
-        if (archiveName != nullptr && archiveName->Length > 0) {
-            using namespace clix;
-            std::string nativeString;
-            try
-            {
-
-                auto contents = System::IO::File::ReadAllText(archiveName);
-                nativeString = marshalString<E_UTF8>(contents);
-
-            } catch (System::IO::IOException^) {
-
-                    //      Hit an exception! Most likely, the file just doesn't
-                    //      exist.
-                ExceptionString = "Failed while opening file";
-
-            }
-
-            try 
-            {
-
-                auto nativeParameter = ShaderSourceParser::LoadSignature(nativeString.c_str(), nativeString.size());
-
-                Name        = marshalString<E_UTF8>(nativeParameter._name);
-                Description = marshalString<E_UTF8>(nativeParameter._description);
-                Min         = marshalString<E_UTF8>(nativeParameter._min);
-                Max         = marshalString<E_UTF8>(nativeParameter._max);
-                Type        = marshalString<E_UTF8>(nativeParameter._type);
-                TypeExtra   = marshalString<E_UTF8>(nativeParameter._typeExtra);
-                Semantic    = marshalString<E_UTF8>(nativeParameter._semantic);
-                Default     = marshalString<E_UTF8>(nativeParameter._default);
-                if (nativeParameter._source == ShaderSourceParser::ParameterSignature::Source::System) {
-                    Source      = SourceType::System;
-                } else {
-                    Source      = SourceType::Material;
-                }
-
-            } catch (const ShaderSourceParser::Exceptions::ParsingFailure&) {
-
-                ExceptionString = "Failure in parser. Check text file format";
-
-            }
-        }
-    }
-
-    void Parameter::DeepCopyFrom(Parameter^ otherParameter)
-    {
-        ArchiveName = gcnew String(otherParameter->ArchiveName);
-        Name = gcnew String(otherParameter->Name);
-        Description = gcnew String(otherParameter->Description);
-        Min = gcnew String(otherParameter->Min);
-        Max = gcnew String(otherParameter->Max);
-        Type = gcnew String(otherParameter->Type);
-        TypeExtra = gcnew String(otherParameter->TypeExtra);
-        Source = otherParameter->Source;
-        ExceptionString = gcnew String(otherParameter->ExceptionString);
-        Semantic = gcnew String(otherParameter->Semantic);
-        Default = gcnew String(otherParameter->Default);
-    }
-
-    ShaderFragment^   Archive::GetFragment(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    ShaderFragment^   Archive::GetFragment(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
 		if (searchRules)
 			name = searchRules->ResolveFile(name);
@@ -293,7 +214,7 @@ namespace ShaderFragmentArchive
                     // if the "change marker" is set to a value greater than 
                     //  zero, we have to delete and recreate this object
                     //  (it means the file has changed since the last parse)
-                if (result->GetChangeMarker()>=0) {
+                if (result->GetChangeMarker()>0) {
                     _dictionary->Remove(name);
                 } else
                     return result;
@@ -308,13 +229,13 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
         
-    Function^   Archive::GetFunction(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    Function^   Archive::GetFunction(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
         {
             auto colonIndex = name->IndexOf(":");
-            String ^fileName = nullptr, ^functionName = nullptr;
+            System::String ^fileName = nullptr, ^functionName = nullptr;
             if (colonIndex != -1) {
                 fileName        = name->Substring(0, colonIndex);
                 functionName    = name->Substring(colonIndex+1);
@@ -337,13 +258,13 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    ParameterStruct^  Archive::GetParameterStruct(String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    ParameterStruct^  Archive::GetUniformBuffer(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
         {
             auto colonIndex = name->IndexOf(":");
-            String ^fileName = nullptr, ^parameterStructName = nullptr;
+            System::String ^fileName = nullptr, ^parameterStructName = nullptr;
             if (colonIndex != -1) {
                 fileName                = name->Substring(0, colonIndex);
                 parameterStructName     = name->Substring(colonIndex+1);
@@ -367,78 +288,9 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    Parameter^ Archive::GetParameter(String^ name, GUILayer::DirectorySearchRules^ searchRules)
-    {
-        System::Threading::Monitor::Enter(_dictionary);
-        try
-        {
-                // <archiveName>:<struct/fn name>:<parameter name>
-            auto colonIndex = name->IndexOf(":");
-            String ^fileName = nullptr, ^parameterStructName = nullptr, ^parameterName = nullptr;
-            if (colonIndex != -1) {
-                fileName = name->Substring(0, colonIndex);
-                    
-                auto secondColonIndex = name->IndexOf(":", colonIndex+1);
-                if (secondColonIndex != -1) {
-                    parameterStructName = name->Substring(colonIndex+1, secondColonIndex-colonIndex-1);
-                    parameterName = name->Substring(secondColonIndex+1);
-                } else {
-                    parameterName = name->Substring(colonIndex);
-                }
-            } else {
-                return nullptr;
-            }
-
-            ShaderFragment^ str = GetFragment(fileName, searchRules);
-            for each(ParameterStruct^ ps in str->ParameterStructs) {
-                if (ps->Name == parameterStructName) {
-                    for each (Parameter^ p in ps->Parameters) {
-                        if (p->Name == parameterName) {
-                            return p;
-                        }
-                    }
-                }
-            }
-
-                // also try function parameters...?
-
-            for each(Function^ fn in str->Functions) {
-                if (fn->Name == parameterStructName) {
-                    for each(Function::Parameter^ p in fn->InputParameters) {
-                        if (p->Name == parameterName) {
-                            Parameter^ result = gcnew Parameter("");
-                            result->Name = p->Name;
-                            result->Type = p->Type;
-                            result->Source = Parameter::SourceType::Material;
-                            result->Semantic = p->Semantic;
-                            return result;
-                        }
-                    }
-                    for each(Function::Parameter^ p in fn->Outputs) {
-                        if (p->Name == parameterName) {
-                            Parameter^ result = gcnew Parameter("");
-                            result->Name = p->Name;
-                            result->Type = p->Type;
-                            result->Source = Parameter::SourceType::Material;
-                            result->Semantic = p->Semantic;
-                            return result;
-                        }
-                    }
-                }
-            }
-
-            return nullptr;
-
-        } finally {
-            System::Threading::Monitor::Exit(_dictionary);
-        }
-
-        return nullptr;
-    }
-
     Archive::Archive()
     {
-        _dictionary = gcnew Dictionary<String^, ShaderFragment^>(StringComparer::CurrentCultureIgnoreCase);
+        _dictionary = gcnew Dictionary<System::String^, ShaderFragment^>(System::StringComparer::CurrentCultureIgnoreCase);
     }
 
 }

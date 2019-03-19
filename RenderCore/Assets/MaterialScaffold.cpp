@@ -5,13 +5,20 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "MaterialScaffold.h"
-#include "ModelImmutableData.h"     // for MaterialImmutableData
-#include "../Techniques/TechniqueMaterial.h"
 #include "../../Assets/ChunkFileContainer.h"
 #include "../../Assets/BlockSerializer.h"
+#include "../../Assets/Assets.h"
+#include "../../Assets/IntermediateAssets.h"
+#include "../../Utility/Streams/PathUtils.h"
 
 namespace RenderCore { namespace Assets
 {
+	class MaterialImmutableData
+    {
+    public:
+        SerializableVector<std::pair<MaterialGuid, MaterialScaffold::Material>> _materials;
+        SerializableVector<std::pair<MaterialGuid, SerializableVector<char>>> _materialNames;
+    };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -20,10 +27,10 @@ namespace RenderCore { namespace Assets
 		return *(const MaterialImmutableData*)Serialization::Block_GetFirstObject(_rawMemoryBlock.get());
 	}
 
-	const Techniques::Material* MaterialScaffold::GetMaterial(MaterialGuid guid) const
+	auto MaterialScaffold::GetMaterial(MaterialGuid guid) const -> const Material*
 	{
 		const auto& data = ImmutableData();
-		auto i = std::lower_bound(data._materials.begin(), data._materials.end(), guid, CompareFirst<MaterialGuid, Techniques::Material>());
+		auto i = std::lower_bound(data._materials.begin(), data._materials.end(), guid, CompareFirst<MaterialGuid, Material>());
 		if (i != data._materials.end() && i->first == guid)
 			return &i->second;
 		return nullptr;
@@ -35,7 +42,7 @@ namespace RenderCore { namespace Assets
 		auto i = std::lower_bound(data._materialNames.begin(), data._materialNames.end(), guid, CompareFirst<MaterialGuid, SerializableVector<char>>());
 		if (i != data._materialNames.end() && i->first == guid)
 			return MakeStringSection(i->second.begin(), i->second.end());
-		return nullptr;
+		return {};
 	}
 
 	const ::Assets::AssetChunkRequest MaterialScaffold::ChunkRequests[]
@@ -72,15 +79,47 @@ namespace RenderCore { namespace Assets
 	}
 
 
-	MaterialGuid MakeMaterialGuid(StringSection<utf8> name)
+	MaterialScaffoldMaterial::MaterialScaffoldMaterial() { _techniqueConfig[0] = '\0'; }
+
+	MaterialScaffoldMaterial::MaterialScaffoldMaterial(MaterialScaffoldMaterial&& moveFrom) never_throws
+	: _bindings(std::move(moveFrom._bindings))
+	, _matParams(std::move(moveFrom._matParams))
+	, _stateSet(moveFrom._stateSet)
+	, _constants(std::move(moveFrom._constants))
 	{
-		//  If the material name is just a number, then we will use that
-		//  as the guid. Otherwise we hash the name.
-		const char* parseEnd = nullptr;
-		uint64 hashId = XlAtoI64((const char*)name.begin(), &parseEnd, 16);
-		if (!parseEnd || parseEnd != (const char*)name.end()) { hashId = Hash64(name.begin(), name.end()); }
-		return hashId;
+		XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
 	}
+
+	MaterialScaffoldMaterial& MaterialScaffoldMaterial::operator=(MaterialScaffoldMaterial&& moveFrom) never_throws
+	{
+		_bindings = std::move(moveFrom._bindings);
+		_matParams = std::move(moveFrom._matParams);
+		_stateSet = moveFrom._stateSet;
+		_constants = std::move(moveFrom._constants);
+		XlCopyString(_techniqueConfig, moveFrom._techniqueConfig);
+		return *this;
+	}
+
+	MaterialScaffoldMaterial::MaterialScaffoldMaterial(const MaterialScaffoldMaterial& cloneFrom)
+	: _bindings(cloneFrom._bindings)
+	, _matParams(cloneFrom._matParams)
+	, _stateSet(cloneFrom._stateSet)
+	, _constants(cloneFrom._constants)
+	{
+		XlCopyString(_techniqueConfig, cloneFrom._techniqueConfig);
+	}
+
+	MaterialScaffoldMaterial& MaterialScaffoldMaterial::operator=(const MaterialScaffoldMaterial& cloneFrom)
+	{
+		_bindings = cloneFrom._bindings;
+		_matParams = cloneFrom._matParams;
+		_stateSet = cloneFrom._stateSet;
+		_constants = cloneFrom._constants;
+		XlCopyString(_techniqueConfig, cloneFrom._techniqueConfig);
+		return *this;
+	}
+
+	
 
 }}
 

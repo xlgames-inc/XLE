@@ -441,6 +441,7 @@ namespace RenderCore { namespace ImplOpenGLES
 //////////////////////////////////////////////////////////////////////////////////////////////////
 
     static unsigned s_nextPresentationChainGUID = 1;
+    static const bool s_useFakeBackBuffer = true;
 
     PresentationChain::PresentationChain(EGLDisplay display, EGLConfig sharedContextCfg, const void* platformValue, const PresentationChainDesc& desc)
     {
@@ -550,7 +551,8 @@ namespace RenderCore { namespace ImplOpenGLES
             _temporaryFramebuffer = Metal_OpenGLES::GetObjectFactory().CreateFrameBuffer();
             glBindFramebuffer(GL_FRAMEBUFFER, _temporaryFramebuffer->AsRawGLHandle());
 
-            if (_activeTargetRenderbuffer->GetDesc()._bindFlags & BindFlag::ShaderResource) {
+            const bool mainColorIsReadable = (_activeTargetRenderbuffer->GetDesc()._bindFlags & BindFlag::ShaderResource);
+            if (mainColorIsReadable) {
                 glFramebufferTexture2D(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_TEXTURE_2D, _activeTargetRenderbuffer->GetTexture()->AsRawGLHandle(), 0);
             } else {
                 glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, GL_RENDERBUFFER, _activeTargetRenderbuffer->GetRenderBuffer()->AsRawGLHandle());

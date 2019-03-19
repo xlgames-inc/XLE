@@ -9,6 +9,7 @@
 #include "SceneEngineUtils.h"
 #include "../RenderCore/RenderUtils.h"
 #include "../RenderCore/Techniques/TechniqueUtils.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../Math/Transformations.h"
 #include "../Math/ProjectionMath.h"
 #include "../Utility/MemoryUtils.h"
@@ -117,17 +118,17 @@ namespace SceneEngine
 
         BuildShadowConstantBuffers(_arbitraryCBSource, _orthoCBSource, desc);
 
-        using RenderCore::Metal::ConstantBuffer;
+        using namespace RenderCore;
             // arbitrary constants
         if (!_arbitraryCB.GetUnderlying()) {
-            _arbitraryCB = ConstantBuffer(&_arbitraryCBSource, sizeof(_arbitraryCBSource));
+			_arbitraryCB = Metal::MakeConstantBuffer(Metal::GetObjectFactory(), {&_arbitraryCBSource, PtrAdd(&_arbitraryCBSource, sizeof(_arbitraryCBSource))});
         } else {
             _arbitraryCB.Update(*devContext, &_arbitraryCBSource, sizeof(_arbitraryCBSource));
         }
 
             // ortho constants
         if (!_orthoCB.GetUnderlying()) {
-            _orthoCB = ConstantBuffer(&_orthoCBSource, sizeof(_orthoCBSource));
+			_orthoCB = Metal::MakeConstantBuffer(Metal::GetObjectFactory(), {&_orthoCBSource, PtrAdd(&_orthoCBSource, sizeof(_orthoCBSource))});
         } else {
             _orthoCB.Update(*devContext, &_orthoCBSource, sizeof(_orthoCBSource));
         }
@@ -162,14 +163,14 @@ namespace SceneEngine
 
     bool PreparedDMShadowFrustum::IsReady() const
     {
-        return (_shadowTextureName != ~0u) && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
+        return _srv.IsGood() && (_arbitraryCB.GetUnderlying() || _orthoCB.GetUnderlying());
     }
 
     PreparedDMShadowFrustum::PreparedDMShadowFrustum() {}
 
     PreparedDMShadowFrustum::PreparedDMShadowFrustum(PreparedDMShadowFrustum&& moveFrom) never_throws
     : PreparedShadowFrustum(std::move(moveFrom))
-    , _shadowTextureName(moveFrom._shadowTextureName)
+    , _srv(std::move(moveFrom._srv))
     , _resolveParameters(moveFrom._resolveParameters)
     , _resolveParametersCB(std::move(moveFrom._resolveParametersCB))
     {}
@@ -177,7 +178,7 @@ namespace SceneEngine
     PreparedDMShadowFrustum& PreparedDMShadowFrustum::operator=(PreparedDMShadowFrustum&& moveFrom) never_throws
     {
         PreparedShadowFrustum::operator=(std::move(moveFrom));
-        _shadowTextureName = moveFrom._shadowTextureName;
+        _srv = std::move(moveFrom._srv);
         _resolveParameters = moveFrom._resolveParameters;
         _resolveParametersCB = std::move(moveFrom._resolveParametersCB);
         return *this;
@@ -186,7 +187,7 @@ namespace SceneEngine
 
     bool PreparedRTShadowFrustum::IsReady() const
     {
-        return _listHeadSRV.GetUnderlying() && _linkedListsSRV.GetUnderlying() && _trianglesSRV.GetUnderlying();
+        return _listHeadSRV.IsGood() && _linkedListsSRV.IsGood() && _trianglesSRV.IsGood();
     }
 
     PreparedRTShadowFrustum::PreparedRTShadowFrustum() {}

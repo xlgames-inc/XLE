@@ -11,21 +11,20 @@
 
 namespace SceneEngine
 {
-    class LightingParserContext;
-    class ISceneParser;
-    class RenderingQualitySettings;
+    class IScene;
+    class RenderSceneSettings;
 }
 
-namespace RenderCore { namespace Techniques { class CameraDesc; } }
+namespace RenderCore { namespace Techniques { class ParsingContext; class CameraDesc; } }
 
 namespace PlatformRig
 {
     void TiledScreenshot(
         RenderCore::IThreadContext& context,
-        SceneEngine::LightingParserContext& parserContext,
-        SceneEngine::ISceneParser& sceneParser,
+		RenderCore::Techniques::ParsingContext& parserContext,
+        SceneEngine::IScene& sceneParser,
         const RenderCore::Techniques::CameraDesc& camera,
-        const SceneEngine::RenderingQualitySettings& qualitySettings,
+        const SceneEngine::RenderSceneSettings& qualitySettings,
         UInt2 sampleCount);
 }
 

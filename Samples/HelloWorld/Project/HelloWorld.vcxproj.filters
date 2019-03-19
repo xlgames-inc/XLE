@@ -4,6 +4,9 @@
     <Filter Include="WinAPI">
       <UniqueIdentifier>{bb3a01b2-c6b4-4fdf-b2ba-b3a3b6a6c769}</UniqueIdentifier>
     </Filter>
+    <Filter Include="Shared">
+      <UniqueIdentifier>{694b2b38-8f03-4370-9320-c706f5455138}</UniqueIdentifier>
+    </Filter>
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\WinAPI\WindowStartup.cpp">
@@ -12,8 +15,15 @@
     <ClCompile Include="..\HelloWorld.cpp" />
     <ClCompile Include="..\BasicScene.cpp" />
     <ClCompile Include="..\PostSceneRender.cpp" />
+    <ClCompile Include="..\..\Shared\SampleRig.cpp">
+      <Filter>Shared</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\BasicScene.h" />
+    <ClInclude Include="..\..\Shared\SampleRig.h">
+      <Filter>Shared</Filter>
+    </ClInclude>
+    <ClInclude Include="..\HelloWorld.h" />
   </ItemGroup>
 </Project>

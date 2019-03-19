@@ -35,15 +35,10 @@ namespace ColladaConversion
 
     static const unsigned AbsoluteMaxJointInfluenceCount = 256;
 
-    const NativeVBSettings NativeSettings = { true };       // use 16 bit floats
-
-    ::Assets::Blob GetParseDataSource();
-
     class VertexSourceData : public IVertexSourceData
     {
     public:
-        const void* GetData() const;
-        size_t GetDataSize() const;
+        IteratorRange<const void*> GetData() const;
         Format GetFormat() const { return _dataFormat; }
         size_t GetStride() const { return _stride; }
         size_t GetCount() const { return _count; }
@@ -64,16 +59,12 @@ namespace ColladaConversion
         ::Assets::Blob _rawData;
     };
 
-    const void* VertexSourceData::GetData() const
+    IteratorRange<const void*> VertexSourceData::GetData() const
     {
-        return PtrAdd(AsPointer(_rawData->cbegin()), _offset);
+		return MakeIteratorRange(
+			PtrAdd(AsPointer(_rawData->cbegin()), _offset),
+			AsPointer(_rawData->cend()));
     }
-
-    size_t VertexSourceData::GetDataSize() const
-    {
-        return _rawData->size();
-    }
-
 
     VertexSourceData::VertexSourceData(const DataFlow::Source& source, ProcessingFlags::BitField processingFlags)
         : _processingFlags(processingFlags)
@@ -146,13 +137,17 @@ namespace ColladaConversion
         const auto npos = std::basic_string<utf8>::npos;
         if (semantic.find(u("TEXCOORD")) != npos || semantic.find(u("texcoord")) != npos) {
             return ProcessingFlags::TexCoordFlip;
-        } else if (semantic.find(u("TEXTANGENT")) != npos || semantic.find(u("textangent")) != npos) {
-            return ProcessingFlags::Renormalize;
-        } else if (semantic.find(u("TEXBITANGENT")) != npos || semantic.find(u("texbitangent")) != npos) {
-            return ProcessingFlags::Renormalize;
-        } /*else if (semantic.find(u("NORMAL")) != npos || semantic.find(u("normal")) != npos) {
-            return ProcessingFlags::Renormalize;
-        }*/
+        } 
+		const bool renormalize = false;
+		if (renormalize) {
+			if (semantic.find(u("TEXTANGENT")) != npos || semantic.find(u("textangent")) != npos) {
+				return ProcessingFlags::Renormalize;
+			} else if (semantic.find(u("TEXBITANGENT")) != npos || semantic.find(u("texbitangent")) != npos) {
+				return ProcessingFlags::Renormalize;
+			} else if (semantic.find(u("NORMAL")) != npos || semantic.find(u("normal")) != npos) {
+				return ProcessingFlags::Renormalize;
+			}
+		}
         return 0;
     }
     
@@ -331,26 +326,8 @@ namespace ColladaConversion
     {
     public:
         std::vector<unsigned>   _indexBuffer;
-        Topology				_topology;
-        uint64                  _materialBinding;
-
-        WorkingDrawOperation() : _topology((Topology)0), _materialBinding(0) {}
-        WorkingDrawOperation(WorkingDrawOperation&& moveFrom) never_throws
-        : _indexBuffer(std::move(moveFrom._indexBuffer))
-        , _topology(moveFrom._topology)
-        , _materialBinding(moveFrom._materialBinding)
-        {}
-
-        WorkingDrawOperation& operator=(WorkingDrawOperation&& moveFrom) never_throws
-        {
-            _indexBuffer = std::move(moveFrom._indexBuffer);
-            _topology = moveFrom._topology;
-            _materialBinding = moveFrom._materialBinding;
-            return *this;
-        }
-
-        WorkingDrawOperation(const WorkingDrawOperation&) = delete;
-        WorkingDrawOperation& operator=(const WorkingDrawOperation&) = delete;
+        Topology				_topology = (Topology)0;
+        Section					_materialBinding;
     };
 
     class WorkingPrimitive
@@ -398,7 +375,7 @@ namespace ColladaConversion
 
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
-        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._materialBinding = geoPrim.GetMaterialBinding();
         drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
@@ -470,7 +447,7 @@ namespace ColladaConversion
 
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
-        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._materialBinding = geoPrim.GetMaterialBinding();
         drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
@@ -539,61 +516,17 @@ namespace ColladaConversion
 
         WorkingDrawOperation drawCall;
         drawCall._indexBuffer = std::move(finalIndices);
-        drawCall._materialBinding = Hash64(geoPrim.GetMaterialBinding()._start, geoPrim.GetMaterialBinding()._end);
+        drawCall._materialBinding = geoPrim.GetMaterialBinding();
         drawCall._topology = Topology::TriangleList;
         return std::move(drawCall);
     }
 
-    NascentRawGeometry Convert(
+    static std::shared_ptr<MeshDatabase> BuildMeshDatabase(
+		std::vector<WorkingDrawOperation>& drawOperations,
         const MeshGeometry& mesh, 
-        const Float4x4& mergedTransform,
         const URIResolveContext& pubEles, 
         const ImportConfiguration& cfg)
     {
-            // some exports can have empty meshes -- ideally, we just want to ignore them
-        if (!mesh.GetPrimitivesCount()) {
-            LogWarning << "Geometry object with no primitives: " << mesh.GetName();
-            return NascentRawGeometry();
-        }
-
-            //
-            //      In Collada format, we have a separate index buffer per input
-            //      attribute. 
-            //
-            //      This actually looks like it works very well; some attributes 
-            //      have much higher sharing than others.
-            //
-            //      But for modern graphics hardware, we can only support a single
-            //      index buffer (and each vertex is a fixed combination of all
-            //      attributes). So during conversion we will switch to the GPU friendly
-            //      format (let's call this the "unified" vertex format).
-            //
-            //      We also need to convert from various input primitives to primitives
-            //      we can work with. 
-            //
-            //      Input primitives:
-            //          lines           -> line list
-            //          linestrips      -> line strip
-            //          polygons        -> triangle list
-            //          polylist        -> triangle list
-            //          triangles       -> triangle list
-            //          trifans         -> triangle fan (with terminator indices)
-            //          tristrips       -> triangle strip (with terminator indices)
-            //
-            //      Note that we should do some geometry optimisation after conversion
-            //      (because the raw output from our tools may not be optimal)
-            //
-            //      This entire mesh should collapse to a single vertex buffer and index
-            //      buffer. In some cases there may be an advantage to using multiple
-            //      vertex buffers (for example, if some primitives use fewer vertex 
-            //      attributes than others). Let's just ignore this for the moment.
-            //
-            //      Sometimes this geometry will use multiple different materials.
-            //      Even when this happens, we'll keep using the same VB/IB. We'll
-            //      just use separate draw commands for each material.
-            //  
-
-        std::vector<WorkingDrawOperation>  drawOperations;
         ComposingVertex composingVertex;
         composingVertex._cfg = &cfg;
 
@@ -677,7 +610,7 @@ namespace ColladaConversion
                 }
 
                 if (!boundSource) {
-                    LogWarning << "Couldn't find source for geometry input. Source name: " << input._source << " in geometry " << mesh.GetName();
+                    Log(Warning) << "Couldn't find source for geometry input. Source name: " << input._source << " in geometry " << mesh.GetName() << std::endl;
                 }
 
                     // we must adjust the primitive stride, even if we couldn't properly resolve
@@ -690,8 +623,8 @@ namespace ColladaConversion
         }
 
         if (!atLeastOneInput) {
-            LogWarning << "Geometry object with no valid vertex inputs: " << mesh.GetName();
-            return NascentRawGeometry();
+            Log(Warning) << "Geometry object with no valid vertex inputs: " << mesh.GetName() << std::endl;
+            return nullptr;
         }
 
         composingVertex.FixBadSemanticIndicies();
@@ -724,7 +657,7 @@ namespace ColladaConversion
 
             // if we didn't end up with any valid draw calls, we need to return a blank object
         if (drawOperations.empty()) {
-            return NascentRawGeometry();
+            return nullptr;
         }
 
             //
@@ -742,51 +675,51 @@ namespace ColladaConversion
 
         auto database = BuildMeshDatabaseAdapter(composingVertex, composingUnified);
 
-            //
-            //      Write data into the index buffer. Note we can select 16 bit or 32 bit index buffer
-            //      here. Most of the time 16 bit should be enough (but sometimes we need 32 bits)
-            //
-            //      All primitives should go into the same index buffer. They we record all of the 
-            //      separate draw calls.
-            //
-            //      The end result is 1 vertex buffer and 1 index buffer.
-            //
+		return database;
+	}
 
-        std::vector<DrawCallDesc> finalDrawOperations;
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ConvertedMeshGeometry Convert(const MeshGeometry& mesh, const URIResolveContext& pubEles, const ImportConfiguration& cfg)
+	{
+		if (!mesh.GetPrimitivesCount()) {
+            Log(Warning) << "Geometry object with no primitives: " << mesh.GetName() << std::endl;
+			return {};
+        }
+
+		std::vector<WorkingDrawOperation> drawOperations;
+		auto database = BuildMeshDatabase(drawOperations, mesh, pubEles, cfg);
+		if (!database)
+			return {};
+
+		std::vector<RenderCore::Assets::GeoProc::NascentModel::DrawCallDesc> finalDrawOperations;
+		std::vector<uint64_t> materialBindingSymbols;
         finalDrawOperations.reserve(drawOperations.size());
-
-        std::set<uint64> matBindingSymbols;
-        for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i)
-            matBindingSymbols.insert(i->_materialBinding);
+		materialBindingSymbols.reserve(drawOperations.size());
 
         size_t finalIndexCount = 0;
         for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
             assert(i->_topology == Topology::TriangleList);  // tangent generation assumes triangle list currently... We need to modify GenerateNormalsAndTangents() to support other types
-            finalDrawOperations.push_back(
-                DrawCallDesc(
-                    (unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), 0, 
-                    (unsigned)std::distance(matBindingSymbols.begin(), matBindingSymbols.find(i->_materialBinding)),
-                    i->_topology));
+            finalDrawOperations.push_back({(unsigned)finalIndexCount, (unsigned)i->_indexBuffer.size(), i->_topology});
+			materialBindingSymbols.push_back(Hash64(i->_materialBinding.begin(), i->_materialBinding.end()));
             finalIndexCount += i->_indexBuffer.size();
         }
 
             //  \todo -- sort by material id?
 
         Format indexFormat;
-        std::unique_ptr<uint8[]> finalIndexBuffer;
-        size_t finalIndexBufferSize;
+        std::vector<uint8_t> finalIndexBuffer;
                 
         if (finalIndexCount < 0xffff) {
 
             size_t accumulatingIndexCount = 0;
             indexFormat = Format::R16_UINT;
-            finalIndexBufferSize = finalIndexCount*sizeof(uint16);
-            finalIndexBuffer = std::make_unique<uint8[]>(finalIndexBufferSize);
+            finalIndexBuffer.resize(finalIndexCount*sizeof(uint16_t));
             for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
                 size_t count = i->_indexBuffer.size();
                 std::copy(
                     i->_indexBuffer.begin(), i->_indexBuffer.end(),
-                    &((uint16*)finalIndexBuffer.get())[accumulatingIndexCount]);
+                    &((uint16*)finalIndexBuffer.data())[accumulatingIndexCount]);
                 accumulatingIndexCount += count;
             }
             assert(accumulatingIndexCount==finalIndexCount);
@@ -795,102 +728,65 @@ namespace ColladaConversion
 
             size_t accumulatingIndexCount = 0;
             indexFormat = Format::R32_UINT;
-            finalIndexBufferSize = finalIndexCount*sizeof(uint32);
-            finalIndexBuffer = std::make_unique<uint8[]>(finalIndexBufferSize);
+            finalIndexBuffer.resize(finalIndexCount*sizeof(uint32_t));
             for (auto i=drawOperations.cbegin(); i!=drawOperations.cend(); ++i) {
                 size_t count = i->_indexBuffer.size();
                 std::copy(
                     i->_indexBuffer.begin(), i->_indexBuffer.end(),
-                    &((uint32*)finalIndexBuffer.get())[accumulatingIndexCount]);
+                    &((uint32*)finalIndexBuffer.data())[accumulatingIndexCount]);
                 accumulatingIndexCount += count;
             }
             assert(accumulatingIndexCount==finalIndexCount);
 
         }
 
-            // If we have a merged transform, we need to transform the geometry through
-            // that transform. This means affecting the positions... but also normals and
-            // tangents and other 3d vertex parameters. But texture coordinates and colors
-            // should not be transformed!
-        if (!Equivalent(mergedTransform, Identity<Float4x4>(), 1e-5f))
-            Transform(*database, mergedTransform);
+		auto vertexMapping = database->BuildUnifiedVertexIndexToPositionIndex();
 
-            //  Once we have the index buffer, we can generate tangent vectors (if we need to)
-            //  We need the triangulation in order to build the tangents, so it must be done
-            //  after the index buffer is finalized
-        const bool generateMissingTangentsAndNormals = true;
-        if (constant_expression<generateMissingTangentsAndNormals>::result()) {
-            GenerateNormalsAndTangents(
-                *database, 0,
-				1e-3f,
-                finalIndexBuffer.get(), finalIndexCount, indexFormat);
-        }
-
-            // If we have normals, tangents & bitangents... then we can remove one of them
-            // (it will be implied by the remaining two). We can choose to remove the 
-            // normal or the bitangent... Lets' remove the binormal, because it makes it 
-            // easier to do low quality rendering with normal maps turned off.
-        const bool removeRedundantBitangents = true;
-        if (constant_expression<removeRedundantBitangents>::result())
-            RemoveRedundantBitangents(*database);
-
-        NativeVBLayout vbLayout = BuildDefaultLayout(*database, NativeSettings);
-        auto nativeVB = database->BuildNativeVertexBuffer(vbLayout);
-
-            // note -- this should actually be the mapping onto the input with the semantic "VERTEX" in the primitives' input array
-        auto unifiedVertexIndexToPositionIndex = database->BuildUnifiedVertexIndexToPositionIndex();
-
-            //
-            //      We've built everything:
-            //          vertex buffer
-            //          vertex input layout
-            //          index buffer
-            //          draw calls (and material ids)
-            //
-            //      Create the final RawGeometry object with all this stuff
-            //
-
-        return NascentRawGeometry(
-            std::move(nativeVB), 
-            DynamicArray<uint8>(std::move(finalIndexBuffer), finalIndexBufferSize),
-            RenderCore::Assets::CreateGeoInputAssembly(vbLayout._elements, (unsigned)vbLayout._vertexStride),
-            indexFormat,
-            std::move(finalDrawOperations),
-            DynamicArray<uint32>(std::move(unifiedVertexIndexToPositionIndex), database->GetUnifiedVertexCount()),
-            std::vector<uint64>(matBindingSymbols.cbegin(), matBindingSymbols.cend()));
-    }
+		return ConvertedMeshGeometry{
+			NascentModel::GeometryBlock {
+				database,
+				std::move(finalDrawOperations),
+				std::vector<unsigned>{vertexMapping.get(), &vertexMapping[database->GetUnifiedVertexCount()]},
+				std::move(finalIndexBuffer),
+				indexFormat
+			},
+			materialBindingSymbols
+		};
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    DynamicArray<Float4x4> GetInverseBindMatrices(
+    static std::vector<Float4x4> GetInverseBindMatrices(
         const SkinController& skinController,
-        const URIResolveContext& resolveContext)
+        const URIResolveContext& resolveContext,
+		IteratorRange<const unsigned*> remapping)
     {
         auto invBindInput = skinController.GetJointInputs().FindInputBySemantic(u("INV_BIND_MATRIX"));
-        if (!invBindInput) return DynamicArray<Float4x4>();
+		if (!invBindInput) return {};
 
         auto* invBindSource = FindElement(
             GuidReference(invBindInput->_source), resolveContext, 
             &IDocScopeIdResolver::FindSource);
-        if (!invBindSource) return DynamicArray<Float4x4>();
+		if (!invBindSource) return {};
 
         if (invBindSource->GetType() != DataFlow::ArrayType::Float)
-            return DynamicArray<Float4x4>();
+			return {};
 
         auto* commonAccessor = invBindSource->FindAccessorForTechnique();
-        if (!commonAccessor) return DynamicArray<Float4x4>();
+		if (!commonAccessor) return {};
 
         if (    commonAccessor->GetParamCount() != 1
             || !Is(commonAccessor->GetParam(0)._type, u("float4x4"))) {
-            LogWarning << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation();
-            return DynamicArray<Float4x4>();
+            Log(Warning) << "Expecting inverse bind matrices expressed as float4x4 elements. These inverse bind elements will be ignored. In <source> at " << invBindSource->GetLocation() << std::endl;
+			return {};
         }
 
         auto count = commonAccessor->GetCount();
         if (!count)
-            return DynamicArray<Float4x4>(nullptr, 0);
+			return {};
 
-        DynamicArray<Float4x4> result(std::make_unique<Float4x4[]>(count), count);
+		std::vector<Float4x4> result;
+		result.reserve(count);
 
             // parse in the array of raw floats
         auto rawFloatCount = invBindSource->GetCount();
@@ -899,41 +795,50 @@ namespace ColladaConversion
 
         for (unsigned c=0; c<count; ++c) {
             auto r = c * commonAccessor->GetStride();
+			Float4x4 transform;
             if ((r + 16) <= rawFloatCount) {
-                result[c] = MakeFloat4x4(
+                transform = MakeFloat4x4(
                     rawFloats[r+ 0], rawFloats[r+ 1], rawFloats[r+ 2], rawFloats[r+ 3],
                     rawFloats[r+ 4], rawFloats[r+ 5], rawFloats[r+ 6], rawFloats[r+ 7],
                     rawFloats[r+ 8], rawFloats[r+ 9], rawFloats[r+10], rawFloats[r+11],
                     rawFloats[r+12], rawFloats[r+13], rawFloats[r+14], rawFloats[r+15]);
             } else
-                result[c] = Identity<Float4x4>();
+                transform = Identity<Float4x4>();
+
+			if (c < remapping.size() && remapping[c] != ~0u) {
+				if (result.size() <= remapping[c])
+					result.resize(remapping[c]+1);
+				result[remapping[c]] = transform;
+			}
         }
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    std::vector<std::basic_string<utf8>> GetJointNames(
+    static std::vector<std::string> GetJointNames(
         const SkinController& controller,
-        const URIResolveContext& resolveContext)
+        const URIResolveContext& resolveContext,
+		IteratorRange<const unsigned*> remapping)
     {
-        std::vector<std::basic_string<utf8>> result;
+        std::vector<std::string> result;
 
             // we're expecting an input called "JOINT" that contains the names of joints
             // These names should match the "sid" of nodes within the hierachy of nodes
             // beneath our "skeleton"
         auto jointInput = controller.GetJointInputs().FindInputBySemantic(u("JOINT"));
-        if (!jointInput) return std::vector<std::basic_string<utf8>>();
+		if (!jointInput) return {};
 
+		GuidReference jointSourceRef(jointInput->_source);
         auto* jointSource = FindElement(
-            GuidReference(jointInput->_source), resolveContext, 
+            jointSourceRef, resolveContext, 
             &IDocScopeIdResolver::FindSource);
-        if (!jointSource) return std::vector<std::basic_string<utf8>>();
+		if (!jointSource) return {};
 
         if (    jointSource->GetType() != DataFlow::ArrayType::Name
             &&  jointSource->GetType() != DataFlow::ArrayType::SidRef)
-            return std::vector<std::basic_string<utf8>>();
+			return {};
 
         auto count = jointSource->GetCount();
         auto arrayData = jointSource->GetArrayData();
@@ -952,11 +857,34 @@ namespace ColladaConversion
             auto* elementStart = i;
             while (i < arrayData._end && !IsWhitespace(*i)) ++i;
 
-            result.push_back(std::basic_string<utf8>(elementStart, i));
+			if (elementIndex < remapping.size() && remapping[elementIndex] != ~0u) {
+				if (result.size() <= remapping[elementIndex])
+					result.resize(remapping[elementIndex]+1);
+
+				// We must convert from the "sids" in the JOINTS array to node names
+				// This is because we use names (rather than sids) for skeleton/animation
+				// binding operations. Names are more reliable for cross-file binding,
+				// but it means we have to do this mapping here.
+				// Also note that Collada uses the "sid" element on names for the string
+				// values in the <joints> array (as per the standard). Many files just
+				// duplicate the id and the sid; but where they differ, we must be sure
+				// to use the sid
+				auto nodeId = std::string((const char*)elementStart, (const char*)i);
+				auto node = FindElement(
+					GuidReference(Hash64(nodeId), jointSourceRef._fileHash), resolveContext, 
+					&IDocScopeIdResolver::FindNodeBySid);
+				if (node) {
+					result[remapping[elementIndex]] = node.GetName().Cast<char>().AsString();
+				} else {
+					result[remapping[elementIndex]] = nodeId;
+				}
+			}
+            // result.push_back(std::string((const char*)elementStart, (const char*)i));
+			++elementIndex;
             if (i == arrayData._end || elementIndex == count) break;
         }
 
-        return std::move(result);
+        return result;
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -966,7 +894,7 @@ namespace ColladaConversion
     {
         auto* accessor = source.FindAccessorForTechnique();
         if (!accessor) {
-            LogWarning << "Expecting common access in <source> at " << source.GetLocation();
+            Log(Warning) << "Expecting common access in <source> at " << source.GetLocation() << std::endl;
             return DynamicArray<Type>();
         }
 
@@ -981,7 +909,7 @@ namespace ColladaConversion
             param = &accessor->GetParam(0);
         }
         if (!param) {
-            LogWarning << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation();
+            Log(Warning) << "Expecting parameter with name " << paramName << " in <source> at " << source.GetLocation() << std::endl;
             return DynamicArray<Type>();
         }
 
@@ -989,7 +917,7 @@ namespace ColladaConversion
         auto stride = accessor->GetStride();
         auto count = accessor->GetCount();
         if ((offset + (count-1) * stride + 1) > source.GetCount()) {
-            LogWarning << "Source array is too short for accessor in <source> at " << source.GetLocation();
+            Log(Warning) << "Source array is too short for accessor in <source> at " << source.GetLocation() << std::endl;
             return DynamicArray<Type>();
         }
 
@@ -1147,47 +1075,6 @@ namespace ColladaConversion
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    template <int WeightCount>
-        class VertexWeightAttachment
-    {
-    public:
-        uint8       _weights[WeightCount];            // go straight to compressed 8 bit value
-        uint8       _jointIndex[WeightCount];
-    };
-
-    template <>
-        class VertexWeightAttachment<0>
-    {
-    };
-
-    template <int WeightCount>
-        class VertexWeightAttachmentBucket
-    {
-    public:
-        std::vector<uint16>                                 _vertexBindings;
-        std::vector<VertexWeightAttachment<WeightCount>>    _weightAttachments;
-    };
-
-    template<unsigned WeightCount> 
-        VertexWeightAttachment<WeightCount> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
-    {
-        VertexWeightAttachment<WeightCount> attachment;
-        std::fill(attachment._weights, &attachment._weights[dimof(attachment._weights)], 0);
-        std::fill(attachment._jointIndex, &attachment._jointIndex[dimof(attachment._jointIndex)], 0);
-		for (unsigned c=0; c<std::min(WeightCount, jointCount); ++c) {
-			attachment._weights[c] = weights[c];
-			attachment._jointIndex[c] = (uint8)joints[c];
-		}
-        return attachment;
-    }
-
-    template<> VertexWeightAttachment<0> BuildWeightAttachment(const uint8 weights[], const unsigned joints[], unsigned jointCount)
-    {
-        return VertexWeightAttachment<0>();
-    }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
     auto Convert(   const SkinController& controller, 
                     const URIResolveContext& resolveContext,
                     const ImportConfiguration& cfg)
@@ -1333,6 +1220,34 @@ namespace ColladaConversion
                 bucket0._weightAttachments.push_back(BuildWeightAttachment<0>(normalizedWeights, jointIndices, (unsigned)influenceCount));
             }
         }
+
+		// Compress the list of joints used by this controller by only
+		// including joints that are actually referenced by weights
+		std::vector<unsigned> jointIndexRemapping;
+		const bool doJointUsageCompression = true;
+		if (doJointUsageCompression) {
+			std::vector<unsigned> jointUsage;
+			jointUsage.resize(256);
+			AccumulateJointUsage(bucket1, jointUsage);
+			AccumulateJointUsage(bucket2, jointUsage);
+			AccumulateJointUsage(bucket4, jointUsage);
+
+			unsigned finalJointIndexCount = 0;
+			for (unsigned c=0; c<jointUsage.size(); ++c) {
+				if (jointUsage[c]) {
+					if (jointIndexRemapping.size() <= c)
+						jointIndexRemapping.resize(c+1, ~0u);
+					jointIndexRemapping[c] = finalJointIndexCount;
+					++finalJointIndexCount;
+				}
+			}
+			RemapJointIndices(bucket1, MakeIteratorRange(jointIndexRemapping));
+			RemapJointIndices(bucket2, MakeIteratorRange(jointIndexRemapping));
+			RemapJointIndices(bucket4, MakeIteratorRange(jointIndexRemapping));
+		} else {
+			for (unsigned c=0; c<256; ++c)
+				jointIndexRemapping.push_back(c);
+		}
             
         UnboundSkinController::Bucket b4;
         b4._vertexBindings = std::move(bucket4._vertexBindings);
@@ -1370,8 +1285,9 @@ namespace ColladaConversion
             XlCopyMemory(b0._vertexBufferData.get(), AsPointer(bucket0._weightAttachments.begin()), b0._vertexBufferSize);
         }
 
-        auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext);
-        auto jointNames = GetJointNames(controller, resolveContext);
+        auto inverseBindMatrices = GetInverseBindMatrices(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
+        auto jointNames = GetJointNames(controller, resolveContext, MakeIteratorRange(jointIndexRemapping));
+		assert(inverseBindMatrices.size() == jointNames.size());
         GuidReference ref(controller.GetBaseMesh());
         return UnboundSkinController(
             std::move(b4), std::move(b2), std::move(b1), std::move(b0),

@@ -130,8 +130,7 @@ namespace UnitTests
         TraceTransformationMachine(stream, orig, nullptr, nullptr);
         stream << " O P T I M I Z E S   T O : " << std::endl;
         TraceTransformationMachine(stream, opt, nullptr, nullptr);
-        LogInfo << stream.str();
-        el::Loggers::flushAll();
+        Log(Verbose) << stream.str() << std::endl;
     }
 
     class Optimizer : public RenderCore::Assets::ITransformationMachineOptimizer
@@ -204,8 +203,8 @@ namespace UnitTests
                     LogTransMachines(MakeIteratorRange(machine), MakeIteratorRange(optimized), c);
 
                     Float4x4 resultUnOpt, resultOpt;
-                    GenerateOutputTransformsFree(&resultUnOpt, 1, nullptr, MakeIteratorRange(machine));
-                    GenerateOutputTransformsFree(&resultOpt, 1, nullptr, MakeIteratorRange(optimized));
+                    GenerateOutputTransforms(MakeIteratorRange(&resultUnOpt, &resultUnOpt+1), nullptr, MakeIteratorRange(machine));
+                    GenerateOutputTransforms(MakeIteratorRange(&resultOpt, &resultOpt+1), nullptr, MakeIteratorRange(optimized));
 
                     const float tolerance = 3e-2f;
                     if (!RelativeEquivalent(resultUnOpt, resultOpt, tolerance)) {

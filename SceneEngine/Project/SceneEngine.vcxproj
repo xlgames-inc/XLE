@@ -146,12 +146,15 @@
     <ClCompile Include="..\Fluid.cpp" />
     <ClCompile Include="..\FluidAdvection.cpp" />
     <ClCompile Include="..\FluidHelper.cpp" />
+    <ClCompile Include="..\RenderStep_Forward.cpp" />
+    <ClCompile Include="..\RenderStep_GBuffer.cpp" />
     <ClCompile Include="..\GestaltResource.cpp" />
     <ClCompile Include="..\IntersectionTest.cpp" />
     <ClCompile Include="..\LightingTargets.cpp" />
     <ClCompile Include="..\LightingParserResolve.cpp" />
     <ClCompile Include="..\LightingParserStandardPlugin.cpp" />
     <ClCompile Include="..\LightInternal.cpp" />
+    <ClCompile Include="..\MetalStubs.cpp" />
     <ClCompile Include="..\MetricsBox.cpp" />
     <ClCompile Include="..\Noise.cpp" />
     <ClCompile Include="..\Ocean.cpp" />
@@ -166,6 +169,9 @@
     <ClCompile Include="..\RefractionsBuffer.cpp" />
     <ClCompile Include="..\LightingParser.cpp" />
     <ClCompile Include="..\RenderingUtils.cpp" />
+    <ClCompile Include="..\RenderStepUtils.cpp" />
+    <ClCompile Include="..\RenderStep_PrepareShadows.cpp" />
+    <ClCompile Include="..\RenderStep_ResolveHDR.cpp" />
     <ClCompile Include="..\SceneEngineUtils.cpp" />
     <ClCompile Include="..\ScreenspaceReflections.cpp" />
     <ClCompile Include="..\ShadowResources.cpp" />
@@ -207,6 +213,7 @@
     <ClInclude Include="..\LightingParserContext.h" />
     <ClInclude Include="..\LightingParserStandardPlugin.h" />
     <ClInclude Include="..\LightInternal.h" />
+    <ClInclude Include="..\MetalStubs.h" />
     <ClInclude Include="..\MetricsBox.h" />
     <ClInclude Include="..\Noise.h" />
     <ClInclude Include="..\Ocean.h" />
@@ -223,6 +230,8 @@
     <ClInclude Include="..\RefractionsBuffer.h" />
     <ClInclude Include="..\RenderingUtils.h" />
     <ClInclude Include="..\LightingParser.h" />
+    <ClInclude Include="..\RenderStep.h" />
+    <ClInclude Include="..\RenderStepUtils.h" />
     <ClInclude Include="..\SceneEngineUtils.h" />
     <ClInclude Include="..\SceneParser.h" />
     <ClInclude Include="..\ScreenspaceReflections.h" />

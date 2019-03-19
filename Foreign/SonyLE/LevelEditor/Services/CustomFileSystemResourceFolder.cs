@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.IO;
+using System.Linq;
 
 using Sce.Atf;
 
@@ -90,7 +91,7 @@ namespace LevelEditor
         {
         }
 
-        private CustomFileSystemResourceFolder(string path, IResourceFolder parent)
+        private CustomFileSystemResourceFolder(string path, IOpaqueResourceFolder parent)
         {
             if (string.IsNullOrWhiteSpace(path))
                 throw new ArgumentNullException("path");
@@ -101,16 +102,16 @@ namespace LevelEditor
         }
 
 
-        #region IResourceFolder Members
+        #region IOpaqueResourceFolder Members
 
         /// <summary>
         /// Gets a list of subfolders, if any. If there are no subfolders an empty list is returned.
         /// This IList will be read-only.</summary>
-        public IList<IResourceFolder> Folders
+        public IEnumerable<IOpaqueResourceFolder> Subfolders
         {
             get
             {
-                var folders = new List<IResourceFolder>();               
+                var folders = new List<IOpaqueResourceFolder>();               
                 try 
                 { 
                     var directories = Directory.GetDirectories(m_path);
@@ -124,44 +125,47 @@ namespace LevelEditor
                     }
                 }
                 catch { }
-                return new ReadOnlyCollection<IResourceFolder>(folders);
+                return new ReadOnlyCollection<IOpaqueResourceFolder>(folders);
+            }
+        }
+
+        public bool IsLeaf
+        {
+            get
+            {
+                return !Subfolders.Any();
             }
         }
 
         /// <summary>
         /// Gets a list of Resource URIs contained in this folder. If none, an empty list is returned.
         /// This IList will be read-only.</summary>
-        public IList<Uri> ResourceUris
+        public IEnumerable<object> Resources
         {
             get
             {                
-                var uris = new List<Uri>();
-                try 
-                {
-                    var systemOrHidden = FileAttributes.System | FileAttributes.Hidden;                    
-                    var gameEngine = Globals.MEFContainer.GetExportedValue<IGameEngineProxy>();
-                    var resInfos = gameEngine != null ? gameEngine.Info.ResourceInfos : null; 
+                var uris = new List<object>();
+                var systemOrHidden = FileAttributes.System | FileAttributes.Hidden;                    
+                var gameEngine = Globals.MEFContainer.GetExportedValue<IGameEngineProxy>();
+                var resInfos = gameEngine != null ? gameEngine.Info.ResourceInfos : null; 
 
-                    var files = Directory.GetFiles(m_path);
-                    foreach (string file in files)
-                    {                        
-                        FileInfo finfo = new FileInfo(file);                        
-                        if ( (finfo.Attributes & systemOrHidden) != 0
-                            || finfo.Name.StartsWith("~"))
-                            continue;
-                        string ext = finfo.Extension.ToLower();
-                        if (resInfos == null || resInfos.IsSupported(ext))
-                            uris.Add(new Uri(file));                        
-                    }
+                var files = Directory.GetFiles(m_path);
+                foreach (string file in files)
+                {                        
+                    FileInfo finfo = new FileInfo(file);                        
+                    if ( (finfo.Attributes & systemOrHidden) != 0
+                        || finfo.Name.StartsWith("~"))
+                        continue;
+                    string ext = finfo.Extension.ToLower();
+                    if (resInfos == null || resInfos.IsSupported(ext))
+                        yield return new Uri(file);
                 }
-                catch { }                           
-                return new ReadOnlyCollection<Uri>(uris);
             }
         }
 
         /// <summary>
         /// Gets the parent folder. Returns null if the current folder is the root of a folder tree</summary>
-        public IResourceFolder Parent
+        public IOpaqueResourceFolder Parent
         {
             get { return m_parent; }
         }
@@ -186,7 +190,7 @@ namespace LevelEditor
         /// <summary>
         /// Not implemented. Returns null.</summary>
         /// <returns>Null</returns>
-        public virtual IResourceFolder CreateFolder()
+        public virtual IOpaqueResourceFolder CreateFolder()
         {
             return null;
         }
@@ -194,7 +198,7 @@ namespace LevelEditor
         #endregion
 
         /// <summary>
-        /// Gets the absolute path of the directory that this IResourceFolder maps to</summary>
+        /// Gets the absolute path of the directory that this IOpaqueResourceFolder maps to</summary>
         public string FullPath
         {
             get { return m_path; }
@@ -202,6 +206,6 @@ namespace LevelEditor
 
         private string m_name;
         private readonly string m_path;
-        private readonly IResourceFolder m_parent;        
+        private readonly IOpaqueResourceFolder m_parent;        
     }
 }

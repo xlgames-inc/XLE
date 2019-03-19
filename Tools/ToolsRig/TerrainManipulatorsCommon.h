@@ -30,7 +30,7 @@ namespace ToolsRig
         Float2 WorldSpaceToCoverage(unsigned layerId, const Float2& input) const;
         float WorldSpaceToCoverageDistance(unsigned layerId, float input) const;
 
-		virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+		virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
         TerrainManipulatorBase(
             std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
@@ -42,12 +42,12 @@ namespace ToolsRig
     public:
             // IManipulator interface
         virtual bool    OnInputEvent(
-            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+            const SceneEngine::IntersectionTestScene* hitTestScene);
+        virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& worldSpacePosition, float size, float strength) = 0;
+        virtual void    PerformAction(const Float3& worldSpacePosition, float size, float strength) = 0;
         virtual void    SetActivationState(bool) {}
         virtual std::string GetStatusText() const { return std::string(); }
 
@@ -70,15 +70,15 @@ namespace ToolsRig
     public:
             // IManipulator interface
         virtual bool    OnInputEvent(
-            const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt, 
+            const PlatformRig::InputSnapshot& evnt, 
             const SceneEngine::IntersectionTestContext& hitTestContext,
-            const SceneEngine::IntersectionTestScene& hitTestScene);
-        virtual void    Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext);
+            const SceneEngine::IntersectionTestScene* hitTestScene);
+        virtual void    Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext);
 
-        virtual void    PerformAction(RenderCore::IThreadContext& context, const Float3& anchor0, const Float3& anchor1) = 0;
+        virtual void    PerformAction(const Float3& anchor0, const Float3& anchor1) = 0;
         
-        virtual std::pair<FloatParameter*, size_t>  GetFloatParameters() const { return std::make_pair(nullptr, 0); }
-        virtual std::pair<BoolParameter*, size_t>   GetBoolParameters() const { return std::make_pair(nullptr, 0); }
+		virtual IteratorRange<const FloatParameter*>  GetFloatParameters() const { return {}; }
+		virtual IteratorRange<const BoolParameter*>   GetBoolParameters() const { return {}; }
         virtual void SetActivationState(bool) {}
         virtual std::string GetStatusText() const { return std::string(); }
 

@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../RenderCore/IThreadContext_Forward.h"
 #include "../RenderCore/Metal/Forward.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../Math/Vector.h"
@@ -16,7 +17,6 @@ namespace RenderCore { class FrameBufferDesc; class FrameBufferProperties; }
 
 namespace SceneEngine
 {
-    class LightingParserContext;
     class ToneMapSettings;
     class ToneMapLuminanceResult;
 
@@ -39,25 +39,18 @@ namespace SceneEngine
     };
 
     LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext,
-        const ToneMapSettings& settings,
-        const RenderCore::Metal::ShaderResourceView& inputResource,
-        bool doAdapt = true);
-
-    LuminanceResult ToneMap_SampleLuminance(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext,
         const ToneMapSettings& settings,
         const RenderCore::Metal::ShaderResourceView& inputResource,
         bool doAdapt = true);
 
     void ToneMap_Execute(
-        RenderCore::Metal::DeviceContext& context, 
+        RenderCore::IThreadContext& context, 
         RenderCore::Techniques::ParsingContext& parserContext, 
         const LuminanceResult& luminanceResult,
         const ToneMapSettings& settings,
-        const RenderCore::FrameBufferDesc& destination,
+        bool hardwareSRGBEnabled,
         const RenderCore::Metal::ShaderResourceView& inputResource);
 
     class AtmosphereBlurSettings
@@ -69,7 +62,7 @@ namespace SceneEngine
     };
 
     void AtmosphereBlur_Execute(
-        RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext,
         const AtmosphereBlurSettings& settings);
 
     class ToneMapSettings 

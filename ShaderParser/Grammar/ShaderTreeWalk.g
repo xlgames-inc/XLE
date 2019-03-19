@@ -60,10 +60,6 @@ options
 
 //------------------------------------------------------------------------------------------------
 
-semantic returns [StringId str = ~0u]
-	: ^(SEMANTIC n=Identifier) { str = String_Register(ctx, n); }
-	;
-
 direction returns [unsigned directionFlags = 0u]
 	: DIRECTION_OUT { directionFlags = 1<<1; }
 	| DIRECTION_IN_OUT { directionFlags = (1<<0) | (1<<1); }
@@ -74,6 +70,10 @@ identifier returns [StringId str = ~0u] : Identifier { str = String_Register(ctx
 
 typeName returns [StringId str = ~0u]
 	: ^(TYPE_NAME s=identifier) { str = s; }
+	;
+
+semantic returns [StringId str = ~0u]
+	: ^(SEMANTIC n=identifier) { str = n; }
 	;
 
 subscript : ^(SUBSCRIPT .*) ;
@@ -124,5 +124,12 @@ parameterStruct returns [struct ParameterStruct result = (struct ParameterStruct
 toplevel
 	: p=parameterStruct { ParameterStruct_Register(ctx, &p); }
 	| f=function { Function_Register(ctx, &f); }
+	| ^(UNIFORM 
+		^(TYPE_NAME t=typeName
+			(
+				^(VARIABLE_NAME identifier subscript* semantic? (^(ASSIGNMENT_EXPRESSION .*))?)
+			)*
+		)
+	  )
 	;
 entrypoint : toplevel* ;

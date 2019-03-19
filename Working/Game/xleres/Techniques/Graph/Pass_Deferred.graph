@@ -1,0 +1,60 @@
+
+import std = "xleres/Techniques/Graph/Pass_Standard.sh"
+import gbuffer = "xleres/gbuffer.h"
+import surface = "xleres/Surface.h"
+import templates = "xleres/Nodes/Templates.sh"
+import output = "xleres/Nodes/Output.sh"
+import materialParam = "xleres/Nodes/MaterialParam.sh"
+
+auto deferred_pass_main(
+    VSOutput geo,
+    graph<templates::EarlyRejectionTest> rejectionTest,
+    graph<templates::PerPixel> perPixel)
+{
+    /*if (rejectionTest(geo:geo).result) {
+        discard;
+    }*/
+
+	node perPixelEval = perPixel(geo:geo);
+    return gbuffer::Encode(values:perPixelEval.result).result;
+}
+
+auto deferred_pass_main_separate(
+    VSOutput geo,
+    graph<templates::EarlyRejectionTest> rejectionTest,
+    graph<templates::PerPixel2> perPixel)
+{
+    /*if (rejectionTest(geo:geo).result) {
+        discard;
+    }*/
+
+	node perPixelEval = perPixel(geo:geo);
+    node gbufferValues = output::Output_PerPixel(
+        diffuseAlbedo:perPixelEval.diffuseAlbedo,
+        worldSpaceNormal:perPixelEval.worldSpaceNormal,
+        material:perPixelEval.material,
+        blendingAlpha:perPixelEval.blendingAlpha,
+        normalMapAccuracy:perPixelEval.normalMapAccuracy,
+        cookedAmbientOcclusion:perPixelEval.cookedAmbientOcclusion,
+        cookedLightOcclusion:perPixelEval.cookedLightOcclusion,
+        transmission:perPixelEval.transmission);
+    return gbuffer::Encode(values:gbufferValues.result).result;
+}
+
+
+auto deferred_pass_color_from_worldcoords(
+    VSOutput geo,
+    graph<templates::CoordinatesToColor> perPixel)
+{
+    node perPixelEval = perPixel(coords: surface::GetWorldPosition(geo:geo).result);
+    node gbufferValues = output::Output_PerPixel(
+        diffuseAlbedo:perPixelEval.result,
+        worldSpaceNormal:surface::GetNormal(geo:geo).result,
+        material:materialParam::CommonMaterialParam_Default().result,
+        blendingAlpha:"1.0",
+        normalMapAccuracy:"1.0",
+        cookedAmbientOcclusion:"1.0",
+        cookedLightOcclusion:"1.0");
+    return gbuffer::Encode(values:gbufferValues.result).result;
+}
+

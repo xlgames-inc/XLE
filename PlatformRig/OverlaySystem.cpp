@@ -7,22 +7,22 @@
 #include "OverlaySystem.h"
 #include "../../PlatformRig/DebuggingDisplays/ConsoleDisplay.h"
 #include "../../RenderOverlays/OverlayContext.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../RenderCore/IThreadContext.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../RenderCore/Techniques/RenderPassUtils.h"
+#include "../../RenderCore/Techniques/RenderPass.h"
 #include "../../RenderOverlays/DebuggingDisplay.h"
 #include "../../Assets/Assets.h"
 #include "../../ConsoleRig/Console.h"
 
 namespace PlatformRig
 {
-    using RenderOverlays::DebuggingDisplay::IInputListener;
-
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class OverlaySystemSwitch::InputListener : public IInputListener
     {
     public:
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        virtual bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt)
         {
             using namespace RenderOverlays::DebuggingDisplay;
             static const KeyId shiftKey = KeyId_Make("shift");
@@ -53,7 +53,7 @@ namespace PlatformRig
 
                     //  if we have an active overlay system, we always consume all input!
                     //  Nothing gets through to the next level
-                _parent->_childSystems[_parent->_activeChildIndex].second->GetInputListener()->OnInputEvent(evnt);
+                _parent->_childSystems[_parent->_activeChildIndex].second->GetInputListener()->OnInputEvent(context, evnt);
                 return true;
             }
 
@@ -70,19 +70,11 @@ namespace PlatformRig
         return _inputListener;
     }
 
-    void OverlaySystemSwitch::RenderWidgets(
-        RenderCore::IThreadContext& device, RenderCore::Techniques::ParsingContext& parserContext) 
+    void OverlaySystemSwitch::Render(
+        RenderCore::IThreadContext& device, const RenderCore::IResourcePtr& renderTarget, RenderCore::Techniques::ParsingContext& parserContext) 
     {
         if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderWidgets(device, parserContext);
-        }
-    }
-
-    void OverlaySystemSwitch::RenderToScene(
-        RenderCore::IThreadContext& device, SceneEngine::LightingParserContext& parserContext) 
-    {
-        if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size())) {
-            _childSystems[_activeChildIndex].second->RenderToScene(device, parserContext);
+            _childSystems[_activeChildIndex].second->Render(device, renderTarget, parserContext);
         }
     }
 
@@ -95,6 +87,13 @@ namespace PlatformRig
             _activeChildIndex = -1;
         }
     }
+
+	auto OverlaySystemSwitch::GetOverlayState() const -> OverlayState
+	{
+		if (_activeChildIndex >= 0 && _activeChildIndex < signed(_childSystems.size()))
+            return _childSystems[_activeChildIndex].second->GetOverlayState();
+        return {};
+	}
 
     void OverlaySystemSwitch::AddSystem(uint32 activator, std::shared_ptr<IOverlaySystem> system)
     {
@@ -114,12 +113,11 @@ namespace PlatformRig
     class OverlaySystemSet::InputListener : public IInputListener
     {
     public:
-        virtual bool    OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+        virtual bool    OnInputEvent(const InputContext& context, const InputSnapshot& evnt)
         {
-            using namespace RenderOverlays::DebuggingDisplay;
             for (auto i=_parent->_childSystems.begin(); i!=_parent->_childSystems.end(); ++i) {
                 auto listener = (*i)->GetInputListener();
-                if (listener && listener->OnInputEvent(evnt)) {
+                if (listener && listener->OnInputEvent(context, evnt)) {
                     return true;
                 }
             }
@@ -134,23 +132,13 @@ namespace PlatformRig
 
     std::shared_ptr<IInputListener> OverlaySystemSet::GetInputListener()         { return _inputListener; }
 
-    void OverlaySystemSet::RenderWidgets(
-        RenderCore::IThreadContext& device, 
+    void OverlaySystemSet::Render(
+        RenderCore::IThreadContext& device,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parsingContext) 
     {
         for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            (*i)->RenderWidgets(device, parsingContext);
-        }
-    }
-
-    void OverlaySystemSet::RenderToScene(
-        RenderCore::IThreadContext& device, 
-        SceneEngine::LightingParserContext& parserContext) 
-    {
-        for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
-            CATCH_ASSETS_BEGIN
-                (*i)->RenderToScene(device, parserContext);
-            CATCH_ASSETS_END(parserContext)
+            (*i)->Render(device, renderTarget, parsingContext);
         }
     }
 
@@ -161,11 +149,31 @@ namespace PlatformRig
         }
     }
 
+	auto OverlaySystemSet::GetOverlayState() const -> OverlayState
+	{
+		OverlayState result;
+		for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i) {
+			auto childState = (*i)->GetOverlayState();
+			if (childState._refreshMode == RefreshMode::RegularAnimation)
+				result._refreshMode = RefreshMode::RegularAnimation;
+		}
+		return result;
+	}
+
     void OverlaySystemSet::AddSystem(std::shared_ptr<IOverlaySystem> system)
     {
         _childSystems.push_back(std::move(system));
             // todo -- do we need to call SetActivationState() here?
     }
+
+	void OverlaySystemSet::RemoveSystem(IOverlaySystem& system)
+    {
+		for (auto i=_childSystems.begin(); i!=_childSystems.end(); ++i)
+			if (i->get() == &system) {
+				_childSystems.erase(i);
+				return;
+			}
+	}
 
     OverlaySystemSet::OverlaySystemSet() 
     : _activeChildIndex(-1)
@@ -177,6 +185,9 @@ namespace PlatformRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+	std::shared_ptr<IInputListener> IOverlaySystem::GetInputListener() { return nullptr; }
+	void IOverlaySystem::SetActivationState(bool newState) {}
+	auto IOverlaySystem::GetOverlayState() const -> OverlayState { return {}; }
     IOverlaySystem::~IOverlaySystem() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -185,12 +196,10 @@ namespace PlatformRig
     {
     public:
         std::shared_ptr<IInputListener> GetInputListener();
-        void RenderWidgets(
-            RenderCore::IThreadContext& device, 
+        void Render(
+            RenderCore::IThreadContext& device,
+			const RenderCore::IResourcePtr& renderTarget,
             RenderCore::Techniques::ParsingContext& parserContext);
-        void RenderToScene(
-            RenderCore::IThreadContext& devContext, 
-            SceneEngine::LightingParserContext& parserContext);
         void SetActivationState(bool);
 
         ConsoleOverlaySystem();
@@ -206,18 +215,17 @@ namespace PlatformRig
         return _screens;
     }
 
-    void ConsoleOverlaySystem::RenderWidgets(
-        RenderCore::IThreadContext& device, 
+    void ConsoleOverlaySystem::Render(
+        RenderCore::IThreadContext& threadContext,
+		const RenderCore::IResourcePtr& renderTarget,
         RenderCore::Techniques::ParsingContext& parserContext)
     {
-		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(device, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
-		auto viewportDims = device.GetStateDesc()._viewportDimensions;
+		auto overlayContext = RenderOverlays::MakeImmediateOverlayContext(threadContext, &parserContext.GetNamedResources(), parserContext.GetProjectionDesc());
+		auto viewportDims = threadContext.GetStateDesc()._viewportDimensions;
+		auto rpi = RenderCore::Techniques::RenderPassToPresentationTarget(threadContext, renderTarget, parserContext);
 		_screens->Render(*overlayContext, RenderOverlays::DebuggingDisplay::Rect{ {0,0}, {int(viewportDims[0]), int(viewportDims[1])} });
     }
 
-    void ConsoleOverlaySystem::RenderToScene(
-        RenderCore::IThreadContext& device, 
-        SceneEngine::LightingParserContext& parserContext) {}
     void ConsoleOverlaySystem::SetActivationState(bool) {}
 
     ConsoleOverlaySystem::ConsoleOverlaySystem()

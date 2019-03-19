@@ -6,46 +6,21 @@
 
 #pragma once
 
+#include "../Assets/AssetsCore.h"
 #include "../RenderCore/Format.h"
+#include "../RenderCore/ResourceDesc.h"
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/InputLayout.h"
 #include "../RenderCore/Metal/FrameBuffer.h"
 
 #include "../BufferUploads/IBufferUploads.h"
+#include "../Math/Vector.h"
 
-namespace RenderCore { class TextureViewDesc; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
-    class RenderingQualitySettings;
-
-    class IMainTargets
-    {
-    public:
-        using Name = uint32;
-        static const Name PresentationTarget = 0u;
-        static const Name MultisampledDepth = 2u;
-        static const Name LightResolve = 3u;
-        static const Name MultisampledDepth_JustDepth = 4u;
-        static const Name MultisampledDepth_JustStencil = 5u;
-        static const Name GBufferDiffuse = 6u;
-        static const Name GBufferNormals = 7u;
-        static const Name GBufferParameters = 8u;
-        static const Name PostMSAALightResolve = 9u;
-        static const Name PresentationTarget_ToneMapWrite = 10u;
-
-        static const Name ShadowDepthMap = 20u;
-
-        using SRV = RenderCore::Metal::ShaderResourceView;
-
-        virtual unsigned                        GetGBufferType() const = 0;
-        virtual RenderCore::TextureSamples      GetSampling() const = 0;
-        virtual const RenderingQualitySettings& GetQualitySettings() const = 0;
-        virtual VectorPattern<unsigned, 2>      GetDimensions() const = 0;
-
-        virtual const SRV&      GetSRV(Name) const = 0;
-        virtual const SRV&      GetSRV(Name, Name, const RenderCore::TextureViewDesc&) const = 0;
-    };
+    class RenderSceneSettings;
 
     class LightingResolveShaders
     {
@@ -207,14 +182,16 @@ namespace SceneEngine
         std::shared_ptr<::Assets::DependencyValidation>  _validationCallback;
     };
 
+	class MainTargets;
 
- 
     #if defined(_DEBUG)
-        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, IMainTargets& mainTargets);
+        void SaveGBuffer(RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext, const MainTargets& mainTargets);
     #endif
 
-    class LightingParserContext;
-    void Deferred_DrawDebugging(RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext, bool useMsaaSamplers, unsigned debuggingType);
+    void Deferred_DrawDebugging(
+		RenderCore::Metal::DeviceContext& context, RenderCore::Techniques::ParsingContext& parserContext,
+		MainTargets mainTargets,
+		bool useMsaaSamplers, unsigned debuggingType);
 
 }
 

@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "../RenderCore/Metal/Forward.h"
 #include "../Math/RegularNumberField.h"
 #include "../Math/PoissonSolver.h"
 #include "../Math/Vector.h"
@@ -17,6 +16,9 @@
 #undef new
 #include <Eigen/Dense>
 #pragma pop_macro("new")
+
+namespace RenderCore { class IThreadContext; }
+namespace RenderCore { namespace Techniques { class ParsingContext; }}
 
 namespace SceneEngine
 {
@@ -87,18 +89,17 @@ namespace SceneEngine
         const PoissonSolver& solver, const PoissonSolver::PreparedMatrix& A,
         PoissonSolver::Method method);
 
-    class LightingParserContext;
     enum RenderFluidMode { Scalar, Vector };
     void RenderFluidDebugging2D(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt2 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data);
 
     void RenderFluidDebugging3D(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         RenderFluidMode debuggingMode,
         UInt3 dimensions, float minValue, float maxValue,
         std::initializer_list<const float*> data);

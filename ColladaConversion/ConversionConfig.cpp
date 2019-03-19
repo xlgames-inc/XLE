@@ -32,7 +32,7 @@ namespace ColladaConversion
             _vertexSemanticBindings = BindingConfig(doc.Element(u("VertexSemantics")));
 
         } CATCH(...) {
-            LogWarning << "Problem while loading configuration file (" << filename << "). Using defaults.";
+            Log(Warning) << "Problem while loading configuration file (" << filename << "). Using defaults." << std::endl;
         } CATCH_END
 
         _depVal = std::make_shared<::Assets::DependencyValidation>();

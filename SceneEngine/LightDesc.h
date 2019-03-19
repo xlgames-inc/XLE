@@ -6,7 +6,7 @@
 
 #pragma once
 
-#include "../RenderCore/Types_Forward.h"
+#include "../RenderCore/Types.h"
 #include "../Assets/AssetsCore.h"		// (for ResChar)
 #include "../Math/Matrix.h"
 #include "../Math/Vector.h"
@@ -141,8 +141,7 @@ namespace SceneEngine
         enum class ResolveType { DepthTexture, RayTraced };
         ResolveType     _resolveType;
 
-        enum class WindingCull { BackFaces, FrontFaces, None };
-        WindingCull     _windingCull;
+        RenderCore::CullMode     _cullMode;
 
         LightId         _lightId;
 
@@ -225,7 +224,7 @@ namespace SceneEngine
 		_tanBlurAngle = 0.f;
 		_minBlurSearch = _maxBlurSearch = 0.f;
 		_resolveType = ResolveType::DepthTexture;
-		_windingCull = WindingCull::BackFaces;
+		_cullMode = RenderCore::CullMode::Back;
 		_lightId = ~0u;
 	}
 

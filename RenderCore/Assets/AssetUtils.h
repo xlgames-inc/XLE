@@ -6,7 +6,9 @@
 
 #pragma once
 
+#include "../IDevice_Forward.h"
 #include "../../Utility/MemoryUtils.h"      // (for ConstHash64)
+#include "../../Utility/IteratorUtils.h"
 #include <vector>
 
 namespace Utility { class ParameterBox; }
@@ -15,13 +17,11 @@ namespace RenderCore { class InputElementDesc; }
 
 namespace RenderCore { namespace Assets
 {
-    /// <summary>Set the RES_HAS technique materials parameter</summary>
-    /// There are a few standard RES_HAS shader parameters that are defined by
-    /// the resources that are bound to a technique material. This function builds
-    /// a parameter box with these parameters set.
-    ParameterBox TechParams_SetResHas(
-        const ParameterBox& inputMatParameters, const ParameterBox& resBindings,
-        const ::Assets::DirectorySearchRules& searchRules);
+	IResourcePtr CreateStaticVertexBuffer(IteratorRange<const void*> data);
+	IResourcePtr CreateStaticIndexBuffer(IteratorRange<const void*> data);
+
+	IResourcePtr CreateStaticVertexBuffer(IDevice& device, IteratorRange<const void*> data);
+	IResourcePtr CreateStaticIndexBuffer(IDevice& device, IteratorRange<const void*> data);
 
     static const uint64 ChunkType_ModelScaffold = ConstHash64<'Mode', 'lSca', 'fold'>::Value;
     static const uint64 ChunkType_ModelScaffoldLargeBlocks = ConstHash64<'Mode', 'lSca', 'fold', 'Larg'>::Value;

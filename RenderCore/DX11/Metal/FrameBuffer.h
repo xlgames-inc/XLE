@@ -23,8 +23,10 @@ namespace RenderCore { namespace Metal_DX11
 	{
 	public:
         void BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const;
+		unsigned GetSubpassCount() const { return (unsigned)_subpasses.size(); }
 
 		FrameBuffer(
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const INamedAttachments& namedResources);
 		FrameBuffer();
@@ -45,8 +47,7 @@ namespace RenderCore { namespace Metal_DX11
 			LoadStore _dsvLoad;
 			unsigned _dsvClearValue;
         };
-        Subpass     _subpasses[s_maxSubpasses];
-        unsigned    _subpassCount;
+        std::vector<Subpass> _subpasses;
 	};
 
     /// <summary>Stores a set of retained frame buffers, which can be reused frame-to-frame</summary>
@@ -60,7 +61,7 @@ namespace RenderCore { namespace Metal_DX11
     {
     public:
         std::shared_ptr<FrameBuffer> BuildFrameBuffer(
-			const ObjectFactory& factory,
+			ObjectFactory& factory,
             const FrameBufferDesc& desc,
             const FrameBufferProperties& props,
             const INamedAttachments& namedResources,
@@ -82,6 +83,8 @@ namespace RenderCore { namespace Metal_DX11
         IteratorRange<const ClearValue*> clearValues);
 
     void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer);
+	void EndSubpass(DeviceContext& context);
     void EndRenderPass(DeviceContext& context);
+	unsigned GetCurrentSubpassIndex(DeviceContext& context);
 
 }}

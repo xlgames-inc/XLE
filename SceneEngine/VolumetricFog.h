@@ -6,7 +6,6 @@
 
 #pragma once
 
-#include "LightingParserContext.h"
 #include "LightingParser.h"
 #include "LightDesc.h"
 #include "../Math/Vector.h"

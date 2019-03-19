@@ -1,0 +1,28 @@
+// CompoundDocument:1
+import basic = "xleres/nodes/basic.sh"
+
+void WoodModulator002(float value, float period, out float int, out float frac)
+{
+	node node_0 = [[visualNode3]]basic::Divide1(lhs:value, rhs:period);
+	node node_1 = [[visualNode2]]basic::Round1(value:node_0.result);
+	frac = [[visualNode0]]basic::Multiply1(lhs:[[visualNode4]]basic::Subtract1(rhs:node_1.result, lhs:node_0.result).result, rhs:period).result;
+	int = [[visualNode1]]basic::Multiply1(lhs:node_1.result, rhs:period).result;
+}
+attributes visualNode0(PreviewGeometry:"sphere", X:"717", Y:"279", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"sphere", X:"677", Y:"377", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"sphere", X:"365", Y:"348", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"sphere", X:"157", Y:"257", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(PreviewGeometry:"sphere", X:"548", Y:"268", State:"Collapsed", OutputToVisualize:"");
+/* <<Chunk:NodeGraphMetaData:WoodModulator002>>--(
+<?xml version="1.0" encoding="utf-8"?>
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+	<HasTechniqueConfig>false</HasTechniqueConfig>
+	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
+	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
+		<d2p1:KeyValueOfstringstring>
+			<d2p1:Key>period</d2p1:Key>
+			<d2p1:Value>2.5</d2p1:Value>
+		</d2p1:KeyValueOfstringstring>
+	</Variables>
+</NodeGraphMetaData>
+)-- */

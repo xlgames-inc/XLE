@@ -42,8 +42,8 @@ namespace RenderCore { namespace Assets
         template<typename OutType>
             OutType        Calculate(float inputTime) const never_throws;
 
-		RawAnimationCurve(  DynamicArray<float>&&	timeMarkers, 
-                            DynamicArray<uint8>&&   keyData,
+		RawAnimationCurve(  SerializableVector<float>&&	timeMarkers, 
+                            SerializableVector<uint8>&& keyData,
 							const CurveKeyDataDesc&	keyDataDesc,
                             CurveInterpolationType	interpolationType);
         RawAnimationCurve(RawAnimationCurve&& moveFrom) = default;
@@ -53,10 +53,10 @@ namespace RenderCore { namespace Assets
 		~RawAnimationCurve();
 
     protected:
-        DynamicArray<float, BlockSerializerDeleter<float[]>>    _timeMarkers;
-        DynamicArray<uint8, BlockSerializerDeleter<uint8[]>>	_keyData;
-        CurveKeyDataDesc		_keyDataDesc;
-		CurveInterpolationType  _interpolationType;
+        SerializableVector<float>	_timeMarkers;
+        SerializableVector<uint8>	_keyData;
+        CurveKeyDataDesc			_keyDataDesc;
+		CurveInterpolationType		_interpolationType;
     };
 
     template<typename Serializer>

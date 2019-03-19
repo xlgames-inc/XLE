@@ -7,7 +7,6 @@
 #pragma once
 
 #include "../EntityInterface/EntityInterface.h"
-#include "DelayedDeleteQueue.h"
 #include "CLIXAutoPtr.h"
 
 using namespace System::Collections::Generic;

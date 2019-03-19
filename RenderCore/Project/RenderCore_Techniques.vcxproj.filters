@@ -11,15 +11,25 @@
     <ClInclude Include="..\Techniques\RenderStateResolver.h" />
     <ClInclude Include="..\Techniques\CompiledRenderStateSet.h" />
     <ClInclude Include="..\Techniques\RenderPass.h" />
+    <ClInclude Include="..\Techniques\DrawableDelegates.h" />
+    <ClInclude Include="..\Techniques\Drawables.h" />
+    <ClInclude Include="..\Techniques\ResolvedTechniqueShaders.h" />
+    <ClInclude Include="..\Techniques\BasicDelegates.h" />
+    <ClInclude Include="..\Techniques\DeferredShaderResource.h" />
+    <ClInclude Include="..\Techniques\RenderPassUtils.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="..\Techniques\Techniques.cpp" />
     <ClCompile Include="..\Techniques\CommonResources.cpp" />
     <ClCompile Include="..\Techniques\ParsingContext.cpp" />
     <ClCompile Include="..\Techniques\TechniqueUtils.cpp" />
-    <ClCompile Include="..\Techniques\TechniqueMaterial.cpp" />
     <ClCompile Include="..\Techniques\PredefinedCBLayout.cpp" />
     <ClCompile Include="..\Techniques\RenderStateResolver.cpp" />
     <ClCompile Include="..\Techniques\RenderPass.cpp" />
+    <ClCompile Include="..\Techniques\Drawables.cpp" />
+    <ClCompile Include="..\Techniques\ResolvedTechniqueShaders.cpp" />
+    <ClCompile Include="..\Techniques\BasicDelegates.cpp" />
+    <ClCompile Include="..\Techniques\DeferredShaderResource.cpp" />
+    <ClCompile Include="..\Techniques\RenderPassUtils.cpp" />
   </ItemGroup>
 </Project>

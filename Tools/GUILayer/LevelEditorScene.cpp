@@ -33,13 +33,18 @@
 #include "../../SceneEngine/ShallowSurface.h"
 #include "../../SceneEngine/DynamicImposters.h"
 #include "../../SceneEngine/TerrainUberSurface.h"
-#include "../../RenderCore/Assets/ModelCache.h"
+#include "../../SceneEngine/TerrainMaterial.h"
+#include "../../SceneEngine/SurfaceHeightsProvider.h"
+#include "../../FixedFunctionModel/ModelCache.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
 #include "../../Utility/Streams/StreamTypes.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include "../../Utility/Streams/FileUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
 #include "../../Utility/Conversion.h"
 #include <memory>
+
+using namespace System;
 
 namespace GUILayer
 {
@@ -74,7 +79,7 @@ namespace GUILayer
 
     EditorScene::EditorScene()
     {
-        auto modelCache = std::make_shared<RenderCore::Assets::ModelCache>();
+        auto modelCache = std::make_shared<FixedFunctionModel::ModelCache>();
         _placementsManager = std::make_shared<SceneEngine::PlacementsManager>(modelCache);
         _placementsCells = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
         _placementsCellsHidden = std::make_shared<SceneEngine::PlacementCellSet>(SceneEngine::WorldPlacementsConfig(), Float3(0.f, 0.f, 0.f));
@@ -361,7 +366,7 @@ namespace GUILayer
     {
         return ExportViaStream(
             "placements config",
-            std::bind(WritePlacementsCfg, _1, gcroot<IEnumerable<PlacementCellRef>^>(cells)));
+            std::bind(WritePlacementsCfg, _1, msclr::gcroot<IEnumerable<PlacementCellRef>^>(cells)));
     }
 
     ref class PlacementsPendingExport : public EditorSceneManager::PendingExport
@@ -550,8 +555,8 @@ namespace GUILayer
     namespace Internal
     {
         IOverlaySystem^ CreateOverlaySystem(
-            std::shared_ptr<EditorScene> scene, 
-            std::shared_ptr<ToolsRig::VisCameraSettings> camera, 
+            const std::shared_ptr<EditorScene>& scene, 
+            const std::shared_ptr<ToolsRig::VisCameraSettings>& camera, 
             EditorSceneRenderSettings^ renderSettings);
     }
 

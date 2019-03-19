@@ -48,11 +48,14 @@ namespace Assets
 		// failed file operations before each successful one...?
 
 		using MountID = uint32;
-		MountID		Mount(StringSection<utf8> mountPoint, std::shared_ptr<IFileSystem> system);
-		void		Unmount(MountID mountId);
+		MountID			Mount(StringSection<utf8> mountPoint, std::shared_ptr<IFileSystem> system);
+		void			Unmount(MountID mountId);
+		IFileSystem*	GetMountedFileSystem(MountID);
 
 		enum class AbsolutePathMode { MountingTree, RawOS };
 		void        SetAbsolutePathMode(AbsolutePathMode newMode);
+
+		FileSystemWalker BeginWalk(StringSection<utf8> initialSubDirectory);
 
 		MountingTree(Utility::FilenameRules& rules);
 		~MountingTree();

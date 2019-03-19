@@ -28,6 +28,7 @@ namespace Conversion
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     template<> float Convert(const char input[])    { return XlAtoF32(input); }
+	template<> double Convert(const char input[])   { return XlAtoF64(input); }
     template<> uint32 Convert(const char input[])   { return XlAtoUI32(input); }
     template<> int32 Convert(const char input[])    { return XlAtoI32(input); }
     template<> int64 Convert(const char input[])    { return XlAtoI64(input); }
@@ -40,6 +41,13 @@ namespace Conversion
         char buffer[32];
         XlCopyString(buffer, input);
         return Convert<float>(buffer);
+    }
+
+	template<> double Convert(StringSection<> input)
+    {
+        char buffer[64];
+        XlCopyString(buffer, input);
+        return Convert<double>(buffer);
     }
 
     template<> uint32 Convert(StringSection<> input)
@@ -88,6 +96,7 @@ namespace Conversion
     }
 
     template<> float Convert(const std::basic_string<utf8>& input)      { return Convert<float>((const char*)input.c_str()); }
+	template<> double Convert(const std::basic_string<utf8>& input)		{ return Convert<double>((const char*)input.c_str()); }
     template<> uint32 Convert(const std::basic_string<utf8>& input)     { return Convert<uint32>((const char*)input.c_str()); }
     template<> int32 Convert(const std::basic_string<utf8>& input)      { return Convert<int32>((const char*)input.c_str()); }
     template<> int64 Convert(const std::basic_string<utf8>& input)      { return Convert<int64>((const char*)input.c_str()); }
@@ -102,6 +111,7 @@ namespace Conversion
     template<> bool Convert(const std::basic_string<char>& input)       { return Convert<bool>(input.c_str()); }
 
     template<> float Convert(StringSection<utf8> input)      { return Convert<float>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
+	template<> double Convert(StringSection<utf8> input)	 { return Convert<double>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
     template<> uint32 Convert(StringSection<utf8> input)     { return Convert<uint32>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
     template<> int32 Convert(StringSection<utf8> input)      { return Convert<int32>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }
     template<> int64 Convert(StringSection<utf8> input)      { return Convert<int64>(MakeStringSection((const char*)input.begin(), (const char*)input.end())); }

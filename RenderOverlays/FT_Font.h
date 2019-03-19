@@ -7,130 +7,53 @@
 #pragma once
 
 #include "Font.h"
-#include "FontPrimitives.h"
-#include "../Utility/StringUtils.h"
-#include <map>
-#include <vector>
+#include "../Assets/AssetsCore.h"
+#include "../Math/Vector.h"
 #include <memory>
+
+typedef struct FT_FaceRec_ FT_FaceRec;
+typedef struct FT_FaceRec_* FT_Face;
 
 namespace RenderOverlays
 {
+	struct FontCharTable
+	{
+		std::vector<std::vector<std::pair<ucs4, FontBitmapId>>>  _table;
+		FontBitmapId&         operator[](ucs4 ch);
+		void                ClearTable();
+		FontCharTable();
+		~FontCharTable();
+	};
 
-struct FTFontRange {
-    uint16 from;
-    uint16 to;
+	class FTFontResources;
 
-    static FTFontRange Create(uint16 f, uint16 t)
-    {
-        FTFontRange range;
-        range.from = f;
-        range.to = t;
+	class FTFont : public Font 
+	{
+	public:
+		virtual FontProperties GetFontProperties() const;
+		virtual Bitmap GetBitmap(ucs4 ch) const;
+		virtual GlyphProperties GetGlyphProperties(ucs4 ch) const;
 
-        return range;
-    }
-};
+		virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
+		virtual float GetKerning(ucs4 prev, ucs4 ch) const;
 
-class FTFont;
-class FTFontGroup;
+		::Assets::DepValPtr GetDependencyValidation() const { return _depVal; }
 
-typedef std::vector<FTFontRange> FTFontRanges;
-typedef std::map<std::shared_ptr<FTFont>, FTFontRanges> SubFTFontInfoMap;
+		FTFont(StringSection<::Assets::ResChar> faceName, int faceSize);
+		virtual ~FTFont();
+	protected:
+		std::shared_ptr<FTFontResources> _resources;
+		int _ascend;
+		std::shared_ptr<FT_FaceRec_> _face;
+		::Assets::Blob _pBuffer;
+		::Assets::DepValPtr _depVal;
 
-struct FontDef {
-    std::string path;
-    int size;
-};
+		mutable std::vector<Bitmap> _bitmaps;
 
-// freetype font
-class FTFont : public Font {
-public:
-    FTFont(FontTexKind kind = FTK_GENERAL);
-    virtual ~FTFont();
+		mutable FontCharTable _lookupTable;
+		FontProperties _fontProperties;
 
-    std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
-    FontTexKind GetTexKind() { return _texKind; }
-
-    virtual FT_Face GetFace() { return _face; }
-    virtual FT_Face GetFace(ucs4 /*ch*/) { return _face; }
-
-    virtual bool Init(const FontDef& fontDef);
-    virtual float Descent() const;
-    virtual float Ascent(bool includeAccent) const;
-    virtual float LineHeight() const;
-    // virtual bool SacrificeChar(int ch);
-    virtual void TouchFontChar(const FontChar *fc);
-    virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
-
-protected:
-    virtual FontCharID  CreateFontChar(ucs4 ch) const;
-    virtual void        DeleteFontChar(FontCharID fc);
-    virtual float       GetKerning(ucs4 prev, ucs4 ch) const;
-
-    int _ascend;
-    FT_Face _face;
-    unsigned char* _pBuffer;
-
-    FontTexKind _texKind;
-
-    friend class FTFontGroup;
-};
-
-typedef std::map<std::string, FTFontRanges> FTFontInfoMap;
-
-struct FTFontNameInfo {
-    std::string defaultFTFontPath;
-    FTFontRanges defaultFTFontRange;
-    FTFontInfoMap subFTFontInfo;
-};
-typedef std::map<std::string, FTFontNameInfo> FTFontNameMap;
-
-class FTFontGroup : public FTFont {
-public:
-    FTFontGroup(FontTexKind kind = FTK_GENERAL);
-    virtual ~FTFontGroup();
-
-    bool CheckMyFace(FT_Face face);
-    std::shared_ptr<FTFont> FindFTFontByChar(ucs4 ch) const;
-    int GetFTFontCount();
-    bool LoadDefaultFTFont(FTFontNameInfo &info, int size);
-    void LoadSubFTFont(FTFontNameInfo &info, int size);
-
-    virtual std::pair<const FontChar*, const FontTexture2D*> GetChar(ucs4 ch) const;
-
-    virtual FT_Face GetFace();
-    virtual FT_Face GetFace(ucs4 ch);
-
-    virtual float Descent();
-    virtual float Ascent(bool includeAccent) const;
-    virtual float LineHeight() const;
-    virtual Float2 GetKerning(int prevGlyph, ucs4 ch, int* curGlyph) const;
-
-    virtual bool Init(const FontDef& def);
-    // virtual bool SacrificeChar(int ch);
-
-    virtual std::shared_ptr<const Font> GetSubFont(ucs4 ch) const;
-    virtual bool IsMultiFontAdapter() const;
-
-private:
-    virtual FontCharID CreateFontChar(ucs4 ch);
-    virtual float GetKerning(ucs4 prev, ucs4 ch) const;
-
-	std::shared_ptr<FTFont> _defaultFTFont;
-    FTFontRanges _defaultFTFontRanges;
-    SubFTFontInfoMap _subFTFontInfoMap;
-
-    friend void GarbageCollectFTFontSystem();
-    friend void CheckResetFTFontSystem();
-};
-
-bool    InitFTFontSystem();
-bool    LoadFontConfigFile();
-void    CleanupFTFontSystem();
-void    CheckResetFTFontSystem();
-int     GetFTFontCount(FontTexKind kind);
-int     GetFTFontFileCount();
-
-std::shared_ptr<FTFont> GetX2FTFont(const char* path, int size, FontTexKind kind = FTK_GENERAL);
-
+		FontBitmapId InitializeBitmap(ucs4 ch) const;
+	};
 }
 

@@ -4,16 +4,14 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#pragma warning(disable:4512)
-
 #include "UITypesBinding.h"
 #include "EngineForward.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/ModelVisualisation.h"
 #include "../ToolsRig/VisualisationUtils.h"
 #include "../ToolsRig/DivergentAsset.h"
+#include "../../SceneEngine/SceneParser.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
-#include "../../RenderCore/Assets/ModelCache.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Metal/State.h"
 #include "../../Assets/AssetUtils.h"
@@ -21,26 +19,16 @@
 #include "../../Assets/AssetSetManager.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/ConfigFileContainer.h"
+#include "../../Assets/AssetHeap.h"
 #include "../../RenderCore/Techniques/RenderStateResolver.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Conversion.h"
 #include <msclr/auto_gcroot.h>
 #include <iomanip>
 
-namespace Assets
-{
-	// hack -- duplicate this from AssetHeap.h (because we can't include that due to <mutex> problem with C++/CLR
-	class AssetHeapRecord
-	{
-	public:
-		rstring		_initializer;
-		AssetState	_state;
-		DepValPtr	_depVal;
-		Blob		_actualizationLog;
-		uint64_t	_typeCode;
-		uint64_t	_idInAssetHeap;
-	};
-}
+#pragma warning(disable:4512)
+
+using namespace System;
 
 namespace GUILayer
 {
@@ -52,10 +40,10 @@ namespace GUILayer
     public:
         void    OnChange();
 
-        InvalidatePropertyGrid(PropertyGrid^ linked);
+        InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked);
         ~InvalidatePropertyGrid();
     protected:
-        msclr::auto_gcroot<PropertyGrid^> _linked;
+        msclr::auto_gcroot<System::Windows::Forms::PropertyGrid^> _linked;
     };
 
     void    InvalidatePropertyGrid::OnChange()
@@ -65,20 +53,19 @@ namespace GUILayer
         }
     }
 
-    InvalidatePropertyGrid::InvalidatePropertyGrid(PropertyGrid^ linked) : _linked(linked) {}
+    InvalidatePropertyGrid::InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked) : _linked(linked) {}
     InvalidatePropertyGrid::~InvalidatePropertyGrid() {}
-
-    void ModelVisSettings::AttachCallback(PropertyGrid^ callback)
-    {
-        _object->_changeEvent._callbacks.push_back(
-            std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
-    }
 
     ModelVisSettings^ ModelVisSettings::CreateDefault()
     {
         auto attached = std::make_shared<ToolsRig::ModelVisSettings>();
         return gcnew ModelVisSettings(std::move(attached));
     }
+
+	ModelVisSettings^ ModelVisSettings::FromCommandLine(array<System::String^>^ args)
+	{
+		return CreateDefault();
+	}
 
     void ModelVisSettings::ModelName::set(String^ value)
     {
@@ -95,8 +82,7 @@ namespace GUILayer
         XlCatString(resName._fn, dimof(resName._fn), ".material");
         _object->_materialName = resName._fn;
 
-        _object->_pendingCameraAlignToModel = true; 
-        _object->_changeEvent.Trigger(); 
+		NotifyPropertyChanged("ModelName");
     }
 
     void ModelVisSettings::MaterialName::set(String^ value)
@@ -107,26 +93,71 @@ namespace GUILayer
         ::Assets::ResolvedAssetFile resName;
         ::Assets::MakeAssetName(resName, nativeName.c_str());
         _object->_materialName = resName._fn;
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("MaterialName");
     }
 
     void ModelVisSettings::Supplements::set(String^ value)
     {
         _object->_supplements = clix::marshalString<clix::E_UTF8>(value);
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("Supplements");
+    }
+
+	void ModelVisSettings::AnimationFileName::set(String^ value)
+    {
+        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+        ::Assets::ResolvedAssetFile resName;
+        ::Assets::MakeAssetName(resName, nativeName.c_str());
+        _object->_animationFileName = resName._fn;
+        NotifyPropertyChanged("AnimationFileName");
+    }
+
+	void ModelVisSettings::SkeletonFileName::set(String^ value)
+    {
+        auto nativeName = clix::marshalString<clix::E_UTF8>(value);
+        ::Assets::ResolvedAssetFile resName;
+        ::Assets::MakeAssetName(resName, nativeName.c_str());
+        _object->_skeletonFileName = resName._fn;
+        NotifyPropertyChanged("SkeletonFileName");
     }
 
     void ModelVisSettings::LevelOfDetail::set(unsigned value)
     {
         _object->_levelOfDetail = value;
-        _object->_changeEvent.Trigger(); 
+        NotifyPropertyChanged("LevelOfDetail");
     }
 
-    void ModelVisSettings::EnvSettingsFile::set(String^ value)
+	void ModelVisSettings::MaterialBindingFilter::set(System::UInt64 value)
     {
-        _object->_envSettingsFile = clix::marshalString<clix::E_UTF8>(value);
-        _object->_changeEvent.Trigger(); 
+        _object->_materialBindingFilter = value;
+        NotifyPropertyChanged("MaterialBindingFilter");
     }
+
+	void ModelVisSettings::NotifyPropertyChanged(System::String^ propertyName)
+    {
+        // PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	std::shared_ptr<ToolsRig::VisOverlaySettings> VisOverlaySettings::ConvertToNative()
+	{
+		auto result = std::make_shared<ToolsRig::VisOverlaySettings>();
+		result->_colourByMaterial = (unsigned)ColourByMaterial;
+		result->_skeletonMode = (unsigned)SkeletonMode;
+		result->_drawWireframe = DrawWireframe;
+		result->_drawNormals = DrawNormals;
+		return result;
+	}
+
+	VisOverlaySettings^ VisOverlaySettings::ConvertFromNative(const ToolsRig::VisOverlaySettings& input)
+	{
+		VisOverlaySettings^ result = gcnew VisOverlaySettings;
+		result->ColourByMaterial = (ColourByMaterialType)input._colourByMaterial;
+		result->SkeletonMode = (SkeletonModes)input._skeletonMode;
+		result->DrawWireframe = input._drawWireframe;
+		result->DrawNormals = input._drawNormals;
+		return result;
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -153,50 +184,7 @@ namespace GUILayer
         }
     }
 
-    System::String^ VisMouseOver::MaterialName::get() 
-    {
-        auto fullName = FullMaterialName;
-        if (fullName)
-            return DescriptiveMaterialName(fullName);
-        return "<<no material>>";
-    }
-
-    System::String^ VisMouseOver::ModelName::get() 
-    {
-        return clix::marshalString<clix::E_UTF8>(_modelSettings->_modelName);
-    }
-
-    bool VisMouseOver::HasMouseOver::get()
-    {
-        return _object->_hasMouseOver;
-    }
-
-    System::String^ VisMouseOver::FullMaterialName::get()
-    {
-        if (_object->_hasMouseOver)
-            return BuildFullMaterialName(*_modelSettings.get(), *_modelCache.get(), _object->_materialGuid);
-        return nullptr;
-    }
-
-    String^ VisMouseOver::BuildFullMaterialName(
-        const ToolsRig::ModelVisSettings& modelSettings,
-        RenderCore::Assets::ModelCache& modelCache,
-        uint64 materialGuid)
-    {
-        auto scaffolds = modelCache.GetScaffolds(modelSettings._modelName.c_str(), modelSettings._materialName.c_str());
-        if (scaffolds._material) {
-            TRY {
-                auto nativeName = scaffolds._material->GetMaterialName(materialGuid);
-                if (!nativeName.IsEmpty())
-                    return clix::marshalString<clix::E_UTF8>(nativeName);
-            }
-            CATCH (const ::Assets::Exceptions::PendingAsset&) { return "<<pending>>"; }
-            CATCH_END
-        }
-        return "<<unknown>>";
-    }
-
-    String^ VisMouseOver::DescriptiveMaterialName(String^ fullName)
+	static String^ DescriptiveMaterialName(String^ fullName)
     {
         if (fullName->Length == 0 || fullName[0] == '<') return fullName;
         auto split = fullName->Split(';');
@@ -208,6 +196,39 @@ namespace GUILayer
         return fullName;
     }
 
+    System::String^ VisMouseOver::MaterialName::get() 
+    {
+        auto fullName = FullMaterialName;
+        if (fullName)
+            return DescriptiveMaterialName(fullName);
+        return "<<no material>>";
+    }
+
+    System::String^ VisMouseOver::ModelName::get() 
+    {
+		if (_scene) {
+			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
+			if (visContent)
+				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex, _object->_materialGuid)._modelName);
+		}
+		return nullptr;
+    }
+
+    bool VisMouseOver::HasMouseOver::get()
+    {
+        return _object->_hasMouseOver;
+    }
+
+    System::String^ VisMouseOver::FullMaterialName::get()
+    {
+		if (_scene) {
+			auto* visContent = dynamic_cast<ToolsRig::IVisContent*>(_scene.get());
+			if (visContent)
+				return clix::marshalString<clix::E_UTF8>(visContent->GetDrawCallDetails(_object->_drawCallIndex, _object->_materialGuid)._materialName);
+		}
+		return nullptr;
+    }
+
     uint64 VisMouseOver::MaterialBindingGuid::get()
     {
         if (_object->_hasMouseOver) {
@@ -217,7 +238,7 @@ namespace GUILayer
         }
     }
 
-    void VisMouseOver::AttachCallback(PropertyGrid^ callback)
+    void VisMouseOver::AttachCallback(System::Windows::Forms::PropertyGrid^ callback)
     {
         _object->_changeEvent._callbacks.push_back(
             std::shared_ptr<OnChangeCallback>(new InvalidatePropertyGrid(callback)));
@@ -225,12 +246,10 @@ namespace GUILayer
 
     VisMouseOver::VisMouseOver(
         std::shared_ptr<ToolsRig::VisMouseOver> attached,
-        std::shared_ptr<ToolsRig::ModelVisSettings> settings,
-        std::shared_ptr<RenderCore::Assets::ModelCache> cache)
+        std::shared_ptr<SceneEngine::IScene> scene)
     {
         _object = std::move(attached);
-        _modelSettings = std::move(settings);
-        _modelCache = std::move(cache);
+        _scene = scene;
     }
 
     VisMouseOver::VisMouseOver()
@@ -241,9 +260,99 @@ namespace GUILayer
     VisMouseOver::~VisMouseOver() 
     { 
         _object.reset(); 
-        _modelSettings.reset(); 
-        _modelCache.reset(); 
+        _scene.reset(); 
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	System::Collections::Generic::IEnumerable<VisAnimationState::AnimationDetails^>^ VisAnimationState::AnimationList::get()
+	{
+		auto result = gcnew System::Collections::Generic::List<AnimationDetails^>();
+		for (const auto&a:_animState->_animationList) {
+			AnimationDetails^ animDetails = gcnew AnimationDetails;
+			animDetails->Name = clix::marshalString<clix::E_UTF8>(a._name);
+			animDetails->BeginTime = a._beginTime;
+			animDetails->EndTime = a._endTime;
+			result->Add(animDetails);
+		}
+		return result;
+	}
+
+    System::String^ VisAnimationState::ActiveAnimation::get()
+	{
+		return clix::marshalString<clix::E_UTF8>(_animState->_activeAnimation);
+	}
+
+	void VisAnimationState::ActiveAnimation::set(System::String^ value)
+	{
+		_animState->_activeAnimation = clix::marshalString<clix::E_UTF8>(value);
+	}
+
+    float VisAnimationState::AnimationTime::get()
+	{
+		return _animState->_animationTime;
+	}
+
+	void VisAnimationState::AnimationTime::set(float value)
+	{
+		_animState->_animationTime = value;
+	}
+
+	unsigned VisAnimationState::AnchorTime::get()
+	{
+		return _animState->_anchorTime;
+	}
+	
+	void VisAnimationState::AnchorTime::set(unsigned value)
+	{
+		_animState->_anchorTime = value;
+	}
+
+	VisAnimationState::State VisAnimationState::CurrentState::get()
+	{
+		switch (_animState->_state) {
+		case ToolsRig::VisAnimationState::State::Playing: return State::Playing;
+		case ToolsRig::VisAnimationState::State::BindPose: return State::BindPose;
+		default: return State::Stopped;
+		}
+	}
+
+	void VisAnimationState::CurrentState::set(VisAnimationState::State value)
+	{
+		switch (value) {
+		case State::Playing: _animState->_state = ToolsRig::VisAnimationState::State::Playing; break;
+		case State::BindPose: _animState->_state = ToolsRig::VisAnimationState::State::BindPose; break;
+		default: _animState->_state = ToolsRig::VisAnimationState::State::Stopped; break;
+		}
+	}
+
+	class DelegateChangeEvent : public OnChangeCallback
+	{
+	public:
+		void    OnChange()
+		{
+			(_del.get())();
+		}
+
+		DelegateChangeEvent(VisAnimationState::OnChangedCallback^ del) : _del(del) {}
+		~DelegateChangeEvent() {}
+	private:
+		msclr::auto_gcroot<VisAnimationState::OnChangedCallback^> _del;
+	};
+
+	void VisAnimationState::AddOnChangedCallback(OnChangedCallback^ del)
+	{
+		_animState->_changeEvent._callbacks.push_back(
+			std::make_shared<DelegateChangeEvent>(del));
+	}
+
+    VisAnimationState::VisAnimationState(const std::shared_ptr<ToolsRig::VisAnimationState>& attached)
+	: _animState(attached)
+	{
+	}
+
+	VisAnimationState::VisAnimationState() {}
+	VisAnimationState::~VisAnimationState() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -271,10 +380,6 @@ namespace GUILayer
         void PropertyPair<NameType, ValueType>::NotifyPropertyChanged(System::String^ propertyName)
     {
         PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName));
-        // _propertyChangedContext->Send(
-        //     gcnew System::Threading::SendOrPostCallback(
-        //         o => PropertyChanged(this, gcnew PropertyChangedEventArgs(propertyName))
-        //     ), nullptr);
     }
 
     public ref class BindingConv
@@ -337,7 +442,6 @@ namespace GUILayer
         RawMaterial::MaterialParameterBox::get()
     {
         if (!_underlying) { return nullptr; }
-		CheckBindingInvalidation();
         if (!_materialParameterBox) {
             _materialParameterBox = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_matParamBox);
             _materialParameterBox->ListChanged += 
@@ -352,7 +456,6 @@ namespace GUILayer
     BindingList<StringStringPair^>^ RawMaterial::ShaderConstants::get()
     {
         if (!_underlying) { return nullptr; }
-		CheckBindingInvalidation();
         if (!_shaderConstants) {
             _shaderConstants = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_constants);
             _shaderConstants->ListChanged += 
@@ -367,7 +470,6 @@ namespace GUILayer
     BindingList<StringStringPair^>^ RawMaterial::ResourceBindings::get()
     {
         if (!_underlying) { return nullptr; }
-		CheckBindingInvalidation();
         if (!_resourceBindings) {
             _resourceBindings = BindingConv::AsBindingList(_underlying->GetWorkingAsset()->_resourceBindings);
             _resourceBindings->ListChanged += 
@@ -404,7 +506,6 @@ namespace GUILayer
         if (!!_underlying) {
 			bool isMatParams = obj == _materialParameterBox;
 			bool isMatConstants = obj == _shaderConstants;
-			CheckBindingInvalidation();
             if (isMatParams) {
                 auto transaction = _underlying->Transaction_Begin("Material parameter");
                 if (transaction) {
@@ -438,7 +539,6 @@ namespace GUILayer
 
         if (!!_underlying) {
             if (obj == _resourceBindings) {
-				CheckBindingInvalidation();
 				auto transaction = _underlying->Transaction_Begin("Resource Binding");
 				if (transaction) {
 					transaction->GetAsset()._resourceBindings = BindingConv::AsParameterBox((BindingList<StringStringPair^>^)obj);
@@ -464,14 +564,6 @@ namespace GUILayer
             return result;
         }
         return nullptr;
-    }
-
-    void RawMaterial::Resolve(RenderCore::Techniques::Material& destination)
-    {
-        if (!!_underlying) {
-			::Assets::DirectorySearchRules searchRules;
-			RenderCore::Assets::MergeIn_Stall(destination, *_underlying->GetWorkingAsset(), searchRules);
-        }
     }
 
     void RawMaterial::AddInheritted(String^ item)
@@ -506,7 +598,6 @@ namespace GUILayer
     {
         auto native = Conversion::Convert<::Assets::rstring>(clix::marshalString<clix::E_UTF8>(value));
         if (_underlying->GetWorkingAsset()->_techniqueConfig != native) {
-			CheckBindingInvalidation();
             auto transaction = _underlying->Transaction_Begin("Technique Config");
             if (transaction) {
                 transaction->GetAsset()._techniqueConfig = native;
@@ -549,20 +640,6 @@ namespace GUILayer
         return gcnew RawMaterial("untitled" + (counter++) + ".material");
     }
 
-	void RawMaterial::CheckBindingInvalidation()
-	{
-		// If our transaction id doesn't match what we find in the divergent asset, it means
-		// that the the asset may have been modified from some other place. When this happens, 
-		// we have to dump the cached values in our BindingLists
-		/*auto underlyingTransId = _underlying->GetIdentifier()._transactionId;
-		if (underlyingTransId != _transId) {
-			_materialParameterBox = nullptr;
-			_shaderConstants = nullptr;
-			_resourceBindings = nullptr;
-			_transId = underlyingTransId;
-		}*/
-	}
-
     RawMaterial::RawMaterial(System::String^ initialiser)
     {
 		_transId = 0;
@@ -583,7 +660,7 @@ namespace GUILayer
     auto RenderStateSet::DoubleSided::get() -> CheckState
     {
         auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
-        if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::DoubleSided) {
+        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::DoubleSided) {
             if (stateSet._doubleSided) return CheckState::Checked;
             else return CheckState::Unchecked;
         }
@@ -595,19 +672,19 @@ namespace GUILayer
         auto transaction = _underlying->Transaction_Begin("RenderState");
         auto& stateSet = transaction->GetAsset()._stateSet;
         if (checkState == CheckState::Indeterminate) {
-            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::DoubleSided;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
         } else {
-            stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::DoubleSided;
+            stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::DoubleSided;
             stateSet._doubleSided = (checkState == CheckState::Checked);
         }
         transaction->Commit();
         NotifyPropertyChanged("DoubleSided");
     }
 
-    CheckState RenderStateSet::Wireframe::get()
+    System::Windows::Forms::CheckState RenderStateSet::Wireframe::get()
     {
         auto& stateSet = _underlying->GetWorkingAsset()->_stateSet;
-        if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::Wireframe) {
+        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::Wireframe) {
             if (stateSet._wireframe) return CheckState::Checked;
             else return CheckState::Unchecked;
         }
@@ -619,9 +696,9 @@ namespace GUILayer
         auto transaction = _underlying->Transaction_Begin("RenderState");
         auto& stateSet = transaction->GetAsset()._stateSet;
         if (checkState == CheckState::Indeterminate) {
-            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::Wireframe;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::Wireframe;
         } else {
-            stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::Wireframe;
+            stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::Wireframe;
             stateSet._wireframe = (checkState == CheckState::Checked);
         }
         transaction->Commit();
@@ -633,7 +710,7 @@ namespace GUILayer
 
     using BlendOp = RenderCore::BlendOp;
 	using Blend = RenderCore::Blend;
-    using BlendType = RenderCore::Techniques::RenderStateSet::BlendType;
+    using BlendType = RenderCore::Assets::RenderStateSet::BlendType;
 
     class StandardBlendDef
     {
@@ -666,28 +743,28 @@ namespace GUILayer
     };
 
     StandardBlendModes AsStandardBlendMode(
-        const RenderCore::Techniques::RenderStateSet& stateSet)
+        const RenderCore::Assets::RenderStateSet& stateSet)
     {
         auto op = stateSet._forwardBlendOp;
         auto src = stateSet._forwardBlendSrc;
         auto dst = stateSet._forwardBlendDst;
 
-        if (!(stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend)) {
-            if (    stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::BlendType
+        if (!(stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::ForwardBlend)) {
+            if (    stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType
                 &&  stateSet._blendType == BlendType::DeferredDecal)
                 return StandardBlendModes::Decal;
             return StandardBlendModes::Inherit;
         }
 
         if (op == BlendOp::NoBlending) {
-            if (    stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::BlendType
+            if (    stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType
                 &&  stateSet._blendType == BlendType::DeferredDecal)
                     return StandardBlendModes::Decal;
             return StandardBlendModes::NoBlending;
         }
 
         auto blendType = BlendType::Basic;
-        if (stateSet._flag & RenderCore::Techniques::RenderStateSet::Flag::BlendType)
+        if (stateSet._flag & RenderCore::Assets::RenderStateSet::Flag::BlendType)
             blendType = stateSet._blendType;
 
         for (unsigned c=0; c<dimof(s_standardBlendDefs); ++c)
@@ -717,9 +794,9 @@ namespace GUILayer
             stateSet._forwardBlendOp = BlendOp::NoBlending;
             stateSet._forwardBlendSrc = Blend::One;
             stateSet._forwardBlendDst = Blend::Zero;
-            stateSet._blendType = RenderCore::Techniques::RenderStateSet::BlendType::Basic;
-            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend;
-            stateSet._flag &= ~RenderCore::Techniques::RenderStateSet::Flag::BlendType;
+            stateSet._blendType = RenderCore::Assets::RenderStateSet::BlendType::Basic;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
+            stateSet._flag &= ~RenderCore::Assets::RenderStateSet::Flag::BlendType;
             NotifyPropertyChanged("StandardBlendMode");
             transaction->Commit();
             return;
@@ -733,10 +810,10 @@ namespace GUILayer
                 stateSet._forwardBlendOp = s_standardBlendDefs[c]._op;
                 stateSet._forwardBlendSrc = s_standardBlendDefs[c]._src;
                 stateSet._forwardBlendDst = s_standardBlendDefs[c]._dst;
-                stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::ForwardBlend;
+                stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::ForwardBlend;
 
                 stateSet._blendType = s_standardBlendDefs[c]._blendType;
-                stateSet._flag |= RenderCore::Techniques::RenderStateSet::Flag::BlendType;
+                stateSet._flag |= RenderCore::Assets::RenderStateSet::Flag::BlendType;
 
                 transaction->Commit();
                 NotifyPropertyChanged("StandardBlendMode");
@@ -789,9 +866,14 @@ namespace GUILayer
         for (const auto& i : records) {
 			if (i._state != ::Assets::AssetState::Invalid) continue;
 
-			std::string logStr(
-				(const char*)AsPointer(i._actualizationLog->begin()),
-				(const char*)AsPointer(i._actualizationLog->end()));
+			std::string logStr;
+			if (i._actualizationLog && !i._actualizationLog->empty()) {
+				logStr = std::string(
+					(const char*)AsPointer(i._actualizationLog->begin()),
+					(const char*)AsPointer(i._actualizationLog->end()));
+			} else {
+				logStr = "<<no actualization log>>";
+			}
 
             result->Add(gcnew Tuple<String^, String^>(
                 clix::marshalString<clix::E_UTF8>(i._initializer),

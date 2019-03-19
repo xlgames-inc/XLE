@@ -8,12 +8,17 @@
 
 #include "IteratorUtils.h"
 #include "PtrUtils.h"
-#include "Threading/Mutex.h"
+#include "SystemUtils.h"
 #include "../Core/Exceptions.h"
+#include "../Core/SelectConfiguration.h"
 #include <functional>
 #include <utility>
 #include <vector>
 #include <stdint.h>
+
+#if !defined(_M_CEE)	// cannot be included into CLR builds, for reasons known only to Microsoft
+#include "Threading/Mutex.h"
+#endif
 
 namespace Utility
 {
@@ -204,6 +209,8 @@ namespace Utility
 
         bool Remove(Id id);
 		bool IsEmpty() const { return _fns.empty(); }
+		void InvalidateCurrentModule();
+		void InvalidateModule(size_t moduleId);
 
         class DuplicateFunction;
         class NoFunction;
@@ -223,6 +230,8 @@ namespace Utility
             size_t  _typeHashCode;
             void (*_destructor)(void*);
             void (*_moveConstructor)(void*, void*);
+
+			ModuleId _moduleId;
         };
         std::vector<uint8_t> _buffer;
         std::vector<std::pair<Id, StoredFunction>> _fns;
@@ -280,6 +289,7 @@ namespace Utility
         sfn._destructor = &Internal::Destructor<std::function<Fn>>;
         sfn._moveConstructor = &Internal::MoveConstructor<std::function<Fn>>;
         sfn._typeHashCode = typeid(std::function<Fn>).hash_code();
+		sfn._moduleId = GetCurrentModuleId();
         
         if ((_buffer.size() + sfn._size) > _buffer.capacity())
             ExpandBuffer((_buffer.size() + sfn._size) * 2);
@@ -428,6 +438,8 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
+#if !defined(_M_CEE)		// (due to mutex dependencies, must be excluded from CLR builds)
+
     using SignalDelegateId = unsigned;
     enum class SignalDelegateResult { Continue, Unbind };
 
@@ -565,6 +577,23 @@ namespace Utility
             _delegates.erase(i);
             return result;
         }
+
+#endif
+
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+		//      S T A T I C   C O N S T R U C T O R   F U N C T I O N
+	///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	template<void(*ctor)()>
+		struct static_constructor
+	{
+		struct constructor { constructor() { ctor(); } };
+		static constructor c;
+	};
+
+	template<void(*ctor)()>
+		typename static_constructor<ctor>::constructor static_constructor<ctor>::c;
+
 }
 
 using namespace Utility;

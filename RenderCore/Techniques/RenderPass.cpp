@@ -21,6 +21,7 @@
 #include <sstream>
 #include <iostream>
 #include <unordered_map>
+#include <set>
 
 namespace RenderCore
 {
@@ -117,6 +118,19 @@ namespace RenderCore { namespace Techniques
         return i->second;
     }
 
+	auto RenderPassFragment::GetOutputAttachmentDesc(unsigned slot) const -> const AttachmentDesc*
+    {
+        auto passIndex = _currentPassIndex;
+        auto i = std::find_if(
+            _mapping->_outputAttachmentMapping.begin(), _mapping->_outputAttachmentMapping.end(),
+            [passIndex, slot](const std::pair<FrameBufferFragmentMapping::PassAndSlot, AttachmentName>& p) {
+                return p.first == std::make_pair(passIndex, slot);
+            });
+        if (i == _mapping->_outputAttachmentMapping.end())
+            return nullptr;
+        return _rpi->GetDesc(i->second);
+    }
+
     void RenderPassFragment::NextSubpass()
     {
         _rpi->NextSubpass();
@@ -146,12 +160,14 @@ namespace RenderCore { namespace Techniques
 
     void RenderPassInstance::NextSubpass()
     {
+		assert(_attachedContext && _frameBuffer);
         Metal::EndSubpass(*_attachedContext, *_frameBuffer);
         Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
     }
 
     void RenderPassInstance::End()
     {
+		assert(_attachedContext && _frameBuffer);
         Metal::EndSubpass(*_attachedContext, *_frameBuffer);
         Metal::EndRenderPass(*_attachedContext);
     }
@@ -184,6 +200,13 @@ namespace RenderCore { namespace Techniques
             return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
         return nullptr;
     }
+
+	AttachmentName RenderPassInstance::RemapAttachmentName(AttachmentName resName) const
+	{
+		if (resName < _attachmentPoolRemapping.size())
+			return _attachmentPoolRemapping[resName];
+		return ~0u;
+	}
 
     class NamedAttachmentsWrapper : public INamedAttachments
     {
@@ -242,12 +265,11 @@ namespace RenderCore { namespace Techniques
     {
         // look for old FBs, and evict; then just increase the tick id
         const unsigned evictionRange = 10;
-        for (auto&e:_entries) {
+        for (auto&e:_entries)
             if ((e._tickId + evictionRange) < _currentTickId) {
                 e._fb.reset();
-                e._hash = 0;
-            }
-        }
+				e._hash = 0;
+			}
         ++_currentTickId;
     }
 
@@ -291,7 +313,7 @@ namespace RenderCore { namespace Techniques
 
         auto namedAttachments = std::make_shared<NamedAttachmentsWrapper>(attachmentPool, poolAttachments);
         _pimpl->_entries[earliestEntry]._fb = std::make_shared<Metal::FrameBuffer>(
-            Metal::GetObjectFactory(),
+            factory,
             desc, *namedAttachments);
         _pimpl->_entries[earliestEntry]._tickId = _pimpl->_currentTickId;
         _pimpl->_entries[earliestEntry]._hash = hashValue;
@@ -340,7 +362,9 @@ namespace RenderCore { namespace Techniques
     
     RenderPassInstance::~RenderPassInstance() 
     {
-        End();
+		if (_attachedContext) {
+			End();
+		}
     }
 
     RenderPassInstance::RenderPassInstance(RenderPassInstance&& moveFrom)
@@ -418,6 +442,8 @@ namespace RenderCore { namespace Techniques
             0, 0, 0, 
             TextureDesc::Plain2D(attachmentWidth, attachmentHeight, a._format, 1, uint16(a._arrayLayerCount)),
             "attachment");
+
+		desc._textureDesc._format = desc._textureDesc._format;
 
         if (a._flags & AttachmentDesc::Flags::Multisampled)
             desc._textureDesc._samples = props._samples;
@@ -514,7 +540,16 @@ namespace RenderCore { namespace Techniques
             attach = &_pimpl->_attachments[attachName];
         }
         assert(attach);
-		return _pimpl->_srvPool.GetView(attach->_resource, window);
+		assert(attach->_resource);
+		auto defaultAspect = TextureViewDesc::Aspect::ColorLinear;
+		auto formatComponents = GetComponents(attach->_desc._format);
+		if (formatComponents == FormatComponents::Depth || formatComponents == FormatComponents::DepthStencil) {
+			defaultAspect = TextureViewDesc::Aspect::Depth;	// can only choose depth or stencil -- so DepthStencil defaults to Depth
+		} else if (formatComponents == FormatComponents::Stencil) {
+			defaultAspect = TextureViewDesc::Aspect::Stencil;
+		}
+		auto completeView = CompleteTextureViewDesc(attach->_desc, window, defaultAspect);
+		return _pimpl->_srvPool.GetView(attach->_resource, completeView);
 	}
 
     static bool DimsEqual(const AttachmentDesc& lhs, const AttachmentDesc& rhs, const FrameBufferProperties& props)
@@ -550,7 +585,7 @@ namespace RenderCore { namespace Techniques
     {
         return
             GetArrayCount(lhs) == GetArrayCount(rhs)
-            && (lhs._format == rhs._format || lhs._format == Format::Unknown || rhs._format == Format::Unknown)
+            && (AsTypelessFormat(lhs._format) == AsTypelessFormat(rhs._format) || lhs._format == Format::Unknown || rhs._format == Format::Unknown)
             && DimsEqual(lhs, rhs, props)
             ;
     }
@@ -584,12 +619,12 @@ namespace RenderCore { namespace Techniques
             if (r._semantic) {
                 for (unsigned q=0; q<_pimpl->_semanticAttachments.size(); ++q) {
                     if (r._semantic == _pimpl->_semanticAttachments[q]._semantic && !consumedSemantic[q] && _pimpl->_semanticAttachments[q]._resource) {
-						#if defined(_DEBUG)
+                        #if defined(_DEBUG)
 							if (!MatchRequest(r._desc, _pimpl->_semanticAttachments[q]._desc, _pimpl->_props)) {
-								Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << r._semantic << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
-									<< r._desc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
-									<< std::endl;
-							}
+                            	Log(Warning) << "Attachment bound to the pool for semantic (0x" << std::hex << r._semantic << std::dec << ") does not match the request for this semantic. Attempting to use it anyway. Request: "
+                                	<< r._desc << ", Bound to pool: " << _pimpl->_semanticAttachments[q]._desc
+                                	<< std::endl;
+                        	}
 						#endif
 
                         consumedSemantic[q] = true;
@@ -623,8 +658,12 @@ namespace RenderCore { namespace Techniques
             }
 
             if (!foundMatch) {
+				// Prefer "typeless" formats when creating the actual attachments
+				// This ensures that we can have complete freedom when we create views
+				auto typelessDesc = r._desc;
+				typelessDesc._format = AsTypelessFormat(typelessDesc._format);
                 _pimpl->_attachments.push_back(
-                    Pimpl::Attachment{nullptr, r._desc});
+                    Pimpl::Attachment{nullptr, typelessDesc});
                 result.push_back((unsigned)(_pimpl->_attachments.size()-1));
             }
         }
@@ -656,6 +695,7 @@ namespace RenderCore { namespace Techniques
         }
 
         existingBinding->_desc = AsAttachmentDesc(resource->GetDesc());
+		assert(existingBinding->_desc._format != Format::Unknown);
         existingBinding->_resource = resource;
     }
 
@@ -838,7 +878,6 @@ namespace RenderCore { namespace Techniques
         return
             ( (FormatCompatible(testAttachment._format, request._format)) || (testAttachment._format == Format::Unknown) || (request._format == Format::Unknown) )
             && GetArrayCount(testAttachment) == GetArrayCount(request)
-            && ( (testAttachment._defaultAspect == request._defaultAspect) || (testAttachment._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) || (request._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) )
 			&& DimsEqual(testAttachment, request, FrameBufferProperties{dimensions[0], dimensions[1]})
             && (testAttachment._flags & request._flags) == request._flags
             ;
@@ -1047,6 +1086,13 @@ namespace RenderCore { namespace Techniques
         // Hense we must ensure that any attachments that will ever be used as a shader resource
         // always have that flag set.
 
+        /*
+        }
+        shaderResourceSemantics.erase(
+            std::unique(shaderResourceSemantics.begin(), shaderResourceSemantics.end()),
+            shaderResourceSemantics.end());
+        */
+        
         std::vector<WorkingAttachment> workingAttachments;
         workingAttachments.reserve(preregisteredInputs.size());
         for (unsigned c=0; c<preregisteredInputs.size(); c++) {
@@ -1121,7 +1167,7 @@ namespace RenderCore { namespace Techniques
                     lastUseDirection = GetDirectionFlags(*p, interfaceAttachmentName);
                     if (lastUseDirection)
                         break;
-                }
+				}
 
                 if (firstUseDirection & DirectionFlags::Load) {
                     // We're expecting a buffer that already has some initialized contents. Look for
@@ -1338,8 +1384,10 @@ namespace RenderCore { namespace Techniques
             FrameBufferFragmentMapping passFragment;
             for (unsigned p=0; p<(unsigned)f->_subpasses.size(); ++p) {
                 SubpassDesc newSubpass = f->_subpasses[p];
-                for (auto&a:newSubpass._output)
-                    a._resourceName = Remap(attachmentRemapping, a._resourceName);
+                for (unsigned c=0; c<(unsigned)newSubpass._output.size(); ++c) {
+                    newSubpass._output[c]._resourceName = Remap(attachmentRemapping, newSubpass._output[c]._resourceName);
+					passFragment._outputAttachmentMapping.push_back({{p, c}, newSubpass._output[c]._resourceName});
+				}
                 newSubpass._depthStencil._resourceName = Remap(attachmentRemapping, newSubpass._depthStencil._resourceName);
                 for (unsigned c=0; c<(unsigned)newSubpass._input.size(); ++c) {
                     newSubpass._input[c]._resourceName = Remap(attachmentRemapping, newSubpass._input[c]._resourceName);
@@ -1350,7 +1398,11 @@ namespace RenderCore { namespace Techniques
                 for (auto&a:newSubpass._resolve)
                     a._resourceName = Remap(attachmentRemapping, a._resourceName);
 
-                #if defined(_DEBUG)
+				// DavidJ -- in some interesting cases, a single attachment can be used mutliple times in the same subpass
+				//		but I think this should only happen if different "aspects" of the resource are used each time
+				//		for exampling, binding the stencil aspect of a DepthStencil buffer in the DepthStencil binding,
+				//		and then binding the depth aspect as in input binding
+                #if 0 // defined(_DEBUG)
                     std::vector<AttachmentName> uniqueAttachments;
                     for (auto&a:newSubpass._output) uniqueAttachments.push_back(a._resourceName);
                     uniqueAttachments.push_back(newSubpass._depthStencil._resourceName);

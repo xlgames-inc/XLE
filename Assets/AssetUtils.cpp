@@ -5,7 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "AssetUtils.h"
-#include "CompilerLibrary.h"
+#include "ICompileOperation.h"
 #include "AssetFuture.h"
 #include "DepVal.h"
 #include "IFileSystem.h"
@@ -450,17 +450,25 @@ namespace Assets
 		, _depVal(depVal)
 		, _actualizationLog(actualizationLog)
         {
-        }
+			std::stringstream str;
+			if (_actualizationLog) {
+				str << "Invalid asset (" << Initializer() << "):" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end()));
+			} else {
+				str << "Invalid asset (" << Initializer() << ")";
+			}
+			_whatString = str.str();
+		}
 
         bool InvalidAsset::CustomReport() const
         {
-			if (_actualizationLog) {
-				Log(Error) << "Invalid asset (" << Initializer() << "):" << MakeStringSection((const char*)AsPointer(_actualizationLog->begin()), (const char*)AsPointer(_actualizationLog->end())) << std::endl;
-			} else {
-				Log(Error) << "Invalid asset (" << Initializer() << std::endl;
-			}
+			Log(Error) << _whatString << std::endl;
             return true;
         }
+
+		const char* InvalidAsset::what() const
+		{
+			return _whatString.c_str();
+		}
 
         auto InvalidAsset::State() const -> AssetState { return AssetState::Invalid; }
 
@@ -478,6 +486,11 @@ namespace Assets
 
         auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
 
+		const char* PendingAsset::what() const
+		{
+			return Initializer();
+		}
+
 		bool ConstructionError::CustomReport() const
 		{
 			if (_actualizationLog) {
@@ -493,7 +506,7 @@ namespace Assets
         {
             static char buffer[4096];
             if (_actualizationLog) {
-                strcpy(buffer, "Error during asset construction: ");
+                XlCopyString(buffer, "Error during asset construction: ");
                 auto* d = buffer;
                 while (*d) ++d;
                 auto* end = &buffer[dimof(buffer)-2];
@@ -503,7 +516,7 @@ namespace Assets
                 }
                 *d = '\0';
             } else {
-                strcpy(buffer, "Error during asset construction (unspecified)");
+                XlCopyString(buffer, "Error during asset construction (unspecified)");
             }
             return buffer;
         }
@@ -681,13 +694,12 @@ namespace Assets
 
 	namespace Internal
 	{
-		std::shared_ptr<ICompileMarker> BeginCompileOperation(
+		std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(
 			uint64_t typeCode, const StringSection<ResChar> initializers[],
 			unsigned initializerCount)
 		{
 			auto& compilers = Services::GetAsyncMan().GetIntermediateCompilers();
-			auto& store = Services::GetAsyncMan().GetIntermediateStore();
-			return compilers.PrepareAsset(typeCode, initializers, initializerCount, store);
+			return compilers.Prepare(typeCode, initializers, initializerCount);
 		}
 	}
 

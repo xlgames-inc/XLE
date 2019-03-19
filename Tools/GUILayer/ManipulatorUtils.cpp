@@ -21,17 +21,17 @@ namespace GUILayer
 
     template<typename ParamType>
         static const ParamType* FindParameter(
-            const char name[], std::pair<ParamType*, size_t> params, bool caseInsensitive)
+            const char name[], IteratorRange<const ParamType*> params, bool caseInsensitive)
     {
-        for (unsigned c=0; c<params.second; ++c) {
+        for (unsigned c=0; c<params.size(); ++c) {
             bool match = false;
             if (caseInsensitive) {
-                match = !XlCompareStringI(params.first[c]._name, name);
+                match = !XlCompareStringI(params[c]._name, name);
             } else {
-                match = !XlCompareString(params.first[c]._name, name);
+                match = !XlCompareString(params[c]._name, name);
             }
             if (match) 
-                return &params.first[c];
+                return &params[c];
         }
         return nullptr;
     }
@@ -212,8 +212,8 @@ namespace GUILayer
         auto result = gcnew List<PropertyDescriptor^>();
 
         auto fParams = manipulators.GetFloatParameters();
-        for (size_t c=0; c<fParams.second; ++c) {
-            const auto& param = fParams.first[c];
+        for (size_t c=0; c<fParams.size(); ++c) {
+            const auto& param = fParams[c];
             auto descriptor = 
                 gcnew DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
@@ -222,14 +222,14 @@ namespace GUILayer
                         gcnew DescriptionAttribute(
                             String::Format("{0} to {1} ({2})",
                                 param._min, param._max, 
-                                (param._scaleType == ToolsRig::IManipulator::FloatParameter::Linear)?"Linear":"Logarithmic"))
+                                (param._scaleType == ToolsRig::IManipulator::FloatParameter::ScaleType::Linear)?"Linear":"Logarithmic"))
                     });
             result->Add(descriptor);
         }
 
         auto iParams = manipulators.GetIntParameters();
-        for (size_t c=0; c<iParams.second; ++c) {
-            const auto& param = iParams.first[c];
+        for (size_t c=0; c<iParams.size(); ++c) {
+            const auto& param = iParams[c];
             auto descriptor = 
                 gcnew DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),
@@ -238,14 +238,14 @@ namespace GUILayer
                         gcnew DescriptionAttribute(
                             String::Format("{0} to {1} ({2})",
                                 param._min, param._max, 
-                                (param._scaleType == ToolsRig::IManipulator::IntParameter::Linear)?"Linear":"Logarithmic"))
+                                (param._scaleType == ToolsRig::IManipulator::IntParameter::ScaleType::Linear)?"Linear":"Logarithmic"))
                     });
             result->Add(descriptor);
         }
 
         auto bParams = manipulators.GetBoolParameters();
-        for (size_t c=0; c<bParams.second; ++c) {
-            const auto& param = bParams.first[c];
+        for (size_t c=0; c<bParams.size(); ++c) {
+            const auto& param = bParams[c];
             auto descriptor = 
                 gcnew DynamicPropertyDescriptor(
                     clix::marshalString<clix::E_UTF8>(param._name),

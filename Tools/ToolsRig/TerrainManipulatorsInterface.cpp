@@ -7,6 +7,7 @@
 #include "TerrainManipulatorsInterface.h"
 #include "TerrainManipulators.h"
 #include "IManipulator.h"
+#include "VisualisationUtils.h"		// (for AsCameraDesc)
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Tools/ToolsRig/IManipulator.h"
 #include "../../Tools/ToolsRig/ManipulatorsUtil.h"
@@ -22,21 +23,30 @@ namespace ToolsRig
         //      I N T E R F A C E           //
     ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class ManipulatorsInterface::InputListener : public RenderOverlays::DebuggingDisplay::IInputListener
+    class ManipulatorsInterface::InputListener : public PlatformRig::IInputListener
     {
     public:
-        bool OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt);
+        bool OnInputEvent(
+			const PlatformRig::InputContext& context,
+			const PlatformRig::InputSnapshot& evnt);
         InputListener(std::shared_ptr<ManipulatorsInterface> parent);
     private:
         std::weak_ptr<ManipulatorsInterface> _parent;
     };
 
-    bool    ManipulatorsInterface::InputListener::OnInputEvent(const RenderOverlays::DebuggingDisplay::InputSnapshot& evnt)
+    bool    ManipulatorsInterface::InputListener::OnInputEvent(
+		const PlatformRig::InputContext& context,
+		const PlatformRig::InputSnapshot& evnt)
     {
         auto p = _parent.lock();
         if (p) {
+			SceneEngine::IntersectionTestContext intersectionContext {
+				AsCameraDesc(*p->_camera),
+				context._viewMins, context._viewMaxs,
+				p->_techniqueContext };
+
             if (auto a = p->GetActiveManipulator()) {
-                return a->OnInputEvent(evnt, *p->_intersectionTestContext, *p->_intersectionTestScene);
+                return a->OnInputEvent(evnt, intersectionContext, p->_intersectionTestScene.get());
             }
         }
         return false;
@@ -46,7 +56,7 @@ namespace ToolsRig
         : _parent(std::move(parent))
     {}
 
-    void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, SceneEngine::LightingParserContext& parserContext)
+    void    ManipulatorsInterface::Render(RenderCore::IThreadContext& context, RenderCore::Techniques::ParsingContext& parserContext)
     {
 		auto a = GetActiveManipulator();
         if (a)
@@ -61,24 +71,26 @@ namespace ToolsRig
         _activeManipulatorIndex = unsigned(_activeManipulatorIndex + relativeIndex + _manipulators.size()) % unsigned(_manipulators.size());
     }
 
-    std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener>   ManipulatorsInterface::CreateInputListener()
+    std::shared_ptr<PlatformRig::IInputListener>   ManipulatorsInterface::CreateInputListener()
     {
         return std::make_shared<InputListener>(shared_from_this());
     }
 
     ManipulatorsInterface::ManipulatorsInterface(
-        std::shared_ptr<SceneEngine::TerrainManager> terrainManager,
-        std::shared_ptr<TerrainManipulatorContext> terrainManipulatorContext,
-        std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext)
+        const std::shared_ptr<SceneEngine::TerrainManager>& terrainManager,
+        const std::shared_ptr<TerrainManipulatorContext>& terrainManipulatorContext,
+        const std::shared_ptr<VisCameraSettings>& camera,
+		const std::shared_ptr<RenderCore::Techniques::TechniqueContext>& techniqueContext)
     {
         _activeManipulatorIndex = 0;
         _manipulators = CreateTerrainManipulators(terrainManager, terrainManipulatorContext);
 
         auto intersectionTestScene = std::make_shared<SceneEngine::IntersectionTestScene>(terrainManager);
 
-        _terrainManager = std::move(terrainManager);
-        _intersectionTestContext = std::move(intersectionTestContext);
-        _intersectionTestScene = std::move(intersectionTestScene);
+        _terrainManager = terrainManager;
+        _intersectionTestScene = intersectionTestScene;
+		_camera = camera;
+		_techniqueContext = techniqueContext;
     }
 
     ManipulatorsInterface::~ManipulatorsInterface()
@@ -176,7 +188,7 @@ namespace ToolsRig
 
         auto& res = ConsoleRig::FindCachedBox<WidgetResources>(WidgetResources::Desc());
 
-        unsigned parameterCount = unsigned(1 + floatParameters.second + boolParameters.second); // (+1 for the selector control)
+        unsigned parameterCount = unsigned(1 + floatParameters.size() + boolParameters.size()); // (+1 for the selector control)
         if (!statusText.empty()) { ++parameterCount; }
         Coord desiredHeight = 
             parameterCount * lineHeight + (std::max(0u, parameterCount-1) * layout._paddingBetweenAllocations)
@@ -193,19 +205,18 @@ namespace ToolsRig
         DrawRectangleOutline(&context, Rect(controlsRect._topLeft + Coord2(2,2), controlsRect._bottomRight - Coord2(2,2)), 0.f, backgroundOutlineColour);
         interactables.Register(Interactables::Widget(controlsRect, Id_TotalRect));
 
-        TextStyle font(res._headingFont);
         const auto headingRect = internalLayout.AllocateFullWidth(25);
         context.DrawText(
             std::make_tuple(Float3(float(headingRect._topLeft[0]), float(headingRect._topLeft[1]), 0.f), Float3(float(headingRect._bottomRight[0]), float(headingRect._bottomRight[1]), 0.f)),
-            &font, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
+			res._headingFont, TextStyle{}, interfaceState.HasMouseOver(Id_TotalRect)?headerColourHighlight:headerColourNormal, TextAlignment::Center, 
             title);
 
             //
             //      Draw controls for parameters. Starting with the float parameters
             //
         
-        for (size_t c=0; c<floatParameters.second; ++c) {
-            auto parameter = floatParameters.first[c];
+        for (size_t c=0; c<floatParameters.size(); ++c) {
+            auto parameter = floatParameters[c];
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
             float* p = (float*)PtrAdd(&manipulator, parameter._valueOffset);
 
@@ -214,7 +225,7 @@ namespace ToolsRig
 
                 // background (with special shader)
             float alpha;
-            if (parameter._scaleType == IManipulator::FloatParameter::Linear) {
+            if (parameter._scaleType == IManipulator::FloatParameter::ScaleType::Linear) {
                 alpha = Clamp((*p - parameter._min) / (parameter._max - parameter._min), 0.f, 1.f);
             } else {
                 alpha = Clamp((std::log(*p) - std::log(parameter._min)) / (std::log(parameter._max) - std::log(parameter._min)), 0.f, 1.f);
@@ -232,7 +243,7 @@ namespace ToolsRig
             _snprintf_s(buffer, _TRUNCATE, "%s = %5.1f", parameter._name, *p);
             context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                nullptr, formatting._foreground, TextAlignment::Center, buffer);
+				nullptr, TextStyle{}, formatting._foreground, TextAlignment::Center, buffer);
             
             DrawAndRegisterLeftRight(&context, interactables, interfaceState, rect, Id_CurFloatParametersLeft+c, Id_CurFloatParametersRight+c);
         }
@@ -241,8 +252,8 @@ namespace ToolsRig
             //      Also draw controls for the bool parameters
             //
 
-        for (size_t c=0; c<boolParameters.second; ++c) {
-            auto parameter = boolParameters.first[c];
+        for (size_t c=0; c<boolParameters.size(); ++c) {
+            auto parameter = boolParameters[c];
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
             unsigned* p = (unsigned*)PtrAdd(&manipulator, parameter._valueOffset);
             bool value = !!((*p) & (1<<parameter._bitIndex));
@@ -258,7 +269,7 @@ namespace ToolsRig
 
             context.DrawText(
                 std::make_tuple(Float3(float(rect._topLeft[0]), float(rect._topLeft[1]), 0.f), Float3(float(rect._bottomRight[0]), float(rect._bottomRight[1]), 0.f)),
-                nullptr, formatting._foreground, TextAlignment::Center, buffer);
+				nullptr, TextStyle{}, formatting._foreground, TextAlignment::Center, buffer);
         }
 
             //
@@ -269,7 +280,7 @@ namespace ToolsRig
             const auto rect = internalLayout.AllocateFullWidth(lineHeight);
             context.DrawText(
                 std::make_tuple(AsPixelCoords(rect._topLeft), AsPixelCoords(rect._bottomRight)),
-                nullptr, headerColourNormal, TextAlignment::Center, statusText.c_str());
+				nullptr, TextStyle{}, headerColourNormal, TextAlignment::Center, statusText.c_str());
         }
 
             //
@@ -294,14 +305,14 @@ namespace ToolsRig
     static void AdjustFloatParameter(IManipulator& manipulator, const IManipulator::FloatParameter& parameter, float increaseAmount)
     {
         const float clicksFromEndToEnd = 100.f;
-        if (parameter._scaleType == IManipulator::FloatParameter::Linear) {
+        if (parameter._scaleType == IManipulator::FloatParameter::ScaleType::Linear) {
             float adjustment = (parameter._max - parameter._min) / clicksFromEndToEnd;
             float newValue = *(float*)PtrAdd(&manipulator, parameter._valueOffset) + increaseAmount * adjustment;
             newValue = Clamp(newValue, parameter._min, parameter._max);
             *(float*)PtrAdd(&manipulator, parameter._valueOffset) = newValue;
         }
         else 
-        if (parameter._scaleType == IManipulator::FloatParameter::Logarithmic) {
+        if (parameter._scaleType == IManipulator::FloatParameter::ScaleType::Logarithmic) {
             auto p = (float*)PtrAdd(&manipulator, parameter._valueOffset);
             float scale = (std::log(parameter._max) - std::log(parameter._min)) / clicksFromEndToEnd;
             float a = std::log(*p);
@@ -310,7 +321,7 @@ namespace ToolsRig
         }
     }
 
-    bool HandleManipulatorsControls(InterfaceState& interfaceState, const InputSnapshot& input, IManipulator& manipulator)
+    bool HandleManipulatorsControls(InterfaceState& interfaceState, const PlatformRig::InputSnapshot& input, IManipulator& manipulator)
     {
         if (input.IsHeld_LButton()) {
             auto topMost = interfaceState.TopMostWidget();
@@ -321,18 +332,18 @@ namespace ToolsRig
                     //          * logarithmic -- it's more complex. We must increase by larger amounts as the number gets bigger
 
             auto floatParameters = manipulator.GetFloatParameters();
-            if (topMost._id >= Id_CurFloatParametersLeft && topMost._id <= (Id_CurFloatParametersLeft + floatParameters.second)) {
+            if (topMost._id >= Id_CurFloatParametersLeft && topMost._id <= (Id_CurFloatParametersLeft + floatParameters.size())) {
                 auto& parameter = floatParameters.first[topMost._id - Id_CurFloatParametersLeft];
                 AdjustFloatParameter(manipulator, parameter, -1.f);
                 return true;
-            } else if (topMost._id >= Id_CurFloatParametersRight && topMost._id <= (Id_CurFloatParametersRight + floatParameters.second)) {
+            } else if (topMost._id >= Id_CurFloatParametersRight && topMost._id <= (Id_CurFloatParametersRight + floatParameters.size())) {
                 auto& parameter = floatParameters.first[topMost._id - Id_CurFloatParametersRight];
                 AdjustFloatParameter(manipulator, parameter, 1.f);
                 return true;
             }
 
             auto boolParameters = manipulator.GetBoolParameters();
-            if (topMost._id >= Id_CurBoolParameters && topMost._id <= (Id_CurBoolParameters + boolParameters.second)) {
+            if (topMost._id >= Id_CurBoolParameters && topMost._id <= (Id_CurBoolParameters + boolParameters.size())) {
                 auto& parameter = boolParameters.first[topMost._id - Id_CurBoolParameters];
                 
                 unsigned* p = (unsigned*)PtrAdd(&manipulator, parameter._valueOffset);
@@ -351,7 +362,7 @@ namespace ToolsRig
         DrawManipulatorControls(context, layout, interactables, interfaceState, *activeManipulator, "Terrain tools");
     }
 
-    bool    ManipulatorsDisplay::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    ManipulatorsDisplay::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         auto topMost = interfaceState.TopMostWidget();
         if (input.IsRelease_LButton()) {

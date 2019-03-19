@@ -61,18 +61,14 @@ namespace Utility
 
         template<typename CharType>
             TypeDesc Parse(
-                const CharType expressionBegin[], 
-                const CharType expressionEnd[],
+                StringSection<CharType> expression,
                 void* dest, size_t destSize);
 
         template <typename Type>
-            std::pair<bool, Type> Parse(const char expression[]);
+            std::pair<bool, Type> Parse(StringSection<char> expression);
 
         template <typename Type>
-            std::pair<bool, Type> Parse(const char* expressionBegin, const char* expressionEnd);
-
-        template <typename Type>
-            std::pair<bool, Type> Parse(const utf8* expressionBegin, const utf8* expressionEnd);
+            std::pair<bool, Type> Parse(StringSection<utf8> expression);
 
         bool Cast(
             void* dest, size_t destSize, TypeDesc destType,
@@ -129,11 +125,9 @@ namespace Utility
             //      S E T                                                   //
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        void            SetParameter(const utf8 name[], const void* data, const TypeDesc& type);
-        void            SetParameter(const utf8 name[], const char* stringDataBegin, const char* stringDataEnd);
-        void            SetParameter(const utf8 name[], const char* stringDataBegin);
-        void            SetParameter(const utf8 name[], const std::string& stringData);
-        T1(Type) void   SetParameter(const utf8 name[], Type value);
+        void            SetParameter(StringSection<utf8> name, IteratorRange<const void*> data, const TypeDesc& type);
+        void            SetParameter(StringSection<utf8> name, StringSection<char> stringData);
+        T1(Type) void   SetParameter(StringSection<utf8> name, Type value);
 
         void            SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type);
         
@@ -146,7 +140,7 @@ namespace Utility
         bool            GetParameter(ParameterName name, void* dest, const TypeDesc& destType) const;
         bool            HasParameter(ParameterName name) const;
         TypeDesc        GetParameterType(ParameterName name) const;
-		const void*		GetParameterRawValue(ParameterName name) const;
+		IteratorRange<const void*>	GetParameterRawValue(ParameterName name) const;
 
         T1(CharType) std::basic_string<CharType> GetString(ParameterName name) const;
         T1(CharType) bool   GetString(ParameterName name, CharType dest[], size_t destCount) const;
@@ -170,30 +164,41 @@ namespace Utility
         class Iterator
         {
         public:
-            bool                IsEnd() const;
+			class Value
+			{
+			public:
+				StringSection<utf8>			Name() const;
+				IteratorRange<const void*>	RawValue() const;
+				const TypeDesc&				Type() const;
+				ParameterNameHash			HashName() const;
+				std::string					ValueAsString(bool strongTyping = false) const;
+			
+				size_t                  _index;
+				const ParameterBox*     _box;
 
-            const utf8*         Name() const;
-            const void*         RawValue() const;
-            const TypeDesc&     Type() const;
-            ParameterNameHash   HashName() const;
-
-            const void*         ValueTableEnd() const;
-
-            std::string         ValueAsString(bool strongTyping = false) const;
+			private:
+				Value(const ParameterBox& box, size_t index);
+				Value();
+				friend class Iterator;
+			};
 
             void operator++();
+			const Value& operator*() const;
+			const Value& operator->() const;
+			friend bool operator==(const Iterator&, const Iterator&);
+			friend bool operator!=(const Iterator&, const Iterator&);
 
         private:
-            size_t                  _index;
-            const ParameterBox*     _box;
+            Value _value;
 
             Iterator(const ParameterBox& box, size_t index);
             Iterator();
             friend class ParameterBox;
         };
 
-        Iterator    Begin() const;
-        Iterator    At(size_t index) const;
+        Iterator    begin() const;
+		Iterator	end() const;
+        Iterator    at(size_t index) const;
         size_t      GetCount() const;
 
         ////////////////////////////////////////////////////////////////////////////////////////
@@ -209,7 +214,7 @@ namespace Utility
         ParameterBox(std::initializer_list<std::pair<const utf8*, const char*>>);
         template<typename CharType>
             ParameterBox(InputStreamFormatter<CharType>& stream, 
-                const void* defaultValue = nullptr, 
+				IteratorRange<const void*> defaultValue = {}, 
                 const ImpliedTyping::TypeDesc& defaultValueType = ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Void, 0u));
         ParameterBox(ParameterBox&& moveFrom) never_throws;
         ParameterBox& operator=(ParameterBox&& moveFrom) never_throws;
@@ -224,18 +229,24 @@ namespace Utility
         mutable uint64      _cachedHash;
         mutable uint64      _cachedParameterNameHash;
 
-        SerializableVector<ParameterNameHash>            _hashNames;
-        SerializableVector<std::pair<uint32, uint32>>    _offsets;
-        SerializableVector<utf8>         _names;
-        SerializableVector<uint8>        _values;
-        SerializableVector<TypeDesc>     _types;
+		class OffsetsEntry
+		{
+		public:
+			uint32_t _nameBegin, _valueBegin;
+			uint32_t _nameSize, _valueSize;
+		};
 
-        const void*         GetValue(size_t index) const;
+        SerializableVector<ParameterNameHash>	_hashNames;
+        SerializableVector<OffsetsEntry>		_offsets;
+        SerializableVector<utf8>				_names;
+        SerializableVector<uint8>				_values;
+        SerializableVector<TypeDesc>			_types;
+
         uint64              CalculateHash() const;
         uint64              CalculateParameterNamesHash() const;
 
         void SetParameter(
-            ParameterNameHash hash, const utf8 name[], const void* value,
+            ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
             const ImpliedTyping::TypeDesc& insertType);
 
         SerializableVector<ParameterNameHash>::const_iterator SetParameterHint(
@@ -294,53 +305,74 @@ namespace Utility
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    inline auto ParameterBox::Begin() const -> Iterator
+    inline auto ParameterBox::begin() const -> Iterator
     {
         return Iterator(*this, 0);
     }
 
-    inline auto ParameterBox::At(size_t index) const -> Iterator
+	inline auto ParameterBox::end() const -> Iterator
+    {
+        return Iterator(*this, _offsets.size());
+    }
+
+    inline auto ParameterBox::at(size_t index) const -> Iterator
     {
         if (index >= _offsets.size()) return Iterator();
         return Iterator(*this, index);
     }
 
-    inline bool        ParameterBox::Iterator::IsEnd() const
+    inline StringSection<utf8> ParameterBox::Iterator::Value::Name() const
     {
-        return _index >= _box->_offsets.size();
+        return MakeStringSection(
+			&_box->_names[_box->_offsets[_index]._nameBegin], 
+			&_box->_names[_box->_offsets[_index]._nameBegin + _box->_offsets[_index]._nameSize]);
     }
 
-    inline const utf8* ParameterBox::Iterator::Name() const
-    {
-        return &_box->_names[_box->_offsets[_index].first];
-    }
-
-    inline auto        ParameterBox::Iterator::Type() const -> const TypeDesc&
+    inline auto        ParameterBox::Iterator::Value::Type() const -> const TypeDesc&
     {
         return _box->_types[_index];
     }
 
-    inline auto   ParameterBox::Iterator::HashName() const -> ParameterNameHash
+    inline auto   ParameterBox::Iterator::Value::HashName() const -> ParameterNameHash
     {
         return _box->_hashNames[_index];
     }
 
-    inline std::string   ParameterBox::Iterator::ValueAsString(bool strongTyping) const
+    inline std::string   ParameterBox::Iterator::Value::ValueAsString(bool strongTyping) const
     {
-        const auto* value = RawValue();
-        return ImpliedTyping::AsString(value, ptrdiff_t(ValueTableEnd()) - ptrdiff_t(RawValue()), Type(), strongTyping);
+        auto value = RawValue();
+        return ImpliedTyping::AsString(value.begin(), value.size(), Type(), strongTyping);
     }
+
+	inline ParameterBox::Iterator::Value::Value(const ParameterBox& box, size_t index)
+    : _box(&box), _index(index)
+    {}
+
+    inline ParameterBox::Iterator::Value::Value() : _index(0), _box(nullptr) {}
 
     inline void ParameterBox::Iterator::operator++()
     {
-        ++_index;
+        ++_value._index;
     }
 
+	inline auto ParameterBox::Iterator::operator*() const -> const Value& { return _value; }
+	inline auto ParameterBox::Iterator::operator->() const -> const Value& { return _value; }
+
+	inline bool operator==(const ParameterBox::Iterator& lhs, const ParameterBox::Iterator& rhs)
+	{
+		return lhs._value._box == rhs._value._box && lhs._value._index == rhs._value._index;
+	}
+
+	inline bool operator!=(const ParameterBox::Iterator& lhs, const ParameterBox::Iterator& rhs)
+	{
+		return lhs._value._box != rhs._value._box || lhs._value._index != rhs._value._index;
+	}
+
     inline ParameterBox::Iterator::Iterator(const ParameterBox& box, size_t index)
-    : _index(index), _box(&box)
+    : _value(box, index)
     {}
 
-    inline ParameterBox::Iterator::Iterator() : _index(0), _box(nullptr) {}
+    inline ParameterBox::Iterator::Iterator() {}
 
     inline IteratorRange<const void*> ParameterBox::GetValueTable() const
     {

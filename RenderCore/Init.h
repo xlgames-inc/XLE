@@ -17,5 +17,10 @@ namespace RenderCore
     };
 
     std::shared_ptr<IDevice>    CreateDevice(UnderlyingAPI api);
+
+	using DeviceCreationFunction = std::shared_ptr<IDevice>();
+	void RegisterDeviceCreationFunction(
+		UnderlyingAPI api,
+		DeviceCreationFunction* fn);
 }
 

@@ -11,39 +11,14 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Metal/Buffer.h"
 #include "../RenderCore/Metal/State.h"
+#include "../RenderCore/Types.h"
 #include <vector>
 
 namespace BufferUploads { class ResourceLocator; }
-namespace RenderCore { namespace Techniques { class IStateSetResolver; }}
+namespace RenderCore { namespace Techniques { class IRenderStateDelegate; }}
 
 namespace SceneEngine
 {
-    class ShadowTargetsBox
-    {
-    public:
-        class Desc
-        {
-        public:
-            unsigned        _width;
-            unsigned        _height;
-            unsigned        _targetCount;
-            FormatStack     _formats;
-            Desc(unsigned width, unsigned height, unsigned targetCount, const FormatStack& format) 
-                : _width(width), _height(height), _targetCount(targetCount), _formats(format) {}
-        };
-
-        using SRV = RenderCore::Metal::ShaderResourceView;
-        using DSV = RenderCore::Metal::DepthStencilView;
-        using ResLocator = intrusive_ptr<BufferUploads::ResourceLocator>;
-        SRV _shaderResource;
-        DSV _depthStencilView;
-        std::vector<DSV> _dsvBySlice;
-        ResLocator _shadowTexture;
-
-        ShadowTargetsBox(const Desc& desc);
-        ~ShadowTargetsBox();
-    };
-
     class ShadowResourcesBox
     {
     public:
@@ -64,18 +39,18 @@ namespace SceneEngine
             using RSDepthBias = RenderCore::Techniques::RSDepthBias;
             RSDepthBias     _singleSidedBias;
             RSDepthBias     _doubleSidedBias;
-            unsigned        _windingCullMode;
+            RenderCore::CullMode	_windingCullMode;
 
             Desc(   const RSDepthBias& singleSidedBias,
                     const RSDepthBias& doubleSidedBias,
-                    unsigned windingCullMode) 
+                    RenderCore::CullMode windingCullMode) 
             : _singleSidedBias(singleSidedBias)
             , _doubleSidedBias(doubleSidedBias)
             , _windingCullMode(windingCullMode) {}
         };
 
         RenderCore::Metal::RasterizerState _rasterizerState;
-        std::shared_ptr<RenderCore::Techniques::IStateSetResolver> _stateResolver;
+        std::shared_ptr<RenderCore::Techniques::IRenderStateDelegate> _stateResolver;
 
         ShadowWriteResources(const Desc& desc);
         ~ShadowWriteResources();

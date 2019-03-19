@@ -8,7 +8,7 @@
 #include "AssetSetManager.h"
 #include "CompileAndAsyncManager.h"
 #include "../ConsoleRig/GlobalServices.h"
-#include "../ConsoleRig/AttachableInternal.h"
+#include "../ConsoleRig/AttachablePtr.h"
 
 namespace Assets
 {

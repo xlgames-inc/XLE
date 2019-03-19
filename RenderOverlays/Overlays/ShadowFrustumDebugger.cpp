@@ -190,12 +190,12 @@ namespace Overlays
 #endif
     }
 
-    bool ShadowFrustumDebugger::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool ShadowFrustumDebugger::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
         return false;
     }
 
-    ShadowFrustumDebugger::ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ISceneParser> scene)
+    ShadowFrustumDebugger::ShadowFrustumDebugger(std::shared_ptr<SceneEngine::ILightingParserDelegate> scene)
     : _scene(std::move(scene))
     {}
 

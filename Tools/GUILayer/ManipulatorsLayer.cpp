@@ -132,7 +132,7 @@ namespace GUILayer
             PlacementManipulatorSettingsAdapter(IPlacementManipulatorSettingsLayer^ managed);
             virtual ~PlacementManipulatorSettingsAdapter();
         private:
-            gcroot<IPlacementManipulatorSettingsLayer^> _managed;
+            msclr::gcroot<IPlacementManipulatorSettingsLayer^> _managed;
         };
 
         std::string PlacementManipulatorSettingsAdapter::GetSelectedModel() const

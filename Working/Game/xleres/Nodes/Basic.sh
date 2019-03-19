@@ -49,13 +49,13 @@ float3 Normalize3(float3 input) { return normalize(input); }
 float3 Negate3(float3 input) { return -input; }
 
 void Separate2(float2 input, out float r, out float g) { r = input.r; g = input.g; }
-void Combine2(float r, float g, out float2 result) { result = float2(r, g); }
+void Combine2(float r, float g, out float2 fnResult) { fnResult = float2(r, g); }
 
 void Separate3(float3 input, out float r, out float g, out float b) { r = input.r; g = input.g; b = input.b; }
-void Combine3(float r, float g, float b, out float3 result) { result = float3(r, g, b); }
+void Combine3(float r, float g, float b, out float3 fnResult) { fnResult = float3(r, g, b); }
 
 void Separate4(float4 input, out float r, out float g, out float b, out float a) { r = input.r; g = input.g; b = input.b; a = input.a; }
-void Combine4(float r, float g, float b, float a, out float4 result) { result = float4(r, g, b, a); }
+void Combine4(float r, float g, float b, float a, out float4 fnResult) { fnResult = float4(r, g, b, a); }
 
 void SeparateAlpha(float4 input, out float3 rgb, out float alpha) { rgb = input.rgb; alpha = input.a; }
 float4 CombineAlpha(float3 color, float alpha)     { return float4(color, alpha); }

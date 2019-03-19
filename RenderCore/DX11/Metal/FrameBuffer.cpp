@@ -24,6 +24,7 @@ namespace RenderCore { namespace Metal_DX11
 	}
 
     FrameBuffer::FrameBuffer(
+		ObjectFactory&,
         const FrameBufferDesc& fbDesc,
         const INamedAttachments& namedResources)
     {
@@ -36,7 +37,7 @@ namespace RenderCore { namespace Metal_DX11
 		ViewPool<DepthStencilView> dsvPool;
 		unsigned clearValueIterator = 0;
         
-        assert(subpasses.size() < s_maxSubpasses);
+        _subpasses.resize(subpasses.size());
         for (unsigned c=0; c<(unsigned)subpasses.size(); ++c) {
             const auto& spDesc = subpasses[c];
             auto& sp = _subpasses[c];
@@ -44,9 +45,11 @@ namespace RenderCore { namespace Metal_DX11
             for (unsigned r=0; r<sp._rtvCount; ++r) {
 				const auto& attachmentView = spDesc._output[r];
 				auto resource = namedResources.GetResource(attachmentView._resourceName);
-				if (!resource)
+				auto* attachmentDesc = namedResources.GetDesc(attachmentView._resourceName);
+				if (!resource || !attachmentDesc)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for RTV in FrameBuffer::FrameBuffer"));
-                sp._rtvs[r] = *rtvPool.GetView(resource, attachmentView._window);
+				auto completeView = CompleteTextureViewDesc(*attachmentDesc, attachmentView._window, (AsTypelessFormat(attachmentDesc->_format) == attachmentDesc->_format) ? TextureViewDesc::Aspect::ColorLinear : TextureViewDesc::Aspect::UndefinedAspect);
+                sp._rtvs[r] = *rtvPool.GetView(resource, completeView);
 				sp._rtvLoad[r] = attachmentView._loadFromPreviousPhase;
 				if (HasClear(sp._rtvLoad[r])) {
 					sp._rtvClearValue[r] = clearValueIterator++;
@@ -57,9 +60,11 @@ namespace RenderCore { namespace Metal_DX11
 
 			if (spDesc._depthStencil._resourceName != ~0u) {
 				auto resource = namedResources.GetResource(spDesc._depthStencil._resourceName);
-				if (!resource)
+				auto* attachmentDesc = namedResources.GetDesc(spDesc._depthStencil._resourceName);
+				if (!resource || !attachmentDesc)
 					Throw(::Exceptions::BasicLabel("Could not find attachment resource for DSV in FrameBuffer::FrameBuffer"));
-				sp._dsv = *dsvPool.GetView(resource, spDesc._depthStencil._window);
+				auto completeView = CompleteTextureViewDesc(*attachmentDesc, spDesc._depthStencil._window, TextureViewDesc::Aspect::DepthStencil);
+				sp._dsv = *dsvPool.GetView(resource, completeView);
 				sp._dsvLoad = spDesc._depthStencil._loadFromPreviousPhase;
 				if (HasClear(sp._dsvLoad)) {
 					sp._dsvClearValue = clearValueIterator++;
@@ -68,32 +73,35 @@ namespace RenderCore { namespace Metal_DX11
 				}
 			}
         }
-        _subpassCount = (unsigned)subpasses.size();
     }
 
     void FrameBuffer::BindSubpass(DeviceContext& context, unsigned subpassIndex, IteratorRange<const ClearValue*> clearValues) const
     {
-        if (subpassIndex >= _subpassCount)
+        if (subpassIndex >= _subpasses.size())
             Throw(::Exceptions::BasicLabel("Attempting to set invalid subpass"));
 
         const auto& s = _subpasses[subpassIndex];
 		for (unsigned c = 0; c < s._rtvCount; ++c) {
+			ClearValue cv = (s._rtvClearValue[c] < clearValues.size()) ? clearValues[s._rtvClearValue[c]] : MakeClearValue(0.f, 0.f, 0.f, 1.f);
 			if (s._rtvLoad[c] == LoadStore::Clear)
-				context.Clear(s._rtvs[c], clearValues[s._rtvClearValue[c]]._float);
+				context.Clear(s._rtvs[c], cv._float);
 		}
 
 		if (s._dsvLoad == LoadStore::Clear_ClearStencil) {
+			ClearValue cv = (s._dsvClearValue < clearValues.size()) ? clearValues[s._dsvClearValue] : MakeClearValue(1.0f, 0);
 			context.Clear(
 				s._dsv, DeviceContext::ClearFilter::Depth | DeviceContext::ClearFilter::Stencil,
-				clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+				cv._depthStencil._depth, cv._depthStencil._stencil);
         } else if (s._dsvLoad == LoadStore::Clear || s._dsvLoad == LoadStore::Clear_RetainStencil) {
+			ClearValue cv = (s._dsvClearValue < clearValues.size()) ? clearValues[s._dsvClearValue] : MakeClearValue(1.0f, 0);
 			context.Clear(
 				s._dsv, DeviceContext::ClearFilter::Depth,
-				clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+				cv._depthStencil._depth, cv._depthStencil._stencil);
         } else if (s._dsvLoad == LoadStore::DontCare_ClearStencil || s._dsvLoad == LoadStore::Retain_ClearStencil) {
+			ClearValue cv = (s._dsvClearValue < clearValues.size()) ? clearValues[s._dsvClearValue] : MakeClearValue(1.0f, 0);
 			context.Clear(
 				s._dsv, DeviceContext::ClearFilter::Stencil,
-				clearValues[s._dsvClearValue]._depthStencil._depth, clearValues[s._dsvClearValue]._depthStencil._stencil);
+				cv._depthStencil._depth, cv._depthStencil._stencil);
         }
 
 		ID3D::RenderTargetView* bindRTVs[s_maxMRTs];
@@ -131,9 +139,14 @@ namespace RenderCore { namespace Metal_DX11
     {
         // Queue up the next render targets
 		auto subpassIndex = s_nextSubpass;
-		frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
+		if (subpassIndex < frameBuffer.GetSubpassCount())
+			frameBuffer.BindSubpass(context, subpassIndex, MakeIteratorRange(s_clearValues));
 		++s_nextSubpass;
     }
+
+	void EndSubpass(DeviceContext& context)
+	{
+	}
 
     void EndRenderPass(DeviceContext& context)
     {
@@ -143,6 +156,11 @@ namespace RenderCore { namespace Metal_DX11
         context.Unbind<RenderTargetView>();
     }
 
+	unsigned GetCurrentSubpassIndex(DeviceContext& context)
+	{
+		return s_nextSubpass-1;
+	}
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     class FrameBufferPool::Pimpl 
@@ -151,13 +169,13 @@ namespace RenderCore { namespace Metal_DX11
     };
 
     std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-		const ObjectFactory& factory,
+		ObjectFactory& factory,
 		const FrameBufferDesc& desc,
         const FrameBufferProperties& props,
         const INamedAttachments& namedResources,
         uint64 hashName)
     {
-        return std::make_shared<FrameBuffer>(desc, namedResources);
+        return std::make_shared<FrameBuffer>(factory, desc, namedResources);
     }
 
     FrameBufferPool::FrameBufferPool()

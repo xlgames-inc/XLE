@@ -7,10 +7,12 @@
 #include "ObjectPlaceholders.h"
 #include "VisualisationGeo.h"
 #include "../EntityInterface/RetainedEntities.h"
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/ShaderVariationSet.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/ModelScaffoldInternal.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
 #include "../../RenderCore/Assets/ModelImmutableData.h"
-#include "../../RenderCore/Assets/ShaderVariationSet.h"
+#include "../../RenderCore/Assets/AssetUtils.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/CommonBindings.h"
@@ -18,9 +20,12 @@
 #include "../../RenderCore/Techniques/CommonResources.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/Metal/Buffer.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
+#include "../../RenderCore/Metal/InputLayout.h"
 #include "../../RenderCore/ResourceList.h"
 #include "../../RenderCore/Format.h"
 #include "../../RenderCore/Types.h"
+#include "../../RenderCore/IDevice.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/IFileSystem.h"
@@ -35,7 +40,6 @@
 namespace ToolsRig
 {
     using namespace RenderCore;
-    using namespace RenderCore::Techniques;
 
     namespace Parameters
     {
@@ -54,7 +58,7 @@ namespace ToolsRig
 	public:
 		void Render(
 			Metal::DeviceContext& devContext,
-			ParsingContext& parserContext,
+			Techniques::ParsingContext& parserContext,
 			Metal::ConstantBufferPacket localTransform,
 			unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig,
 			const ParameterBox& materialParams) const;
@@ -65,10 +69,10 @@ namespace ToolsRig
 		SimpleModel(StringSection<::Assets::ResChar> filename);
 		~SimpleModel();
 	private:
-		Metal::VertexBuffer _vb;
-		Metal::IndexBuffer _ib;
+		IResourcePtr _vb;
+		IResourcePtr _ib;
 		std::vector<RenderCore::Assets::DrawCallDesc> _drawCalls;
-		RenderCore::Assets::ShaderVariationSet _material;
+		FixedFunctionModel::ShaderVariationSet _material;
 		unsigned _vbStride;
 		Format _ibFormat;
 		::Assets::DepValPtr _depVal;
@@ -78,7 +82,7 @@ namespace ToolsRig
 
 	void SimpleModel::Render(
 		Metal::DeviceContext& devContext,
-		ParsingContext& parserContext,
+		Techniques::ParsingContext& parserContext,
 		Metal::ConstantBufferPacket localTransform,
 		unsigned techniqueIndex, StringSection<::Assets::ResChar> techniqueConfig,
 		const ParameterBox& materialParams) const
@@ -93,25 +97,29 @@ namespace ToolsRig
 			ParameterBox p; p.SetParameter(u("MaterialDiffuse"), LinearInterpolate(col0, col1, 0.5f + 0.5f * XlCos(time)));
 			auto matParams1 = shader._cbLayout->BuildCBDataAsPkt(p);
 
-			devContext.Bind(MakeResourceList(_vb), _vbStride, 0);
-			devContext.Bind(_ib, _ibFormat, 0);
-
 			if (_drawCalls.size() >= 2) {
-				shader._shader.Apply(devContext, parserContext, { localTransform, matParams0 });
+				devContext.Bind(*(Metal::Resource*)_ib->QueryInterface(typeid(Metal::Resource).hash_code()), _ibFormat);
+
+				VertexBufferView vbv { _vb, 0 };
+				shader._shader.Apply(devContext, parserContext, {vbv});
+
+				ConstantBufferView cbvs0[] = { {localTransform}, {matParams0} };
+				shader._shader._boundUniforms->Apply(devContext, 1, UniformsStream{ MakeIteratorRange(cbvs0) });
 				devContext.DrawIndexed(_drawCalls[0]._indexCount, _drawCalls[0]._firstIndex, _drawCalls[0]._firstVertex);
 
-				shader._shader.Apply(devContext, parserContext, { localTransform, matParams1 });
+				ConstantBufferView cbvs1[] = { {localTransform}, {matParams0} };
+				shader._shader._boundUniforms->Apply(devContext, 1, UniformsStream{ MakeIteratorRange(cbvs1) });
 				devContext.DrawIndexed(_drawCalls[1]._indexCount, _drawCalls[1]._firstIndex, _drawCalls[1]._firstVertex);
 			}
 		}
 	}
 
-	template<typename T> static T ReadFromFile(::Assets::IFileInterface& file, size_t size, size_t offset)
+	static std::vector<uint8_t> ReadFromFile(::Assets::IFileInterface& file, size_t size, size_t offset)
 	{
 		file.Seek(offset);
-		auto data = std::make_unique<uint8[]>(size);
-		file.Read(data.get(), size, 1);
-		return T(data.get(), size);
+		std::vector<uint8_t> result(size);
+		file.Read(result.data(), size, 1);
+		return result;
 	}
 
 	SimpleModel::SimpleModel(const RenderCore::Assets::RawGeometry& geo, ::Assets::IFileInterface& largeBlocksFile)
@@ -133,8 +141,10 @@ namespace ToolsRig
 	{
 		// load the vertex buffer & index buffer from the geo input, and copy draw calls data
 		auto largeBlocksOffset = largeBlocksFile.TellP();
-		_vb = ReadFromFile<Metal::VertexBuffer>(largeBlocksFile, geo._vb._size, geo._vb._offset + largeBlocksOffset);
-		_ib = ReadFromFile<Metal::IndexBuffer>(largeBlocksFile, geo._ib._size, geo._ib._offset + largeBlocksOffset);
+		auto vbData = ReadFromFile(largeBlocksFile, geo._vb._size, geo._vb._offset + largeBlocksOffset);
+		auto ibData = ReadFromFile(largeBlocksFile, geo._ib._size, geo._ib._offset + largeBlocksOffset);
+		_vb = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(vbData));
+		_ib = RenderCore::Assets::CreateStaticIndexBuffer(MakeIteratorRange(vbData));
 		_drawCalls.insert(_drawCalls.begin(), geo._drawCalls.cbegin(), geo._drawCalls.cend());
 		_vbStride = geo._vb._ia._vertexStride;
 		_ibFormat = geo._ib._format;
@@ -143,9 +153,9 @@ namespace ToolsRig
 		std::vector<InputElementDesc> eles;
 		for (const auto&i:geo._vb._ia._elements)
 			eles.push_back(InputElementDesc(i._semanticName, i._semanticIndex, i._nativeFormat, 0, i._alignedByteOffset));
-		_material = RenderCore::Assets::ShaderVariationSet(
-			std::make_pair(AsPointer(eles.cbegin()), eles.size()),
-			{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants }, ParameterBox());
+		_material = FixedFunctionModel::ShaderVariationSet(
+			MakeIteratorRange(eles),
+			{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants }, ParameterBox());
 	}
 
 	SimpleModel::~SimpleModel() {}
@@ -160,14 +170,14 @@ namespace ToolsRig
     public:
         class Desc {};
 
-        Metal::VertexBuffer     _cubeVB;
-        unsigned                _cubeVBCount;
-        unsigned                _cubeVBStride;
-		RenderCore::Assets::ShaderVariationSet	_material;
-		RenderCore::Assets::ShaderVariationSet	_materialP;
-		RenderCore::Assets::ShaderVariationSet	_materialGenSphere;
-		RenderCore::Assets::ShaderVariationSet	_materialGenTube;
-		RenderCore::Assets::ShaderVariationSet	_materialGenRectangle;
+        RenderCore::IResourcePtr	_cubeVB;
+        unsigned					_cubeVBCount;
+        unsigned					_cubeVBStride;
+		FixedFunctionModel::ShaderVariationSet	_material;
+		FixedFunctionModel::ShaderVariationSet	_materialP;
+		FixedFunctionModel::ShaderVariationSet	_materialGenSphere;
+		FixedFunctionModel::ShaderVariationSet	_materialGenTube;
+		FixedFunctionModel::ShaderVariationSet	_materialGenRectangle;
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const   { return _depVal; }
         VisGeoBox(const Desc&);
@@ -179,29 +189,29 @@ namespace ToolsRig
     VisGeoBox::VisGeoBox(const Desc&)
     : _material(
         ToolsRig::Vertex3D_InputLayout, 
-        { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+        { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
         ParameterBox())
     , _materialP(
         GlobalInputLayouts::P,
-        { ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+        { Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
         ParameterBox())
 	, _materialGenSphere(
-		InputLayout((const InputElementDesc*)nullptr, 0),
-		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+		InputLayout{},
+		{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
 		ParameterBox({ std::make_pair(u("SHAPE"), "1") }))
 	, _materialGenTube(
-		InputLayout((const InputElementDesc*)nullptr, 0),
-		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+		InputLayout{},
+		{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
 		ParameterBox({ std::make_pair(u("SHAPE"), "2") }))
 	, _materialGenRectangle(
-		InputLayout((const InputElementDesc*)nullptr, 0),
-		{ ObjectCB::LocalTransform, ObjectCB::BasicMaterialConstants },
+		InputLayout{},
+		{ Techniques::ObjectCB::LocalTransform, Techniques::ObjectCB::BasicMaterialConstants },
 		ParameterBox({ std::make_pair(u("SHAPE"), "3") }))
     {
         auto cubeVertices = ToolsRig::BuildCube();
         _cubeVBCount = (unsigned)cubeVertices.size();
         _cubeVBStride = (unsigned)sizeof(decltype(cubeVertices)::value_type);
-        _cubeVB = Metal::VertexBuffer(AsPointer(cubeVertices.cbegin()), _cubeVBCount * _cubeVBStride);
+        _cubeVB = RenderCore::Assets::CreateStaticVertexBuffer(MakeIteratorRange(cubeVertices));
         _depVal = std::make_shared<::Assets::DependencyValidation>();
     }
 
@@ -230,7 +240,7 @@ namespace ToolsRig
 		Metal::ConstantBufferPacket _localTransform;
 		ParameterBox				_matParams;
 
-		ObjectParams(const RetainedEntity& obj, ParsingContext& parserContext, bool directionalTransform = false)
+		ObjectParams(const RetainedEntity& obj, Techniques::ParsingContext& parserContext, bool directionalTransform = false)
 		{
 			auto trans = GetTransform(obj);
 			if (directionalTransform) {
@@ -238,7 +248,7 @@ namespace ToolsRig
 				auto translation = ExtractTranslation(trans);
 				trans = MakeObjectToWorld(-Normalize(translation), Float3(0.f, 0.f, 1.f), translation);
 			}
-			_localTransform = MakeLocalTransformPacket(
+			_localTransform = Techniques::MakeLocalTransformPacket(
 				trans, ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld));
 
 			// bit of a hack -- copy from the "Diffuse" parameter to the "MaterialDiffuse" shader constant
@@ -248,9 +258,9 @@ namespace ToolsRig
 	};
 
     static void DrawSphereStandIn(
-        Metal::DeviceContext& devContext, ParsingContext& parserContext, 
+        Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
 		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const RenderCore::Assets::ShaderVariationSet::Variation& fallbackShader)
+		const VisGeoBox& visBox, const FixedFunctionModel::ShaderVariationSet::Variation& fallbackShader)
     {
 		CATCH_ASSETS_BEGIN
 			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/spherestandin.dae");
@@ -260,16 +270,18 @@ namespace ToolsRig
 
 		// after an asset exception, we can just render some simple stand-in
 		if (fallbackShader._shader._shaderProgram) {
-			fallbackShader._shader.Apply(devContext, parserContext, { params._localTransform, fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams) } );
-			devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
+			VertexBufferView vbv { visBox._cubeVB, 0 };
+			fallbackShader._shader.Apply(devContext, parserContext, {vbv});
+			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 			devContext.Draw(visBox._cubeVBCount);
 		}
     }
 
 	static void DrawPointerStandIn(
-		Metal::DeviceContext& devContext, ParsingContext& parserContext,
+		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext,
 		const ObjectParams& params, unsigned techniqueIndex, StringSection<::Assets::ResChar> technique,
-		const VisGeoBox& visBox, const RenderCore::Assets::ShaderVariationSet::Variation& fallbackShader)
+		const VisGeoBox& visBox, const FixedFunctionModel::ShaderVariationSet::Variation& fallbackShader)
 	{
 		CATCH_ASSETS_BEGIN
 			auto& asset = ::Assets::GetAssetDep<SimpleModel>("game/model/simple/pointerstandin.dae");
@@ -279,38 +291,43 @@ namespace ToolsRig
 
 			// after an asset exception, we can just render some simple stand-in
 			if (fallbackShader._shader._shaderProgram) {
-				fallbackShader._shader.Apply(devContext, parserContext, { params._localTransform, fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
-				devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
+				VertexBufferView vbv { visBox._cubeVB, 0 };
+				fallbackShader._shader.Apply(devContext, parserContext, {vbv});
+				ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+				fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 				devContext.Draw(visBox._cubeVBCount);
 			}
 	}
 
 	static void DrawGenObject(
-		Metal::DeviceContext& devContext, ParsingContext& parserContext, 
+		Metal::DeviceContext& devContext, Techniques::ParsingContext& parserContext, 
 		const ObjectParams& params,
-		const RenderCore::Assets::ShaderVariationSet::Variation& generatorShader, unsigned vertexCount,
-		const VisGeoBox& visBox, const RenderCore::Assets::ShaderVariationSet::Variation& fallbackShader)
+		const FixedFunctionModel::ShaderVariationSet::Variation& generatorShader, unsigned vertexCount,
+		const VisGeoBox& visBox, const FixedFunctionModel::ShaderVariationSet::Variation& fallbackShader)
 	{
 		if (generatorShader._shader._shaderProgram) {
-			generatorShader._shader.Apply(devContext, parserContext, { params._localTransform, generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
-			devContext.Unbind<Metal::VertexBuffer>();
+			generatorShader._shader.Apply(devContext, parserContext, {});
+			ConstantBufferView cbvs[] = { {params._localTransform}, {generatorShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 			devContext.Bind(Topology::TriangleList);
 			devContext.Draw(vertexCount);
 			return;
 		}
 
 		if (fallbackShader._shader._shaderProgram) {
-			fallbackShader._shader.Apply(devContext, parserContext, { params._localTransform, fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams) });
-			devContext.Bind(MakeResourceList(visBox._cubeVB), visBox._cubeVBStride, 0);
+			VertexBufferView vbv { visBox._cubeVB, 0 };
+			fallbackShader._shader.Apply(devContext, parserContext, {vbv});
+			ConstantBufferView cbvs[] = { {params._localTransform}, {fallbackShader._cbLayout->BuildCBDataAsPkt(params._matParams)} };
+			fallbackShader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
 			devContext.Draw(visBox._cubeVBCount);
 		}
 	}
 
     static void DrawTriMeshMarker(
         Metal::DeviceContext& devContext,
-        ParsingContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         const VisGeoBox& visBox,
-        const RenderCore::Assets::ShaderVariationSet::Variation& shader, const RetainedEntity& obj,
+        const FixedFunctionModel::ShaderVariationSet::Variation& shader, const RetainedEntity& obj,
         EntityInterface::RetainedEntities& objs)
     {
         static auto IndexListHash = ParameterBox::MakeParameterNameHash("IndexList");
@@ -341,22 +358,25 @@ namespace ToolsRig
             }
         }
         
-        shader._shader.Apply(devContext, parserContext,
-            {
-                MakeLocalTransformPacket(
-                    GetTransform(obj),
-                    ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)),
-                shader._cbLayout->BuildCBDataAsPkt(ParameterBox())
-            });
-
         devContext.Bind(Techniques::CommonResources()._blendAdditive);
         devContext.Bind(Techniques::CommonResources()._dssReadOnly);
         devContext.Bind(Techniques::CommonResources()._cullDisable);
         
-        Metal::VertexBuffer vb(vbData.get(), sizeof(Float3)*chld.size());
-        Metal::IndexBuffer ib(ibData.get(), sizeof(unsigned)*indexListType._arrayCount);
+        auto vb = Metal::MakeVertexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(vbData.get(), PtrAdd(vbData.get(), sizeof(Float3)*chld.size())));
+        auto ib = Metal::MakeIndexBuffer(Metal::GetObjectFactory(), MakeIteratorRange(ibData.get(), PtrAdd(ibData.get(), sizeof(unsigned)*indexListType._arrayCount)));
 
-        devContext.Bind(MakeResourceList(vb), sizeof(Float3), 0);
+		VertexBufferView vbv { &vb, 0 };
+		shader._shader.Apply(devContext, parserContext, {vbv});
+
+		ConstantBufferView cbvs[] = {
+			{ Techniques::MakeLocalTransformPacket(
+                GetTransform(obj),
+				ExtractTranslation(parserContext.GetProjectionDesc()._cameraToWorld)) },
+			{ shader._cbLayout->BuildCBDataAsPkt(ParameterBox()) }
+        };
+
+		shader._shader._boundUniforms->Apply(devContext, 1, {MakeIteratorRange(cbvs)});
+
         devContext.Bind(ib, Format::R32_UINT);
         devContext.Bind(Topology::TriangleList);
         devContext.DrawIndexed(indexListType._arrayCount);
@@ -364,7 +384,7 @@ namespace ToolsRig
 
     void ObjectPlaceholders::Render(
         Metal::DeviceContext& metalContext, 
-        ParsingContext& parserContext,
+        Techniques::ParsingContext& parserContext,
         unsigned techniqueIndex)
     {
         auto& visBox = ConsoleRig::FindCachedBoxDep<VisGeoBox>(VisGeoBox::Desc());
@@ -390,16 +410,16 @@ namespace ToolsRig
 			}
 
 			if (!_areaLightAnnotation.empty()) {
-				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight"); 
-				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight"); 
-				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight");
+				auto sphereShader = visBox._materialGenSphere.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
+				auto tubeShader = visBox._materialGenTube.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech"); 
+				auto rectangleShader = visBox._materialGenRectangle.FindVariation(parserContext, techniqueIndex, "xleres/ui/objgen/arealight.tech");
 				for (auto a = _areaLightAnnotation.cbegin(); a != _areaLightAnnotation.cend(); ++a) {
 					auto objects = _objects->FindEntitiesOfType(a->_typeId);
 					for (const auto&o : objects) {
 						if (!o->_properties.GetParameter(Parameters::Visible, true) || !GetShowMarker(*o)) continue;
 
 						auto shape = o->_properties.GetParameter(Parameters::Shape, 0u);
-						RenderCore::Assets::ShaderVariationSet::Variation* var;
+						FixedFunctionModel::ShaderVariationSet::Variation* var;
 						unsigned vertexCount = 12 * 12 * 6;	// (must agree with the shader!)
 						switch (shape) { 
 						case 2: var = &tubeShader; break;
@@ -416,7 +436,7 @@ namespace ToolsRig
 
 		}
 
-        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "meshmarker");
+        auto shaderP = visBox._materialP.FindVariation(parserContext, techniqueIndex, "meshmarker.tech");
         if (shaderP._shader._shaderProgram) {
             for (const auto&a:_triMeshAnnotations) {
                 auto objects = _objects->FindEntitiesOfType(a._typeId);

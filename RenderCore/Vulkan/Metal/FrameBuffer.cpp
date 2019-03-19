@@ -232,8 +232,6 @@ namespace RenderCore { namespace Metal_Vulkan
             assert(resourceDesc);
 
             auto formatFilter = a.second._formatFilter;
-            if (formatFilter._aspect == TextureViewDesc::UndefinedAspect)
-                formatFilter._aspect = resourceDesc->_defaultAspect;
             FormatUsage formatUsage = FormatUsage::SRV;
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::Output) formatUsage = FormatUsage::RTV;
             if (a.second._attachmentUsage & Internal::AttachmentUsageType::DepthStencil) formatUsage = FormatUsage::DSV;
@@ -590,6 +588,10 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         context.NextSubpass(VK_SUBPASS_CONTENTS_INLINE);
     }
+
+	void EndSubpass(DeviceContext& context)
+	{
+	}
 
     void EndRenderPass(DeviceContext& context)
     {

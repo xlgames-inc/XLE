@@ -7,251 +7,85 @@
 #include "BasicScene.h"
 #include "../../RenderCore/Techniques/TechniqueUtils.h"
 #include "../../RenderCore/Techniques/Techniques.h"
-#include "../../RenderCore/Assets/ModelRunTime.h"
-#include "../../RenderCore/Assets/SharedStateSet.h"
+#include "../../RenderCore/Techniques/Drawables.h"
+#include "../../RenderCore/Techniques/ParsingContext.h"
+#include "../../FixedFunctionModel/ModelRunTime.h"
+#include "../../FixedFunctionModel/SharedStateSet.h"
+#include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Assets/MaterialScaffold.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Assets/SimpleModelRenderer.h"
 #include "../../RenderCore/Metal/DeviceContext.h"
 #include "../../RenderCore/IAnnotator.h"
 #include "../../SceneEngine/LightDesc.h"
-#include "../../SceneEngine/LightingParserContext.h"
 #include "../../SceneEngine/Tonemap.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetUtils.h"
+#include "../../Assets/AssetFuture.h"
 #include "../../Assets/IntermediateAssets.h"
+#include "../../Math/Geometry.h"
 #include "../../PlatformRig/PlatformRigUtil.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../Math/Transformations.h"
 #include "../../Utility/Streams/PathUtils.h"
 
+#include "../../RenderCore/Techniques/BasicDelegates.h"
+#include "../../RenderCore/Metal/State.h"
+#include "../../RenderCore/Assets/SkinDeformer.h"
+#include "../../RenderCore/Assets/SimpleModelDeform.h"
+
 namespace Sample
 {
-    const float SunDirectionAngle = .33f;
-
     class BasicSceneParser::Model
     {
     public:
         void RenderOpaque(
             RenderCore::IThreadContext& context, 
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext&, 
             unsigned techniqueIndex);
+
+		void RenderOpaque_SimpleModelRenderer(
+			RenderCore::IThreadContext& context, 
+            SceneEngine::SceneExecuteContext& executeContext);
 
         Model();
         ~Model();
     protected:
-        std::unique_ptr<RenderCore::Assets::SharedStateSet> _sharedStateSet;
-        mutable std::unique_ptr<RenderCore::Assets::ModelRenderer> _modelRenderer;
+        std::unique_ptr<FixedFunctionModel::SharedStateSet> _sharedStateSet;
+        mutable std::unique_ptr<FixedFunctionModel::ModelRenderer> _modelRenderer;
+
+		::Assets::FuturePtr<RenderCore::Assets::SimpleModelRenderer> _simpleModelRenderer;
     };
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void BasicSceneParser::PrepareFrame(RenderCore::IThreadContext& context) 
-    {
-        //  Some effects need a "prepare" step before the main render begins... It's often handy to 
-        //  add a PrepareFrame() method to the scene parser.
-        //  In this example, though... Nothing happens!
-    }
-
     void BasicSceneParser::ExecuteScene(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
-        const SceneParseSettings& parseSettings,
-        SceneEngine::PreparedScene& preparedPackets,
-        unsigned techniqueIndex) const
+		SceneEngine::SceneExecuteContext& executeContext) const
     {
-            //  "ExecuteScene" is the main entry point for rendering the scene geometry.
-            //
-            //  The lighting parser will have already set up the environment for rendering
-            //  (eg, setting render targets, etc).
-            //  
-            //  The scene parser should now go through all objects in the scene and
-            //  render them as appropriate.
-            //
-            //  Note that the parseSettings objects contains a number of filters for
-            //  enabling and disabling certain types of geometry. The scene parser
-            //  should be careful to check the flags and only render the correct geometry.
-        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
-
-                //  Our scene is just a single model. So it's really simple here.
-                //
-                //  More complex scenes might have some hierarchical culling structure
-                //  (like a quad-tree or some occlusion system)
-                //  In those cases, we could start to navigate through those structures
-                //  here.
-                //
-                //  Normally the scene parser would do some camera frustum culling.
-                //  But this example just ignores that.
-                //
-                //  Also note that order is often very important when parsing the scene!
-                //  It can sometimes have an impact on rendering performance, and is
-                //  particularly important when translucent objects are involved.
-                //  It can also have an effect on rendering quality (eg, in MSAA modes)
-                //
-                //  The scene parser is responsible for getting the ordering right. But
-                //  the best ordering depends on the type of scene you want to render.
-            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                _model->RenderOpaque(context, parserContext, techniqueIndex);
-            }
-
-        }
+        _model->RenderOpaque_SimpleModelRenderer(context, executeContext);
     }
 
-    void BasicSceneParser::PrepareScene(
-        RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext,
-        SceneEngine::PreparedScene& preparedPackets) const
-    {
-    }
+	BasicSceneParser::BasicSceneParser()
+	{
+		_model = std::make_unique<Model>();
+	}
 
-    bool BasicSceneParser::HasContent(const SceneParseSettings& parseSettings) const
-    {
-        if (    parseSettings._batchFilter == SceneParseSettings::BatchFilter::General
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::PreDepth
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::DMShadows
-            ||  parseSettings._batchFilter == SceneParseSettings::BatchFilter::RayTracedShadows) {
-
-            if (parseSettings._toggles & SceneParseSettings::Toggles::NonTerrain) {
-                return true;
-            }
-        }
-        return false;
-    }
-
-    RenderCore::Techniques::CameraDesc BasicSceneParser::GetCameraDesc() const 
-    { 
-            //  The scene parser provides some global rendering properties
-            //  to the lighting parser. 
-            //
-            //  The simplest example of this is the camera properties.
-            //  This function just returns the properties the main camera
-            //  that should be used to render this scene.
-        RenderCore::Techniques::CameraDesc result;
-        static const auto camDist = 50.f;
-        const auto camHeight = 7.5f;
-        const auto secondsPerRotation = 40.f;
-        const auto rotationSpeed = -gPI * 2.f / secondsPerRotation;
-        Float3 cameraForward(XlCos(_time * rotationSpeed), XlSin(_time * rotationSpeed), 0.f);
-        Float3 cameraPosition = -camDist * cameraForward + Float3(0.f, 0.f, camHeight);
-        result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
-        result._farClip = 1000.f;
-        return result;
-    }
-
-    unsigned BasicSceneParser::GetLightCount() const 
-    {
-        return 1; 
-    }
-
-    auto BasicSceneParser::GetLightDesc(unsigned index) const -> const LightDesc&
-    { 
-            //  This method just returns a properties for the lights in the scene. 
-            //
-            //  The lighting parser will take care of the actual lighting calculations 
-            //  required. All we have to do is return the properties of the lights
-            //  we want.
-        static LightDesc dummy;
-        dummy._cutoffRange = 10000.f;
-        dummy._shape = LightDesc::Directional;
-
-            // sun direction based on angle in the sky
-        Float2 sunDirectionOfMovement = Normalize(Float2(1.f, 0.33f));
-        Float2 sunRotationAxis(-sunDirectionOfMovement[1], sunDirectionOfMovement[0]);
-        dummy._position = 
-            Normalize(TransformDirectionVector(
-                MakeRotationMatrix(Expand(sunRotationAxis, 0.f), SunDirectionAngle), Float3(0.f, 0.f, 1.f)));
-
-        return dummy;
-    }
-
-    auto BasicSceneParser::GetGlobalLightingDesc() const -> GlobalLightingDesc
-    { 
-            //  There are some "global" lighting parameters that apply to
-            //  the entire rendered scene 
-            //      (or, at least, to one area of the scene -- eg, indoors/outdoors)
-            //  Here, we can fill in these properties.
-            //
-            //  Note that the scene parser "desc" functions can be called multiple
-            //  times in a single frame. Generally the properties can be animated in
-            //  any way, but they should stay constant over the course of a single frame.
-        GlobalLightingDesc result;
-        result._ambientLight = Float3(0.f, 0.f, 0.f);
-        XlCopyString(result._skyTexture, "xleres/defaultresources/sky/samplesky2.dds");
-        XlCopyString(result._diffuseIBL, "xleres/defaultresources/sky/samplesky2_diffuse.dds");
-        XlCopyString(result._specularIBL, "xleres/defaultresources/sky/samplesky2_specular.dds");
-        result._skyTextureType = GlobalLightingDesc::SkyTextureType::Cube;
-        result._skyReflectionScale = 1.f;
-        return result;
-    }
-
-    auto BasicSceneParser::GetToneMapSettings() const -> ToneMapSettings
-    {
-        ToneMapSettings toneMapSettings;
-        toneMapSettings._bloomRampingFactor = 0.f;
-        toneMapSettings._sceneKey = 0.16f;
-        toneMapSettings._luminanceMin = 0.f;
-        toneMapSettings._luminanceMax = 20.f;
-        toneMapSettings._whitepoint = 3.f;
-        toneMapSettings._bloomThreshold = 5.f;
-        toneMapSettings._bloomColor = Float3(1.f,1.f,1.f);
-        return toneMapSettings;
-    }
-
-    unsigned BasicSceneParser::GetShadowProjectionCount() const
-    {
-        return 1; 
-    }
-
-    auto BasicSceneParser::GetShadowProjectionDesc(unsigned index, const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
-        -> ShadowProjectionDesc
-    {
-            //  Shadowing lights can have a ShadowProjectionDesc object associated.
-            //  This object determines the shadow "projections" or "cascades" we use 
-            //  for calculating shadows.
-            //
-            //  Normally, we want multiple shadow cascades per light. There are a few
-            //  different methods for deciding on the cascades for a scene.
-            //
-            //  In this case, we're just using a default implementation -- this
-            //  implementation is very basic. The results are ok, but not optimal.
-            //  Specialised scenes may some specialised algorithm for calculating shadow
-            //  cascades.
-        if (index >= GetShadowProjectionCount()) {
-            throw ::Exceptions::BasicLabel("Bad shadow frustum index");
-        }
-
-        return PlatformRig::CalculateDefaultShadowCascades(
-            GetLightDesc(index), index, mainSceneProjectionDesc,
-            PlatformRig::DefaultShadowFrustumSettings());
-    }
-
-    float BasicSceneParser::GetTimeValue() const      
-    { 
-            //  The scene parser can also provide a time value, in seconds.
-            //  This is used to control rendering effects, such as wind
-            //  and waves.
-        return _time; 
-    }
-
-    void BasicSceneParser::Update(float deltaTime)    { _time += deltaTime; }
-
-    BasicSceneParser::BasicSceneParser()
-    {
-        _time = 0.f;
-        _model = std::make_unique<Model>();
-    }
-
-    BasicSceneParser::~BasicSceneParser()
-    {}
+	BasicSceneParser::~BasicSceneParser()
+	{}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
     BasicSceneParser::Model::Model()
     {
-        _sharedStateSet = std::make_unique<RenderCore::Assets::SharedStateSet>(
+        _sharedStateSet = std::make_unique<FixedFunctionModel::SharedStateSet>(
             RenderCore::Assets::Services::GetTechniqueConfigDirs());
+
+		RenderCore::Assets::SkinDeformer::Register();
+		_simpleModelRenderer = ::Assets::MakeAsset<RenderCore::Assets::SimpleModelRenderer>(
+			"game/model/character/skin.dae",
+			"game/model/character/skin.dae",
+			"skin");
     }
 
     BasicSceneParser::Model::~Model()
@@ -259,7 +93,7 @@ namespace Sample
 
     void BasicSceneParser::Model::RenderOpaque(
         RenderCore::IThreadContext& context, 
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         unsigned techniqueIndex)
     {
             //  This class shows a simple method for rendering an object
@@ -342,9 +176,9 @@ namespace Sample
                 //  low level resource (like a vertex buffer), it will throw an
                 //  exception.
             const unsigned levelOfDetail = 0;
-            _modelRenderer = std::unique_ptr<ModelRenderer>(
-                new ModelRenderer(
-                    scaffold, matScaffold, ModelRenderer::Supplements(),
+            _modelRenderer = std::unique_ptr<FixedFunctionModel::ModelRenderer>(
+                new FixedFunctionModel::ModelRenderer(
+                    scaffold, matScaffold, FixedFunctionModel::ModelRenderer::Supplements(),
                     *_sharedStateSet, &searchRules, levelOfDetail));
         }
 
@@ -353,13 +187,228 @@ namespace Sample
             //  Before using SharedStateSet for the first time, we need to capture the device 
             //  context state. If we were rendering multiple models with the same shared state, we would 
             //  capture once and render multiple times with the same capture.
-        auto captureMarker = _sharedStateSet->CaptureState(context, parserContext.GetStateSetResolver(), parserContext.GetStateSetEnvironment());
+        auto captureMarker = _sharedStateSet->CaptureState(
+			context, 
+			parserContext.GetRenderStateDelegate(), {});
 
             //  Finally, we can render the object!
         _modelRenderer->Render(
-            RenderCore::Assets::ModelRendererContext(context, parserContext, techniqueIndex),
+            FixedFunctionModel::ModelRendererContext(context, parserContext, techniqueIndex),
             *_sharedStateSet, Identity<Float4x4>());
     }
 
+	RenderCore::Techniques::SequencerTechnique MakeSequencerTechnique(
+		RenderCore::Techniques::ParsingContext& parserContext)
+	{
+		RenderCore::Techniques::SequencerTechnique result;
+		result._techniqueDelegate = std::make_shared<RenderCore::Techniques::TechniqueDelegate_Basic>();
+		result._materialDelegate = std::make_shared<RenderCore::Techniques::MaterialDelegate_Basic>();
+		result._renderStateDelegate = parserContext.GetRenderStateDelegate();
+
+		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
+		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
+			result._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
+		return result;
+	}
+
+	void BasicSceneParser::Model::RenderOpaque_SimpleModelRenderer(
+		RenderCore::IThreadContext& context, 
+        SceneEngine::SceneExecuteContext& executeContext)
+    {
+		auto renderer = _simpleModelRenderer->TryActualize();
+		if (!renderer) return;
+
+		{
+			auto& skeletonScaffold = ::Assets::GetAsset<RenderCore::Assets::SkeletonScaffold>(
+				"game/model/character/skin.dae");
+			auto& skeletonMachine = skeletonScaffold.GetTransformationMachine();
+
+			auto& animScaffold = ::Assets::GetAsset<RenderCore::Assets::AnimationSetScaffold>(
+				"game/model/character/animations/alldae");
+			auto& animData = animScaffold.ImmutableData();
+
+			RenderCore::Assets::AnimationSetBinding animSetToSkeletonBinding(
+				animData._animationSet.GetOutputInterface(), 
+				skeletonMachine.GetInputInterface());
+
+			auto animation = Hash64("run");
+			auto foundAnimation = animData._animationSet.FindAnimation(animation);
+
+			static float time = 0.f;
+			time += 1.0f / 60.f;
+
+			RenderCore::Assets::AnimationState animState{
+				std::fmod(time, foundAnimation._endTime), animation};
+			auto params = animData._animationSet.BuildTransformationParameterSet(
+				animState,
+				skeletonMachine, animSetToSkeletonBinding,
+				MakeIteratorRange(animData._curves));
+
+			std::vector<Float4x4> skeletonMachineOutput(skeletonMachine.GetOutputMatrixCount());
+			skeletonMachine.GenerateOutputTransforms(
+				MakeIteratorRange(skeletonMachineOutput),
+				&params);
+
+			for (unsigned c=0; c<renderer->DeformOperationCount(); ++c) {
+				auto* skinDeformOp = dynamic_cast<RenderCore::Assets::SkinDeformer*>(&renderer->DeformOperation(c));
+				if (!skinDeformOp) continue;
+				skinDeformOp->FeedInSkeletonMachineResults(
+					MakeIteratorRange(skeletonMachineOutput),
+					skeletonMachine.GetOutputInterface());
+			}
+			renderer->GenerateDeformBuffer(context);
+		}
+
+		for (unsigned v=0; v<executeContext.GetViews().size(); ++v) {
+			RenderCore::Techniques::DrawablesPacket* pkts[unsigned(RenderCore::Techniques::BatchFilter::Max)];
+			for (unsigned c=0; c<unsigned(RenderCore::Techniques::BatchFilter::Max); ++c)
+				pkts[c] = executeContext.GetDrawablesPacket(v, RenderCore::Techniques::BatchFilter(c));
+		
+			renderer->BuildDrawables(MakeIteratorRange(pkts), Identity<Float4x4>());
+		}
+	}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+    unsigned SampleLightingDelegate::GetLightCount() const 
+    {
+        return 1; 
+    }
+
+    auto SampleLightingDelegate::GetLightDesc(unsigned index) const -> const SceneEngine::LightDesc&
+    { 
+            //  This method just returns a properties for the lights in the scene. 
+            //
+            //  The lighting parser will take care of the actual lighting calculations 
+            //  required. All we have to do is return the properties of the lights
+            //  we want.
+        static SceneEngine::LightDesc dummy;
+        dummy._cutoffRange = 10000.f;
+        dummy._shape = SceneEngine::LightDesc::Directional;
+		dummy._position = SphericalToCartesian(Float3(35.f * gPI / 180.0f, 35.0f * gPI / 180.0f, 1.0f));
+		dummy._diffuseColor = Float3{64.f, 64.0f, 64.0f};
+		dummy._specularColor = Float3{64.f, 64.0f, 64.0f};
+        return dummy;
+    }
+
+    auto SampleLightingDelegate::GetGlobalLightingDesc() const -> SceneEngine::GlobalLightingDesc
+    { 
+            //  There are some "global" lighting parameters that apply to
+            //  the entire rendered scene 
+            //      (or, at least, to one area of the scene -- eg, indoors/outdoors)
+            //  Here, we can fill in these properties.
+            //
+            //  Note that the scene parser "desc" functions can be called multiple
+            //  times in a single frame. Generally the properties can be animated in
+            //  any way, but they should stay constant over the course of a single frame.
+        SceneEngine::GlobalLightingDesc result;
+        result._ambientLight = Float3(0.f, 0.f, 0.f);
+        XlCopyString(result._skyTexture, "xleres/defaultresources/sky/samplesky2.dds");
+        XlCopyString(result._diffuseIBL, "xleres/defaultresources/sky/samplesky2_diffuse.dds");
+        XlCopyString(result._specularIBL, "xleres/defaultresources/sky/samplesky2_specular.dds");
+        result._skyTextureType = SceneEngine::GlobalLightingDesc::SkyTextureType::Cube;
+        result._skyReflectionScale = 1.f;
+        return result;
+    }
+
+    auto SampleLightingDelegate::GetToneMapSettings() const -> SceneEngine::ToneMapSettings
+    {
+        SceneEngine::ToneMapSettings toneMapSettings;
+        toneMapSettings._bloomRampingFactor = 0.f;
+        toneMapSettings._sceneKey = 0.16f;
+        toneMapSettings._luminanceMin = 0.f;
+        toneMapSettings._luminanceMax = 20.f;
+        toneMapSettings._whitepoint = 1.f;
+        toneMapSettings._bloomThreshold = 2.f;
+        toneMapSettings._bloomColor = Float3(1.f,1.f,1.f);
+        return toneMapSettings;
+    }
+
+    unsigned SampleLightingDelegate::GetShadowProjectionCount() const
+    {
+        return 1; 
+    }
+
+    auto SampleLightingDelegate::GetShadowProjectionDesc(
+		unsigned index, 
+		const RenderCore::Techniques::ProjectionDesc& mainSceneProjectionDesc) const 
+        -> SceneEngine::ShadowProjectionDesc
+    {
+            //  Shadowing lights can have a ShadowProjectionDesc object associated.
+            //  This object determines the shadow "projections" or "cascades" we use 
+            //  for calculating shadows.
+            //
+            //  Normally, we want multiple shadow cascades per light. There are a few
+            //  different methods for deciding on the cascades for a scene.
+            //
+            //  In this case, we're just using a default implementation -- this
+            //  implementation is very basic. The results are ok, but not optimal.
+            //  Specialised scenes may some specialised algorithm for calculating shadow
+            //  cascades.
+        if (index >= GetShadowProjectionCount()) {
+            throw ::Exceptions::BasicLabel("Bad shadow frustum index");
+        }
+
+		auto settings = PlatformRig::DefaultShadowFrustumSettings();
+		settings._dsSlopeScaledBias = 5;
+        return PlatformRig::CalculateDefaultShadowCascades(
+            GetLightDesc(index), index, mainSceneProjectionDesc,
+            settings);
+    }
+
+    float SampleLightingDelegate::GetTimeValue() const      
+    { 
+            //  The scene parser can also provide a time value, in seconds.
+            //  This is used to control rendering effects, such as wind
+            //  and waves.
+        return _time; 
+    }
+
+    void SampleLightingDelegate::Update(float deltaTime)    { _time += deltaTime; }
+
+    SampleLightingDelegate::SampleLightingDelegate()
+    {
+        _time = 0.f;
+    }
+
+    SampleLightingDelegate::~SampleLightingDelegate()
+    {}
+
+
+	RenderCore::Techniques::CameraDesc CalculateCameraDesc(Float2 rotations, float zoomFactor, float time)
+    { 
+            //  The scene parser provides some global rendering properties
+            //  to the lighting parser. 
+            //
+            //  The simplest example of this is the camera properties.
+            //  This function just returns the properties the main camera
+            //  that should be used to render this scene.
+		const bool fixedRotation = false;
+		if (fixedRotation) {
+			RenderCore::Techniques::CameraDesc result;
+			const auto camDist = 50.f;
+			const auto camHeight = 7.5f;
+			const auto secondsPerRotation = 40.f;
+			const auto rotationSpeed = -gPI * 2.f / secondsPerRotation;
+			Float3 cameraForward(XlCos(time * rotationSpeed), XlSin(time * rotationSpeed), 0.f);
+			Float3 cameraPosition = -camDist * cameraForward + Float3(0.f, 0.f, camHeight);
+			result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
+			result._farClip = 1000.f;
+			return result;
+		} else {
+			RenderCore::Techniques::CameraDesc result;
+			const auto camDist = 5.f;
+			const auto camHeight = 0.75f;
+			Float3 cameraPosition = SphericalToCartesian(Float3{rotations[0], rotations[1], camDist});
+			cameraPosition[1] += camHeight;
+			Float3 cameraForward = -Normalize(cameraPosition);
+			result._cameraToWorld = MakeCameraToWorld(cameraForward, Float3(0.f, 0.f, 1.f), cameraPosition);
+			result._farClip = 1000.f;
+
+			float f = Clamp(std::log(zoomFactor * gE - zoomFactor + 1.0f), 0.f, 1.0f);
+			result._verticalFieldOfView = LinearInterpolate(80.f * gPI / 360.f, 2.f * gPI / 360.f, f);
+			return result;
+		}
+    }
 }
 

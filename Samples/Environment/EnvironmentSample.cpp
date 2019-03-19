@@ -38,7 +38,7 @@
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Assets/Services.h"
 #include "../../RenderOverlays/Font.h"
-#include "../../RenderOverlays/DebugHotKeys.h"
+#include "../../PlatformRig/DebugHotKeys.h"
 #include "../../RenderOverlays/Overlays/ShadowFrustumDebugger.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -46,6 +46,7 @@
 #include "../../Assets/IFileSystem.h"
 #include "../../Assets/MountingTree.h"
 #include "../../Assets/OSFileSystem.h"
+#include "../../Assets/IntermediateAssets.h"
 
 #include "../../Tools/ToolsRig/GenerateAO.h"
 
@@ -53,8 +54,10 @@
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/GlobalServices.h"
 #include "../../ConsoleRig/ResourceBox.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/StringFormat.h"
 #include "../../Utility/Profiling/CPUProfiler.h"
+#include "../../Utility/Threading/ThreadingUtils.h"
 
 #include <functional>
 
@@ -68,7 +71,6 @@ namespace Sample
 
         // "GPU profiler" doesn't have a place to live yet. We just manage it here, at 
         //  the top level
-    std::unique_ptr<RenderCore::IAnnotator> g_gpuProfiler;
     Utility::HierarchicalCPUProfiler g_cpuProfiler;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -89,12 +91,17 @@ namespace Sample
         {
             auto clientRect = _window.GetRect();
 
-            _rDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
+            _rDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
             _presChain = _rDevice->CreatePresentationChain(_window.GetUnderlyingHandle(), 
-                    clientRect.second[0] - clientRect.first[0], clientRect.second[1] - clientRect.first[1]);
+				RenderCore::PresentationChainDesc{unsigned(clientRect.second[0] - clientRect.first[0]), unsigned(clientRect.second[1] - clientRect.first[1])});
+			RenderCore::Techniques::SetThreadContext(_rDevice->GetImmediateContext());
 
             _assetServices = std::make_unique<::Assets::Services>(0);
+			_assetServices->AttachCurrentModule();
+			ConsoleRig::GlobalServices::GetCrossModule().Publish(*_assetServices);
+
             _renderAssetServices = std::make_unique<RenderCore::Assets::Services>(_rDevice);
+			_renderAssetServices->AttachCurrentModule();
 
             _window.AddWindowHandler(std::make_shared<PlatformRig::ResizePresentationChain>(_presChain));
             auto v = _rDevice->GetDesc();
@@ -124,8 +131,8 @@ namespace Sample
     static std::shared_ptr<PlatformRig::MainInputHandler> CreateInputHandler(
         EnvironmentSceneParser& mainScene, 
         std::shared_ptr<SceneEngine::IntersectionTestContext> intersectionTestContext,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> cameraInputListener,
-        std::shared_ptr<RenderOverlays::DebuggingDisplay::IInputListener> overlaySystemInputListener)
+        std::shared_ptr<PlatformRig::IInputListener> cameraInputListener,
+        std::shared_ptr<PlatformRig::IInputListener> overlaySystemInputListener)
     {
         auto mainInputHandler = std::make_shared<PlatformRig::MainInputHandler>();
         mainInputHandler->AddListener(RenderOverlays::MakeHotKeysHandler("xleres/hotkey.txt"));
@@ -180,34 +187,29 @@ namespace Sample
             //      * RenderDevice & presentation chain
             //      * ::Assets::Services
             //      * RenderCore::Assets::Services
-        LogInfo << "Building primary managers";
+        Log(Verbose) << "Building primary managers" << std::endl;
         PrimaryManagers primMan;
 
             // Some secondary initalisation:
         SetupCompilers(primMan);
-        g_gpuProfiler = RenderCore::CreateAnnotator(*primMan._rDevice);
-        RenderOverlays::InitFontSystem(
-            primMan._rDevice.get(), 
-            &RenderCore::Assets::Services::GetBufferUploads());
 
             // main scene
-        LogInfo << "Creating main scene";
+        Log(Verbose) << "Creating main scene" << std::endl;
         auto mainScene = std::make_shared<EnvironmentSceneParser>(finalsDirectory);
         
         {
                 //  Create the debugging system, and add any "displays"
                 //  These are optional. They are for debugging and development tasks.
-            LogInfo << "Setup tools and debugging";
+            Log(Verbose) << "Setup tools and debugging" << std::endl;
             FrameRig frameRig;
             
             InitDebugDisplays(*frameRig.GetDebugSystem());
 
-            if (g_gpuProfiler) {
-                auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(*g_gpuProfiler.get());
-                frameRig.GetDebugSystem()->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
-            }
-            frameRig.GetDebugSystem()->Register(
-                std::make_shared<PlatformRig::Overlays::CPUProfileDisplay>(&g_cpuProfiler), 
+            auto gpuProfilerDisplay = std::make_shared<PlatformRig::Overlays::GPUProfileDisplay>(primMan._rDevice->GetImmediateContext()->GetAnnotator());
+            frameRig.GetDebugSystem()->Register(gpuProfilerDisplay, "[Profiler] GPU Profiler");
+
+			frameRig.GetDebugSystem()->Register(
+                std::make_shared<PlatformRig::Overlays::HierarchicalProfilerDisplay>(&g_cpuProfiler), 
                 "[Profiler] CPU Profiler");
 
             frameRig.GetDebugSystem()->Register(
@@ -271,12 +273,11 @@ namespace Sample
 
             primMan._window.GetInputTranslator().AddListener(mainInputHandler);
             auto stdPlugin = std::make_shared<SceneEngine::LightingParserStandardPlugin>();
-            primMan._assetServices->GetAssetSets().LogReport();
 
                 //  One last object required for rendering:
                 //      *   the DeviceContext provides the methods for directly 
                 //          interacting with the GPU
-            LogInfo << "Setup frame rig and rendering context";
+            Log(Verbose) << "Setup frame rig and rendering context" << std::endl;
             auto context = primMan._rDevice->GetImmediateContext();
 
 			RenderCore::Techniques::AttachmentPool namedResources;
@@ -302,7 +303,7 @@ namespace Sample
                     TiledScreenshot(
                         *context, lightingParserContext,
                         *mainScene, mainScene->GetCameraDesc(),
-						SceneEngine::RenderingQualitySettings(UInt2(primMan._presChain->GetDesc()->_width, primMan._presChain->GetDesc()->_height)),
+						SceneEngine::RenderSceneSettings(UInt2(primMan._presChain->GetDesc()->_width, primMan._presChain->GetDesc()->_height)),
                         UInt2(screenshot, screenshot));
                     screenshot = 0;
                 }
@@ -325,16 +326,14 @@ namespace Sample
             }
         }
 
-        LogInfo << "Starting shutdown";
-        primMan._assetServices->GetAssetSets().LogReport();
-        RenderCore::Metal::DeviceContext::PrepareForDestruction(primMan._rDevice.get(), primMan._presChain.get());
+        Log(Verbose) << "Starting shutdown" << std::endl;
+        // primMan._assetServices->GetAssetSets().LogReport();
+        // RenderCore::Metal::DeviceContext::PrepareForDestruction(primMan._rDevice.get(), primMan._presChain.get());
 
         mainScene.reset();
-        g_gpuProfiler.reset();
 
-        primMan._assetServices->GetAssetSets().Clear();
-        RenderCore::Techniques::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
+        // primMan._assetServices->GetAssetSets().Clear();
+        ConsoleRig::ResourceBoxes_Shutdown();
         
         primMan._renderAssetServices.reset();
         primMan._assetServices.reset();
@@ -362,9 +361,9 @@ namespace Sample
         using namespace SceneEngine;
         if (scene) {
 			auto presChainDesc = presentationChain->GetDesc();
-            RenderingQualitySettings qualSettings(
+            RenderSceneSettings qualSettings(
                 UInt2(presChainDesc->_width, presChainDesc->_height), 
-                (Tweakable("LightingModel", 0) == 0) ? RenderingQualitySettings::LightingModel::Deferred : RenderingQualitySettings::LightingModel::Forward,
+                (Tweakable("LightingModel", 0) == 0) ? RenderSceneSettings::LightingModel::Deferred : RenderSceneSettings::LightingModel::Forward,
                 Tweakable("SamplingCount", 1), Tweakable("SamplingQuality", 0));
 
             parserContext.GetProjectionDesc() = BuildProjectionDesc(scene->GetCameraDesc(), qualSettings._dimensions);
@@ -384,10 +383,10 @@ namespace Sample
             StringMeldAppend(parserContext._stringHelpers->_errorString) << "No player CharacterSpawn detected. Press Tab to switch camera types.";
 
         auto& usefulFonts = ConsoleRig::FindCachedBox<UsefulFonts>(UsefulFonts::Desc());
-        DrawPendingResources(context, parserContext, usefulFonts._defaultFont0.get());
+        DrawPendingResources(context, parserContext, usefulFonts._defaultFont0);
 
         if (Tweakable("QuickMetrics", false))
-            DrawQuickMetrics(context, parserContext, usefulFonts._defaultFont1.get());
+            DrawQuickMetrics(context, parserContext, usefulFonts._defaultFont1);
 
         if (overlaySys) {
             overlaySys->RenderWidgets(context, parserContext);

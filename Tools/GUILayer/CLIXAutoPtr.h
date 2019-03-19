@@ -33,7 +33,8 @@
  
 namespace clix
 {
-    template<class T> public ref class auto_ptr
+    template<class T>
+		public ref class auto_ptr sealed
     {
     public:
         typedef T element_type;
@@ -50,9 +51,11 @@ namespace clix
    
         !auto_ptr() /*throw()*/
         {
-            System::Diagnostics::Debugger::Log(0, "clix::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#if defined(_DEBUG)
+				System::Diagnostics::Debugger::Log(0, "clix::auto_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#endif
             // delete p_;
-            GUILayer::DelayedDeleteQueue::Add(p_, gcnew GUILayer::DelayedDeleteQueue::DeletionCallback(DeleteFn));
+            GUILayer::DelayedDeleteQueue::Add(System::IntPtr(p_), gcnew GUILayer::DeletionCallback(DeleteFn));
         }
  
         template<class T2>
@@ -119,7 +122,7 @@ namespace clix
     private:
         T *p_;
 
-        static void DeleteFn(void* ptr) { delete (T*)ptr; }
+        static void DeleteFn(System::IntPtr ptr) { delete (T*)ptr.ToPointer(); }
     };
 
     template<typename T>
@@ -166,9 +169,11 @@ namespace clix
 
         !shared_ptr() 
         {
-            System::Diagnostics::Debugger::Log(0, "clix::shared_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#if defined(_DEBUG)
+				System::Diagnostics::Debugger::Log(0, "clix::shared_ptr<>", "Finalizer used! The variable deleted in non-deterministic way.");
+			#endif
             // delete pPtr;
-            GUILayer::DelayedDeleteQueue::Add(pPtr, gcnew GUILayer::DelayedDeleteQueue::DeletionCallback(DeleteFn));
+            GUILayer::DelayedDeleteQueue::Add(System::IntPtr(pPtr), gcnew GUILayer::DeletionCallback(DeleteFn));
         }
 
         ~shared_ptr() 
@@ -245,7 +250,7 @@ namespace clix
     private:
         std::shared_ptr<T>* pPtr;
 
-        static void DeleteFn(void* ptr) { delete (std::shared_ptr<T>*)ptr; }
+        static void DeleteFn(System::IntPtr ptr) { delete (std::shared_ptr<T>*)ptr.ToPointer(); }
     };
 
 }

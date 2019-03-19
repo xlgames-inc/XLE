@@ -33,14 +33,12 @@ namespace HyperGraph.Items
 	{
 		public event EventHandler<NodeItemEventArgs> Clicked;
 
-		public NodeImageItem(Image image, bool inputEnabled = false, bool outputEnabled = false) :
-			base(inputEnabled, outputEnabled)
+		public NodeImageItem(Image image)
 		{
 			this.Image = image;
 		}
 
-		public NodeImageItem(Image image, int width, int height, bool inputEnabled = false, bool outputEnabled = false) :
-			base(inputEnabled, outputEnabled)
+		public NodeImageItem(Image image, int width, int height)
 		{
 			this.Width = width;
 			this.Height = height;
@@ -89,11 +87,10 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
+            var location = boundary.Location;
+            var size = boundary.Size;
 
 			if (this.Width.HasValue &&
 				size.Width > this.Width.Value)
@@ -111,7 +108,5 @@ namespace HyperGraph.Items
 			else
 				graphics.DrawRectangle(Pens.Black, rect.Left, rect.Top, rect.Width, rect.Height);
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

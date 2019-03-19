@@ -10,13 +10,17 @@
 #include "../../PlatformRig/CameraManager.h"
 #include "../../Assets/AssetsCore.h"
 
-namespace RenderCore { namespace Assets 
+namespace FixedFunctionModel
 {
     class SharedStateSet;
     class AnimationImmutableData;
     class AnimationSet;
     class ModelRenderer;
     class SkinPrepareMachine;
+}
+
+namespace RenderCore { class Assets
+{
     class ModelScaffold;
     class SkeletonScaffold;
     class AnimationSetScaffold;
@@ -54,9 +58,9 @@ namespace Sample
         const RenderCore::Assets::ModelScaffold& GetModelScaffold() const;
 
     protected:
-        const RenderCore::Assets::ModelScaffold* _model;
-        const RenderCore::Assets::SkeletonScaffold* _skeleton;
-        const RenderCore::Assets::AnimationSetScaffold* _animationSet;
+        ::Assets::FuturePtr<RenderCore::Assets::ModelScaffold> _model;
+        ::Assets::FuturePtr<RenderCore::Assets::SkeletonScaffold> _skeleton;
+        ::Assets::FuturePtr<RenderCore::Assets::AnimationSetScaffold> _animationSet;
 
         std::unique_ptr<RenderCore::Assets::ModelRenderer> _renderer;
         std::unique_ptr<RenderCore::Assets::SkinPrepareMachine> _prepareMachine;

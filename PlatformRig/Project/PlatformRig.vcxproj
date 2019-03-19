@@ -75,22 +75,6 @@
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
-    <ClCompile Include="..\Android\AndroidStartup.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
-    <ClCompile Include="..\Android\android_native_app_glue.cpp">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClCompile>
     <ClCompile Include="..\BasicSceneParser.cpp" />
     <ClCompile Include="..\CameraManager.cpp" />
     <ClCompile Include="..\DebuggingDisplays\BufferUploadDisplay.cpp" />
@@ -100,9 +84,10 @@
     <ClCompile Include="..\DebuggingDisplays\GPUProfileDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\PlacementsDisplay.cpp" />
     <ClCompile Include="..\DebuggingDisplays\TestDisplays.cpp" />
+    <ClCompile Include="..\DebugHotKeys.cpp" />
     <ClCompile Include="..\FrameRig.cpp" />
     <ClCompile Include="..\InitDebugDisplays.cpp" />
-    <ClCompile Include="..\InputTranslator.cpp" />
+    <ClCompile Include="..\InputListener.cpp" />
     <ClCompile Include="..\MainInputHandler.cpp" />
     <ClCompile Include="..\MeshNode.cpp">
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
@@ -125,7 +110,9 @@
     </ClCompile>
     <ClCompile Include="..\UnitCamera.cpp" />
     <ClCompile Include="..\WinAPI\AllocationProfiler.cpp" />
+    <ClCompile Include="..\WinAPI\InputTranslator.cpp" />
     <ClCompile Include="..\WinAPI\OverlappedWindow.cpp" />
+    <ClCompile Include="..\WinAPI\RunLoop_WinAPI.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\Assets\Project\Assets.vcxproj">
@@ -152,14 +139,6 @@
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\AllocationProfiler.h" />
-    <ClInclude Include="..\Android\android_native_app_glue.h">
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">true</ExcludedFromBuild>
-      <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|x64'">true</ExcludedFromBuild>
-    </ClInclude>
     <ClInclude Include="..\BasicSceneParser.h" />
     <ClInclude Include="..\CameraManager.h" />
     <ClInclude Include="..\DebuggingDisplays\BufferUploadDisplay.h" />
@@ -169,7 +148,9 @@
     <ClInclude Include="..\DebuggingDisplays\GPUProfileDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\PlacementsDisplay.h" />
     <ClInclude Include="..\DebuggingDisplays\TestDisplays.h" />
+    <ClInclude Include="..\DebugHotKeys.h" />
     <ClInclude Include="..\FrameRig.h" />
+    <ClInclude Include="..\InputListener.h" />
     <ClInclude Include="..\InputTranslator.h" />
     <ClInclude Include="..\MainInputHandler.h" />
     <ClInclude Include="..\MeshNode.h">
@@ -193,6 +174,7 @@
       <ExcludedFromBuild Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">true</ExcludedFromBuild>
     </ClInclude>
     <ClInclude Include="..\UnitCamera.h" />
+    <ClInclude Include="..\WinAPI\RunLoop_WinAPI.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
   <ImportGroup Label="ExtensionTargets">

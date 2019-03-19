@@ -11,6 +11,8 @@
 #include "../../BufferUploads/ResourceLocator.h"
 #include "../../Assets/AssetsCore.h"
 
+namespace RenderCore { class IThreadContext; }
+
 namespace SceneEngine
 {
     class TerrainMaterialConfig;
@@ -28,7 +30,7 @@ namespace SceneEngine
 
         TerrainMaterialTextures();
         TerrainMaterialTextures(
-            RenderCore::Metal::DeviceContext& devContext,
+            RenderCore::IThreadContext& devContext,
             const TerrainMaterialConfig& scaffold, 
             bool useGradFlagMaterials = true);
         ~TerrainMaterialTextures();

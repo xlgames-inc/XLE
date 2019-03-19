@@ -15,6 +15,9 @@
 #include "../../Types_Forward.h"
 #include "../../../Utility/Threading/ThreadingUtils.h"
 #include "../../../Utility/IntrusivePtr.h"
+#include "../../../Core/Prefix.h"
+
+namespace RenderCore { enum class ShaderStage; }
 
 namespace RenderCore { namespace Metal_DX11
 {
@@ -33,6 +36,7 @@ namespace RenderCore { namespace Metal_DX11
     class BoundClassInterfaces;
 	class ObjectFactory;
 	class Resource;
+	class NumericUniformsInterface;
 
         //  todo ---    DeviceContext, ObjectFactory & CommandList -- maybe these
         //              should go into RenderCore (because it's impossible to do anything without them)
@@ -55,55 +59,7 @@ namespace RenderCore { namespace Metal_DX11
     class DeviceContext
     {
     public:
-        ///////////////////////////////////////////////////////////////////////////////////////////
-        template<int Count> void    BindVS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindPS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindCS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindGS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindHS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindDS(const ResourceList<ShaderResourceView, Count>& shaderResources);
-
-        template<int Count> void    BindVS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindPS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindGS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindCS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindHS(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindDS(const ResourceList<SamplerState, Count>& samplerStates);
-
-        template<int Count> void    BindVS(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindPS(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindCS(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindGS(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindHS(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindDS(const ResourceList<Buffer, Count>& constantBuffers);
-        ///////////////////////////////////////////////////////////////////////////////////////////
-        template<int Count> void    BindVS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindPS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindCS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindGS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindHS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-        template<int Count> void    BindDS_G(const ResourceList<ShaderResourceView, Count>& shaderResources);
-
-        template<int Count> void    BindVS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindPS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindGS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindCS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindHS_G(const ResourceList<SamplerState, Count>& samplerStates);
-        template<int Count> void    BindDS_G(const ResourceList<SamplerState, Count>& samplerStates);
-
-        template<int Count> void    BindVS_G(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindPS_G(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindCS_G(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindGS_G(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindHS_G(const ResourceList<Buffer, Count>& constantBuffers);
-        template<int Count> void    BindDS_G(const ResourceList<Buffer, Count>& constantBuffers);
-        ///////////////////////////////////////////////////////////////////////////////////////////
-
         template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
-        template<int Count> void    BindCS(const ResourceList<UnorderedAccessView, Count>& unorderedAccess);
-
-        template<int Count> void    BindSO(const ResourceList<Buffer, Count>& buffers, unsigned offset=0);
-
         template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         void        Bind(const Resource& ib, Format indexFormat, unsigned offset=0);
@@ -117,19 +73,13 @@ namespace RenderCore { namespace Metal_DX11
 
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
 
-        T1(Type) void   UnbindVS(unsigned startSlot, unsigned count);
-        T1(Type) void   UnbindGS(unsigned startSlot, unsigned count);
-        T1(Type) void   UnbindPS(unsigned startSlot, unsigned count);
-        T1(Type) void   UnbindCS(unsigned startSlot, unsigned count);
-		T1(Type) void   UnbindDS(unsigned startSlot, unsigned count);
-        T1(Type) void   Unbind();
-        void            UnbindSO();
-		void			UnbindVBs();
+		T1(Type) void   Unbind();
 		void			UnbindVS();
 		void			UnbindPS();
 		void			UnbindGS();
 		void			UnbindHS();
 		void			UnbindDS();
+		void			UnbindInputLayout();
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -145,6 +95,8 @@ namespace RenderCore { namespace Metal_DX11
         void        BeginCommandList();
         auto        ResolveCommandList() -> CommandListPtr;
         void        CommitCommandList(CommandList& commandList, bool preserveRenderState);
+
+		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 
         static std::shared_ptr<DeviceContext> Get(IThreadContext& threadContext);
         static void PrepareForDestruction(IDevice* device, IPresentationChain* presentationChain);
@@ -176,8 +128,7 @@ namespace RenderCore { namespace Metal_DX11
         intrusive_ptr<ID3D::DeviceContext> _underlying;
         intrusive_ptr<ID3D::UserDefinedAnnotation> _annotations;
 		ObjectFactory* _factory;
-
-        // AttachmentPool _namedResources;
+        std::vector<NumericUniformsInterface> _numericUniforms;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

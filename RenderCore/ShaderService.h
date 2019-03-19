@@ -21,18 +21,19 @@
 namespace Assets
 {
 	class DependencyValidation; class DependentFileState; 
-	class CompileFuture; class ICompileMarker; 
+	class ArtifactFuture; class IArtifactCompileMarker; 
 	class IArtifact;
 }
 
 namespace RenderCore
 {
-    class ShaderService
+	class ILowLevelCompiler
     {
     public:
-        using ResChar = ::Assets::ResChar;
-        
-        class ResId
+        using Payload = ::Assets::Blob;
+		using ResChar = ::Assets::ResChar;
+
+		class ResId
         {
         public:
             ResChar     _filename[MaxPath];
@@ -48,6 +49,39 @@ namespace RenderCore
         protected:
             ResId(StringSection<ResChar> initializer);
         };
+
+		/* Represents source line number remapping (eg, during some preprocessing step) */
+        struct SourceLineMarker
+        {
+            std::string _sourceName;
+            unsigned    _sourceLine;
+            unsigned    _processedSourceLine;
+        };
+
+        virtual void AdaptShaderModel(
+            ResChar destination[], 
+            const size_t destinationCount,
+			StringSection<ResChar> source) const = 0;
+
+        virtual bool DoLowLevelCompile(
+            /*out*/ Payload& payload,
+            /*out*/ Payload& errors,
+            /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
+            const void* sourceCode, size_t sourceCodeLength,
+            const ResId& shaderPath,
+            StringSection<::Assets::ResChar> definesTable,
+            IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const = 0;
+
+        virtual std::string MakeShaderMetricsString(
+            const void* byteCode, size_t byteCodeSize) const = 0;
+
+        virtual ~ILowLevelCompiler();
+    };
+
+    class ShaderService
+    {
+    public:
+       using ResChar = ::Assets::ResChar;
         
         class ShaderHeader
         {
@@ -65,11 +99,11 @@ namespace RenderCore
         class IShaderSource
         {
         public:
-            virtual std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
+            virtual std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
                 StringSection<::Assets::ResChar> resId, 
                 StringSection<::Assets::ResChar> definesTable) const = 0;
             
-            virtual std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
+            virtual std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
                 StringSection<char> shaderInMemory, StringSection<char> entryPoint, 
 				StringSection<char> shaderModel, StringSection<::Assets::ResChar> definesTable) const = 0;
 
@@ -78,51 +112,18 @@ namespace RenderCore
             virtual ~IShaderSource();
         };
 
-        /* Represents source line number remapping (eg, during some preprocessing step) */
-        struct SourceLineMarker
-        {
-            std::string _sourceName;
-            unsigned    _sourceLine;
-            unsigned    _processedSourceLine;
-        };
-
-        class ILowLevelCompiler
-        {
-        public:
-            using Payload = ::Assets::Blob;
-
-            virtual void AdaptShaderModel(
-                ResChar destination[], 
-                const size_t destinationCount,
-				StringSection<ResChar> source) const = 0;
-
-            virtual bool DoLowLevelCompile(
-                /*out*/ Payload& payload,
-                /*out*/ Payload& errors,
-                /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
-                const void* sourceCode, size_t sourceCodeLength,
-                const ResId& shaderPath,
-                StringSection<::Assets::ResChar> definesTable,
-                IteratorRange<const SourceLineMarker*> sourceLineMarkers = {}) const = 0;
-
-            virtual std::string MakeShaderMetricsString(
-                const void* byteCode, size_t byteCodeSize) const = 0;
-
-            virtual ~ILowLevelCompiler();
-        };
-
-        std::shared_ptr<::Assets::CompileFuture> CompileFromFile(
+        std::shared_ptr<::Assets::ArtifactFuture> CompileFromFile(
             StringSection<::Assets::ResChar> resId, 
             StringSection<::Assets::ResChar> definesTable) const;
 
-        std::shared_ptr<::Assets::CompileFuture> CompileFromMemory(
+        std::shared_ptr<::Assets::ArtifactFuture> CompileFromMemory(
             StringSection<char> shaderInMemory, 
             StringSection<char> entryPoint, StringSection<char> shaderModel, 
             StringSection<::Assets::ResChar> definesTable) const;
 
         void AddShaderSource(std::shared_ptr<IShaderSource> shaderSource);
 
-        static ResId MakeResId(
+        static ILowLevelCompiler::ResId MakeResId(
             StringSection<::Assets::ResChar> initializer, 
             const ILowLevelCompiler* compiler = nullptr);
 

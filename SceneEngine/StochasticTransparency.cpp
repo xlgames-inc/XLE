@@ -6,9 +6,9 @@
 
 #include "StochasticTransparency.h"
 #include "SceneEngineUtils.h"
-#include "LightingParserContext.h"
 #include "GestaltResource.h"
 #include "MetricsBox.h"
+#include "MetalStubs.h"
 #include "../BufferUploads/DataPacket.h"
 #include "../RenderCore/Metal/DeviceContext.h"
 #include "../RenderCore/Metal/InputLayout.h"
@@ -16,6 +16,7 @@
 #include "../RenderCore/Metal/TextureView.h"
 #include "../RenderCore/Techniques/Techniques.h"
 #include "../RenderCore/Techniques/CommonResources.h"
+#include "../RenderCore/Techniques/ParsingContext.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../ConsoleRig/ResourceBox.h"
@@ -24,6 +25,8 @@
 #include <type_traits>
 #include <random>
 #include <algorithm>
+
+#include "../RenderCore/DX11/Metal/DeviceContextImpl.h"
 
 namespace SceneEngine
 {
@@ -160,7 +163,7 @@ namespace SceneEngine
 
     StochasticTransparencyOp::StochasticTransparencyOp(
         RenderCore::Metal::DeviceContext& context, 
-        LightingParserContext& parserContext) 
+        Techniques::ParsingContext& parserContext) 
     : _context(&context)
     , _parserContext(&parserContext)
     , _box(nullptr)
@@ -169,7 +172,7 @@ namespace SceneEngine
     StochasticTransparencyOp::~StochasticTransparencyOp() 
     {
         if (_parserContext) {
-            auto& runtimeState = _parserContext->GetTechniqueContext()._runtimeState;
+            auto& runtimeState = _parserContext->GetSubframeShaderSelectors();
             runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), 0u);
             runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), 0u);
             runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
@@ -204,11 +207,11 @@ namespace SceneEngine
             _context->Clear(box._stochasticDepths.DSV(), Metal::DeviceContext::ClearFilter::Depth|Metal::DeviceContext::ClearFilter::Stencil, 1.f, 0u);    // (if we don't copy any opaque depths, just clear)
         }
 
-        _context->BindPS(MakeResourceList(18, box._masksTable.SRV()));
+        _context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(18, box._masksTable.SRV()));
         _context->Bind(Techniques::CommonResources()._dssReadWrite);
         _context->Bind(Techniques::CommonResources()._blendOpaque);
 
-        auto& runtimeState = _parserContext->GetTechniqueContext()._runtimeState;
+        auto& runtimeState = _parserContext->GetSubframeShaderSelectors();
         runtimeState.SetParameter(u("STOCHASTIC_TRANS_PRIMITIVEID"), box._primIdsTexture.IsGood());
         runtimeState.SetParameter(u("STOCHASTIC_TRANS_OPACITY"), box._opacitiesTexture.IsGood());
         runtimeState.SetParameter(u("STOCHASTIC_TRANS"), 1u);
@@ -228,7 +231,7 @@ namespace SceneEngine
         _box = &box;
     }
 
-    void StochasticTransparencyOp::PrepareSecondPass(Metal::DepthStencilView& mainDSV)
+    void StochasticTransparencyOp::PrepareSecondPass(Metal::DepthStencilView& mainDSV, const MetricsBox& metricsBox)
     {
         if (!_box) return;
 
@@ -237,12 +240,12 @@ namespace SceneEngine
             _context->ClearUInt(_box->_metricsTexture.UAV(), { 0,0,0,0 });
             _context->Bind(
                 MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV, 
-                MakeResourceList(_parserContext->GetMetricsBox()->_metricsBufferUAV, _box->_metricsTexture.UAV()));
+                MakeResourceList(metricsBox._metricsBufferUAV, _box->_metricsTexture.UAV()));
         } else
             _context->Bind(MakeResourceList(_box->_blendingTexture.RTV()), &mainDSV);
-        if (_box->_primIdsTexture.IsGood()) _context->BindPS(MakeResourceList(8, _box->_primIdsTexture.SRV()));
-        if (_box->_opacitiesTexture.IsGood()) _context->BindPS(MakeResourceList(7, _box->_opacitiesTexture.SRV()));
-        _context->BindPS(MakeResourceList(9, _box->_stochasticDepths.SRV()));
+        if (_box->_primIdsTexture.IsGood()) _context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(8, _box->_primIdsTexture.SRV()));
+        if (_box->_opacitiesTexture.IsGood()) _context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(7, _box->_opacitiesTexture.SRV()));
+        _context->GetNumericUniforms(ShaderStage::Pixel).Bind(MakeResourceList(9, _box->_stochasticDepths.SRV()));
         _context->Bind(_box->_secondPassBlend);
         _context->Bind(Techniques::CommonResources()._dssReadOnly);
     }
@@ -251,19 +254,23 @@ namespace SceneEngine
     {
         if (!_box) return;
 
-        _context->UnbindPS<Metal::ShaderResourceView>(7, 3); // unbind box._stochasticDepths, opacities texture, prim ids texture
+        MetalStubs::UnbindPS<Metal::ShaderResourceView>(*_context, 7, 3); // unbind box._stochasticDepths, opacities texture, prim ids texture
 
         {
             SetupVertexGeneratorShader(*_context);
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2d.vsh:fullscreen:vs_*",
                 "xleres/basic.psh:copy:ps_*");
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-            uniforms.BindShaderResources(1, {"DiffuseTexture"});
-            uniforms.Apply(
-                *_context, _parserContext->GetGlobalUniformsStream(),
-                Metal::UniformsStream({}, {&_box->_blendingTexture.SRV()}));
+			UniformsStreamInterface usi;
+			usi.BindShaderResource(0, Hash64("DiffuseTexture"));
+            Metal::BoundUniforms uniforms(
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+            uniforms.Apply(*_context, 0, _parserContext->GetGlobalUniformsStream());
+			const Metal::ShaderResourceView* srvs[] = {&_box->_blendingTexture.SRV()};
+			uniforms.Apply(*_context, 1, UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
             _context->Bind(Techniques::CommonResources()._dssDisable);
             _context->Bind(Tweakable("Stochastic_BlendBuffer", true)
@@ -276,17 +283,22 @@ namespace SceneEngine
         if (Tweakable("StochTransMetrics", false) && _box->_metricsTexture.IsGood()) {
             auto* box = _box;
             _parserContext->_pendingOverlays.push_back(
-                [box](RenderCore::Metal::DeviceContext& context, LightingParserContext& parserContext)
+                [box](RenderCore::Metal::DeviceContext& context, Techniques::ParsingContext& parserContext)
                 {
                     auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                         "xleres/basic2d.vsh:fullscreen:vs_*",
                         "xleres/forward/transparency/stochasticdebug.sh:ps_pixelmetrics:ps_*");
-                    Metal::BoundUniforms uniforms(shader);
-                    Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-                    uniforms.BindShaderResources(1, {"DepthsTexture", "LitSamplesMetrics"});
-                    uniforms.Apply(
-                        context, parserContext.GetGlobalUniformsStream(),
-                        Metal::UniformsStream({}, {&box->_stochasticDepths.SRV(), &box->_metricsTexture.SRV()}));
+					UniformsStreamInterface usi;
+					usi.BindShaderResource(0, Hash64("DepthsTexture"));
+					usi.BindShaderResource(1, Hash64("LitSamplesMetrics"));
+                    Metal::BoundUniforms uniforms(
+						shader,
+						Metal::PipelineLayoutConfig{},
+						Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+						usi);
+                    uniforms.Apply(context, 0, parserContext.GetGlobalUniformsStream());
+					const Metal::ShaderResourceView* srvs[] = {&box->_stochasticDepths.SRV(), &box->_metricsTexture.SRV()};
+					uniforms.Apply(context, 1, UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
                     context.Bind(shader);
                     context.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
@@ -294,6 +306,7 @@ namespace SceneEngine
 
                     RenderGPUMetrics(
                         context, parserContext,
+						MetricsBox{MetricsBox::Desc{}},
                         "xleres/forward/transparency/stochasticdebug.sh",
                         {"LitFragmentCount", "AveLitFragment", "PartialLitFragment"});
                 });
@@ -303,12 +316,16 @@ namespace SceneEngine
             auto& shader = ::Assets::GetAssetDep<Metal::ShaderProgram>(
                 "xleres/basic2d.vsh:fullscreen:vs_*",
                 "xleres/forward/transparency/stochasticdebug.sh:ps_depthave:ps_*");
-            Metal::BoundUniforms uniforms(shader);
-            Techniques::TechniqueContext::BindGlobalUniforms(uniforms);
-            uniforms.BindShaderResources(1, {"DepthsTexture"});
-            uniforms.Apply(
-                *_context, _parserContext->GetGlobalUniformsStream(),
-                Metal::UniformsStream({}, {&_box->_stochasticDepths.SRV()}));
+			UniformsStreamInterface usi;
+			usi.BindShaderResource(0, Hash64("DepthsTexture"));
+            Metal::BoundUniforms uniforms(
+				shader,
+				Metal::PipelineLayoutConfig{},
+				Techniques::TechniqueContext::GetGlobalUniformsStreamInterface(),
+				usi);
+            uniforms.Apply(*_context, 0, _parserContext->GetGlobalUniformsStream());
+			const Metal::ShaderResourceView* srvs[] = {&_box->_stochasticDepths.SRV()};
+			uniforms.Apply(*_context, 1, UniformsStream{{}, UniformsStream::MakeResources(MakeIteratorRange(srvs))});
 
             _context->Bind(shader);
             _context->Draw(4);

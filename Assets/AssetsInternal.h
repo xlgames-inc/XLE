@@ -21,7 +21,7 @@
 	#include "DivergentAsset.h"
 #endif
 
-namespace Assets { class ICompileMarker; }
+namespace Assets { class IArtifactCompileMarker; }
 */
 
 #include "AssetsCore.h"		// (for ResChar)
@@ -49,6 +49,11 @@ namespace Assets
 			return result.str();
 		}
 
+		template<typename Param, typename std::enable_if<std::is_integral<Param>::value>::type* = nullptr>
+			uint64_t HashParam(const Param& p, uint64_t seed) { return HashCombine(p, seed); }
+		template<typename Param, typename std::enable_if<!std::is_integral<Param>::value>::type* = nullptr>
+			uint64_t HashParam(const Param& p, uint64_t seed) { return Hash64(p, seed); }
+
 		template <typename... Params>
 			uint64_t BuildHash(Params... initialisers)
         { 
@@ -61,7 +66,7 @@ namespace Assets
                 //  define some rules for hashing arbitrary objects, or think of a better way
                 //  to build the hash.
 			uint64_t result = DefaultSeed64;
-			int dummy[] = { 0, (result = Hash64(initialisers, result), 0)... };
+			int dummy[] = { 0, (result = HashParam(initialisers, result), 0)... };
 			(void)dummy;
             return result;
         }
@@ -98,7 +103,7 @@ namespace Assets { namespace Internal
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	std::shared_ptr<ICompileMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
+	std::shared_ptr<IArtifactCompileMarker> BeginCompileOperation(uint64 typeCode, const StringSection<ResChar> initializers[], unsigned initializerCount);
     template<typename AssetType> using Ptr = std::unique_ptr<AssetType>;
 
     template <int DoCheckDependancy> struct CheckDependancy { template<typename Resource> static bool NeedsRefresh(const Resource* resource); };

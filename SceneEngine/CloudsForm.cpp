@@ -1036,8 +1036,8 @@ namespace SceneEngine
     }
 
     void CloudsForm2D::RenderDebugging(
-        RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext,
+        RenderCore::IThreadContext& context,
+        RenderCore::Techniques::ParsingContext& parserContext,
         FluidDebuggingMode debuggingMode)
     {
         static float qcMin = 0.f, qcMax = 1e-3f;
@@ -1046,35 +1046,35 @@ namespace SceneEngine
         switch (debuggingMode) {
         case FluidDebuggingMode::Density:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, qcMin, qcMax,
                 { _pimpl->_condensedMixingRatio[1].data() });
             break;
 
         case FluidDebuggingMode::Velocity:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Vector,
+                context, parserContext, RenderFluidMode::Vector,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_velU[1].data(), _pimpl->_velV[1].data() });
             break;
 
         case FluidDebuggingMode::Temperature:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, tMin, tMax,
                 { _pimpl->_potentialTemperature[1].data() });
             break;
 
         case FluidDebuggingMode::Vapor:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, qvMin, qvMax,
                 { _pimpl->_vaporMixingRatio[1].data() });
             break;
 
         case FluidDebuggingMode::Divergence:
             RenderFluidDebugging2D(
-                metalContext, parserContext, RenderFluidMode::Scalar,
+                context, parserContext, RenderFluidMode::Scalar,
                 _pimpl->_dimsWithBorder, 0.f, 1.f,
                 { _pimpl->_incompressibility.GetDivergence() });
             break;
@@ -1213,16 +1213,15 @@ namespace SceneEngine
             Layout completeLayout(rect);
 
             auto& res = ConsoleRig::FindCachedBox2<WidgetResources>();
-            TextStyle textStyle(res._font);
+			TextStyle textStyle{};
             const auto lineHeight = 20u;
 
             UInt2 gridCoords(
                 Clamp(unsigned(_pimpl->_mouseHover[0]), 0u, _pimpl->_dimsWithBorder[0]-1),
                 Clamp(unsigned(_pimpl->_mouseHover[1]), 0u, _pimpl->_dimsWithBorder[1]-1));
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "At coords: " << gridCoords[0] << ", " << gridCoords[1]);
 
             const auto i = gridCoords[1]*_pimpl->_dimsWithBorder[0]+gridCoords[0];
@@ -1233,51 +1232,42 @@ namespace SceneEngine
             const float ambientTheta = _pimpl->_troposphere.GetPotentialTemperature(gridCoords[1]);
             const float ambientEquilib = _pimpl->_troposphere.GetEquilibriumMixingRatio(
                 _pimpl->_troposphere.GetPotentialTemperature(gridCoords[1]), gridCoords[1]);
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Vapour: " << qv << " Amb: " << _pimpl->_troposphere.GetVaporMixingRatio(gridCoords[1]));
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "%Equilib: " << 100.f * qv / equilibiriumVapor << "% RH: " << 100.f * qv / ambientEquilib << "%");
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Condensed: " << qc);
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Theta: " << KelvinToCelsius(potTemp) << " Buoyancy: " << potTemp/ambientTheta-1.f);
 
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Altitude: " << _pimpl->_troposphere.AltitudeKm(gridCoords[1]));
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Equilibrium Vapor: " << equilibiriumVapor << " Amb: " << ambientEquilib);
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Temp Release: " << _pimpl->_troposphere.GetPotentialTemperatureRelease(gridCoords[1]));
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() << "Ambient Theta: " << KelvinToCelsius(ambientTheta));
-            DrawText(
-                overlayContext.get(),
-                completeLayout.AllocateFullWidth(lineHeight),
-                &textStyle, ColorB(0xffffffff),
+            overlayContext->DrawText(
+                AsPixelCoords(completeLayout.AllocateFullWidth(lineHeight)),
+                res._font, textStyle, ColorB(0xffffffff), TextAlignment::Left,
                 StringMeld<256>() 
                     << "Pressure: " << PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]), _pimpl->_troposphere.LapseRate())
                     << " Exner: " << ExnerFunction(PressureAtAltitude(_pimpl->_troposphere.AltitudeKm(gridCoords[1]), _pimpl->_troposphere.LapseRate())));

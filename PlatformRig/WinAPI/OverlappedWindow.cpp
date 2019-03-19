@@ -4,18 +4,34 @@
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
+#include "RunLoop_WinAPI.h"
 #include "../OverlappedWindow.h"
 #include "../InputTranslator.h"
+#include "../InputListener.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/UTFUtils.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/TimeUtils.h"
+#include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Conversion.h"
 #include "../../Utility/WinAPI/WinAPIWrapper.h"
 #include "../../Core/Exceptions.h"
-
+#include <windowsx.h>
 
 namespace PlatformRig
 {
+	static std::shared_ptr<IOSRunLoop> s_osRunLoop;
+
+	IOSRunLoop* GetOSRunLoop()
+	{
+		return s_osRunLoop.get();
+	}
+
+	void SetOSRunLoop(const std::shared_ptr<IOSRunLoop>& runLoop)
+	{
+		s_osRunLoop = runLoop;
+	}
+
     class CurrentModule
     {
     public:
@@ -61,8 +77,17 @@ namespace PlatformRig
 
         std::vector<std::shared_ptr<IWindowHandler>> _windowHandlers;
 
+		std::shared_ptr<OSRunLoop_BasicTimer> _runLoop;
+
         Pimpl() : _hwnd(HWND(INVALID_HANDLE_VALUE)), _activated(false) {}
     };
+
+	InputContext MakeInputContext(HWND hwnd)
+	{
+		RECT clientRect;
+		GetClientRect(hwnd, &clientRect);
+		return { Coord2{clientRect.left, clientRect.top}, Coord2{clientRect.right, clientRect.bottom} };
+	}
 
     LRESULT CALLBACK WndProc(HWND hwnd, UINT msg, WPARAM wparam, LPARAM lparam)
     {
@@ -102,41 +127,38 @@ namespace PlatformRig
                 switch (msg) {
                 case WM_ACTIVATE:
                     pimpl->_activated = wparam != WA_INACTIVE;
+					if (inputTrans) inputTrans->OnFocusChange(MakeInputContext(hwnd));
                     break;
 
                 case WM_MOUSEMOVE:
-                    {
-                        if (pimpl->_activated) {
-                            signed x = ((int)(short)LOWORD(lparam)), y = ((int)(short)HIWORD(lparam));
-                            if (inputTrans) inputTrans->OnMouseMove(x, y);
-                        }
-                    }
+                    if (pimpl->_activated && inputTrans)
+                        inputTrans->OnMouseMove(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam));
                     break;
 
-                case WM_LBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(0, true); }    break;
-                case WM_RBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(1, true); }    break;
-                case WM_MBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(2, true); }    break;
+                case WM_LBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, true); }    break;
+                case WM_RBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, true); }    break;
+                case WM_MBUTTONDOWN:    if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, true); }    break;
 
-                case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(0, false); }   break;
-                case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(1, false); }   break;
-                case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(2, false); }   break;
+                case WM_LBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0, false); }   break;
+                case WM_RBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1, false); }   break;
+                case WM_MBUTTONUP:      if (inputTrans) { inputTrans->OnMouseButtonChange(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2, false); }   break;
 
-                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(0); }   break;
-                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(1); }   break;
-                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(2); }   break;
+                case WM_LBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 0); }   break;
+                case WM_RBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 1); }   break;
+                case WM_MBUTTONDBLCLK:  if (inputTrans) { inputTrans->OnMouseButtonDblClk(MakeInputContext(hwnd), GET_X_LPARAM(lparam), GET_Y_LPARAM(lparam), 2); }   break;
 
-                case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
+                case WM_MOUSEWHEEL:     if (inputTrans) { inputTrans->OnMouseWheel(MakeInputContext(hwnd), GET_WHEEL_DELTA_WPARAM(wparam)); }    break;
 
                 case WM_SYSKEYDOWN:
                 case WM_SYSKEYUP:
                 case WM_KEYDOWN:
                 case WM_KEYUP:
-                    if (inputTrans) { inputTrans->OnKeyChange((unsigned)wparam, (msg==WM_KEYDOWN) || (msg==WM_SYSKEYDOWN)); }
+                    if (inputTrans) { inputTrans->OnKeyChange(MakeInputContext(hwnd), (unsigned)wparam, (msg==WM_KEYDOWN) || (msg==WM_SYSKEYDOWN)); }
                     if (msg==WM_SYSKEYUP || msg==WM_SYSKEYDOWN) return true;        // (suppress default windows behaviour for these system keys)
                     break;
 
                 case WM_CHAR:
-                    if (inputTrans) { inputTrans->OnChar((ucs2)wparam); }
+                    if (inputTrans) { inputTrans->OnChar(MakeInputContext(hwnd), (ucs2)wparam); }
                     break;
 
                 case WM_SIZE:
@@ -148,6 +170,13 @@ namespace PlatformRig
                 }
             }
             break;
+
+		case WM_TIMER:
+			{
+				auto pimpl = (OverlappedWindow::Pimpl*)GetWindowLongPtr(hwnd, GWLP_USERDATA);
+				pimpl->_runLoop->OnOSTrigger(wparam);
+			}
+			break;
         }
 
         return DefWindowProc(hwnd, msg, wparam, lparam);
@@ -160,7 +189,7 @@ namespace PlatformRig
 
     OverlappedWindow::OverlappedWindow() 
     {
-        auto pimpl = std::make_unique<Pimpl>();
+        _pimpl = std::make_unique<Pimpl>();
 
             //
             //      ---<>--- Register window class ---<>---
@@ -193,28 +222,30 @@ namespace PlatformRig
             //
         DWORD windowStyle = WS_OVERLAPPED | WS_CAPTION | WS_SYSMENU | WS_MINIMIZEBOX | WS_MAXIMIZEBOX | WS_THICKFRAME;
         DWORD windowStyleEx = 0;
-        pimpl->_hwnd = (*Windows::Fn_CreateWindowEx)(
+        _pimpl->_hwnd = (*Windows::Fn_CreateWindowEx)(
             windowStyleEx, windowClassName.c_str(), 
             NULL, windowStyle, 
             32, 32, 1280, 720, 
             NULL, NULL, CurrentModule::GetInstance().HInstance(), NULL);
 
-        if (!pimpl->_hwnd || pimpl->_hwnd == INVALID_HANDLE_VALUE) {
+        if (!_pimpl->_hwnd || _pimpl->_hwnd == INVALID_HANDLE_VALUE) {
             Throw(::Exceptions::BasicLabel( "Failure during windows construction" ));        // (note that a window class can be leaked by this.. But, who cares?)
         }
 
-        SetWindowLongPtr(pimpl->_hwnd, GWLP_USERDATA, (LONG_PTR)pimpl.get());
-        ShowWindow(pimpl->_hwnd, SW_SHOWNORMAL);
+        SetWindowLongPtr(_pimpl->_hwnd, GWLP_USERDATA, (LONG_PTR)_pimpl.get());
+        ShowWindow(_pimpl->_hwnd, SW_SHOWNORMAL);
 
             //  Create input translator -- used to translate between windows messages
             //  and the cross platform input-handling interface
-        pimpl->_inputTranslator = std::make_shared<InputTranslator>();
+        _pimpl->_inputTranslator = std::make_shared<InputTranslator>();
 
-        _pimpl = std::move(pimpl);
+		_pimpl->_runLoop = std::make_shared<OSRunLoop_BasicTimer>(_pimpl->_hwnd);
+		SetOSRunLoop(_pimpl->_runLoop);
     }
 
     OverlappedWindow::~OverlappedWindow()
     {
+		SetOSRunLoop(nullptr);
         ::DestroyWindow(_pimpl->_hwnd);
         auto windowClassName = Conversion::Convert<std::string>(CurrentModule::GetInstance().HashId());
         (*Windows::Fn_UnregisterClass)(windowClassName.c_str(), CurrentModule::GetInstance().Handle());

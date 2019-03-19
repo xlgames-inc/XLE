@@ -8,12 +8,15 @@ using System;
 using System.Collections.Generic;
 using System.Drawing;
 using System.Linq;
+using System.ComponentModel.Composition;
 using Sce.Atf;
 using Sce.Atf.Adaptation;
 using Sce.Atf.Applications;
 
 namespace MaterialTool
 {
+    [Export(typeof(DiagramEditingContext))]
+    [PartCreationPolicy(CreationPolicy.NonShared)]
     public class DiagramEditingContext :
         IEnumerableContext
         , IInstancingContext
@@ -23,23 +26,68 @@ namespace MaterialTool
         , ISelectionContext
         , ITreeListView
         , IItemView
+        , NodeEditorCore.IEditingContext
     {
-        private HyperGraph.IGraphSelection _selection;
-
-        public HyperGraph.IGraphModel Model;
-        public HyperGraph.IGraphSelection DiagramSelection { get { return _selection; } }
-
-        public DiagramEditingContext(HyperGraph.IGraphModel model)
+        private class ViewModelAdapter : DiagramDocument.IViewModel
         {
-            Model = model;
-            model.NodeAdded += model_NodeAdded;
-            model.NodeRemoved += model_NodeRemoved;
-            model.ConnectionAdded += model_ConnectionAdded;
-            model.ConnectionRemoved += model_ConnectionRemoved;
+            public uint RevisionIndex { get { return ViewModel.GlobalRevisionIndex; } }
+            public ShaderPatcherLayer.NodeGraphFile Rebuild()
+            {
+                return ModelConversion.ToShaderPatcherLayer(ViewModel);
+            }
+            public HyperGraph.IGraphModel ViewModel { get; set; }
+            public NodeEditorCore.IModelConversion ModelConversion;
+        }
 
-            _selection = new HyperGraph.GraphSelection();
-            _selection.SelectionChanging +=_selection_SelectionChanging;
-            _selection.SelectionChanged += _selection_SelectionChanged;
+        public HyperGraph.IGraphSelection DiagramSelection { get; }
+        public HyperGraph.IGraphModel ViewModel { get; private set; }
+        public NodeEditorCore.IDiagramDocument Document
+        {
+            get { return _document; }
+            set {
+                if (_document is DiagramDocument diagDoc)
+                    diagDoc.ViewModel = null;
+
+                if (ViewModel != null) {
+                    ViewModel.NodeAdded -= model_NodeAdded;
+                    ViewModel.NodeRemoved -= model_NodeRemoved;
+                    ViewModel.ConnectionAdded -= model_ConnectionAdded;
+                    ViewModel.ConnectionRemoved -= model_ConnectionRemoved;
+                }
+
+                ViewModel = null;
+                _document = value;
+
+                if (_document != null)
+                {
+                    ViewModel = new HyperGraph.GraphModel();
+                    ViewModel.CompatibilityStrategy = NodeFactory.CreateCompatibilityStrategy();
+                    ModelConversion.AddToHyperGraph(_document.NodeGraphFile, ViewModel);
+
+                    ViewModel.NodeAdded += model_NodeAdded;
+                    ViewModel.NodeRemoved += model_NodeRemoved;
+                    ViewModel.ConnectionAdded += model_ConnectionAdded;
+                    ViewModel.ConnectionRemoved += model_ConnectionRemoved;
+                    ViewModel.MiscChange += model_MiscChange;
+
+                    if (_document is DiagramDocument diagDoc2)
+                    {
+                        diagDoc2.ViewModel = new ViewModelAdapter { ViewModel = ViewModel, ModelConversion = ModelConversion };
+                    }
+                }
+            }
+        }
+
+        public DiagramEditingContext()
+        {
+            DiagramSelection = new HyperGraph.GraphSelection();
+            DiagramSelection.SelectionChanging +=_selection_SelectionChanging;
+            DiagramSelection.SelectionChanged += _selection_SelectionChanged;
+        }
+
+        ~DiagramEditingContext()
+        {
+            Document = null;  // (remove callbacks)
         }
 
         #region ISelectionContext Member
@@ -57,17 +105,17 @@ namespace MaterialTool
 
         public object LastSelected 
         { 
-            get { return _selection.Selection.LastOrDefault(); }
+            get { return DiagramSelection.Selection.LastOrDefault(); }
         }
         public IEnumerable<object> Selection 
         { 
-            get { return _selection.Selection; }
+            get { return DiagramSelection.Selection; }
             set
             {
-                _selection.Update(value.AsIEnumerable<HyperGraph.IElement>(), _selection.Selection);
+                DiagramSelection.Update(value.AsIEnumerable<HyperGraph.IElement>(), DiagramSelection.Selection);
             }
         }
-        public int SelectionCount { get { return _selection.Selection.Count; } }
+        public int SelectionCount { get { return DiagramSelection.Selection.Count; } }
 
         public event EventHandler SelectionChanged;
         public event EventHandler SelectionChanging;
@@ -80,18 +128,18 @@ namespace MaterialTool
         }
         public IEnumerable<T> GetSelection<T>() where T : class
         {
-            return _selection.Selection.AsIEnumerable<T>();
+            return DiagramSelection.Selection.AsIEnumerable<T>();
         }
         public bool SelectionContains(object item)
         {
-            return _selection.Selection.Contains(item);
+            return DiagramSelection.Selection.Contains(item);
         }
         #endregion
 
         #region IEnumerableContext Members
         IEnumerable<object> IEnumerableContext.Items
         {
-            get { return Model.Nodes; }
+            get { return ViewModel.Nodes; }
         }
         #endregion
 
@@ -182,27 +230,59 @@ namespace MaterialTool
         {
             ItemChanged.Raise(this, e);
         }
+        #endregion
 
-        void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e)
+        #region ViewModel Changes
+        private void model_NodeAdded(object sender, HyperGraph.AcceptNodeEventArgs e)
         {
             OnObjectInserted(new ItemInsertedEventArgs<object>(-1, e.Node, sender));
-        }
-        
-        void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e)
-        {
-            OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Node, sender));
+            (Document as IDocument).Dirty = true;
         }
 
-        void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e)
+        private void model_NodeRemoved(object sender, HyperGraph.NodeEventArgs e)
+        {
+            OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Node, sender));
+            (Document as IDocument).Dirty = true;
+        }
+
+        private void model_ConnectionAdded(object sender, HyperGraph.AcceptNodeConnectionEventArgs e)
         {
             OnObjectInserted(new ItemInsertedEventArgs<object>(-1, e.Connection, sender));
+            (Document as IDocument).Dirty = true;
+
+            // Always update the node entirely if the instantiation connector affected
+            if (NodeFactory.IsInstantiationConnector(e.Connection.To))
+            {
+                NodeFactory.UpdateProcedureNode(Document.NodeGraphFile, e.Connection.To.Node);
+            }
+            else if (NodeFactory.IsInstantiationConnector(e.Connection.From))
+            {
+                NodeFactory.UpdateProcedureNode(Document.NodeGraphFile, e.Connection.From.Node);
+            }
         }
-        
-        void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e)
+
+        private void model_ConnectionRemoved(object sender, HyperGraph.NodeConnectionEventArgs e)
         {
             OnObjectRemoved(new ItemRemovedEventArgs<object>(-1, e.Connection, sender));
+            (Document as IDocument).Dirty = true;
+
+            // Always update the node entirely if the instantiation connector affected
+            if (NodeFactory.IsInstantiationConnector(e.To))
+            {
+                NodeFactory.UpdateProcedureNode(Document.NodeGraphFile, e.To.Node);
+            }
+            else if (NodeFactory.IsInstantiationConnector(e.From))
+            {
+                NodeFactory.UpdateProcedureNode(Document.NodeGraphFile, e.From.Node);
+            }
+        }
+
+        private void model_MiscChange(object sender, HyperGraph.MiscChangeEventArgs e)
+        {
+            (Document as IDocument).Dirty = true;
         }
         #endregion
+
 
         #region IColoringContext Members
         Color IColoringContext.GetColor(ColoringTypes kind, object item)
@@ -227,14 +307,18 @@ namespace MaterialTool
         }
 
         public IEnumerable<object> Roots {
-            get { return Model.Nodes; }
+            get { return ViewModel.Nodes; }
         }
 
         public IEnumerable<object> GetChildren(object parent)
         {
             var n = parent as HyperGraph.Node;
-            if (n==null) return Enumerable.Empty<object>();
-            return n.Items;
+            if (n != null)
+            {
+                foreach (var i in n.InputItems) yield return i;
+                foreach (var i in n.CenterItems) yield return i;
+                foreach (var i in n.OutputItems) yield return i;
+            }
         }
 
         public void GetInfo(object item, ItemInfo info)
@@ -264,7 +348,9 @@ namespace MaterialTool
         }
         #endregion
 
-        public NodeEditorCore.IShaderFragmentNodeCreator NodeFactory;
+        [Import] private NodeEditorCore.INodeFactory NodeFactory;
+        [Import] private NodeEditorCore.IModelConversion ModelConversion;
+        private NodeEditorCore.IDiagramDocument _document;
 
         private static Color s_zeroColor = new Color();
     }

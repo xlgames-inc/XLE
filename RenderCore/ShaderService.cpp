@@ -29,7 +29,7 @@ namespace RenderCore
         }
     }
 
-    ShaderStage ShaderService::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
+    ShaderStage ILowLevelCompiler::ResId::AsShaderStage() const { return RenderCore::AsShaderStage(_shaderModel); }
 
 	CompiledShaderByteCode::CompiledShaderByteCode(const ::Assets::Blob& shader, const ::Assets::DepValPtr& depVal, StringSection<Assets::ResChar>)
 	: _shader(shader)
@@ -93,7 +93,7 @@ namespace RenderCore
 
         ////////////////////////////////////////////////////////////
 
-    ShaderService::ResId::ResId(StringSection<ResChar> filename, StringSection<ResChar> entryPoint, StringSection<ResChar> shaderModel)
+    ILowLevelCompiler::ResId::ResId(StringSection<ResChar> filename, StringSection<ResChar> entryPoint, StringSection<ResChar> shaderModel)
     {
         XlCopyString(_filename, filename);
         XlCopyString(_entryPoint, entryPoint);
@@ -106,7 +106,7 @@ namespace RenderCore
 		}
     }
 
-    ShaderService::ResId::ResId()
+    ILowLevelCompiler::ResId::ResId()
     {
         _filename[0] = '\0'; _entryPoint[0] = '\0'; _shaderModel[0] = '\0';
         _dynamicLinkageEnabled = false;
@@ -115,9 +115,9 @@ namespace RenderCore
 
     auto ShaderService::MakeResId(
         StringSection<::Assets::ResChar> initializer,
-        const ILowLevelCompiler* compiler) -> ResId
+        const ILowLevelCompiler* compiler) -> ILowLevelCompiler::ResId
     {
-        ResId shaderId;
+        ILowLevelCompiler::ResId shaderId;
 
         const ::Assets::ResChar* startShaderModel = nullptr;
         auto splitter = MakeFileNameSplitter(initializer);
@@ -154,7 +154,7 @@ namespace RenderCore
 
     auto ShaderService::CompileFromFile(
         StringSection<::Assets::ResChar> resId, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromFile(resId, definesTable);
@@ -166,7 +166,7 @@ namespace RenderCore
     auto ShaderService::CompileFromMemory(
         StringSection<char> shaderInMemory, 
         StringSection<char> entryPoint, StringSection<char> shaderModel, 
-        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::CompileFuture>
+        StringSection<::Assets::ResChar> definesTable) const -> std::shared_ptr<::Assets::ArtifactFuture>
     {
         for (const auto& i:_shaderSources) {
             auto r = i->CompileFromMemory(shaderInMemory, entryPoint, shaderModel, definesTable);
@@ -202,7 +202,7 @@ namespace RenderCore
     ShaderService::~ShaderService() {}
 
     ShaderService::IShaderSource::~IShaderSource() {}
-    ShaderService::ILowLevelCompiler::~ILowLevelCompiler() {}
+    ILowLevelCompiler::~ILowLevelCompiler() {}
 
 
 	ShaderService::ShaderHeader::ShaderHeader(StringSection<char> identifier, StringSection<char> shaderModel, bool dynamicLinkageEnabled)

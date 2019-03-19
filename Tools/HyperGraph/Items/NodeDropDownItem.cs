@@ -42,8 +42,7 @@ namespace HyperGraph.Items
 	{
 		public event EventHandler<AcceptNodeSelectionChangedEventArgs> SelectionChanged;
 
-		public NodeDropDownItem(string[] items, int selectedIndex, bool inputEnabled, bool outputEnabled) :
-			base(inputEnabled, outputEnabled)
+		public NodeDropDownItem(string[] items, int selectedIndex)
 		{
 			this.Items = items.ToArray();
 			this.SelectedIndex = selectedIndex;
@@ -187,7 +186,7 @@ namespace HyperGraph.Items
 					this.TextSize = graphics.MeasureString(text, SystemFonts.MenuFont, size, GraphConstants.LeftMeasureTextStringFormat);
 					
 					this.TextSize.Width  = Math.Max(size.Width, this.TextSize.Width + 8);
-					this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height + 2);
+                    this.TextSize.Height = Math.Max(size.Height, this.TextSize.Height);
 				}
 				return this.TextSize;
 			} else
@@ -196,20 +195,16 @@ namespace HyperGraph.Items
 			}
 		}
 
-        public override void Render(Graphics graphics, SizeF minimumSize, PointF location, object context)
+        public override void Render(Graphics graphics, RectangleF boundary, object context)
 		{
 			var text = string.Empty;
 			if (Items != null &&
 				SelectedIndex >= 0 && SelectedIndex < Items.Length)
 				text = Items[SelectedIndex];
 
-			var size = Measure(graphics);
-			size.Width  = Math.Max(minimumSize.Width, size.Width);
-			size.Height = Math.Max(minimumSize.Height, size.Height);
+			var path = GraphRenderer.CreateRoundedRectangle(boundary.Size, boundary.Location);
 
-			var path = GraphRenderer.CreateRoundedRectangle(size, location);
-
-            var stringRect = new RectangleF(new PointF(location.X + 1, location.Y + 1), new SizeF(size.Width - 2, size.Height - 2));
+            var stringRect = boundary;
             var arrowRect = stringRect;
 
             float sep = 2.0f;
@@ -223,7 +218,8 @@ namespace HyperGraph.Items
             bool highlight = (state & RenderState.Hover) == RenderState.Hover;
 
             graphics.FillPath(BackgroundBrush, path);
-            graphics.DrawPath(highlight ? Pens.White : Pens.LightGray, path);
+            if (highlight)
+                graphics.DrawPath(Pens.LightGray, path);
             graphics.DrawString(text, SystemFonts.MenuFont, Brushes.White, stringRect, GraphConstants.CenterTextStringFormat);
 
                 // draw a little arrow to indicate that it is a drop down list
@@ -237,7 +233,5 @@ namespace HyperGraph.Items
                     });
 
 		}
-
-        public override void RenderConnector(Graphics graphics, RectangleF rectangle) { }
 	}
 }

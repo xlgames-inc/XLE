@@ -46,6 +46,7 @@ namespace ControlsLibrary.MaterialEditor
             this._addInherit = new System.Windows.Forms.Button();
             this._hierachyTree = new ComboTreeBox();
             this._materialControl = new MaterialControl();
+            this._materialControl.SuspendLayout();
             ((System.ComponentModel.ISupportInitialize)(this._splitContainer1)).BeginInit();
             this._splitContainer1.Panel1.SuspendLayout();
             this._splitContainer1.Panel2.SuspendLayout();
@@ -122,11 +123,10 @@ namespace ControlsLibrary.MaterialEditor
             // 
             // HierchicalMaterialControl
             // 
-            this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
-            this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.Controls.Add(this._splitContainer1);
             this.Name = "HierchicalMaterialControl";
             this.Size = new System.Drawing.Size(297, 568);
+            this._materialControl.ResumeLayout(true);
             this._splitContainer1.Panel1.ResumeLayout(false);
             this._splitContainer1.Panel2.ResumeLayout(false);
             ((System.ComponentModel.ISupportInitialize)(this._splitContainer1)).EndInit();

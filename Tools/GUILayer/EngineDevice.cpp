@@ -7,20 +7,24 @@
 #include "EngineDevice.h"
 #include "NativeEngineDevice.h"
 #include "MarshalString.h"
+#include "CLIXAutoPtr.h"
 #include "WindowRigInternal.h"
 #include "DelayedDeleteQueue.h"
 #include "ExportedNativeTypes.h"
 #include "../ToolsRig/DivergentAsset.h"
 #include "../../SceneEngine/SceneEngineUtils.h"
 #include "../../PlatformRig/FrameRig.h"
+#include "../../PlatformRig/OverlappedWindow.h"
+#include "../../PlatformRig/WinAPI/RunLoop_WinAPI.h"
 #include "../../RenderCore/IDevice.h"
 #include "../../RenderCore/Init.h"
 #include "../../RenderCore/Assets/Services.h"
+#include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderOverlays/Font.h"
 #include "../../BufferUploads/IBufferUploads.h"
 #include "../../ConsoleRig/Console.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachableInternal.h"
+#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Assets/AssetUtils.h"
 #include "../../Assets/AssetServices.h"
 #include "../../Assets/CompileAndAsyncManager.h"
@@ -37,6 +41,22 @@
 
 namespace GUILayer
 {
+	ref class TimerMessageFilter : public System::Windows::Forms::IMessageFilter
+	{
+	public:
+		virtual bool PreFilterMessage(System::Windows::Forms::Message% m)
+		{
+			if (m.Msg == WM_TIMER && _osRunLoop.get()) {
+				// Return true to filter the event out of the message loop (which we will do if the timer id is recognized)
+				return _osRunLoop->OnOSTrigger((UINT_PTR)m.WParam.ToPointer());
+			}
+
+			return false;
+		}
+
+		clix::shared_ptr<PlatformRig::OSRunLoop_BasicTimer> _osRunLoop;
+	};
+
 ///////////////////////////////////////////////////////////////////////////////////////////////////
     void EngineDevice::SetDefaultWorkingDirectory()
     {
@@ -47,66 +67,54 @@ namespace GUILayer
     }
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
-    std::unique_ptr<IWindowRig> NativeEngineDevice::CreateWindowRig(const void* nativeWindowHandle)
-    {
-        std::unique_ptr<WindowRig> result(new WindowRig(*_renderDevice.get(), nativeWindowHandle));
-
-        BufferUploads::IManager* bufferUploads = &_renderAssetsServices->GetBufferUploads();
-        result->GetFrameRig().AddPostPresentCallback(
-            [bufferUploads](RenderCore::IThreadContext& threadContext)
-            { bufferUploads->Update(threadContext, false); });
-
-        return std::move(result);
-    }
-
     void NativeEngineDevice::AttachDefaultCompilers()
     {
         _renderAssetsServices->InitModelCompilers();
 
             // add compiler for precalculated internal AO
 		auto& asyncMan = ::Assets::Services::GetAsyncMan();
-        auto& compilers = asyncMan.GetIntermediateCompilers();
-        auto aoGeoCompiler = std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext);
-        compilers.AddCompiler(
-            ToolsRig::AOSupplementCompiler::CompilerType,
-            std::move(aoGeoCompiler));
+        asyncMan.GetIntermediateCompilers().AddCompiler(std::make_shared<ToolsRig::AOSupplementCompiler>(_immediateContext));
     }
 
-    BufferUploads::IManager*    NativeEngineDevice::GetBufferUploads()
-    {
-        return &_renderAssetsServices->GetBufferUploads();
-    }
-
-    RenderCore::IThreadContext* NativeEngineDevice::GetImmediateContext()
-    {
-        return _renderDevice->GetImmediateContext().get();
-    }
+    BufferUploads::IManager*		NativeEngineDevice::GetBufferUploads()		{ return &_renderAssetsServices->GetBufferUploads(); }
+    RenderCore::IThreadContext*		NativeEngineDevice::GetImmediateContext()	{ return _renderDevice->GetImmediateContext().get(); }
 
     NativeEngineDevice::NativeEngineDevice()
     {
         ConsoleRig::StartupConfig cfg;
         cfg._applicationName = clix::marshalString<clix::E_UTF8>(System::Windows::Forms::Application::ProductName);
-        _services = std::make_unique<ConsoleRig::GlobalServices>(cfg);
+        _services = ConsoleRig::MakeAttachablePtr<ConsoleRig::GlobalServices>(cfg);
+		_crossModule = &ConsoleRig::CrossModule::GetInstance();
 
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
-        _renderDevice = RenderCore::CreateDevice(RenderCore::Assets::Services::GetTargetAPI());
+        _renderDevice = RenderCore::CreateDevice(RenderCore::Techniques::GetTargetAPI());
         _immediateContext = _renderDevice->GetImmediateContext();
+		RenderCore::Techniques::SetThreadContext(_immediateContext);
 
-        _assetServices = std::make_unique<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
-		_assetServices->AttachCurrentModule();
-		ConsoleRig::GlobalServices::GetCrossModule().Publish(*_assetServices);
-        _renderAssetsServices = std::make_unique<RenderCore::Assets::Services>(_renderDevice);
-		_renderAssetsServices->AttachCurrentModule();
+        _assetServices = ConsoleRig::MakeAttachablePtr<::Assets::Services>(::Assets::Services::Flags::RecordInvalidAssets);
+        _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
+		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
+
+		TimerMessageFilter^ messageFilter = gcnew TimerMessageFilter();
+		auto osRunLoop = std::make_shared<PlatformRig::OSRunLoop_BasicTimer>((HWND)0);
+		messageFilter->_osRunLoop = osRunLoop;
+		PlatformRig::SetOSRunLoop(osRunLoop);
+
+		_messageFilter = messageFilter;
+		System::Windows::Forms::Application::AddMessageFilter(messageFilter);
     }
 
     NativeEngineDevice::~NativeEngineDevice()
     {
+		if (_messageFilter)
+			System::Windows::Forms::Application::RemoveMessageFilter(_messageFilter.get());
+		PlatformRig::SetOSRunLoop(nullptr);
+		::ConsoleRig::GlobalServices::GetInstance().UnloadDefaultPlugins();
 		_divAssets.reset();
         _renderAssetsServices.reset();
-		_assetServices->DetachCurrentModule();
         _assetServices.reset();
         _immediateContext.reset();
         _renderDevice.reset();
@@ -155,7 +163,6 @@ namespace GUILayer
         DelayedDeleteQueue::FlushQueue();
         
         ConsoleRig::ResourceBoxes_Shutdown();
-        RenderOverlays::CleanupFontSystem();
         //if (_pimpl->GetAssetServices())
         //    _pimpl->GetAssetServices()->GetAssetSets().Clear();
     }
@@ -171,8 +178,7 @@ namespace GUILayer
     {
         assert(s_instance == nullptr);
         _shutdownCallbacks = gcnew System::Collections::Generic::List<System::WeakReference^>();
-        _pimpl = new NativeEngineDevice;
-        RenderOverlays::InitFontSystem(_pimpl->GetRenderDevice().get(), _pimpl->GetBufferUploads());
+        _pimpl = new NativeEngineDevice();
         s_instance = this;
     }
 
@@ -184,14 +190,15 @@ namespace GUILayer
         PrepareForShutdown();
         Assets::Dependencies_Shutdown();
         delete _pimpl;
-        _pimpl = nullptr;
+		_pimpl = nullptr;
         TerminateFileSystemMonitoring();
     }
 
     EngineDevice::!EngineDevice() 
     {
-        delete _pimpl;
-        _pimpl = nullptr;
+		if (_pimpl) {
+			System::Diagnostics::Debug::Assert(false, "Non deterministic delete of EngineDevice");
+		}
     }
 }
 

@@ -217,12 +217,11 @@ namespace PlatformRig { namespace Overlays
         }
 
 	    {
-		    TextStyle fpsStyle{64};
 		    context.DrawText(
 			    std::make_tuple(AsPixelCoords(Coord2(layout.GetMaximumSize()._bottomRight[0] - 100,
 			                                         layout.GetMaximumSize()._topLeft[1])),
 			                    AsPixelCoords(layout.GetMaximumSize()._bottomRight)),
-			    &fpsStyle, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
+			    GetDefaultFont(64), TextStyle{}, ColorB{0xff, 0xff, 0xff}, TextAlignment::Left,
 			    StringMeld<64>() << std::setprecision(3) << g_fpsDisplay);
 	    }
     }

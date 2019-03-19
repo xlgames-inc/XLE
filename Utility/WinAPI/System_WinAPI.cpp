@@ -256,6 +256,36 @@ const char* XlGetCommandLine()
     return GetCommandLineA();
 }
 
+std::string SystemErrorCodeAsString(int errorCode)
+{
+    LPVOID lpMsgBuf;
+    FormatMessageA(
+        FORMAT_MESSAGE_ALLOCATE_BUFFER | 
+        FORMAT_MESSAGE_FROM_SYSTEM |
+        FORMAT_MESSAGE_IGNORE_INSERTS,
+        NULL,
+        errorCode,
+        MAKELANGID(LANG_NEUTRAL, SUBLANG_DEFAULT),
+        (LPTSTR) &lpMsgBuf,
+        0, NULL);
+
+        // FORMAT_MESSAGE_FROM_SYSTEM will typically give us a new line
+        // at the end of the string. We can strip it off here (assuming we have write
+        // access to the buffer). We're going to get rid of any terminating '.' as well.
+        // Note -- assuming 8 bit base character width here (ie, ASCII, UTF8)
+    if (lpMsgBuf) {
+        auto *end = XlStringEnd((char*)lpMsgBuf);
+        while ((end - 1) > lpMsgBuf && (*(end - 1) == '\n' || *(end - 1) == '\r' || *(end-1) == '.')) {
+            --end;
+            *end = '\0';
+        }
+    }
+
+    std::string result = (const char*)lpMsgBuf;
+    LocalFree(lpMsgBuf);
+    return result;
+}
+
 #if 0
 
 void XlStartSelfProcess(const char* commandLine, int delaySec, bool terminateSelf)

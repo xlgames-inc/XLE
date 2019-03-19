@@ -184,7 +184,7 @@ namespace RenderCore { namespace ImplVulkan
     {
     public:
         std::unique_ptr<IPresentationChain>     CreatePresentationChain(
-			const void* platformValue, unsigned width, unsigned height) /*override*/;
+			const void* platformValue, const PresentationChainDesc& desc) /*override*/;
 
         DeviceDesc                              GetDesc();
 
@@ -197,8 +197,11 @@ namespace RenderCore { namespace ImplVulkan
 		ResourcePtr CreateResource(
 			const ResourceDesc& desc, 
 			const std::function<SubResourceInitData(SubResourceId)>&);
+		FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType);
 
 		VkDevice	    GetUnderlyingDevice() { return _underlying.get(); }
+
+		std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler();
 
         Device();
         ~Device();

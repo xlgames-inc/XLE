@@ -54,9 +54,11 @@
     <ClCompile Include="..\GlobalServices.cpp" />
     <ClCompile Include="..\Log.cpp" />
     <ClCompile Include="..\OutputStream.cpp" />
+    <ClCompile Include="..\Plugins.cpp" />
+    <ClCompile Include="..\Version.in.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\AttachableInternal.h" />
+    <ClInclude Include="..\AttachablePtr.h" />
     <ClInclude Include="..\AttachableLibrary.h" />
     <ClInclude Include="..\Console.h" />
     <ClInclude Include="..\GlobalServices.h" />
@@ -65,6 +67,7 @@
     <ClInclude Include="..\Log.h" />
     <ClInclude Include="..\LogStartup.h" />
     <ClInclude Include="..\OutputStream.h" />
+    <ClInclude Include="..\Plugins.h" />
     <ClInclude Include="..\ResourceBox.h" />
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

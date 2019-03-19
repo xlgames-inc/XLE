@@ -20,19 +20,13 @@
 // THE SOFTWARE.
 #endregion
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
 namespace HyperGraph
 {
 	public enum ElementType
 	{
 		Node,
 		NodeItem,
-		InputConnector,
-		OutputConnector,
+		Connector,
 		Connection,
 		NodeSelection
 	}

@@ -87,6 +87,8 @@ namespace RenderCore
         virtual ~IPresentationChain();
     };
 
+	class ILowLevelCompiler;
+
     ///
     /// <summary>Represents a hardware device capable of rendering</summary>
     ///
@@ -164,6 +166,9 @@ namespace RenderCore
         using ResourceInitializer = std::function<SubResourceInitData(SubResourceId)>;
         virtual IResourcePtr        CreateResource(const ResourceDesc& desc, const ResourceInitializer& init = ResourceInitializer()) = 0;
         virtual FormatCapability    QueryFormatCapability(Format format, BindFlag::BitField bindingType) = 0;
+
+
+		virtual std::shared_ptr<ILowLevelCompiler>		CreateShaderCompiler() = 0;
 
         /// <summary>Returns description & version information for this device</summary>
         /// Queries build number and build date information.

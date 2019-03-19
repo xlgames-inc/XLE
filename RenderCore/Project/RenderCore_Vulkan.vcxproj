@@ -68,36 +68,26 @@
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|Win32'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|Win32'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|Win32'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile-Vulkan|x64'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release-Vulkan|x64'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug-Vulkan|x64'">
-    <Lib>
-      <AdditionalDependencies>$(ForeignDir)\Vulkan\$(PlatformName)\vulkan-1.lib;%(AdditionalDependencies)</AdditionalDependencies>
-    </Lib>
+    <Lib />
   </ItemDefinitionGroup>
   <ItemGroup>
+    <ClCompile Include="..\Vulkan\Annotator.cpp" />
+    <ClCompile Include="..\Vulkan\DeviceVulkan.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Buffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\CompiledShaderByteCode.cpp" />
     <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
@@ -116,6 +106,8 @@
     <ClCompile Include="..\Vulkan\Metal\State.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\Vulkan\Device.h" />
+    <ClInclude Include="..\Vulkan\IDeviceVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\Buffer.h" />
     <ClInclude Include="..\Vulkan\Metal\DeviceContext.h" />
     <ClInclude Include="..\Vulkan\Metal\DeviceContextImpl.h" />

@@ -5,6 +5,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "UnitTestHelper.h"
+#include "../Assets/IFileSystem.h"
 #include "../ShaderParser/InterfaceSignature.h"
 #include "../Utility/Streams/FileUtils.h"
 #include <CppUnitTest.h>
@@ -20,9 +21,9 @@ namespace UnitTests
             ConsoleRig::GlobalServices services(GetStartupConfig());
 
                 // Search for all of the shader sources in the xleres directory
-            auto inputFiles = FindFilesHierarchical("xleres", "*.h", FindFilesFilter::File);
-            auto inputFiles1 = FindFilesHierarchical("xleres", "*.sh", FindFilesFilter::File);
-            auto inputFiles2 = FindFilesHierarchical("xleres", "*.?sh", FindFilesFilter::File);
+            auto inputFiles = RawFS::FindFilesHierarchical("xleres", "*.h", RawFS::FindFilesFilter::File);
+            auto inputFiles1 = RawFS::FindFilesHierarchical("xleres", "*.sh", RawFS::FindFilesFilter::File);
+            auto inputFiles2 = RawFS::FindFilesHierarchical("xleres", "*.?sh", RawFS::FindFilesFilter::File);
 
             inputFiles.insert(inputFiles.end(), inputFiles1.begin(), inputFiles1.end());
             inputFiles.insert(inputFiles.end(), inputFiles2.begin(), inputFiles2.end());
@@ -32,15 +33,15 @@ namespace UnitTests
 
             for (auto& i:inputFiles) {
                 size_t blockSize = 0;
-                auto memBlock = LoadFileAsMemoryBlock(i.c_str(), &blockSize);
+                auto memBlock = ::Assets::TryLoadFileAsMemoryBlock(MakeStringSection(i), &blockSize);
 
                 const char* flgId = "FunctionLinkingGraph";
                 if (blockSize > XlStringLen(flgId) && 
                     XlEqString(MakeStringSection((const char*)memBlock.get(), (const char*)&memBlock[XlStringLen(flgId)]), flgId))
                     continue;
 
-                auto signature = ShaderSourceParser::BuildShaderFragmentSignature(
-                    (const char*)memBlock.get(), blockSize);
+                auto signature = ShaderSourceParser::ParseHLSL(
+                    MakeStringSection((const char*)memBlock.get(), (const char*)PtrAdd(memBlock.get(), blockSize)));
 
                 (void)signature;
             }

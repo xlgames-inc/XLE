@@ -13,13 +13,13 @@
 #include "../Math/Vector.h"
 #include <vector>
 
+namespace RenderCore { namespace Techniques { class ParsingContext; } }
+
 namespace SceneEngine
 {
-
     class ShallowWaterGrid;
     class DeepOceanSim;
     class DeepOceanSimSettings;
-    class LightingParserContext;
     class ISurfaceHeightsProvider;
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -87,7 +87,7 @@ namespace SceneEngine
 
         void ExecuteSim(
             const SimulationContext& context, 
-            LightingParserContext& parserContext, 
+            RenderCore::Techniques::ParsingContext& parserContext, 
             const SimSettings& settings,
             unsigned bufferCounter,
             const Int2* validGridBegin = nullptr, const Int2* validGridEnd = nullptr);
@@ -106,12 +106,12 @@ namespace SceneEngine
         void BindForErosionSimulation(MetalContext& context, unsigned bufferCounter);
 
         void RenderWireframe(
-            MetalContext& context, LightingParserContext& parserContext, 
+            MetalContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
             const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
             unsigned bufferCounter, BorderMode::Enum borderMode);
 
         void RenderVelocities(
-            MetalContext& context, LightingParserContext& parserContext, 
+            MetalContext& context, RenderCore::Techniques::ParsingContext& parserContext, 
             const DeepOceanSimSettings& oceanSettings, float gridPhysicalDimension, Float2 offset,
             unsigned bufferCounter, BorderMode::Enum borderMode,
             bool showErosion);
@@ -163,7 +163,7 @@ namespace SceneEngine
 
     Float4 OceanHack_CompressionConstants(
         RenderCore::Metal::DeviceContext& metalContext,
-        LightingParserContext& parserContext, 
+        RenderCore::Techniques::ParsingContext& parserContext, 
         float baseHeight, float compressionAmount, float compressionRadius);
 
 }

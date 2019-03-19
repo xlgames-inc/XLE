@@ -7,7 +7,6 @@
 #include "SAnimation.h"
 #include "Scaffold.h"
 #include "ScaffoldParsingUtil.h"
-#include "../RenderCore/GeoProc/SkeletonRegistry.h"
 #include "../RenderCore/Format.h"
 #include "../Assets/Assets.h"
 #include "../Utility/IteratorUtils.h"
@@ -51,6 +50,8 @@ namespace ColladaConversion
         }
     }
 
+	std::string SkeletonBindingName(const Node& node);
+
     std::string AsParameterName(SidBreakdown breakdown, const URIResolveContext& resolveContext)
     {
         // This is awkward because to want to convert from the node "id" to the node "name"
@@ -64,7 +65,7 @@ namespace ColladaConversion
         // (assuming the original data hasn't been changed)
         std::string temp;
         auto ele = FindElement(GuidReference(breakdown._baseObject), resolveContext, &IDocScopeIdResolver::FindNode);
-        if (ele) temp = ColladaConversion::AsString(ele.GetName());
+        if (ele) temp = SkeletonBindingName(ele);
         else temp = ColladaConversion::AsString(breakdown._baseObject);
 
         for (const auto&i:breakdown._scoping)
@@ -99,43 +100,43 @@ namespace ColladaConversion
 
         _sampler = FindElement(channel.GetSource(), resolveContext, &IDocScopeIdResolver::FindSampler);
         if (!_sampler) {
-            LogWarning << "Found animation channel with no sampler. Ignoring channel.";
+            Log(Warning) << "Found animation channel with no sampler. Ignoring channel." << std::endl;
             return;
         }
 
         //////////////////
         const auto* output = _sampler->GetInputsCollection().FindInputBySemantic(u("OUTPUT"));
         if (!output) {
-            LogWarning << "Found animation sampler with no output field. Ignoring channel.";
+            Log(Warning) << "Found animation sampler with no output field. Ignoring channel." << std::endl;
             return;
         }
 
         _outputSource = FindElement(output->_source, resolveContext, &IDocScopeIdResolver::FindSource);
         if (!_outputSource) {
-            LogWarning << "Could not find <source> for output of animation sampler. Ignoring channel.";
+            Log(Warning) << "Could not find <source> for output of animation sampler. Ignoring channel." << std::endl;
             return;
         }
 
         if (!_outputSource->FindAccessorForTechnique()) {
-            LogWarning << "<source> for output of animation sampler does not contain a sampler for common profile. Ignoring channel.";
+            Log(Warning) << "<source> for output of animation sampler does not contain a sampler for common profile. Ignoring channel." << std::endl;
             return;
         }
 
         //////////////////
         const auto* input = _sampler->GetInputsCollection().FindInputBySemantic(u("INPUT"));
         if (!input) {
-            LogWarning << "Found animation sampler with no output field. Ignoring channel.";
+            Log(Warning) << "Found animation sampler with no output field. Ignoring channel." << std::endl;
             return;
         }
 
         _inputSource = FindElement(input->_source, resolveContext, &IDocScopeIdResolver::FindSource);
         if (!_inputSource) {
-            LogWarning << "Could not find <source> for input of animation sampler. Ignoring channel.";
+            Log(Warning) << "Could not find <source> for input of animation sampler. Ignoring channel." << std::endl;
             return;
         }
 
         if (!_inputSource->FindAccessorForTechnique()) {
-            LogWarning << "<source> for input of animation sampler does not contain a sampler for common profile. Ignoring channel.";
+            Log(Warning) << "<source> for input of animation sampler does not contain a sampler for common profile. Ignoring channel." << std::endl;
             return;
         }
 
@@ -144,9 +145,9 @@ namespace ColladaConversion
         if (inTangent) {
             _inTangentsSource = FindElement(inTangent->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_inTangentsSource) {
-                LogWarning << "Could not find <source> for input tangent of animation sampler. Will fall back to linear interpolation.";
+                Log(Warning) << "Could not find <source> for input tangent of animation sampler. Will fall back to linear interpolation." << std::endl;
             } else if (!_inTangentsSource->FindAccessorForTechnique()) {
-                LogWarning << "<source> for input tangent of animation sampler does not contain a sampler for common profile. linear interpolation.";
+                Log(Warning) << "<source> for input tangent of animation sampler does not contain a sampler for common profile. linear interpolation." << std::endl;
                 _inTangentsSource = nullptr;
             }
         }
@@ -156,9 +157,9 @@ namespace ColladaConversion
         if (outTangent) {
             _outTangentsSource = FindElement(outTangent->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_outTangentsSource) {
-                LogWarning << "Could not find <source> for output tangent of animation sampler. Will fall back to linear interpolation.";
+                Log(Warning) << "Could not find <source> for output tangent of animation sampler. Will fall back to linear interpolation." << std::endl;
             } else if (!_outTangentsSource->FindAccessorForTechnique()) {
-                LogWarning << "<source> for output tangent of animation sampler does not contain a sampler for common profile. Will fall back to linear interpolation.";
+                Log(Warning) << "<source> for output tangent of animation sampler does not contain a sampler for common profile. Will fall back to linear interpolation." << std::endl;
                 _outTangentsSource = nullptr;
             }
         }
@@ -168,9 +169,9 @@ namespace ColladaConversion
         if (interpolation) {
             _interpolationSource = FindElement(interpolation->_source, resolveContext, &IDocScopeIdResolver::FindSource);
             if (!_interpolationSource) {
-                LogWarning << "Could not find <source> for interpolation of animation sampler. Will fall back to linear interpolation.";
+                Log(Warning) << "Could not find <source> for interpolation of animation sampler. Will fall back to linear interpolation." << std::endl;
             } else if (!_interpolationSource->FindAccessorForTechnique()) {
-                LogWarning << "<source> for interpolation of animation sampler does not contain a sampler for common profile. Will fall back to linear interpolation.";
+                Log(Warning) << "<source> for interpolation of animation sampler does not contain a sampler for common profile. Will fall back to linear interpolation." << std::endl;
                 _interpolationSource = nullptr;
             }
         }
@@ -274,14 +275,13 @@ namespace ColladaConversion
         if (Is(type, u("LINEAR"))) return RenderCore::Assets::CurveInterpolationType::Linear;
 
         // "BSPLINE" is also part of the "common profile" of collada -- but not supported
-        LogWarning << "Interpolation type for animation sampler not understood. Falling back to linear interpolation. At: " << src.GetLocation();
+        Log(Warning) << "Interpolation type for animation sampler not understood. Falling back to linear interpolation. At: " << src.GetLocation() << std::endl;
         return RenderCore::Assets::CurveInterpolationType::Linear;
     }
 
     UnboundAnimation Convert(
         const Animation& animation, 
-        const URIResolveContext& resolveContext, 
-        RenderCore::Assets::GeoProc::SkeletonRegistry& nodeRefs)
+        const URIResolveContext& resolveContext)
     {
         UnboundAnimation result;
 
@@ -324,7 +324,7 @@ namespace ColladaConversion
                     if (knownField) {
                         outDimension = knownField->second + 1;
                     } else {
-                        LogWarning << "Unknown field name " << ColladaConversion::AsString(ch._target._fieldReference) << " in animation curve target";
+                        Log(Warning) << "Unknown field name " << ColladaConversion::AsString(ch._target._fieldReference) << " in animation curve target" << std::endl;
                     }
 
                 } else {
@@ -367,7 +367,8 @@ namespace ColladaConversion
             const auto inTangentBytes = BitsPerPixel(inTangentFormat)/8;
             const auto elementBytes = positionBytes + inTangentBytes+ BitsPerPixel(outTangentFormat)/8;
 
-            auto keyBlock = std::make_unique<uint8[]>(elementBytes * keyCount);
+            SerializableVector<uint8> keyBlock;
+			keyBlock.resize(elementBytes * keyCount);
             auto inTangentsOffsetBytes = positionBytes;
             auto outTangentsOffsetBytes = inTangentsOffsetBytes + inTangentBytes;
 
@@ -400,7 +401,7 @@ namespace ColladaConversion
                 if (!fieldCount) continue;
 
                 LoadSource(
-                    (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset),
+                    (float*)PtrAdd(keyBlock.data(), sizeof(float) * fieldOffset),
                     (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
                     ch._outputSource);
 
@@ -412,20 +413,20 @@ namespace ColladaConversion
 
                 if (ch._inTangentsSource) {
                     if (ch._inTangentsSource->FindAccessorForTechnique()->GetCount() > 1)
-                        LogWarning << "Tangents expressed in XY format in animation curve. Ignoring Y part.";
+                        Log(Warning) << "Tangents expressed in XY format in animation curve. Ignoring Y part." << std::endl;
 
                     LoadSource(
-                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + inTangentsOffsetBytes),
+                        (float*)PtrAdd(keyBlock.data(), sizeof(float) * fieldOffset + inTangentsOffsetBytes),
                         (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
                         ch._inTangentsSource, ch._inTangentsSource->FindAccessorForTechnique()->GetStride()-1);
                 }
 
                 if (ch._outTangentsSource) {
                     if (ch._outTangentsSource->FindAccessorForTechnique()->GetCount() > 1)
-                        LogWarning << "Tangents expressed in XY format in animation curve. Ignoring Y part.";
+                        Log(Warning) << "Tangents expressed in XY format in animation curve. Ignoring Y part." << std::endl;
 
                     LoadSource(
-                        (float*)PtrAdd(keyBlock.get(), sizeof(float) * fieldOffset + outTangentsOffsetBytes),
+                        (float*)PtrAdd(keyBlock.data(), sizeof(float) * fieldOffset + outTangentsOffsetBytes),
                         (unsigned)(elementBytes/sizeof(float)), keyCount, fieldCount, 
                         ch._outTangentsSource, ch._outTangentsSource->FindAccessorForTechnique()->GetStride()-1);
                 }
@@ -435,9 +436,10 @@ namespace ColladaConversion
                 //          array. If they are not the same, it means the key frames for
                 //          different fields are in different places. That would cause a lot
                 //          of problems.
-            auto inputTimeBlock = std::make_unique<float[]>(keyCount);
+            SerializableVector<float> inputTimeBlock;
+			inputTimeBlock.resize(keyCount);
             LoadSource(
-                inputTimeBlock.get(),
+                inputTimeBlock.data(),
                 1, keyCount, 1, 
                 firstChannel._inputSource, 
                 firstChannel._inputSource->FindAccessorForTechnique()->GetStride()-1);
@@ -457,14 +459,12 @@ namespace ColladaConversion
 				keyDataDesc._flags |= RenderCore::Assets::CurveKeyDataDesc::Flags::HasOutTangent;
 			}
 			RenderCore::Assets::RawAnimationCurve curve(
-                DynamicArray<float>(std::move(inputTimeBlock), size_t(keyCount)),
-                DynamicArray<uint8>(std::move(keyBlock), elementBytes * keyCount),
+                std::move(inputTimeBlock),
+                std::move(keyBlock),
 				keyDataDesc, interpolationType);
-            result._curves.emplace_back(UnboundAnimation::Curve(
-                i->first, std::move(curve), samplerType, 0));
+            result._curves.emplace_back(
+				UnboundAnimation::Curve { i->first, std::move(curve), samplerType, 0 } );
             
-            nodeRefs.MarkParameterAnimated(i->first);
-
             i = i2;
         }
 

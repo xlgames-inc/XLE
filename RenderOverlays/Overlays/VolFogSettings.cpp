@@ -83,18 +83,18 @@ namespace Overlays
         }
     }
 
-    bool    VolumetricFogSettings::ProcessInput(InterfaceState& interfaceState, const InputSnapshot& input)
+    bool    VolumetricFogSettings::ProcessInput(InterfaceState& interfaceState, const PlatformRig::InputContext& inputContext, const PlatformRig::InputSnapshot& input)
     {
             // allow the scroller we're currently dragging to go first...
         for (unsigned c=0; c<dimof(_scrollers); ++c)
             if (_scrollers[c].IsDragging()) {
-                if (_scrollers[c].ProcessInput(interfaceState, input))
+                if (_scrollers[c].ProcessInput(interfaceState, inputContext, input))
                     return true;
                 break;
             }
 
         for (unsigned c=0; c<dimof(_scrollers); ++c) {
-            if (_scrollers[c].ProcessInput(interfaceState, input)) {
+            if (_scrollers[c].ProcessInput(interfaceState, inputContext, input)) {
                 return true;
             }
         }

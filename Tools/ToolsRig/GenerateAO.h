@@ -10,15 +10,21 @@
 #include "../../RenderCore/IThreadContext_Forward.h"
 #include "../../RenderCore/Metal/Forward.h"
 #include "../../Assets/AssetsCore.h"
-#include "../../Assets/IAssetCompiler.h"
+#include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Utility/MemoryUtils.h"
 #include <memory>
 
-namespace RenderCore { namespace Assets 
+namespace FixedFunctionModel
 { 
     class ModelRenderer; class SharedStateSet; 
-    class MeshToModel; class ModelScaffold; class MaterialScaffold; 
+    class MeshToModel;
+}
+
+namespace RenderCore { namespace Assets
+{ 
+	class ModelScaffold; class MaterialScaffold;
 }}
+
 namespace Assets { class DependencyValidation; class DirectorySearchRules; }
 
 namespace ToolsRig
@@ -33,9 +39,9 @@ namespace ToolsRig
     public:
         float CalculateSkyDomeOcclusion(
             RenderCore::IThreadContext& threadContext,
-            const RenderCore::Assets::ModelRenderer& renderer, 
-            RenderCore::Assets::SharedStateSet& sharedStates, 
-            const RenderCore::Assets::MeshToModel& meshToModel,
+            const FixedFunctionModel::ModelRenderer& renderer, 
+            FixedFunctionModel::SharedStateSet& sharedStates, 
+            const FixedFunctionModel::MeshToModel& meshToModel,
             const Float3& samplePoint);
 
         class Desc
@@ -81,10 +87,11 @@ namespace ToolsRig
     class AOSupplementCompiler : public ::Assets::IAssetCompiler, public std::enable_shared_from_this<AOSupplementCompiler>
     {
     public:
-        std::shared_ptr<::Assets::ICompileMarker> PrepareAsset(
+        std::shared_ptr<::Assets::IArtifactCompileMarker> Prepare(
             uint64 typeCode, 
-            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount,
-            const ::Assets::IntermediateAssets::Store& destinationStore);
+            const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		std::vector<uint64_t> GetTypesForAsset(const StringSection<::Assets::ResChar> initializers[], unsigned initializerCount);
+		std::vector<std::pair<std::string, std::string>> GetExtensionsForType(uint64_t typeCode);
         void StallOnPendingOperations(bool cancelAll);
 
             // When using with placements, this hash value is referenced by the
