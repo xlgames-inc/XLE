@@ -8,6 +8,7 @@
 #include "ShaderParser/Exceptions.h"
 #include "ShaderParser/ShaderInstantiation.h"
 #include "ShaderParser/ShaderPatcher.h"
+#include "ShaderParser/GraphSyntax.h"
 #include "Assets/IFileSystem.h"
 #include "Assets/ConfigFileContainer.h"
 #include "Assets/AssetServices.h"
@@ -44,7 +45,7 @@ namespace ShaderScan
         auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(inputFile.AsString().c_str(), &inputFileSize);
 
         TRY {
-            ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));
+            ShaderSourceParser::ParseHLSL(MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize)));
         } CATCH(const ShaderSourceParser::Exceptions::ParsingFailure& e) {
 
                 // catch the list of errors, and report each one...
@@ -65,8 +66,8 @@ namespace ShaderScan
 	{
 		::Assets::MainFileSystem::GetMountingTree()->Mount(u("xleres"), ::Assets::CreateFileSystem_OS(u("Game/xleres")));
 
-		auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
-		auto perPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+		auto earlyRejection = GraphLanguage::InstantiationParameters::Dependency { "xleres/Techniques/Pass_Standard.sh::EarlyRejectionTest_Default" };
+		auto perPixel = GraphLanguage::InstantiationParameters::Dependency { 
 			"xleres/Techniques/Object_Default.graph::Default_PerPixel",
 			{},
 			{
@@ -74,11 +75,11 @@ namespace ShaderScan
 			}
 		};
 
-		ShaderPatcher::InstantiationParameters instParams {
+		GraphLanguage::InstantiationParameters instParams {
 			{ "rejectionTest", earlyRejection },
 			{ "perPixel", perPixel }
 		};
-		auto fragments = ShaderPatcher::InstantiateShader("xleres/Techniques/Pass_Deferred.graph", "main", instParams);
+		auto fragments = GraphLanguage::InstantiateShader("xleres/Techniques/Pass_Deferred.graph", "main", instParams);
 
         Log(Verbose) << "--- Output ---" << std::endl;
         for (auto frag=fragments._sourceFragments.rbegin(); frag!=fragments._sourceFragments.rend(); ++frag)

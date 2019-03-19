@@ -12,7 +12,7 @@
 namespace SceneEngine { class IScene; }
 namespace RenderCore { namespace Techniques { class ITechniqueDelegate; }}
 namespace RenderCore { namespace Assets { class MaterialScaffoldMaterial; }}
-namespace ShaderPatcher { class INodeGraphProvider; }
+namespace GraphLanguage { class INodeGraphProvider; }
 namespace Utility { class OnChangeCallback; }
 
 namespace ToolsRig
@@ -46,7 +46,7 @@ namespace ToolsRig
 	};
 
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
-		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
 		const std::string& psMainName,
 		const std::shared_ptr<MessageRelay>& logMessages);
 }

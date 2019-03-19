@@ -6,7 +6,7 @@
 
 #include "../Utility/StringUtils.h"
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	// type traits
 	bool IsStructType(StringSection<char> typeName);

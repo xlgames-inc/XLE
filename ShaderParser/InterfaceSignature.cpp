@@ -40,12 +40,12 @@ namespace ShaderSourceParser
 	class WorkingInterfaceStructure
 	{
 	public:
-		ShaderPatcher::ShaderFragmentSignature _signature;
+		GraphLanguage::ShaderFragmentSignature _signature;
 
 		std::vector<std::pair<uint64_t, StringId>> _stringTableToId;
 		std::vector<std::string> _stringTable;
-		std::vector<ShaderPatcher::NodeGraphSignature::Parameter> _parameterTable;
-		std::vector<ShaderPatcher::UniformBufferSignature::Parameter> _variableTable;
+		std::vector<GraphLanguage::NodeGraphSignature::Parameter> _parameterTable;
+		std::vector<GraphLanguage::UniformBufferSignature::Parameter> _variableTable;
 
 		std::string GetString(StringId id) const { return id != ~0u ? _stringTable[id] : std::string(); }
 	};
@@ -60,7 +60,7 @@ namespace ShaderSourceParser
 		return result;
     }
 
-    ShaderPatcher::ShaderFragmentSignature ParseHLSL(StringSection<char> sourceCode)
+    GraphLanguage::ShaderFragmentSignature ParseHLSL(StringSection<char> sourceCode)
     {
 		using namespace ShaderSourceParser::AntlrHelper;		
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
@@ -119,17 +119,17 @@ extern "C" FormalArgId FormalArg_Register(const void* ctx, struct SSPFormalArg a
 	const unsigned directionFlagIn = 1<<0;
 	if (arg._directionFlags & directionFlagIn)
 		w->_parameterTable.push_back(
-			ShaderPatcher::NodeGraphSignature::Parameter { 
+			GraphLanguage::NodeGraphSignature::Parameter { 
 				w->GetString(arg._type), 
 				w->GetString(arg._name), 
-				ShaderPatcher::ParameterDirection::In,
+				GraphLanguage::ParameterDirection::In,
 				w->GetString(arg._semantic) });
 	if (arg._directionFlags & directionFlagOut)
 		w->_parameterTable.push_back(
-			ShaderPatcher::NodeGraphSignature::Parameter { 
+			GraphLanguage::NodeGraphSignature::Parameter { 
 				w->GetString(arg._type), 
 				w->GetString(arg._name), 
-				ShaderPatcher::ParameterDirection::Out,
+				GraphLanguage::ParameterDirection::Out,
 				w->GetString(arg._semantic) });
 	return result;
 }
@@ -139,7 +139,7 @@ extern "C" VariableId Variable_Register(const void* ctx, StringId name, StringId
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
 	auto result = (StringId)w->_variableTable.size();
 	w->_variableTable.push_back(
-		ShaderPatcher::UniformBufferSignature::Parameter{ 
+		GraphLanguage::UniformBufferSignature::Parameter{ 
 			w->GetString(name), 
 			w->GetString(type), 
 			w->GetString(semantic) });
@@ -149,14 +149,14 @@ extern "C" VariableId Variable_Register(const void* ctx, StringId name, StringId
 extern "C" FunctionId Function_Register(const void* ctx, struct SSPFunction* func)
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
-	ShaderPatcher::NodeGraphSignature result;
+	GraphLanguage::NodeGraphSignature result;
 	auto name = w->GetString(func->_name);
 	auto returnType = w->GetString(func->_returnType);
 	if (!returnType.empty() && !XlEqString(returnType, "void"))
 		result.AddParameter(
-			ShaderPatcher::NodeGraphSignature::Parameter {
-				returnType, ShaderPatcher::s_resultName,
-				ShaderPatcher::ParameterDirection::Out,
+			GraphLanguage::NodeGraphSignature::Parameter {
+				returnType, GraphLanguage::s_resultName,
+				GraphLanguage::ParameterDirection::Out,
 				w->GetString(func->_returnSemantic) });
 	for (unsigned p=func->_firstArg; p<=func->_lastArg; ++p)
 		result.AddParameter(w->_parameterTable[p]);
@@ -167,7 +167,7 @@ extern "C" FunctionId Function_Register(const void* ctx, struct SSPFunction* fun
 extern "C" ParameterStructId ParameterStruct_Register(const void* ctx, struct SSPParameterStruct* paramStruct)
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
-	ShaderPatcher::UniformBufferSignature result;
+	GraphLanguage::UniformBufferSignature result;
 	result._name = w->GetString(paramStruct->_name);
 	for (unsigned p=paramStruct->_firstParameter; p<=paramStruct->_lastParameter; ++p)
 		result._parameters.push_back(w->_variableTable[p]);

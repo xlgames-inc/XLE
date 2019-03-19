@@ -24,7 +24,7 @@
 
 using namespace System::Runtime::Serialization;
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint);
 }
@@ -49,12 +49,12 @@ namespace ShaderPatcherLayer
 	
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    static ShaderPatcher::Node::Type     ConvertToNative(Node::Type e)
+    static GraphLanguage::Node::Type     ConvertToNative(Node::Type e)
     {
         switch (e) {
         default:
-        case Node::Type::Procedure:					return ShaderPatcher::Node::Type::Procedure;
-        case Node::Type::Captures:                  return ShaderPatcher::Node::Type::Captures;
+        case Node::Type::Procedure:					return GraphLanguage::Node::Type::Procedure;
+        case Node::Type::Captures:                  return GraphLanguage::Node::Type::Captures;
         }
     }
 
@@ -159,25 +159,25 @@ namespace ShaderPatcherLayer
 	}
 
     using namespace clix;
-    static ShaderPatcher::Node                  ConvertToNative(Node^ node, ConversionContext& context)
+    static GraphLanguage::Node                  ConvertToNative(Node^ node, ConversionContext& context)
     {
-        return ShaderPatcher::Node{
+        return GraphLanguage::Node{
             CompressImportedName(marshalString<E_UTF8>(node->FragmentArchiveName), context), 
 			node->NodeId, ConvertToNative(node->NodeType),
 			marshalString<E_UTF8>(node->AttributeTableName)};
     }
     
-    static ShaderPatcher::Connection        ConvertToNative(Connection^ connection)
+    static GraphLanguage::Connection        ConvertToNative(Connection^ connection)
     {
-        return ShaderPatcher::Connection{
+        return GraphLanguage::Connection{
             connection->InputNodeID, marshalString<E_UTF8>(connection->InputParameterName),
 			connection->OutputNodeID, marshalString<E_UTF8>(connection->OutputParameterName),
 			marshalString<E_UTF8>(connection->Condition)};
     }
     
-    ShaderPatcher::NodeGraph        NodeGraph::ConvertToNative(ConversionContext& context)
+    GraphLanguage::NodeGraph        NodeGraph::ConvertToNative(ConversionContext& context)
     {
-        ShaderPatcher::NodeGraph res;
+        GraphLanguage::NodeGraph res;
         for each(Node^ n in Nodes)
             res.Add(ShaderPatcherLayer::ConvertToNative(n, context));
         for each(Connection^ c in Connections)
@@ -187,16 +187,16 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static Node::Type     ConvertFromNative(ShaderPatcher::Node::Type e)
+	static Node::Type     ConvertFromNative(GraphLanguage::Node::Type e)
     {
         switch (e) {
         default:
-		case ShaderPatcher::Node::Type::Procedure : return Node::Type::Procedure;
-		case ShaderPatcher::Node::Type::Captures: return Node::Type::Captures;
+		case GraphLanguage::Node::Type::Procedure : return Node::Type::Procedure;
+		case GraphLanguage::Node::Type::Captures: return Node::Type::Captures;
         }
     }
 
-	static Node^ ConvertFromNative(const ShaderPatcher::Node& node, const ConversionContext& context)
+	static Node^ ConvertFromNative(const GraphLanguage::Node& node, const ConversionContext& context)
     {
         Node^ result = gcnew Node;
 		result->FragmentArchiveName = marshalString<E_UTF8>(ExpandImportedName(node.ArchiveName(), context));
@@ -206,7 +206,7 @@ namespace ShaderPatcherLayer
 		return result;
     }
     
-    static Connection^ ConvertFromNative(const ShaderPatcher::Connection& connection)
+    static Connection^ ConvertFromNative(const GraphLanguage::Connection& connection)
     {
 		Connection^ result = gcnew Connection;
 		result->OutputNodeID = connection.OutputNodeId(); 
@@ -217,7 +217,7 @@ namespace ShaderPatcherLayer
 		return result;
     }
 
-	NodeGraph^ NodeGraph::ConvertFromNative(const ShaderPatcher::NodeGraph& input, const ConversionContext& context)
+	NodeGraph^ NodeGraph::ConvertFromNative(const GraphLanguage::NodeGraph& input, const ConversionContext& context)
 	{
 		NodeGraph^ result = gcnew NodeGraph;
 		for (const auto& n:input.GetNodes())
@@ -229,34 +229,34 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static NodeGraphSignature::ParameterDirection AsManagedParameterDirections(ShaderPatcher::ParameterDirection input)
+	static NodeGraphSignature::ParameterDirection AsManagedParameterDirections(GraphLanguage::ParameterDirection input)
 	{
 		switch (input) {
 		default:
-		case ShaderPatcher::ParameterDirection::In:
+		case GraphLanguage::ParameterDirection::In:
 			return NodeGraphSignature::ParameterDirection::In;
-		case ShaderPatcher::ParameterDirection::Out:
+		case GraphLanguage::ParameterDirection::Out:
 			return NodeGraphSignature::ParameterDirection::Out;
 		}
 	}
 
-	static ShaderPatcher::ParameterDirection AsNativeParameterDirections(NodeGraphSignature::ParameterDirection input)
+	static GraphLanguage::ParameterDirection AsNativeParameterDirections(NodeGraphSignature::ParameterDirection input)
 	{
 		switch (input) {
 		default:
 		case NodeGraphSignature::ParameterDirection::In:
-			return ShaderPatcher::ParameterDirection::In;
+			return GraphLanguage::ParameterDirection::In;
 		case NodeGraphSignature::ParameterDirection::Out:
-			return ShaderPatcher::ParameterDirection::Out;
+			return GraphLanguage::ParameterDirection::Out;
 		}
 	}
 	
-	ShaderPatcher::NodeGraphSignature	NodeGraphSignature::ConvertToNative(ConversionContext& context)
+	GraphLanguage::NodeGraphSignature	NodeGraphSignature::ConvertToNative(ConversionContext& context)
 	{
-		ShaderPatcher::NodeGraphSignature result;
+		GraphLanguage::NodeGraphSignature result;
 		for each(auto p in Parameters) {
 			result.AddParameter(
-				ShaderPatcher::NodeGraphSignature::Parameter {
+				GraphLanguage::NodeGraphSignature::Parameter {
 					p->Type ? clix::marshalString<clix::E_UTF8>(p->Type) : std::string(),
 					clix::marshalString<clix::E_UTF8>(p->Name),
 					AsNativeParameterDirections(p->Direction),
@@ -265,7 +265,7 @@ namespace ShaderPatcherLayer
 		}
 		for each(auto p in CapturedParameters) {
 			result.AddCapturedParameter(
-				ShaderPatcher::NodeGraphSignature::Parameter {
+				GraphLanguage::NodeGraphSignature::Parameter {
 					p->Type ? clix::marshalString<clix::E_UTF8>(p->Type) : std::string(),
 					clix::marshalString<clix::E_UTF8>(p->Name),
 					AsNativeParameterDirections(p->Direction),
@@ -274,7 +274,7 @@ namespace ShaderPatcherLayer
 		}
 		for each(auto p in TemplateParameters) {
 			result.AddTemplateParameter(
-				ShaderPatcher::NodeGraphSignature::TemplateParameter {
+				GraphLanguage::NodeGraphSignature::TemplateParameter {
 					clix::marshalString<clix::E_UTF8>(p->Name),
 					CompressImportedName(clix::marshalString<clix::E_UTF8>(p->Restriction), context)});
 		}
@@ -283,7 +283,7 @@ namespace ShaderPatcherLayer
 		return result;
 	}
 
-	NodeGraphSignature^			NodeGraphSignature::ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input, const ConversionContext& context)
+	NodeGraphSignature^			NodeGraphSignature::ConvertFromNative(const GraphLanguage::NodeGraphSignature& input, const ConversionContext& context)
 	{
 		NodeGraphSignature^ result = gcnew NodeGraphSignature;
 		result->_parameters = gcnew List<Parameter^>();
@@ -319,7 +319,7 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	class GraphNodeGraphProvider : public ShaderPatcher::BasicNodeGraphProvider, public std::enable_shared_from_this<GraphNodeGraphProvider>
+	class GraphNodeGraphProvider : public GraphLanguage::BasicNodeGraphProvider, public std::enable_shared_from_this<GraphNodeGraphProvider>
     {
     public:
         std::optional<Signature> FindSignature(StringSection<> name);
@@ -335,7 +335,7 @@ namespace ShaderPatcherLayer
 		std::unordered_map<std::string, std::string> _imports;
     };
 
-	std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeGraphSyntaxProvider(
+	std::shared_ptr<GraphLanguage::INodeGraphProvider> MakeGraphSyntaxProvider(
 		NodeGraphFile^ parsedGraphFile,
 		const std::unordered_map<std::string, std::string>& imports,
 		const ::Assets::DirectorySearchRules& searchRules)
@@ -440,15 +440,15 @@ namespace ShaderPatcherLayer
 		return result;
 	}
 
-	ShaderPatcher::GraphSyntaxFile	NodeGraphFile::ConvertToNative()
+	GraphLanguage::GraphSyntaxFile	NodeGraphFile::ConvertToNative()
 	{
 		ConversionContext context;
-		ShaderPatcher::GraphSyntaxFile result;
+		GraphLanguage::GraphSyntaxFile result;
 		for each(KeyValuePair<String^, SubGraph^> entry in SubGraphs) {
 			result._subGraphs.insert(
 				std::make_pair(
 					clix::marshalString<clix::E_UTF8>(entry.Key),
-					ShaderPatcher::GraphSyntaxFile::SubGraph {
+					GraphLanguage::GraphSyntaxFile::SubGraph {
 						entry.Value->Signature->ConvertToNative(context), 
 						entry.Value->Graph->ConvertToNative(context) }));
 		}
@@ -460,7 +460,7 @@ namespace ShaderPatcherLayer
 		return result;
 	}
 
-	NodeGraphFile^			NodeGraphFile::ConvertFromNative(const ShaderPatcher::GraphSyntaxFile& input, const ::Assets::DirectorySearchRules& searchRules)
+	NodeGraphFile^			NodeGraphFile::ConvertFromNative(const GraphLanguage::GraphSyntaxFile& input, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		ConversionContext context;
 		context._importTable = input._imports;
@@ -508,7 +508,7 @@ namespace ShaderPatcherLayer
 		delete _searchRules;
 	}
 
-	std::shared_ptr<ShaderPatcher::INodeGraphProvider> NodeGraphFile::MakeNodeGraphProvider()
+	std::shared_ptr<GraphLanguage::INodeGraphProvider> NodeGraphFile::MakeNodeGraphProvider()
 	{
         auto nativeFile = ConvertToNative();
 		return MakeGraphSyntaxProvider(this, nativeFile._imports, GetSearchRules()->GetNative());
@@ -536,21 +536,21 @@ namespace ShaderPatcherLayer
 				for each(auto sig in sg.Value->Signature->TemplateParameters)
 					CompressImportedName(clix::marshalString<clix::E_UTF8>(sig->Restriction), context);
 			
-			ShaderPatcher::InstantiationParameters instantiationParams {};
+			GraphLanguage::InstantiationParameters instantiationParams {};
 			if (previewNodeId != ~0u)
 				instantiationParams._generateDanglingOutputs = previewNodeId;
 			instantiationParams._generateDanglingInputs = true;
 
 			auto provider = MakeGraphSyntaxProvider(nodeGraphFile, context._importTable, nodeGraphFile->GetSearchRules()->GetNative());
-			auto mainInstantiation = ShaderPatcher::InstantiateShader(
-				ShaderPatcher::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), provider },
+			auto mainInstantiation = GraphLanguage::InstantiateShader(
+				GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), provider },
 				false,
 				instantiationParams);
 
-			ShaderPatcher::PreviewOptions options {
-				(settings->Geometry == PreviewGeometry::Chart) ? ShaderPatcher::PreviewOptions::Type::Chart : ShaderPatcher::PreviewOptions::Type::Object,
+			GraphLanguage::PreviewOptions options {
+				(settings->Geometry == PreviewGeometry::Chart) ? GraphLanguage::PreviewOptions::Type::Chart : GraphLanguage::PreviewOptions::Type::Object,
 				String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : marshalString<E_UTF8>(settings->OutputToVisualize),
-				ShaderPatcher::PreviewOptions::VariableRestrictions() };
+				GraphLanguage::PreviewOptions::VariableRestrictions() };
 
 			if (variableRestrictions)
 				for each(auto v in variableRestrictions)
@@ -571,7 +571,7 @@ namespace ShaderPatcherLayer
 
             return gcnew Tuple<String^,String^>(
                 marshalString<E_UTF8>(str.str()),
-                marshalString<E_UTF8>(ShaderPatcher::GenerateMaterialCBuffer(mainInstantiation._entryPointSignature)));
+                marshalString<E_UTF8>(GraphLanguage::GenerateMaterialCBuffer(mainInstantiation._entryPointSignature)));
         } catch (const std::exception& e) {
             return gcnew Tuple<String^,String^>(
                 "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),
@@ -658,7 +658,7 @@ namespace ShaderPatcherLayer
             MakeStringSection((const char*)block.get(), (const char*)PtrAdd(block.get(), size)));
 
 		// Attempt to read the entire file in "graph syntax"
-		auto nativeGraph = ::ShaderPatcher::ParseGraphSyntax(MakeStringSection((const char*)block.get(), (const char*)PtrAdd(block.get(), size)));
+		auto nativeGraph = ::GraphLanguage::ParseGraphSyntax(MakeStringSection((const char*)block.get(), (const char*)PtrAdd(block.get(), size)));
 		nodeGraph = NodeGraphFile::ConvertFromNative(nativeGraph, ::Assets::DefaultDirectorySearchRules(MakeStringSection(nativeFilename)));
 
             // now load the context chunk (if it exists)
@@ -724,7 +724,7 @@ namespace ShaderPatcherLayer
 
 		{
 			std::stringstream str;
-			ShaderPatcher::Serialize(str, ConvertToNative());
+			GraphLanguage::Serialize(str, ConvertToNative());
 			sw->Write(clix::marshalString<clix::E_UTF8>(str.str()));
 			sw->Flush();
 		}
@@ -747,7 +747,7 @@ namespace ShaderPatcherLayer
 				sw->WriteLine();
 
 				try {
-					auto str = ShaderPatcher::GenerateStructureForTechniqueConfig(interf, "main");
+					auto str = GraphLanguage::GenerateStructureForTechniqueConfig(interf, "main");
 					sw->Write(clix::marshalString<clix::E_UTF8>(str));
 				} catch (const std::exception& e) {
 					sw->Write("Exception while generating technique entry points: " + clix::marshalString<clix::E_UTF8>(e.what()));
@@ -771,7 +771,7 @@ namespace ShaderPatcherLayer
 			}
 
 				// write out a cb layout, as well (sometimes required even if it's not a technique config)
-			auto cbLayout = ShaderPatcher::GenerateMaterialCBuffer(interf);
+			auto cbLayout = GraphLanguage::GenerateMaterialCBuffer(interf);
 			if (!cbLayout.empty()) {
 				sw->Write("/* <<Chunk:CBLayout:main>>--("); sw->WriteLine();
 				sw->Write(clix::marshalString<clix::E_UTF8>(cbLayout)); sw->WriteLine();

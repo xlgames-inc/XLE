@@ -17,7 +17,7 @@
 
 #include "plustache/template.hpp"
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	static bool CanBeStoredInCBuffer(const StringSection<char> type);
 
@@ -77,7 +77,7 @@ namespace ShaderPatcher
         ParameterMachine();
         ~ParameterMachine();
     private:
-        ShaderPatcher::ShaderFragmentSignature _systemHeader;
+        GraphLanguage::ShaderFragmentSignature _systemHeader;
     };
 
     auto ParameterMachine::GetBuildInterpolator(const NodeGraphSignature::Parameter& param) const
@@ -87,14 +87,14 @@ namespace ShaderPatcher
         auto i = std::find_if(
             _systemHeader._functions.cbegin(),
             _systemHeader._functions.cend(),
-            [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
+            [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
 
         if (i == _systemHeader._functions.cend()) {
             searchName = "BuildInterpolator_" + param._name;
             i = std::find_if(
                 _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
-                [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
+                [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
         }
 
         if (i == _systemHeader._functions.cend()) {
@@ -102,14 +102,14 @@ namespace ShaderPatcher
             i = std::find_if(
                 _systemHeader._functions.cbegin(),
                 _systemHeader._functions.cend(),
-                [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
+                [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
         }
 
         if (i != _systemHeader._functions.cend()) {
 			auto p = std::find_if(i->second.GetParameters().begin(), i->second.GetParameters().end(),
-				[](const ShaderPatcher::NodeGraphSignature::Parameter& p) { 
-					return p._direction == ShaderPatcher::ParameterDirection::Out 
-						&& XlEqString(MakeStringSection(p._name), MakeStringSection(ShaderPatcher::s_resultName));
+				[](const GraphLanguage::NodeGraphSignature::Parameter& p) { 
+					return p._direction == GraphLanguage::ParameterDirection::Out 
+						&& XlEqString(MakeStringSection(p._name), MakeStringSection(GraphLanguage::s_resultName));
 				});
             VaryingParamsFlags::BitField flags = 0;
             if (p != i->second.GetParameters().end() && !p->_semantic.empty()) {
@@ -133,7 +133,7 @@ namespace ShaderPatcher
         std::string searchName = "BuildSystem_" + param._type;
         auto i = std::find_if(
             _systemHeader._functions.cbegin(), _systemHeader._functions.cend(),
-            [searchName](const std::pair<std::string, ShaderPatcher::NodeGraphSignature>& sig) { return sig.first == searchName; });
+            [searchName](const std::pair<std::string, GraphLanguage::NodeGraphSignature>& sig) { return sig.first == searchName; });
         if (i != _systemHeader._functions.cend())
             return i->first;
         return std::string();

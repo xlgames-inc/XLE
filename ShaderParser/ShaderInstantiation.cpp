@@ -12,7 +12,7 @@
 #include <regex>
 #include <sstream>
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	static std::string MakeGraphName(const std::string& baseName, uint64_t instantiationHash = 0)
     {
@@ -21,17 +21,17 @@ namespace ShaderPatcher
     }
 
 	InstantiatedShader InstantiateShader(
-        const ShaderPatcher::INodeGraphProvider::NodeGraph& initialGraph,
+        const GraphLanguage::INodeGraphProvider::NodeGraph& initialGraph,
 		bool useScaffoldFunction,
-		const ShaderPatcher::InstantiationParameters& instantiationParameters)
+		const GraphLanguage::InstantiationParameters& instantiationParameters)
 	{
 		std::set<std::string> includes;
 
 		struct PendingInstantiation
 		{
-			ShaderPatcher::INodeGraphProvider::NodeGraph _graph;
+			GraphLanguage::INodeGraphProvider::NodeGraph _graph;
 			bool _useScaffoldFunction;
-			ShaderPatcher::InstantiationParameters _instantiationParams;
+			GraphLanguage::InstantiationParameters _instantiationParams;
 		};
 
         InstantiatedShader result;
@@ -50,7 +50,7 @@ namespace ShaderPatcher
 			// to have the same name as the original request
 			auto scaffoldName = entryPointInstantiation ? inst._graph._name : MakeGraphName(inst._graph._name, inst._instantiationParams.CalculateHash());
 			auto implementationName = inst._useScaffoldFunction ? (scaffoldName + "_impl") : scaffoldName;
-			auto instFn = ShaderPatcher::GenerateFunction(
+			auto instFn = GraphLanguage::GenerateFunction(
 				inst._graph._graph, implementationName, 
 				inst._instantiationParams, *inst._graph._subProvider);
 
@@ -67,7 +67,7 @@ namespace ShaderPatcher
 					}
 				}
 
-				result._sourceFragments.push_back(ShaderPatcher::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
+				result._sourceFragments.push_back(GraphLanguage::GenerateScaffoldFunction(scaffoldSignature, instFn._entryPointSignature, scaffoldName, implementationName));
 			}
 
 			result._sourceFragments.insert(
@@ -77,7 +77,7 @@ namespace ShaderPatcher
 			{
 				// write captured parameters into a cbuffer (todo -- merge captures from all instantiations)
 				std::stringstream str;
-				str << ShaderPatcher::GenerateMaterialCBuffer(inst._graph._signature);
+				str << GraphLanguage::GenerateMaterialCBuffer(inst._graph._signature);
 				auto fragment = str.str();
 				if (!fragment.empty())
 					result._sourceFragments.push_back(fragment);
@@ -144,10 +144,10 @@ namespace ShaderPatcher
 	InstantiatedShader InstantiateShader(
 		StringSection<> entryFile,
 		StringSection<> entryFn,
-		const ShaderPatcher::InstantiationParameters& instantiationParameters)
+		const GraphLanguage::InstantiationParameters& instantiationParameters)
 	{
 		return InstantiateShader(
-			ShaderPatcher::LoadGraphSyntaxFile(entryFile, entryFn), true,
+			GraphLanguage::LoadGraphSyntaxFile(entryFile, entryFn), true,
 			instantiationParameters);
 	}
 }

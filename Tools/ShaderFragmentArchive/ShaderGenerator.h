@@ -15,7 +15,7 @@ using namespace System::Drawing;
 using namespace System::Runtime::Serialization;
 using System::Runtime::InteropServices::OutAttribute;
 
-namespace ShaderPatcher { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; class INodeGraphProvider; }
+namespace GraphLanguage { class NodeGraph; class NodeGraphSignature; class GraphSyntaxFile; class INodeGraphProvider; }
 namespace ShaderFragmentArchive { ref class Function; }
 namespace Assets { class DirectorySearchRules; }
 
@@ -109,8 +109,8 @@ namespace ShaderPatcherLayer
 
 		NodeGraph();
 
-        ShaderPatcher::NodeGraph    ConvertToNative(ConversionContext& context);
-		static NodeGraph^			ConvertFromNative(const ShaderPatcher::NodeGraph& input, const ConversionContext& context);
+        GraphLanguage::NodeGraph    ConvertToNative(ConversionContext& context);
+		static NodeGraph^			ConvertFromNative(const GraphLanguage::NodeGraph& input, const ConversionContext& context);
 
 		Tuple<String^, String^>^ 
 			GeneratePreviewShader(
@@ -161,8 +161,8 @@ namespace ShaderPatcherLayer
 			}
 		}
 
-		ShaderPatcher::NodeGraphSignature	ConvertToNative(ConversionContext& context);
-		static NodeGraphSignature^			ConvertFromNative(const ShaderPatcher::NodeGraphSignature& input, const ConversionContext& context);
+		GraphLanguage::NodeGraphSignature	ConvertToNative(ConversionContext& context);
+		static NodeGraphSignature^			ConvertFromNative(const GraphLanguage::NodeGraphSignature& input, const ConversionContext& context);
 
 	private:
 		List<Parameter^>^				_parameters = gcnew List<Parameter^>();
@@ -192,16 +192,16 @@ namespace ShaderPatcherLayer
         static void		Load(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphMetaData^% context);
         void			Serialize(System::IO::Stream^ stream, String^ name, NodeGraphMetaData^ contexts);
 
-		ShaderPatcher::GraphSyntaxFile	ConvertToNative();
+		GraphLanguage::GraphSyntaxFile	ConvertToNative();
 		static NodeGraphFile^			ConvertFromNative(
-			const ShaderPatcher::GraphSyntaxFile& input, 
+			const GraphLanguage::GraphSyntaxFile& input, 
 			const ::Assets::DirectorySearchRules& searchRules);
 
 		Tuple<String^, String^>^ GeneratePreviewShader(
 			String^ subGraphName, UInt32 previewNodeId,
 			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
 
-		std::shared_ptr<ShaderPatcher::INodeGraphProvider> MakeNodeGraphProvider();
+		std::shared_ptr<GraphLanguage::INodeGraphProvider> MakeNodeGraphProvider();
 
 		GUILayer::DirectorySearchRules^ GetSearchRules();
 

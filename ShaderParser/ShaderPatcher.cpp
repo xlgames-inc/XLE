@@ -25,7 +25,7 @@
 #include <regex>
 #include <map>
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 
     const std::string s_resultName = "result";
@@ -1232,14 +1232,14 @@ namespace ShaderPatcher
 		}
 
 		for (const auto&i:graph.GetConnections()) {
-			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() == ShaderPatcher::s_resultName) continue;
+			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() == GraphLanguage::s_resultName) continue;
 			result << "\t" << i.OutputParameterName() << " = ";
 			GenerateGraphSyntaxInstantiation(result, graph, interf, i.InputNodeId(), instantiatedNodes);
 			result << "." << i.InputParameterName() << ";" << std::endl;
 		}
 
 		for (const auto&i:graph.GetConnections()) {
-			if (i._condition.empty() || i.OutputParameterName() == ShaderPatcher::s_resultName) continue;
+			if (i._condition.empty() || i.OutputParameterName() == GraphLanguage::s_resultName) continue;
 			result << "\tif \"" << i._condition << "\"" << std::endl;
 			result << "\t\t" << instantiatedNodes[i.OutputNodeId()] << ".";
 			GenerateConnectionInstantiation(result, graph, interf, i, instantiatedNodes);
@@ -1247,7 +1247,7 @@ namespace ShaderPatcher
 		}
 
 		for (const auto&i:graph.GetConnections()) {
-			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() != ShaderPatcher::s_resultName) continue;
+			if (i.OutputNodeId() != NodeId_Interface || i.OutputParameterName() != GraphLanguage::s_resultName) continue;
 			if (!i._condition.empty()) {
 				result << "\tif \"" << i._condition << "\"" << std::endl << "\t\treturn ";
 			} else
@@ -1276,7 +1276,7 @@ namespace ShaderPatcher
         uint64 result = DefaultSeed64;
 		// todo -- ordering of parameters matters to the hash here
         for (const auto&p:_parameterBindings) {
-            result = Hash64(p.first, ShaderPatcher::CalculateHash(p.second, result));
+            result = Hash64(p.first, GraphLanguage::CalculateHash(p.second, result));
 			for (const auto&pc:p.second._parametersToCurry)
 				result = Hash64(pc, result);
 		}

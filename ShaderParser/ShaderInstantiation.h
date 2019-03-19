@@ -9,7 +9,7 @@
 #include <vector>
 #include <string>
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	class InstantiationParameters
     {

@@ -17,7 +17,7 @@
 namespace ShaderFragmentArchive
 {
 
-    Function::Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function)
+    Function::Function(StringSection<> name, const GraphLanguage::NodeGraphSignature& function)
     {
 		ShaderPatcherLayer::ConversionContext convContext;
 		Signature = ShaderPatcherLayer::NodeGraphSignature::ConvertFromNative(function, convContext);
@@ -49,7 +49,7 @@ namespace ShaderFragmentArchive
         return stringBuilder.ToString();
     }
 
-    ParameterStruct::ParameterStruct(const ShaderPatcher::UniformBufferSignature& parameterStruct)
+    ParameterStruct::ParameterStruct(const GraphLanguage::UniformBufferSignature& parameterStruct)
     {
         Parameters = gcnew List<Parameter^>();
 
@@ -159,7 +159,7 @@ namespace ShaderFragmentArchive
             try {
 				if (XlEqStringI(MakeFileNameSplitter(nativeFilename).Extension(), "graph")) {
 
-					auto graphSyntax = ShaderPatcher::ParseGraphSyntax(srcCode);
+					auto graphSyntax = GraphLanguage::ParseGraphSyntax(srcCode);
 					for (const auto& subGraph:graphSyntax._subGraphs) {
 						Function^ function = gcnew Function(MakeStringSection(subGraph.first), subGraph.second._signature);
 						Functions->Add(function);

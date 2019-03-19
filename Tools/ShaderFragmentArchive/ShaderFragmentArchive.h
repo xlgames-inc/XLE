@@ -15,7 +15,7 @@ using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
 using namespace System::ComponentModel::Composition;
 
-namespace ShaderPatcher { class NodeGraphSignature; class UniformBufferSignature; }
+namespace GraphLanguage { class NodeGraphSignature; class UniformBufferSignature; }
 namespace Utility { class OnChangeCallback; }
 
 namespace ShaderFragmentArchive 
@@ -28,7 +28,7 @@ namespace ShaderFragmentArchive
         property System::String^							Name;
 		property ShaderPatcherLayer::NodeGraphSignature^	Signature;
 
-        Function(StringSection<> name, const ShaderPatcher::NodeGraphSignature& function);
+        Function(StringSection<> name, const GraphLanguage::NodeGraphSignature& function);
         ~Function();
         System::String^ BuildParametersString();
     };
@@ -55,7 +55,7 @@ namespace ShaderFragmentArchive
         property System::String^		Name;
         property List<Parameter^>^      Parameters;
 
-        ParameterStruct(const ShaderPatcher::UniformBufferSignature& parameterStruct);
+        ParameterStruct(const GraphLanguage::UniformBufferSignature& parameterStruct);
         ~ParameterStruct();
         System::String^ BuildBodyString();
     };

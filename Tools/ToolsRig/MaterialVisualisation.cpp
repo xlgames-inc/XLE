@@ -240,7 +240,7 @@ namespace ToolsRig
 
 		static ::Assets::FuturePtr<RenderCore::CompiledShaderByteCode> GeneratePixelPreviewShader(
 			StringSection<> psName, StringSection<> definesTable,
-			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
 			const std::string& psMainName,
 			const std::shared_ptr<MessageRelay>& logMessages,
 			RenderCore::ShaderService::IShaderSource& shaderSource)
@@ -258,34 +258,34 @@ namespace ToolsRig
 						structureType = StructureType::ColorFromWorldCoords;
 				}
 
-				ShaderPatcher::InstantiatedShader fragments;
+				GraphLanguage::InstantiatedShader fragments;
 
 				auto psNameSplit = MakeFileNameSplitter(psName);
 				const char* entryPoint;
 				if (structureType == StructureType::DeferredPass) {
-					auto earlyRejection = ShaderPatcher::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
+					auto earlyRejection = GraphLanguage::InstantiationParameters::Dependency { "xleres/Techniques/Graph/Pass_Standard.sh::EarlyRejectionTest_Default" };
 
-					auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+					auto overridePerPixel = GraphLanguage::InstantiationParameters::Dependency { 
 						psMainName, {}, {}, provider
 					};
 
-					ShaderPatcher::InstantiationParameters instParams {
+					GraphLanguage::InstantiationParameters instParams {
 						{ "rejectionTest", earlyRejection },
 						{ "perPixel", overridePerPixel }
 					};
 					entryPoint = "deferred_pass_main";
-					fragments = ShaderPatcher::InstantiateShader(
+					fragments = GraphLanguage::InstantiateShader(
 						psNameSplit.AllExceptParameters(), entryPoint,
 						instParams);
 				} else {
-					auto overridePerPixel = ShaderPatcher::InstantiationParameters::Dependency { 
+					auto overridePerPixel = GraphLanguage::InstantiationParameters::Dependency { 
 						psMainName, {}, {}, provider
 					};
 
 					entryPoint = "deferred_pass_color_from_worldcoords";
-					fragments = ShaderPatcher::InstantiateShader(
+					fragments = GraphLanguage::InstantiateShader(
 						psNameSplit.AllExceptParameters(), entryPoint,
-						ShaderPatcher::InstantiationParameters {
+						GraphLanguage::InstantiationParameters {
 							{ "perPixel", overridePerPixel }
 						});
 				}
@@ -363,7 +363,7 @@ namespace ToolsRig
 		}
 
 		GraphPreviewTechniqueDelegate(
-			const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+			const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
 			const std::string& psMainName,
 			const std::shared_ptr<MessageRelay>& logMessages)
 		{
@@ -435,7 +435,7 @@ namespace ToolsRig
 	const char GraphPreviewTechniqueDelegate::s_techFile[] = "xleres/Techniques/Graph/graph.tech";
 
 	std::unique_ptr<RenderCore::Techniques::ITechniqueDelegate> MakeNodeGraphPreviewDelegate(
-		const std::shared_ptr<ShaderPatcher::INodeGraphProvider>& provider,
+		const std::shared_ptr<GraphLanguage::INodeGraphProvider>& provider,
 		const std::string& psMainName,
 		const std::shared_ptr<MessageRelay>& logMessages)
 	{

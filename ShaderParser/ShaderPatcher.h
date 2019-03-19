@@ -14,7 +14,7 @@
 #include <vector>
 #include <unordered_map>
 
-namespace ShaderPatcher 
+namespace GraphLanguage 
 {
 	using NodeId = uint32_t;
 
@@ -30,12 +30,12 @@ namespace ShaderPatcher
         enum class Type { Procedure, Captures };
 
 		std::string				_archiveName;
-        ShaderPatcher::NodeId   _nodeId = 0;
+        NodeId					_nodeId = 0;
         Type					_type = Type::Procedure;
 		std::string				_attributeTableName;
 
         const std::string&		ArchiveName() const         { return _archiveName; }
-        ShaderPatcher::NodeId   NodeId() const              { return _nodeId; }
+        NodeId					NodeId() const              { return _nodeId; }
         Type					GetType() const             { return _type; }
 		const std::string&		AttributeTableName() const  { return _attributeTableName; }
     };

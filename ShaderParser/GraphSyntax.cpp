@@ -34,7 +34,7 @@ typedef struct IdentifierAndScopeTag
 	pANTLR3_COMMON_TOKEN _identifier;
 } IdentifierAndScope;
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	using namespace ShaderSourceParser::AntlrHelper;
 
@@ -117,7 +117,7 @@ namespace ShaderPatcher
 			str << "import " << i.first << " = \"" << i.second << "\"" << std::endl;
 		if (!graphSyntaxFile._imports.empty()) str << std::endl;
 		for (auto& sg:graphSyntaxFile._subGraphs)
-			str << ShaderPatcher::GenerateGraphSyntax(sg.second._graph, sg.second._signature, sg.first);
+			str << GraphLanguage::GenerateGraphSyntax(sg.second._graph, sg.second._signature, sg.first);
 
 		for (auto& at:graphSyntaxFile._attributeTables) {
 			str << "attributes " << at.first << "(";
@@ -183,7 +183,7 @@ namespace ShaderPatcher
 		auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
 		auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
 
-		auto graphSyntax = std::make_shared<ShaderPatcher::GraphSyntaxFile>(ParseGraphSyntax(inputStr));
+		auto graphSyntax = std::make_shared<GraphLanguage::GraphSyntaxFile>(ParseGraphSyntax(inputStr));
 		auto main = graphSyntax->_subGraphs.find(entryPoint.AsString());
 		if (main == graphSyntax->_subGraphs.end())
 			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", filename.AsString().c_str()));
@@ -262,7 +262,7 @@ namespace ShaderPatcher
 
 extern "C" GraphId Graph_Register(const void* ctx, const char name[], GraphSignatureId signatureId)
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 
 	assert(signatureId < f._pendingSignatures.size());
 	const auto& sig = f._pendingSignatures[signatureId];
@@ -274,31 +274,31 @@ extern "C" GraphId Graph_Register(const void* ctx, const char name[], GraphSigna
 
 extern "C" NodeId Node_Register(const void* ctx, GraphId gid, IdentifierAndScope identifierAndScope, const char attributeTableName[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
 
-	auto archiveName = ShaderPatcher::MakeArchiveName(identifierAndScope);
+	auto archiveName = GraphLanguage::MakeArchiveName(identifierAndScope);
 	if (identifierAndScope._scope == nullptr) {
 		// Check to see if this is a templated parameter. If so, we need to mark the node name with the
 		// restrictions from the signature.
 		auto i = std::find_if(
 			ng._signature.GetTemplateParameters().begin(),
 			ng._signature.GetTemplateParameters().end(),
-			[archiveName](const ShaderPatcher::NodeGraphSignature::TemplateParameter& param) { return param._name == archiveName; });
+			[archiveName](const GraphLanguage::NodeGraphSignature::TemplateParameter& param) { return param._name == archiveName; });
 		if (i != ng._signature.GetTemplateParameters().end()) {
 			archiveName += "<" + i->_restriction + ">";
 		}
 	}
 
-	ShaderPatcher::Node newNode{archiveName, nextId, ShaderPatcher::Node::Type::Procedure, attributeTableName ? std::string(attributeTableName) : std::string()};
+	GraphLanguage::Node newNode{archiveName, nextId, GraphLanguage::Node::Type::Procedure, attributeTableName ? std::string(attributeTableName) : std::string()};
 	ng._graph.Add(std::move(newNode));
 	return nextId;
 }
 
 extern "C" ConnectorId Connector_Register(const void* ctx, GraphId gid, NodeId node, const char connectorName[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 	
 	ConnectorId nextId = (ConnectorId)ng._connectors.size();
 	ng._connectors.push_back({node, connectorName});
@@ -307,7 +307,7 @@ extern "C" ConnectorId Connector_Register(const void* ctx, GraphId gid, NodeId n
 
 extern "C" ConnectorId LiteralConnector_Register(const void* ctx, GraphId gid, const char literal[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 	
 	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
 	ng._literalConnectors.push_back(literal);
@@ -316,25 +316,25 @@ extern "C" ConnectorId LiteralConnector_Register(const void* ctx, GraphId gid, c
 
 extern "C" ConnectorId IdentifierConnector_Register(const void* ctx, GraphId gid, IdentifierAndScope identifierAndScope)
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 
 	ConnectorId nextId = 0xf0000000u | (ConnectorId)ng._literalConnectors.size();
-	ng._literalConnectors.push_back(ShaderPatcher::MakeArchiveName(identifierAndScope));
+	ng._literalConnectors.push_back(GraphLanguage::MakeArchiveName(identifierAndScope));
 	return nextId;
 }
 
 extern "C" ConnectorId PartialInstantiationConnector_Register(const void* ctx, GraphId gid, NodeId node)
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 
 	ConnectorId nextId = (ConnectorId)ng._connectors.size();
-	ng._connectors.push_back({node, ShaderPatcher::ParameterName_NodeInstantiation});
+	ng._connectors.push_back({node, GraphLanguage::ParameterName_NodeInstantiation});
 	return nextId;
 }
 
 extern "C" ConnectionId Connection_Register(const void* ctx, GraphId gid, ConnectorId left, ConnectorId right)
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 	
 	if (left >= ng._connectors.size())
 		return ~0u;
@@ -344,7 +344,7 @@ extern "C" ConnectionId Connection_Register(const void* ctx, GraphId gid, Connec
 			return ~0u;
 
 		ng._graph.Add({
-			ShaderPatcher::NodeId_Constant, ng._literalConnectors[right & ~0xf0000000u],
+			GraphLanguage::NodeId_Constant, ng._literalConnectors[right & ~0xf0000000u],
 			ng._connectors[left].nodeId, ng._connectors[left]._name});
 		return (ConnectionId)ng._graph.GetConnections().size()-1;
 	} else {
@@ -360,7 +360,7 @@ extern "C" ConnectionId Connection_Register(const void* ctx, GraphId gid, Connec
 
 extern "C" void Connection_SetCondition(const void* ctx, GraphId gid, ConnectionId connection, const char condition[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 
 	if (connection >= ng._graph.GetConnections().size())
 		return;
@@ -370,13 +370,13 @@ extern "C" void Connection_SetCondition(const void* ctx, GraphId gid, Connection
 
 extern "C" void Node_Name(const void* ctx, GraphId gid, NodeId id, const char name[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 	ng._nodeNameMapping.insert({name, id});
 }
 
 extern "C" NodeId Node_Find(const void* ctx, GraphId gid, const char name[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
 	std::string n(name);
 	auto i = ng._nodeNameMapping.find(n);
 	if (i != ng._nodeNameMapping.end()) return i->second;
@@ -385,7 +385,7 @@ extern "C" NodeId Node_Find(const void* ctx, GraphId gid, const char name[])
 
 extern "C" GraphSignatureId GraphSignature_Register(const void* ctx)
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 	auto nextId = (unsigned)f._pendingSignatures.size();
 	f._pendingSignatures.push_back({});
 	return nextId;
@@ -393,61 +393,61 @@ extern "C" GraphSignatureId GraphSignature_Register(const void* ctx)
 
 extern "C" void GraphSignature_ReturnType(const void* ctx, GraphSignatureId sigId, const char returnType[])
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._pendingSignatures[sigId].AddParameter({returnType, ShaderPatcher::s_resultName, ShaderPatcher::ParameterDirection::Out});
+	auto& f = GraphLanguage::GetFileContext(ctx);
+	f._pendingSignatures[sigId].AddParameter({returnType, GraphLanguage::s_resultName, GraphLanguage::ParameterDirection::Out});
 }
 
 extern "C" void GraphSignature_AddParameter(const void* ctx, GraphSignatureId sigId, const char name[], const char type[], unsigned direction, const char def[])
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._pendingSignatures[sigId].AddParameter({type, name, ShaderPatcher::ParameterDirection(direction), std::string(), def ? def : std::string()});
+	auto& f = GraphLanguage::GetFileContext(ctx);
+	f._pendingSignatures[sigId].AddParameter({type, name, GraphLanguage::ParameterDirection(direction), std::string(), def ? def : std::string()});
 }
 
 extern "C" void GraphSignature_AddGraphParameter(const void* ctx, GraphSignatureId sigId, const char name[], IdentifierAndScope prototype)
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
-	f._pendingSignatures[sigId].AddTemplateParameter({name, ShaderPatcher::MakeArchiveName(prototype)});
+	auto& f = GraphLanguage::GetFileContext(ctx);
+	f._pendingSignatures[sigId].AddTemplateParameter({name, GraphLanguage::MakeArchiveName(prototype)});
 }
 
 extern "C" void GraphSignature_Implements(const void* ctx, GraphSignatureId sigId, IdentifierAndScope templ)
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 	assert(templ._scope && templ._identifier);
-	f._pendingSignatures[sigId].SetImplements(ShaderPatcher::MakeArchiveName(templ));
+	f._pendingSignatures[sigId].SetImplements(GraphLanguage::MakeArchiveName(templ));
 }
 
 extern "C" void Import_Register(const void* ctx, const char alias[], const char import[])
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 	assert(f._imports.find(alias) == f._imports.end());
 	f._imports.insert(std::make_pair(alias, import));
 }
 
 extern "C" void Captures_Register(const void* ctx, GraphId gid, const char name[], GraphSignatureId params, const char attributeTableName[])
 {
-	auto& ng = ShaderPatcher::GetGraphContext(ctx, gid);
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& ng = GraphLanguage::GetGraphContext(ctx, gid);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 	auto& sig = f._pendingSignatures[params];
 
 	// We construct 2 things: one is a node to represent these collection of parameters
 	// We must also add the parameters to the "captures" list in the graph signature
 	NodeId nextId = (NodeId)ng._graph.GetNodes().size();
-	ng._graph.Add(ShaderPatcher::Node { name, nextId, ShaderPatcher::Node::Type::Captures, attributeTableName ? std::string(attributeTableName) : std::string() });
+	ng._graph.Add(GraphLanguage::Node { name, nextId, GraphLanguage::Node::Type::Captures, attributeTableName ? std::string(attributeTableName) : std::string() });
 	Node_Name(ctx, gid, nextId, name);
 
 	for (const auto& i:sig.GetParameters()) {
 		auto newParam = i;
 		newParam._name = std::string(name) + "." + i._name;
-		newParam._direction = ShaderPatcher::ParameterDirection::Out;
+		newParam._direction = GraphLanguage::ParameterDirection::Out;
 		ng._signature.AddCapturedParameter(newParam);
 	}
 }
 
 extern "C" AttributeTableId AttributeTable_Register(const void* ctx, const char name[])
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 	auto existing = std::find_if(f._attributeTables.begin(), f._attributeTables.end(),
-		[name](std::pair<std::string, ShaderPatcher::AttributeTable>& t) { return t.first == name; });
+		[name](std::pair<std::string, GraphLanguage::AttributeTable>& t) { return t.first == name; });
 	assert(existing == f._attributeTables.end());
 
 	f._attributeTables.push_back({name, {}});
@@ -456,7 +456,7 @@ extern "C" AttributeTableId AttributeTable_Register(const void* ctx, const char 
 
 extern "C" void AttributeTable_AddValue(const void* ctx, AttributeTableId tableId, const char key[], const char value[])
 {
-	auto& f = ShaderPatcher::GetFileContext(ctx);
+	auto& f = GraphLanguage::GetFileContext(ctx);
 	assert(tableId < f._attributeTables.size());
 	f._attributeTables[tableId].second[key] = value;
 }

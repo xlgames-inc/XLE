@@ -13,7 +13,7 @@
 #include "../Utility/IteratorUtils.h"
 #include <vector>
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
     enum class ParameterDirection { In, Out };
     class NodeGraphSignature
@@ -86,6 +86,6 @@ namespace ShaderPatcher
 
 namespace ShaderSourceParser
 {
-    ShaderPatcher::ShaderFragmentSignature     ParseHLSL(StringSection<char> sourceCode);
+    GraphLanguage::ShaderFragmentSignature     ParseHLSL(StringSection<char> sourceCode);
 }
 

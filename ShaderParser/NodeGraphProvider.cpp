@@ -7,7 +7,7 @@
 #include "../Assets/Assets.h"
 #include "../Utility/Streams/PathUtils.h"
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 
     static std::string LoadSourceFile(StringSection<char> sourceFileName)

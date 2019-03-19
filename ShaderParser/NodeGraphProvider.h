@@ -7,7 +7,7 @@
 #include <unordered_map>
 #include <optional>
 
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	class FunctionSignature;
 
@@ -26,7 +26,7 @@ namespace ShaderPatcher
 		struct NodeGraph
         {
             std::string _name;
-            ShaderPatcher::NodeGraph _graph;
+            GraphLanguage::NodeGraph _graph;
 			NodeGraphSignature _signature;
 			std::shared_ptr<INodeGraphProvider> _subProvider;
         };

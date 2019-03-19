@@ -12,7 +12,7 @@
 #include <unordered_map>
 
 namespace Assets { class DirectorySearchRules; }
-namespace ShaderPatcher
+namespace GraphLanguage
 {
 	class GraphSyntaxFile
 	{
