@@ -177,18 +177,18 @@ namespace ShaderPatcher
 		return BasicNodeGraphProvider::FindSignature(name);
 	}
 
-	INodeGraphProvider::NodeGraph LoadGraph(StringSection<> filename, StringSection<> entryPoint)
+	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint)
 	{
 		size_t inputFileSize;
 		auto inputFileBlock = ::Assets::TryLoadFileAsMemoryBlock(filename, &inputFileSize);
 		auto inputStr = MakeStringSection((const char*)inputFileBlock.get(), (const char*)PtrAdd(inputFileBlock.get(), inputFileSize));
 
-		auto graphSyntax = std::make_shared<ShaderPatcher::GraphSyntaxFile>(ShaderPatcher::ParseGraphSyntax(inputStr));
+		auto graphSyntax = std::make_shared<ShaderPatcher::GraphSyntaxFile>(ParseGraphSyntax(inputStr));
 		auto main = graphSyntax->_subGraphs.find(entryPoint.AsString());
 		if (main == graphSyntax->_subGraphs.end())
 			Throw(::Exceptions::BasicLabel("Couldn't find entry point (%s) in input", filename.AsString().c_str()));
 
-		auto sigProvider = ShaderPatcher::MakeGraphSyntaxProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
+		auto sigProvider = MakeGraphSyntaxProvider(graphSyntax, ::Assets::DefaultDirectorySearchRules(filename));
 
 		return INodeGraphProvider::NodeGraph {
 			main->first,

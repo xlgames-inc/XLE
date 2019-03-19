@@ -35,6 +35,6 @@ namespace ShaderPatcher
 		const std::shared_ptr<GraphSyntaxFile>& parsedGraphFile,
 		const ::Assets::DirectorySearchRules& searchRules);
 
-	INodeGraphProvider::NodeGraph LoadGraph(StringSection<> filename, StringSection<> entryPoint);
+	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint);
 }
 

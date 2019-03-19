@@ -3,7 +3,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "ShaderPatcher.h"
-#include "ShaderPatcher_Internal.h"
 #include "InterfaceSignature.h"
 #include "../RenderCore/ShaderLangUtil.h"
 #include "../Assets/AssetUtils.h"
@@ -20,6 +19,8 @@
 
 namespace ShaderPatcher
 {
+	static bool CanBeStoredInCBuffer(const StringSection<char> type);
+
 	class TemplateItem
     {
     public:
@@ -142,7 +143,7 @@ namespace ShaderPatcher
     {
 		size_t fileSize = 0;
         auto buildInterpolatorsSource = ::Assets::TryLoadFileAsMemoryBlock("xleres/System/BuildInterpolators.h", &fileSize);
-        _systemHeader = ShaderSourceParser::BuildShaderFragmentSignature(
+        _systemHeader = ShaderSourceParser::ParseHLSL(
 			MakeStringSection(
 				(const char*)buildInterpolatorsSource.get(),
 				(const char*)PtrAdd(buildInterpolatorsSource.get(), fileSize)));
@@ -174,6 +175,14 @@ namespace ShaderPatcher
 
 		const PreviewOptions* _previewOptions;
     };
+
+	static bool IsStructType(StringSection<char> typeName)
+    {
+        // If it's not recognized as a built-in shader language type, then we
+        // need to assume this is a struct type. There is no typedef in HLSL, but
+        // it could be a #define -- but let's assume it isn't.
+        return RenderCore::ShaderLangTypeNameAsTypeDesc(typeName)._type == ImpliedTyping::TypeCat::Void;
+    }
 
     std::string ParameterGenerator::VaryingStructSignature(unsigned index) const
     {
@@ -471,6 +480,92 @@ namespace ShaderPatcher
 
         return result.str();
     }
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    static bool CanBeStoredInCBuffer(const StringSection<char> type)
+    {
+        // HLSL keywords are not case sensitive. We could assume that
+        // a type name that does not begin with one of the scalar type
+        // prefixes is a global resource (like a texture, etc). This
+        // should provide some flexibility with new DX12 types, and perhaps
+        // allow for manipulating custom "interface" types...?
+        //
+        // However, that isn't going to work well with struct types (which
+        // can be contained with cbuffers and be passed to functions like
+        // scalars)
+        //
+        // const char* scalarTypePrefixes[] =
+        // {
+        //     "bool", "int", "uint", "half", "float", "double"
+        // };
+        //
+        // Note that we only check the prefix -- to catch variations on
+        // texture and RWTexture (and <> arguments like Texture2D<float4>)
+
+        const char* resourceTypePrefixes[] =
+        {
+            "cbuffer", "tbuffer",
+            "StructuredBuffer", "Buffer", "ByteAddressBuffer", "AppendStructuredBuffer",
+            "RWBuffer", "RWByteAddressBuffer", "RWStructuredBuffer",
+
+            "sampler", // SamplerState, SamplerComparisonState
+            "RWTexture", // RWTexture1D, RWTexture1DArray, RWTexture2D, RWTexture2DArray, RWTexture3D
+            "texture", // Texture1D, Texture1DArray, Texture2D, Texture2DArray, Texture2DMS, Texture2DMSArray, Texture3D, TextureCube, TextureCubeArray
+
+            // special .fx file types:
+            // "BlendState", "DepthStencilState", "DepthStencilView", "RasterizerState", "RenderTargetView",
+        };
+        // note -- some really special function signature-only: InputPatch, OutputPatch, LineStream, TriangleStream, PointStream
+
+        for (unsigned c=0; c<dimof(resourceTypePrefixes); ++c)
+            if (XlBeginsWithI(type, MakeStringSection(resourceTypePrefixes[c])))
+                return false;
+        return true;
+    }
+
+	static std::string MakeGlobalName(const std::string& str)
+	{
+		auto i = str.find('.');
+		if (i != std::string::npos)
+			return str.substr(i+1);
+		return str;
+	}
+
+	std::string GenerateMaterialCBuffer(const NodeGraphSignature& interf)
+	{
+		std::stringstream result;
+
+		    //
+            //      We need to write the global parameters as part of the shader body.
+            //      Global resources (like textures) appear first. But we put all shader
+            //      constants together in a single cbuffer called "BasicMaterialConstants"
+            //
+        bool hasMaterialConstants = false;
+        for(auto i:interf.GetCapturedParameters()) {
+            if (!CanBeStoredInCBuffer(MakeStringSection(i._type))) {
+				auto name = MakeGlobalName(i._name);
+				// hack -- skip DiffuseTexture and NormalsTexture, because these are provided by the system headers
+				if (!XlEqString(name, "DiffuseTexture") && !XlEqString(name, "NormalsTexture"))
+					result << i._type << " " << name << ";" << std::endl;
+            } else
+                hasMaterialConstants = true;
+        }
+
+        if (hasMaterialConstants) {
+                // in XLE, the cbuffer name "BasicMaterialConstants" is reserved for this purpose.
+                // But it is not assigned to a fixed cbuffer register.
+            result << "cbuffer BasicMaterialConstants" << std::endl;
+            result << "{" << std::endl;
+            for (const auto& i:interf.GetCapturedParameters())
+                if (CanBeStoredInCBuffer(MakeStringSection(i._type)))
+                    result << "\t" << i._type << " " << MakeGlobalName(i._name) << ";" << std::endl;
+            result << "}" << std::endl;
+        }
+		result << std::endl;
+
+		return result.str();
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

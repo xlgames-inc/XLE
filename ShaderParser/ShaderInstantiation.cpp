@@ -147,7 +147,7 @@ namespace ShaderPatcher
 		const ShaderPatcher::InstantiationParameters& instantiationParameters)
 	{
 		return InstantiateShader(
-			ShaderPatcher::LoadGraph(entryFile, entryFn), true,
+			ShaderPatcher::LoadGraphSyntaxFile(entryFile, entryFn), true,
 			instantiationParameters);
 	}
 }

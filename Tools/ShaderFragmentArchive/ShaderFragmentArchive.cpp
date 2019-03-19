@@ -49,13 +49,13 @@ namespace ShaderFragmentArchive
         return stringBuilder.ToString();
     }
 
-    ParameterStruct::ParameterStruct(const ShaderPatcher::ParameterStructSignature& parameterStruct)
+    ParameterStruct::ParameterStruct(const ShaderPatcher::UniformBufferSignature& parameterStruct)
     {
         Parameters = gcnew List<Parameter^>();
 
         using namespace clix;
         for (auto i=parameterStruct._parameters.begin(); i!=parameterStruct._parameters.end(); ++i) {
-            Parameter^ p = gcnew Parameter("");
+            Parameter^ p = gcnew Parameter();
             p->Name = marshalString<E_UTF8>(i->_name);
             p->Type = marshalString<E_UTF8>(i->_type);
             p->Semantic = marshalString<E_UTF8>(i->_semantic);
@@ -167,14 +167,14 @@ namespace ShaderFragmentArchive
 
 				} else {
 
-					auto nativeSignature = ShaderSourceParser::BuildShaderFragmentSignature(srcCode);
+					auto nativeSignature = ShaderSourceParser::ParseHLSL(srcCode);
 
 					for (const auto& fn:nativeSignature._functions) {
 						Function^ function = gcnew Function(MakeStringSection(fn.first), fn.second);
 						Functions->Add(function);
 					}
 
-					for (const auto& ps:nativeSignature._parameterStructs) {
+					for (const auto& ps:nativeSignature._uniformBuffers) {
 						ParameterStruct^ pstruct = gcnew ParameterStruct(ps);
 						ParameterStructs->Add(pstruct);
 					}
@@ -198,70 +198,6 @@ namespace ShaderFragmentArchive
         delete Name;
         delete ExceptionString;
         _fileChangeCallback.reset();
-    }
-
-    Parameter::Parameter(System::String^ archiveName)
-    {
-        using namespace clix;
-        ArchiveName = archiveName;
-
-        if (archiveName != nullptr && archiveName->Length > 0) {
-            using namespace clix;
-            std::string nativeString;
-            try
-            {
-
-                auto contents = System::IO::File::ReadAllText(archiveName);
-                nativeString = marshalString<E_UTF8>(contents);
-
-            } catch (System::IO::IOException^) {
-
-                    //      Hit an exception! Most likely, the file just doesn't
-                    //      exist.
-                ExceptionString = "Failed while opening file";
-
-            }
-
-            try 
-            {
-
-                auto nativeParameter = ShaderSourceParser::LoadSignature(nativeString.c_str(), nativeString.size());
-
-                Name        = marshalString<E_UTF8>(nativeParameter._name);
-                Description = marshalString<E_UTF8>(nativeParameter._description);
-                Min         = marshalString<E_UTF8>(nativeParameter._min);
-                Max         = marshalString<E_UTF8>(nativeParameter._max);
-                Type        = marshalString<E_UTF8>(nativeParameter._type);
-                TypeExtra   = marshalString<E_UTF8>(nativeParameter._typeExtra);
-                Semantic    = marshalString<E_UTF8>(nativeParameter._semantic);
-                Default     = marshalString<E_UTF8>(nativeParameter._default);
-                if (nativeParameter._source == ShaderSourceParser::ParameterSignature::Source::System) {
-                    Source      = SourceType::System;
-                } else {
-                    Source      = SourceType::Material;
-                }
-
-            } catch (const ShaderSourceParser::Exceptions::ParsingFailure&) {
-
-                ExceptionString = "Failure in parser. Check text file format";
-
-            }
-        }
-    }
-
-    void Parameter::DeepCopyFrom(Parameter^ otherParameter)
-    {
-        ArchiveName = gcnew System::String(otherParameter->ArchiveName);
-        Name = gcnew System::String(otherParameter->Name);
-        Description = gcnew System::String(otherParameter->Description);
-        Min = gcnew System::String(otherParameter->Min);
-        Max = gcnew System::String(otherParameter->Max);
-        Type = gcnew System::String(otherParameter->Type);
-        TypeExtra = gcnew System::String(otherParameter->TypeExtra);
-        Source = otherParameter->Source;
-        ExceptionString = gcnew System::String(otherParameter->ExceptionString);
-        Semantic = gcnew System::String(otherParameter->Semantic);
-        Default = gcnew System::String(otherParameter->Default);
     }
 
     ShaderFragment^   Archive::GetFragment(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
@@ -322,7 +258,7 @@ namespace ShaderFragmentArchive
         return nullptr;
     }
 
-    ParameterStruct^  Archive::GetParameterStruct(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
+    ParameterStruct^  Archive::GetUniformBuffer(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
     {
         System::Threading::Monitor::Enter(_dictionary);
         try
@@ -344,66 +280,6 @@ namespace ShaderFragmentArchive
                     return p;
                 }
             }
-
-        } finally {
-            System::Threading::Monitor::Exit(_dictionary);
-        }
-
-        return nullptr;
-    }
-
-    Parameter^ Archive::GetParameter(System::String^ name, GUILayer::DirectorySearchRules^ searchRules)
-    {
-        System::Threading::Monitor::Enter(_dictionary);
-        try
-        {
-                // <archiveName>:<struct/fn name>:<parameter name>
-            auto colonIndex = name->IndexOf(":");
-            System::String ^fileName = nullptr, ^parameterStructName = nullptr, ^parameterName = nullptr;
-            if (colonIndex != -1) {
-                fileName = name->Substring(0, colonIndex);
-                    
-                auto secondColonIndex = name->IndexOf(":", colonIndex+1);
-                if (secondColonIndex != -1) {
-                    parameterStructName = name->Substring(colonIndex+1, secondColonIndex-colonIndex-1);
-                    parameterName = name->Substring(secondColonIndex+1);
-                } else {
-                    parameterName = name->Substring(colonIndex);
-                }
-            } else {
-                return nullptr;
-            }
-
-            ShaderFragment^ str = GetFragment(fileName, searchRules);
-            for each(ParameterStruct^ ps in str->ParameterStructs) {
-                if (ps->Name == parameterStructName) {
-                    for each (Parameter^ p in ps->Parameters) {
-                        if (p->Name == parameterName) {
-                            return p;
-                        }
-                    }
-                }
-            }
-
-                // also try function parameters...?
-
-            for each(Function^ fn in str->Functions) {
-                if (fn->Name == parameterStructName) {
-                    for each(auto p in fn->Signature->Parameters) {
-						if (p->Direction != ShaderPatcherLayer::NodeGraphSignature::ParameterDirection::In) continue;
-                        if (p->Name == parameterName) {
-                            Parameter^ result = gcnew Parameter("");
-                            result->Name = p->Name;
-                            result->Type = p->Type;
-                            result->Source = Parameter::SourceType::Material;
-                            result->Semantic = p->Semantic;
-                            return result;
-                        }
-                    }
-                }
-            }
-
-            return nullptr;
 
         } finally {
             System::Threading::Monitor::Exit(_dictionary);

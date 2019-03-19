@@ -58,7 +58,7 @@ namespace ShaderPatcher
 		std::string _implements;
     };
 
-    class ParameterStructSignature
+    class UniformBufferSignature
     {
     public:
         class Parameter
@@ -76,8 +76,8 @@ namespace ShaderPatcher
     class ShaderFragmentSignature
     {
     public:
-        std::vector<std::pair<std::string, NodeGraphSignature>>	_functions;
-        std::vector<ParameterStructSignature>					_parameterStructs;
+        std::vector<std::pair<std::string, NodeGraphSignature>>		_functions;
+        std::vector<UniformBufferSignature>							_uniformBuffers;
     };
 
 	
@@ -86,6 +86,6 @@ namespace ShaderPatcher
 
 namespace ShaderSourceParser
 {
-    ShaderPatcher::ShaderFragmentSignature     BuildShaderFragmentSignature(StringSection<char> sourceCode);
+    ShaderPatcher::ShaderFragmentSignature     ParseHLSL(StringSection<char> sourceCode);
 }
 

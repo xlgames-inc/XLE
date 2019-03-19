@@ -15,7 +15,7 @@ using namespace System::Collections::Generic;
 using namespace System::ComponentModel;
 using namespace System::ComponentModel::Composition;
 
-namespace ShaderPatcher { class NodeGraphSignature; class ParameterStructSignature; }
+namespace ShaderPatcher { class NodeGraphSignature; class UniformBufferSignature; }
 namespace Utility { class OnChangeCallback; }
 
 namespace ShaderFragmentArchive 
@@ -39,24 +39,13 @@ namespace ShaderFragmentArchive
     public:
         enum class SourceType { Material, System, Output, Constant };
         
-        [CategoryAttribute("Name")]     property System::String^        Name;
-        [CategoryAttribute("Name")]     property System::String^        Description;
+        property System::String^        Name;
 
-        [CategoryAttribute("System")]   property SourceType     Source;
-        [CategoryAttribute("System")]   property System::String^        Default;
-        [CategoryAttribute("System"),
-         ReadOnlyAttribute(true)]       property System::String^        ArchiveName;
+        property SourceType				Source;
+        property System::String^        Default;
 
-        [CategoryAttribute("Type")]     property System::String^        Type;
-        [CategoryAttribute("Type")]     property System::String^        TypeExtra;
-        [CategoryAttribute("Type")]     property System::String^        Semantic;
-        [CategoryAttribute("Type")]     property System::String^        Min;
-        [CategoryAttribute("Type")]     property System::String^        Max;
-        
-        [ReadOnlyAttribute(true)]       property System::String^        ExceptionString;
-        
-        Parameter(System::String^ archiveName);
-        void DeepCopyFrom(Parameter^ otherParameter);
+        property System::String^        Type;
+        property System::String^        Semantic;
     };
 
         ///////////////////////////////////////////////////////////////
@@ -66,7 +55,7 @@ namespace ShaderFragmentArchive
         property System::String^		Name;
         property List<Parameter^>^      Parameters;
 
-        ParameterStruct(const ShaderPatcher::ParameterStructSignature& parameterStruct);
+        ParameterStruct(const ShaderPatcher::UniformBufferSignature& parameterStruct);
         ~ParameterStruct();
         System::String^ BuildBodyString();
     };
@@ -99,8 +88,7 @@ namespace ShaderFragmentArchive
     public: 
         ShaderFragment^      GetFragment(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
         Function^            GetFunction(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
-        ParameterStruct^     GetParameterStruct(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
-        Parameter^           GetParameter(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
+        ParameterStruct^     GetUniformBuffer(System::String^ name, GUILayer::DirectorySearchRules^ searchRules);
 
         Archive();
     private:

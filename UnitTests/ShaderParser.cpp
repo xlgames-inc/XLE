@@ -40,7 +40,7 @@ namespace UnitTests
                     XlEqString(MakeStringSection((const char*)memBlock.get(), (const char*)&memBlock[XlStringLen(flgId)]), flgId))
                     continue;
 
-                auto signature = ShaderSourceParser::BuildShaderFragmentSignature(
+                auto signature = ShaderSourceParser::ParseHLSL(
                     MakeStringSection((const char*)memBlock.get(), (const char*)PtrAdd(memBlock.get(), blockSize)));
 
                 (void)signature;

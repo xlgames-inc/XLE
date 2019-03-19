@@ -33,7 +33,7 @@ namespace ShaderPatcher
 	{
 	public:
 		auto GetFunction(StringSection<char> fnName) const -> const NodeGraphSignature*;
-		auto GetParameterStruct(StringSection<char> structName) const -> const ParameterStructSignature*;
+		auto GetUniformBuffer(StringSection<char> structName) const -> const UniformBufferSignature*;
 
 		const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 		ShaderFragment(StringSection<::Assets::ResChar> fn);
@@ -55,12 +55,12 @@ namespace ShaderPatcher
 		return nullptr;
 	}
 
-	auto ShaderFragment::GetParameterStruct(StringSection<char> structName) const -> const ParameterStructSignature*
+	auto ShaderFragment::GetUniformBuffer(StringSection<char> structName) const -> const UniformBufferSignature*
 	{
 		auto i = std::find_if(
-			_sig._parameterStructs.cbegin(), _sig._parameterStructs.cend(),
-            [structName](const ParameterStructSignature& signature) { return XlEqString(MakeStringSection(signature._name), structName); });
-        if (i!=_sig._parameterStructs.cend())
+			_sig._uniformBuffers.cbegin(), _sig._uniformBuffers.cend(),
+            [structName](const UniformBufferSignature& signature) { return XlEqString(MakeStringSection(signature._name), structName); });
+        if (i!=_sig._uniformBuffers.cend())
 			return AsPointer(i);
 		return nullptr;
 	}
@@ -74,7 +74,7 @@ namespace ShaderPatcher
 				_sig._functions.emplace_back(std::make_pair(subGraph.first, std::move(subGraph.second._signature)));
 			_isGraphSyntaxFile = true;
 		} else {
-			_sig = ShaderSourceParser::BuildShaderFragmentSignature(MakeStringSection(shaderFile));
+			_sig = ShaderSourceParser::ParseHLSL(MakeStringSection(shaderFile));
 		}
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, fn);
@@ -125,7 +125,7 @@ namespace ShaderPatcher
 	auto BasicNodeGraphProvider::FindGraph(StringSection<> name) -> std::optional<NodeGraph>
 	{
 		auto splitName = SplitArchiveName(name);
-		return LoadGraph(std::get<0>(splitName), std::get<1>(splitName));
+		return LoadGraphSyntaxFile(std::get<0>(splitName), std::get<1>(splitName));
 	}
 
     BasicNodeGraphProvider::BasicNodeGraphProvider(const ::Assets::DirectorySearchRules& searchRules)

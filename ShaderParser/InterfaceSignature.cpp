@@ -45,7 +45,7 @@ namespace ShaderSourceParser
 		std::vector<std::pair<uint64_t, StringId>> _stringTableToId;
 		std::vector<std::string> _stringTable;
 		std::vector<ShaderPatcher::NodeGraphSignature::Parameter> _parameterTable;
-		std::vector<ShaderPatcher::ParameterStructSignature::Parameter> _variableTable;
+		std::vector<ShaderPatcher::UniformBufferSignature::Parameter> _variableTable;
 
 		std::string GetString(StringId id) const { return id != ~0u ? _stringTable[id] : std::string(); }
 	};
@@ -60,7 +60,7 @@ namespace ShaderSourceParser
 		return result;
     }
 
-    ShaderPatcher::ShaderFragmentSignature BuildShaderFragmentSignature(StringSection<char> sourceCode)
+    ShaderPatcher::ShaderFragmentSignature ParseHLSL(StringSection<char> sourceCode)
     {
 		using namespace ShaderSourceParser::AntlrHelper;		
         AntlrPtr<struct ANTLR3_INPUT_STREAM_struct>	inputStream = antlr3StringStreamNew(
@@ -139,7 +139,7 @@ extern "C" VariableId Variable_Register(const void* ctx, StringId name, StringId
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
 	auto result = (StringId)w->_variableTable.size();
 	w->_variableTable.push_back(
-		ShaderPatcher::ParameterStructSignature::Parameter{ 
+		ShaderPatcher::UniformBufferSignature::Parameter{ 
 			w->GetString(name), 
 			w->GetString(type), 
 			w->GetString(semantic) });
@@ -167,10 +167,10 @@ extern "C" FunctionId Function_Register(const void* ctx, struct SSPFunction* fun
 extern "C" ParameterStructId ParameterStruct_Register(const void* ctx, struct SSPParameterStruct* paramStruct)
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
-	ShaderPatcher::ParameterStructSignature result;
+	ShaderPatcher::UniformBufferSignature result;
 	result._name = w->GetString(paramStruct->_name);
 	for (unsigned p=paramStruct->_firstParameter; p<=paramStruct->_lastParameter; ++p)
 		result._parameters.push_back(w->_variableTable[p]);
-	w->_signature._parameterStructs.emplace_back(std::move(result));
-	return (ParameterStructId)(w->_signature._parameterStructs.size()-1);
+	w->_signature._uniformBuffers.emplace_back(std::move(result));
+	return (ParameterStructId)(w->_signature._uniformBuffers.size()-1);
 }

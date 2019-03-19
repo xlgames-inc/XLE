@@ -26,7 +26,7 @@ using namespace System::Runtime::Serialization;
 
 namespace ShaderPatcher
 {
-	INodeGraphProvider::NodeGraph LoadGraph(StringSection<> filename, StringSection<> entryPoint);
+	INodeGraphProvider::NodeGraph LoadGraphSyntaxFile(StringSection<> filename, StringSection<> entryPoint);
 }
 
 namespace ShaderPatcherLayer 

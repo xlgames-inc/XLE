@@ -11,7 +11,7 @@
 
 namespace ShaderSourceParser
 {
-    ParameterSignature  LoadSignature(const char sourceCode[], size_t sourceCodeLength)
+    UniformBufferSignature  LoadSignature(const char sourceCode[], size_t sourceCodeLength)
     {
         Data data;
         bool loadResult = data.Load(sourceCode, (int)sourceCodeLength);
@@ -20,7 +20,7 @@ namespace ShaderSourceParser
             throw Exceptions::ParsingFailure(MakeIteratorRange(errors));
         }
 
-        ParameterSignature result;
+        UniformBufferSignature result;
         result._name                = data.StrAttribute("Name");
         result._description         = data.StrAttribute("Description");
         result._min                 = data.StrAttribute("Min");
@@ -30,15 +30,15 @@ namespace ShaderSourceParser
         result._semantic            = data.StrAttribute("Semantic");
         result._default             = data.StrAttribute("Default");
 
-        result._source = ParameterSignature::Source::Material;
+        result._source = UniformBufferSignature::Source::Material;
         auto source = data.StrAttribute("Source");
         if (source && !XlCompareStringI(source, "System")) {
-            result._source = ParameterSignature::Source::System;
+            result._source = UniformBufferSignature::Source::System;
         }
         return result;
     }
 
-    std::string         StoreSignature(const ParameterSignature& signature)
+    std::string         StoreSignature(const UniformBufferSignature& signature)
     {
         Data data;
         data.SetAttribute("Name",               signature._name.c_str());
@@ -50,7 +50,7 @@ namespace ShaderSourceParser
         data.SetAttribute("Semantic",           signature._semantic.c_str());
         data.SetAttribute("Default",            signature._default.c_str());
 
-        if (signature._source == ParameterSignature::Source::System) {
+        if (signature._source == UniformBufferSignature::Source::System) {
             data.SetAttribute("Source", "System");
         } else {
             data.SetAttribute("Source", "Material");

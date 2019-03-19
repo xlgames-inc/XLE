@@ -5,7 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PreviewRenderManager.h"
-#include "TypeRules.h"
 #include "ShaderGenerator.h"
 
 #include "../ShaderParser/GraphSyntax.h"
