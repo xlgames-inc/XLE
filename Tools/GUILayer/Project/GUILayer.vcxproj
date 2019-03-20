@@ -169,10 +169,13 @@
     <ClCompile Include="..\ManipulatorUtils.cpp" />
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
+    <ClCompile Include="..\NodeGraph.cpp" />
+    <ClCompile Include="..\ShaderGenerator.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp" />
     <ClCompile Include="..\TerrainLayer.cpp" />
     <ClCompile Include="..\TweakableBridge.cpp" />
+    <ClCompile Include="..\TypeRules.cpp" />
     <ClCompile Include="..\UITypesBinding.cpp" />
     <ClCompile Include="..\VisLayerController.cpp" />
     <ClCompile Include="..\WindowRig.cpp" />
@@ -197,7 +200,10 @@
     <ClInclude Include="..\MarshalString.h" />
     <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\NativeManipulators.h" />
+    <ClInclude Include="..\NodeGraph.h" />
+    <ClInclude Include="..\ShaderGenerator.h" />
     <ClInclude Include="..\TerrainLayer.h" />
+    <ClInclude Include="..\TypeRules.h" />
     <ClInclude Include="..\UITypesBinding.h" />
     <ClInclude Include="..\MathLayer.h" />
     <ClInclude Include="..\VisLayerController.h" />
@@ -209,6 +215,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.Data" />
     <Reference Include="System.Drawing" />
+    <Reference Include="System.Runtime.Serialization" />
     <Reference Include="System.Windows.Forms" />
     <Reference Include="System.Xml" />
   </ItemGroup>
@@ -254,6 +261,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\ShaderParser\Project\ShaderParser.vcxproj">
+      <Project>{d7818769-51d6-7fe8-161b-71f0f96a076f}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\Utility\Project\Utility.vcxproj">
       <Project>{6b8011c1-2d1f-1ebb-b0ef-377b2e8e87ae}</Project>

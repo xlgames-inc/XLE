@@ -22,6 +22,7 @@ namespace SceneEngine
 
 namespace ConsoleRig { class IProgress; }
 namespace Assets { class DirectorySearchRules; }
+namespace ToolsRig { class MessageRelay; }
 
 namespace GUILayer
 {
@@ -57,6 +58,23 @@ namespace GUILayer
         TechniqueDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::ITechniqueDelegate>& techniqueDelegate);
 		TechniqueDelegateWrapper(RenderCore::Techniques::ITechniqueDelegate* techniqueDelegate);
         ~TechniqueDelegateWrapper();
+	};
+
+	public ref class MessageRelayWrapper
+	{
+	public:
+		property System::String^ Messages { System::String^ get(); };
+
+		delegate void OnChangeEventHandler(System::Object^ sender, System::EventArgs^ args);
+		property OnChangeEventHandler^ OnChangeEvent;
+
+		clix::shared_ptr<ToolsRig::MessageRelay> _native;
+		unsigned _callbackId;
+
+		MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate);
+		MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate);
+		MessageRelayWrapper();
+        ~MessageRelayWrapper();
 	};
 
 	public ref class IntersectionTestSceneWrapper

@@ -5,9 +5,6 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PreviewRenderManager.h"
-#include "ShaderGenerator.h"
-
-#include "../ShaderParser/GraphSyntax.h"
 
 #include "../GUILayer/MarshalString.h"
 #include "../GUILayer/NativeEngineDevice.h"
@@ -44,8 +41,6 @@
 #include <memory>
 #include <sstream>
 
-#pragma warning(disable:4505) // 'ShaderPatcherLayer::CreatePreviewMaterial': unreferenced local function has been removed
-
 using namespace System::ComponentModel::Composition;
 
 namespace ShaderPatcherLayer
@@ -57,7 +52,6 @@ namespace ShaderPatcherLayer
     public:
         std::shared_ptr<RenderCore::Techniques::TechniqueContext> _globalTechniqueContext;
         std::shared_ptr<RenderCore::IDevice> _device;
-        std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
     };
 
     [Export(IPreviewBuilder::typeid)]
@@ -67,20 +61,10 @@ namespace ShaderPatcherLayer
     {
     public:
 		virtual System::Drawing::Bitmap^ BuildPreviewImage(
-            NodeGraphMetaData^ doc, 
-			NodeGraphPreviewConfiguration^ previewConfig,
-			System::Drawing::Size^ size, 
-            PreviewGeometry geometry, 
-			unsigned targetToVisualize);
-
-		virtual GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphMetaData^ doc, 
-			NodeGraphPreviewConfiguration^ nodeGraphFile);
-
-		virtual GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphFile^ nodeGraph,
-			String^ subGraphName,
-			MessageRelayWrapper^ logMessages);
+            GUILayer::MaterialVisSettings^ visSettings,
+			String^ materialNames,
+			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+			System::Drawing::Size^ size);
 
         Manager();
     private:
@@ -92,14 +76,14 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static std::shared_ptr<RenderCore::Techniques::Material> CreatePreviewMaterial(ShaderPatcherLayer::NodeGraphMetaData^ doc, const ::Assets::DirectorySearchRules& searchRules)
+	static std::shared_ptr<RenderCore::Techniques::Material> CreatePreviewMaterial(String^ materialNames, const ::Assets::DirectorySearchRules& searchRules)
 	{
 		auto result = std::make_shared<RenderCore::Techniques::Material>();
 
         // Our default material settings come from the "Document" object. This
         // give us our starting material and shader properties.
-        if (doc != nullptr && !String::IsNullOrEmpty(doc->DefaultsMaterial)) {
-            auto split = doc->DefaultsMaterial->Split(';');
+        if (!String::IsNullOrEmpty(materialNames)) {
+            auto split = materialNames->Split(';');
 			std::vector<::Assets::DependentFileState> finalMatDeps;
             for each(auto s in split) {
                 auto nativeName = clix::marshalString<clix::E_UTF8>(s);
@@ -112,119 +96,23 @@ namespace ShaderPatcherLayer
         }
         result->_matParams.SetParameter(u("SHADER_NODE_EDITOR"), MakeStringSection("1"));
 
-        for each(auto i in doc->ShaderParameters)
+        /*
+		for each(auto i in doc->ShaderParameters)
             result->_matParams.SetParameter(
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(i.Key)).Cast<utf8>(),
                 MakeStringSection(clix::marshalString<clix::E_UTF8>(i.Value)));
+		*/
 
 		return result;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static RenderCore::CompiledShaderByteCode MakeCompiledShaderByteCode(
-		RenderCore::ShaderService::IShaderSource& shaderSource,
-		StringSection<> sourceCode, StringSection<> definesTable,
-		RenderCore::ShaderStage stage)
-	{
-		const char* entryPoint = nullptr, *shaderModel = nullptr;
-		switch (stage) {
-		case RenderCore::ShaderStage::Vertex:
-			entryPoint = "vs_main"; shaderModel = VS_DefShaderModel;
-			break;
-		case RenderCore::ShaderStage::Pixel:
-			entryPoint = "ps_main"; shaderModel = PS_DefShaderModel;
-			break;
-		default:
-			break;
-		}
-		if (!entryPoint || !shaderModel) return {};
-
-		auto future = shaderSource.CompileFromMemory(sourceCode, entryPoint, shaderModel, definesTable);
-		auto state = future->GetAssetState();
-		auto artifacts = future->GetArtifacts();
-		if (state == ::Assets::AssetState::Invalid || artifacts.empty()) {
-			// try to find an artifact named "log". If it doesn't exist, just drop back to the first one
-			::Assets::IArtifact* logArtifact = nullptr;
-			for (const auto& e:artifacts)
-				if (e.first == "log") {
-					logArtifact = e.second.get();
-					break;
-				}
-			if (!logArtifact && !artifacts.empty())
-				logArtifact = artifacts[0].second.get();
-			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob()));
-		}
-
-		return RenderCore::CompiledShaderByteCode{
-			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};
-	}
-
-	class TechniqueDelegate : public RenderCore::Techniques::ITechniqueDelegate
-	{
-	public:
-		virtual RenderCore::Metal::ShaderProgram* GetShader(
-			RenderCore::Techniques::ParsingContext& context,
-			StringSection<::Assets::ResChar> techniqueCfgFile,
-			const ParameterBox* shaderSelectors[],
-			unsigned techniqueIndex)
-		{
-			auto previewShader = _config->_nodeGraph->GeneratePreviewShader(
-				_config->_subGraphName,
-				_config->_previewNodeId,
-				_config->_settings,
-				_config->_variableRestrictions);
-
-			auto shaderCode = clix::marshalString<clix::E_UTF8>(previewShader->Item1);
-			std::string definesTable;
-
-			{
-				std::vector<std::pair<const utf8*, std::string>> defines;
-				for (unsigned c=0; c<RenderCore::Techniques::ShaderSelectors::Source::Max; ++c)
-					BuildStringTable(defines, *shaderSelectors[c]);
-				std::stringstream str;
-				for (auto&d:defines) {
-					str << d.first;
-					if (!d.second.empty())
-						str << "=" << d.second;
-					str << ";";
-				}
-				if (_pretransformedFlag) str << "GEO_PRETRANSFORMED=1;";
-				definesTable = str.str();
-			}
-
-			auto vsCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Vertex);
-			auto psCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Pixel);
-			if (vsCode.GetStage() != RenderCore::ShaderStage::Vertex || psCode.GetStage() != RenderCore::ShaderStage::Pixel) return nullptr;
-
-			static RenderCore::Metal::ShaderProgram result;
-			result = RenderCore::Metal::ShaderProgram { RenderCore::Metal::GetObjectFactory(), vsCode, psCode };
-			return &result;
-		}
-
-		TechniqueDelegate(
-			const std::shared_ptr<RenderCore::ShaderService::IShaderSource>& shaderSource, 
-			NodeGraphPreviewConfiguration^ config,
-			bool pretransformedFlag)
-		: _shaderSource(shaderSource)
-		, _config(config)
-		, _pretransformedFlag(pretransformedFlag)
-		{}
-				
-	private:
-		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-		gcroot<NodeGraphPreviewConfiguration^> _config;
-		bool _pretransformedFlag;
-	};
-	
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
 	System::Drawing::Bitmap^ Manager::BuildPreviewImage(
-        NodeGraphMetaData^ doc, 
-		NodeGraphPreviewConfiguration^ previewConfig,
-		System::Drawing::Size^ size, 
-        PreviewGeometry geometry, 
-		unsigned targetToVisualize)
+		GUILayer::MaterialVisSettings^ visSettings,
+		String^ materialNames,
+		GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+		System::Drawing::Size^ size)
     {
         using namespace RenderCore;
 
@@ -255,44 +143,40 @@ namespace ShaderPatcherLayer
         camSettings._position = Float3(-1.42f, 0, 0);  // note that the position of the camera affects the apparent color of normals when previewing world space normals
 		camSettings._verticalFieldOfView = 90.f;
 
-		bool pretransformed = false;
-
         // Select the geometry type to use.
         // In the "chart" mode, we are just going to run a pixel shader for every
         // output pixel, so we want to use a pretransformed quad covering the viewport
 		::Assets::FuturePtr<SceneEngine::IScene> sceneFuture;
 
-		if (geometry != PreviewGeometry::Model) {
-			ToolsRig::MaterialVisSettings visSettings;
+		auto geometry = visSettings->Geometry;
+		if (geometry != GUILayer::MaterialVisSettings::Geometry::Model) {
+			ToolsRig::MaterialVisSettings nativeVisSettings;
 			switch (geometry) {
-			case PreviewGeometry::Plane2D:
-			case PreviewGeometry::Chart:
-				visSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
-				pretransformed = true;
+			case GUILayer::MaterialVisSettings::Geometry::Plane2D:
+			case GUILayer::MaterialVisSettings::Geometry::Chart:
+				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
 				break;
 
-			case PreviewGeometry::Box:
-				visSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
+			case GUILayer::MaterialVisSettings::Geometry::Box:
+				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
 				camSettings._position = Float3(-2.1f, 0, 0);
 				break;
 
 			default:
-			case PreviewGeometry::Sphere:
-				visSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
+			case GUILayer::MaterialVisSettings::Geometry::Sphere:
+				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
 				break;
 			}
 
-			auto material = CreatePreviewMaterial(doc, ::Assets::DirectorySearchRules{});
-			sceneFuture = ToolsRig::MakeScene(visSettings, material);
+			auto material = CreatePreviewMaterial(materialNames, ::Assets::DirectorySearchRules{});
+			sceneFuture = ToolsRig::MakeScene(nativeVisSettings, material);
 		} else {
 			ToolsRig::ModelVisSettings visSettings;
-			visSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-			visSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			// visSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			// visSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
 			sceneFuture = ToolsRig::MakeScene(visSettings);
 		}
 
-		// visSettings->_searchRules = ::Assets::DefaultDirectorySearchRules(MakeStringSection(visSettings->_previewModelFile));
-		
 		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
 		if (!actualScene) {
 			auto errorLog = ToolsRig::GetActualizationError(*sceneFuture);
@@ -308,7 +192,8 @@ namespace ShaderPatcherLayer
 		// envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
 
 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
-		parserContext.SetTechniqueDelegate(std::make_shared<TechniqueDelegate>(_pimpl->_shaderSource, previewConfig, pretransformed));
+		parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());
+
 		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 		// to the lighting parser.
         auto result = DrawPreview(
@@ -354,23 +239,6 @@ namespace ShaderPatcherLayer
         return nullptr;
     }
 
-	GUILayer::TechniqueDelegateWrapper^ Manager::MakeTechniqueDelegate(
-		NodeGraphMetaData^ doc, 
-		NodeGraphPreviewConfiguration^ nodeGraphFile)
-	{
-		bool pretransformed = false;
-		return gcnew GUILayer::TechniqueDelegateWrapper(new TechniqueDelegate(_pimpl->_shaderSource, nodeGraphFile, pretransformed));
-	}
-
-	GUILayer::TechniqueDelegateWrapper^ Manager::MakeTechniqueDelegate(
-		NodeGraphFile^ nodeGraph,
-		String^ subGraphName,
-		MessageRelayWrapper^ logMessages)
-	{
-		auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
-		return gcnew GUILayer::TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
-	}
-
 	System::Drawing::Bitmap^    Manager::GenerateErrorBitmap(const char str[], Size^ size)
     {
             //      Previously, we got an error while rendering this item.
@@ -397,56 +265,12 @@ namespace ShaderPatcherLayer
         _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
         
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
-        _pimpl->_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
-            RenderCore::Metal::CreateLowLevelShaderCompiler(*_pimpl->_device));
     }
 
     Manager::~Manager()
     {
-        _pimpl->_shaderSource.reset();
-        _pimpl->_globalTechniqueContext.reset();
+		_pimpl.reset();
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class MessageRelayWrapper_Helper : public Utility::OnChangeCallback
-	{
-	public:
-		virtual void    OnChange()
-		{
-			if (_managed.get() && _managed->OnChangeEvent)
-				_managed->OnChangeEvent(_managed.get(), nullptr);
-		}
-
-		msclr::auto_gcroot<MessageRelayWrapper^> _managed;
-		MessageRelayWrapper_Helper(MessageRelayWrapper^ managed) : _managed(managed) {}
-	};
-
-	System::String^ MessageRelayWrapper::Messages::get()
-	{
-		auto nativeMsgs = _native->GetMessages();
-		return clix::marshalString<clix::E_UTF8>(nativeMsgs);
-	}
-
-	MessageRelayWrapper::MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate)
-	{
-		_native = techniqueDelegate;
-		_callbackId = _native->AddCallback(
-			std::shared_ptr<Utility::OnChangeCallback>(new MessageRelayWrapper_Helper(this)));
-	}
-
-	MessageRelayWrapper::MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate)
-	: MessageRelayWrapper(std::shared_ptr<ToolsRig::MessageRelay>(techniqueDelegate))
-	{
-	}
-
-	MessageRelayWrapper::MessageRelayWrapper()
-	: MessageRelayWrapper(std::make_shared<ToolsRig::MessageRelay>())
-	{}
-
-    MessageRelayWrapper::~MessageRelayWrapper()
-	{
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

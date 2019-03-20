@@ -57,6 +57,15 @@
     <ClCompile Include="..\VisLayerController.cpp">
       <Filter>Vis</Filter>
     </ClCompile>
+    <ClCompile Include="..\TypeRules.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\ShaderGenerator.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
+    <ClCompile Include="..\NodeGraph.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -121,6 +130,15 @@
     <ClInclude Include="..\VisLayerController.h">
       <Filter>Vis</Filter>
     </ClInclude>
+    <ClInclude Include="..\TypeRules.h">
+      <Filter>GraphLanguage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\ShaderGenerator.h">
+      <Filter>GraphLanguage</Filter>
+    </ClInclude>
+    <ClInclude Include="..\NodeGraph.h">
+      <Filter>GraphLanguage</Filter>
+    </ClInclude>
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">
@@ -137,6 +155,9 @@
     </Filter>
     <Filter Include="IterativeSystem">
       <UniqueIdentifier>{0211ba0a-2698-4e77-bf68-bfda5c419e32}</UniqueIdentifier>
+    </Filter>
+    <Filter Include="GraphLanguage">
+      <UniqueIdentifier>{16f7c3c6-e130-422e-8d21-27afe0d6a8a4}</UniqueIdentifier>
     </Filter>
   </ItemGroup>
   <ItemGroup>

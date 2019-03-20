@@ -6,18 +6,14 @@
     </Filter>
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="../TypeRules.h" />
     <ClInclude Include="../PreviewRenderManager.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />
-    <ClInclude Include="../ShaderGenerator.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../AssemblyInfo.cpp">
       <Filter>System</Filter>
     </ClCompile>
     <ClCompile Include="../PreviewRenderManager.cpp" />
-    <ClCompile Include="../TypeRules.cpp" />
     <ClCompile Include="../ShaderFragmentArchive.cpp" />
-    <ClCompile Include="../ShaderGenerator.cpp" />
   </ItemGroup>
 </Project>

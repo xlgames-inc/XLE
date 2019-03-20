@@ -109,15 +109,11 @@
   <ItemGroup>
     <ClInclude Include="../PreviewRenderManager.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />
-    <ClInclude Include="../ShaderGenerator.h" />
-    <ClInclude Include="../TypeRules.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../AssemblyInfo.cpp" />
     <ClCompile Include="../PreviewRenderManager.cpp" />
     <ClCompile Include="../ShaderFragmentArchive.cpp" />
-    <ClCompile Include="../ShaderGenerator.cpp" />
-    <ClCompile Include="../TypeRules.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\..\Assets\Project\Assets.vcxproj">

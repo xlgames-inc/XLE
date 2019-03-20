@@ -227,14 +227,6 @@ namespace NodeEditorCore
 
                 if (_cachedBitmap == null)
                 {
-                        // note -- much of this work doesn't really need to be repeated for each node.
-                    var prevSettings = PreviewSettings;
-
-                    uint target = 0;
-                    if (prevSettings.OutputToVisualize.StartsWith("SV_Target"))
-                        if (!uint.TryParse(prevSettings.OutputToVisualize.Substring(9), out target))
-                            target = 0;
-
                     _cachedBitmap = _previewManager.BuildPreviewImage(
                         editingContext.Document.GraphMetaData,
                         new ShaderPatcherLayer.NodeGraphPreviewConfiguration
@@ -242,10 +234,10 @@ namespace NodeEditorCore
                             _nodeGraph = editingContext.Document.NodeGraphFile,
                             _subGraphName = Node.SubGraphTag as string,
                             _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
-                            _settings = prevSettings,
+                            _settings = PreviewSettings,
                             _variableRestrictions = editingContext.Document.GraphMetaData.Variables
                         },
-                        idealSize, Geometry, target);
+                        idealSize, Geometry);
                     _shaderStructureHash = currentHash;
                 }
 

@@ -6,56 +6,21 @@
 
 #pragma once
 
-#include "ShaderGenerator.h"
-#include "../GUILayer/CLIXAutoPtr.h"
-#include <memory>
-
 using System::Collections::Generic::Dictionary;
 using System::String;
 using System::Object;
 using namespace System::Runtime::Serialization;
 
-namespace ToolsRig { class MessageRelay; }
-
 namespace ShaderPatcherLayer
 {
-	ref class NodeGraphPreviewConfiguration;
-    
-	public ref class MessageRelayWrapper
-	{
-	public:
-		property System::String^ Messages { System::String^ get(); };
-
-		delegate void OnChangeEventHandler(System::Object^ sender, System::EventArgs^ args);
-		property OnChangeEventHandler^ OnChangeEvent;
-
-		clix::shared_ptr<ToolsRig::MessageRelay> _native;
-		unsigned _callbackId;
-
-		MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate);
-		MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate);
-		MessageRelayWrapper();
-        ~MessageRelayWrapper();
-	};
-
     public interface class IPreviewBuilder
     {
 	public:
 		System::Drawing::Bitmap^ BuildPreviewImage(
-            NodeGraphMetaData^ doc, 
-			NodeGraphPreviewConfiguration^ nodeGraphFile,
-			System::Drawing::Size^ size, 
-            PreviewGeometry geometry, 
-			unsigned targetToVisualize);
-
-		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphMetaData^ doc, 
-			NodeGraphPreviewConfiguration^ nodeGraphFile);
-
-		GUILayer::TechniqueDelegateWrapper^ MakeTechniqueDelegate(
-			NodeGraphFile^ nodeGraph,
-			String^ subGraphName,
-			MessageRelayWrapper^ logMessages);
+			GUILayer::MaterialVisSettings^ visSettings,
+			String^ materialNames,
+			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+			System::Drawing::Size^ size);
     };
 
 	class AttachPimpl;
@@ -68,6 +33,5 @@ namespace ShaderPatcherLayer
 	private:
 		AttachPimpl* _pimpl;
 	};
-
 }
 

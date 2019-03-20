@@ -187,7 +187,7 @@ namespace GUILayer
 	public ref class MaterialVisSettings
     {
     public:
-        enum class GeometryType { Sphere, Cube, Plane2D, Model };
+        enum class GeometryType { Sphere, Cube, Plane2D, Model, Chart };
         enum class LightingType { Deferred, Forward, Direct };
 
         property GeometryType Geometry;
