@@ -210,6 +210,7 @@ namespace RenderCore { namespace Techniques
     public:
 		virtual IResourcePtr GetResource(AttachmentName resName) const;
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const;
+		virtual const FrameBufferProperties& GetFrameBufferProperties() const;
 
         NamedAttachmentsWrapper(
             AttachmentPool& pool,
@@ -231,6 +232,11 @@ namespace RenderCore { namespace Techniques
         assert(resName < _poolMapping->size());
         return _pool->GetDesc((*_poolMapping)[resName]);
     }
+
+	const FrameBufferProperties& NamedAttachmentsWrapper::GetFrameBufferProperties() const
+	{
+		return _pool->GetFrameBufferProperties();
+	}
 
     NamedAttachmentsWrapper::NamedAttachmentsWrapper(
         AttachmentPool& pool,
@@ -308,10 +314,10 @@ namespace RenderCore { namespace Techniques
 //            Log(Warning) << "Overwriting tail in FrameBufferPool(). There may be too many different framebuffers required from the same pool" << std::endl;
 //        }
 
-        auto namedAttachments = std::make_shared<NamedAttachmentsWrapper>(attachmentPool, poolAttachments);
+        NamedAttachmentsWrapper namedAttachments(attachmentPool, poolAttachments);
         _pimpl->_entries[earliestEntry]._fb = std::make_shared<Metal::FrameBuffer>(
             factory,
-            desc, *namedAttachments);
+            desc, namedAttachments);
         _pimpl->_entries[earliestEntry]._tickId = _pimpl->_currentTickId;
         _pimpl->_entries[earliestEntry]._hash = hashValue;
         _pimpl->_entries[earliestEntry]._poolAttachmentsRemapping = std::move(poolAttachments);

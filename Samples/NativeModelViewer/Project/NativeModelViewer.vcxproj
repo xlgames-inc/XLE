@@ -42,27 +42,44 @@
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
     <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
     <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
     <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <ImportGroup Label="PropertySheets" Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
     <Import Project="..\..\..\Foreign\DirectXTex\DirectXTexForClients.props" />
+    <Import Project="..\..\..\Foreign\vulkan\VulkanSDK.props" />
+    <Import Project="..\..\..\Foreign\HLSLCC\HLSLCCForClients.props" />
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <Link>
-      <AdditionalDependencies>dxguid.lib;%(AdditionalDependencies)</AdditionalDependencies>
+      <AdditionalDependencies>dxguid.lib;shlwapi.lib;cfgmgr32.lib;%(AdditionalDependencies)</AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'">
+    <Link>
+      <AdditionalDependencies>dxguid.lib;shlwapi.lib;cfgmgr32.lib;%(AdditionalDependencies)</AdditionalDependencies>
     </Link>
   </ItemDefinitionGroup>
   <ItemGroup>
@@ -110,6 +127,9 @@
     </ProjectReference>
     <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Techniques.vcxproj">
       <Project>{8188bb13-0b12-c110-2a31-515435fd3bb5}</Project>
+    </ProjectReference>
+    <ProjectReference Include="..\..\..\RenderCore\Project\RenderCore_Vulkan.vcxproj">
+      <Project>{b7525b97-9195-416a-8019-ed7f239cf3e8}</Project>
     </ProjectReference>
     <ProjectReference Include="..\..\..\RenderOverlays\Project\RenderOverlays.vcxproj">
       <Project>{726e12f1-b69b-188d-390b-3a1e1889126d}</Project>

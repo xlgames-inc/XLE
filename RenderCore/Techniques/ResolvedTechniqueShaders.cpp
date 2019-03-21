@@ -336,7 +336,7 @@ namespace RenderCore { namespace Techniques
     {
 		_boundUniforms->Apply(devContext, 0, parserContext.GetGlobalUniformsStream());
 		_boundLayout->Apply(devContext, MakeIteratorRange(vbs.begin(), vbs.end()));
-        devContext.Bind(*_shaderProgram);
+        _shaderProgram->Apply(devContext);
     }
 
 	void ResolvedTechniqueShaders::ResolvedShader::ApplyUniforms(

@@ -60,19 +60,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram)
-    {
-        if (_shaderProgram != &shaderProgram) {
-            _shaderProgram = &shaderProgram;
-            _pipelineStale = true;
-        }
-    }
-
-	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&)
 	{
-		if (_shaderProgram != &shaderProgram) {
-            _shaderProgram = &shaderProgram;
-            _pipelineStale = true;
-        }
+		shaderProgram.Apply(*this);
+	}
+
+	void        GraphicsPipelineBuilder::Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& bci)
+	{
+		shaderProgram.Apply(*this, bci);
 	}
 
     static VkPrimitiveTopology AsNative(Topology topo)

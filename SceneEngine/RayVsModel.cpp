@@ -12,6 +12,7 @@
 #include "RenderStepUtils.h"
 #include "../RenderCore/Metal/Shader.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/ObjectFactory.h"
 #include "../RenderCore/Format.h"
 #include "../RenderCore/Types.h"
 #include "../RenderCore/Techniques/CommonResources.h"

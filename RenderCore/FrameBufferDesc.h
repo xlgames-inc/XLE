@@ -182,6 +182,7 @@ namespace RenderCore
 	public:
 		virtual IResourcePtr GetResource(AttachmentName resName) const = 0;
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const = 0;
+		virtual const FrameBufferProperties& GetFrameBufferProperties() const = 0;
 		virtual ~INamedAttachments();
 	};
 

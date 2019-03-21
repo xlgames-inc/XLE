@@ -27,6 +27,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	class ShaderProgram;
 	class DeviceContext;
+	class ComputeShader;
 	class PipelineLayoutConfig
 	{
 	public:
@@ -41,8 +42,19 @@ namespace RenderCore { namespace Metal_Vulkan
 
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader);
-		BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader);
-        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& shader);
+		
+		struct SlotBinding
+        {
+            IteratorRange<const MiniInputElementDesc*> _elements;
+            unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
+        };
+		BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const CompiledShaderByteCode& program);
+        BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const ShaderProgram& shader);
+
         BoundInputLayout();
         ~BoundInputLayout();
 
@@ -66,11 +78,20 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned streamIdx,
             const UniformsStream& stream) const;
 
+		void UnbindShaderResources(DeviceContext& context, unsigned streamIdx);
+
 		uint64_t _boundUniformBufferSlots[4];
         uint64_t _boundResourceSlots[4];
 
         BoundUniforms(
             const ShaderProgram& shader,
+            const PipelineLayoutConfig& pipelineLayout,
+            const UniformsStreamInterface& interface0 = {},
+            const UniformsStreamInterface& interface1 = {},
+            const UniformsStreamInterface& interface2 = {},
+            const UniformsStreamInterface& interface3 = {});
+		BoundUniforms(
+            const ComputeShader& shader,
             const PipelineLayoutConfig& pipelineLayout,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
@@ -109,6 +130,7 @@ namespace RenderCore { namespace Metal_Vulkan
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class ShaderResourceView;
+	class UnorderedAccessView;
 	class SamplerState;
 	class Buffer;
 	using ConstantBuffer = Buffer;
@@ -134,6 +156,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
+		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
         NumericUniformsInterface(
             const ObjectFactory& factory, DescriptorPool& descPool, 
@@ -180,6 +203,15 @@ namespace RenderCore { namespace Metal_Vulkan
 	        BindCB(
 	            constantBuffers._startingPoint,
 	            MakeIteratorRange(buffers));
+	    }
+
+	template<int Count> 
+	    void    NumericUniformsInterface::Bind(const ResourceList<UnorderedAccessView, Count>& uavs)
+	    {
+			auto r = MakeIteratorRange(uavs._buffers);
+	        BindUAV(
+	            uavs._startingPoint,
+	            MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
 	    }
 
 }}

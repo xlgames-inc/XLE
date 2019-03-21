@@ -197,7 +197,7 @@ namespace SceneEngine
             // set up the render state for writing into the grid buffer
         SavedTargets savedTargets(metalContext);
         metalContext.Bind(box._gridBufferViewport);
-        metalContext.Unbind<Metal::RenderTargetView>();
+        MetalStubs::UnbindRenderTargets(metalContext);
         metalContext.Bind(Techniques::CommonResources()._blendOpaque);
         metalContext.Bind(Techniques::CommonResources()._defaultRasterizer);    // for newer video cards, we need "conservative raster" enabled
 

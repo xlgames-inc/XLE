@@ -312,7 +312,7 @@ namespace SceneEngine
 
 				MetalStubs::UnbindCS<Metal::UnorderedAccessView>(*context, 0, 8);
                 MetalStubs::UnbindCS<Metal::ShaderResourceView>(*context, 0, 3);
-                context->Unbind<Metal::ComputeShader>();
+                MetalStubs::UnbindComputeShader(*context);
 
                 if (Tweakable("TiledLightingDebugging", false) && !tiledBeams) {
                     parsingContext._pendingOverlays.push_back(

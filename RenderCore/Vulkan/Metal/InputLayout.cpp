@@ -76,6 +76,46 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     }
 
+	BoundInputLayout::BoundInputLayout(
+        IteratorRange<const SlotBinding*> layouts,
+        const CompiledShaderByteCode& shader)
+	{
+		SPIRVReflection reflection(shader.GetByteCode());
+		_vbBindingDescriptions.reserve(layouts.size());
+
+		for (unsigned slot=0; slot<layouts.size(); ++slot) {
+			UINT accumulatingOffset = 0;
+			for (unsigned ei=0; ei<layouts[slot]._elements.size(); ++ei) {
+				const auto& e = layouts[slot]._elements[ei];
+				auto hash = e._semanticHash;
+
+				auto i = LowerBound(reflection._inputInterfaceQuickLookup, hash);
+				if (i == reflection._inputInterfaceQuickLookup.end() || i->first != hash) {
+					accumulatingOffset += BitsPerPixel(e._nativeFormat) / 8;
+					continue;
+				}
+
+				VkVertexInputAttributeDescription desc;
+				desc.location = i->second._location;
+				desc.binding = slot;
+				desc.format = AsVkFormat(e._nativeFormat);
+				desc.offset = accumulatingOffset;
+				_attributes.push_back(desc);
+
+				accumulatingOffset += BitsPerPixel(e._nativeFormat) / 8;
+			}
+
+			_vbBindingDescriptions.push_back({slot, accumulatingOffset, VK_VERTEX_INPUT_RATE_VERTEX});
+		}
+	}
+
+	BoundInputLayout::BoundInputLayout(
+        IteratorRange<const SlotBinding*> layouts,
+        const ShaderProgram& shader)
+	: BoundInputLayout(layouts, shader.GetCompiledCode(ShaderStage::Vertex))
+	{
+	}
+
     BoundInputLayout::BoundInputLayout() {}
     BoundInputLayout::~BoundInputLayout() {}
 
@@ -206,6 +246,11 @@ namespace RenderCore { namespace Metal_Vulkan
         return gotBinding;
     }
 
+	void BoundUniforms::UnbindShaderResources(DeviceContext& context, unsigned streamIdx)
+	{
+		assert(0);		// todo -- unimplemented
+	}
+
 	BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
         const PipelineLayoutConfig& pipelineLayout,
@@ -234,6 +279,17 @@ namespace RenderCore { namespace Metal_Vulkan
 			_shaderBindingMask[stream] = helper.BuildShaderBindingMask(stream);
 		}
 		_isComputeShader = helper._isComputeShader;
+	}
+
+	BoundUniforms::BoundUniforms(
+        const ComputeShader& shader,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+	{
+		assert(0);		// todo -- unimplemented
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

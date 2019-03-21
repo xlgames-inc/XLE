@@ -53,7 +53,7 @@ namespace RenderCore { namespace Metal_DX11
             IteratorRange<const MiniInputElementDesc*> _elements;
             unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
         };
-        BoundInputLayout(
+		BoundInputLayout(
             IteratorRange<const SlotBinding*> layouts,
             const ShaderProgram& program);
 

@@ -697,7 +697,7 @@ namespace SceneEngine
             MetalStubs::UnbindCS<Metal::UnorderedAccessView>(context, 0, 4);
             MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 2, 4);
             MetalStubs::UnbindCS<Metal::ShaderResourceView>(context, 13, 3);
-            context.Unbind<Metal::ComputeShader>();
+            MetalStubs::UnbindComputeShader(context);
 
             ///////////////////////////////////////////////////////////////////////////////////////
 

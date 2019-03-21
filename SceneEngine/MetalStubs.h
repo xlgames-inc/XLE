@@ -17,6 +17,8 @@ namespace SceneEngine { namespace MetalStubs
 	void UnbindSO(RenderCore::Metal::DeviceContext&);
 	void UnbindTessellationShaders(RenderCore::Metal::DeviceContext&);
 	void UnbindGeometryShader(RenderCore::Metal::DeviceContext&);
+	void UnbindComputeShader(RenderCore::Metal::DeviceContext&);
+	void UnbindRenderTargets(RenderCore::Metal::DeviceContext&);
 
 	template<typename Type> void UnbindVS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);
 	template<typename Type> void UnbindPS(RenderCore::Metal::DeviceContext&, unsigned slotStart, unsigned slotCount);

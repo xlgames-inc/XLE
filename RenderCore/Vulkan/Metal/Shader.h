@@ -18,6 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class BoundClassInterfaces;
 	class DeviceContext;
+	class GraphicsPipelineBuilder;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,14 +32,16 @@ namespace RenderCore { namespace Metal_Vulkan
         ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
-						const CompiledShaderByteCode& ps);
+						const CompiledShaderByteCode& ps,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
 						const CompiledShaderByteCode& ps,
 						const CompiledShaderByteCode& hs,
-						const CompiledShaderByteCode& ds);
+						const CompiledShaderByteCode& ds,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram();
         ~ShaderProgram();
@@ -47,6 +50,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		const VulkanSharedPtr<VkShaderModule>&	GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
 
         bool DynamicLinkingEnabled() const;
+
+		void Apply(GraphicsPipelineBuilder& pipeline) const;
+		void Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -97,6 +103,12 @@ namespace RenderCore { namespace Metal_Vulkan
         ~ComputeShader();
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+
+		// Legacy asset based API --
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ComputeShader>&,
+			StringSection<::Assets::ResChar> codeName,
+			StringSection<::Assets::ResChar> definesTable = {});
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;

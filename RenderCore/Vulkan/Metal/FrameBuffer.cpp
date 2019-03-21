@@ -489,11 +489,14 @@ namespace RenderCore { namespace Metal_Vulkan
     FrameBuffer::FrameBuffer(
         const ObjectFactory& factory,
         const FrameBufferDesc& fbDesc,
-        const FrameBufferProperties& props,
-        VkRenderPass layout,
         const INamedAttachments& namedResources)
-    : _layout(layout)
     {
+		const auto& props = namedResources.GetFrameBufferProperties();
+		// todo --	we shouldn't create the render pass every time.
+		//			we need to be able to share equivalent vkRenderPasses, so that
+		//			there are fewer pipeline objects required
+		_layout = CreateRenderPass(factory, fbDesc, namedResources, props._samples);
+
         // We must create the frame buffer, including all views required.
         // We need to order the list of views in VkFramebufferCreateInfo in the
 		// same order as the attachments were defined in the VkRenderPass object.
@@ -554,7 +557,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkFramebufferCreateInfo fb_info = {};
         fb_info.sType = VK_STRUCTURE_TYPE_FRAMEBUFFER_CREATE_INFO;
         fb_info.pNext = nullptr;
-        fb_info.renderPass = layout;
+        fb_info.renderPass = _layout.get();
         fb_info.attachmentCount = rawViewCount;
         fb_info.pAttachments = rawViews;
         fb_info.width = maxDims._width;
@@ -597,50 +600,11 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         context.EndRenderPass();
     }
-    
-///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    class FrameBufferPool::Pimpl 
-    {
-    public:
-        std::vector<std::pair<uint64, VulkanUniquePtr<VkRenderPass>>> _layouts;
-    };
-
-    std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-		const ObjectFactory& factory,
-        const FrameBufferDesc& desc,
-        const FrameBufferProperties& props,
-        const INamedAttachments& namedResources,
-        uint64 hashName)
-    {
-        auto layout = BuildFrameBufferLayout(factory, desc, namedResources, props._samples);
-        return std::make_shared<FrameBuffer>(factory, desc, props, layout, namedResources);
-    }
-
-    VkRenderPass FrameBufferPool::BuildFrameBufferLayout(
-        const ObjectFactory& factory,
-        const FrameBufferDesc& desc,
-        const INamedAttachments& namedResources,
-        const TextureSamples& samples)
-    {
-        auto hash = desc.GetHash();
-        auto i = LowerBound(_pimpl->_layouts, hash);
-        if (i != _pimpl->_layouts.end() && i->first == hash)
-            return i->second.get();
-
-        auto rp = CreateRenderPass(factory, desc, namedResources, samples);
-        auto result = rp.get();
-        _pimpl->_layouts.insert(i, std::make_pair(hash, std::move(rp)));
-        return result;
-    }
-
-    FrameBufferPool::FrameBufferPool()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
-
-    FrameBufferPool::~FrameBufferPool()
-    {}
+	unsigned GetCurrentSubpassIndex(DeviceContext& context)
+	{
+		return context.RenderPassSubPassIndex();
+	}
 
 }}
 

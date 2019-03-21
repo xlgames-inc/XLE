@@ -41,10 +41,10 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const RasterizerState& rasterizer);
         void        Bind(const BlendState& blendState);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
-        
-        void        Bind(const ShaderProgram& shaderProgram);
-		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
 
+		void        Bind(const ShaderProgram& shaderProgram);
+		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
+        
         void        Bind(Topology topology);
 
 		void		UnbindInputLayout();
@@ -75,6 +75,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void        SetBoundInputLayout(const BoundInputLayout& inputLayout);
 		friend class BoundInputLayout;
+		friend class ShaderProgram;
     };
 
     class ComputePipelineBuilder
@@ -246,6 +247,10 @@ namespace RenderCore { namespace Metal_Vulkan
         void EndRenderPass();
         bool IsInRenderPass() const;
 		void NextSubpass(VkSubpassContents);
+		unsigned RenderPassSubPassIndex() const { return _renderPassSubpass; }
+
+		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
+        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         DeviceContext(
             ObjectFactory& factory, 
@@ -288,6 +293,12 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_commandList.GetUnderlying());
 		return _commandList;
 	}
+
+	template<int Count> 
+		void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) {}
+    template<int Count1, int Count2> 
+		void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess)
+		{}
 
 }}
 
