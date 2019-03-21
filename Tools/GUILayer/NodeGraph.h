@@ -121,6 +121,26 @@ namespace GUILayer
 		String^							_implements = String::Empty;
 	};
 
+    public ref class UniformBufferSignature
+    {
+	public:
+		ref class Parameter
+		{
+		public:
+			property System::String^   Name;
+			property System::String^   Type;
+			property System::String^   Semantic;
+			property System::String^   Default;
+		};
+
+        property List<Parameter^>^	Parameters { List<Parameter^>^ get() { return _parameters; } }
+
+		static UniformBufferSignature^			ConvertFromNative(const GraphLanguage::UniformBufferSignature& input);
+
+	private:
+		List<Parameter^>^	_parameters = gcnew List<Parameter^>();
+    };
+
 	ref class DirectorySearchRules;
 
 	public ref class NodeGraphFile

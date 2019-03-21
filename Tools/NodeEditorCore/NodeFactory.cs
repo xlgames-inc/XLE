@@ -12,8 +12,6 @@ using System.Linq;
 using System.Drawing;
 using HyperGraph;
 
-using ParamSourceType = ShaderFragmentArchive.Parameter.SourceType;
-
 #pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
 
 namespace NodeEditorCore
@@ -21,6 +19,7 @@ namespace NodeEditorCore
     public enum InterfaceDirection { In, Out };
 
     public enum ProcedureNodeType { Normal, TemplateParameter, Instantiation };
+    public enum ParamSourceType { Material, System, Output, Constant };
 
     public interface IDiagramDocument
     {
@@ -325,8 +324,7 @@ namespace NodeEditorCore
         private PointF _lastDragLocation;
         private GUILayer.PreviewGeometry _previewGeometry;
         private string _outputToVisualize;
-        [Import]
-        private GUILayer.IPreviewBuilder _previewManager;
+        public GUILayer.PreviewBuilder _previewManager;
 
         // bitmap cache --
         private uint _shaderStructureHash;
@@ -486,7 +484,7 @@ namespace NodeEditorCore
 
     [Export(typeof(INodeFactory))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ShaderFragmentNodeCreator : INodeFactory
+    public class ShaderFragmentNodeCreator : INodeFactory, IDisposable
     {
         internal static IDictionary<Enum, string> PreviewGeoNames;
         internal static IDictionary<Enum, string> ParamSourceTypeNames;
@@ -566,8 +564,7 @@ namespace NodeEditorCore
             {
                 return sg.Signature;
             }
-            var fn = _shaderFragments.GetFunction(name, (documentContext != null) ? documentContext.GetSearchRules() : null);
-            return (fn != null) ? fn.Signature : null;
+            return _shaderFragments.GetFunction(name, (documentContext != null) ? documentContext.GetSearchRules() : null);
         }
 
         public Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, string archiveName, ProcedureNodeType type, GUILayer.PreviewSettings previewSettings)
@@ -597,11 +594,7 @@ namespace NodeEditorCore
                 }
 
                 // use composition to access some exported types --
-                {
-                    CompositionBatch compositionBatch = new CompositionBatch();
-                    compositionBatch.AddPart(previewItem);
-                    _composer.Compose(compositionBatch);
-                }
+                previewItem._previewManager = _previewManager;
                 node.AddItem(previewItem, Node.Dock.Center);
 
                 // Drop-down selection box for "preview mode"
@@ -1053,11 +1046,34 @@ namespace NodeEditorCore
             return new ShaderFragmentNodeCompatibility();
         }
 
-        [Import]
-        CompositionContainer _composer;
+        public ShaderFragmentNodeCreator()
+        {
+            _previewManager = new GUILayer.PreviewBuilder();
+        }
+
+        ~ShaderFragmentNodeCreator()
+        {
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_previewManager != null)
+            {
+                _previewManager.Dispose();
+                _previewManager = null;
+            }
+        }
 
         [Import]
-        ShaderFragmentArchive.Archive _shaderFragments;
+        NodeEditorCore.Archive _shaderFragments;
+
+        private GUILayer.PreviewBuilder _previewManager;
     }
 
     #endregion

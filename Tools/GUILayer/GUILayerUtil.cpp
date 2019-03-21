@@ -308,7 +308,10 @@ namespace GUILayer
 		_searchRules = std::make_shared<::Assets::DirectorySearchRules>(searchRules);
 	}
 
-	DirectorySearchRules::~DirectorySearchRules() {}
+	DirectorySearchRules::~DirectorySearchRules() 
+	{
+		_searchRules.reset();
+	}
 
 }
 

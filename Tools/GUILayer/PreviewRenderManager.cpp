@@ -1,10 +1,7 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "PreviewRenderManager.h"
 #include "EngineDevice.h"
 #include "UITypesBinding.h"
 #include "GUILayerUtil.h"
@@ -37,6 +34,10 @@
 
 #include <memory>
 
+using System::Collections::Generic::Dictionary;
+using System::String;
+using System::Object;
+
 namespace GUILayer
 {
 	using System::Drawing::Size;
@@ -48,7 +49,7 @@ namespace GUILayer
         std::shared_ptr<RenderCore::IDevice> _device;
     };
 
-    public ref class PreviewBuilder : IPreviewBuilder
+    public ref class PreviewBuilder
     {
     public:
 		virtual System::Drawing::Bitmap^ BuildPreviewImage(
@@ -58,17 +59,11 @@ namespace GUILayer
 			System::Drawing::Size^ size);
 
         PreviewBuilder();
+		~PreviewBuilder();
     private:
         clix::auto_ptr<ManagerPimpl> _pimpl;
-
-        ~PreviewBuilder();
 		System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
     };
-
-	IPreviewBuilder^ PreviewBuilderUtils::CreatePreviewBuilder()
-	{
-		return gcnew PreviewBuilder();
-	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -146,11 +141,13 @@ namespace GUILayer
 
 		auto geometry = visSettings->Geometry;
 		if (geometry != MaterialVisSettings::GeometryType::Model) {
+			bool pretransformed = false;
 			ToolsRig::MaterialVisSettings nativeVisSettings;
 			switch (geometry) {
 			case MaterialVisSettings::GeometryType::Plane2D:
 			case MaterialVisSettings::GeometryType::Chart:
 				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
+				pretransformed = true;
 				break;
 
 			case MaterialVisSettings::GeometryType::Cube:
@@ -165,6 +162,10 @@ namespace GUILayer
 			}
 
 			auto material = CreatePreviewMaterial(materialNames, ::Assets::DirectorySearchRules{});
+
+			if (pretransformed)
+				material->_matParams.SetParameter(u("GEO_PRETRANSFORMED"), MakeStringSection("1"));
+
 			sceneFuture = ToolsRig::MakeScene(nativeVisSettings, material);
 		} else {
 			ToolsRig::ModelVisSettings modelSettings;

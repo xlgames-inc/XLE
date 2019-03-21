@@ -23,7 +23,7 @@ attributes visualNode6(PreviewGeometry:"sphere", X:"1515", Y:"783", State:"Colla
 attributes visualNode7(PreviewGeometry:"sphere", X:"923", Y:"815", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:Wood_04_G>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />

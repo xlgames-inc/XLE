@@ -1,24 +1,164 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-using System;
 using System.Collections.Generic;
-using System.Text;
+using System.ComponentModel;
+using System.ComponentModel.Composition;
 
 using Aga.Controls.Tree;
+using System;
+using System.Text;
 using System.IO;
 using System.Drawing;
 using System.ComponentModel;
 using System.ComponentModel.Composition;
 using System.Threading;
 
-#pragma warning disable 0649        // Field '...' is never assigned to, and will always have its default value null
-
-namespace ControlsLibrary
+namespace NodeEditorCore
 {
+    ///////////////////////////////////////////////////////////////
+    [Export(typeof(Archive))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class Archive
+    {
+        public GUILayer.ShaderFragment GetFragment(string name, GUILayer.DirectorySearchRules searchRules)
+        {
+		    if (searchRules != null)
+			    name = searchRules.ResolveFile(name);
+            System.Threading.Monitor.Enter(_dictionary);
+            try
+            {
+                    // todo -- should case be insensitive for filenames?
+                    //          "name" is really a filename here
+                if (_dictionary.ContainsKey(name)) {
+                    GUILayer.ShaderFragment result = _dictionary[name];
+                        // if the "change marker" is set to a value greater than 
+                        //  zero, we have to delete and recreate this object
+                        //  (it means the file has changed since the last parse)
+                    if (result.GetChangeMarker()>0) {
+                        _dictionary.Remove(name);
+                    } else
+                        return result;
+                }
+
+                var newFragment = new GUILayer.ShaderFragment(name);
+                _dictionary.Add(name, newFragment);
+                return newFragment;
+            } finally {
+                System.Threading.Monitor.Exit(_dictionary);
+            }
+            return null;
+        }
+
+        public GUILayer.NodeGraphSignature GetFunction(string name, GUILayer.DirectorySearchRules searchRules)
+        {
+            System.Threading.Monitor.Enter(_dictionary);
+            try
+            {
+                var colonIndex = name.IndexOf(":");
+                string fileName = null, functionName = null;
+                if (colonIndex != -1) {
+                    fileName        = name.Substring(0, colonIndex);
+                    functionName    = name.Substring(colonIndex+1);
+                } else {
+                    fileName        = name;
+                }            
+
+                var fragment = GetFragment(fileName, searchRules);
+
+                    // look for a function with the given name (case sensitive here)
+                foreach (var f in fragment.Functions) {
+                    if (f.Key == functionName) {
+                        return f.Value;
+                    }
+                }
+
+            } finally {
+                System.Threading.Monitor.Exit(_dictionary);
+            }
+            return null;
+        }
+
+        public GUILayer.UniformBufferSignature  GetUniformBuffer(string name, GUILayer.DirectorySearchRules searchRules)
+        {
+            System.Threading.Monitor.Enter(_dictionary);
+            try
+            {
+                var colonIndex = name.IndexOf(":");
+                string fileName = null, parameterStructName = null;
+                if (colonIndex != -1) {
+                    fileName                = name.Substring(0, colonIndex);
+                    parameterStructName     = name.Substring(colonIndex+1);
+                } else {
+                    fileName        = name;
+                }            
+
+                var fragment = GetFragment(fileName, searchRules);
+
+                    // look for a function with the given name (case sensitive here)
+                foreach (var p in fragment.UniformBuffers) {
+                    if (p.Key == parameterStructName) {
+                        return p.Value;
+                    }
+                }
+
+            } finally {
+                System.Threading.Monitor.Exit(_dictionary);
+            }
+
+            return null;
+        }
+
+        public string BuildParametersString(GUILayer.NodeGraphSignature signature)
+        {
+            var stringBuilder = new System.Text.StringBuilder();
+            stringBuilder.Append("(");
+            bool first = true;
+            foreach (var p in signature.Parameters)
+            {
+                if (p.Direction != GUILayer.NodeGraphSignature.ParameterDirection.In) continue;
+
+                if (!first) stringBuilder.Append(", ");
+                first = false;
+
+                stringBuilder.Append(p.Type);
+                stringBuilder.Append(" ");
+                stringBuilder.Append(p.Name);
+                if (!string.IsNullOrEmpty(p.Semantic))
+                {
+                    stringBuilder.Append(" : ");
+                    stringBuilder.Append(p.Semantic);
+                }
+            }
+            stringBuilder.Append(")");
+            return stringBuilder.ToString();
+        }
+
+        public string BuildBodyString(GUILayer.UniformBufferSignature signature)
+        {
+            var stringBuilder = new System.Text.StringBuilder();
+            stringBuilder.Append("{");
+            foreach (var p in signature.Parameters)
+            {
+                stringBuilder.Append(p.Type);
+                stringBuilder.Append(" ");
+                stringBuilder.Append(p.Name);
+                if (!string.IsNullOrEmpty(p.Semantic))
+                {
+                    stringBuilder.Append(" : ");
+                    stringBuilder.Append(p.Semantic);
+                }
+                stringBuilder.Append("; ");
+            }
+            stringBuilder.Append("}");
+            return stringBuilder.ToString();
+        }
+
+        private Dictionary<string, GUILayer.ShaderFragment> _dictionary = new Dictionary<string, GUILayer.ShaderFragment>(
+            System.StringComparer.CurrentCultureIgnoreCase);
+    }
+
     [Export(typeof(ShaderFragmentArchiveModel))]
     [PartCreationPolicy(CreationPolicy.Shared)]
 	public sealed class ShaderFragmentArchiveModel : ITreeModel, IDisposable
@@ -364,24 +504,24 @@ namespace ControlsLibrary
                         foreach (var f in fragment.Functions)
                         {
                             ShaderFragmentItem fragItem = new ShaderFragmentItem(parent, this);
-                            fragItem.FunctionName = f.Name;
-                            fragItem.Signature = f.BuildParametersString();
-                            foreach (var p in f.Signature.Parameters)
+                            fragItem.FunctionName = f.Key;
+                            fragItem.Signature = _archive.BuildParametersString(f.Value);
+                            foreach (var p in f.Value.Parameters)
                                 if (p.Direction == GUILayer.NodeGraphSignature.ParameterDirection.Out)
                                 {
                                     fragItem.Signature = fragItem.Signature + " -> " + p.Type;
                                     break;
                                 }
-                            fragItem.ArchiveName = basePath + ":" + f.Name;
+                            fragItem.ArchiveName = basePath + ":" + f.Key;
                             items.Add(fragItem);
                         }
 
-                        foreach (var p in fragment.ParameterStructs)
+                        foreach (var p in fragment.UniformBuffers)
                         {
                             ParameterStructItem paramItem = new ParameterStructItem(parent, this);
-                            paramItem.StructName = p.Name;
-                            paramItem.Signature = p.BuildBodyString();
-                            paramItem.ArchiveName = basePath + ":" + p.Name;
+                            paramItem.StructName = p.Key;
+                            paramItem.Signature = _archive.BuildBodyString(p.Value);
+                            paramItem.ArchiveName = basePath + ":" + p.Key;
                             items.Add(paramItem);
                         }
 
@@ -419,7 +559,7 @@ namespace ControlsLibrary
 		public event EventHandler<TreeModelEventArgs> NodesRemoved;
 		public event EventHandler<TreePathEventArgs> StructureChanged;
 
-        private List<ShaderFragmentArchive.ShaderFragment> AttachedFragments = new List<ShaderFragmentArchive.ShaderFragment>();
+        private List<GUILayer.ShaderFragment> AttachedFragments = new List<GUILayer.ShaderFragment>();
         private void OnStructureChanged(Object sender, EventArgs args)
         {
             ClearAttachedFragments();
@@ -438,6 +578,11 @@ namespace ControlsLibrary
         public void Dispose() { ClearAttachedFragments(); }
 
         [Import]
-        ShaderFragmentArchive.Archive _archive;
+        Archive _archive;
 	}
+
 }
+
+
+
+

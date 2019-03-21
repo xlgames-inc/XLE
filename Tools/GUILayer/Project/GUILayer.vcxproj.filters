@@ -69,6 +69,9 @@
     <ClCompile Include="..\PreviewRenderManager.cpp">
       <Filter>Vis</Filter>
     </ClCompile>
+    <ClCompile Include="..\ShaderFragment.cpp">
+      <Filter>GraphLanguage</Filter>
+    </ClCompile>
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -141,9 +144,6 @@
     </ClInclude>
     <ClInclude Include="..\NodeGraph.h">
       <Filter>GraphLanguage</Filter>
-    </ClInclude>
-    <ClInclude Include="..\PreviewRenderManager.h">
-      <Filter>Vis</Filter>
     </ClInclude>
   </ItemGroup>
   <ItemGroup>

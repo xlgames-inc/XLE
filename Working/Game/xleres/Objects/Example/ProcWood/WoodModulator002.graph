@@ -15,7 +15,7 @@ attributes visualNode3(PreviewGeometry:"sphere", X:"157", Y:"257", State:"Collap
 attributes visualNode4(PreviewGeometry:"sphere", X:"548", Y:"268", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:WoodModulator002>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">

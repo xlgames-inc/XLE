@@ -27,24 +27,24 @@ namespace NodeEditorCore
     [PartCreationPolicy(CreationPolicy.Shared)]
     public class ModelConversion : IModelConversion
     {
-        private static GUILayer.Node.Type AsNodeType(ShaderFragmentArchive.Parameter.SourceType input)
+        private static GUILayer.Node.Type AsNodeType(ParamSourceType input)
         {
             switch (input)
             {
-                case ShaderFragmentArchive.Parameter.SourceType.Material:                   return GUILayer.Node.Type.Captures;
-                case ShaderFragmentArchive.Parameter.SourceType.System:                     return GUILayer.Node.Type.Captures;
-                case ShaderFragmentArchive.Parameter.SourceType.Constant:                   return GUILayer.Node.Type.Captures;
-                default:                                                                    return GUILayer.Node.Type.Procedure;
+                case ParamSourceType.Material:                  return GUILayer.Node.Type.Captures;
+                case ParamSourceType.System:                    return GUILayer.Node.Type.Captures;
+                case ParamSourceType.Constant:                  return GUILayer.Node.Type.Captures;
+                default:                                        return GUILayer.Node.Type.Procedure;
             }
         }
             
-        private static ShaderFragmentArchive.Parameter.SourceType AsSourceType(GUILayer.Node.Type input)
+        private static ParamSourceType AsSourceType(GUILayer.Node.Type input)
         {
             switch (input)
             {
                 default:
-                case GUILayer.Node.Type.Procedure:            return ShaderFragmentArchive.Parameter.SourceType.Material;
-                case GUILayer.Node.Type.Captures:             return ShaderFragmentArchive.Parameter.SourceType.Material;
+                case GUILayer.Node.Type.Procedure:            return ParamSourceType.Material;
+                case GUILayer.Node.Type.Captures:             return ParamSourceType.Material;
             }
         }
 

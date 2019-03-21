@@ -266,6 +266,24 @@ namespace GUILayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	UniformBufferSignature^			UniformBufferSignature::ConvertFromNative(const GraphLanguage::UniformBufferSignature& input)
+	{
+		UniformBufferSignature^ result = gcnew UniformBufferSignature();
+
+        using namespace clix;
+        for (auto i=input._parameters.begin(); i!=input._parameters.end(); ++i) {
+            Parameter^ p = gcnew Parameter();
+            p->Name = clix::marshalString<clix::E_UTF8>(i->_name);
+            p->Type = clix::marshalString<clix::E_UTF8>(i->_type);
+            p->Semantic = clix::marshalString<clix::E_UTF8>(i->_semantic);
+            result->Parameters->Add(p);
+        }
+
+		return result;
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	static std::unordered_map<std::string, std::string> ConvertToNative(AttributeTable^ input)
 	{
 		std::unordered_map<std::string, std::string> result;
@@ -347,6 +365,11 @@ namespace GUILayer
 	NodeGraphFile::~NodeGraphFile()
 	{
 		delete _searchRules;
+		_searchRules = nullptr;
+		delete _subGraphs;
+		_subGraphs = nullptr;
+		delete _attributeTables;
+		_attributeTables = nullptr;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -363,7 +386,7 @@ namespace GUILayer
 			const ::Assets::DirectorySearchRules& searchRules);
         ~GraphNodeGraphProvider();
     protected:
-		msclr::auto_gcroot<NodeGraphFile^> _parsedGraphFile;
+		msclr::gcroot<NodeGraphFile^> _parsedGraphFile;
 		std::unordered_map<std::string, std::string> _imports;
     };
 
@@ -432,7 +455,7 @@ namespace GUILayer
 			ConversionContext convContext;
 			NodeGraph result { name.AsString(), subGraph->Graph->ConvertToNative(convContext), subGraph->Signature->ConvertToNative(convContext), nullptr };
 			convContext._importTable.insert(_imports.begin(), _imports.end());
-			result._subProvider = MakeGraphSyntaxProvider(_parsedGraphFile.get(), convContext._importTable, _parsedGraphFile->GetSearchRules()->GetNative());
+			result._subProvider = MakeGraphSyntaxProvider(_parsedGraphFile, convContext._importTable, _parsedGraphFile->GetSearchRules()->GetNative());
 			return result;
 		}
 

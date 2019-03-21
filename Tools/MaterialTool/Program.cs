@@ -123,16 +123,15 @@ namespace MaterialTool
 
                 typeof(SkinService),
 
-                typeof(ShaderFragmentArchive.Archive),
-               
                 typeof(Controls.SubGraphControl),
                 typeof(Controls.ShaderFragmentArchiveControl),
                 typeof(Controls.DiagramLister),
                 typeof(Controls.ActualizationMessagesWindow),
 
-                typeof(ControlsLibrary.ShaderFragmentArchiveModel),
+                typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
+                typeof(NodeEditorCore.Archive),
                 typeof(DiagramDocument),
                 typeof(DiagramEditingContext),
 

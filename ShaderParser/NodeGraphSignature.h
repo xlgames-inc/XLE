@@ -64,15 +64,14 @@ namespace GraphLanguage
             std::string _semantic;
         };
 
-        std::string _name;
         std::vector<Parameter> _parameters;
     };
 
     class ShaderFragmentSignature
     {
     public:
-        std::vector<std::pair<std::string, NodeGraphSignature>>		_functions;
-        std::vector<UniformBufferSignature>							_uniformBuffers;
+        std::vector<std::pair<std::string, NodeGraphSignature>>			_functions;
+        std::vector<std::pair<std::string, UniformBufferSignature>>		_uniformBuffers;
     };
 }
 

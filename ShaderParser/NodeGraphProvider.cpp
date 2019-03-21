@@ -61,9 +61,9 @@ namespace GraphLanguage
 	{
 		auto i = std::find_if(
 			_sig._uniformBuffers.cbegin(), _sig._uniformBuffers.cend(),
-            [structName](const UniformBufferSignature& signature) { return XlEqString(MakeStringSection(signature._name), structName); });
+            [structName](const std::pair<std::string, UniformBufferSignature>& signature) { return XlEqString(MakeStringSection(signature.first), structName); });
         if (i!=_sig._uniformBuffers.cend())
-			return AsPointer(i);
+			return &i->second;
 		return nullptr;
 	}
 
