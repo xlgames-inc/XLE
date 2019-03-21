@@ -1076,11 +1076,7 @@ void XlMakePath(ucs2* path, const ucs2* drive, const ucs2* dir, const ucs2* fnam
 		return hval;
 	}
 
-    #if PLATFORMOS_TARGET == PLATFORMOS_WINDOWS
-        FilenameRules s_defaultFilenameRules('/', false);
-    #else
-        FilenameRules s_defaultFilenameRules('/', true);
-    #endif
+    FilenameRules s_defaultFilenameRules('/', true);
 
     template class FileNameSplitter<char>;
     template class FileNameSplitter<utf8>;
