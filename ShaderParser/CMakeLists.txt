@@ -19,7 +19,7 @@ add_custom_command(
 
 BasicLibrary(ShaderParser "${Src};${Headers};${GeneratedGrammarFiles}")
 
-include_directories(${CMAKE_CURRENT_BINARY_DIR})
+target_include_directories(ShaderParser PRIVATE ${CMAKE_CURRENT_BINARY_DIR})
 
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
 	target_compile_options(ShaderParser PRIVATE -Wno-parentheses-equality -Wno-incompatible-pointer-types-discards-qualifiers)

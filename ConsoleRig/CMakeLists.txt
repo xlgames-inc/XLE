@@ -11,9 +11,9 @@ set(Src
 BasicLibrary(ConsoleRig "${Src}")
 
 # Foreign Common
-include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
-include_directories(${FOREIGN_DIR}/LuaBridge/Source/LuaBridge)
-include_directories(${FOREIGN_DIR}/Lua/src)
+target_include_directories(ConsoleRig PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen ${FOREIGN_DIR}/easyloggingpp ${FOREIGN_DIR}/TinyThreadPP/source ${FOREIGN_DIR}/cml-1_0_2 ${FOREIGN_DIR})
+target_include_directories(ConsoleRig PRIVATE ${FOREIGN_DIR}/LuaBridge/Source/LuaBridge)
+target_include_directories(ConsoleRig PRIVATE ${FOREIGN_DIR}/Lua/src)
 
 ##################################################################################################################################
 

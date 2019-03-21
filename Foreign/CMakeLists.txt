@@ -16,7 +16,7 @@ target_compile_options(ForeignMisc PRIVATE /wd4996)
 add_subdirectory("FreeType")
 add_subdirectory("tinyxml2-master")
 
-include_directories(Antlr-3.4/libantlr3c-3.4 Antlr-3.4/libantlr3c-3.4/include)
+target_include_directories(ForeignMisc PRIVATE Antlr-3.4/libantlr3c-3.4 Antlr-3.4/libantlr3c-3.4/include)
 if (CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     target_compile_options(ForeignMisc PRIVATE -Wno-parentheses-equality -Wno-incompatible-pointer-types-discards-qualifiers)
 else()

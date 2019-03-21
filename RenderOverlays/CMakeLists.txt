@@ -8,4 +8,4 @@ list(FILTER Src EXCLUDE REGEX ".*Font_Dummy.cpp$")
 
 BasicLibrary(RenderOverlays "${Src};${Headers};${OverlaysSrc};${OverlaysHeaders}")
 
-include_directories(${FOREIGN_DIR}/FreeType/include)
+include_directories(RenderOverlays PRIVATE ${FOREIGN_DIR}/FreeType/include)

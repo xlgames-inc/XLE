@@ -21,5 +21,5 @@ add_definitions("-DGL_EXT_debug_marker=0")
 BasicLibrary(RenderCore_OpenGLES "${Src}" "${Headers}")
 
 # Foreign Common 
-include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen)
+target_include_directories(RenderCore_OpenGLES PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen)
 

@@ -19,4 +19,4 @@ set(Src
 BasicLibrary(RenderCore_DX11 "${Src}" "${Headers}")
 
 # Foreign Common 
-include_directories(${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen)
+target_include_directories(RenderCore_DX11 PRIVATE ${FOREIGN_DIR}/half-1.9.2/include ${FOREIGN_DIR}/eigen)
