@@ -83,11 +83,11 @@ namespace GUILayer
 		static void		LoadNodeGraphFile(String^ filename, [Out] NodeGraphFile^% nodeGraph, [Out] NodeGraphMetaData^% context);
         static void		Serialize(System::IO::Stream^ stream, String^ name, NodeGraphFile^ nodeGraphFile, NodeGraphMetaData^ context);
 
-		TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+		static TechniqueDelegateWrapper^ MakeTechniqueDelegate(
 			NodeGraphMetaData^ doc, 
 			NodeGraphPreviewConfiguration^ nodeGraphFile);
 
-		TechniqueDelegateWrapper^ MakeTechniqueDelegate(
+		static TechniqueDelegateWrapper^ MakeTechniqueDelegate(
 			NodeGraphFile^ nodeGraph,
 			String^ subGraphName,
 			MessageRelayWrapper^ logMessages);

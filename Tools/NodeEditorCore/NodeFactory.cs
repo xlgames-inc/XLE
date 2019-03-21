@@ -24,8 +24,8 @@ namespace NodeEditorCore
 
     public interface IDiagramDocument
     {
-        ShaderPatcherLayer.NodeGraphFile NodeGraphFile { get; }
-        ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; }
+        GUILayer.NodeGraphFile NodeGraphFile { get; }
+        GUILayer.NodeGraphMetaData GraphMetaData { get; }
         uint GlobalRevisionIndex { get; }
     }
 
@@ -36,17 +36,17 @@ namespace NodeEditorCore
 
     public interface INodeFactory
     {
-        Node CreateProcedureNode(ShaderPatcherLayer.NodeGraphFile diagramContext, String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, ShaderPatcherLayer.PreviewSettings previewSettings = null);
-        void SetProcedureNodeType(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
+        Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, GUILayer.PreviewSettings previewSettings = null);
+        void SetProcedureNodeType(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
         ProcedureNodeType GetProcedureNodeType(Node node);
-        void UpdateProcedureNode(ShaderPatcherLayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
+        void UpdateProcedureNode(GUILayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
 
-        Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters);
+        Node CreateCapturesNode(String name, IEnumerable<GUILayer.NodeGraphSignature.Parameter> parameters);
 
-        Node CreateSubGraph(ShaderPatcherLayer.NodeGraphFile diagramContext, String name, String implements);
-        void SetSubGraphProperties(ShaderPatcherLayer.NodeGraphFile context, Node subGraph, String name, String implements);
+        Node CreateSubGraph(GUILayer.NodeGraphFile diagramContext, String name, String implements);
+        void SetSubGraphProperties(GUILayer.NodeGraphFile context, Node subGraph, String name, String implements);
         void GetSubGraphProperties(Node subGraph, out String name, out String implements);
-        void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph);
+        void UpdateSubGraphNode(GUILayer.NodeGraphFile context, Node subGraph);
 
         HyperGraph.Compatibility.ICompatibilityStrategy CreateCompatibilityStrategy();
         string GetDescription(object item);
@@ -163,13 +163,13 @@ namespace NodeEditorCore
             }
         }
 
-        internal static ShaderPatcherLayer.NodeGraphSignature.ParameterDirection AsParameterDirection(InterfaceDirection direction)
+        internal static GUILayer.NodeGraphSignature.ParameterDirection AsParameterDirection(InterfaceDirection direction)
         {
             switch (direction)
             {
-                case InterfaceDirection.In: return ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In;
+                case InterfaceDirection.In: return GUILayer.NodeGraphSignature.ParameterDirection.In;
                 default:
-                case InterfaceDirection.Out: return ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out;
+                case InterfaceDirection.Out: return GUILayer.NodeGraphSignature.ParameterDirection.Out;
             }
         }
     }
@@ -188,7 +188,7 @@ namespace NodeEditorCore
         public ShaderFragmentPreviewItem()
         {
             _cachedBitmap = null;
-            Geometry = ShaderPatcherLayer.PreviewGeometry.Plane2D;
+            Geometry = GUILayer.PreviewGeometry.Plane2D;
             OutputToVisualize = "";
             _shaderStructureHash = 0;
         }
@@ -227,23 +227,39 @@ namespace NodeEditorCore
 
                 if (_cachedBitmap == null)
                 {
-                    _cachedBitmap = _previewManager.BuildPreviewImage(
+                    var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(
                         editingContext.Document.GraphMetaData,
-                        new ShaderPatcherLayer.NodeGraphPreviewConfiguration
+                        new GUILayer.NodeGraphPreviewConfiguration
                         {
                             _nodeGraph = editingContext.Document.NodeGraphFile,
                             _subGraphName = Node.SubGraphTag as string,
                             _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
                             _settings = PreviewSettings,
                             _variableRestrictions = editingContext.Document.GraphMetaData.Variables
-                        },
-                        idealSize, Geometry);
+                        });
+
+                    var matVisSettings = new GUILayer.MaterialVisSettings();
+                    switch (Geometry)
+                    {
+                    case GUILayer.PreviewGeometry.Chart: matVisSettings.Geometry = GUILayer.MaterialVisSettings.GeometryType.Chart; break;
+                    case GUILayer.PreviewGeometry.Plane2D: matVisSettings.Geometry = GUILayer.MaterialVisSettings.GeometryType.Plane2D; break;
+                    case GUILayer.PreviewGeometry.Box: matVisSettings.Geometry = GUILayer.MaterialVisSettings.GeometryType.Cube; break;
+                    case GUILayer.PreviewGeometry.Model: matVisSettings.Geometry = GUILayer.MaterialVisSettings.GeometryType.Model; break;
+                    default:
+                    case GUILayer.PreviewGeometry.Sphere: matVisSettings.Geometry = GUILayer.MaterialVisSettings.GeometryType.Sphere; break;
+                    }
+
+                    _cachedBitmap = _previewManager.BuildPreviewImage(
+                        matVisSettings, 
+                        string.Empty,
+                        techniqueDelegate,
+                        idealSize);
                     _shaderStructureHash = currentHash;
                 }
 
                 if (_cachedBitmap != null)
                 {
-                    if (Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere)
+                    if (Geometry == GUILayer.PreviewGeometry.Sphere)
                     {
                         var clipPath = new System.Drawing.Drawing2D.GraphicsPath();
                         clipPath.AddEllipse(boundary);
@@ -285,14 +301,14 @@ namespace NodeEditorCore
         // note -- 
         //  we really want to do an InvokeMiscChange on the IGraphModel when these change...
         //  but we don't have any way to find the graph model from here!
-        public ShaderPatcherLayer.PreviewGeometry Geometry  { get { return _previewGeometry; }      set { if (_previewGeometry != value) { _previewGeometry = value; InvalidateShaderStructure(); } } }
+        public GUILayer.PreviewGeometry Geometry  { get { return _previewGeometry; }      set { if (_previewGeometry != value) { _previewGeometry = value; InvalidateShaderStructure(); } } }
         public string OutputToVisualize                     { get { return _outputToVisualize; }    set { if (_outputToVisualize != value) { _outputToVisualize = (value!=null)?value:string.Empty; InvalidateShaderStructure(); } } }
 
-        public ShaderPatcherLayer.PreviewSettings PreviewSettings
+        public GUILayer.PreviewSettings PreviewSettings
         {
             get
             {
-                return new ShaderPatcherLayer.PreviewSettings
+                return new GUILayer.PreviewSettings
                     {
                         Geometry = this.Geometry,
                         OutputToVisualize = this.OutputToVisualize
@@ -307,10 +323,10 @@ namespace NodeEditorCore
         }
 
         private PointF _lastDragLocation;
-        private ShaderPatcherLayer.PreviewGeometry _previewGeometry;
+        private GUILayer.PreviewGeometry _previewGeometry;
         private string _outputToVisualize;
         [Import]
-        private ShaderPatcherLayer.IPreviewBuilder _previewManager;
+        private GUILayer.IPreviewBuilder _previewManager;
 
         // bitmap cache --
         private uint _shaderStructureHash;
@@ -357,7 +373,7 @@ namespace NodeEditorCore
                 else
                 {
                     // Some types have automatic conversion operations
-                    if (ShaderPatcherLayer.TypeRules.HasAutomaticConversion(fromType, toType))
+                    if (GUILayer.TypeRules.HasAutomaticConversion(fromType, toType))
                     {
                         return HyperGraph.Compatibility.ConnectionType.Conversion;
                     }
@@ -479,11 +495,11 @@ namespace NodeEditorCore
         {
             PreviewGeoNames = new Dictionary<Enum, string>
             {
-                { ShaderPatcherLayer.PreviewGeometry.Chart, "Chart" },
-                { ShaderPatcherLayer.PreviewGeometry.Plane2D, "2D" },
-                { ShaderPatcherLayer.PreviewGeometry.Box, "Box" },
-                { ShaderPatcherLayer.PreviewGeometry.Sphere, "Sphere" },
-                { ShaderPatcherLayer.PreviewGeometry.Model, "Model" }
+                { GUILayer.PreviewGeometry.Chart, "Chart" },
+                { GUILayer.PreviewGeometry.Plane2D, "2D" },
+                { GUILayer.PreviewGeometry.Box, "Box" },
+                { GUILayer.PreviewGeometry.Sphere, "Sphere" },
+                { GUILayer.PreviewGeometry.Model, "Model" }
             };
 
             ParamSourceTypeNames = new Dictionary<Enum, string>
@@ -543,9 +559,9 @@ namespace NodeEditorCore
             }
         }
 
-        private ShaderPatcherLayer.NodeGraphSignature FindSignature(ShaderPatcherLayer.NodeGraphFile documentContext, String name)
+        private GUILayer.NodeGraphSignature FindSignature(GUILayer.NodeGraphFile documentContext, String name)
         {
-            ShaderPatcherLayer.NodeGraphFile.SubGraph sg;
+            GUILayer.NodeGraphFile.SubGraph sg;
             if (documentContext != null && documentContext.SubGraphs.TryGetValue(name, out sg))
             {
                 return sg.Signature;
@@ -554,7 +570,7 @@ namespace NodeEditorCore
             return (fn != null) ? fn.Signature : null;
         }
 
-        public Node CreateProcedureNode(ShaderPatcherLayer.NodeGraphFile diagramContext, string archiveName, ProcedureNodeType type, ShaderPatcherLayer.PreviewSettings previewSettings)
+        public Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, string archiveName, ProcedureNodeType type, GUILayer.PreviewSettings previewSettings)
         {
             var node = new Node { Title = VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName) { Type = type };
@@ -565,7 +581,7 @@ namespace NodeEditorCore
             return node;
         }
 
-        private void SetProcedureNodeType_Internal(Node node, ProcedureNodeType type, ShaderPatcherLayer.PreviewSettings previewSettings)
+        private void SetProcedureNodeType_Internal(Node node, ProcedureNodeType type, GUILayer.PreviewSettings previewSettings)
         {
             ShaderProcedureNodeTag tag = node.Tag as ShaderProcedureNodeTag;
             if (tag == null) return;
@@ -576,7 +592,7 @@ namespace NodeEditorCore
                 if (previewSettings != null)
                 {
                     previewItem.PreviewSettings = previewSettings;
-                    if (previewSettings.Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere)
+                    if (previewSettings.Geometry == GUILayer.PreviewGeometry.Sphere)
                         node.Layout = Node.LayoutType.Circular;
                 }
 
@@ -598,8 +614,8 @@ namespace NodeEditorCore
                         if (sender is HyperGraph.Items.NodeDropDownItem)
                         {
                             var item = (HyperGraph.Items.NodeDropDownItem)sender;
-                            previewItem.Geometry = AsEnumValue<ShaderPatcherLayer.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
-                            node.Layout = previewItem.Geometry == ShaderPatcherLayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
+                            previewItem.Geometry = AsEnumValue<GUILayer.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
+                            node.Layout = previewItem.Geometry == GUILayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
                         }
                     };
 
@@ -625,7 +641,7 @@ namespace NodeEditorCore
             tag.Type = type;
         }
 
-        public void SetProcedureNodeType(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type)
+        public void SetProcedureNodeType(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type)
         {
             SetProcedureNodeType_Internal(node, type, null);
             UpdateProcedureNode(diagramContext, node);
@@ -638,7 +654,7 @@ namespace NodeEditorCore
             return tag.Type;
         }
 
-        private void UpdateProcedureNodeDock(Node node, ShaderPatcherLayer.NodeGraphSignature signature, InterfaceDirection interfaceDirection)
+        private void UpdateProcedureNodeDock(Node node, GUILayer.NodeGraphSignature signature, InterfaceDirection interfaceDirection)
         {
             bool isSubGraph = (node.Tag is ShaderSubGraphNodeTag);
             Node.Dock dock;
@@ -770,7 +786,7 @@ namespace NodeEditorCore
             // leave them there
         }
 
-        public void UpdateProcedureNode(ShaderPatcherLayer.NodeGraphFile diagramContext, Node node)
+        public void UpdateProcedureNode(GUILayer.NodeGraphFile diagramContext, Node node)
         {
             ShaderProcedureNodeTag tag = node.Tag as ShaderProcedureNodeTag;
             if (tag == null) return;
@@ -831,7 +847,7 @@ namespace NodeEditorCore
 
                         HashSet<String> filtering = new HashSet<String>();
                         foreach (var param in restrictionSig.Parameters)
-                            if (param.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In)
+                            if (param.Direction == GUILayer.NodeGraphSignature.ParameterDirection.In)
                                 filtering.Add(param.Name);
 
                         filteredParams.UnionWith(filtering);
@@ -882,7 +898,7 @@ namespace NodeEditorCore
             }
         }
 
-        public Node CreateCapturesNode(String name, IEnumerable<ShaderPatcherLayer.NodeGraphSignature.Parameter> parameters)
+        public Node CreateCapturesNode(String name, IEnumerable<GUILayer.NodeGraphSignature.Parameter> parameters)
         {
             var node = new Node { Title = name };
             node.Tag = new ShaderCapturesNodeTag(name);
@@ -901,7 +917,7 @@ namespace NodeEditorCore
             return node;
         }
 
-        public Node CreateSubGraph(ShaderPatcherLayer.NodeGraphFile context, String name, String implements)
+        public Node CreateSubGraph(GUILayer.NodeGraphFile context, String name, String implements)
         {
             var node = new Node { };
             var tag = new ShaderSubGraphNodeTag { Implements = implements };
@@ -916,7 +932,7 @@ namespace NodeEditorCore
             return node;
         }
 
-        public void SetSubGraphProperties(ShaderPatcherLayer.NodeGraphFile context, Node subGraph, String name, String implements)
+        public void SetSubGraphProperties(GUILayer.NodeGraphFile context, Node subGraph, String name, String implements)
         {
             var tag = subGraph.Tag as ShaderSubGraphNodeTag;
             if (tag == null) return;
@@ -946,7 +962,7 @@ namespace NodeEditorCore
             implements = tag.Implements;
         }
 
-        public void UpdateSubGraphNode(ShaderPatcherLayer.NodeGraphFile context, Node subGraph)
+        public void UpdateSubGraphNode(GUILayer.NodeGraphFile context, Node subGraph)
         {
             ShaderSubGraphNodeTag tag = subGraph.Tag as ShaderSubGraphNodeTag;
             if (tag == null) return;

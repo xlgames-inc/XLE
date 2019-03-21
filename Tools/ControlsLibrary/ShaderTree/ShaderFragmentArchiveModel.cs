@@ -367,7 +367,7 @@ namespace ControlsLibrary
                             fragItem.FunctionName = f.Name;
                             fragItem.Signature = f.BuildParametersString();
                             foreach (var p in f.Signature.Parameters)
-                                if (p.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.Out)
+                                if (p.Direction == GUILayer.NodeGraphSignature.ParameterDirection.Out)
                                 {
                                     fragItem.Signature = fragItem.Signature + " -> " + p.Type;
                                     break;

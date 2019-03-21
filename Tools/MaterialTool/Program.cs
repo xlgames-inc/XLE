@@ -48,9 +48,6 @@ namespace MaterialTool
             var engineDevice = new GUILayer.EngineDevice();
             GC.KeepAlive(engineDevice);
 
-            var attach0 = new ShaderPatcherLayer.LibraryAttachMarker(engineDevice);
-            GC.KeepAlive(attach0);
-
             XLEBridgeUtils.Utils.AttachLibrary(engineDevice);
             var logRedirect = new XLEBridgeUtils.LoggingRedirect();
 
@@ -126,7 +123,6 @@ namespace MaterialTool
 
                 typeof(SkinService),
 
-                typeof(ShaderPatcherLayer.Manager),
                 typeof(ShaderFragmentArchive.Archive),
                
                 typeof(Controls.SubGraphControl),
@@ -204,7 +200,6 @@ namespace MaterialTool
             logRedirect.Dispose();
             engineDevice.PrepareForShutdown();
             XLEBridgeUtils.Utils.DetachLibrary(engineDevice);
-            attach0.Dispose();
             engineDevice.Dispose();
         }
     }

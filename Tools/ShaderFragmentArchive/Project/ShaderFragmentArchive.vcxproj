@@ -107,12 +107,10 @@
     <Reference Include="System.Xml" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="../PreviewRenderManager.h" />
     <ClInclude Include="../ShaderFragmentArchive.h" />
   </ItemGroup>
   <ItemGroup>
     <ClCompile Include="../AssemblyInfo.cpp" />
-    <ClCompile Include="../PreviewRenderManager.cpp" />
     <ClCompile Include="../ShaderFragmentArchive.cpp" />
   </ItemGroup>
   <ItemGroup>

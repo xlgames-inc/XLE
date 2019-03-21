@@ -19,8 +19,9 @@ namespace ShaderFragmentArchive
 
     Function::Function(StringSection<> name, const GraphLanguage::NodeGraphSignature& function)
     {
-		ShaderPatcherLayer::ConversionContext convContext;
-		Signature = ShaderPatcherLayer::NodeGraphSignature::ConvertFromNative(function, convContext);
+		assert(0);
+		// GUILayer::ConversionContext convContext;
+		// Signature = GUILayer::NodeGraphSignature::ConvertFromNative(function, convContext);
         Name = clix::marshalString<clix::E_UTF8>(name);
     }
 
@@ -32,7 +33,7 @@ namespace ShaderFragmentArchive
         stringBuilder.Append("(");
         bool first = true;
         for each(auto p in Signature->Parameters) {
-			if (p->Direction != ShaderPatcherLayer::NodeGraphSignature::ParameterDirection::In) continue;
+			if (p->Direction != GUILayer::NodeGraphSignature::ParameterDirection::In) continue;
 
             if (!first) stringBuilder.Append(", ");
             first = false;

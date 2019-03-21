@@ -170,6 +170,7 @@
     <ClCompile Include="..\MaterialVisualisation.cpp" />
     <ClCompile Include="..\NativeManipulators.cpp" />
     <ClCompile Include="..\NodeGraph.cpp" />
+    <ClCompile Include="..\PreviewRenderManager.cpp" />
     <ClCompile Include="..\ShaderGenerator.cpp" />
     <ClCompile Include="..\SimpleRenderingContext.cpp" />
     <ClCompile Include="..\ManipulatorsLayer.cpp" />
@@ -201,6 +202,7 @@
     <ClInclude Include="..\ManipulatorsLayer.h" />
     <ClInclude Include="..\NativeManipulators.h" />
     <ClInclude Include="..\NodeGraph.h" />
+    <ClInclude Include="..\PreviewRenderManager.h" />
     <ClInclude Include="..\ShaderGenerator.h" />
     <ClInclude Include="..\TerrainLayer.h" />
     <ClInclude Include="..\TypeRules.h" />

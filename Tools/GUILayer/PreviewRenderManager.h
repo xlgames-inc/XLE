@@ -11,27 +11,24 @@ using System::String;
 using System::Object;
 using namespace System::Runtime::Serialization;
 
-namespace ShaderPatcherLayer
+namespace GUILayer
 {
+	ref class MaterialVisSettings;
+	ref class TechniqueDelegateWrapper;
+
     public interface class IPreviewBuilder
     {
 	public:
 		System::Drawing::Bitmap^ BuildPreviewImage(
-			GUILayer::MaterialVisSettings^ visSettings,
+			MaterialVisSettings^ visSettings,
 			String^ materialNames,
-			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+			TechniqueDelegateWrapper^ techniqueDelegate,
 			System::Drawing::Size^ size);
     };
 
-	class AttachPimpl;
-	public ref class LibraryAttachMarker
+	public ref class PreviewBuilderUtils
 	{
-	public:
-		LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice);
-		~LibraryAttachMarker();
-		!LibraryAttachMarker();
-	private:
-		AttachPimpl* _pimpl;
+		static IPreviewBuilder^ CreatePreviewBuilder();
 	};
 }
 

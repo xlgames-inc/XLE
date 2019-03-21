@@ -25,7 +25,7 @@ namespace MaterialTool
             IEnumerable<String> sugg = null;
             foreach (var sg in _context.NodeGraphFile.SubGraphs)
             {
-                var subSugg = sg.Value.Signature.Parameters.Where(x => x.Direction == ShaderPatcherLayer.NodeGraphSignature.ParameterDirection.In).Select(x => x.Name);
+                var subSugg = sg.Value.Signature.Parameters.Where(x => x.Direction == GUILayer.NodeGraphSignature.ParameterDirection.In).Select(x => x.Name);
                 sugg = (sugg != null) ? sugg.Concat(subSugg) : subSugg;
             }
 

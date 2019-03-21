@@ -68,7 +68,7 @@ namespace NodeEditorCore
                 }
                 else
                 {
-                    var breakdown = new ShaderPatcherLayer.TypeRules.TypeBreakdown(_type);
+                    var breakdown = new GUILayer.TypeRules.TypeBreakdown(_type);
                     var parsedType = System.Enum.Parse(typeof(KnownBaseTypes), breakdown.RawType);
                     KnownBaseTypes t = (parsedType == null) ? KnownBaseTypes.@float : (KnownBaseTypes)parsedType;
                     _typeBaseBox.SelectedIndex = (int)t;

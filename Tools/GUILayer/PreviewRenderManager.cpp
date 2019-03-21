@@ -5,10 +5,12 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PreviewRenderManager.h"
-
-#include "../GUILayer/MarshalString.h"
-#include "../GUILayer/NativeEngineDevice.h"
-#include "../GUILayer/CLIXAutoPtr.h"
+#include "EngineDevice.h"
+#include "UITypesBinding.h"
+#include "GUILayerUtil.h"
+#include "MarshalString.h"
+#include "NativeEngineDevice.h"
+#include "CLIXAutoPtr.h"
 
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/ModelVisualisation.h"
@@ -17,12 +19,9 @@
 #include "../../RenderCore/Techniques/Techniques.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/RenderPass.h"
-#include "../../RenderCore/Techniques/DrawableDelegates.h"
 #include "../../RenderCore/Techniques/TechniqueMaterial.h"
 #include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../RenderCore/Assets/Services.h"
-#include "../../RenderCore/Metal/Shader.h"
-#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/MinimalShaderSource.h"
 #include "../../RenderCore/IDevice.h"
 
@@ -31,19 +30,14 @@
 #include "../../BufferUploads/ResourceLocator.h"
 
 #include "../../Assets/AssetServices.h"
-#include "../../Assets/IArtifact.h"
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../Assets/AssetSetManager.h"
 #include "../../ConsoleRig/ResourceBox.h"
-#include "../../ConsoleRig/AttachablePtr.h"
 #include "../../Utility/PtrUtils.h"
 
 #include <memory>
-#include <sstream>
 
-using namespace System::ComponentModel::Composition;
-
-namespace ShaderPatcherLayer
+namespace GUILayer
 {
 	using System::Drawing::Size;
 
@@ -54,10 +48,7 @@ namespace ShaderPatcherLayer
         std::shared_ptr<RenderCore::IDevice> _device;
     };
 
-    [Export(IPreviewBuilder::typeid)]
-    [Export(Manager::typeid)]
-    [PartCreationPolicy(CreationPolicy::Shared)]
-    public ref class Manager : IPreviewBuilder
+    public ref class PreviewBuilder : IPreviewBuilder
     {
     public:
 		virtual System::Drawing::Bitmap^ BuildPreviewImage(
@@ -66,13 +57,18 @@ namespace ShaderPatcherLayer
 			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
 			System::Drawing::Size^ size);
 
-        Manager();
+        PreviewBuilder();
     private:
         clix::auto_ptr<ManagerPimpl> _pimpl;
 
-        ~Manager();
+        ~PreviewBuilder();
 		System::Drawing::Bitmap^    GenerateErrorBitmap(const char str[], Size^ size);
     };
+
+	IPreviewBuilder^ PreviewBuilderUtils::CreatePreviewBuilder()
+	{
+		return gcnew PreviewBuilder();
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -108,7 +104,7 @@ namespace ShaderPatcherLayer
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	System::Drawing::Bitmap^ Manager::BuildPreviewImage(
+	System::Drawing::Bitmap^ PreviewBuilder::BuildPreviewImage(
 		GUILayer::MaterialVisSettings^ visSettings,
 		String^ materialNames,
 		GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
@@ -149,21 +145,21 @@ namespace ShaderPatcherLayer
 		::Assets::FuturePtr<SceneEngine::IScene> sceneFuture;
 
 		auto geometry = visSettings->Geometry;
-		if (geometry != GUILayer::MaterialVisSettings::Geometry::Model) {
+		if (geometry != MaterialVisSettings::GeometryType::Model) {
 			ToolsRig::MaterialVisSettings nativeVisSettings;
 			switch (geometry) {
-			case GUILayer::MaterialVisSettings::Geometry::Plane2D:
-			case GUILayer::MaterialVisSettings::Geometry::Chart:
+			case MaterialVisSettings::GeometryType::Plane2D:
+			case MaterialVisSettings::GeometryType::Chart:
 				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Plane2D;
 				break;
 
-			case GUILayer::MaterialVisSettings::Geometry::Box:
+			case MaterialVisSettings::GeometryType::Cube:
 				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Cube;
 				camSettings._position = Float3(-2.1f, 0, 0);
 				break;
 
 			default:
-			case GUILayer::MaterialVisSettings::Geometry::Sphere:
+			case MaterialVisSettings::GeometryType::Sphere:
 				nativeVisSettings._geometryType = ToolsRig::MaterialVisSettings::GeometryType::Sphere;
 				break;
 			}
@@ -171,10 +167,10 @@ namespace ShaderPatcherLayer
 			auto material = CreatePreviewMaterial(materialNames, ::Assets::DirectorySearchRules{});
 			sceneFuture = ToolsRig::MakeScene(nativeVisSettings, material);
 		} else {
-			ToolsRig::ModelVisSettings visSettings;
-			// visSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-			// visSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
-			sceneFuture = ToolsRig::MakeScene(visSettings);
+			ToolsRig::ModelVisSettings modelSettings;
+			// modelSettings._modelName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			// modelSettings._materialName = clix::marshalString<clix::E_UTF8>(doc->PreviewModelFile);
+			sceneFuture = ToolsRig::MakeScene(modelSettings);
 		}
 
 		const auto& actualScene = ToolsRig::TryActualize(*sceneFuture);
@@ -239,7 +235,7 @@ namespace ShaderPatcherLayer
         return nullptr;
     }
 
-	System::Drawing::Bitmap^    Manager::GenerateErrorBitmap(const char str[], Size^ size)
+	System::Drawing::Bitmap^    PreviewBuilder::GenerateErrorBitmap(const char str[], Size^ size)
     {
             //      Previously, we got an error while rendering this item.
             //      Render some text to the bitmap with an error string. Just
@@ -257,67 +253,20 @@ namespace ShaderPatcherLayer
         return newBitmap;
     }
 
-    Manager::Manager()
+    PreviewBuilder::PreviewBuilder()
     {
         _pimpl.reset(new ManagerPimpl());
 
-		auto engineDevice = GUILayer::EngineDevice::GetInstance();
+		auto engineDevice = EngineDevice::GetInstance();
         _pimpl->_device = engineDevice->GetNative().GetRenderDevice();
         
         _pimpl->_globalTechniqueContext = std::make_shared<RenderCore::Techniques::TechniqueContext>();
     }
 
-    Manager::~Manager()
+    PreviewBuilder::~PreviewBuilder()
     {
 		_pimpl.reset();
     }
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	class AttachPimpl
-    {
-    public:
-        ConsoleRig::AttachablePtr<ConsoleRig::GlobalServices> _attachRef0;
-		ConsoleRig::AttachablePtr<::Assets::Services> _attachRef1;
-        ConsoleRig::AttachablePtr<RenderCore::Assets::Services> _attachRef2;
-        ConsoleRig::AttachablePtr<RenderCore::Metal::ObjectFactory> _attachRef3;
-    };
-
-	LibraryAttachMarker::LibraryAttachMarker(GUILayer::EngineDevice^ engineDevice)
-	{
-		_pimpl = new AttachPimpl();
-
-		ConsoleRig::CrossModule::SetInstance(*engineDevice->GetNative().GetCrossModule());
-		_pimpl->_attachRef0 = ConsoleRig::GetAttachablePtr<ConsoleRig::GlobalServices>();
-        _pimpl->_attachRef1 = ConsoleRig::GetAttachablePtr<::Assets::Services>();
-        _pimpl->_attachRef2 = ConsoleRig::GetAttachablePtr<RenderCore::Assets::Services>();
-        _pimpl->_attachRef3 = ConsoleRig::GetAttachablePtr<RenderCore::Metal::ObjectFactory>();
-	}
-
-	LibraryAttachMarker::~LibraryAttachMarker()
-	{
-		if (_pimpl) {
-            System::GC::Collect();
-            System::GC::WaitForPendingFinalizers();
-            GUILayer::DelayedDeleteQueue::FlushQueue();
-        
-            ConsoleRig::ResourceBoxes_Shutdown();
-            Assets::Dependencies_Shutdown();    //  (can't do this properly here!)
-
-			_pimpl->_attachRef3.reset();
-			_pimpl->_attachRef2.reset();
-			_pimpl->_attachRef1.reset();
-			_pimpl->_attachRef0.reset();
-			ConsoleRig::CrossModule::ReleaseInstance();
-			delete _pimpl; _pimpl = nullptr;
-		}
-	}
-
-	LibraryAttachMarker::!LibraryAttachMarker() 
-	{
-		this->~LibraryAttachMarker();
-	}
-
 
 }
 

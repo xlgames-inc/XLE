@@ -29,9 +29,9 @@ namespace MaterialTool.Controls
 
         private TextBox _readout;
 
-        public void SetContext(ShaderPatcherLayer.MessageRelayWrapper context)
+        public void SetContext(GUILayer.MessageRelayWrapper context)
         {
-            var existingContext = ContextAs<ShaderPatcherLayer.MessageRelayWrapper>();
+            var existingContext = ContextAs<GUILayer.MessageRelayWrapper>();
             if (existingContext != null)
             {
                 existingContext.OnChangeEvent -= OnChangeEvent;
@@ -68,7 +68,7 @@ namespace MaterialTool.Controls
 
         private void UpdateText()
         {
-            var context = ContextAs<ShaderPatcherLayer.MessageRelayWrapper>();
+            var context = ContextAs<GUILayer.MessageRelayWrapper>();
             if (context == null)
             {
                 _readout.Text = string.Empty;

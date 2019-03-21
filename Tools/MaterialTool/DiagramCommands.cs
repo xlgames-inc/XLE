@@ -75,9 +75,9 @@ namespace MaterialTool
 
                                 if (previewerContext != null)
                                 {
-                                    var actualizationMsgs = new ShaderPatcherLayer.MessageRelayWrapper();
+                                    var actualizationMsgs = new GUILayer.MessageRelayWrapper();
                                     previewerContext.TechniqueOverrides =
-                                        _previewManager.MakeTechniqueDelegate(
+                                        GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(
                                             context.Document.NodeGraphFile,
                                             context.Document.NodeGraphFile.SubGraphs.First().Key,
                                             actualizationMsgs);
@@ -134,8 +134,5 @@ namespace MaterialTool
 
         [Import(AllowDefault = false)]
         private IControlHostService _controlHostService;
-
-        [Import]
-        private ShaderPatcherLayer.IPreviewBuilder _previewManager;
     }
 }
