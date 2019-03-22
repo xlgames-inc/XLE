@@ -68,7 +68,7 @@ namespace Assets
             virtual AssetState State() const;
 			const DepValPtr& GetDependencyValidation() const { return _depVal; }
 			const Blob& GetActualizationLog() const { return _actualizationLog; }
-			virtual const char* what() const;
+			virtual const char* what() const noexcept;
 
             InvalidAsset(StringSection<ResChar> initializer, const DepValPtr&, const Blob& actualizationLog) never_throws;
 		private:
@@ -89,7 +89,7 @@ namespace Assets
         public: 
             virtual bool CustomReport() const;
             virtual AssetState State() const;
-			virtual const char* what() const;
+			virtual const char* what() const noexcept;
 
             PendingAsset(StringSection<ResChar> initializer) never_throws;
         };

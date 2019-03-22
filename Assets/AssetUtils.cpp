@@ -465,7 +465,7 @@ namespace Assets
             return true;
         }
 
-		const char* InvalidAsset::what() const
+		const char* InvalidAsset::what() const noexcept
 		{
 			return _whatString.c_str();
 		}
@@ -486,7 +486,7 @@ namespace Assets
 
         auto PendingAsset::State() const -> AssetState { return AssetState::Pending; }
 
-		const char* PendingAsset::what() const
+		const char* PendingAsset::what() const noexcept
 		{
 			return Initializer();
 		}
