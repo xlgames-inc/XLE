@@ -13,8 +13,6 @@
 
 namespace Utility
 {
-    static thread_local std::function<void()> s_threadPoolYieldFunction;
-
     void CompletionThreadPool::EnqueueBasic(PendingTask&& task)
     {
         assert(IsGood());

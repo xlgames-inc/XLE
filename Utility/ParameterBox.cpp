@@ -750,6 +750,11 @@ namespace Utility
             return result.str();
         }
 
+        std::string AsString(IteratorRange<const void*> data, const TypeDesc& type, bool strongTyping)
+        {
+            return AsString(data.begin(), data.size(), type, strongTyping);
+        }
+
         template std::pair<bool, bool> Parse(StringSection<utf8>);
         template std::pair<bool, unsigned> Parse(StringSection<utf8>);
         template std::pair<bool, signed> Parse(StringSection<utf8>);
@@ -868,7 +873,7 @@ namespace Utility
 
     void ParameterBox::SetParameter(ParameterNameHash nameHash, IteratorRange<const void*> data, const TypeDesc& type)
     {
-        SetParameter(nameHash, nullptr, data, type);
+        SetParameter(nameHash, {}, data, type);
     }
 
     void ParameterBox::SetParameter(
@@ -883,11 +888,10 @@ namespace Utility
 
     auto ParameterBox::SetParameterHint(
         SerializableVector<ParameterNameHash>::const_iterator i,
-        ParameterNameHash hash, const utf8 name[], IteratorRange<const void*> value,
+        ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
         const ImpliedTyping::TypeDesc& insertType) -> SerializableVector<ParameterNameHash>::const_iterator
     {
 		assert(value.size() == insertType.GetSize());
-        const auto valueSize = insertType.GetSize();
         if (i==_hashNames.cend()) {
                 // push new value onto the end (including name & type info)
             _hashNames.push_back(hash);
@@ -1295,7 +1299,7 @@ namespace Utility
             hashNameI = SetParameterHint(
                 hashNameI,
                 *srcHashNameI,
-                PtrAdd(source._names.begin(), srcOffsets._nameBegin),
+                { PtrAdd(source._names.begin(), srcOffsets._nameBegin), PtrAdd(source._names.begin(), srcOffsets._nameBegin+srcOffsets._nameSize) },
                 { ValueTableOffset(source._values, srcOffsets._valueBegin), ValueTableOffset(source._values, srcOffsets._valueBegin+srcOffsets._valueSize) },
                 source._types[srcIdx]);
             ++srcHashNameI;

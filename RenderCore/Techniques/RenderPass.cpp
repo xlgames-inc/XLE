@@ -35,7 +35,6 @@ namespace RenderCore
             << attachment._width << ", "
             << attachment._height << ", "
             << attachment._arrayLayerCount << ", "
-            << attachment._defaultAspect << ", "
             << unsigned(attachment._dimsMode)
             << ", 0x" << std::hex << attachment._flags << std::dec << " }";
         return str;
@@ -1311,7 +1310,6 @@ namespace RenderCore { namespace Techniques
                         auto sameSemantic = defaultSemanticFormats.find(interfaceAttachment.GetOutputSemanticBinding());
                         if (sameSemantic != defaultSemanticFormats.end()) {
                             if (desc._format == Format::Unknown) desc._format = sameSemantic->second._format;
-                            if (desc._defaultAspect == TextureViewDesc::Aspect::UndefinedAspect) desc._defaultAspect = sameSemantic->second._defaultAspect;
                         } else {
                             if (desc._format == Format::Unknown) {
                                 #if defined(_DEBUG)

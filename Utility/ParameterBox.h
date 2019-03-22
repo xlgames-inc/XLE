@@ -77,6 +77,7 @@ namespace Utility
         CastType CastType(TypeCat testType, TypeCat againstType);
 
         std::string AsString(const void* data, size_t dataSize, const TypeDesc&, bool strongTyping = false);
+        std::string AsString(IteratorRange<const void*> data, const TypeDesc&, bool strongTyping = false);
 
         template<typename Type>
             inline std::string AsString(const Type& type, bool strongTyping = false)
@@ -251,7 +252,7 @@ namespace Utility
 
         SerializableVector<ParameterNameHash>::const_iterator SetParameterHint(
             SerializableVector<ParameterNameHash>::const_iterator paramNameHash,
-            ParameterNameHash hash, const utf8 name[], const void* value,
+            ParameterNameHash hash, StringSection<utf8> name, IteratorRange<const void*> value,
             const ImpliedTyping::TypeDesc& insertType);
     };
 
