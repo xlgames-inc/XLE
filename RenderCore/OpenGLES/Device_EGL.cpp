@@ -473,22 +473,23 @@ namespace RenderCore { namespace ImplOpenGLES
             if (_surface == EGL_NO_SURFACE)
                 Throw(::Exceptions::BasicLabel("Failure constructing EGL window surface with error: (%s)", ErrorToName(eglGetError())));
 
-            std::stringstream str;
-            StreamSurface(str, display, _surface);
-            auto s = str.str();
-
-            // We can't get the color depth of the true texture, just the number of components & a color space flag
-            EGLint colorSpace, textureFormat;
-            bool success = eglQuerySurface(display, _surface, EGL_GL_COLORSPACE, &colorSpace);
-            success &= eglQuerySurface(display, _surface, EGL_TEXTURE_FORMAT, &textureFormat);
-            if (success) {
-                if (textureFormat == EGL_TEXTURE_RGB) {
-                    _desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8_UNORM_SRGB : Format::R8G8B8_UNORM;
-                } else if (textureFormat != EGL_NO_TEXTURE) {
-                    // should normally be expecting EGL_TEXTURE_RGBA here, but some drivers returning wierd stuff
-                    _desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM;
-                }
-            }
+			bool useFakeBackBuffer = _desc->_bindFlags & BindFlag::ShaderResource;
+			if (!useFakeBackBuffer || _desc->_format == Format::Unknown) {
+				// In fake back buffer mode, the caller must give us the format they want explicitly
+				// Otherwise, we'll try to extract it from what the driver created
+				// We can't get the color depth of the true texture, just the number of components & a color space flag
+				EGLint colorSpace, textureFormat;
+				bool success = eglQuerySurface(display, _surface, EGL_GL_COLORSPACE, &colorSpace);
+				success &= eglQuerySurface(display, _surface, EGL_TEXTURE_FORMAT, &textureFormat);
+				if (success) {
+					if (textureFormat == EGL_TEXTURE_RGB) {
+						_desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8_UNORM_SRGB : Format::R8G8B8_UNORM;
+					} else if (textureFormat != EGL_NO_TEXTURE) {
+						// should normally be expecting EGL_TEXTURE_RGBA here, but some drivers returning wierd stuff
+						_desc->_format = (colorSpace == EGL_GL_COLORSPACE_LINEAR) ? Format::R8G8B8A8_UNORM_SRGB : Format::R8G8B8A8_UNORM;
+					}
+				}
+			}
         }
     }
 
