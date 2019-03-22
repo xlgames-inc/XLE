@@ -144,20 +144,20 @@
   </ItemGroup>
   <ItemGroup>
     <Antlr3TreeParser Include="..\Grammar\GraphSyntaxEval.g">
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
     </Antlr3TreeParser>
     <Antlr3TreeParser Include="..\Grammar\ShaderTreeWalk.g">
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
-      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(XLE_DIR)/Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Release|x64'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+      <ANTLR3Jar Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
     </Antlr3TreeParser>
   </ItemGroup>
   <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />

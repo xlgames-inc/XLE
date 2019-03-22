@@ -20,7 +20,7 @@
         $(VULKAN_SDK)\glslang\build\OGLCompilersDLL\$(VulkanConfiguration)\OGLCompiler$(LibSuffix).lib;
         $(VULKAN_SDK)\spirv-tools\build\source\$(VulkanConfiguration)\SPIRV-Tools.lib;
         $(VULKAN_SDK)\spirv-tools\build\source\opt\$(VulkanConfiguration)\SPIRV-Tools-opt.lib;
-        $(VULKAN_SDK)\Lib\VKstatic.1.lib;
+        $(VULKAN_SDK)\Lib\vulkan-1.lib;
         $(VULKAN_SDK)\Lib\VkLayer_utils.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
@@ -35,7 +35,7 @@
         $(VULKAN_SDK)\glslang\build\OGLCompilersDLL\$(VulkanConfiguration)\OGLCompiler$(LibSuffix).lib;
         $(VULKAN_SDK)\spirv-tools\build\source\$(VulkanConfiguration)\SPIRV-Tools.lib;
         $(VULKAN_SDK)\spirv-tools\build\source\opt\$(VulkanConfiguration)\SPIRV-Tools-opt.lib;
-        $(VULKAN_SDK)\Lib\VKstatic.1.lib;
+        $(VULKAN_SDK)\Lib\vulkan-1.lib;
         $(VULKAN_SDK)\Lib\VkLayer_utils.lib;
         %(AdditionalDependencies)
       </AdditionalDependencies>
