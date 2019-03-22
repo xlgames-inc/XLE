@@ -265,13 +265,13 @@ namespace Utility
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
 
                     if (!ImpliedTyping::Cast(
-                        buffer, sizeof(buffer), destType, 
-                        buffer2, parsedType))
+                        MakeIteratorRange(buffer), destType, 
+                        MakeIteratorRange(buffer2), parsedType))
                         return false;
                 } else {
                     if (!ImpliedTyping::Cast(
-                        buffer, sizeof(buffer), destType, 
-                        src, srcType))
+                        MakeIteratorRange(buffer), destType, 
+                        { src, PtrAdd(src, srcType.GetSize()) }, srcType))
                         return false;
                 }
             
@@ -319,13 +319,13 @@ namespace Utility
                     if (parsedType._type == ImpliedTyping::TypeCat::Void) return false;
 
                     if (!ImpliedTyping::Cast(
-                        buffer, sizeof(buffer), destType, 
-                        buffer2, parsedType))
+                        MakeIteratorRange(buffer), destType, 
+                        MakeIteratorRange(buffer2), parsedType))
                         return false;
                 } else {
                     if (!ImpliedTyping::Cast(
-                        buffer, sizeof(buffer), destType, 
-                        src, srcType))
+                        MakeIteratorRange(buffer), destType, 
+                        { src, PtrAdd(src, srcType.GetSize()) }, srcType))
                         return false;
                 }
                 
@@ -364,7 +364,9 @@ namespace Utility
                 XlCopyString((char*)dst, dstSize / sizeof(char), ImpliedTyping::AsString(src, true).c_str());
                 return true;
             } else {
-                return ImpliedTyping::Cast(dst, dstSize, dstType, &src, ImpliedTyping::TypeOf<SrcType>());
+                return ImpliedTyping::Cast(
+                    { dst, PtrAdd(dst, dstSize) }, dstType, 
+                    AsOpaqueIteratorRange(src), ImpliedTyping::TypeOf<SrcType>());
             }
         }
 
@@ -382,7 +384,9 @@ namespace Utility
                     MakeStringSection(src),
                     parseBuffer, sizeof(parseBuffer));
                 if (parseType._type == ImpliedTyping::TypeCat::Void) return false;
-                return ImpliedTyping::Cast(dst, dstSize, dstType, parseBuffer, parseType);
+                return ImpliedTyping::Cast(
+                    { dst, PtrAdd(dst, dstSize) }, dstType, 
+                    MakeIteratorRange(parseBuffer), parseType);
             }
         }
 

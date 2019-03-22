@@ -106,9 +106,11 @@ namespace Utility
         }
 
         bool Cast(
-            void* dest, size_t destSize, TypeDesc destType,
-            const void* src, TypeDesc srcType)
+            IteratorRange<void*> dest, TypeDesc destType,
+            IteratorRange<const void*> src, TypeDesc srcType)
         {
+            assert(src.size() >= srcType.GetSize());
+            assert(dest.size() >= destType.GetSize());
             if (destType._arrayCount <= 1) {
                     // casting single element. Will we read the first element
                     // of the 
@@ -116,17 +118,17 @@ namespace Utility
                 case TypeCat::Bool:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(bool*)dest = *(bool*)src; return true;
-                        case TypeCat::Int8: *(bool*)dest = !!*(int8*)src; return true;
-                        case TypeCat::UInt8: *(bool*)dest = !!*(uint8*)src; return true;
-                        case TypeCat::Int16: *(bool*)dest = !!*(int16*)src; return true;
-                        case TypeCat::UInt16: *(bool*)dest = !!*(uint16*)src; return true;
-                        case TypeCat::Int32: *(bool*)dest = !!*(int32*)src; return true;
-                        case TypeCat::UInt32: *(bool*)dest = !!*(uint32*)src; return true;
-                        case TypeCat::Int64: *(bool*)dest = !!*(int64*)src; return true;
-                        case TypeCat::UInt64: *(bool*)dest = !!*(uint64*)src; return true;
-                        case TypeCat::Float: *(bool*)dest = !!*(float*)src; return true;
-                        case TypeCat::Double: *(bool*)dest = !!*(double*)src; return true;
+                        case TypeCat::Bool: *(bool*)dest.begin() = *(bool*)src.begin(); return true;
+                        case TypeCat::Int8: *(bool*)dest.begin() = !!*(int8*)src.begin(); return true;
+                        case TypeCat::UInt8: *(bool*)dest.begin() = !!*(uint8*)src.begin(); return true;
+                        case TypeCat::Int16: *(bool*)dest.begin() = !!*(int16*)src.begin(); return true;
+                        case TypeCat::UInt16: *(bool*)dest.begin() = !!*(uint16*)src.begin(); return true;
+                        case TypeCat::Int32: *(bool*)dest.begin() = !!*(int32*)src.begin(); return true;
+                        case TypeCat::UInt32: *(bool*)dest.begin() = !!*(uint32*)src.begin(); return true;
+                        case TypeCat::Int64: *(bool*)dest.begin() = !!*(int64*)src.begin(); return true;
+                        case TypeCat::UInt64: *(bool*)dest.begin() = !!*(uint64*)src.begin(); return true;
+                        case TypeCat::Float: *(bool*)dest.begin() = !!*(float*)src.begin(); return true;
+                        case TypeCat::Double: *(bool*)dest.begin() = !!*(double*)src.begin(); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -135,17 +137,17 @@ namespace Utility
                 case TypeCat::Int8:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int8*)dest = int8(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int8*)dest = int8(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int8*)dest = int8(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int8*)dest = int8(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int8*)dest = int8(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int8*)dest = int8(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(int8*)dest = int8(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int8*)dest = int8(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int8*)dest = int8(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int8*)dest = int8(*(float*)src); return true;
-                        case TypeCat::Double: *(int8*)dest = int8(*(double*)src); return true;
+                        case TypeCat::Bool: *(int8*)dest.begin() = int8(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int8*)dest.begin() = int8(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int8*)dest.begin() = int8(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int8*)dest.begin() = int8(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int8*)dest.begin() = int8(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int8*)dest.begin() = int8(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(int8*)dest.begin() = int8(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int8*)dest.begin() = int8(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int8*)dest.begin() = int8(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int8*)dest.begin() = int8(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int8*)dest.begin() = int8(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -154,17 +156,17 @@ namespace Utility
                 case TypeCat::UInt8:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint8*)dest = uint8(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint8*)dest = uint8(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint8*)dest = uint8(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint8*)dest = uint8(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint8*)dest = uint8(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint8*)dest = uint8(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint8*)dest = uint8(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(uint8*)dest = uint8(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint8*)dest = uint8(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint8*)dest = uint8(*(float*)src); return true;
-                        case TypeCat::Double: *(uint8*)dest = uint8(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint8*)dest.begin() = uint8(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint8*)dest.begin() = uint8(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint8*)dest.begin() = uint8(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint8*)dest.begin() = uint8(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint8*)dest.begin() = uint8(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint8*)dest.begin() = uint8(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint8*)dest.begin() = uint8(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(uint8*)dest.begin() = uint8(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint8*)dest.begin() = uint8(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint8*)dest.begin() = uint8(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint8*)dest.begin() = uint8(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -173,17 +175,17 @@ namespace Utility
                 case TypeCat::Int16:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int16*)dest = int16(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int16*)dest = int16(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int16*)dest = int16(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int16*)dest = int16(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int16*)dest = int16(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int16*)dest = int16(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(int16*)dest = int16(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int16*)dest = int16(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int16*)dest = int16(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int16*)dest = int16(*(float*)src); return true;
-                        case TypeCat::Double: *(int16*)dest = int16(*(double*)src); return true;
+                        case TypeCat::Bool: *(int16*)dest.begin() = int16(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int16*)dest.begin() = int16(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int16*)dest.begin() = int16(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int16*)dest.begin() = int16(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int16*)dest.begin() = int16(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int16*)dest.begin() = int16(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(int16*)dest.begin() = int16(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int16*)dest.begin() = int16(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int16*)dest.begin() = int16(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int16*)dest.begin() = int16(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int16*)dest.begin() = int16(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -192,17 +194,17 @@ namespace Utility
                 case TypeCat::UInt16:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint16*)dest = uint16(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint16*)dest = uint16(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint16*)dest = uint16(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint16*)dest = uint16(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint16*)dest = uint16(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint16*)dest = uint16(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint16*)dest = uint16(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(uint16*)dest = uint16(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint16*)dest = uint16(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint16*)dest = uint16(*(float*)src); return true;
-                        case TypeCat::Double: *(uint16*)dest = uint16(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint16*)dest.begin() = uint16(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint16*)dest.begin() = uint16(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint16*)dest.begin() = uint16(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint16*)dest.begin() = uint16(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint16*)dest.begin() = uint16(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint16*)dest.begin() = uint16(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint16*)dest.begin() = uint16(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(uint16*)dest.begin() = uint16(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint16*)dest.begin() = uint16(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint16*)dest.begin() = uint16(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint16*)dest.begin() = uint16(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -211,17 +213,17 @@ namespace Utility
                 case TypeCat::Int32:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int32*)dest = int32(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int32*)dest = int32(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int32*)dest = int32(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int32*)dest = int32(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int32*)dest = int32(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int32*)dest = *(int32*)src; return true;
-                        case TypeCat::UInt32: *(int32*)dest = int32(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int32*)dest = int32(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int32*)dest = int32(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int32*)dest = int32(*(float*)src); return true;
-                        case TypeCat::Double: *(int32*)dest = int32(*(double*)src); return true;
+                        case TypeCat::Bool: *(int32*)dest.begin() = int32(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int32*)dest.begin() = int32(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int32*)dest.begin() = int32(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int32*)dest.begin() = int32(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int32*)dest.begin() = int32(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int32*)dest.begin() = *(int32*)src.begin(); return true;
+                        case TypeCat::UInt32: *(int32*)dest.begin() = int32(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int32*)dest.begin() = int32(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int32*)dest.begin() = int32(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int32*)dest.begin() = int32(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int32*)dest.begin() = int32(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -230,17 +232,17 @@ namespace Utility
                 case TypeCat::UInt32:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint32*)dest = uint32(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint32*)dest = uint32(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint32*)dest = uint32(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint32*)dest = uint32(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint32*)dest = uint32(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint32*)dest = uint32(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint32*)dest = *(uint32*)src; return true;
-                        case TypeCat::Int64: *(uint32*)dest = uint32(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint32*)dest = uint32(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint32*)dest = uint32(*(float*)src); return true;
-                        case TypeCat::Double: *(uint32*)dest = uint32(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint32*)dest.begin() = uint32(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint32*)dest.begin() = uint32(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint32*)dest.begin() = uint32(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint32*)dest.begin() = uint32(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint32*)dest.begin() = uint32(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint32*)dest.begin() = uint32(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint32*)dest.begin() = *(uint32*)src.begin(); return true;
+                        case TypeCat::Int64: *(uint32*)dest.begin() = uint32(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint32*)dest.begin() = uint32(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint32*)dest.begin() = uint32(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint32*)dest.begin() = uint32(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -249,17 +251,17 @@ namespace Utility
                 case TypeCat::Int64:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(int64*)dest = int64(*(bool*)src); return true;
-                        case TypeCat::Int8: *(int64*)dest = int64(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(int64*)dest = int64(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(int64*)dest = int64(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(int64*)dest = int64(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(int64*)dest = int64(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(int64*)dest = int64(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(int64*)dest = int64(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(int64*)dest = int64(*(uint64*)src); return true;
-                        case TypeCat::Float: *(int64*)dest = int64(*(float*)src); return true;
-                        case TypeCat::Double: *(int64*)dest = int64(*(double*)src); return true;
+                        case TypeCat::Bool: *(int64*)dest.begin() = int64(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(int64*)dest.begin() = int64(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(int64*)dest.begin() = int64(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(int64*)dest.begin() = int64(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(int64*)dest.begin() = int64(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(int64*)dest.begin() = int64(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(int64*)dest.begin() = int64(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(int64*)dest.begin() = int64(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(int64*)dest.begin() = int64(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(int64*)dest.begin() = int64(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(int64*)dest.begin() = int64(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -268,17 +270,17 @@ namespace Utility
                 case TypeCat::UInt64:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(uint64*)dest = uint64(*(bool*)src); return true;
-                        case TypeCat::Int8: *(uint64*)dest = uint64(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(uint64*)dest = uint64(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(uint64*)dest = uint64(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(uint64*)dest = uint64(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(uint64*)dest = uint64(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(uint64*)dest = uint64(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(uint64*)dest = uint64(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(uint64*)dest = uint64(*(uint64*)src); return true;
-                        case TypeCat::Float: *(uint64*)dest = uint64(*(float*)src); return true;
-                        case TypeCat::Double: *(uint64*)dest = uint64(*(double*)src); return true;
+                        case TypeCat::Bool: *(uint64*)dest.begin() = uint64(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(uint64*)dest.begin() = uint64(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(uint64*)dest.begin() = uint64(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(uint64*)dest.begin() = uint64(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(uint64*)dest.begin() = uint64(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(uint64*)dest.begin() = uint64(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(uint64*)dest.begin() = uint64(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(uint64*)dest.begin() = uint64(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(uint64*)dest.begin() = uint64(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(uint64*)dest.begin() = uint64(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(uint64*)dest.begin() = uint64(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -287,17 +289,17 @@ namespace Utility
                 case TypeCat::Float:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(float*)dest = float(*(bool*)src); return true;
-                        case TypeCat::Int8: *(float*)dest = float(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(float*)dest = float(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(float*)dest = float(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(float*)dest = float(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(float*)dest = float(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(float*)dest = float(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(float*)dest = float(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(float*)dest = float(*(uint64*)src); return true;
-                        case TypeCat::Float: *(float*)dest = float(*(float*)src); return true;
-                        case TypeCat::Double: *(float*)dest = float(*(double*)src); return true;
+                        case TypeCat::Bool: *(float*)dest.begin() = float(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(float*)dest.begin() = float(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(float*)dest.begin() = float(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(float*)dest.begin() = float(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(float*)dest.begin() = float(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(float*)dest.begin() = float(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(float*)dest.begin() = float(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(float*)dest.begin() = float(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(float*)dest.begin() = float(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(float*)dest.begin() = float(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(float*)dest.begin() = float(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -306,17 +308,17 @@ namespace Utility
                 case TypeCat::Double:
                     {
                         switch (srcType._type) {
-                        case TypeCat::Bool: *(double*)dest = double(*(bool*)src); return true;
-                        case TypeCat::Int8: *(double*)dest = double(*(int8*)src); return true;
-                        case TypeCat::UInt8: *(double*)dest = double(*(uint8*)src); return true;
-                        case TypeCat::Int16: *(double*)dest = double(*(int16*)src); return true;
-                        case TypeCat::UInt16: *(double*)dest = double(*(uint16*)src); return true;
-                        case TypeCat::Int32: *(double*)dest = double(*(int32*)src); return true;
-                        case TypeCat::UInt32: *(double*)dest = double(*(uint32*)src); return true;
-                        case TypeCat::Int64: *(double*)dest = double(*(int64*)src); return true;
-                        case TypeCat::UInt64: *(double*)dest = double(*(uint64*)src); return true;
-                        case TypeCat::Float: *(double*)dest = double(*(float*)src); return true;
-                        case TypeCat::Double: *(double*)dest = double(*(double*)src); return true;
+                        case TypeCat::Bool: *(double*)dest.begin() = double(*(bool*)src.begin()); return true;
+                        case TypeCat::Int8: *(double*)dest.begin() = double(*(int8*)src.begin()); return true;
+                        case TypeCat::UInt8: *(double*)dest.begin() = double(*(uint8*)src.begin()); return true;
+                        case TypeCat::Int16: *(double*)dest.begin() = double(*(int16*)src.begin()); return true;
+                        case TypeCat::UInt16: *(double*)dest.begin() = double(*(uint16*)src.begin()); return true;
+                        case TypeCat::Int32: *(double*)dest.begin() = double(*(int32*)src.begin()); return true;
+                        case TypeCat::UInt32: *(double*)dest.begin() = double(*(uint32*)src.begin()); return true;
+                        case TypeCat::Int64: *(double*)dest.begin() = double(*(int64*)src.begin()); return true;
+                        case TypeCat::UInt64: *(double*)dest.begin() = double(*(uint64*)src.begin()); return true;
+                        case TypeCat::Float: *(double*)dest.begin() = double(*(float*)src.begin()); return true;
+                        case TypeCat::Double: *(double*)dest.begin() = double(*(double*)src.begin()); return true;
                         case TypeCat::Void: break;
                         }
                     }
@@ -330,36 +332,33 @@ namespace Utility
                     // First -- trival cases can be completed with a memcpy
                 if (    srcType._arrayCount == destType._arrayCount
                     &&  srcType._type == destType._type) {
-                    XlCopyMemory(dest, src, std::min(destSize, size_t(srcType.GetSize())));
+                    XlCopyMemory(dest.begin(), src.begin(), std::min(dest.size(), size_t(srcType.GetSize())));
                     return true;
                 }
                     
-                void* destIterator = dest;
-                const void* srcIterator = src;
-                auto sizeRemaining = destSize;
+                auto destIterator = dest;
+                auto srcIterator = src;
                 for (unsigned c=0; c<destType._arrayCount; ++c) {
-                    if (sizeRemaining < TypeDesc(destType._type).GetSize()) {
+                    if (destIterator.size() < TypeDesc(destType._type).GetSize()) {
                         return false;
                     }
                     if (c < srcType._arrayCount) {
-                        if (!Cast(destIterator, sizeRemaining, TypeDesc(destType._type),
+                        if (!Cast(destIterator, TypeDesc(destType._type),
                             srcIterator, TypeDesc(srcType._type))) {
                             return false;
                         }
 
-                        destIterator = PtrAdd(destIterator, TypeDesc(destType._type).GetSize());
-                        srcIterator = PtrAdd(srcIterator, TypeDesc(srcType._type).GetSize());
-                        sizeRemaining -= TypeDesc(destType._type).GetSize();
+                        destIterator.first = PtrAdd(destIterator.first, TypeDesc(destType._type).GetSize());
+                        srcIterator.first = PtrAdd(srcIterator.first, TypeDesc(srcType._type).GetSize());
                     } else {
                             // using HLSL rules for filling in blanks:
                             //  element 3 is 1, but others are 0
                         unsigned value = (c==3)?1:0;
-                        if (!Cast(destIterator, sizeRemaining, TypeDesc(destType._type),
-                            &value, TypeDesc(TypeCat::UInt32))) {
+                        if (!Cast(destIterator, TypeDesc(destType._type),
+                            AsOpaqueIteratorRange(value), TypeDesc(TypeCat::UInt32))) {
                             return false;
                         }
-                        destIterator = PtrAdd(destIterator, TypeDesc(destType._type).GetSize());
-                        sizeRemaining -= TypeDesc(destType._type).GetSize();
+                        destIterator.first = PtrAdd(destIterator.first, TypeDesc(destType._type).GetSize());
                     }
                 }
                 return true;
@@ -593,11 +592,9 @@ namespace Utility
 
                         if (CastType(subType._type, cat) != CastType::Narrowing) {
                             bool castSuccess = Cast(   
-                                dstIterator, size_t(dstIteratorSize), TypeDesc(cat),
-                                dstIterator, subType);
+                                { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, TypeDesc(cat),
+                                { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, subType);
                             (void)castSuccess;
-                            // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast success)"; }
-                            // if (castSuccess) { LogWarning << "Mixed types in while parsing array in ImpliedTypes::Parse (cast failed)"; }
                             subType._type = cat;
                         } else {
                             // If the cast would narrow the type, we would corrupt the input
@@ -614,7 +611,9 @@ namespace Utility
                             assert(ptrdiff_t(destSize) - dstIteratorSize == ptrdiff_t(cpySize));
                             dstIteratorSize = ptrdiff_t(destSize);
                             for (auto redoIt = startIt; redoIt != rit; ++redoIt) {
-                                bool castSuccess = Cast(dstIterator, size_t(dstIteratorSize), subType, tempCpyIterator, catType);
+                                bool castSuccess = Cast(
+                                    { dstIterator, PtrAdd(dstIterator, subType.GetSize()) }, subType, 
+                                    { tempCpyIterator, PtrAdd(tempCpyIterator, catType.GetSize()) }, catType);
                                 assert(castSuccess);
                                 (void)castSuccess;
                                 
@@ -662,8 +661,8 @@ namespace Utility
                 return std::make_pair(true, *(Type*)buffer);
             } else {
                 Type casted;
-                if (Cast(&casted, sizeof(casted), TypeOf<Type>(),
-                    buffer, parseType)) {
+                if (Cast(AsOpaqueIteratorRange(casted), TypeOf<Type>(),
+                    MakeIteratorRange(buffer), parseType)) {
                     return std::make_pair(true, casted);
                 }
             }
@@ -993,8 +992,9 @@ namespace Utility
             } else {
                 Type result;
                 if (ImpliedTyping::Cast(
-                    &result, sizeof(result), ImpliedTyping::TypeOf<Type>(),
-                    ValueTableOffset(_values, offset._valueBegin), _types[index])) {
+                    AsOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
+                    { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
+                    _types[index])) {
                     return std::make_pair(true, result);
                 }
             }
@@ -1015,8 +1015,9 @@ namespace Utility
             }
             else {
                 return ImpliedTyping::Cast(
-                    dest, destType.GetSize(), destType,
-                    ValueTableOffset(_values, offset._valueBegin), _types[index]);
+                    { dest, PtrAdd(dest, destType.GetSize()) }, destType,
+                    { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
+                    _types[index]);
             }
         }
         return false;
@@ -1239,8 +1240,9 @@ namespace Utility
                         // sometimes we get trival casting situations (like "unsigned int" to "int")
                         //  -- even in those cases, we execute the casting function, which will effect performance
                     bool castSuccess = ImpliedTyping::Cast(
-                        PtrAdd(temporaryValues, offsetDest), sizeof(temporaryValues)-offsetDest, typeDest,
-                        ValueTableOffset(source._values, offsetSrc._valueBegin), typeSrc);
+                        { PtrAdd(temporaryValues, offsetDest), PtrAdd(temporaryValues, sizeof(temporaryValues)) }, typeDest,
+                        { ValueTableOffset(source._values, offsetSrc._valueBegin), ValueTableOffset(source._values, offsetSrc._valueBegin+offsetSrc._valueSize) },
+                        typeSrc);
 
                     assert(castSuccess);  // type mis-match when attempting to build filtered hash value
                     (void)castSuccess;

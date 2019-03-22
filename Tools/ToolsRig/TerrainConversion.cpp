@@ -500,9 +500,8 @@ namespace ToolsRig
 			// loading from 32 bit integer formats
             auto midway = float(double(input[c]) * scale + offset);
             ImpliedTyping::Cast(
-                PtrAdd(dest, c*dstSize),
-                dstSize, dstType,
-                &midway, ImpliedTyping::TypeOf<decltype(midway)>());
+                { PtrAdd(dest, c*dstSize), PtrAdd(dest, c*dstSize+dstSize) }, dstType,
+                AsOpaqueIteratorRange(midway), ImpliedTyping::TypeOf<decltype(midway)>());
         }
     }
 
@@ -519,9 +518,8 @@ namespace ToolsRig
         for (unsigned c=0; c<count; ++c) {
             auto midway = float(double(Float16AsFloat32(input[c])) * scale + offset);
             ImpliedTyping::Cast(
-                PtrAdd(dest, c*dstSize),
-                dstSize, dstType,
-                &midway, ImpliedTyping::TypeOf<decltype(midway)>());
+                { PtrAdd(dest, c*dstSize), PtrAdd(dest, c*dstSize+dstSize) }, dstType,
+                AsOpaqueIteratorRange(midway), ImpliedTyping::TypeOf<decltype(midway)>());
         }
     }
     
@@ -735,9 +733,9 @@ namespace ToolsRig
             for (unsigned y=0; y<(op._importMaxs[1] - op._importMins[1]); ++y) {
                 for (unsigned x=op._sourceDims[0]; x<finalDims[0]; ++x)
                     ImpliedTyping::Cast(
-                        PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize),
-                        dstSampleSize, ImpliedTyping::TypeDesc(dstType),
-                        &blank, ImpliedTyping::TypeOf<decltype(blank)>());
+                        { PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize), PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize+dstSampleSize) },
+                        ImpliedTyping::TypeDesc(dstType),
+                        AsOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
                     
             }
         }
@@ -745,9 +743,9 @@ namespace ToolsRig
         for (unsigned y=op._importMaxs[1] - op._importMins[1]; y < finalDims[1]; ++y) {
             for (unsigned x=0; x<finalDims[0]; ++x)
                 ImpliedTyping::Cast(
-                    PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize),
-                    dstSampleSize, ImpliedTyping::TypeDesc(dstType),
-                    &blank, ImpliedTyping::TypeOf<decltype(blank)>());
+                    { PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize), PtrAdd(outputArray, (y * finalDims[0] + x)*dstSampleSize+dstSampleSize) },
+                    ImpliedTyping::TypeDesc(dstType),
+                    AsOpaqueIteratorRange(blank), ImpliedTyping::TypeOf<decltype(blank)>());
         }
     }
 

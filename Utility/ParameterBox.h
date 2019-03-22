@@ -71,8 +71,8 @@ namespace Utility
             std::pair<bool, Type> Parse(StringSection<utf8> expression);
 
         bool Cast(
-            void* dest, size_t destSize, TypeDesc destType,
-            const void* src, TypeDesc srcType);
+            IteratorRange<void*> dest, TypeDesc destType,
+            IteratorRange<const void*> src, TypeDesc srcType);
         
         CastType CastType(TypeCat testType, TypeCat againstType);
 
@@ -341,8 +341,7 @@ namespace Utility
 
     inline std::string   ParameterBox::Iterator::Value::ValueAsString(bool strongTyping) const
     {
-        auto value = RawValue();
-        return ImpliedTyping::AsString(value.begin(), value.size(), Type(), strongTyping);
+        return ImpliedTyping::AsString(RawValue(), Type(), strongTyping);
     }
 
 	inline ParameterBox::Iterator::Value::Value(const ParameterBox& box, size_t index)

@@ -125,8 +125,8 @@ namespace RenderCore { namespace Techniques
                             //  defined variable. Let's try a casting operation.
                             //  Sometimes we can get int defaults for floats variables, etc.
                         bool castSuccess = ImpliedTyping::Cast(
-                            buffer1, dimof(buffer1), e._type,
-                            buffer0, defaultType);
+                            MakeIteratorRange(buffer1), e._type,
+                            MakeIteratorRange(buffer0), defaultType);
                         if (castSuccess) {
 							_defaults.SetParameter(MakeStringSection(e._name).Cast<utf8>(), {buffer1, PtrAdd(buffer1, std::min(sizeof(buffer1), (size_t)e._type.GetSize()))}, e._type);
                         } else {

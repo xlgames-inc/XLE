@@ -216,9 +216,9 @@ namespace SceneEngine
                     mappingAttr,
                     buffer, sizeof(buffer));
                 ImpliedTyping::Cast(
-                    mat._mappingConstant, sizeof(mat._mappingConstant), 
+                    MakeIteratorRange(mat._mappingConstant), 
                     ImpliedTyping::TypeDesc(ImpliedTyping::TypeCat::Float, dimof(mat._mappingConstant)),
-                    buffer, parsedType);
+                    MakeIteratorRange(buffer), parsedType);
                 
                 _gradFlagMaterials.push_back(mat);
 
