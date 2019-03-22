@@ -34,5 +34,5 @@ namespace RenderCore { namespace Metal_AppleMetal
         uint32_t                                _guid;
     };
 
-    std::shared_ptr<ShaderService::ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
+    std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
 }}
