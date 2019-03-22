@@ -126,11 +126,8 @@ namespace RenderCore { namespace Techniques
 		for (unsigned c=0; c<dimof(_globalCBs); ++c)
 			_globalCBs[c] = nullptr;
 
-        _projectionDesc.reset((ProjectionDesc*)XlMemAlign(sizeof(ProjectionDesc), 16));
-        #pragma push_macro("new")
-        #undef new
-            new(_projectionDesc.get()) ProjectionDesc();
-        #pragma pop_macro("new")
+        _projectionDesc = std::make_unique<ProjectionDesc>();
+        assert(size_t(_projectionDesc.get()) % 16 == 0);
 
 		static_assert(dimof(_globalCBs) == dimof(_globalCBVs), "Expecting equivalent array lengths");
         for (unsigned c=0; c<dimof(_globalCBs); ++c)

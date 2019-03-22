@@ -56,6 +56,12 @@ namespace RenderCore
 		VertexElementIterator() {}
 		VertexElementIterator(std::nullptr_t) {}
 		VertexElementIterator(IteratorRange<void*> data, size_t stride, RenderCore::Format fmt) : _data(data), _stride(stride), _format(fmt) {}
+
+		using difference_type = size_t;
+		using value_type = Value;
+		using pointer = Value*;
+		using reference = Value&;
+		using iterator_category = std::random_access_iterator_tag;
 	};
 
 	inline bool VertexElementIterator::operator==(const VertexElementIterator& other)

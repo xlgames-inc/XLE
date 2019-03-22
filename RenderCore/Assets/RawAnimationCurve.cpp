@@ -26,7 +26,8 @@ namespace RenderCore { namespace Assets
 			CurveElementDecompressor(Format fmt);
 		};
 
-	CurveElementDecompressor<float>::CurveElementDecompressor(Format fmt)
+	template<>
+		CurveElementDecompressor<float>::CurveElementDecompressor(Format fmt)
 	{
 		assert(fmt == Format::R32_FLOAT
 			|| fmt == Format::R32G32_FLOAT
@@ -34,13 +35,15 @@ namespace RenderCore { namespace Assets
 			|| fmt == Format::R32G32B32A32_FLOAT);
 	}
 
-	CurveElementDecompressor<Float3>::CurveElementDecompressor(Format fmt)
+	template<>
+		CurveElementDecompressor<Float3>::CurveElementDecompressor(Format fmt)
 	{
 		assert(fmt == Format::R32G32B32_FLOAT
 			|| fmt == Format::R32G32B32A32_FLOAT);
 	}
 
-	CurveElementDecompressor<Float4x4>::CurveElementDecompressor(Format fmt)
+	template<>
+		CurveElementDecompressor<Float4x4>::CurveElementDecompressor(Format fmt)
 	{
 		assert(fmt == Format::Matrix4x4);
 	}

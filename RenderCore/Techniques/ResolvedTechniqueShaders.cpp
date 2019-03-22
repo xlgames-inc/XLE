@@ -11,6 +11,7 @@
 #include "../Metal/InputLayout.h"
 #include "../Metal/Shader.h"
 #include "../Metal/DeviceContext.h"
+#include "../Metal/PipelineLayout.h"
 #include "../../Assets/AssetsCore.h"
 #include "../../Assets/Assets.h"
 

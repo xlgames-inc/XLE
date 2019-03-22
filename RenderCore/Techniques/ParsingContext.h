@@ -104,7 +104,7 @@ namespace RenderCore { namespace Techniques
 		ConstantBufferView							_globalCBVs[5];
 
         std::unique_ptr<TechniqueContext>           _techniqueContext;
-        AlignedUniquePtr<ProjectionDesc>            _projectionDesc;
+        std::unique_ptr<ProjectionDesc>             _projectionDesc;
 
         std::shared_ptr<IRenderStateDelegate>		_renderStateDelegate;
 		std::shared_ptr<ITechniqueDelegate>			_techniqueDelegate;

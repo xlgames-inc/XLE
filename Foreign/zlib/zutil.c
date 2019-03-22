@@ -115,7 +115,7 @@ uLong ZEXPORT zlibCompileFlags()
     return flags;
 }
 
-#ifdef DEBUG
+#if 0 // def DEBUG      (DavidJ -- have to disable this because we're getting linker conflicts with other copies of zlib linked in -- for example, from freetype)
 
 #  ifndef verbose
 #    define verbose 0

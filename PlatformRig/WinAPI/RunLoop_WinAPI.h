@@ -6,6 +6,7 @@
 
 #include "../OverlappedWindow.h"
 #include "../../Core/WinAPI/IncludeWindows.h"
+#include <vector>
 
 namespace PlatformRig
 {
