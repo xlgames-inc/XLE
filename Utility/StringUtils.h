@@ -102,6 +102,7 @@ namespace Utility
         StringSection(const CharType* start, const CharType* end) : _start(start), _end(end) {}
         StringSection() : _start(nullptr), _end(nullptr) {}
         StringSection(const CharType* nullTerm) : _start(nullTerm), _end(XlStringEnd(_start)) {}
+        StringSection(nullptr_t) = delete;      // prevent construction from nullptr constant (tends to be a common error)
         
 		template<typename CT, typename A>
 			StringSection(const std::basic_string<CharType, CT, A>& str) : _start(AsPointer(str.cbegin())), _end(AsPointer(str.cend())) {}
