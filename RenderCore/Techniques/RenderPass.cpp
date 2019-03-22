@@ -661,7 +661,9 @@ namespace RenderCore { namespace Techniques
 				// Prefer "typeless" formats when creating the actual attachments
 				// This ensures that we can have complete freedom when we create views
 				auto typelessDesc = r._desc;
-				typelessDesc._format = AsTypelessFormat(typelessDesc._format);
+                #if GFXAPI_TARGET != GFXAPI_OPENGLES        // OpenGLES can't handle the typeless formats current (and they are useless since there aren't "views" on OpenGL) -- so just skip this
+				    typelessDesc._format = AsTypelessFormat(typelessDesc._format);
+                #endif
                 _pimpl->_attachments.push_back(
                     Pimpl::Attachment{nullptr, typelessDesc});
                 result.push_back((unsigned)(_pimpl->_attachments.size()-1));

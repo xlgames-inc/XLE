@@ -41,7 +41,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             /*out*/ Payload& errors,
             /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
             const void* sourceCode, size_t sourceCodeLength,
-            ResId& shaderPath,
+            const ResId& shaderPath,
             StringSection<::Assets::ResChar> definesTable,
             IteratorRange<const SourceLineMarker*> sourceLineMarkers) const;
 
@@ -81,7 +81,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     static std::vector<ErrorMessage> DecodeCompilerErrorLog(
         StringSection<> compilerLog,
         unsigned preambleLineCount,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers)
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers)
     {
         std::vector<ErrorMessage> errorMessages;
         const char* i = compilerLog.begin();
@@ -142,9 +142,9 @@ namespace RenderCore { namespace Metal_OpenGLES
         /*out*/ Payload& errors,
         /*out*/ std::vector<::Assets::DependentFileState>& dependencies,
         const void* sourceCode, size_t sourceCodeLength,
-        const ShaderService::ResId& shaderPath,
+        const ILowLevelCompiler::ResId& shaderPath,
         StringSection<::Assets::ResChar> definesTable,
-        IteratorRange<const ShaderService::SourceLineMarker*> sourceLineMarkers) const
+        IteratorRange<const ILowLevelCompiler::SourceLineMarker*> sourceLineMarkers) const
     {
         ShaderType::Enum shaderType = ShaderType::FragmentShader;
         if (shaderPath._shaderModel[0] == 'v') {
@@ -567,6 +567,37 @@ namespace RenderCore { namespace Metal_OpenGLES
         }
 
         return stream;
+    }
+
+    void ShaderProgram::ConstructToFuture(
+        ::Assets::AssetFuture<ShaderProgram>&,
+        StringSection<::Assets::ResChar> vsName,
+        StringSection<::Assets::ResChar> psName,
+        StringSection<::Assets::ResChar> definesTable)
+    {
+        assert(0);      // unimplemented
+    }
+
+    void ShaderProgram::ConstructToFuture(
+        ::Assets::AssetFuture<ShaderProgram>&,
+        StringSection<::Assets::ResChar> vsName,
+        StringSection<::Assets::ResChar> gsName,
+        StringSection<::Assets::ResChar> psName,
+        StringSection<::Assets::ResChar> definesTable)
+    {
+        assert(0);      // unimplemented
+    }
+
+    void ShaderProgram::ConstructToFuture(
+        ::Assets::AssetFuture<ShaderProgram>&,
+        StringSection<::Assets::ResChar> vsName,
+        StringSection<::Assets::ResChar> gsName,
+        StringSection<::Assets::ResChar> psName,
+        StringSection<::Assets::ResChar> hsName,
+        StringSection<::Assets::ResChar> dsName,
+        StringSection<::Assets::ResChar> definesTable)
+    {
+        assert(0);      // unimplemented
     }
 
 }}

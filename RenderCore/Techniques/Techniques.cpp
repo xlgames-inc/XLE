@@ -567,6 +567,10 @@ namespace RenderCore { namespace Techniques
     {
         #if GFXAPI_ACTIVE == GFXAPI_VULKAN
             return RenderCore::UnderlyingAPI::Vulkan;
+        #elif GFXAPI_ACTIVE == GFXAPI_OPENGLES
+            return RenderCore::UnderlyingAPI::OpenGLES;
+        #elif GFXAPI_ACTIVE == GFXAPI_APPLEMETAL
+            return RenderCore::UnderlyingAPI::AppleMetal;
         #else
             return RenderCore::UnderlyingAPI::DX11;
         #endif

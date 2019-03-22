@@ -25,6 +25,7 @@ namespace RenderCore
 		case UnderlyingAPI::DX11: return "DX11"; break;
 		case UnderlyingAPI::Vulkan: return "Vulkan"; break;
 		case UnderlyingAPI::OpenGLES: return "OpenGLES"; break;
+		case UnderlyingAPI::AppleMetal: return "AppleMetal"; break;
 		}
 		return "<<unknown>>";
 	}
