@@ -335,26 +335,25 @@ namespace ConsoleRig
     void LogCentralConfiguration::AttachCurrentModule()
     {
         assert(s_instance == nullptr);
-        assert(!_attachedLogCentral.lock());
-        s_instance = this;
-        auto logCentral = LogCentral::GetInstance();
-        if (logCentral) {
-            logCentral->SetConfiguration(_cfgSet);
-            _attachedLogCentral = logCentral;
-        }
+		s_instance = this;
+
+		auto logCentral = LogCentral::GetInstance();
+		if (logCentral)
+			logCentral->SetConfiguration(_cfgSet);
+
+		if (!_attachedLogCentral.lock() && logCentral)
+			_attachedLogCentral = logCentral;
     }
 
     void LogCentralConfiguration::DetachCurrentModule()
     {
         assert(s_instance == this);
         s_instance = nullptr;
-        #if defined(CONSOLERIG_ENABLE_LOG)
-            auto logCentral = _attachedLogCentral.lock();
-            if (logCentral) {
-                logCentral->SetConfiguration(nullptr);
-            }
-            _attachedLogCentral.reset();
-        #endif
+
+		auto logCentral = _attachedLogCentral.lock();
+        if (logCentral)
+            logCentral->SetConfiguration(nullptr);
+        _attachedLogCentral.reset();
     }
 
     LogCentralConfiguration* LogCentralConfiguration::s_instance = nullptr;

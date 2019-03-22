@@ -1076,9 +1076,9 @@ namespace BufferUploads
     {
         ScopedLock(_flushDelayedReleasesLock);
 
-        const auto currentThread = XlGetCurrentThreadId();
+        const auto currentThread = Threading::CurrentThreadId();
         if (!duringDestructor) {
-            assert(!_flushThread || _flushThread == currentThread);         // we should only be flushing from one thread
+            assert(!_flushThread.has_value() || _flushThread.value() == currentThread);         // we should only be flushing from one thread
             _flushThread = currentThread;
         }
 
@@ -1145,7 +1145,6 @@ namespace BufferUploads
     ResourceSource::ResourceSource(RenderCore::IDevice& device)
     :   _underlyingDevice(&device)
     {
-        _flushThread = 0;
         _frameID = 0;
 
         auto stagingBufferPool = std::make_shared<ResourcesPool<BufferDesc>>(device, 5*60);

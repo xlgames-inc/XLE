@@ -14,6 +14,7 @@
 #include "../RenderCore/IDevice_Forward.h"
 #include "../Utility/Threading/Mutex.h"
 #include "../Utility/Threading/ThreadingUtils.h"
+#include "../Utility/Optional.h"
 
 #define D3D_BUFFER_UPLOAD_USE_WAITABLE_QUEUES
 
@@ -260,7 +261,7 @@ namespace BufferUploads
         std::shared_ptr<ResourcesPool<BufferDesc>>      _stagingBufferPool;
         std::shared_ptr<ResourcesPool<BufferDesc>>      _pooledGeometryBuffers;
         std::shared_ptr<BatchedResources>   _batchedIndexBuffers;
-        size_t                              _flushThread;
+		std::optional<Threading::ThreadId>	_flushThread;
         unsigned                            _frameID;
         Threading::Mutex                    _flushDelayedReleasesLock;
 		RenderCore::IDevice*                _underlyingDevice;

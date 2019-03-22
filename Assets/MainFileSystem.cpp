@@ -600,8 +600,8 @@ namespace Assets
 
         unsigned retryCount = 0;
         for (;;) {
-            auto result = ::Assets::MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
-            if (result == ::Assets::IFileSystem::IOReason::Success) {
+            auto openResult = ::Assets::MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
+            if (openResult == ::Assets::IFileSystem::IOReason::Success) {
                 file->Seek(0, FileSeekAnchor::End);
                 size_t size = file->TellP();
                 file->Seek(0);
@@ -622,7 +622,7 @@ namespace Assets
             // we will get the filesystem update trigger on write, before an editor has closed
             // the file. During that window, we can get a sharing failure. We just have to yield
             // some CPU time and allow the editor to close the file.
-            if (result != ::Assets::IFileSystem::IOReason::ExclusiveLock || retryCount >= 5) break;
+            if (openResult != ::Assets::IFileSystem::IOReason::ExclusiveLock || retryCount >= 5) break;
 
             ++retryCount;
             Threading::Sleep(retryCount*retryCount*15);
@@ -638,8 +638,8 @@ namespace Assets
 		std::unique_ptr<IFileInterface> file;
 		unsigned retryCount = 0;
         for (;;) {
-			auto result = MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
-			if (result == IFileSystem::IOReason::Success) {
+			auto openResult = MainFileSystem::TryOpen(file, sourceFileName, "rb", FileShareMode::Read);
+			if (openResult == IFileSystem::IOReason::Success) {
 				file->Seek(0, FileSeekAnchor::End);
 				size_t size = file->TellP();
 				file->Seek(0);
@@ -654,7 +654,7 @@ namespace Assets
 
 			// See similar logic in TryLoadFileAsMemoryBlock_TolerateSharingErrors for retrying
 			// after getting a "ExclusiveLock" error result
-			if (result != ::Assets::IFileSystem::IOReason::ExclusiveLock || retryCount >= 5) break;
+			if (openResult != ::Assets::IFileSystem::IOReason::ExclusiveLock || retryCount >= 5) break;
 
             ++retryCount;
             Threading::Sleep(retryCount*retryCount*15);

@@ -20,6 +20,7 @@
     <ClCompile Include="..\DX11\Annotator.cpp">
       <Filter>Device</Filter>
     </ClCompile>
+    <ClCompile Include="..\DX11\Metal\PipelineLayout.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\DX11\Metal\DX11.h" />
@@ -46,6 +47,7 @@
     <ClInclude Include="..\DX11\IDeviceDX11.h">
       <Filter>Device</Filter>
     </ClInclude>
+    <ClInclude Include="..\DX11\Metal\PipelineLayout.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

@@ -14,7 +14,8 @@ set(Src
     "Metal/Resource.cpp"
     "Metal/Shader.cpp"
     "Metal/State.cpp"
-    "Metal/TextureView.cpp")
+    "Metal/TextureView.cpp"
+    "Metal/PipelineLayout.cpp")
 
 BasicLibrary(RenderCore_DX11 "${Src}" "${Headers}")
 

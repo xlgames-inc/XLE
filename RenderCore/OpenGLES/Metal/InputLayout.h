@@ -7,6 +7,7 @@
 #pragma once
 
 #include "ShaderIntrospection.h"            // (for SetUniformCommandGroup)
+#include "PipelineLayout.h"
 #include "../../UniformsStream.h"
 #include "../../../Utility/IteratorUtils.h"
 #include <vector>

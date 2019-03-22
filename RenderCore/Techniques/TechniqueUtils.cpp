@@ -98,10 +98,15 @@ namespace RenderCore { namespace Techniques
         _farClip = 0.f;
     }
 
+	#pragma push_macro("new")
+	#undef new
+
     void* ProjectionDesc::operator new(size_t size)
 	{
 		return XlMemAlign(size, 16);
 	}
+
+	#pragma pop_macro("new")
 
 	void ProjectionDesc::operator delete(void* ptr)
 	{

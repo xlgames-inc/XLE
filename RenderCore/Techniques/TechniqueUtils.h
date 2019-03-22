@@ -52,7 +52,10 @@ namespace RenderCore { namespace Techniques
 
         ProjectionDesc();
 
-        void* operator new(size_t);
+		#pragma push_macro("new")
+		#undef new
+			void* operator new(size_t);
+		#pragma pop_macro("new")
 		void operator delete(void*);
     };
 

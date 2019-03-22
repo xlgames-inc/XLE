@@ -144,7 +144,7 @@ namespace RenderCore { namespace Metal_DX11
 		++s_nextSubpass;
     }
 
-	void EndSubpass(DeviceContext& context)
+	void EndSubpass(DeviceContext& context, FrameBuffer& frameBuffer)
 	{
 	}
 
