@@ -261,7 +261,32 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		BoundUniformsHelper helper(shader);
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
-		for (unsigned stream=0; stream<dimof(interfaces); ++stream) {
+		SetupBindings(helper, interfaces, dimof(interfaces));
+		assert(!helper._isComputeShader);
+		_isComputeShader = false;
+	}
+
+	BoundUniforms::BoundUniforms(
+        const ComputeShader& shader,
+        const PipelineLayoutConfig& pipelineLayout,
+        const UniformsStreamInterface& interface0,
+        const UniformsStreamInterface& interface1,
+        const UniformsStreamInterface& interface2,
+        const UniformsStreamInterface& interface3)
+	{
+		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
+		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
+		SetupBindings(helper, interfaces, dimof(interfaces));
+		assert(helper._isComputeShader);
+		_isComputeShader = true;
+	}
+
+	void BoundUniforms::SetupBindings(
+		BoundUniformsHelper& helper,
+		const UniformsStreamInterface* interfaces[],
+		size_t interfaceCount)
+	{
+		for (unsigned stream=0; stream<interfaceCount; ++stream) {
 			_boundUniformBufferSlots[stream] = 0;
 			_boundResourceSlots[stream] = 0;
 			for (unsigned slot=0; slot<interfaces[stream]->_cbBindings.size(); ++slot) {
@@ -278,18 +303,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			_srvBindingIndices[stream] = std::move(helper._srvBindingIndices[stream]);
 			_shaderBindingMask[stream] = helper.BuildShaderBindingMask(stream);
 		}
-		_isComputeShader = helper._isComputeShader;
-	}
-
-	BoundUniforms::BoundUniforms(
-        const ComputeShader& shader,
-        const PipelineLayoutConfig& pipelineLayout,
-        const UniformsStreamInterface& interface0,
-        const UniformsStreamInterface& interface1,
-        const UniformsStreamInterface& interface2,
-        const UniformsStreamInterface& interface3)
-	{
-		assert(0);		// todo -- unimplemented
+		for (unsigned c=(unsigned)interfaceCount; c<s_streamCount; ++c)
+			_shaderBindingMask[c] = 0;
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

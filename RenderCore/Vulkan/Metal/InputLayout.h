@@ -70,6 +70,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class BoundUniformsHelper;
     class BoundUniforms
     {
     public:
@@ -110,6 +111,11 @@ namespace RenderCore { namespace Metal_Vulkan
         std::vector<uint32_t> _cbBindingIndices[s_streamCount];
         std::vector<uint32_t> _srvBindingIndices[s_streamCount];
 		uint64_t _shaderBindingMask[s_streamCount];
+
+		void SetupBindings(
+			BoundUniformsHelper& helper,
+            const UniformsStreamInterface* interfaces[], 
+			size_t interfaceCount);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

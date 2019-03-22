@@ -227,7 +227,7 @@ namespace RenderCore { namespace Metal_Vulkan
             if (!samplers[c]) continue;
 			const auto& binding = _pimpl->_samplerMapping[startingPoint + c];
 			if (binding._descriptorSetBindIndex == ~0u) {
-				Log(Warning) << "Sampler numeric binding (" << (startingPoint + c) << " is off root signature" << std::endl;
+				Log(Warning) << "Sampler numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 

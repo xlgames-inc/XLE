@@ -424,7 +424,7 @@ namespace RenderCore { namespace Metal_Vulkan
             for (unsigned rangeIndex=0; rangeIndex<(unsigned)rootSig._pushConstantRanges.size(); ++rangeIndex) {
                 if (XlEqString(rootSig._pushConstantRanges[rangeIndex]._name, name)) {
                     assert(srcCBBinding);
-                    assert(srcCBBinding->ui32TotalSizeInBytes == rootSig._pushConstantRanges[rangeIndex]._rangeSize);
+                    assert(srcCBBinding->ui32TotalSizeInBytes == rootSig._pushConstantRanges[rangeIndex]._rangeSize);		// If you hit this, it means there's a mismatch in the amount of PushConstants assigned and the size of this buffer
                     dstBinding->_locationIndex = ~0u;
                     dstBinding->_bindingIndex = ~0u;
                     dstBinding->_setIndex = ~0u;

@@ -26,6 +26,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkFramebuffer GetUnderlying() const { return _underlying.get(); }
         VkRenderPass GetLayout() const { return _layout.get(); }
 
+		unsigned GetSubpassCount() const { return _subpassCount; }
+
 		FrameBuffer(
 			const ObjectFactory& factory,
             const FrameBufferDesc& desc,
@@ -35,6 +37,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	private:
 		VulkanSharedPtr<VkFramebuffer> _underlying;
         VulkanSharedPtr<VkRenderPass> _layout;
+		unsigned _subpassCount;
 	};
 
     void BeginRenderPass(

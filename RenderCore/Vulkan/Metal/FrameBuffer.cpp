@@ -128,6 +128,23 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	static void MergeFormatFilter(TextureViewDesc::FormatFilter& dst, TextureViewDesc::FormatFilter src)
 	{
+		if (dst._aspect == TextureViewDesc::Aspect::Depth) {
+			if (src._aspect == TextureViewDesc::Aspect::DepthStencil || src._aspect == TextureViewDesc::Aspect::Stencil) {
+				dst = TextureViewDesc::Aspect::DepthStencil;
+				return;
+			}
+		} else if (dst._aspect == TextureViewDesc::Aspect::Stencil) {
+			if (src._aspect == TextureViewDesc::Aspect::Depth || src._aspect == TextureViewDesc::Aspect::DepthStencil) {
+				dst = TextureViewDesc::Aspect::DepthStencil;
+				return;
+			}
+		} else if (dst._aspect == TextureViewDesc::Aspect::DepthStencil) {
+			if (src._aspect == TextureViewDesc::Aspect::Depth || src._aspect == TextureViewDesc::Aspect::Stencil || src._aspect == TextureViewDesc::Aspect::DepthStencil) {
+				dst = TextureViewDesc::Aspect::DepthStencil;
+				return;
+			}
+		}
+
 		assert(dst._aspect == src._aspect
 			|| dst._aspect == TextureViewDesc::Aspect::UndefinedAspect
 			|| src._aspect == TextureViewDesc::Aspect::UndefinedAspect);
@@ -280,9 +297,7 @@ namespace RenderCore { namespace Metal_Vulkan
             // desc.initialLayout = VK_IMAGE_LAYOUT_UNDEFINED;
             // desc.finalLayout = VK_IMAGE_LAYOUT_UNDEFINED;
 
-            if (a.first == 0u) {
-                // we assume that name "0" is always bound to a presentable buffer
-                assert(!isDepthStencil);
+            if (resourceDesc->_flags & AttachmentDesc::Flags::PresentationSource) {
                 desc.initialLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
                 desc.finalLayout = VK_IMAGE_LAYOUT_PRESENT_SRC_KHR;
             } 
@@ -564,12 +579,13 @@ namespace RenderCore { namespace Metal_Vulkan
         fb_info.height = maxDims._height;
         fb_info.layers = std::max(1u, maxDims._layers);
         _underlying = factory.CreateFramebuffer(fb_info);
+		_subpassCount = (unsigned)fbDesc.GetSubpasses().size();
 
         // todo --  do we need to create a "patch up" command buffer to assign the starting image layouts
         //          for all of the images we created?
     }
 
-	FrameBuffer::FrameBuffer() {}
+	FrameBuffer::FrameBuffer() : _subpassCount(0) {}
     FrameBuffer::~FrameBuffer() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -587,9 +603,10 @@ namespace RenderCore { namespace Metal_Vulkan
             clearValues);
     }
 
-    void BeginNextSubpass(DeviceContext& context, FrameBuffer&)
+    void BeginNextSubpass(DeviceContext& context, FrameBuffer& frameBuffer)
     {
-        context.NextSubpass(VK_SUBPASS_CONTENTS_INLINE);
+		if ((context.RenderPassSubPassIndex()+1) < frameBuffer.GetSubpassCount())
+			context.NextSubpass(VK_SUBPASS_CONTENTS_INLINE);
     }
 
 	void EndSubpass(DeviceContext& context)

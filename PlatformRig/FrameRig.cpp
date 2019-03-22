@@ -195,12 +195,13 @@ namespace PlatformRig
         }
         _pimpl->_prevFrameStartTime = startTime;
 
-		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);
 
         if (_pimpl->_updateAsyncMan)
             Assets::Services::GetAsyncMan().Update();
 
 		auto presentationTarget = context.BeginFrame(*presChain);
+
+		context.GetAnnotator().Frame_Begin(context, _pimpl->_frameRenderCount);		// (on Vulkan, we must do this after IThreadContext::BeginFrame(), because that primes the command list in the vulkan device)
 
             //  We must invalidate the cached state at least once per frame.
             //  It appears that the driver might forget bound constant buffers

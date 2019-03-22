@@ -1250,7 +1250,14 @@ namespace RenderCore { namespace ImplVulkan
 	, _underlyingDevice(device->GetUnderlyingDevice())
     {}
 
-    ThreadContext::~ThreadContext() {}
+    ThreadContext::~ThreadContext() 
+	{
+		_gpuTracker.reset();
+		_destrQueue.reset();
+		_annotator.reset();
+		_metalContext.reset();
+		_tempBufferSpace.reset();
+	}
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {

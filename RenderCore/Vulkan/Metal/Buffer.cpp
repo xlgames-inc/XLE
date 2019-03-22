@@ -15,7 +15,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void    Buffer::Update(DeviceContext& context, const void* data, size_t byteCount)
 	{
         // hack to catch "LocalTransorm" buffer going through this path
-        if (byteCount == 80) {
+        if (byteCount == 64) {
             context.GetActiveCommandList().PushConstants(
                 context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
                 VK_SHADER_STAGE_VERTEX_BIT,
