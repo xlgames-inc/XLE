@@ -104,6 +104,7 @@ namespace RenderCore { namespace ImplOpenGLES
         virtual FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType) override;
 
         virtual DeviceDesc GetDesc() override { return DeviceDesc { "OpenGLES-EAGL", "", "" }; }
+        virtual std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler() override;
 
         Device();
         ~Device();

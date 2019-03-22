@@ -102,6 +102,8 @@ namespace RenderCore { namespace ImplAppleMetal
         DeviceDesc GetDesc();
         FormatCapability QueryFormatCapability(Format format, BindFlag::BitField bindingType);
 
+        std::shared_ptr<ILowLevelCompiler> CreateShaderCompiler();
+
         id<MTLDevice> GetUnderlying() const { return _underlying; }
 
         Device();

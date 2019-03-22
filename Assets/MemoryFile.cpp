@@ -4,7 +4,9 @@
 
 #include "MemoryFile.h"
 #include <algorithm>
-#include "../Foreign/zlib/zlib.h"
+#if !defined(EXCLUDE_Z_LIB)
+    #include "../Foreign/zlib/zlib.h"
+#endif
 
 namespace Assets
 {
@@ -192,7 +194,9 @@ namespace Assets
 		~FileDecompressOnRead();
 	protected:
 		std::shared_ptr<MemoryMappedFile> _archiveFile;
-		mutable z_stream	_stream;
+		#if !defined(EXCLUDE_Z_LIB)
+            mutable z_stream	_stream;
+        #endif
 		size_t				_decompressedSize;
 	};
 
@@ -224,11 +228,15 @@ namespace Assets
 
 	size_t      FileDecompressOnRead::Read(void *buffer, size_t size, size_t count) const never_throws
 	{
-		_stream.next_out = (Bytef*)buffer;
-		_stream.avail_out = (uInt)(size*count);
-		auto err = inflate(&_stream, Z_SYNC_FLUSH);
-		assert(err >= 0); (void) err;
-		return _stream.total_out / size;
+        #if !defined(EXCLUDE_Z_LIB)
+            _stream.next_out = (Bytef*)buffer;
+            _stream.avail_out = (uInt)(size*count);
+            auto err = inflate(&_stream, Z_SYNC_FLUSH);
+            assert(err >= 0); (void) err;
+            return _stream.total_out / size;
+        #else
+            return 0;
+        #endif
 	}
 
 	FileDecompressOnRead::FileDecompressOnRead(
@@ -238,23 +246,29 @@ namespace Assets
 	: _archiveFile(archiveFile)
 	, _decompressedSize(decompressedSize)
 	{
-		_stream.next_in = (z_const Bytef *)memoryRange.begin();
-		_stream.avail_in = (uInt)memoryRange.size();
+        #if !defined(EXCLUDE_Z_LIB)
+            _stream.next_in = (z_const Bytef *)memoryRange.begin();
+            _stream.avail_in = (uInt)memoryRange.size();
 
-		_stream.next_out = nullptr;
-		_stream.avail_out = 0;
+            _stream.next_out = nullptr;
+            _stream.avail_out = 0;
 
-		_stream.zalloc = (alloc_func)0;
-		_stream.zfree = (free_func)0;
+            _stream.zalloc = (alloc_func)0;
+            _stream.zfree = (free_func)0;
 
-		auto err = inflateInit(&_stream);
-		assert(err == Z_OK); (void) err;
+            auto err = inflateInit(&_stream);
+            assert(err == Z_OK); (void) err;
+        #else
+            assert(0);
+        #endif
 	}
 
 	FileDecompressOnRead::~FileDecompressOnRead() 
 	{
-		auto err = inflateEnd(&_stream);
-		assert(err == Z_OK); (void) err;
+        #if !defined(EXCLUDE_Z_LIB)
+		    auto err = inflateEnd(&_stream);
+		    assert(err == Z_OK); (void) err;
+        #endif
 	}
 
 	std::unique_ptr<IFileInterface> CreateDecompressOnReadFile(

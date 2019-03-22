@@ -4,7 +4,8 @@
 #include "Metal/ObjectFactory.h"
 #include "Metal/Resource.h"
 #include "Metal/Format.h"
-#include "../IAnnotator.h"
+#include "Metal/QueryPool.h"
+#include "Metal/Shader.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/StringFormat.h"
@@ -104,6 +105,11 @@ namespace RenderCore { namespace ImplOpenGLES
     IResourcePtr Device::CreateResource(const ResourceDesc& desc, const ResourceInitializer& init)
     {
         return Metal_OpenGLES::CreateResource(*_objectFactory, desc, init);
+    }
+
+    std::shared_ptr<ILowLevelCompiler>        Device::CreateShaderCompiler()
+    {
+        return Metal_OpenGLES::CreateLowLevelShaderCompiler(*this);
     }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -235,7 +241,7 @@ namespace RenderCore { namespace ImplOpenGLES
         if (!_annotator) {
             auto d = _device.lock();
             assert(d);
-            _annotator = CreateAnnotator(*d);
+            _annotator = std::make_unique<Metal_OpenGLES::Annotator>();
         }
         return *_annotator;
     }
