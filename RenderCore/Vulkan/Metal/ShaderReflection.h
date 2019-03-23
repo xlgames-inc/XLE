@@ -9,6 +9,7 @@
 #include <vector>
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/IteratorUtils.h"
+#include <iostream>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -39,9 +40,9 @@ namespace RenderCore { namespace Metal_Vulkan
             Binding(unsigned location = ~0x0u, unsigned bindingPoint= ~0x0u, unsigned descriptorSet= ~0x0u, unsigned offset = ~0x0)
             : _location(location), _bindingPoint(bindingPoint), _descriptorSet(descriptorSet), _offset(offset) {}
         };
-        std::vector<std::pair<ObjectId, Binding>> _bindings;
-        std::vector<std::pair<MemberId, Binding>> _memberBindings;
-        std::vector<std::pair<uint64, Binding>> _uniformQuickLookup;
+        std::vector<std::pair<ObjectId, Binding>>	_bindings;
+        std::vector<std::pair<MemberId, Binding>>	_memberBindings;
+        std::vector<std::pair<uint64_t, Binding>>	_uniformQuickLookup;
 
         //
         //      Types
@@ -77,7 +78,15 @@ namespace RenderCore { namespace Metal_Vulkan
             ObjectId _type;
             unsigned _location;
         };
-        std::vector<std::pair<uint64, InputInterfaceElement>> _inputInterfaceQuickLookup;
+        std::vector<std::pair<uint64_t, InputInterfaceElement>> _inputInterfaceQuickLookup;
+
+		class PushConstantsVariable
+		{
+		public:
+			ObjectId _variable;		// maps into the "_variables" array
+			ObjectId _type;
+		};
+		std::vector<std::pair<uint64_t, PushConstantsVariable>> _pushConstantsQuickLookup;
 
         SPIRVReflection(IteratorRange<const void*> byteCode);
         SPIRVReflection();
@@ -88,4 +97,6 @@ namespace RenderCore { namespace Metal_Vulkan
         SPIRVReflection(SPIRVReflection&& moveFrom) never_throws = default;
         SPIRVReflection& operator=(SPIRVReflection&& moveFrom) never_throws = default;
     };
+
+	std::ostream& operator<<(std::ostream& str, const SPIRVReflection& refl);
 }}

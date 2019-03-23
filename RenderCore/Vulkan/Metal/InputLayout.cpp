@@ -141,14 +141,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool BindConstantBuffer(uint64 hashName, unsigned uniformsStream, unsigned slot);
 		bool BindShaderResource(uint64 hashName, unsigned uniformsStream, unsigned slot);
 
-		SPIRVReflection _reflection[ShaderStage::Max];
+		SPIRVReflection			_reflection[ShaderStage::Max];
 
         static const unsigned s_streamCount = 4;
         std::vector<uint32_t>	_cbBindingIndices[s_streamCount];
         std::vector<uint32_t>	_srvBindingIndices[s_streamCount];
-        bool					_isComputeShader;
+		unsigned				_vsPushConstantSlot[s_streamCount];
+		unsigned				_psPushConstantSlot[s_streamCount];
+		bool					_isComputeShader;
 
-        uint64_t			BuildShaderBindingMask(unsigned descriptorSet);
+        uint64_t				BuildShaderBindingMask(unsigned descriptorSet);
      };
 
     BoundUniformsHelper::BoundUniformsHelper(const ShaderProgram& shader)
@@ -159,6 +161,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (compiledCode.GetByteCode().size())
 				_reflection[c] = SPIRVReflection(compiledCode.GetByteCode());
 		}
+		for (unsigned c=0; c<s_streamCount; c++)
+			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
     }
 
 	BoundUniformsHelper::BoundUniformsHelper(const CompiledShaderByteCode& shader)
@@ -168,6 +172,8 @@ namespace RenderCore { namespace Metal_Vulkan
             _reflection[(unsigned)stage] = SPIRVReflection(shader.GetByteCode());
         }
         _isComputeShader = stage == ShaderStage::Compute;
+		for (unsigned c=0; c<s_streamCount; c++)
+			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
     }
 
     uint64_t BoundUniformsHelper::BuildShaderBindingMask(unsigned descriptorSet)
@@ -215,6 +221,32 @@ namespace RenderCore { namespace Metal_Vulkan
             gotBinding = true;
         }
 
+		{
+			auto i = LowerBound(_reflection[(unsigned)ShaderStage::Vertex]._pushConstantsQuickLookup, hashName);
+			if (i != _reflection[(unsigned)ShaderStage::Vertex]._pushConstantsQuickLookup.end() && i->first == hashName) {
+				if (_vsPushConstantSlot[stream] == ~0u) {
+					_vsPushConstantSlot[stream] = slot;
+					gotBinding = true;
+				} else {
+					// We can't support multiple separate constant buffers as push constants in the same shader, because the SPIRV
+					// reflection code doesn't extract offset information for subsequent buffers
+					Log(Warning) << "Got mutltiple constant buffers assigned as push constants in the same shader." << std::endl;
+				}
+			}
+
+			i = LowerBound(_reflection[(unsigned)ShaderStage::Pixel]._pushConstantsQuickLookup, hashName);
+			if (i != _reflection[(unsigned)ShaderStage::Pixel]._pushConstantsQuickLookup.end() && i->first == hashName) {
+				if (_psPushConstantSlot[stream] == ~0u) {
+					_psPushConstantSlot[stream] = slot;
+					gotBinding = true;
+				} else {
+					// We can't support multiple separate constant buffers as push constants in the same shader, because the SPIRV
+					// reflection code doesn't extract offset information for subsequent buffers
+					Log(Warning) << "Got mutltiple constant buffers assigned as push constants in the same shader." << std::endl;
+				}
+			}
+		}
+
         return gotBinding;
     }
 
@@ -261,6 +293,11 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStreamInterface& interface2,
         const UniformsStreamInterface& interface3)
 	{
+		for (unsigned c=0; c<s_streamCount; c++) {
+			_descriptorSetBindingMask[c] = 0;
+			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
+		}
+
 		BoundUniformsHelper helper(shader);
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
 		SetupBindings(helper, interfaces, dimof(interfaces));
@@ -276,6 +313,11 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStreamInterface& interface2,
         const UniformsStreamInterface& interface3)
 	{
+		for (unsigned c=0; c<s_streamCount; c++) {
+			_descriptorSetBindingMask[c] = 0;
+			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
+		}
+
 		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
 		SetupBindings(helper, interfaces, dimof(interfaces));
@@ -303,10 +345,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 			_cbBindingIndices[stream] = std::move(helper._cbBindingIndices[stream]);
 			_srvBindingIndices[stream] = std::move(helper._srvBindingIndices[stream]);
-			_shaderBindingMask[stream] = helper.BuildShaderBindingMask(stream);
+			_descriptorSetBindingMask[stream] = helper.BuildShaderBindingMask(stream);
+			_vsPushConstantSlot[stream] = helper._vsPushConstantSlot[stream];
+			_psPushConstantSlot[stream] = helper._psPushConstantSlot[stream];
 		}
+
 		for (unsigned c=(unsigned)interfaceCount; c<s_streamCount; ++c)
-			_shaderBindingMask[c] = 0;
+			_descriptorSetBindingMask[c] = 0;
 
 		#if defined(_DEBUG)
 			{
@@ -592,88 +637,112 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStream& stream) const
     {
 		assert(streamIdx < s_streamCount);
-		if (!_shaderBindingMask[streamIdx]) {
-			return;	// nothing bound, nothing to do
+		if (_descriptorSetBindingMask[streamIdx]) {
+			// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
+			// sure that all of the commands have already been completed).
+			//
+			// So, in effect writing a new descriptor set will always be a allocate operation. We may have a pool
+			// of prebuild sets that we can reuse; or we can just allocate and free every time.
+			//
+			// Because each uniform stream can be set independantly, and at different rates, we'll use a separate
+			// descriptor set for each uniform stream. 
+			//
+			// In this call, we could attempt to reuse another descriptor set that was created from exactly the same
+			// inputs and already used earlier this frame...? But that may not be worth it. It seems like it will
+			// make more sense to just create and set a full descriptor set for every call to this function.
+
+			auto pipelineType = _isComputeShader 
+				? DeviceContext::PipelineType::Compute 
+				: DeviceContext::PipelineType::Graphics;
+			auto* pipelineLayout = context.GetPipelineLayout(pipelineType);
+
+			auto& globalPools = context.GetGlobalPools();
+			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(pipelineLayout->GetDescriptorSetLayout(streamIdx));
+
+			// -------- write descriptor set --------
+			NascentDescriptorWrite descWrite;
+			auto cbBindingFlag = WriteCBBindings(
+				descWrite,
+				context.GetTemporaryBufferSpace(),
+				context.GetFactory(),
+				descriptorSet.get(),
+				stream._constantBuffers,
+				MakeIteratorRange(_cbBindingIndices[streamIdx]),
+				_descriptorSetBindingMask[streamIdx]);
+
+			auto svBindingFlag = WriteSRVBindings(
+				descWrite,
+				globalPools,
+				descriptorSet.get(),
+				MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
+				MakeIteratorRange(_srvBindingIndices[streamIdx]),
+				_descriptorSetBindingMask[streamIdx]);		
+
+			auto& rootSig = *pipelineLayout->GetRootSignature();
+			const auto& sig = rootSig._descriptorSets[streamIdx];
+
+			#if defined(_DEBUG)
+				// Check to make sure the descriptor type matches the write operation we're performing
+				for (unsigned w=0; w<descWrite._writeCount; w++) {
+					auto& write = descWrite._writes[w];
+					assert(write.dstBinding < sig._bindings.size());
+					assert(AsDescriptorType(sig._bindings[write.dstBinding]._type) == write.descriptorType);
+				}
+			#endif
+
+			// Any locations referenced by the descriptor layout, by not written by the values in
+			// the streams must now be filled in with the defaults.
+			// Vulkan doesn't seem to have well defined behaviour for descriptor set entries that
+			// are part of the layout, but never written.
+			// We can do this with "write" operations, or with "copy" operations. It seems like copy
+			// might be inefficient on many platforms, so we'll prefer "write"
+			//
+			// In the most common case, there should be no dummy descriptors to fill in here... So we'll 
+			// optimise for that case.
+			uint64 dummyDescWriteMask = (~(cbBindingFlag|svBindingFlag)) & _descriptorSetBindingMask[streamIdx];
+			if (dummyDescWriteMask != 0)
+				WriteDummyDescriptors(descWrite, globalPools, descriptorSet.get(), sig, dummyDescWriteMask);
+
+			// note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
+			//          Ideally we don't really want to have to update these constantly... Once they are 
+			//          set, maybe we can just reuse them?
+			if (descWrite._writeCount)
+				vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
+        
+			context.BindDescriptorSet(
+				pipelineType, streamIdx, descriptorSet.get(),
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY("InputLayout"));
+
+			if (descWrite._requiresTemporaryBufferBarrier)
+				context.GetTemporaryBufferSpace().WriteBarrier(context);
 		}
 
-		// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
-		// sure that all of the commands have already been completed).
-		//
-		// So, in effect writing a new descriptor set will always be a allocate operation. We may have a pool
-		// of prebuild sets that we can reuse; or we can just allocate and free every time.
-		//
-		// Because each uniform stream can be set independantly, and at different rates, we'll use a separate
-		// descriptor set for each uniform stream. 
-		//
-		// In this call, we could attempt to reuse another descriptor set that was created from exactly the same
-		// inputs and already used earlier this frame...? But that may not be worth it. It seems like it will
-		// make more sense to just create and set a full descriptor set for every call to this function.
+		if (_vsPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
+			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
+			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
+			context.GetActiveCommandList().PushConstants(
+                context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
+                VK_SHADER_STAGE_VERTEX_BIT,
+                0, (uint32_t)cb._packet.size(), cb._packet.begin());
+		}
 
-        auto pipelineType = _isComputeShader 
-            ? DeviceContext::PipelineType::Compute 
-            : DeviceContext::PipelineType::Graphics;
-        auto* pipelineLayout = context.GetPipelineLayout(pipelineType);
-
-		auto& globalPools = context.GetGlobalPools();
-		auto descriptorSet = globalPools._mainDescriptorPool.Allocate(pipelineLayout->GetDescriptorSetLayout(streamIdx));
-
-        // -------- write descriptor set --------
-		NascentDescriptorWrite descWrite;
-		auto cbBindingFlag = WriteCBBindings(
-			descWrite,
-			context.GetTemporaryBufferSpace(),
-			context.GetFactory(),
-			descriptorSet.get(),
-			stream._constantBuffers,
-			MakeIteratorRange(_cbBindingIndices[streamIdx]),
-			_shaderBindingMask[streamIdx]);
-
-		auto svBindingFlag = WriteSRVBindings(
-			descWrite,
-			globalPools,
-			descriptorSet.get(),
-			MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
-			MakeIteratorRange(_srvBindingIndices[streamIdx]),
-			_shaderBindingMask[streamIdx]);		
-
-        auto& rootSig = *pipelineLayout->GetRootSignature();
-        const auto& sig = rootSig._descriptorSets[streamIdx];
-
-        #if defined(_DEBUG)
-            // Check to make sure the descriptor type matches the write operation we're performing
-            for (unsigned w=0; w<descWrite._writeCount; w++) {
-                auto& write = descWrite._writes[w];
-                assert(write.dstBinding < sig._bindings.size());
-                assert(AsDescriptorType(sig._bindings[write.dstBinding]._type) == write.descriptorType);
-            }
-        #endif
-
-        // Any locations referenced by the descriptor layout, by not written by the values in
-        // the streams must now be filled in with the defaults.
-        // Vulkan doesn't seem to have well defined behaviour for descriptor set entries that
-        // are part of the layout, but never written.
-        // We can do this with "write" operations, or with "copy" operations. It seems like copy
-        // might be inefficient on many platforms, so we'll prefer "write"
-        //
-        // In the most common case, there should be no dummy descriptors to fill in here... So we'll 
-        // optimise for that case.
-        uint64 dummyDescWriteMask = (~(cbBindingFlag|svBindingFlag)) & _shaderBindingMask[streamIdx];
-        if (dummyDescWriteMask != 0)
-			WriteDummyDescriptors(descWrite, globalPools, descriptorSet.get(), sig, dummyDescWriteMask);
-
-        // note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
-        //          Ideally we don't really want to have to update these constantly... Once they are 
-        //          set, maybe we can just reuse them?
-        if (descWrite._writeCount)
-            vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
-        
-        context.BindDescriptorSet(pipelineType, streamIdx, descriptorSet.get());
-
-		if (descWrite._requiresTemporaryBufferBarrier)
-			context.GetTemporaryBufferSpace().WriteBarrier(context);
+		if (_psPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
+			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
+			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
+			context.GetActiveCommandList().PushConstants(
+                context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
+                VK_SHADER_STAGE_FRAGMENT_BIT,
+                0, (uint32_t)cb._packet.size(), cb._packet.begin());
+		}
     }
 
-	BoundUniforms::BoundUniforms() {}
+	BoundUniforms::BoundUniforms() 
+	{
+		for (unsigned c=0; c<s_streamCount; c++) {
+			_descriptorSetBindingMask[c] = 0;
+			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
+		}
+	}
 	BoundUniforms::~BoundUniforms() {}
 
 }}

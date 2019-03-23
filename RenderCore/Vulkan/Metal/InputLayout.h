@@ -106,11 +106,13 @@ namespace RenderCore { namespace Metal_Vulkan
         BoundUniforms& operator=(BoundUniforms&&) = default;
 
     private:
-		bool _isComputeShader;
 		static const unsigned s_streamCount = 4;
         std::vector<uint32_t> _cbBindingIndices[s_streamCount];
         std::vector<uint32_t> _srvBindingIndices[s_streamCount];
-		uint64_t _shaderBindingMask[s_streamCount];
+		uint64_t _descriptorSetBindingMask[s_streamCount];
+		unsigned _vsPushConstantSlot[s_streamCount];
+		unsigned _psPushConstantSlot[s_streamCount];
+		bool _isComputeShader;
 
 		void SetupBindings(
 			BoundUniformsHelper& helper,
