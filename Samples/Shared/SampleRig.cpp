@@ -50,7 +50,7 @@ namespace Sample
 		RenderCore::IAnnotator* annotator,
 		Utility::HierarchicalCPUProfiler& cpuProfiler);
 
-	void ExecuteSample(const std::shared_ptr<ISampleOverlay>& sampleOverlay)
+	void ExecuteSample(std::shared_ptr<ISampleOverlay>&& sampleOverlay)
     {
 		SampleGlobals sampleGlobals;
 
@@ -145,6 +145,8 @@ namespace Sample
                 cpuProfiler.EndFrame();
             }
         }
+
+		sampleOverlay.reset();		// (ensure this gets destroyed before the engine is shutdown)
 
             //  There are some manual destruction operations we need to perform...
             //  (note that currently some shutdown steps might get skipped if we get 
