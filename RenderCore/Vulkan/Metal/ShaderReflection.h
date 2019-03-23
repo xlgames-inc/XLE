@@ -88,6 +88,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 		std::vector<std::pair<uint64_t, PushConstantsVariable>> _pushConstantsQuickLookup;
 
+		std::ostream& DescribeVariable(std::ostream& str, ObjectId variable) const;
+		StringSection<> GetName(ObjectId objectId) const;
+
         SPIRVReflection(IteratorRange<const void*> byteCode);
         SPIRVReflection();
         ~SPIRVReflection();

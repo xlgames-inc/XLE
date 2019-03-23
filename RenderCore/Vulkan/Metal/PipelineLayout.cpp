@@ -39,6 +39,12 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pimpl->_descriptorSetLayout[index].get();
     }
 
+	const DescriptorSetSignature&	PipelineLayout::GetDescriptorSetSignature(unsigned index)
+	{
+		assert(index < (unsigned)_pimpl->_rootSignature->_descriptorSets.size());
+		return _pimpl->_rootSignature->_descriptorSets[index];
+	}
+
     unsigned                    PipelineLayout::GetDescriptorSetCount()
     {
         return (unsigned)_pimpl->_descriptorSetLayout.size();
@@ -63,6 +69,20 @@ namespace RenderCore { namespace Metal_Vulkan
             return VK_DESCRIPTOR_TYPE_SAMPLER;
         }
     }
+
+	const char* AsString(DescriptorSetBindingSignature::Type type)
+	{
+		switch (type) {
+        case DescriptorSetBindingSignature::Type::Sampler:                  return "Sampler";
+        case DescriptorSetBindingSignature::Type::Texture:                 return "Texture";
+        case DescriptorSetBindingSignature::Type::ConstantBuffer:           return "ConstantBuffer";
+        case DescriptorSetBindingSignature::Type::UnorderedAccess:          return "UnorderedAccess";
+
+        case DescriptorSetBindingSignature::Type::TextureAsBuffer:         return "TextureAsBuffer";
+        case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:  return "UnorderedAccessAsBuffer";
+        default: return "<<unknown>>";
+        }
+	}
 
     static VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
         const ObjectFactory& factory, 

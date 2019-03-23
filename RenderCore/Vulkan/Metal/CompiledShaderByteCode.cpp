@@ -569,8 +569,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         result = std::make_shared<HLSLToSPIRVCompiler>(
             hlslCompiler, 
-            vulkanDevice->ShareGraphicsPipelineLayout(),
-            vulkanDevice->ShareComputePipelineLayout());
+            vulkanDevice->GetGraphicsPipelineLayout(),
+            vulkanDevice->GetComputePipelineLayout());
         HLSLToSPIRVCompiler::s_instance = result;
         return std::move(result);
     }

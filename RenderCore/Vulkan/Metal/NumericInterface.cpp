@@ -40,6 +40,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         DescriptorPool*     _descriptorPool = nullptr;
 
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			DescriptorSetVerboseDescription _verboseDescription[s_descriptorSetCount];
+		#endif
+
 		struct Binding
 		{
 			DescriptorSetBindingSignature::Type _type = DescriptorSetBindingSignature::Type::Unknown;
@@ -51,7 +55,7 @@ namespace RenderCore { namespace Metal_Vulkan
         Binding		_cbMapping[s_maxBindings];
         Binding		_samplerMapping[s_maxBindings];
 
-        template<typename BindingInfo> void WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo);
+        template<typename BindingInfo> void WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& description));
         template<typename BindingInfo> BindingInfo& AllocateInfo(const BindingInfo& init);
 
 		Pimpl()
@@ -96,7 +100,9 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     template<typename BindingInfo>
-        void    NumericUniformsInterface::Pimpl::WriteBinding(unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo)
+        void    NumericUniformsInterface::Pimpl::WriteBinding(
+			unsigned bindingPoint, unsigned descriptorSet, VkDescriptorType type, const BindingInfo& bindingInfo
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& description))
     {
             // (we're limited by the number of bits in _sinceLastFlush)
         if (bindingPoint >= 64u) {
@@ -131,6 +137,12 @@ namespace RenderCore { namespace Metal_Vulkan
             w.descriptorType = type;
 
             InfoPtr<BindingInfo>(w) = &AllocateInfo(bindingInfo);
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				if (_verboseDescription[descriptorSet]._bindingDescriptions.size() <= bindingPoint)
+					_verboseDescription[descriptorSet]._bindingDescriptions.resize(bindingPoint+1);
+				_verboseDescription[descriptorSet]._bindingDescriptions[bindingPoint] = { type, description };
+			#endif
         }
     }
 
@@ -146,13 +158,23 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				std::string description;
+				if (resources[c]->GetResource()) {
+					description = std::string{"SRV: "} + resources[c]->GetResource()->GetDesc()._name;
+				} else {
+					description = std::string{"SRV"};
+				}
+			#endif
+
             if (resources[c]->GetImageView()) {
 				assert(binding._type == DescriptorSetBindingSignature::Type::Texture);
 
                 _pimpl->WriteBinding(
                     binding._descriptorSetBindIndex, descriptorSet, 
                     VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        // (could be a COMBINED_IMAGE_SAMPLER or just a SAMPLED_IMAGE)
-                    VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+                    VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
             } else {
                 assert(binding._type == DescriptorSetBindingSignature::Type::TextureAsBuffer);
             
@@ -162,7 +184,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 _pimpl->WriteBinding(
                     binding._descriptorSetBindIndex, descriptorSet, 
                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    VkDescriptorBufferInfo { buffer, 0, VK_WHOLE_SIZE });
+                    VkDescriptorBufferInfo { buffer, 0, VK_WHOLE_SIZE }
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
             }
         }
     }
@@ -178,6 +201,15 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				std::string description;
+				if (resources[c]->GetResource()) {
+					description = std::string{"UAV: "} + resources[c]->GetResource()->GetDesc()._name;
+				} else {
+					description = std::string{"UAV"};
+				}
+			#endif
+
             // We could be binding either a "gimageXX" type, or a "buffer" type. Check the texture 
             // to see if there is an image view attached.
             // The type must correspond to what the layout is expecting.
@@ -188,7 +220,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 _pimpl->WriteBinding(
                     binding._descriptorSetBindIndex, descriptorSet, 
                     VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
-                    VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_GENERAL });
+                    VkDescriptorImageInfo { nullptr, resources[c]->GetImageView(), VK_IMAGE_LAYOUT_GENERAL }
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
             } else {
 				assert(binding._type == DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer);
                 auto buffer = resources[c]->GetResource()->GetBuffer();
@@ -196,7 +229,8 @@ namespace RenderCore { namespace Metal_Vulkan
                 _pimpl->WriteBinding(
                     binding._descriptorSetBindIndex, descriptorSet, 
                     VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
-                    VkDescriptorBufferInfo { buffer, 0, VK_WHOLE_SIZE });
+                    VkDescriptorBufferInfo { buffer, 0, VK_WHOLE_SIZE }
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
             }
         }
     }
@@ -212,11 +246,16 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				std::string description = std::string{"CB"};
+			#endif
+
 			assert(binding._type == DescriptorSetBindingSignature::Type::ConstantBuffer);
             _pimpl->WriteBinding(
                 binding._descriptorSetBindIndex, descriptorSet, 
                 VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
-                VkDescriptorBufferInfo { uniformBuffers[c], 0, VK_WHOLE_SIZE });
+                VkDescriptorBufferInfo { uniformBuffers[c], 0, VK_WHOLE_SIZE }
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
         }
     }
 
@@ -231,11 +270,16 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				std::string description = std::string{"Sampler"};
+			#endif
+
             assert(binding._type == DescriptorSetBindingSignature::Type::Sampler);
 			_pimpl->WriteBinding(
                 binding._descriptorSetBindIndex, descriptorSet, 
                 VK_DESCRIPTOR_TYPE_SAMPLER,
-                VkDescriptorImageInfo { samplers[c] });
+                VkDescriptorImageInfo { samplers[c] }
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
         }
     }
 
@@ -340,6 +384,10 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned c=0; c<Pimpl::s_descriptorSetCount; ++c) {
             _pimpl->_slotsFilled[c] = 0x0ull;
             _pimpl->_sinceLastFlush[c] = 0x0ull;
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				_pimpl->_verboseDescription[c]._descriptorSetInfo = "NumericUniformsInterface";
+			#endif
         }
 
         Reset();
@@ -435,9 +483,9 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
 	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-		std::string NumericUniformsInterface::Description() const
+		DescriptorSetVerboseDescription NumericUniformsInterface::GetDescription() const
 		{
-			return "NumericUniformsInterface";
+			return _pimpl->_verboseDescription[0];
 		}
 	#endif
 

@@ -102,25 +102,38 @@ namespace RenderCore { namespace Metal_Vulkan
         bool                    _pipelineStale;
     };
 
+	class DescriptorSet
+	{
+	public:
+		VulkanUniquePtr<VkDescriptorSet>		_underlying;
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			DescriptorSetVerboseDescription _description;
+		#endif		
+	};
+
     class DescriptorCollection
     {
     public:
+		DescriptorSet		CreateDescriptorSet(
+			const ObjectFactory&    factory, 
+            GlobalPools&            globalPools);
+
         NumericUniformsInterface			_numericBindings;
         unsigned                            _numericBindingsSlot;
 
-        std::vector<VkDescriptorSet>        _descriptorSets;
+        std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
         bool                                _hasSetsAwaitingFlush;
 
 		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			std::vector<std::string>		_descriptorSetDebugDescription;
+			std::vector<DescriptorSetVerboseDescription> _descriptorSetBindings;
 		#endif
 
-        PipelineLayout*                     _pipelineLayout;
+        std::shared_ptr<PipelineLayout>		_pipelineLayout;
 
         DescriptorCollection(
             const ObjectFactory&    factory, 
             GlobalPools&            globalPools,
-            PipelineLayout&         pipelineLayout);
+            const std::shared_ptr<PipelineLayout>& pipelineLayout);
     };
 
 	class CommandList
@@ -238,10 +251,11 @@ namespace RenderCore { namespace Metal_Vulkan
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
 
         enum class PipelineType { Graphics, Compute };
-        void        BindDescriptorSet(
-			PipelineType pipelineType, unsigned index, VkDescriptorSet set
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& debugString));
-        PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
+		void			BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+        DescriptorSet	AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex);
+		void			PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
+
+		PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
@@ -264,8 +278,8 @@ namespace RenderCore { namespace Metal_Vulkan
         DeviceContext(
             ObjectFactory& factory, 
             GlobalPools& globalPools,
-            PipelineLayout& globalPipelineLayout,
-            PipelineLayout& computePipelineLayout,
+            const std::shared_ptr<PipelineLayout>& globalPipelineLayout,
+            const std::shared_ptr<PipelineLayout>& computePipelineLayout,
 			CommandPool& cmdPool, 
 			CommandBufferType cmdBufferType,
 			TemporaryBufferSpace& tempBufferSpace);

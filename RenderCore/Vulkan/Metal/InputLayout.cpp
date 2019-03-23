@@ -415,11 +415,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool _requiresTemporaryBufferBarrier = false;
 	};
 
+	static const std::string s_dummyDescriptorString{"<DummyDescriptor>"};
+
 	static uint64_t WriteCBBindings(
 		NascentDescriptorWrite& result,
 		TemporaryBufferSpace& temporaryBufferSpace,
 		ObjectFactory& factory,
-		VkDescriptorSet dstSet,
+		DescriptorSet& dstSet,
 		IteratorRange<const ConstantBufferView*> cbvs,
 		IteratorRange<const uint32_t*> bindingIndicies,
 		uint64_t shaderBindingMask)
@@ -438,18 +440,25 @@ namespace RenderCore { namespace Metal_Vulkan
 			#if defined(_DEBUG) // check for duplicate descriptor writes (ie, writing to the same binding twice as part of the same operation)
 				for (unsigned w=0; w<writeCount; ++w)
 					assert( result._writes[w].dstBinding != dstBinding
-						||  result._writes[w].dstSet != dstSet);
+						||  result._writes[w].dstSet != dstSet._underlying.get());
 			#endif
 
 			assert(writeCount < dimof(result._writes));
 			auto& write = result._writes[writeCount++];
 			write = {};
 			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			write.dstSet = dstSet;
+			write.dstSet = dstSet._underlying.get();
 			write.dstBinding = dstBinding;
 			write.descriptorCount = 1;
 			write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
 			write.dstArrayElement = 0;
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				if (dstSet._description._bindingDescriptions.size() <= (write.dstBinding + write.descriptorCount))
+					dstSet._description._bindingDescriptions.resize(write.dstBinding + write.descriptorCount);
+				for (unsigned q=0; q<write.descriptorCount; ++q)
+					dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+			#endif
 
 			if (cbvs[c]._prebuiltBuffer) {
 				assert(const_cast<IResource*>(cbvs[c]._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
@@ -458,6 +467,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{res.GetBuffer(), 0, VK_WHOLE_SIZE};
 				write.pBufferInfo = &result._bufferInfo[bufferCount];
 				++bufferCount;
+
+				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+					for (unsigned q=0; q<write.descriptorCount; ++q)
+						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"Prebuild CB: "} + res.GetDesc()._name;
+				#endif
 			} else {
 				auto& pkt = cbvs[c]._packet;
 				assert(bufferCount < dimof(result._bufferInfo));
@@ -473,6 +487,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				}
 				write.pBufferInfo = &result._bufferInfo[bufferCount];
 				++bufferCount;
+
+				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+					for (unsigned q=0; q<write.descriptorCount; ++q)
+						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"CB pkt slot: "} + std::to_string(c);
+				#endif
 			}
 
 			bindingsWrittenTo |= 1ull << uint64(dstBinding);
@@ -486,7 +505,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	static uint64_t WriteSRVBindings(
 		NascentDescriptorWrite& result,
 		GlobalPools& globalPools,
-		VkDescriptorSet dstSet,
+		DescriptorSet& dstSet,
 		IteratorRange<const ShaderResourceView*const*> srvs,
 		IteratorRange<const uint32_t*> bindingIndicies,
 		uint64_t shaderBindingMask)
@@ -508,17 +527,22 @@ namespace RenderCore { namespace Metal_Vulkan
 			#if defined(_DEBUG) // check for duplicate descriptor writes
                 for (unsigned w=0; w<writeCount; ++w)
                     assert( result._writes[w].dstBinding != dstBinding
-						||  result._writes[w].dstSet != dstSet);
+						||  result._writes[w].dstSet != dstSet._underlying.get());
 			#endif
 
 			assert(writeCount < dimof(result._writes));
 			auto& write = result._writes[writeCount++];
 			write = {};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = dstSet;
+            write.dstSet = dstSet._underlying.get();
             write.dstBinding = dstBinding;
             write.descriptorCount = 1;
             write.dstArrayElement = 0;
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				if (dstSet._description._bindingDescriptions.size() <= (write.dstBinding + write.descriptorCount))
+					dstSet._description._bindingDescriptions.resize(write.dstBinding + write.descriptorCount);
+			#endif
 
 			// Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
 			// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
@@ -541,6 +565,13 @@ namespace RenderCore { namespace Metal_Vulkan
 					write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 					++bufferCount;
 				}
+
+				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+					for (unsigned q=0; q<write.descriptorCount; ++q) {
+						dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
+						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"SRV resource: "} + srvs[c]->GetResource()->GetDesc()._name;
+					}
+				#endif
 			} else {
 				// given a null pointer -- have to substitute a dummy image
 				assert(imageCount < dimof(result._imageInfo));
@@ -554,6 +585,13 @@ namespace RenderCore { namespace Metal_Vulkan
 				}
 				write.pImageInfo = &result._imageInfo[dummyImage];
 				write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+
+				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+					for (unsigned q=0; q<write.descriptorCount; ++q) {
+						dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
+						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = s_dummyDescriptorString;
+					}
+				#endif
 			}
 
 			bindingsWrittenTo |= 1ull << uint64(dstBinding);
@@ -568,7 +606,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	static uint64_t WriteDummyDescriptors(
 		NascentDescriptorWrite& result,
 		GlobalPools& globalPools,
-		VkDescriptorSet dstSet,
+		DescriptorSet& dstSet,
 		const DescriptorSetSignature& sig,
 		uint64_t dummyDescWriteMask)
 	{
@@ -601,7 +639,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto& write = result._writes[result._writeCount];
             write = {};
             write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = dstSet;
+            write.dstSet = dstSet._underlying.get();
             write.dstBinding = bIndex;
             write.descriptorCount = 1;
             write.dstArrayElement = 0;
@@ -626,10 +664,26 @@ namespace RenderCore { namespace Metal_Vulkan
 
             bindingsWrittenTo |= 1ull << uint64(bIndex);
             ++result._writeCount;
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				if (dstSet._description._bindingDescriptions.size() <= (write.dstBinding + write.descriptorCount))
+					dstSet._description._bindingDescriptions.resize(write.dstBinding + write.descriptorCount);
+				for (unsigned q=0; q<write.descriptorCount; ++q) {
+					dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
+					dstSet._description._bindingDescriptions[write.dstBinding+q]._description = s_dummyDescriptorString;
+				}
+			#endif
         }
 
 		return bindingsWrittenTo;
 	}
+
+	static std::string s_boundUniformsNames[4] = {
+		std::string{"BoundUniforms0"},
+		std::string{"BoundUniforms1"},
+		std::string{"BoundUniforms2"},
+		std::string{"BoundUniforms3"}
+	};
 
     void BoundUniforms::Apply(  
 		DeviceContext& context,
@@ -654,10 +708,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto pipelineType = _isComputeShader 
 				? DeviceContext::PipelineType::Compute 
 				: DeviceContext::PipelineType::Graphics;
-			auto* pipelineLayout = context.GetPipelineLayout(pipelineType);
 
 			auto& globalPools = context.GetGlobalPools();
-			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(pipelineLayout->GetDescriptorSetLayout(streamIdx));
+			auto descriptorSet = context.AllocateDescriptorSet(pipelineType, streamIdx);
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				assert(streamIdx < dimof(s_boundUniformsNames));
+				descriptorSet._description._descriptorSetInfo = s_boundUniformsNames[streamIdx];
+			#endif
 
 			// -------- write descriptor set --------
 			NascentDescriptorWrite descWrite;
@@ -665,7 +723,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				descWrite,
 				context.GetTemporaryBufferSpace(),
 				context.GetFactory(),
-				descriptorSet.get(),
+				descriptorSet,
 				stream._constantBuffers,
 				MakeIteratorRange(_cbBindingIndices[streamIdx]),
 				_descriptorSetBindingMask[streamIdx]);
@@ -673,12 +731,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto svBindingFlag = WriteSRVBindings(
 				descWrite,
 				globalPools,
-				descriptorSet.get(),
+				descriptorSet,
 				MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
 				MakeIteratorRange(_srvBindingIndices[streamIdx]),
 				_descriptorSetBindingMask[streamIdx]);		
 
-			auto& rootSig = *pipelineLayout->GetRootSignature();
+			auto& pipelineLayout = *context.GetPipelineLayout(pipelineType);
+			auto& rootSig = *pipelineLayout.GetRootSignature();
 			const auto& sig = rootSig._descriptorSets[streamIdx];
 
 			#if defined(_DEBUG)
@@ -701,7 +760,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			// optimise for that case.
 			uint64 dummyDescWriteMask = (~(cbBindingFlag|svBindingFlag)) & _descriptorSetBindingMask[streamIdx];
 			if (dummyDescWriteMask != 0)
-				WriteDummyDescriptors(descWrite, globalPools, descriptorSet.get(), sig, dummyDescWriteMask);
+				WriteDummyDescriptors(descWrite, globalPools, descriptorSet, sig, dummyDescWriteMask);
 
 			// note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
 			//          Ideally we don't really want to have to update these constantly... Once they are 
@@ -710,8 +769,8 @@ namespace RenderCore { namespace Metal_Vulkan
 				vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
         
 			context.BindDescriptorSet(
-				pipelineType, streamIdx, descriptorSet.get(),
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY("InputLayout"));
+				pipelineType, streamIdx, descriptorSet._underlying.get()
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, std::move(descriptorSet._description)));
 
 			if (descWrite._requiresTemporaryBufferBarrier)
 				context.GetTemporaryBufferSpace().WriteBarrier(context);
@@ -720,19 +779,13 @@ namespace RenderCore { namespace Metal_Vulkan
 		if (_vsPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
 			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
 			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			context.GetActiveCommandList().PushConstants(
-                context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
-                VK_SHADER_STAGE_VERTEX_BIT,
-                0, (uint32_t)cb._packet.size(), cb._packet.begin());
+			context.PushConstants(VK_SHADER_STAGE_VERTEX_BIT, cb._packet.AsIteratorRange());
 		}
 
 		if (_psPushConstantSlot[streamIdx] < stream._constantBuffers.size()) {
 			auto& cb = stream._constantBuffers[_vsPushConstantSlot[streamIdx]];
 			assert(!cb._prebuiltBuffer);	// it doesn't make sense to bind push constants using a prebuild buffer -- so discourage this
-			context.GetActiveCommandList().PushConstants(
-                context.GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
-                VK_SHADER_STAGE_FRAGMENT_BIT,
-                0, (uint32_t)cb._packet.size(), cb._packet.begin());
+			context.PushConstants(VK_SHADER_STAGE_FRAGMENT_BIT, cb._packet.AsIteratorRange());
 		}
     }
 

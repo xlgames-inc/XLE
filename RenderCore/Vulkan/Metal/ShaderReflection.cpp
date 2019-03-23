@@ -358,6 +358,46 @@ namespace RenderCore { namespace Metal_Vulkan
 		return str;
 	}
 
+	std::ostream& SPIRVReflection::DescribeVariable(std::ostream& str, ObjectId variable) const
+	{
+		auto n = LowerBound(_names, variable);
+		if (n != _names.end() && n->first == variable) {
+			str << n->second;
+		} else {
+			str << "<<unnamed>>";
+		}
+
+		auto v = LowerBound(_variables, variable);
+		if (v != _variables.end() && v->first == variable) {
+			auto type = v->second._type;
+
+			StringSection<> variableType;
+			auto ptr = LowerBound(_pointerTypes, type);
+            if (ptr != _pointerTypes.end() && ptr->first == type)
+                type = ptr->second._targetType;
+                
+            n = LowerBound(_names, type);
+            if (n != _names.end() && n->first == type)
+				variableType = n->second;
+
+			str << " (";
+			if (!variableType.IsEmpty()) str << "type: " << variableType << ", ";
+			str << "storage: " << (unsigned)v->second._storage << ")";
+		}
+
+		return str;
+	}
+
+	static const std::string s_unnamed = "<<unnamed>>";
+
+	StringSection<> SPIRVReflection::GetName(ObjectId objectId) const
+	{
+		auto n = LowerBound(_names, objectId);
+		if (n != _names.end() && n->first == objectId)
+			return n->second;
+		return s_unnamed;
+	}
+
 	std::ostream& operator<<(std::ostream& str, const SPIRVReflection& refl)
 	{
 		str << "SPIR Reflection entry point [" << refl._entryPoint._name << "]" << std::endl;
@@ -373,19 +413,8 @@ namespace RenderCore { namespace Metal_Vulkan
 					str << "Descriptor set [" << descriptorSet << "]" << std::endl;
 				wroteHeader = true;
 
-				auto n = LowerBound(refl._names, i.first);
-				if (n != refl._names.end() && n->first == i.first) {
-					str << "\t[" << n->second << "] ";
-				} else {
-					str << "\t[Unnamed] ";
-				}
-
-				str << i.second;
-
-				auto v = LowerBound(refl._variables, i.first);
-				if (v != refl._variables.end() && v->first == i.first) {
-					str << " (type: " << v->second._type << ", storage: " << (unsigned)v->second._storage << ")";
-				}
+				str << "\t[" << i.second << "]: ";
+				refl.DescribeVariable(str, i.first);
 
 				str << std::endl;
 			}
@@ -420,21 +449,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			if (v.second._storage != SPIRVReflection::StorageType::PushConstant)
 				continue;
 			
-			StringSection<> variableName, variableType;
-			auto n = LowerBound(refl._names, v.first);
-			if (n != refl._names.end() && n->first == v.first)
-				variableName = n->second;
-
-			auto type = v.second._type;
-            auto ptr = LowerBound(refl._pointerTypes, type);
-            if (ptr != refl._pointerTypes.end() && ptr->first == type)
-                type = ptr->second._targetType;
-                
-            n = LowerBound(refl._names, type);
-            if (n != refl._names.end() && n->first == type)
-				variableType = n->second;
-
-			str << "\tPush Constants (type: " << variableType << ", name: " << variableName << ")" << std::endl;
+			str << "\tPush Constants: ";
+			refl.DescribeVariable(str, v.first);
+			str << std::endl;
 		}
 
 		// std::stringstream disassem;

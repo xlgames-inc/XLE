@@ -51,15 +51,20 @@ namespace Utility
     class StreamIndent
     {
     public:
-        explicit StreamIndent(unsigned spaceCount) : _spaceCount(spaceCount) {}
+        explicit StreamIndent(unsigned spaceCount, char filler = ' ') : _spaceCount(spaceCount), _filler(filler) {}
         unsigned _spaceCount;
+		char _filler;
 
         friend inline std::ostream& operator<<(std::ostream& stream, const StreamIndent& indent)
         {
-            char buffer[32];
-            unsigned cnt = std::min((unsigned)dimof(buffer), indent._spaceCount);
-            for (unsigned c=0; c<cnt; ++c) buffer[c] = ' ';
-            stream.write(buffer, cnt);
+            char buffer[128];
+			unsigned total = indent._spaceCount;
+			while (total) {
+				unsigned cnt = std::min((unsigned)dimof(buffer), total);
+				for (unsigned c=0; c<cnt; ++c) buffer[c] = indent._filler;
+				stream.write(buffer, cnt);
+				total -= cnt;
+			}
             return stream;
         }
     };

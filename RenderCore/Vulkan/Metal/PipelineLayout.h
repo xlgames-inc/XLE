@@ -17,12 +17,15 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
     class RootSignature;
+	class DescriptorSetSignature;
 
     class PipelineLayout
     {
     public:
-        VkDescriptorSetLayout	GetDescriptorSetLayout(unsigned index);
-        unsigned				GetDescriptorSetCount();
+        VkDescriptorSetLayout			GetDescriptorSetLayout(unsigned index);
+		const DescriptorSetSignature&	GetDescriptorSetSignature(unsigned index);
+		unsigned						GetDescriptorSetCount();
+
         VkPipelineLayout		GetUnderlying();
 
         const std::shared_ptr<RootSignature>& GetRootSignature();
@@ -88,5 +91,6 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 
     VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type);
+	const char* AsString(DescriptorSetBindingSignature::Type type);
 }}
 

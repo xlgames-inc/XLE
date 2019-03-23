@@ -151,6 +151,20 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DescriptorPool;
 	class DummyResources;
 	class DescriptorSetSignature;
+	
+	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+		class DescriptorSetVerboseDescription
+		{
+		public:
+			struct BindingDescription
+			{
+				VkDescriptorType _descriptorType = (VkDescriptorType)~0u;
+				std::string _description;
+			};
+			std::vector<BindingDescription> _bindingDescriptions;
+			std::string _descriptorSetInfo;
+		};		
+	#endif
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
@@ -170,7 +184,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
 		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
-		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(std::string Description() const;)
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			DescriptorSetVerboseDescription GetDescription() const;
+		#endif
 
         NumericUniformsInterface(
             const ObjectFactory& factory, DescriptorPool& descPool, 

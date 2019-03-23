@@ -41,6 +41,7 @@ namespace ConsoleRig
         void SetNextSourceLocation(const SourceLocation& sourceLocation) { _pendingSourceLocation = sourceLocation; _sourceLocationPrimed = true; }
         void SetConfiguration(const MessageTargetConfiguration& cfg) { _cfg = cfg; }
         void SetExternalMessageHandler(std::function<std::streamsize(const CharType*, std::streamsize)> externalMessageHandler) { _externalMessageHandler = externalMessageHandler; }
+		bool IsEnabled() const { return _cfg._enabledSinks != 0; }
 
         MessageTarget(StringSection<> id, std::basic_streambuf<CharType, CharTraits>& chain = DefaultChain());
         ~MessageTarget();

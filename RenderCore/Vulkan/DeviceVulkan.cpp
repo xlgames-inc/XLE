@@ -612,8 +612,7 @@ namespace RenderCore { namespace ImplVulkan
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
-                *_graphicsPipelineLayout,
-                *_computePipelineLayout,
+                _graphicsPipelineLayout, _computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, frameTracker),
 				Metal_Vulkan::CommandBufferType::Primary,
 				std::move(tempBufferSpace));
@@ -779,8 +778,7 @@ namespace RenderCore { namespace ImplVulkan
 		return std::make_unique<ThreadContextVulkan>(
             shared_from_this(), 
             nullptr, 
-            *_graphicsPipelineLayout,
-            *_computePipelineLayout,
+            _graphicsPipelineLayout, _computePipelineLayout,
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, nullptr),
             Metal_Vulkan::CommandBufferType::Secondary, nullptr);
     }
@@ -831,12 +829,12 @@ namespace RenderCore { namespace ImplVulkan
         return Device::GetGlobalPools();
     }
 
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareGraphicsPipelineLayout()
+    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::GetGraphicsPipelineLayout()
     {
         return _graphicsPipelineLayout;
     }
 
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareComputePipelineLayout()
+    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::GetComputePipelineLayout()
     {
         return _computePipelineLayout;
     }
@@ -1250,8 +1248,8 @@ namespace RenderCore { namespace ImplVulkan
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
-        Metal_Vulkan::PipelineLayout& computePipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandBufferType cmdBufferType,
 		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
@@ -1303,8 +1301,8 @@ namespace RenderCore { namespace ImplVulkan
     ThreadContextVulkan::ThreadContextVulkan(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
-        Metal_Vulkan::PipelineLayout& computePipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandBufferType cmdBufferType,
 		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
