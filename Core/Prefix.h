@@ -15,6 +15,7 @@
     #define dll_export      __declspec(dllexport)
     #define dll_import      __declspec(dllimport)
 	#define attribute_packed
+	#define expect(X, Y)	X
 
 	#if _MSC_VER <= 1600
 		#define thread_local    __declspec(thread)
@@ -25,6 +26,7 @@
     #define never_throws		noexcept
     #define force_inline		inline __attribute__(( always_inline ))
 	#define attribute_packed	__attribute__((packed))
+	#define expect(X, Y)		__builtin_expect(X, Y)
 
     #if PLATFORMOS_ACTIVE == PLATFORMOS_ANDROID 
             // no dll export/import on android?

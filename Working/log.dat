@@ -6,13 +6,13 @@
     OutputToConsole=true
 
 ~Warning
-    Template=[{file}:{line}] ***WARNING***:
+    Template=W:
     OutputToConsole=true
 
 ~Debug
-    Template=[{file}:{line}] ***DEBUG***:
+    Template=D:
     OutputToConsole=false
 
 ~Verbose
-    Template=[{file}:{line}] ***VERBOSE***:
+    Template=V:
     OutputToConsole=false

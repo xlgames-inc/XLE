@@ -57,6 +57,8 @@ namespace RenderCore { namespace Metal_Vulkan
             TextureSamples samples);
         bool IsPipelineStale() const { return _pipelineStale; }
 
+		const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
+
         GraphicsPipelineBuilder();
         ~GraphicsPipelineBuilder();
 
@@ -108,6 +110,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         std::vector<VkDescriptorSet>        _descriptorSets;
         bool                                _hasSetsAwaitingFlush;
+
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			std::vector<std::string>		_descriptorSetDebugDescription;
+		#endif
 
         PipelineLayout*                     _pipelineLayout;
 
@@ -226,12 +232,15 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool		IsImmediate() { return false; }
 
 		CommandList& GetActiveCommandList();
+		bool HasActiveCommandList();
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
 
         enum class PipelineType { Graphics, Compute };
-        void        BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set);
+        void        BindDescriptorSet(
+			PipelineType pipelineType, unsigned index, VkDescriptorSet set
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& debugString));
         PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
 
         GlobalPools&    GetGlobalPools();
@@ -286,12 +295,18 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
+		void LogGraphicsPipeline();
     };
 
 	inline CommandList& DeviceContext::GetActiveCommandList()
 	{
 		assert(_commandList.GetUnderlying());
 		return _commandList;
+	}
+
+	inline bool DeviceContext::HasActiveCommandList()
+	{
+		return _commandList.GetUnderlying() != nullptr;
 	}
 
 	template<int Count> 

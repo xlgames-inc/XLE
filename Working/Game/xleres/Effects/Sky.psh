@@ -79,7 +79,7 @@ float3 CalculateBaseSkyColor(float2 texCoord, float3 viewFrustumVector)
 	#endif
 }
 
-cbuffer SkySettings { float SkyBrightness; }
+cbuffer SkySettings BIND_MAT_B0 { float SkyBrightness; }
 
 [earlydepthstencil]
 float4 CalculateColour0(float2 texCoord, float3 viewFrustumVector, float3 worldSpacePosition)

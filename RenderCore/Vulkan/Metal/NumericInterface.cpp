@@ -434,6 +434,13 @@ namespace RenderCore { namespace Metal_Vulkan
             _pimpl->_defaultDescSets[c] = std::move(_pimpl->_activeDescSets[c]);
     }
 
+	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+		std::string NumericUniformsInterface::Description() const
+		{
+			return "NumericUniformsInterface";
+		}
+	#endif
+
 	NumericUniformsInterface::NumericUniformsInterface() 
 	{
 	}

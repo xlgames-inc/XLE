@@ -7,6 +7,7 @@
 #include "Shader.h"
 #include "DeviceContext.h"
 #include "PipelineLayout.h"
+#include "ShaderReflection.h"		// (for metrics string)
 #include "IncludeVulkan.h"
 #include "../IDeviceVulkan.h"
 #include "../../ShaderService.h"
@@ -523,7 +524,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
     std::string HLSLToSPIRVCompiler::MakeShaderMetricsString(const void* data, size_t dataSize) const
     {
-        return "No metrics for SPIR-V shaders currently";
+		if (dataSize > sizeof(ShaderService::ShaderHeader)) {
+			std::stringstream str;
+			str << SPIRVReflection({PtrAdd(data, sizeof(ShaderService::ShaderHeader)), PtrAdd(data, dataSize - sizeof(ShaderService::ShaderHeader))});
+			return str.str();
+		} else {
+			return "<<error: buffer is too small>>";
+		}
     }
     
     std::weak_ptr<HLSLToSPIRVCompiler> HLSLToSPIRVCompiler::s_instance;
@@ -546,10 +553,7 @@ namespace RenderCore { namespace Metal_Vulkan
     HLSLToSPIRVCompiler::~HLSLToSPIRVCompiler()
     {
 		#if defined(HAS_SPIRV_HEADERS)
-			// it feels like these are intended to be called during DLL detach -- 
-			/*glslang::FreeGlobalPools();
-			glslang::FreePoolIndex();
-			glslang::FinalizeProcess();*/
+			glslang::FinalizeProcess();
 		#endif
     }
 

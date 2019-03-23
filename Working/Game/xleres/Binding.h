@@ -50,6 +50,10 @@
     #define BIND_NUMERIC_T3 : register(t36)
     #define BIND_NUMERIC_T4 : register(t37)
     #define BIND_NUMERIC_T5 : register(t38)
+    #define BIND_NUMERIC_T6 : register(t39)
+    #define BIND_NUMERIC_T7 : register(t40)
+    #define BIND_NUMERIC_T8 : register(t41)
+    #define BIND_NUMERIC_T9 : register(t42)
 #else
     #define BIND_NUMERIC_T0 : register(t0)
     #define BIND_NUMERIC_T1 : register(t1)
@@ -57,6 +61,10 @@
     #define BIND_NUMERIC_T3 : register(t3)
     #define BIND_NUMERIC_T4 : register(t4)
     #define BIND_NUMERIC_T5 : register(t5)
+    #define BIND_NUMERIC_T6 : register(t6)
+    #define BIND_NUMERIC_T7 : register(t7)
+    #define BIND_NUMERIC_T8 : register(t8)
+    #define BIND_NUMERIC_T9 : register(t9)
 #endif
 
 #define BIND_SEQ_T0 : register(t10)

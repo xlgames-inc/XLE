@@ -12,6 +12,7 @@
 #include "Constants.h"
 #include "../TextureAlgorithm.h"
 #include "../Colour.h"	                 // for LightingScale
+#include "../Binding.h"
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
     #include "../System/LoadGBuffer.h"
@@ -20,24 +21,26 @@
 /////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 #if defined(TILED_LIGHTS_RESOLVE_MS)
-    Texture2D_MaybeMS<float4>	TiledLightsResolve	 	: register(t6);
+    Texture2D_MaybeMS<float4>	TiledLightsResolve	 	BIND_NUMERIC_T6;
 #else
-    Texture2D<float4>			TiledLightsResolve	 	: register(t6);
+    Texture2D<float4>			TiledLightsResolve	 	BIND_NUMERIC_T6;
 #endif
 
-#if HAS_SCREENSPACE_AO==1
-    Texture2D<float>			AmbientOcclusion		: register(t5);
+#if HAS_SCREENSPACE_AO == 1
+    Texture2D<float>			AmbientOcclusion		BIND_NUMERIC_T5;
 #endif
 
-#if SKY_PROJECTION==5
-    TextureCube					SkyReflectionTexture : register(t11);
+#if SKY_PROJECTION == 5
+    TextureCube					SkyReflectionTexture BIND_NUMERIC_T6;
+#elif SKY_PROJECTION == 1
+    Texture2D					SkyReflectionTexture[3] BIND_NUMERIC_T6;
 #else
-    Texture2D					SkyReflectionTexture[3] : register(t11);
+    Texture2D					SkyReflectionTexture BIND_NUMERIC_T6;
 #endif
 
 #if CALCULATE_SCREENSPACE_REFLECTIONS==1
-    Texture2D<float4>			ScreenSpaceReflResult	: register(t7);
-    Texture2D<float4>			LightBufferCopy			: register(t8);
+    Texture2D<float4>			ScreenSpaceReflResult	BIND_NUMERIC_T7;
+    Texture2D<float4>			LightBufferCopy			BIND_NUMERIC_T8;
 #endif
 
 #if !defined(SKY_PROJECTION)
@@ -60,7 +63,7 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float mipMap)
     #elif (SKY_PROJECTION == 3) || (SKY_PROJECTION == 4)
 
         uint2 reflectionTextureDims;
-        SkyReflectionTexture[0].GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
+        SkyReflectionTexture.GetDimensions(reflectionTextureDims.x, reflectionTextureDims.y);
 
         #if (SKY_PROJECTION == 3)
             float2 skyReflectionCoord = DirectionToEquirectangularCoord_YUp(reflectionVector);
@@ -81,7 +84,7 @@ float3 ReadSkyReflectionTexture(float3 reflectionVector, float mipMap)
             if (uint(mipMap)==7) return float3(1, 0, .5);
         #endif
 
-        return SkyReflectionTexture[0].SampleLevel(ClampingSampler, skyReflectionCoord.xy, mipMap).rgb;
+        return SkyReflectionTexture.SampleLevel(ClampingSampler, skyReflectionCoord.xy, mipMap).rgb;
 
     #elif SKY_PROJECTION==5
 

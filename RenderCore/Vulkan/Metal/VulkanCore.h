@@ -35,3 +35,13 @@ namespace RenderCore { namespace Metal_Vulkan
     };
 }}
 
+#if defined(_DEBUG)
+	#define VULKAN_VERBOSE_DESCRIPTIONS
+#endif
+
+#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+	#define VULKAN_VERBOSE_DESCRIPTIONS_ONLY(...) __VA_ARGS__
+#else
+	#define VULKAN_VERBOSE_DESCRIPTIONS_ONLY(...)
+#endif
+

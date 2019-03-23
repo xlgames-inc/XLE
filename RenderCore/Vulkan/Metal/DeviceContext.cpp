@@ -14,6 +14,7 @@
 #include "FrameBuffer.h"
 #include "Pools.h"
 #include "PipelineLayout.h"
+#include "ShaderReflection.h"
 #include "../../Format.h"
 #include "../IDeviceVulkan.h"
 #include "../../ConsoleRig/Log.h"
@@ -335,7 +336,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			indexFormat == Format::R32_UINT ? VK_INDEX_TYPE_UINT32 : VK_INDEX_TYPE_UINT16);
 	}
 
-    void        DeviceContext::BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set)
+    void        DeviceContext::BindDescriptorSet(
+		PipelineType pipelineType, unsigned index, VkDescriptorSet set
+		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, const std::string& debugString))
     {
         // compute descriptors must be bound outside of a render pass, but graphics descriptors must be bound inside of it
         if (pipelineType == PipelineType::Compute) { assert(!_renderPass); } 
@@ -343,6 +346,7 @@ namespace RenderCore { namespace Metal_Vulkan
         auto& collection = (pipelineType == PipelineType::Compute) ? _computeDescriptors : _graphicsDescriptors;
         if (index < (unsigned)collection._descriptorSets.size() && collection._descriptorSets[index] != set) {
             collection._descriptorSets[index] = set;
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(collection._descriptorSetDebugDescription[index] = debugString;)
 
             if (_renderPass || pipelineType == PipelineType::Compute) {
                 _commandList.BindDescriptorSets(
@@ -374,7 +378,8 @@ namespace RenderCore { namespace Metal_Vulkan
             _graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
             BindDescriptorSet(
                 PipelineType::Graphics, 
-                _graphicsDescriptors._numericBindingsSlot, descSets[0]);
+                _graphicsDescriptors._numericBindingsSlot, descSets[0]
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, _computeDescriptors._numericBindings.Description()));
         }
 
 		// GetTemporaryBufferSpace().WriteBarrier(*this);
@@ -415,7 +420,8 @@ namespace RenderCore { namespace Metal_Vulkan
             _computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
             BindDescriptorSet(
                 PipelineType::Compute, 
-                _computeDescriptors._numericBindingsSlot, descSets[0]);
+                _computeDescriptors._numericBindingsSlot, descSets[0]
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, _computeDescriptors._numericBindings.Description()));
         }
 
         if (_currentComputePipeline && !ComputePipelineBuilder::IsPipelineStale()) return true;
@@ -443,10 +449,22 @@ namespace RenderCore { namespace Metal_Vulkan
         return false;
     }
 
+	void DeviceContext::LogGraphicsPipeline()
+	{
+		Log(Warning) << "-------------VertexShader------------" << std::endl;
+		Log(Warning) << SPIRVReflection(GetBoundShaderProgram()->GetCompiledCode(ShaderStage::Vertex).GetByteCode()) << std::endl;
+		Log(Warning) << "-------------PixelShader------------" << std::endl;
+		Log(Warning) << SPIRVReflection(GetBoundShaderProgram()->GetCompiledCode(ShaderStage::Pixel).GetByteCode()) << std::endl;
+		Log(Warning) << "-------------Descriptors------------" << std::endl;
+		for (unsigned c=0; c<_graphicsDescriptors._descriptorSetDebugDescription.size(); ++c)
+			Log(Warning) << "[" << c << "]: " << _graphicsDescriptors._descriptorSetDebugDescription[c] << std::endl;
+	}
+
     void DeviceContext::Draw(unsigned vertexCount, unsigned startVertexLocation)
     {
 		assert(_commandList.GetUnderlying());
 		if (BindGraphicsPipeline()) {
+			LogGraphicsPipeline();
             assert(vertexCount);
             vkCmdDraw(
 			    _commandList.GetUnderlying().get(),
@@ -459,6 +477,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList.GetUnderlying());
 		if (BindGraphicsPipeline()) {
+			LogGraphicsPipeline();
 		    vkCmdDrawIndexed(
 			    _commandList.GetUnderlying().get(),
 			    indexCount, 1,
@@ -605,6 +624,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		
 		rp_begin.pClearValues = (const VkClearValue*)clearValues.begin();
 		rp_begin.clearValueCount = (uint32_t)clearValues.size();
+
+		// hack -- todo -- properly support cases where in the number of entries in "clearValues" is too few
+		// for this renderpass
+		VkClearValue temp[8];
+		rp_begin.pClearValues = temp;
+		rp_begin.clearValueCount = 8;
+		for (unsigned c=0; c<8; ++c) {
+			temp[c].depthStencil.depth = 1.0f;
+			temp[c].depthStencil.stencil = 0;
+		}
 
         vkCmdBeginRenderPass(_commandList.GetUnderlying().get(), &rp_begin, VK_SUBPASS_CONTENTS_INLINE);
         _renderPass = fb.GetLayout();
@@ -856,6 +885,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
         _descriptorSets.resize(pipelineLayout.GetDescriptorSetCount(), nullptr);
         _hasSetsAwaitingFlush = false;
+
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			_descriptorSetDebugDescription.resize(pipelineLayout.GetDescriptorSetCount());
+		#endif
     }
 
 }}

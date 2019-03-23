@@ -116,6 +116,10 @@ namespace RenderCore { namespace Metal_Vulkan
 			BoundUniformsHelper& helper,
             const UniformsStreamInterface* interfaces[], 
 			size_t interfaceCount);
+
+		#if defined(_DEBUG)
+			std::string _debuggingDescription;
+		#endif
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -163,6 +167,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
 		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
+
+		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(std::string Description() const;)
 
         NumericUniformsInterface(
             const ObjectFactory& factory, DescriptorPool& descPool, 

@@ -41,15 +41,15 @@ namespace RenderCore { namespace Metal_Vulkan
     class DescriptorSetBindingSignature
     {
     public:
-        enum class Type 
-        { 
-            Sampler, 
+        enum class Type
+        {
+            Sampler,
             Texture,
             TextureAsBuffer,
-            ConstantBuffer, 
-            UnorderedAccess, 
-            UnorderedAccessAsBuffer, 
-            Unknown 
+            ConstantBuffer,
+            UnorderedAccess,
+            UnorderedAccessAsBuffer,
+            Unknown
         };
         Type        _type;
         unsigned    _hlslBindingIndex;  // this is the binding number as it appears in the HLSL code
@@ -58,8 +58,8 @@ namespace RenderCore { namespace Metal_Vulkan
     class DescriptorSetSignature
     {
     public:
-        std::string             _name;
-        std::vector<DescriptorSetBindingSignature>    _bindings;
+        std::string									_name;
+        std::vector<DescriptorSetBindingSignature>	_bindings;
     };
 
     class PushConstantsRangeSigniture

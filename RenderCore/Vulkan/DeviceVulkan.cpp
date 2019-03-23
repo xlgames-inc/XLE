@@ -143,7 +143,7 @@ namespace RenderCore { namespace ImplVulkan
         static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
         {
 	        (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
-            Log(Warning) << pLayerPrefix << ": " << pMsg << std::endl;
+            Log(Verbose) << pLayerPrefix << ": " << pMsg << std::endl;
 	        return false;
         }
     
@@ -644,9 +644,29 @@ namespace RenderCore { namespace ImplVulkan
         // If the format list includes just one entry of VK_FORMAT_UNDEFINED,
         // the surface has no preferred format.  Otherwise, at least one
         // supported format will be returned.
-        result._fmt = 
-            (fmts.empty() || (fmts.size() == 1 && fmts[0].format == VK_FORMAT_UNDEFINED)) 
-            ? VK_FORMAT_B8G8R8A8_UNORM : fmts[0].format;
+		//
+		// Sometimes we get both an SRGB & non-SRGB format. Let's prefer the
+		// LDR SRGB format, if we can find one.
+        result._fmt = VK_FORMAT_UNDEFINED;
+
+		for (auto f:fmts)
+			if (f.format == VK_FORMAT_B8G8R8A8_SRGB)
+				result._fmt = VK_FORMAT_B8G8R8A8_SRGB;
+
+		if (result._fmt == VK_FORMAT_UNDEFINED) {
+			for (auto f:fmts)
+				if (f.format == VK_FORMAT_B8G8R8_SRGB)
+					result._fmt = VK_FORMAT_B8G8R8_SRGB;
+		}
+
+		if (result._fmt == VK_FORMAT_UNDEFINED) {
+			for (auto f:fmts)
+				if (f.format != VK_FORMAT_UNDEFINED)
+					result._fmt = f.format;
+		}
+
+		if (result._fmt == VK_FORMAT_UNDEFINED)
+			result._fmt = VK_FORMAT_B8G8R8A8_SRGB;
 
         VkSurfaceCapabilitiesKHR surfCapabilities;
         auto res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phyDev, surface, &surfCapabilities);

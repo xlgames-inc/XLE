@@ -18,6 +18,8 @@
 #include "../../../ConsoleRig/Log.h"
 #include "../../../Utility/MemoryUtils.h"
 #include "../../../Utility/ArithmeticUtils.h"
+#include "../../../Utility/StringFormat.h"
+#include <sstream>
 
 #include "IncludeVulkan.h"
 
@@ -305,6 +307,53 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 		for (unsigned c=(unsigned)interfaceCount; c<s_streamCount; ++c)
 			_shaderBindingMask[c] = 0;
+
+		#if defined(_DEBUG)
+			{
+				std::stringstream str;
+				for (unsigned stream=0; stream<interfaceCount; ++stream) {
+					str << "---------- Stream [" << stream << "] ----------" << std::endl;
+					const auto& interf = *interfaces[stream];
+					for (unsigned slot=0; slot<interf._cbBindings.size(); ++slot) {
+						if (slot < _cbBindingIndices[stream].size() && _cbBindingIndices[stream][slot] != ~0u) {
+							auto bindingPoint = _cbBindingIndices[stream][slot];
+							str << "[" << slot << "] binding point: " << bindingPoint;
+							for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
+								auto& refl = helper._reflection[stage];
+								auto b = std::find_if(
+									refl._bindings.begin(), refl._bindings.end(),
+									[bindingPoint, stream](const std::pair<SPIRVReflection::ObjectId, SPIRVReflection::Binding>& t) {
+										return t.second._bindingPoint == bindingPoint && t.second._descriptorSet == stream;
+									});
+								if (b != refl._bindings.end()) {
+									str << " (Stage: " << AsString((ShaderStage)stage) << ", variable: ";
+									auto n = LowerBound(refl._names, b->first);
+									if (n != refl._names.end() && n->first == b->first) {
+										str << n->second << ")";
+									} else {
+										str << "<<unnamed>>)";
+									}
+								}
+							}
+							str << std::endl;
+						}
+						if (_vsPushConstantSlot[stream] == slot)
+							str << "[" << slot << "] Vertex push constants " << std::endl;
+						if (_psPushConstantSlot[stream] == slot)
+							str << "[" << slot << "] Pixel push constants " << std::endl;
+					}
+				}
+
+				str << std::endl;
+				for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
+					if (helper._reflection[stage]._entryPoint._name.IsEmpty()) continue;
+					str << "---------- Reflection [" << AsString((ShaderStage)stage) << "] ----------" << std::endl;
+					str << helper._reflection[stage];
+				}
+
+				_debuggingDescription = str.str();
+			}
+		#endif
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -402,6 +451,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		auto bufferCount = result._bufferCount;
 		auto bindingsWrittenTo = 0u;
 
+		unsigned dummyImage = ~0u;
+
 		auto count = std::min(srvs.size(), bindingIndicies.size());
 		for (unsigned c=0; c<count; ++c) {
 			auto dstBinding = bindingIndicies[c];
@@ -427,22 +478,37 @@ namespace RenderCore { namespace Metal_Vulkan
 			// Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
 			// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 			// descriptor.
-			if (srvs[c]->GetImageView()) {
-				assert(imageCount < dimof(result._imageInfo));
-				result._imageInfo[imageCount] = VkDescriptorImageInfo {
-					globalPools._dummyResources._blankSampler->GetUnderlying(),
-					srvs[c]->GetImageView(),
-					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-				write.pImageInfo = &result._imageInfo[imageCount];
-				write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-				++imageCount;
+			if (expect(srvs[c], 1)) {
+				if (srvs[c]->GetImageView()) {
+					assert(imageCount < dimof(result._imageInfo));
+					result._imageInfo[imageCount] = VkDescriptorImageInfo {
+						globalPools._dummyResources._blankSampler->GetUnderlying(),
+						srvs[c]->GetImageView(),
+						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+					write.pImageInfo = &result._imageInfo[imageCount];
+					write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+					++imageCount;
+				} else {
+					auto buffer = srvs[c]->GetResource()->GetBuffer();
+					assert(bufferCount < dimof(result._bufferInfo));
+					result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
+					write.pBufferInfo = &result._bufferInfo[bufferCount];
+					write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+					++bufferCount;
+				}
 			} else {
-				auto buffer = srvs[c]->GetResource()->GetBuffer();
-				assert(bufferCount < dimof(result._bufferInfo));
-                result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
-                write.pBufferInfo = &result._bufferInfo[bufferCount];
-				write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-				++bufferCount;
+				// given a null pointer -- have to substitute a dummy image
+				assert(imageCount < dimof(result._imageInfo));
+				if (dummyImage == ~0u) {
+					result._imageInfo[imageCount] = VkDescriptorImageInfo {
+						globalPools._dummyResources._blankSampler->GetUnderlying(),
+						globalPools._dummyResources._blankSrv.GetImageView(),
+						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
+					dummyImage = imageCount;
+					++imageCount;
+				}
+				write.pImageInfo = &result._imageInfo[dummyImage];
+				write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 			}
 
 			bindingsWrittenTo |= 1ull << uint64(dstBinding);
