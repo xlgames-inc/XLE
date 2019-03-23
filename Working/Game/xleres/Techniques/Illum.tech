@@ -35,7 +35,7 @@
             SKIP_MATERIAL_DIFFUSE=0
 
 ~Forward
-    ~Inherit; Illum; shared.tech:System
+    ~Inherit; Illum; shared.tech:Forward
     VertexShader=xleres/forward/illum.vsh:main
     PixelShader=xleres/forward/illum.psh:main
 

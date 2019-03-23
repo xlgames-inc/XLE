@@ -446,7 +446,8 @@ namespace SceneEngine
             (const utf8*)"SHALLOW_WATER_TILE_DIMENSION", 
             _pimpl->_cfg._simGridDims);
         matParam.SetParameter((const utf8*)"MAT_DO_REFRACTION", int(refractionsEnable));
-        matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
+		if (skyProjType != ~0u)
+			matParam.SetParameter((const utf8*)"SKY_PROJECTION", skyProjType);
         FixedFunctionModel::ShaderVariationSet simMaterial(
             InputLayout(nullptr, 0),
             {   ObjectCB::LocalTransform,

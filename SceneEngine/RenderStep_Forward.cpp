@@ -152,9 +152,11 @@ namespace SceneEngine
 		if (!lightingParserContext._preparedDMShadows.empty())
             BindShadowsForForwardResolve(metalContext, parsingContext, lightingParserContext._preparedDMShadows[0].second);
         auto lightBindRes = LightingParser_BindLightResolveResources(metalContext, parsingContext, *lightingParserContext._delegate);
-        parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
-        parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
-        parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
+		if (lightBindRes._skyTextureProjection != ~0u) {
+			parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"SKY_PROJECTION", lightBindRes._skyTextureProjection);
+			parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_DIFFUSE_IBL", lightBindRes._hasDiffuseIBL?1:0);
+			parsingContext.GetTechniqueContext()._globalEnvironmentState.SetParameter((const utf8*)"HAS_SPECULAR_IBL", lightBindRes._hasSpecularIBL?1:0);
+		}
 
             //  Order independent transparency disabled when
             //  using MSAA modes... Still some problems in related to MSAA buffers
