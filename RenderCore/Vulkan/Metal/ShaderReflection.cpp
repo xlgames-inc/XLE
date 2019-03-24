@@ -289,7 +289,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
             _inputInterfaceQuickLookup.push_back(
                 std::make_pair(
-                    Hash64(nameStart, nameEnd, DefaultSeed64 + index),
+                    Hash64(nameStart, nameEnd) + index,
                     InputInterfaceElement{v->second._type, b->second._location}));
         }
 

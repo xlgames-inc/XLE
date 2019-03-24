@@ -48,7 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
         _attributes.reserve(layout.size());
         for (unsigned c=0; c<layout.size(); ++c) {
             const auto& e = layout[c];
-            auto hash = Hash64(e._semanticName, DefaultSeed64 + e._semanticIndex);
+            auto hash = Hash64(e._semanticName) + e._semanticIndex;
 
             auto offset = e._alignedByteOffset == ~0x0u ? trackingOffset : e._alignedByteOffset;
             trackingOffset = offset + BitsPerPixel(e._nativeFormat) / 8;
@@ -705,7 +705,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStream& stream) const
     {
 		assert(streamIdx < s_streamCount);
-		if (_descriptorSetBindingMask[streamIdx]) {
+		if (streamIdx != 3 && _descriptorSetBindingMask[streamIdx]) {
 			// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
 			// sure that all of the commands have already been completed).
 			//
