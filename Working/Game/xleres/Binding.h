@@ -112,13 +112,13 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define UAV_DYNAMIC_0 : register(u0)
-#define UAV_DYNAMIC_1 : register(u1)
-#define UAV_DYNAMIC_2 : register(u2)
-#define UAV_DYNAMIC_3 : register(u3)
-#define UAV_DYNAMIC_4 : register(u4)
-#define UAV_DYNAMIC_5 : register(u5)
-#define UAV_DYNAMIC_6 : register(u6)
-#define UAV_DYNAMIC_7 : register(u7)
+#define UAV_NUMERIC_IMAGE_0 : register(u0)
+#define UAV_NUMERIC_IMAGE_1 : register(u1)
+#define UAV_NUMERIC_IMAGE_2 : register(u2)
+#define UAV_NUMERIC_IMAGE_3 : register(u3)
+#define UAV_NUMERIC_BUFFER_4 : register(u4)     //For compatibility with Vulkan only use these with RWStructuredBuffer, StructureBuffer, etc, anything that get bound to a buffer type 
+#define UAV_NUMERIC_BUFFER_5 : register(u5)
+#define UAV_NUMERIC_BUFFER_6 : register(u6)
+#define UAV_NUMERIC_BUFFER_7 : register(u7)
 
 #endif

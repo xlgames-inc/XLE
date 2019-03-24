@@ -48,6 +48,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		const CompiledShaderByteCode&			GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
 		const VulkanSharedPtr<VkShaderModule>&	GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
+		static const unsigned s_maxShaderStages = 5;
 
         bool DynamicLinkingEnabled() const;
 
@@ -83,8 +84,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> definesTable);
 
     protected:
-		CompiledShaderByteCode _compiledCode[ShaderStage::Max];
-		VulkanSharedPtr<VkShaderModule> _modules[ShaderStage::Max];
+		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
+		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
 
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };

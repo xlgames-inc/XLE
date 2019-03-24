@@ -58,8 +58,8 @@ namespace RenderCore { namespace Metal_Vulkan
         BoundInputLayout();
         ~BoundInputLayout();
 
-		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws;
-		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws;
+		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws = default;
+		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws = default;
 
         const IteratorRange<const VkVertexInputAttributeDescription*> GetAttributes() const { return MakeIteratorRange(_attributes); }
 		const IteratorRange<const VkVertexInputBindingDescription*> GetVBBindings() const { return MakeIteratorRange(_vbBindingDescriptions); }

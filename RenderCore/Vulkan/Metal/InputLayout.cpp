@@ -86,6 +86,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		_vbBindingDescriptions.reserve(layouts.size());
 
 		for (unsigned slot=0; slot<layouts.size(); ++slot) {
+			bool boundAtLeastOne = false;
 			UINT accumulatingOffset = 0;
 			for (unsigned ei=0; ei<layouts[slot]._elements.size(); ++ei) {
 				const auto& e = layouts[slot]._elements[ei];
@@ -105,9 +106,11 @@ namespace RenderCore { namespace Metal_Vulkan
 				_attributes.push_back(desc);
 
 				accumulatingOffset += BitsPerPixel(e._nativeFormat) / 8;
+				boundAtLeastOne = true;
 			}
 
-			_vbBindingDescriptions.push_back({slot, accumulatingOffset, VK_VERTEX_INPUT_RATE_VERTEX});
+			if (boundAtLeastOne)
+				_vbBindingDescriptions.push_back({slot, accumulatingOffset, VK_VERTEX_INPUT_RATE_VERTEX});
 		}
 	}
 
@@ -121,15 +124,6 @@ namespace RenderCore { namespace Metal_Vulkan
     BoundInputLayout::BoundInputLayout() {}
     BoundInputLayout::~BoundInputLayout() {}
 
-	BoundInputLayout::BoundInputLayout(BoundInputLayout&& moveFrom) never_throws
-	: _attributes(std::move(moveFrom._attributes)) {}
-
-	BoundInputLayout& BoundInputLayout::operator=(BoundInputLayout&& moveFrom) never_throws
-	{
-		_attributes = std::move(moveFrom._attributes);
-		return *this;
-	}
-
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class BoundUniformsHelper
@@ -141,7 +135,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool BindConstantBuffer(uint64 hashName, unsigned uniformsStream, unsigned slot);
 		bool BindShaderResource(uint64 hashName, unsigned uniformsStream, unsigned slot);
 
-		SPIRVReflection			_reflection[ShaderStage::Max];
+		SPIRVReflection			_reflection[(unsigned)ShaderStage::Max];
 
         static const unsigned s_streamCount = 4;
         std::vector<uint32_t>	_cbBindingIndices[s_streamCount];
@@ -156,7 +150,7 @@ namespace RenderCore { namespace Metal_Vulkan
     BoundUniformsHelper::BoundUniformsHelper(const ShaderProgram& shader)
     {
         _isComputeShader = false;
-		for (unsigned c=0; c<(unsigned)ShaderStage::Max; ++c) {
+		for (unsigned c=0; c<(unsigned)ShaderProgram::s_maxShaderStages; ++c) {
 			const auto& compiledCode = shader.GetCompiledCode((ShaderStage)c);
 			if (compiledCode.GetByteCode().size())
 				_reflection[c] = SPIRVReflection(compiledCode.GetByteCode());
@@ -363,7 +357,7 @@ namespace RenderCore { namespace Metal_Vulkan
 						if (slot < _cbBindingIndices[stream].size() && _cbBindingIndices[stream][slot] != ~0u) {
 							auto bindingPoint = _cbBindingIndices[stream][slot];
 							str << "[" << slot << "] binding point: " << bindingPoint;
-							for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
+							for (unsigned stage=0; stage<(unsigned)dimof(helper._reflection); ++stage) {
 								auto& refl = helper._reflection[stage];
 								auto b = std::find_if(
 									refl._bindings.begin(), refl._bindings.end(),
@@ -390,7 +384,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				}
 
 				str << std::endl;
-				for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
+				for (unsigned stage=0; stage<(unsigned)dimof(helper._reflection); ++stage) {
 					if (helper._reflection[stage]._entryPoint._name.IsEmpty()) continue;
 					str << "---------- Reflection [" << AsString((ShaderStage)stage) << "] ----------" << std::endl;
 					str << helper._reflection[stage];
@@ -547,6 +541,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			// Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
 			// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 			// descriptor.
+			bool wroteSomething = false;
 			if (expect(srvs[c], 1)) {
 				if (srvs[c]->GetImageView()) {
 					assert(imageCount < dimof(result._imageInfo));
@@ -557,22 +552,27 @@ namespace RenderCore { namespace Metal_Vulkan
 					write.pImageInfo = &result._imageInfo[imageCount];
 					write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
 					++imageCount;
-				} else {
+					wroteSomething = true;
+				} else if (srvs[c]->GetResource()) {
 					auto buffer = srvs[c]->GetResource()->GetBuffer();
 					assert(bufferCount < dimof(result._bufferInfo));
 					result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
 					write.pBufferInfo = &result._bufferInfo[bufferCount];
 					write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
 					++bufferCount;
+					wroteSomething = true;
 				}
 
 				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-					for (unsigned q=0; q<write.descriptorCount; ++q) {
-						dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
-						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"SRV resource: "} + srvs[c]->GetResource()->GetDesc()._name;
-					}
+					if (wroteSomething)
+						for (unsigned q=0; q<write.descriptorCount; ++q) {
+							dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
+							dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"SRV resource: "} + srvs[c]->GetResource()->GetDesc()._name;
+						}
 				#endif
-			} else {
+			}
+
+			if (!wroteSomething) {
 				// given a null pointer -- have to substitute a dummy image
 				assert(imageCount < dimof(result._imageInfo));
 				if (dummyImage == ~0u) {
@@ -676,6 +676,20 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
 		return bindingsWrittenTo;
+	}
+
+	void WriteDummyDescriptors(
+		DeviceContext& context,
+		DescriptorSet& dstSet,
+		const DescriptorSetSignature& sig)
+	{
+		NascentDescriptorWrite descWrite;
+		uint64_t mask = sig._bindings.size()-1;
+		WriteDummyDescriptors(
+			descWrite, context.GetGlobalPools(), dstSet,
+			sig, mask);
+		if (descWrite._writeCount)
+			vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
 	}
 
 	static std::string s_boundUniformsNames[4] = {

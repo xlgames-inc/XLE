@@ -6,7 +6,7 @@
 
 #include "Binding.h"
 
-RWTexture2D<float4> OutputTexture UAV_DYNAMIC_0;
+RWTexture2D<float4> OutputTexture UAV_NUMERIC_IMAGE_0;
 Texture2D<float4> InputTexture BIND_NUMERIC_T0;
 
 [numthreads(8, 8, 1)]

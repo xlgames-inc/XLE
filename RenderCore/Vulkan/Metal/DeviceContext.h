@@ -91,6 +91,8 @@ namespace RenderCore { namespace Metal_Vulkan
             VkPipelineLayout layout);
         bool IsPipelineStale() const { return _pipelineStale; }
 
+		const ComputeShader* GetBoundComputeShader() const { return _shader; }
+
         ComputePipelineBuilder();
         ~ComputePipelineBuilder();
 
@@ -107,17 +109,13 @@ namespace RenderCore { namespace Metal_Vulkan
 	public:
 		VulkanUniquePtr<VkDescriptorSet>		_underlying;
 		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription _description;
+			DescriptorSetVerboseDescription		_description;
 		#endif		
 	};
 
     class DescriptorCollection
     {
     public:
-		DescriptorSet		CreateDescriptorSet(
-			const ObjectFactory&    factory, 
-            GlobalPools&            globalPools);
-
         NumericUniformsInterface			_numericBindings;
         unsigned                            _numericBindingsSlot;
 
@@ -310,6 +308,8 @@ namespace RenderCore { namespace Metal_Vulkan
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
 		void LogGraphicsPipeline();
+		void LogComputePipeline();
+		void BindDummyDescriptorSets(DescriptorCollection& collection);
     };
 
 	inline CommandList& DeviceContext::GetActiveCommandList()

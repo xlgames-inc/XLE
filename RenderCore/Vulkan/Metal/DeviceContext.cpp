@@ -375,6 +375,31 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 	}
 
+	void WriteDummyDescriptors(
+		DeviceContext& context,
+		DescriptorSet& dstSet,
+		const DescriptorSetSignature& sig);
+
+	void			DeviceContext::BindDummyDescriptorSets(DescriptorCollection& collection)
+	{
+		auto& globalPools = GetGlobalPools();
+		for (unsigned descriptorSetIndex=0; descriptorSetIndex<collection._descriptorSets.size(); ++descriptorSetIndex) {
+			if (collection._descriptorSets[descriptorSetIndex]) continue;
+			auto& pipelineLayout = *collection._pipelineLayout;
+			auto& sig = pipelineLayout.GetDescriptorSetSignature(descriptorSetIndex);
+			DescriptorSet set {
+				globalPools._mainDescriptorPool.Allocate(pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex))
+			};
+			WriteDummyDescriptors(*this, set, sig);
+
+			collection._descriptorSets[descriptorSetIndex] = set._underlying.get();
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				collection._descriptorSetBindings[descriptorSetIndex] = std::move(set._description);
+			#endif
+			collection._hasSetsAwaitingFlush = true;
+		}
+	}
+
 	void			DeviceContext::PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data)
 	{
 		GetActiveCommandList().PushConstants(
@@ -421,6 +446,16 @@ namespace RenderCore { namespace Metal_Vulkan
             _graphicsDescriptors._pipelineLayout->GetUnderlying(),
             _renderPass, _renderPassSubpass, _renderPassSamples);
         if (_currentGraphicsPipeline) {
+			LogGraphicsPipeline();
+
+			#if defined(_DEBUG)
+				// check for unbound descriptor sets
+				for (unsigned c=0; c<_graphicsDescriptors._descriptorSets.size(); ++c)
+					if (!_graphicsDescriptors._descriptorSets[c]) {
+						Log(Warning) << "Graphics descriptor set index [" << c << "] (" << _graphicsDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
+					}
+			#endif
+
             vkCmdBindPipeline(
 			    _commandList.GetUnderlying().get(),
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
@@ -455,6 +490,16 @@ namespace RenderCore { namespace Metal_Vulkan
             _globalPools->_mainPipelineCache.get(),
             _computeDescriptors._pipelineLayout->GetUnderlying());
         if (_currentComputePipeline) {
+			LogComputePipeline();
+
+			#if defined(_DEBUG)
+				// check for unbound descriptor sets
+				for (unsigned c=0; c<_computeDescriptors._descriptorSets.size(); ++c)
+					if (!_computeDescriptors._descriptorSets[c]) {
+						Log(Warning) << "Compute descriptor set index [" << c << "] (" << _computeDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
+					}
+			#endif
+
             vkCmdBindPipeline(
 			    _commandList.GetUnderlying().get(),
                 VK_PIPELINE_BIND_POINT_COMPUTE,
@@ -478,8 +523,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::ostream& stream,
 			const DescriptorSetVerboseDescription& bindingDescription,
 			const DescriptorSetSignature& signature,
-			const ShaderProgram& shaderProgram,
-			unsigned descriptorSetIndex);
+			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
+			unsigned descriptorSetIndex, bool isBound);
 	#endif
 
 	void DeviceContext::LogGraphicsPipeline()
@@ -494,13 +539,42 @@ namespace RenderCore { namespace Metal_Vulkan
 			Log(Verbose) << "-------------Descriptors------------" << std::endl;
 
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				const CompiledShaderByteCode* shaders[ShaderProgram::s_maxShaderStages] = {};
+				for (unsigned c=0; c<dimof(shaders); ++c)
+					shaders[c] = &GetBoundShaderProgram()->GetCompiledCode((ShaderStage)c);
+
 				for (unsigned c=0; c<_graphicsDescriptors._pipelineLayout->GetDescriptorSetCount(); ++c) {
 					WriteDescriptorSet(
 						Log(Verbose),
 						_graphicsDescriptors._descriptorSetBindings[c],
 						_graphicsDescriptors._pipelineLayout->GetDescriptorSetSignature(c),
-						*GetBoundShaderProgram(),
-						c);
+						MakeIteratorRange(shaders),
+						c, _graphicsDescriptors._descriptorSets[c] != nullptr);
+				}
+			#endif
+		#endif
+	}
+
+	void DeviceContext::LogComputePipeline()
+	{
+		#if defined(_DEBUG)
+			if (!Verbose.IsEnabled()) return;
+
+			Log(Verbose) << "-------------ComputeShader------------" << std::endl;
+			Log(Verbose) << SPIRVReflection(GetBoundComputeShader()->GetCompiledShaderByteCode().GetByteCode()) << std::endl;
+			Log(Verbose) << "-------------Descriptors------------" << std::endl;
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				const CompiledShaderByteCode* shaders[(unsigned)ShaderStage::Max] = {};
+				shaders[(unsigned)ShaderStage::Compute] = &GetBoundComputeShader()->GetCompiledShaderByteCode();
+
+				for (unsigned c=0; c<_computeDescriptors._pipelineLayout->GetDescriptorSetCount(); ++c) {
+					WriteDescriptorSet(
+						Log(Verbose),
+						_computeDescriptors._descriptorSetBindings[c],
+						_computeDescriptors._pipelineLayout->GetDescriptorSetSignature(c),
+						MakeIteratorRange(shaders),
+						c, _computeDescriptors._descriptorSets[c] != nullptr);
 				}
 			#endif
 		#endif
@@ -510,7 +584,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList.GetUnderlying());
 		if (BindGraphicsPipeline()) {
-			LogGraphicsPipeline();
             assert(vertexCount);
             vkCmdDraw(
 			    _commandList.GetUnderlying().get(),
@@ -523,7 +596,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList.GetUnderlying());
 		if (BindGraphicsPipeline()) {
-			LogGraphicsPipeline();
 		    vkCmdDrawIndexed(
 			    _commandList.GetUnderlying().get(),
 			    indexCount, 1,
@@ -600,6 +672,13 @@ namespace RenderCore { namespace Metal_Vulkan
         _computeDescriptors._hasSetsAwaitingFlush = false;
         _computeDescriptors._numericBindings.Reset();
         _computeDescriptors._pipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
+
+		// We must our descriptor sets with something, based on the root signature
+		// Rendering or dispatching without a descriptor set bound in a used slot will
+		// crash either the driver or the GPU, so to avoid it, let's just make sure we bind
+		// something
+		BindDummyDescriptorSets(_graphicsDescriptors);
+		BindDummyDescriptorSets(_computeDescriptors);
 
         _boundViewport = ViewportDesc();
 
@@ -946,8 +1025,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::ostream& stream,
 			const DescriptorSetVerboseDescription& bindingDescription,
 			const DescriptorSetSignature& signature,
-			const ShaderProgram& shaderProgram,
-			unsigned descriptorSetIndex)
+			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
+			unsigned descriptorSetIndex, bool isBound)
 		{
 			std::vector<std::string> signatureColumn;
 			std::vector<std::string> shaderColumns[(unsigned)ShaderStage::Max];
@@ -962,10 +1041,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 			signatureColumnMax = std::max(signatureColumnMax, s_columnHeader0.size());
 
-			for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
-				shaderColumns[stage].reserve(signature._bindings.size());
+			for (unsigned stage=0; stage<std::min((unsigned)ShaderStage::Max, (unsigned)compiledShaderByteCode.size()); ++stage) {
+				if (!compiledShaderByteCode[stage] || compiledShaderByteCode[stage]->GetByteCode().empty())
+					continue;
 
-				SPIRVReflection reflection{shaderProgram.GetCompiledCode((ShaderStage)stage).GetByteCode()};
+				shaderColumns[stage].reserve(signature._bindings.size());
+				SPIRVReflection reflection{compiledShaderByteCode[stage]->GetByteCode()};
 				for (const auto& v:reflection._bindings) {
 					if (v.second._descriptorSet != descriptorSetIndex || v.second._bindingPoint == ~0u)
 						continue;
@@ -984,7 +1065,12 @@ namespace RenderCore { namespace Metal_Vulkan
 				bindingColumnMax = std::max(bindingColumnMax, b._description.size());
 			bindingColumnMax = std::max(bindingColumnMax, s_columnHeader2.size());
 
-			stream << "Descriptor Set: " << signature._name << " (bound with UniformStream: " << bindingDescription._descriptorSetInfo << ")" << std::endl;
+			stream << "[" << descriptorSetIndex << "] Descriptor Set: " << signature._name;
+			if (isBound) {
+				stream << " (bound with UniformsStream: " << bindingDescription._descriptorSetInfo << ")" << std::endl;
+			} else {
+				stream << " (not bound to any UniformsStream)" << std::endl;
+			}
 			stream << " " << s_columnHeader0 << StreamIndent(unsigned(signatureColumnMax - s_columnHeader0.size())) << " | ";
 			auto colCount = std::max(signatureColumn.size(), bindingDescription._bindingDescriptions.size());
 			size_t accumulatedShaderColumns = 0;
