@@ -109,10 +109,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		static const unsigned s_streamCount = 4;
         std::vector<uint32_t> _cbBindingIndices[s_streamCount];
         std::vector<uint32_t> _srvBindingIndices[s_streamCount];
-		uint64_t _descriptorSetBindingMask[s_streamCount];
-		unsigned _vsPushConstantSlot[s_streamCount];
-		unsigned _psPushConstantSlot[s_streamCount];
-		bool _isComputeShader;
+		uint64_t	_descriptorSetBindingMask[s_streamCount];
+		unsigned	_vsPushConstantSlot[s_streamCount];
+		unsigned	_psPushConstantSlot[s_streamCount];
+		bool		_isComputeShader;
 
 		void SetupBindings(
 			BoundUniformsHelper& helper,
@@ -148,23 +148,9 @@ namespace RenderCore { namespace Metal_Vulkan
 	using ConstantBuffer = Buffer;
 	class TextureView;
 	class ObjectFactory;
-	class DescriptorPool;
-	class DummyResources;
 	class DescriptorSetSignature;
-	
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-		class DescriptorSetVerboseDescription
-		{
-		public:
-			struct BindingDescription
-			{
-				VkDescriptorType _descriptorType = (VkDescriptorType)~0u;
-				std::string _description;
-			};
-			std::vector<BindingDescription> _bindingDescriptions;
-			std::string _descriptorSetInfo;
-		};		
-	#endif
+	class DescriptorSetVerboseDescription;
+	class GlobalPools;
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
@@ -175,22 +161,20 @@ namespace RenderCore { namespace Metal_Vulkan
         void    BindCB(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
         void    BindSampler(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 
-        void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
-        bool    HasChanges() const;
+        void    GetDescriptorSets(
+			IteratorRange<VkDescriptorSet*> dst
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, IteratorRange<DescriptorSetVerboseDescription**> descriptions));
         void    Reset();
+		bool	HasChanges() const;
 		
 		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
 		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription GetDescription() const;
-		#endif
-
         NumericUniformsInterface(
-            const ObjectFactory& factory, DescriptorPool& descPool, 
-            DummyResources& dummyResources,
+            const ObjectFactory& factory,
+			GlobalPools& globalPools,
             VkDescriptorSetLayout layout,
             const DescriptorSetSignature& signature);
 		NumericUniformsInterface();

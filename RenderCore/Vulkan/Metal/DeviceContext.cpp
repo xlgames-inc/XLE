@@ -20,8 +20,6 @@
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
-#include "../../Utility/StreamUtils.h"
-#include <sstream>
 
 namespace RenderCore { namespace Metal_Vulkan
 {
@@ -375,11 +373,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		};
 	}
 
-	void WriteDummyDescriptors(
-		DeviceContext& context,
-		DescriptorSet& dstSet,
-		const DescriptorSetSignature& sig);
-
 	void			DeviceContext::BindDummyDescriptorSets(DescriptorCollection& collection)
 	{
 		auto& globalPools = GetGlobalPools();
@@ -390,7 +383,16 @@ namespace RenderCore { namespace Metal_Vulkan
 			DescriptorSet set {
 				globalPools._mainDescriptorPool.Allocate(pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex))
 			};
-			WriteDummyDescriptors(*this, set, sig);
+
+			{
+				DescriptorSetBuilder builder { GetGlobalPools() };
+				builder.BindDummyDescriptors(sig, uint64_t(sig._bindings.size())-1);
+				builder.FlushChanges(
+					GetUnderlyingDevice(),
+					set._underlying.get(),
+					nullptr, 0
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, set._description));
+			}
 
 			collection._descriptorSets[descriptorSetIndex] = set._underlying.get();
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
@@ -421,12 +423,15 @@ namespace RenderCore { namespace Metal_Vulkan
         // If we've been using the pipeline layout builder directly, then we
         // must flush those changes down to the GraphicsPipelineBuilder
         if (_graphicsDescriptors._numericBindings.HasChanges()) {
-            VkDescriptorSet descSets[1];
-            _graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
-
+			VkDescriptorSet descSets[1];
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				BindDescriptorSet(PipelineType::Graphics, _graphicsDescriptors._numericBindingsSlot, descSets[0], _graphicsDescriptors._numericBindings.GetDescription());
+				DescriptorSetVerboseDescription* descriptions[1];
+				_graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets), MakeIteratorRange(descriptions));
+				BindDescriptorSet(
+					PipelineType::Graphics, _graphicsDescriptors._numericBindingsSlot, descSets[0], 
+					DescriptorSetVerboseDescription{*descriptions[0]});
 			#else
+				_graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
 				BindDescriptorSet(PipelineType::Graphics, _graphicsDescriptors._numericBindingsSlot, descSets[0]);
 			#endif
         }
@@ -475,12 +480,17 @@ namespace RenderCore { namespace Metal_Vulkan
         // If we've been using the pipeline layout builder directly, then we
         // must flush those changes down to the ComputePipelineBuilder
         if (_computeDescriptors._numericBindings.HasChanges()) {
-            VkDescriptorSet descSets[1];
-            _computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
-            BindDescriptorSet(
-                PipelineType::Compute, 
-                _computeDescriptors._numericBindingsSlot, descSets[0]
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, _computeDescriptors._numericBindings.GetDescription()));
+			VkDescriptorSet descSets[1];
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				DescriptorSetVerboseDescription* descriptions[1];
+				_computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets), MakeIteratorRange(descriptions));
+				BindDescriptorSet(
+					PipelineType::Compute, _computeDescriptors._numericBindingsSlot, descSets[0], 
+					DescriptorSetVerboseDescription{*descriptions[0]});
+			#else
+				_computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
+				BindDescriptorSet(PipelineType::Compute, _computeDescriptors._numericBindingsSlot, descSets[0]);
+			#endif
         }
 
         if (_currentComputePipeline && !ComputePipelineBuilder::IsPipelineStale()) return true;
@@ -976,8 +986,7 @@ namespace RenderCore { namespace Metal_Vulkan
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	static std::pair<NumericUniformsInterface, unsigned> MakeDescriptorSetBuilder(
-		const ObjectFactory& factory, DescriptorPool& descPool, 
-		DummyResources& dummyResources,
+		const ObjectFactory& factory, GlobalPools& globalPools, 
 		PipelineLayout& pipelineLayout, StringSection<> name)
 	{
 		auto& rootSig = *pipelineLayout.GetRootSignature();
@@ -989,7 +998,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned descriptorSetIndex = (unsigned)std::distance(rootSig._descriptorSets.begin(), i);
 			return {
 				NumericUniformsInterface(
-					factory, descPool, dummyResources, 
+					factory, globalPools, 
 					pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex), *i),
 				descriptorSetIndex
 			};
@@ -1004,9 +1013,7 @@ namespace RenderCore { namespace Metal_Vulkan
     : _pipelineLayout(pipelineLayout)
     {
 		std::tie(_numericBindings, _numericBindingsSlot) =
-			MakeDescriptorSetBuilder(
-				factory, globalPools._mainDescriptorPool, globalPools._dummyResources, 
-				*_pipelineLayout, "Numeric");
+			MakeDescriptorSetBuilder(factory, globalPools, *_pipelineLayout, "Numeric");
 
         _descriptorSets.resize(_pipelineLayout->GetDescriptorSetCount(), nullptr);
         _hasSetsAwaitingFlush = false;
@@ -1015,108 +1022,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindings.resize(_pipelineLayout->GetDescriptorSetCount());
 		#endif
     }
-
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-
-		static const std::string s_columnHeader0 = "Root Signature";
-		static const std::string s_columnHeader2 = "Binding";
-
-		std::ostream& WriteDescriptorSet(
-			std::ostream& stream,
-			const DescriptorSetVerboseDescription& bindingDescription,
-			const DescriptorSetSignature& signature,
-			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
-			unsigned descriptorSetIndex, bool isBound)
-		{
-			std::vector<std::string> signatureColumn;
-			std::vector<std::string> shaderColumns[(unsigned)ShaderStage::Max];
-
-			size_t signatureColumnMax = 0, bindingColumnMax = 0;
-			size_t shaderColumnMax[(unsigned)ShaderStage::Max] = {};
-
-			signatureColumn.resize(signature._bindings.size());
-			for (unsigned c=0; c<signature._bindings.size(); ++c) {
-				signatureColumn[c] = std::string{AsString(signature._bindings[c]._type)} + ", HLSL index (" + std::to_string(signature._bindings[c]._hlslBindingIndex) + ")";
-				signatureColumnMax = std::max(signatureColumnMax, signatureColumn[c].size());
-			}
-			signatureColumnMax = std::max(signatureColumnMax, s_columnHeader0.size());
-
-			for (unsigned stage=0; stage<std::min((unsigned)ShaderStage::Max, (unsigned)compiledShaderByteCode.size()); ++stage) {
-				if (!compiledShaderByteCode[stage] || compiledShaderByteCode[stage]->GetByteCode().empty())
-					continue;
-
-				shaderColumns[stage].reserve(signature._bindings.size());
-				SPIRVReflection reflection{compiledShaderByteCode[stage]->GetByteCode()};
-				for (const auto& v:reflection._bindings) {
-					if (v.second._descriptorSet != descriptorSetIndex || v.second._bindingPoint == ~0u)
-						continue;
-					if (shaderColumns[stage].size() <= v.second._bindingPoint)
-						shaderColumns[stage].resize(v.second._bindingPoint+1);
-					
-					shaderColumns[stage][v.second._bindingPoint] = reflection.GetName(v.first).AsString();
-					shaderColumnMax[stage] = std::max(shaderColumnMax[stage], shaderColumns[stage][v.second._bindingPoint].size());
-				}
-
-				if (shaderColumnMax[stage] != 0)
-					shaderColumnMax[stage] = std::max(shaderColumnMax[stage], std::strlen(AsString((ShaderStage)stage)));
-			}
-
-			for (const auto&b:bindingDescription._bindingDescriptions)
-				bindingColumnMax = std::max(bindingColumnMax, b._description.size());
-			bindingColumnMax = std::max(bindingColumnMax, s_columnHeader2.size());
-
-			stream << "[" << descriptorSetIndex << "] Descriptor Set: " << signature._name;
-			if (isBound) {
-				stream << " (bound with UniformsStream: " << bindingDescription._descriptorSetInfo << ")" << std::endl;
-			} else {
-				stream << " (not bound to any UniformsStream)" << std::endl;
-			}
-			stream << " " << s_columnHeader0 << StreamIndent(unsigned(signatureColumnMax - s_columnHeader0.size())) << " | ";
-			auto colCount = std::max(signatureColumn.size(), bindingDescription._bindingDescriptions.size());
-			size_t accumulatedShaderColumns = 0;
-			for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
-				if (!shaderColumnMax[stage]) continue;
-				auto* title = AsString((ShaderStage)stage);
-				stream << title << StreamIndent(unsigned(shaderColumnMax[stage] - std::strlen(title))) << " | ";
-				accumulatedShaderColumns += shaderColumnMax[stage] + 3;
-				colCount = std::max(colCount, shaderColumns[stage].size());
-			}
-			stream << s_columnHeader2 << StreamIndent(unsigned(bindingColumnMax - s_columnHeader2.size())) << std::endl;
-			stream << StreamIndent{unsigned(signatureColumnMax + bindingColumnMax + accumulatedShaderColumns + 5), '-'} << std::endl;
-
-			for (unsigned col=0; col<colCount; ++col) {
-				stream << " ";
-				if (col < signatureColumn.size()) {
-					stream << signatureColumn[col] << StreamIndent(unsigned(signatureColumnMax - signatureColumn[col].size()));
-				} else {
-					stream << StreamIndent(unsigned(signatureColumnMax));
-				}
-				stream << " | ";
-
-				for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
-					if (!shaderColumnMax[stage]) continue;
-					if (col < shaderColumns[stage].size()) {
-						stream << shaderColumns[stage][col] << StreamIndent(unsigned(shaderColumnMax[stage] - shaderColumns[stage][col].size()));
-					} else {
-						stream << StreamIndent(unsigned(shaderColumnMax[stage]));
-					}
-					stream << " | ";
-				}
-
-				if (col < bindingDescription._bindingDescriptions.size()) {
-					stream << bindingDescription._bindingDescriptions[col]._description << StreamIndent(unsigned(bindingColumnMax - bindingDescription._bindingDescriptions[col]._description.size()));
-				} else {
-					stream << StreamIndent(unsigned(bindingColumnMax));
-				}
-
-				stream << std::endl;
-			}
-			stream << StreamIndent{unsigned(signatureColumnMax + bindingColumnMax + accumulatedShaderColumns + 5), '-'} << std::endl;
-
-			return stream;
-		}
-
-	#endif
 
 }}
 

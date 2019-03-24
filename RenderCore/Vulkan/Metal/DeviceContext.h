@@ -10,6 +10,7 @@
 #include "State.h"
 #include "FrameBuffer.h"        // for AttachmentPool
 #include "InputLayout.h"		// for NumericUniformsInterface
+#include "DescriptorSet.h"
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"

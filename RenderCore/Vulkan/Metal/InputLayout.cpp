@@ -397,32 +397,16 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
-	struct NascentDescriptorWrite
-	{
-	public:
-		static const unsigned s_maxBindings = 64u;
-        VkDescriptorBufferInfo	_bufferInfo[s_maxBindings];
-        VkDescriptorImageInfo	_imageInfo[s_maxBindings];
-        VkWriteDescriptorSet	_writes[s_maxBindings];
-
-        unsigned _writeCount = 0, _bufferCount = 0, _imageCount = 0;
-		bool _requiresTemporaryBufferBarrier = false;
-	};
-
-	static const std::string s_dummyDescriptorString{"<DummyDescriptor>"};
-
 	static uint64_t WriteCBBindings(
-		NascentDescriptorWrite& result,
+		DescriptorSetBuilder& builder,
 		TemporaryBufferSpace& temporaryBufferSpace,
+		bool& requiresTemporaryBufferBarrier,
 		ObjectFactory& factory,
-		DescriptorSet& dstSet,
 		IteratorRange<const ConstantBufferView*> cbvs,
 		IteratorRange<const uint32_t*> bindingIndicies,
 		uint64_t shaderBindingMask)
 	{
-		auto writeCount = result._writeCount;
-		auto bufferCount = result._bufferCount;
-		auto bindingsWrittenTo = 0u;
+		uint64_t bindingsWrittenTo = 0u;
 
 		auto count = std::min(cbvs.size(), bindingIndicies.size());
 		for (unsigned c=0; c<count; ++c) {
@@ -430,86 +414,42 @@ namespace RenderCore { namespace Metal_Vulkan
             if (dstBinding == ~0u) continue;
 
 			assert(shaderBindingMask & (1ull << uint64_t(dstBinding)));
-
-			#if defined(_DEBUG) // check for duplicate descriptor writes (ie, writing to the same binding twice as part of the same operation)
-				for (unsigned w=0; w<writeCount; ++w)
-					assert( result._writes[w].dstBinding != dstBinding
-						||  result._writes[w].dstSet != dstSet._underlying.get());
-			#endif
-
-			assert(writeCount < dimof(result._writes));
-			auto& write = result._writes[writeCount++];
-			write = {};
-			write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-			write.dstSet = dstSet._underlying.get();
-			write.dstBinding = dstBinding;
-			write.descriptorCount = 1;
-			write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			write.dstArrayElement = 0;
-
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				if (dstSet._description._bindingDescriptions.size() <= (write.dstBinding + write.descriptorCount))
-					dstSet._description._bindingDescriptions.resize(write.dstBinding + write.descriptorCount);
-				for (unsigned q=0; q<write.descriptorCount; ++q)
-					dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-			#endif
+			assert(!(builder.PendingWriteMask() & (1ull<<uint64(dstBinding))));
 
 			if (cbvs[c]._prebuiltBuffer) {
 				assert(const_cast<IResource*>(cbvs[c]._prebuiltBuffer)->QueryInterface(typeid(Resource).hash_code()));
 				auto& res = *(Resource*)cbvs[c]._prebuiltBuffer;
 				assert(res.GetBuffer());
-				result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{res.GetBuffer(), 0, VK_WHOLE_SIZE};
-				write.pBufferInfo = &result._bufferInfo[bufferCount];
-				++bufferCount;
-
-				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-					for (unsigned q=0; q<write.descriptorCount; ++q)
-						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"Prebuild CB: "} + res.GetDesc()._name;
-				#endif
+				builder.BindCB(dstBinding, { res.GetBuffer(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, "prebuilt"));
 			} else {
 				auto& pkt = cbvs[c]._packet;
-				assert(bufferCount < dimof(result._bufferInfo));
+				// assert(bufferCount < dimof(result._bufferInfo));
 				// We must either allocate some memory from a temporary pool, or 
 				// (or we could use push constants)
-				result._bufferInfo[bufferCount] = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
-				if (!result._bufferInfo[bufferCount].buffer) {
+				auto tempSpace = temporaryBufferSpace.AllocateBuffer(pkt.AsIteratorRange());
+				if (!tempSpace.buffer) {
 					Log(Warning) << "Failed to allocate temporary buffer space. Falling back to new buffer." << std::endl;
 					auto cb = MakeConstantBuffer(factory, pkt.AsIteratorRange());
-					result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{ cb.GetUnderlying(), 0, VK_WHOLE_SIZE };
+					builder.BindCB(dstBinding, { cb.GetUnderlying(), 0, VK_WHOLE_SIZE } VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, "temporary buffer"));
 				} else {
-					result._requiresTemporaryBufferBarrier |= true;
+					builder.BindCB(dstBinding, tempSpace VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, "temporary buffer"));
+					requiresTemporaryBufferBarrier |= true;
 				}
-				write.pBufferInfo = &result._bufferInfo[bufferCount];
-				++bufferCount;
-
-				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-					for (unsigned q=0; q<write.descriptorCount; ++q)
-						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"CB pkt slot: "} + std::to_string(c);
-				#endif
 			}
 
 			bindingsWrittenTo |= 1ull << uint64(dstBinding);
 		}
 
-		result._writeCount = writeCount;
-		result._bufferCount = bufferCount;
 		return bindingsWrittenTo;
 	}
 
 	static uint64_t WriteSRVBindings(
-		NascentDescriptorWrite& result,
-		GlobalPools& globalPools,
-		DescriptorSet& dstSet,
+		DescriptorSetBuilder& builder,
 		IteratorRange<const ShaderResourceView*const*> srvs,
 		IteratorRange<const uint32_t*> bindingIndicies,
 		uint64_t shaderBindingMask)
 	{
-		auto writeCount = result._writeCount;
-		auto imageCount = result._imageCount;
-		auto bufferCount = result._bufferCount;
-		auto bindingsWrittenTo = 0u;
-
-		unsigned dummyImage = ~0u;
+		uint64_t bindingsWrittenTo = 0u;
 
 		auto count = std::min(srvs.size(), bindingIndicies.size());
 		for (unsigned c=0; c<count; ++c) {
@@ -517,179 +457,14 @@ namespace RenderCore { namespace Metal_Vulkan
             if (dstBinding == ~0u) continue;
 
 			assert(shaderBindingMask & (1ull << uint64_t(dstBinding)));
+			assert(!(builder.PendingWriteMask() & (1ull<<uint64(dstBinding))));
 
-			#if defined(_DEBUG) // check for duplicate descriptor writes
-                for (unsigned w=0; w<writeCount; ++w)
-                    assert( result._writes[w].dstBinding != dstBinding
-						||  result._writes[w].dstSet != dstSet._underlying.get());
-			#endif
-
-			assert(writeCount < dimof(result._writes));
-			auto& write = result._writes[writeCount++];
-			write = {};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = dstSet._underlying.get();
-            write.dstBinding = dstBinding;
-            write.descriptorCount = 1;
-            write.dstArrayElement = 0;
-
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				if (dstSet._description._bindingDescriptions.size() <= (write.dstBinding + write.descriptorCount))
-					dstSet._description._bindingDescriptions.resize(write.dstBinding + write.descriptorCount);
-			#endif
-
-			// Our "StructuredBuffer" objects are being mapped onto uniform buffers in SPIR-V
-			// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
-			// descriptor.
-			bool wroteSomething = false;
-			if (expect(srvs[c], 1)) {
-				if (srvs[c]->GetImageView()) {
-					assert(imageCount < dimof(result._imageInfo));
-					result._imageInfo[imageCount] = VkDescriptorImageInfo {
-						globalPools._dummyResources._blankSampler->GetUnderlying(),
-						srvs[c]->GetImageView(),
-						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-					write.pImageInfo = &result._imageInfo[imageCount];
-					write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-					++imageCount;
-					wroteSomething = true;
-				} else if (srvs[c]->GetResource()) {
-					auto buffer = srvs[c]->GetResource()->GetBuffer();
-					assert(bufferCount < dimof(result._bufferInfo));
-					result._bufferInfo[bufferCount] = VkDescriptorBufferInfo{buffer, 0, VK_WHOLE_SIZE};
-					write.pBufferInfo = &result._bufferInfo[bufferCount];
-					write.descriptorType = VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-					++bufferCount;
-					wroteSomething = true;
-				}
-
-				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-					if (wroteSomething)
-						for (unsigned q=0; q<write.descriptorCount; ++q) {
-							dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
-							dstSet._description._bindingDescriptions[write.dstBinding+q]._description = std::string{"SRV resource: "} + srvs[c]->GetResource()->GetDesc()._name;
-						}
-				#endif
-			}
-
-			if (!wroteSomething) {
-				// given a null pointer -- have to substitute a dummy image
-				assert(imageCount < dimof(result._imageInfo));
-				if (dummyImage == ~0u) {
-					result._imageInfo[imageCount] = VkDescriptorImageInfo {
-						globalPools._dummyResources._blankSampler->GetUnderlying(),
-						globalPools._dummyResources._blankSrv.GetImageView(),
-						VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-					dummyImage = imageCount;
-					++imageCount;
-				}
-				write.pImageInfo = &result._imageInfo[dummyImage];
-				write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-
-				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-					for (unsigned q=0; q<write.descriptorCount; ++q) {
-						dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
-						dstSet._description._bindingDescriptions[write.dstBinding+q]._description = s_dummyDescriptorString;
-					}
-				#endif
-			}
+			builder.BindSRV(dstBinding, srvs[c]);
 
 			bindingsWrittenTo |= 1ull << uint64(dstBinding);
 		}
 
-		result._writeCount = writeCount;
-		result._imageCount = imageCount;
-		result._bufferCount = bufferCount;
 		return bindingsWrittenTo;
-	}
-
-	static uint64_t WriteDummyDescriptors(
-		NascentDescriptorWrite& result,
-		GlobalPools& globalPools,
-		DescriptorSet& dstSet,
-		const DescriptorSetSignature& sig,
-		uint64_t dummyDescWriteMask)
-	{
-		auto bindingsWrittenTo = 0u;
-
-		assert(result._bufferCount < dimof(result._bufferInfo));
-        assert(result._imageCount < dimof(result._imageInfo));
-        auto blankBuffer = result._bufferCount;
-        auto blankImage = result._imageCount;
-        result._bufferInfo[result._bufferCount++] = VkDescriptorBufferInfo { 
-            globalPools._dummyResources._blankBuffer.GetUnderlying(),
-            0, VK_WHOLE_SIZE };
-        result._imageInfo[result._imageCount++] = VkDescriptorImageInfo {
-            globalPools._dummyResources._blankSampler->GetUnderlying(),
-            globalPools._dummyResources._blankSrv.GetImageView(),
-            VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL };
-		auto blankSampler = result._imageCount;
-		result._imageInfo[result._imageCount++] = VkDescriptorImageInfo {
-            globalPools._dummyResources._blankSampler->GetUnderlying(),
-            nullptr,
-            VK_IMAGE_LAYOUT_UNDEFINED };
-
-        unsigned minBit = xl_ctz8(dummyDescWriteMask);
-        unsigned maxBit = std::min(64u - xl_clz8(dummyDescWriteMask), (unsigned)sig._bindings.size()-1);
-
-        for (unsigned bIndex=minBit; bIndex<=maxBit; ++bIndex) {
-            if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
-
-            assert(result._writeCount < dimof(result._writes));
-			auto& write = result._writes[result._writeCount];
-            write = {};
-            write.sType = VK_STRUCTURE_TYPE_WRITE_DESCRIPTOR_SET;
-            write.dstSet = dstSet._underlying.get();
-            write.dstBinding = bIndex;
-            write.descriptorCount = 1;
-            write.dstArrayElement = 0;
-
-            const auto& b = sig._bindings[bIndex];
-            if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
-				Log(Warning) << "No data provided for bound CB (" << bIndex << "). Using dummy resource." << std::endl;
-                write.descriptorType = VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-                write.pBufferInfo = &result._bufferInfo[blankBuffer];
-            } else if (b._type == DescriptorSetBindingSignature::Type::Texture) {
-				Log(Warning) << "No data provided for bound SRV (" << bIndex << "). Using dummy resource." << std::endl;
-                write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-                write.pImageInfo = &result._imageInfo[blankImage];
-            } else if (b._type == DescriptorSetBindingSignature::Type::Sampler) {
-				Log(Warning) << "No data provided for bound sampler (" << bIndex << "). Using dummy resource." << std::endl;
-                write.descriptorType = VK_DESCRIPTOR_TYPE_SAMPLER;
-                write.pImageInfo = &result._imageInfo[blankSampler];
-			} else  {
-                assert(0);      // (other types, such as UAVs and structured buffers not supported)
-				continue;
-            }
-
-            bindingsWrittenTo |= 1ull << uint64(bIndex);
-            ++result._writeCount;
-
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				if (dstSet._description._bindingDescriptions.size() <= (write.dstBinding + write.descriptorCount))
-					dstSet._description._bindingDescriptions.resize(write.dstBinding + write.descriptorCount);
-				for (unsigned q=0; q<write.descriptorCount; ++q) {
-					dstSet._description._bindingDescriptions[write.dstBinding+q]._descriptorType = write.descriptorType;
-					dstSet._description._bindingDescriptions[write.dstBinding+q]._description = s_dummyDescriptorString;
-				}
-			#endif
-        }
-
-		return bindingsWrittenTo;
-	}
-
-	void WriteDummyDescriptors(
-		DeviceContext& context,
-		DescriptorSet& dstSet,
-		const DescriptorSetSignature& sig)
-	{
-		NascentDescriptorWrite descWrite;
-		uint64_t mask = sig._bindings.size()-1;
-		WriteDummyDescriptors(
-			descWrite, context.GetGlobalPools(), dstSet,
-			sig, mask);
-		if (descWrite._writeCount)
-			vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
 	}
 
 	static std::string s_boundUniformsNames[4] = {
@@ -705,7 +480,7 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStream& stream) const
     {
 		assert(streamIdx < s_streamCount);
-		if (streamIdx != 3 && _descriptorSetBindingMask[streamIdx]) {
+		if (_descriptorSetBindingMask[streamIdx]) {
 			// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
 			// sure that all of the commands have already been completed).
 			//
@@ -723,29 +498,27 @@ namespace RenderCore { namespace Metal_Vulkan
 				? DeviceContext::PipelineType::Compute 
 				: DeviceContext::PipelineType::Graphics;
 
-			auto& globalPools = context.GetGlobalPools();
 			auto descriptorSet = context.AllocateDescriptorSet(pipelineType, streamIdx);
-
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				assert(streamIdx < dimof(s_boundUniformsNames));
 				descriptorSet._description._descriptorSetInfo = s_boundUniformsNames[streamIdx];
 			#endif
 
+			bool requiresTemporaryBufferBarrier = false;
+
 			// -------- write descriptor set --------
-			NascentDescriptorWrite descWrite;
+			DescriptorSetBuilder builder { context.GetGlobalPools() };
 			auto cbBindingFlag = WriteCBBindings(
-				descWrite,
+				builder,
 				context.GetTemporaryBufferSpace(),
+				requiresTemporaryBufferBarrier,
 				context.GetFactory(),
-				descriptorSet,
 				stream._constantBuffers,
 				MakeIteratorRange(_cbBindingIndices[streamIdx]),
 				_descriptorSetBindingMask[streamIdx]);
 
-			auto svBindingFlag = WriteSRVBindings(
-				descWrite,
-				globalPools,
-				descriptorSet,
+			auto srvBindingFlag = WriteSRVBindings(
+				builder,
 				MakeIteratorRange((const ShaderResourceView*const*)stream._resources.begin(), (const ShaderResourceView*const*)stream._resources.end()),
 				MakeIteratorRange(_srvBindingIndices[streamIdx]),
 				_descriptorSetBindingMask[streamIdx]);		
@@ -753,15 +526,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto& pipelineLayout = *context.GetPipelineLayout(pipelineType);
 			auto& rootSig = *pipelineLayout.GetRootSignature();
 			const auto& sig = rootSig._descriptorSets[streamIdx];
-
-			#if defined(_DEBUG)
-				// Check to make sure the descriptor type matches the write operation we're performing
-				for (unsigned w=0; w<descWrite._writeCount; w++) {
-					auto& write = descWrite._writes[w];
-					assert(write.dstBinding < sig._bindings.size());
-					assert(AsDescriptorType(sig._bindings[write.dstBinding]._type) == write.descriptorType);
-				}
-			#endif
 
 			// Any locations referenced by the descriptor layout, by not written by the values in
 			// the streams must now be filled in with the defaults.
@@ -772,21 +536,28 @@ namespace RenderCore { namespace Metal_Vulkan
 			//
 			// In the most common case, there should be no dummy descriptors to fill in here... So we'll 
 			// optimise for that case.
-			uint64 dummyDescWriteMask = (~(cbBindingFlag|svBindingFlag)) & _descriptorSetBindingMask[streamIdx];
+			uint64_t dummyDescWriteMask = (~(cbBindingFlag|srvBindingFlag)) & _descriptorSetBindingMask[streamIdx];
+			uint64_t dummyDescWritten = 0;
 			if (dummyDescWriteMask != 0)
-				WriteDummyDescriptors(descWrite, globalPools, descriptorSet, sig, dummyDescWriteMask);
+				dummyDescWritten = builder.BindDummyDescriptors(sig, dummyDescWriteMask);
 
 			// note --  vkUpdateDescriptorSets happens immediately, regardless of command list progress.
 			//          Ideally we don't really want to have to update these constantly... Once they are 
 			//          set, maybe we can just reuse them?
-			if (descWrite._writeCount)
-				vkUpdateDescriptorSets(context.GetUnderlyingDevice(), descWrite._writeCount, descWrite._writes, 0, nullptr);
+			if (cbBindingFlag | srvBindingFlag | dummyDescWriteMask) {
+				#if defined(_DEBUG)
+					// Check to make sure the descriptor type matches the write operation we're performing
+					builder.ValidatePendingWrites(sig);
+				#endif
+
+				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet._underlying.get(), nullptr, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, descriptorSet._description));
+			}
         
 			context.BindDescriptorSet(
 				pipelineType, streamIdx, descriptorSet._underlying.get()
 				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, std::move(descriptorSet._description)));
 
-			if (descWrite._requiresTemporaryBufferBarrier)
+			if (requiresTemporaryBufferBarrier)
 				context.GetTemporaryBufferSpace().WriteBarrier(context);
 		}
 
