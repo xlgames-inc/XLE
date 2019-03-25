@@ -282,26 +282,24 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    enum class Qualifier { None, Image, Buffer };
-
-    static Qualifier AsQualifier(StringSection<char> str)
+    static LegacyRegisterBinding::RegisterQualifier AsQualifier(StringSection<char> str)
     {
         // look for "(image)" or "(buffer)" qualifiers
-        if (str.IsEmpty() || str[0] != '(') return Qualifier::None;
+        if (str.IsEmpty() || str[0] != '(') return LegacyRegisterBinding::RegisterQualifier::None;
 
         if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "buffer)"))
-            return Qualifier::Buffer;
+            return LegacyRegisterBinding::RegisterQualifier::Buffer;
 
-        if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "image)"))
-            return Qualifier::Image;
+        if (XlEqStringI(StringSection<char>(str.begin()+1, str.end()), "texture)"))
+            return LegacyRegisterBinding::RegisterQualifier::Texture;
 
-        return Qualifier::None;
+        return LegacyRegisterBinding::RegisterQualifier::None;
     }
 
 	struct RegisterRange
 	{
 		unsigned _begin = 0, _end = 0;
-		Qualifier _qualifier;
+		LegacyRegisterBinding::RegisterQualifier _qualifier;
 	};
 
 	static RegisterRange AsRegisterRange(StringSection<> input)
@@ -343,9 +341,9 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         // convert between HLSL style register binding indices to a type enum
         switch (type) {
-        case 'b': return LegacyRegisterBinding::RegisterType::Buffer;
+        case 'b': return LegacyRegisterBinding::RegisterType::ConstantBuffer;
         case 's': return LegacyRegisterBinding::RegisterType::Sampler;
-        case 't': return LegacyRegisterBinding::RegisterType::Texture;
+        case 't': return LegacyRegisterBinding::RegisterType::ShaderResource;
         case 'u': return LegacyRegisterBinding::RegisterType::UnorderedAccess;
 	    default:  return LegacyRegisterBinding::RegisterType::Unknown;
         }
@@ -437,9 +435,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			std::vector<LegacyRegisterBinding::Entry>* dest =  nullptr;
 			switch (regType) {
 			case LegacyRegisterBinding::RegisterType::Sampler: dest = &result._samplerRegisters; break;
-			case LegacyRegisterBinding::RegisterType::Texture: dest = &result._textureRegisters; break;
-			case LegacyRegisterBinding::RegisterType::Buffer: dest = &result._bufferRegisters; break;
-			case LegacyRegisterBinding::RegisterType::UnorderedAccess: dest = &result._unorderedAccessRegisters; break;
+			case LegacyRegisterBinding::RegisterType::ShaderResource:
+				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result._srvRegisters_boundToBuffer : &result._srvRegisters;
+				break;
+			case LegacyRegisterBinding::RegisterType::ConstantBuffer: dest = &result._constantBufferRegisters; break;
+			case LegacyRegisterBinding::RegisterType::UnorderedAccess:
+				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result._uavRegisters_boundToBuffer : &result._uavRegisters; 
+				break;
 			default: assert(0);
 			}
 
@@ -484,13 +486,13 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-	IteratorRange<const LegacyRegisterBinding::Entry*>	LegacyRegisterBinding::GetEntries(RegisterType type) const
+	IteratorRange<const LegacyRegisterBinding::Entry*>	LegacyRegisterBinding::GetEntries(RegisterType type, RegisterQualifier qualifier) const
 	{
 		switch (type) {
 		case RegisterType::Sampler: return MakeIteratorRange(_samplerRegisters);
-		case RegisterType::Texture: return MakeIteratorRange(_textureRegisters);
-		case RegisterType::Buffer: return MakeIteratorRange(_bufferRegisters);
-		case RegisterType::UnorderedAccess: return MakeIteratorRange(_unorderedAccessRegisters);
+		case RegisterType::ShaderResource: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_srvRegisters_boundToBuffer) : MakeIteratorRange(_srvRegisters);
+		case RegisterType::ConstantBuffer: return MakeIteratorRange(_constantBufferRegisters);
+		case RegisterType::UnorderedAccess: return (qualifier == RegisterQualifier::Buffer) ? MakeIteratorRange(_uavRegisters_boundToBuffer) : MakeIteratorRange(_uavRegisters);
 		}
 
 		return {};
@@ -500,8 +502,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		switch (regType) {
 		case LegacyRegisterBinding::RegisterType::Sampler: return 's';
-		case LegacyRegisterBinding::RegisterType::Texture: return 't';
-		case LegacyRegisterBinding::RegisterType::Buffer: return 'b';
+		case LegacyRegisterBinding::RegisterType::ShaderResource: return 't';
+		case LegacyRegisterBinding::RegisterType::ConstantBuffer: return 'b';
 		case LegacyRegisterBinding::RegisterType::UnorderedAccess: return 'u';
 		}
 		return ' ';

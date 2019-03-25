@@ -374,34 +374,35 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static LegacyRegisterBinding::RegisterType AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
     {
-        if (!srcResBinding) {
-            if (srcCBBinding) 
-                return LegacyRegisterBinding::RegisterType::Buffer;
-            return LegacyRegisterBinding::RegisterType::Unknown;
-        }
+        if (!srcResBinding)
+            return srcCBBinding ? LegacyRegisterBinding::RegisterType::ConstantBuffer : LegacyRegisterBinding::RegisterType::Unknown;
 
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
-        case RGROUP_CBUFFER:    return LegacyRegisterBinding::RegisterType::Buffer;
-        case RGROUP_TEXTURE:    
-            /*if (    srcResBinding->eType == RTYPE_STRUCTURED
-                ||  srcResBinding->eType == RTYPE_BYTEADDRESS)
-                return DescriptorSetBindingSignature::Type::TextureAsBuffer;*/
-            return LegacyRegisterBinding::RegisterType::Texture;
+        case RGROUP_CBUFFER:    return LegacyRegisterBinding::RegisterType::ConstantBuffer;
+        case RGROUP_TEXTURE:    return LegacyRegisterBinding::RegisterType::ShaderResource;
         case RGROUP_SAMPLER:    return LegacyRegisterBinding::RegisterType::Sampler;
-        case RGROUP_UAV:        
-            {
-                /*if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
-                    ||  srcResBinding->eType == RTYPE_UAV_RWBYTEADDRESS
-                    ||  srcResBinding->eType == RTYPE_UAV_APPEND_STRUCTURED
-                    ||  srcResBinding->eType == RTYPE_UAV_CONSUME_STRUCTURED
-                    ||  srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER)
-                    return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;*/
-                return LegacyRegisterBinding::RegisterType::UnorderedAccess;
-            }
+        case RGROUP_UAV:        return LegacyRegisterBinding::RegisterType::UnorderedAccess;
         }
         return LegacyRegisterBinding::RegisterType::Unknown;
     }
+
+	static LegacyRegisterBinding::RegisterQualifier AsRegisterQualifier(ResourceBinding* srcResBinding)
+	{
+		if (!srcResBinding)
+			return LegacyRegisterBinding::RegisterQualifier::None;
+		if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
+            ||  srcResBinding->eType == RTYPE_UAV_RWBYTEADDRESS
+            ||  srcResBinding->eType == RTYPE_UAV_APPEND_STRUCTURED
+			||  srcResBinding->eType == RTYPE_STRUCTURED
+			||  srcResBinding->eType == RTYPE_BYTEADDRESS
+            ||  srcResBinding->eType == RTYPE_UAV_CONSUME_STRUCTURED
+            ||  srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER)
+            return LegacyRegisterBinding::RegisterQualifier::Buffer;
+		if (    srcResBinding->eType == RTYPE_TEXTURE)
+			return LegacyRegisterBinding::RegisterQualifier::Texture;
+		return LegacyRegisterBinding::RegisterQualifier::None;
+	}
 
     uint32_t __cdecl EvaluateBinding(
         void* userData,
@@ -421,7 +422,7 @@ namespace RenderCore { namespace Metal_Vulkan
         else if (srcCBBinding) name = srcCBBinding->Name;
 
         // First, check to see if it has been assigned as push constants
-        if (type == LegacyRegisterBinding::RegisterType::Buffer && name) {
+        if (type == LegacyRegisterBinding::RegisterType::ConstantBuffer && name) {
             for (unsigned rangeIndex=0; rangeIndex<(unsigned)rootSig._pushConstantRanges.size(); ++rangeIndex) {
                 if (XlEqString(rootSig._pushConstantRanges[rangeIndex]._name, name)) {
                     assert(srcCBBinding);
@@ -435,7 +436,8 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
-		for (const auto&e:rootSig._legacyBinding.GetEntries(type))
+		auto qualifier = AsRegisterQualifier(srcResBinding);
+		for (const auto&e:rootSig._legacyBinding.GetEntries(type, qualifier))
 			if (e._begin <= bindPoint && bindPoint < e._end) {
 				// found it!
                 dstBinding->_locationIndex = ~0u;

@@ -442,7 +442,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			legacyBindingColumn.resize(rowCount);
 			for (unsigned regType=0; regType<(unsigned)LegacyRegisterBinding::RegisterType::Unknown; ++regType) {
 				auto prefix = GetRegisterPrefix((LegacyRegisterBinding::RegisterType)regType);
-				auto entries = rootSignature._legacyBinding.GetEntries((LegacyRegisterBinding::RegisterType)regType);
+				auto entries = rootSignature._legacyBinding.GetEntries((LegacyRegisterBinding::RegisterType)regType, LegacyRegisterBinding::RegisterQualifier::None);
 				for (const auto&e:entries)
 					if (e._targetDescriptorSet == descriptorSetIndex && e._targetBegin < rowCount)
 						for (unsigned t=e._targetBegin; t<std::min(e._targetEnd, rowCount); ++t) {

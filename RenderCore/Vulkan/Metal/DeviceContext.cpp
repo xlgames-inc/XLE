@@ -990,7 +990,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			return {
 				NumericUniformsInterface(
 					factory, globalPools, 
-					pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex), *i),
+					pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex),
+					pipelineLayout.GetRootSignature()->_legacyBinding,
+					descriptorSetIndex),
 				descriptorSetIndex
 			};
 		}

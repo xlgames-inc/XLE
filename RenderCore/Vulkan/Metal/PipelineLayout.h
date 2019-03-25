@@ -64,7 +64,8 @@ namespace RenderCore { namespace Metal_Vulkan
 	class LegacyRegisterBinding
 	{
 	public:
-		enum class RegisterType { Sampler, Texture, Buffer, UnorderedAccess, Unknown };
+		enum class RegisterType { Sampler, ShaderResource, ConstantBuffer, UnorderedAccess, Unknown };
+		enum class RegisterQualifier { Texture, Buffer, None };
 
 		struct Entry
 		{
@@ -73,11 +74,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned		_targetBegin = 0, _targetEnd = 0;
 		};
 		std::vector<Entry> _samplerRegisters;
-		std::vector<Entry> _textureRegisters;
-		std::vector<Entry> _bufferRegisters;
-		std::vector<Entry> _unorderedAccessRegisters;
+		std::vector<Entry> _constantBufferRegisters;
+		std::vector<Entry> _srvRegisters;
+		std::vector<Entry> _uavRegisters;
+		std::vector<Entry> _srvRegisters_boundToBuffer;
+		std::vector<Entry> _uavRegisters_boundToBuffer;
 
-		IteratorRange<const Entry*>	GetEntries(RegisterType type) const;
+		IteratorRange<const Entry*>	GetEntries(RegisterType type, RegisterQualifier qualifier) const;
 	};
 
     class PushConstantsRangeSigniture

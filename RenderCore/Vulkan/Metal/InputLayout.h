@@ -151,6 +151,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class DescriptorSetSignature;
 	class DescriptorSetVerboseDescription;
 	class GlobalPools;
+	class LegacyRegisterBinding;
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
@@ -176,7 +177,8 @@ namespace RenderCore { namespace Metal_Vulkan
             const ObjectFactory& factory,
 			GlobalPools& globalPools,
             VkDescriptorSetLayout layout,
-            const DescriptorSetSignature& signature);
+            const LegacyRegisterBinding& bindings,
+			unsigned descriptorSetIndex);
 		NumericUniformsInterface();
         ~NumericUniformsInterface();
 
