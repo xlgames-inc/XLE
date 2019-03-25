@@ -41,29 +41,44 @@ namespace RenderCore { namespace Metal_Vulkan
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    class DescriptorSetBindingSignature
+    enum class DescriptorType
     {
-    public:
-        enum class Type
-        {
-            Sampler,
-            Texture,
-            TextureAsBuffer,
-            ConstantBuffer,
-            UnorderedAccess,
-            UnorderedAccessAsBuffer,
-            Unknown
-        };
-        Type        _type;
-        unsigned    _hlslBindingIndex;  // this is the binding number as it appears in the HLSL code
+        Sampler,
+        Texture,
+        ConstantBuffer,
+        UnorderedAccessTexture,
+        UnorderedAccessBuffer,
+        Unknown
     };
 
     class DescriptorSetSignature
     {
     public:
-        std::string									_name;
-        std::vector<DescriptorSetBindingSignature>	_bindings;
+		enum class Type { Adaptive, Numeric, Unknown };
+        std::string						_name;
+		Type							_type = Type::Unknown;
+		unsigned						_uniformStream;
+        std::vector<DescriptorType>		_bindings;
     };
+
+	class LegacyRegisterBinding
+	{
+	public:
+		enum class RegisterType { Sampler, Texture, Buffer, UnorderedAccess, Unknown };
+
+		struct Entry
+		{
+			unsigned		_begin = 0, _end = 0;
+			unsigned		_targetDescriptorSet = ~0u;
+			unsigned		_targetBegin = 0, _targetEnd = 0;
+		};
+		std::vector<Entry> _samplerRegisters;
+		std::vector<Entry> _textureRegisters;
+		std::vector<Entry> _bufferRegisters;
+		std::vector<Entry> _unorderedAccessRegisters;
+
+		IteratorRange<const Entry*>	GetEntries(RegisterType type) const;
+	};
 
     class PushConstantsRangeSigniture
     {
@@ -79,6 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         std::vector<DescriptorSetSignature> _descriptorSets;
         std::vector<PushConstantsRangeSigniture> _pushConstantRanges;
+		LegacyRegisterBinding _legacyBinding;
 
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
@@ -90,7 +106,8 @@ namespace RenderCore { namespace Metal_Vulkan
         ::Assets::DepValPtr _depVal;
     };
 
-    VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type);
-	const char* AsString(DescriptorSetBindingSignature::Type type);
+    VkDescriptorType AsVkDescriptorType(DescriptorType type);
+	const char* AsString(DescriptorType type);
+	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType);
 }}
 

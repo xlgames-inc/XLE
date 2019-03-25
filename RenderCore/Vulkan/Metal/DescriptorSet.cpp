@@ -108,7 +108,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				WriteBinding(
 					descriptorSetBindPoint,
 					VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,        // (could be a COMBINED_IMAGE_SAMPLER or just a SAMPLED_IMAGE)
-					VkDescriptorImageInfo { _globalPools->_dummyResources._blankSampler->GetUnderlying(), resource->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }, true
+					VkDescriptorImageInfo { nullptr, resource->GetImageView(), VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }, true
 					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, description));
 				wroteSomething = true;
 			} else if (resource->GetResource()) {
@@ -130,7 +130,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				descriptorSetBindPoint,
 				VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 				VkDescriptorImageInfo {
-					_globalPools->_dummyResources._blankSampler->GetUnderlying(),
+					nullptr,
 					_globalPools->_dummyResources._blankSrv.GetImageView(),
 					VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL }, true
 				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, s_dummyDescriptorString));
@@ -249,19 +249,19 @@ namespace RenderCore { namespace Metal_Vulkan
             if (!(dummyDescWriteMask & (1ull<<uint64(bIndex)))) continue;
 
 			const auto& b = sig._bindings[bIndex];
-            if (b._type == DescriptorSetBindingSignature::Type::ConstantBuffer) {
+            if (b == DescriptorType::ConstantBuffer) {
 				WriteBinding(
 					bIndex,
 					VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER,
 					blankBuffer, false
 					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, s_dummyDescriptorString));
-            } else if (b._type == DescriptorSetBindingSignature::Type::Texture) {
+            } else if (b == DescriptorType::Texture) {
 				WriteBinding(
 					bIndex,
 					VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE,
 					blankImage, false
 					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, s_dummyDescriptorString));
-            } else if (b._type == DescriptorSetBindingSignature::Type::Sampler) {
+            } else if (b == DescriptorType::Sampler) {
 				WriteBinding(
 					bIndex,
 					VK_DESCRIPTOR_TYPE_SAMPLER,
@@ -344,7 +344,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned w=0; w<_pendingWrites; ++w) {
 			auto binding = _writes[w].dstBinding;
 			assert(binding < sig._bindings.size());
-			assert(AsDescriptorType(sig._bindings[binding]._type) == _writes[w].descriptorType);
+			assert(AsVkDescriptorType(sig._bindings[binding]) == _writes[w].descriptorType);
 		}
 	}
 
@@ -386,23 +386,27 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		static const std::string s_columnHeader0 = "Root Signature";
 		static const std::string s_columnHeader2 = "Binding";
+		static const std::string s_columnHeader3 = "Legacy Binding";
 
 		std::ostream& WriteDescriptorSet(
 			std::ostream& stream,
 			const DescriptorSetVerboseDescription& bindingDescription,
-			const DescriptorSetSignature& signature,
+			const RootSignature& rootSignature,
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
 			unsigned descriptorSetIndex, bool isBound)
 		{
 			std::vector<std::string> signatureColumn;
 			std::vector<std::string> shaderColumns[(unsigned)ShaderStage::Max];
+			std::vector<std::string> legacyBindingColumn;
 
-			size_t signatureColumnMax = 0, bindingColumnMax = 0;
+			auto& signature = rootSignature._descriptorSets[descriptorSetIndex];
+
+			size_t signatureColumnMax = 0, bindingColumnMax = 0, legacyBindingColumnMax = 0;
 			size_t shaderColumnMax[(unsigned)ShaderStage::Max] = {};
 
 			signatureColumn.resize(signature._bindings.size());
 			for (unsigned c=0; c<signature._bindings.size(); ++c) {
-				signatureColumn[c] = std::string{AsString(signature._bindings[c]._type)} + ", HLSL index (" + std::to_string(signature._bindings[c]._hlslBindingIndex) + ")";
+				signatureColumn[c] = std::string{AsString(signature._bindings[c])};
 				signatureColumnMax = std::max(signatureColumnMax, signatureColumn[c].size());
 			}
 			signatureColumnMax = std::max(signatureColumnMax, s_columnHeader0.size());
@@ -431,6 +435,27 @@ namespace RenderCore { namespace Metal_Vulkan
 				bindingColumnMax = std::max(bindingColumnMax, b._description.size());
 			bindingColumnMax = std::max(bindingColumnMax, s_columnHeader2.size());
 
+			auto rowCount = (unsigned)std::max(signatureColumn.size(), bindingDescription._bindingDescriptions.size());
+			for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage)
+				rowCount = std::max(rowCount, (unsigned)shaderColumns[stage].size());
+
+			legacyBindingColumn.resize(rowCount);
+			for (unsigned regType=0; regType<(unsigned)LegacyRegisterBinding::RegisterType::Unknown; ++regType) {
+				auto prefix = GetRegisterPrefix((LegacyRegisterBinding::RegisterType)regType);
+				auto entries = rootSignature._legacyBinding.GetEntries((LegacyRegisterBinding::RegisterType)regType);
+				for (const auto&e:entries)
+					if (e._targetDescriptorSet == descriptorSetIndex && e._targetBegin < rowCount)
+						for (unsigned t=e._targetBegin; t<std::min(e._targetEnd, rowCount); ++t) {
+							if (!legacyBindingColumn[t].empty())
+								legacyBindingColumn[t] += ", ";
+							legacyBindingColumn[t] += prefix + std::to_string(t-e._targetBegin+e._begin);
+						}
+			}
+			for (const auto&e:legacyBindingColumn)
+				legacyBindingColumnMax = std::max(legacyBindingColumnMax, e.size());
+			if (legacyBindingColumnMax)
+				legacyBindingColumnMax = std::max(legacyBindingColumnMax, s_columnHeader3.size());
+
 			stream << "[" << descriptorSetIndex << "] Descriptor Set: " << signature._name;
 			if (isBound) {
 				stream << " (bound with UniformsStream: " << bindingDescription._descriptorSetInfo << ")" << std::endl;
@@ -438,22 +463,26 @@ namespace RenderCore { namespace Metal_Vulkan
 				stream << " (not bound to any UniformsStream)" << std::endl;
 			}
 			stream << " " << s_columnHeader0 << StreamIndent(unsigned(signatureColumnMax - s_columnHeader0.size())) << " | ";
-			auto colCount = std::max(signatureColumn.size(), bindingDescription._bindingDescriptions.size());
 			size_t accumulatedShaderColumns = 0;
 			for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
 				if (!shaderColumnMax[stage]) continue;
 				auto* title = AsString((ShaderStage)stage);
 				stream << title << StreamIndent(unsigned(shaderColumnMax[stage] - std::strlen(title))) << " | ";
 				accumulatedShaderColumns += shaderColumnMax[stage] + 3;
-				colCount = std::max(colCount, shaderColumns[stage].size());
 			}
-			stream << s_columnHeader2 << StreamIndent(unsigned(bindingColumnMax - s_columnHeader2.size())) << std::endl;
-			stream << StreamIndent{unsigned(signatureColumnMax + bindingColumnMax + accumulatedShaderColumns + 5), '-'} << std::endl;
+			stream << s_columnHeader2 << StreamIndent(unsigned(bindingColumnMax - s_columnHeader2.size()));
+			if (legacyBindingColumnMax) {
+				stream << " | " << s_columnHeader3 << StreamIndent(unsigned(legacyBindingColumnMax - s_columnHeader3.size()));
+			}
+			stream << std::endl;
+			auto totalWidth = signatureColumnMax + bindingColumnMax + accumulatedShaderColumns + 5;
+			if (legacyBindingColumnMax) totalWidth += 3 + legacyBindingColumnMax;
+			stream << StreamIndent{unsigned(totalWidth), '-'} << std::endl;
 
-			for (unsigned col=0; col<colCount; ++col) {
+			for (unsigned row=0; row<rowCount; ++row) {
 				stream << " ";
-				if (col < signatureColumn.size()) {
-					stream << signatureColumn[col] << StreamIndent(unsigned(signatureColumnMax - signatureColumn[col].size()));
+				if (row < signatureColumn.size()) {
+					stream << signatureColumn[row] << StreamIndent(unsigned(signatureColumnMax - signatureColumn[row].size()));
 				} else {
 					stream << StreamIndent(unsigned(signatureColumnMax));
 				}
@@ -461,23 +490,32 @@ namespace RenderCore { namespace Metal_Vulkan
 
 				for (unsigned stage=0; stage<(unsigned)ShaderStage::Max; ++stage) {
 					if (!shaderColumnMax[stage]) continue;
-					if (col < shaderColumns[stage].size()) {
-						stream << shaderColumns[stage][col] << StreamIndent(unsigned(shaderColumnMax[stage] - shaderColumns[stage][col].size()));
+					if (row < shaderColumns[stage].size()) {
+						stream << shaderColumns[stage][row] << StreamIndent(unsigned(shaderColumnMax[stage] - shaderColumns[stage][row].size()));
 					} else {
 						stream << StreamIndent(unsigned(shaderColumnMax[stage]));
 					}
 					stream << " | ";
 				}
 
-				if (col < bindingDescription._bindingDescriptions.size()) {
-					stream << bindingDescription._bindingDescriptions[col]._description << StreamIndent(unsigned(bindingColumnMax - bindingDescription._bindingDescriptions[col]._description.size()));
+				if (row < bindingDescription._bindingDescriptions.size()) {
+					stream << bindingDescription._bindingDescriptions[row]._description << StreamIndent(unsigned(bindingColumnMax - bindingDescription._bindingDescriptions[row]._description.size()));
 				} else {
 					stream << StreamIndent(unsigned(bindingColumnMax));
 				}
 
+				if (legacyBindingColumnMax) {
+					stream << " | ";
+					if (row < legacyBindingColumn.size()) {
+						stream << legacyBindingColumn[row] << StreamIndent(unsigned(legacyBindingColumnMax - legacyBindingColumn[row].size()));
+					} else {
+						stream << StreamIndent(unsigned(legacyBindingColumnMax));
+					}
+				}
+
 				stream << std::endl;
 			}
-			stream << StreamIndent{unsigned(signatureColumnMax + bindingColumnMax + accumulatedShaderColumns + 5), '-'} << std::endl;
+			stream << StreamIndent{unsigned(totalWidth), '-'} << std::endl;
 
 			return stream;
 		}

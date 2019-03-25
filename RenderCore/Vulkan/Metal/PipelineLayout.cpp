@@ -55,33 +55,51 @@ namespace RenderCore { namespace Metal_Vulkan
         return _pimpl->_pipelineLayout.get();
     }
 
-    VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type)
+    VkDescriptorType AsVkDescriptorType(DescriptorType type)
     {
         switch (type) {
-        case DescriptorSetBindingSignature::Type::Sampler:                  return VK_DESCRIPTOR_TYPE_SAMPLER;
-        case DescriptorSetBindingSignature::Type::Texture:                 return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
-        case DescriptorSetBindingSignature::Type::ConstantBuffer:           return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
-        case DescriptorSetBindingSignature::Type::UnorderedAccess:          return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
-
-        case DescriptorSetBindingSignature::Type::TextureAsBuffer:         return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:  return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        default:
-            return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorType::Sampler:					return VK_DESCRIPTOR_TYPE_SAMPLER;
+        case DescriptorType::Texture:					return VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE;
+        case DescriptorType::ConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
+        case DescriptorType::UnorderedAccessTexture:	return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
+        case DescriptorType::UnorderedAccessBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
+        default: return VK_DESCRIPTOR_TYPE_SAMPLER;
         }
     }
 
-	const char* AsString(DescriptorSetBindingSignature::Type type)
-	{
-		switch (type) {
-        case DescriptorSetBindingSignature::Type::Sampler:                  return "Sampler";
-        case DescriptorSetBindingSignature::Type::Texture:                 return "Texture";
-        case DescriptorSetBindingSignature::Type::ConstantBuffer:           return "ConstantBuffer";
-        case DescriptorSetBindingSignature::Type::UnorderedAccess:          return "UnorderedAccess";
+	static const char* s_descriptorTypeNames[] = {
+		"Sampler",
+		"Texture",
+		"ConstantBuffer",
+		"UnorderedAccessTexture",
+		"UnorderedAccessBuffer"
+	};
 
-        case DescriptorSetBindingSignature::Type::TextureAsBuffer:         return "TextureAsBuffer";
-        case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:  return "UnorderedAccessAsBuffer";
-        default: return "<<unknown>>";
-        }
+	static const char* s_descriptorSetTypeNames[] = {
+		"Adaptive", "Numeric", "Unknown"
+	};
+
+	const char* AsString(DescriptorType type)
+	{
+		if (unsigned(type) < dimof(s_descriptorTypeNames))
+			return s_descriptorTypeNames[unsigned(type)];
+        return "<<unknown>>";
+	}
+
+	DescriptorType AsDescriptorType(StringSection<> type)
+	{
+		for (unsigned c=0; c<dimof(s_descriptorTypeNames); ++c)
+			if (XlEqString(type, s_descriptorTypeNames[c]))
+				return (DescriptorType)c;
+		return DescriptorType::Unknown;
+	}
+
+	DescriptorSetSignature::Type AsDescriptorSetType(StringSection<> type)
+	{
+		for (unsigned c=0; c<dimof(s_descriptorSetTypeNames); ++c)
+			if (XlEqString(type, s_descriptorSetTypeNames[c]))
+				return (DescriptorSetSignature::Type)c;
+		return DescriptorSetSignature::Type::Unknown;
 	}
 
     static VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
@@ -96,7 +114,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (unsigned bIndex=0; bIndex<(unsigned)srcLayout._bindings.size(); ++bIndex) {
             VkDescriptorSetLayoutBinding dstBinding = {};
             dstBinding.binding = bIndex;
-            dstBinding.descriptorType = AsDescriptorType(srcLayout._bindings[bIndex]._type);
+            dstBinding.descriptorType = AsVkDescriptorType(srcLayout._bindings[bIndex]);
             dstBinding.descriptorCount = 1;
             dstBinding.stageFlags = stageFlags;
             dstBinding.pImmutableSamplers = nullptr;
@@ -131,25 +149,24 @@ namespace RenderCore { namespace Metal_Vulkan
         {
             DescSetLimits result = {};
             for (auto& b:setSig._bindings) {
-                switch (b._type) {
-                case DescriptorSetBindingSignature::Type::Sampler:
+                switch (b) {
+                case DescriptorType::Sampler:
                     ++result._samplerCount;
                     break;
 
-                case DescriptorSetBindingSignature::Type::Texture:
+                case DescriptorType::Texture:
                     ++result._sampledImageCount;
                     break;
 
-                case DescriptorSetBindingSignature::Type::ConstantBuffer:
+                case DescriptorType::ConstantBuffer:
                     ++result._uniformBufferCount;
                     break;
 
-                case DescriptorSetBindingSignature::Type::TextureAsBuffer:
-                case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:
+                case DescriptorType::UnorderedAccessBuffer:
                     ++result._storageBufferCount;
                     break;
 
-                case DescriptorSetBindingSignature::Type::UnorderedAccess:
+                case DescriptorType::UnorderedAccessTexture:
                     ++result._storageImageCount;
                     break;
                 }
@@ -281,6 +298,26 @@ namespace RenderCore { namespace Metal_Vulkan
         return Qualifier::None;
     }
 
+	struct RegisterRange
+	{
+		unsigned _begin = 0, _end = 0;
+		Qualifier _qualifier;
+	};
+
+	static RegisterRange AsRegisterRange(StringSection<> input)
+	{
+		if (input.IsEmpty()) return {};
+
+		char* endPt = nullptr;
+        auto start = std::strtoul(input.begin(), &endPt, 10);
+        auto end = start+1;
+        if (endPt && endPt[0] == '.' && endPt[1] == '.')
+            end = std::strtoul(endPt+2, &endPt, 10);
+
+        auto qualifier = AsQualifier(StringSection<char>(endPt, input.end()));
+		return {start, end, qualifier};
+	}
+
     static unsigned AsShaderStageMask(StringSection<char> str)
     {
         if (str.IsEmpty() || str[0] != '(')
@@ -302,26 +339,19 @@ namespace RenderCore { namespace Metal_Vulkan
         return result;
     }
 
-    static DescriptorSetBindingSignature::Type AsBindingType(char type, Qualifier qualifier)
+    static LegacyRegisterBinding::RegisterType AsLegacyRegisterType(char type)
     {
         // convert between HLSL style register binding indices to a type enum
         switch (type) {
-        case 'b': return DescriptorSetBindingSignature::Type::ConstantBuffer;
-        case 's': return DescriptorSetBindingSignature::Type::Sampler;
-        case 't': 
-            if (qualifier == Qualifier::Buffer)
-                return DescriptorSetBindingSignature::Type::TextureAsBuffer;
-            return DescriptorSetBindingSignature::Type::Texture;
-        case 'u': 
-            if (qualifier == Qualifier::Buffer)
-                return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;
-            return DescriptorSetBindingSignature::Type::UnorderedAccess;
-
-        default:  return DescriptorSetBindingSignature::Type::Unknown;
+        case 'b': return LegacyRegisterBinding::RegisterType::Buffer;
+        case 's': return LegacyRegisterBinding::RegisterType::Sampler;
+        case 't': return LegacyRegisterBinding::RegisterType::Texture;
+        case 'u': return LegacyRegisterBinding::RegisterType::UnorderedAccess;
+	    default:  return LegacyRegisterBinding::RegisterType::Unknown;
         }
     }
 
-    static DescriptorSetSignature ReadDescSet(DocElementHelper<InputStreamFormatter<char>>& element)
+    static DescriptorSetSignature ReadDescriptorSet(DocElementHelper<InputStreamFormatter<char>>& element)
     {
         // Create a DescriptorSetLayout from the given document element
         // The element should be a series of attributes of the form
@@ -333,29 +363,100 @@ namespace RenderCore { namespace Metal_Vulkan
         // either a single number or an (inclusive) range.
         // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
         DescriptorSetSignature result;
-        for (auto a=element.FirstAttribute(); a; a=a.Next()) {
-            if (a.Name().IsEmpty()) continue;
 
-            if (XlEqStringI(a.Name(), "Name")) {
-                result._name = a.Value().AsString();
-                continue;
-            }
+		result._name = element.Attribute("name").Value().AsString();
+		result._type = AsDescriptorSetType(element.Attribute("type").Value());
+		result._uniformStream = element.Attribute("uniformStream", ~0u);
 
-            char* endPt = nullptr;
-            auto start = std::strtoul(&a.Name()[1], &endPt, 10);
-            auto end = start+1;
-            if (endPt && endPt[0] == '.' && endPt[1] == '.')
-                end = std::strtoul(endPt+2, &endPt, 10);
+		if (result._name.empty() || result._type == DescriptorSetSignature::Type::Unknown)
+			Throw(::Exceptions::BasicLabel("Error while reading DescriptorSetSignature (%s)", result._name.c_str()));
 
-            auto qualifier = AsQualifier(StringSection<char>(endPt, a.Name().end()));
-            auto type = AsBindingType(a.Name()[0], qualifier);
+		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
+			if (!XlEqString(e.Name(), "Descriptors"))
+				Throw(::Exceptions::BasicLabel("Unexpected element while reading DescriptorSetSignature (%s)", result._name.c_str()));
+
+			auto type = AsDescriptorType(e.Attribute("type").Value());
+			auto slots = AsRegisterRange(e.Attribute("slots").Value());
+
+			if (type == DescriptorType::Unknown)
+				Throw(::Exceptions::BasicLabel("Descriptor type unrecognized (%s), while reading DescriptorSetSignature (%s)", e.Attribute("type").Value().AsString().c_str(), result._name.c_str()));
+
+			if (slots._end <= slots._begin)
+				Throw(::Exceptions::BasicLabel("Slots attribute not property specified for descriptors in DescriptorSetSignature (%s)", result._name.c_str()));
 
             // Add bindings between the start and end (exclusive of end)
-            for (auto i=start; i<end; ++i)
-                result._bindings.push_back(DescriptorSetBindingSignature{type, i});
+			if (result._bindings.size() < slots._end)
+				result._bindings.resize(slots._end, DescriptorType::Unknown);
+            for (auto i=slots._begin; i<slots._end; ++i) {
+				if (result._bindings[i] != DescriptorType::Unknown)
+					Throw(::Exceptions::BasicLabel("Some descriptor slots overlap while reading DescriptorSetSignature (%s)", result._name.c_str()));
+                result._bindings[i] = type;
+			}
         }
-        return std::move(result);
+
+		for (const auto&t:result._bindings)
+			if (t == DescriptorType::Unknown)
+				Throw(::Exceptions::BasicLabel("Gap between descriptor slots while reading DescriptorSetSignature (%s)", result._name.c_str()));
+
+        return result;
     }
+
+	static LegacyRegisterBinding ReadLegacyRegisterBinding(
+		DocElementHelper<InputStreamFormatter<char>>& element,
+		IteratorRange<const StringSection<>*> descriptorSetNames)
+	{
+		LegacyRegisterBinding result;
+
+		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
+			auto name = e.Name();
+			if (name.IsEmpty())
+				Throw(std::runtime_error("Legacy register binding with empty name"));
+
+			auto regType = AsLegacyRegisterType(name[0]);
+			if (regType == LegacyRegisterBinding::RegisterType::Unknown)
+				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
+
+			auto legacyRegisters = AsRegisterRange({name.begin()+1, name.end()});
+			if (legacyRegisters._end <= legacyRegisters._begin)
+				Throw(::Exceptions::BasicLabel("Could not parse legacy register binding (%s)", name.AsString().c_str()));
+
+			auto mappedRegisters = AsRegisterRange(e.Attribute("mapping").Value());
+			if (mappedRegisters._begin == mappedRegisters._end)
+				Throw(::Exceptions::BasicLabel("Could not parse target register mapping in ReadLegacyRegisterBinding (%s)", e.Attribute("mapping").Value().AsString().c_str()));
+			
+			if ((mappedRegisters._end - mappedRegisters._begin) != (legacyRegisters._end - legacyRegisters._begin))
+				Throw(::Exceptions::BasicLabel("Number of legacy register and number of mapped registers don't match up in ReadLegacyRegisterBinding"));
+
+			auto set = e.Attribute("set").Value();
+			auto i = std::find_if(
+				descriptorSetNames.begin(), descriptorSetNames.end(),
+				[set](StringSection<> compare) { return XlEqString(set, compare); });
+			if (i == descriptorSetNames.end())
+				Throw(::Exceptions::BasicLabel("Could not find referenced descriptor set in ReadLegacyRegisterBinding (%s)", set.AsString().c_str()));
+
+			std::vector<LegacyRegisterBinding::Entry>* dest =  nullptr;
+			switch (regType) {
+			case LegacyRegisterBinding::RegisterType::Sampler: dest = &result._samplerRegisters; break;
+			case LegacyRegisterBinding::RegisterType::Texture: dest = &result._textureRegisters; break;
+			case LegacyRegisterBinding::RegisterType::Buffer: dest = &result._bufferRegisters; break;
+			case LegacyRegisterBinding::RegisterType::UnorderedAccess: dest = &result._unorderedAccessRegisters; break;
+			default: assert(0);
+			}
+
+			auto di = dest->begin();
+			while (di!=dest->end() && di->_begin < legacyRegisters._end) ++di;
+
+			if (di != dest->end() && di->_begin < legacyRegisters._end)
+				Throw(::Exceptions::BasicLabel("Register overlap found in ReadLegacyRegisterBinding"));
+
+			dest->insert(di, LegacyRegisterBinding::Entry {
+				legacyRegisters._begin, legacyRegisters._end,
+				(unsigned)std::distance(descriptorSetNames.begin(), i),
+				mappedRegisters._begin, mappedRegisters._end });
+		}
+
+		return result;
+	}
 
     static PushConstantsRangeSigniture ReadPushConstRange(DocElementHelper<InputStreamFormatter<char>>& element)
     {
@@ -363,7 +464,7 @@ namespace RenderCore { namespace Metal_Vulkan
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
             if (a.Name().IsEmpty()) continue;
 
-            if (XlEqStringI(a.Name(), "Name")) {
+            if (XlEqStringI(a.Name(), "name")) {
                 result._name = a.Value().AsString();
                 continue;
             }
@@ -374,12 +475,37 @@ namespace RenderCore { namespace Metal_Vulkan
             if (endPt && endPt[0] == '.' && endPt[1] == '.')
                 end = std::strtoul(endPt+2, &endPt, 10);
 
-            result._stages |= AsShaderStageMask(StringSection<char>(endPt, a.Name().end()));
-            result._rangeStart = start;
-            result._rangeSize = end-start;
+			if (start != end) {
+				result._stages |= AsShaderStageMask(StringSection<char>(endPt, a.Name().end()));
+				result._rangeStart = start;
+				result._rangeSize = end-start;
+			}
         }
         return result;
     }
+
+	IteratorRange<const LegacyRegisterBinding::Entry*>	LegacyRegisterBinding::GetEntries(RegisterType type) const
+	{
+		switch (type) {
+		case RegisterType::Sampler: return MakeIteratorRange(_samplerRegisters);
+		case RegisterType::Texture: return MakeIteratorRange(_textureRegisters);
+		case RegisterType::Buffer: return MakeIteratorRange(_bufferRegisters);
+		case RegisterType::UnorderedAccess: return MakeIteratorRange(_unorderedAccessRegisters);
+		}
+
+		return {};
+	}
+
+	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType)
+	{
+		switch (regType) {
+		case LegacyRegisterBinding::RegisterType::Sampler: return 's';
+		case LegacyRegisterBinding::RegisterType::Texture: return 't';
+		case LegacyRegisterBinding::RegisterType::Buffer: return 'b';
+		case LegacyRegisterBinding::RegisterType::UnorderedAccess: return 'u';
+		}
+		return ' ';
+	}
 
     RootSignature::RootSignature(StringSection<::Assets::ResChar> filename)
     {
@@ -391,7 +517,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			size_t fileSize = 0;
 			auto block = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
 			if (!block || !fileSize)
-				Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename));
+				Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename.AsString().c_str()));
 
 			_dependentFileState = Assets::IntermediateAssets::Store::GetDependentFileState(filename);
         
@@ -400,13 +526,38 @@ namespace RenderCore { namespace Metal_Vulkan
 				MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
 			Document<InputStreamFormatter<char>> doc(formatter);
 
-			std::vector<StringSection<>> rootSig;
+			auto mainRootSignature = doc.Attribute("MainRootSignature").Value();
+			if (mainRootSignature.IsEmpty())
+				Throw(::Exceptions::BasicLabel("Main root root signature not specified while loading file (%s)", filename.AsString().c_str()));
+
+			std::vector<DescriptorSetSignature> descriptorSets;
+
 			for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
-				auto name = a.Name();
-				if (XlEqString(name, "Set")) {
-					_descriptorSets.emplace_back(ReadDescSet(a));
-				} else if (XlEqString(name, "PushConstants")) {
-					_pushConstantRanges.emplace_back(ReadPushConstRange(a));
+				if (XlEqString(a.Name(), "DescriptorSet")) {
+					descriptorSets.emplace_back(ReadDescriptorSet(a));
+				} else if (XlEqString(a.Name(), "RootSignature") && XlEqString(a.Attribute("name").Value(), mainRootSignature)) {
+					
+					for (auto b=a.FirstAttribute(); b; b=b.Next()) {
+						if (XlEqString(b.Name(), "set")) {
+							auto i = std::find_if(
+								descriptorSets.begin(), descriptorSets.end(),
+								[b](const DescriptorSetSignature& d) { return XlEqString(b.Value(), d._name); });
+							if (i == descriptorSets.end())
+								Throw(::Exceptions::BasicLabel("Could not find descriptor set with name (%s) loading file (%s)", b.Value().AsString().c_str(), filename.AsString().c_str()));
+							_descriptorSets.push_back(*i);
+						}
+					}
+
+					for (auto b=a.FirstChild(); b; b=b.NextSibling()) {
+						if (XlEqString(b.Name(), "PushConstants")) {
+							_pushConstantRanges.emplace_back(ReadPushConstRange(b));
+						} else if (XlEqString(b.Name(), "LegacyBinding")) {
+							std::vector<StringSection<>> descriptorSetNames;
+							descriptorSetNames.reserve(_descriptorSets.size());
+							for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d._name);
+							_legacyBinding = ReadLegacyRegisterBinding(b, MakeIteratorRange(descriptorSetNames));
+						}
+					}
 				}
 			}
 		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {

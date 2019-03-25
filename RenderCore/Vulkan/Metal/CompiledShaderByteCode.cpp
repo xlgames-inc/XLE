@@ -372,35 +372,35 @@ namespace RenderCore { namespace Metal_Vulkan
 	    return RGROUP_CBUFFER;
     }
 
-    static DescriptorSetBindingSignature::Type AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
+    static LegacyRegisterBinding::RegisterType AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
     {
         if (!srcResBinding) {
             if (srcCBBinding) 
-                return DescriptorSetBindingSignature::Type::ConstantBuffer;
-            return DescriptorSetBindingSignature::Type::Unknown;
+                return LegacyRegisterBinding::RegisterType::Buffer;
+            return LegacyRegisterBinding::RegisterType::Unknown;
         }
 
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
-        case RGROUP_CBUFFER:    return DescriptorSetBindingSignature::Type::ConstantBuffer;
+        case RGROUP_CBUFFER:    return LegacyRegisterBinding::RegisterType::Buffer;
         case RGROUP_TEXTURE:    
-            if (    srcResBinding->eType == RTYPE_STRUCTURED
+            /*if (    srcResBinding->eType == RTYPE_STRUCTURED
                 ||  srcResBinding->eType == RTYPE_BYTEADDRESS)
-                return DescriptorSetBindingSignature::Type::TextureAsBuffer;
-            return DescriptorSetBindingSignature::Type::Texture;
-        case RGROUP_SAMPLER:    return DescriptorSetBindingSignature::Type::Sampler;
+                return DescriptorSetBindingSignature::Type::TextureAsBuffer;*/
+            return LegacyRegisterBinding::RegisterType::Texture;
+        case RGROUP_SAMPLER:    return LegacyRegisterBinding::RegisterType::Sampler;
         case RGROUP_UAV:        
             {
-                if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
+                /*if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
                     ||  srcResBinding->eType == RTYPE_UAV_RWBYTEADDRESS
                     ||  srcResBinding->eType == RTYPE_UAV_APPEND_STRUCTURED
                     ||  srcResBinding->eType == RTYPE_UAV_CONSUME_STRUCTURED
                     ||  srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER)
-                    return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;
-                return DescriptorSetBindingSignature::Type::UnorderedAccess;
+                    return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;*/
+                return LegacyRegisterBinding::RegisterType::UnorderedAccess;
             }
         }
-        return DescriptorSetBindingSignature::Type::Unknown;
+        return LegacyRegisterBinding::RegisterType::Unknown;
     }
 
     uint32_t __cdecl EvaluateBinding(
@@ -414,14 +414,14 @@ namespace RenderCore { namespace Metal_Vulkan
         // index and set associated with it!
         auto& rootSig = *(RootSignature*)userData;
         auto type = AsBindingType(srcResBinding, srcCBBinding);
-        if (type == DescriptorSetBindingSignature::Type::Unknown) return 0;
+        if (type == LegacyRegisterBinding::RegisterType::Unknown) return 0;
 
         char* name = nullptr;
         if (srcResBinding) name = srcResBinding->Name;
         else if (srcCBBinding) name = srcCBBinding->Name;
 
         // First, check to see if it has been assigned as push constants
-        if (type == DescriptorSetBindingSignature::Type::ConstantBuffer && name) {
+        if (type == LegacyRegisterBinding::RegisterType::Buffer && name) {
             for (unsigned rangeIndex=0; rangeIndex<(unsigned)rootSig._pushConstantRanges.size(); ++rangeIndex) {
                 if (XlEqString(rootSig._pushConstantRanges[rangeIndex]._name, name)) {
                     assert(srcCBBinding);
@@ -435,19 +435,15 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
-        for (unsigned setIndex=0; setIndex<(unsigned)rootSig._descriptorSets.size(); ++setIndex) {
-            auto& set = rootSig._descriptorSets[setIndex];
-            for (unsigned finalBind=0; finalBind<(unsigned)set._bindings.size(); ++finalBind)
-                if (    set._bindings[finalBind]._hlslBindingIndex == bindPoint
-                    &&  set._bindings[finalBind]._type == type) {
-                    // found it!
-                    dstBinding->_locationIndex = ~0u;
-                    dstBinding->_bindingIndex = finalBind;
-                    dstBinding->_setIndex = setIndex;
-                    dstBinding->_flags = 0;
-                    return 1;
-                }
-        }
+		for (const auto&e:rootSig._legacyBinding.GetEntries(type))
+			if (e._begin <= bindPoint && bindPoint < e._end) {
+				// found it!
+                dstBinding->_locationIndex = ~0u;
+                dstBinding->_bindingIndex = e._targetBegin + bindPoint - e._begin;
+                dstBinding->_setIndex = e._targetDescriptorSet;
+                dstBinding->_flags = 0;
+				return 1;
+			}
 
         return 0;
     }

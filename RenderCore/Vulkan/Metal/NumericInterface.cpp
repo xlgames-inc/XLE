@@ -26,7 +26,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		struct Binding
 		{
-			DescriptorSetBindingSignature::Type _type = DescriptorSetBindingSignature::Type::Unknown;
+			DescriptorType _type = DescriptorType::Unknown;
 			unsigned _descriptorSetBindIndex = ~0u;
 		};
 
@@ -82,9 +82,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 
             if (resources[c]->GetImageView()) {
-				assert(binding._type == DescriptorSetBindingSignature::Type::Texture);
+				assert(binding._type == DescriptorType::Texture);
             } else {
-                assert(binding._type == DescriptorSetBindingSignature::Type::TextureAsBuffer);
+                assert(binding._type == DescriptorType::UnorderedAccessBuffer);
             }
 
 			_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
@@ -102,9 +102,9 @@ namespace RenderCore { namespace Metal_Vulkan
 			}
 
             if (resources[c]->GetImageView()) {
-				assert(binding._type == DescriptorSetBindingSignature::Type::UnorderedAccess);
+				assert(binding._type == DescriptorType::UnorderedAccessTexture);
             } else {
-				assert(binding._type == DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer);
+				assert(binding._type == DescriptorType::UnorderedAccessBuffer);
             }
 
 			_pimpl->_descSet._builder.BindUAV(binding._descriptorSetBindIndex, resources[c]);
@@ -121,7 +121,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
-			assert(binding._type == DescriptorSetBindingSignature::Type::ConstantBuffer);
+			assert(binding._type == DescriptorType::ConstantBuffer);
 			_pimpl->_descSet._builder.BindCB(binding._descriptorSetBindIndex, { uniformBuffers[c], 0, VK_WHOLE_SIZE});
         }
     }
@@ -136,7 +136,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				continue;
 			}
 
-            assert(binding._type == DescriptorSetBindingSignature::Type::Sampler);
+            assert(binding._type == DescriptorType::Sampler);
 			_pimpl->_descSet._builder.BindSampler(binding._descriptorSetBindIndex, samplers[c]);
         }
     }
@@ -205,34 +205,32 @@ namespace RenderCore { namespace Metal_Vulkan
 
         for (unsigned bIndex=0; bIndex<(unsigned)signature._bindings.size(); ++bIndex) {
             const auto& b = signature._bindings[bIndex];
-            assert(b._hlslBindingIndex < Pimpl::s_maxBindings);
-			switch (b._type) {
-			case DescriptorSetBindingSignature::Type::Texture:
-			case DescriptorSetBindingSignature::Type::TextureAsBuffer:
+			switch (b) {
+			case DescriptorType::Texture:
 				assert(srvBindingCount < Pimpl::s_maxBindings);
-                _pimpl->_srvMapping[srvBindingCount]._type = b._type;
+                _pimpl->_srvMapping[srvBindingCount]._type = b;
 				_pimpl->_srvMapping[srvBindingCount]._descriptorSetBindIndex = bIndex;
 				++srvBindingCount;
 				break;
 
-			case DescriptorSetBindingSignature::Type::ConstantBuffer:
+			case DescriptorType::ConstantBuffer:
                 assert(cbBindingCount < Pimpl::s_maxBindings);
-                _pimpl->_cbMapping[cbBindingCount]._type = b._type;
+                _pimpl->_cbMapping[cbBindingCount]._type = b;
 				_pimpl->_cbMapping[cbBindingCount]._descriptorSetBindIndex = bIndex;
 				++cbBindingCount;
 				break;
 
-			case DescriptorSetBindingSignature::Type::Sampler:
+			case DescriptorType::Sampler:
                 assert(samplerBindingCount < Pimpl::s_maxBindings);
-                _pimpl->_samplerMapping[samplerBindingCount]._type = b._type;
+                _pimpl->_samplerMapping[samplerBindingCount]._type = b;
 				_pimpl->_samplerMapping[samplerBindingCount]._descriptorSetBindIndex = bIndex;
 				++samplerBindingCount;
 				break;
 
-			case DescriptorSetBindingSignature::Type::UnorderedAccess:
-			case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:
+			case DescriptorType::UnorderedAccessTexture:
+			case DescriptorType::UnorderedAccessBuffer:
                 assert(uavBindingCount < Pimpl::s_maxBindings);
-                _pimpl->_uavMapping[uavBindingCount]._type = b._type;
+                _pimpl->_uavMapping[uavBindingCount]._type = b;
 				_pimpl->_uavMapping[uavBindingCount]._descriptorSetBindIndex = bIndex;
 				++uavBindingCount;
 				break;
@@ -251,30 +249,26 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		const auto& defResources = globalPools._dummyResources;
 		const TextureView* blankSRVImage = &defResources._blankSrv;
-		const TextureView* blankSRVBuffer = &defResources._blankUavBuffer;
 		const TextureView* blankUAVImage = &defResources._blankUavImage;
 		const TextureView* blankUAVBuffer = &defResources._blankUavBuffer;
 		VkSampler blankSampler = defResources._blankSampler->GetUnderlying();
 		VkBuffer blankBuffer = defResources._blankBuffer.GetUnderlying();
 
 		for (unsigned bIndex=0; bIndex<(unsigned)signature._bindings.size(); ++bIndex) {
-			switch (signature._bindings[bIndex]._type) {
-			case DescriptorSetBindingSignature::Type::Texture:
+			switch (signature._bindings[bIndex]) {
+			case DescriptorType::Texture:
 				BindSRV(srvBindingCount++, MakeIteratorRange(&blankSRVImage, &blankSRVImage+1));
 				break;
-			case DescriptorSetBindingSignature::Type::TextureAsBuffer:
-				BindSRV(srvBindingCount++, MakeIteratorRange(&blankSRVBuffer, &blankSRVBuffer+1));
-				break;
-			case DescriptorSetBindingSignature::Type::UnorderedAccess:
+			case DescriptorType::UnorderedAccessTexture:
 				BindUAV(uavBindingCount++, MakeIteratorRange(&blankUAVImage, &blankUAVImage+1));
 				break;
-			case DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer:
+			case DescriptorType::UnorderedAccessBuffer:
 				BindUAV(uavBindingCount++, MakeIteratorRange(&blankUAVBuffer, &blankUAVBuffer+1));
 				break;
-			case DescriptorSetBindingSignature::Type::ConstantBuffer:
+			case DescriptorType::ConstantBuffer:
 				BindCB(cbBindingCount++, MakeIteratorRange(&blankBuffer, &blankBuffer+1));
 				break;
-			case DescriptorSetBindingSignature::Type::Sampler:
+			case DescriptorType::Sampler:
 				BindSampler(samplerBindingCount++, MakeIteratorRange(&blankSampler, &blankSampler+1));
 				break;
 			}

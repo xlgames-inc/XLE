@@ -528,15 +528,6 @@ namespace RenderCore { namespace Metal_Vulkan
         return false;
     }
 
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-		std::ostream& WriteDescriptorSet(
-			std::ostream& stream,
-			const DescriptorSetVerboseDescription& bindingDescription,
-			const DescriptorSetSignature& signature,
-			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
-			unsigned descriptorSetIndex, bool isBound);
-	#endif
-
 	void DeviceContext::LogGraphicsPipeline()
 	{
 		#if defined(_DEBUG)
@@ -557,7 +548,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					WriteDescriptorSet(
 						Log(Verbose),
 						_graphicsDescriptors._descriptorSetBindings[c],
-						_graphicsDescriptors._pipelineLayout->GetDescriptorSetSignature(c),
+						*_graphicsDescriptors._pipelineLayout->GetRootSignature(),
 						MakeIteratorRange(shaders),
 						c, _graphicsDescriptors._descriptorSets[c] != nullptr);
 				}
@@ -582,7 +573,7 @@ namespace RenderCore { namespace Metal_Vulkan
 					WriteDescriptorSet(
 						Log(Verbose),
 						_computeDescriptors._descriptorSetBindings[c],
-						_computeDescriptors._pipelineLayout->GetDescriptorSetSignature(c),
+						*_computeDescriptors._pipelineLayout->GetRootSignature(),
 						MakeIteratorRange(shaders),
 						c, _computeDescriptors._descriptorSets[c] != nullptr);
 				}
