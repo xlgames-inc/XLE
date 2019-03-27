@@ -6,6 +6,7 @@
 
 #pragma once
 
+#include "../../Utility/IteratorUtils.h"
 #include "../../Core/Types.h"
 #include <memory>
 #include <vector>
@@ -23,16 +24,11 @@ namespace EntityInterface
     class PropertyInitializer
     {
     public:
-        PropertyId _prop;
-        const void* _src;
-        unsigned _elementType;
-        unsigned _arrayCount;
-        bool _isString;
-
-        PropertyInitializer() 
-            : _prop(0), _src(nullptr)
-            , _elementType(0), _arrayCount(0)
-            , _isString(false) {}
+        PropertyId _prop = 0;
+        IteratorRange<const void*> _src;
+        unsigned _elementType = 0;
+        unsigned _arrayCount = 0;
+        bool _isString = false;
     };
 
     class Identifier
@@ -42,8 +38,8 @@ namespace EntityInterface
         ObjectTypeId ObjectType() const     { return _objType; }
         ObjectId Object() const             { return _obj; }
 
-        Identifier(DocumentId doc, ObjectId obj, ObjectTypeId objType) : _doc(doc), _obj(obj), _objType(objType) {}
-        Identifier() : _doc(DocumentId(0)), _obj(ObjectId(0)), _objType(ObjectTypeId(0)) {}
+        Identifier(DocumentId doc = 0, ObjectId obj = 0, ObjectTypeId objType = 0)
+		: _doc(doc), _obj(obj), _objType(objType) {}
     protected:
         DocumentId _doc;
         ObjectId _obj;
@@ -102,6 +98,8 @@ namespace EntityInterface
         virtual PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const = 0;
         virtual ChildListId GetChildListId(ObjectTypeId type, const char name[]) const = 0;
 
+		virtual void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const = 0;
+
         virtual ~IEntityInterface();
     };
 
@@ -130,6 +128,8 @@ namespace EntityInterface
 
         uint32  MapTypeId(ObjectTypeId type, const IEntityInterface& owner);
         void    RegisterType(std::shared_ptr<IEntityInterface> type);
+
+		void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
         Switch();
         ~Switch();

@@ -11,6 +11,7 @@
 #include <string>
 #include <vector>
 #include <functional>
+#include <iosfwd>
 
 namespace Utility { template<typename Type> class InputStreamFormatter; }
 
@@ -85,6 +86,8 @@ namespace EntityInterface
 
         std::basic_string<utf8> GetTypeName(ObjectTypeId id) const;
 
+		void			PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
+
         RetainedEntities();
         ~RetainedEntities();
     protected:
@@ -110,6 +113,7 @@ namespace EntityInterface
         void InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj, ChangeType changeType) const;
         RetainedEntity* GetEntityInt(DocumentId doc, ObjectId obj) const;
         bool SetSingleProperties(RetainedEntity& dest, const RegisteredObjectType& type, const PropertyInitializer& initializer) const;
+		void PrintEntity(std::ostream& stream, const RetainedEntity& entity, unsigned indent) const;
 
         friend class RetainedEntityInterface;
     };
@@ -134,6 +138,8 @@ namespace EntityInterface
 		DocumentTypeId  GetDocumentTypeId(const char name[]) const;
 		PropertyId      GetPropertyId(ObjectTypeId typeId, const char name[]) const;
 		ChildListId     GetChildListId(ObjectTypeId typeId, const char name[]) const;
+
+		void			PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
 		RetainedEntityInterface(std::shared_ptr<RetainedEntities> scene);
 		~RetainedEntityInterface();

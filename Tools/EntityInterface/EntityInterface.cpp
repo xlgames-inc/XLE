@@ -124,6 +124,12 @@ namespace EntityInterface
         _types.push_back(std::move(type));
     }
 
+	void Switch::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const
+	{
+		for (const auto&t : _types)
+			t->PrintDocument(stream, doc, indent);
+	}
+
     Switch::Switch() : _nextObjectId(1) {}
     Switch::~Switch() {}
     

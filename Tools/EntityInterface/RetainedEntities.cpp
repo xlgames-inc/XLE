@@ -9,6 +9,9 @@
 #include "../../Utility/PtrUtils.h"
 #include "../../Utility/IteratorUtils.h"
 #include "../../Utility/Streams/StreamFormatter.h"
+#include "../../Utility/StreamUtils.h"
+#include "../../Utility/StringFormat.h"
+#include "../../Utility/Conversion.h"
 
 namespace EntityInterface
 {
@@ -16,14 +19,14 @@ namespace EntityInterface
         RetainedEntity& dest, const RegisteredObjectType& type, const PropertyInitializer& prop) const
     {
         if (prop._prop == 0 || prop._prop > type._properties.size()) return false;
-        if (!prop._src) return false;
+        if (prop._src.empty()) return false;
 
         auto typeHint = prop._isString ? ImpliedTyping::TypeHint::String : ImpliedTyping::TypeHint::None;
 
         const auto& propertyName = type._properties[prop._prop-1];
 		ImpliedTyping::TypeDesc typeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint);
         dest._properties.SetParameter(
-            MakeStringSection(propertyName), MakeIteratorRange(prop._src, PtrAdd(prop._src, typeDesc.GetSize())), 
+            MakeStringSection(propertyName), prop._src, 
             typeDesc);
         return true;
     }
@@ -149,6 +152,30 @@ namespace EntityInterface
         }
         return std::basic_string<utf8>();
     }
+
+	void RetainedEntities::PrintEntity(std::ostream& stream, const RetainedEntity& entity, unsigned indent) const
+	{
+		stream << StreamIndent(indent) << "[" << entity._id << "] type: " << Conversion::Convert<std::string>(GetTypeName(entity._type)) << std::endl;
+		for (auto p : entity._properties)
+			stream << StreamIndent(indent + 2) << p.Name().Cast<char>() << " = " << p.ValueAsString() << std::endl;
+
+		for (auto c : entity._children) {
+			auto child = GetEntity(entity._doc, c);
+			if (!child) {
+				stream << StreamIndent(indent + 2) << "<<Could not find child for id " << c << ">>" << std::endl;
+				continue;
+			}
+			PrintEntity(stream, *child, indent + 2);
+		}
+	}
+
+	void RetainedEntities::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const
+	{
+		// Find the root entities in this document, and print them (and their children)
+		for (const auto&o : _objects)
+			if (o._doc == doc && o._parent == 0)
+				PrintEntity(stream, o, indent);
+	}
 
     RetainedEntities::RetainedEntities()
     {
@@ -363,6 +390,13 @@ namespace EntityInterface
         return 0;
     }
 
+	void RetainedEntityInterface::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const
+	{
+		stream << "From RetainedEntityInterface" << std::endl;
+		_scene->PrintDocument(stream, doc, indent + 2);
+		stream << std::endl;
+	}
+
 	RetainedEntityInterface::RetainedEntityInterface(std::shared_ptr<RetainedEntities> flexObjects)
     : _scene(std::move(flexObjects))
     {}
@@ -437,7 +471,7 @@ namespace EntityInterface
                     i._prop = id;
                     i._elementType = unsigned(type._type);
                     i._arrayCount = type._arrayCount;
-                    i._src = (const void*)bufferOffset;
+					i._src = { (void*)bufferOffset, (void*)initsBuffer.size() };		// note -- temporarily storing the offset here, because we convert to a pointer in just below before calling CreateObject
                     i._isString = type._typeHint == ImpliedTyping::TypeHint::String;
 
                     inits.push_back(i);
@@ -450,7 +484,8 @@ namespace EntityInterface
                     Throw(FormatException("Expecting end element in entity deserialisation", formatter.GetLocation()));
 
                 if (typeId != ~ObjectTypeId(0x0)) {
-                    for (auto&i:inits) i._src = PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src));
+					for (auto&i : inits)
+						i._src = { PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src.first)), PtrAdd(AsPointer(initsBuffer.cbegin()), size_t(i._src.second)) };
 
                     auto id = interf.AssignObjectId(docId, typeId);
                     Identifier identifier(docId, id, typeId);
