@@ -10,6 +10,7 @@
 #include "State.h"
 #include "FrameBuffer.h"        // for AttachmentPool
 #include "InputLayout.h"		// for NumericUniformsInterface
+#include "DescriptorSet.h"
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
 #include "../../IDevice_Forward.h"
@@ -41,10 +42,10 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const RasterizerState& rasterizer);
         void        Bind(const BlendState& blendState);
         void        Bind(const DepthStencilState& depthStencilState, unsigned stencilRef = 0x0);
-        
-        void        Bind(const ShaderProgram& shaderProgram);
-		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
 
+		void        Bind(const ShaderProgram& shaderProgram);
+		void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces&);
+        
         void        Bind(Topology topology);
 
 		void		UnbindInputLayout();
@@ -56,6 +57,8 @@ namespace RenderCore { namespace Metal_Vulkan
             VkRenderPass renderPass, unsigned subpass, 
             TextureSamples samples);
         bool IsPipelineStale() const { return _pipelineStale; }
+
+		const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
 
         GraphicsPipelineBuilder();
         ~GraphicsPipelineBuilder();
@@ -75,6 +78,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void        SetBoundInputLayout(const BoundInputLayout& inputLayout);
 		friend class BoundInputLayout;
+		friend class ShaderProgram;
     };
 
     class ComputePipelineBuilder
@@ -88,6 +92,8 @@ namespace RenderCore { namespace Metal_Vulkan
             VkPipelineLayout layout);
         bool IsPipelineStale() const { return _pipelineStale; }
 
+		const ComputeShader* GetBoundComputeShader() const { return _shader; }
+
         ComputePipelineBuilder();
         ~ComputePipelineBuilder();
 
@@ -99,21 +105,34 @@ namespace RenderCore { namespace Metal_Vulkan
         bool                    _pipelineStale;
     };
 
+	class DescriptorSet
+	{
+	public:
+		VulkanUniquePtr<VkDescriptorSet>		_underlying;
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			DescriptorSetVerboseDescription		_description;
+		#endif		
+	};
+
     class DescriptorCollection
     {
     public:
         NumericUniformsInterface			_numericBindings;
         unsigned                            _numericBindingsSlot;
 
-        std::vector<VkDescriptorSet>        _descriptorSets;
+        std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
         bool                                _hasSetsAwaitingFlush;
 
-        PipelineLayout*                     _pipelineLayout;
+		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+			std::vector<DescriptorSetVerboseDescription> _descriptorSetBindings;
+		#endif
+
+        std::shared_ptr<PipelineLayout>		_pipelineLayout;
 
         DescriptorCollection(
             const ObjectFactory&    factory, 
             GlobalPools&            globalPools,
-            PipelineLayout&         pipelineLayout);
+            const std::shared_ptr<PipelineLayout>& pipelineLayout);
     };
 
 	class CommandList
@@ -225,13 +244,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		bool		IsImmediate() { return false; }
 
 		CommandList& GetActiveCommandList();
+		bool HasActiveCommandList();
 		
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
 
         enum class PipelineType { Graphics, Compute };
-        void        BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set);
-        PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
+		void			BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
+        DescriptorSet	AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex);
+		void			PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
+
+		PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
@@ -246,12 +269,16 @@ namespace RenderCore { namespace Metal_Vulkan
         void EndRenderPass();
         bool IsInRenderPass() const;
 		void NextSubpass(VkSubpassContents);
+		unsigned RenderPassSubPassIndex() const { return _renderPassSubpass; }
+
+		template<int Count> void    Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil);
+        template<int Count1, int Count2> void    Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess);
 
         DeviceContext(
             ObjectFactory& factory, 
             GlobalPools& globalPools,
-            PipelineLayout& globalPipelineLayout,
-            PipelineLayout& computePipelineLayout,
+            const std::shared_ptr<PipelineLayout>& globalPipelineLayout,
+            const std::shared_ptr<PipelineLayout>& computePipelineLayout,
 			CommandPool& cmdPool, 
 			CommandBufferType cmdBufferType,
 			TemporaryBufferSpace& tempBufferSpace);
@@ -281,6 +308,9 @@ namespace RenderCore { namespace Metal_Vulkan
 
         bool BindGraphicsPipeline();
         bool BindComputePipeline();
+		void LogGraphicsPipeline();
+		void LogComputePipeline();
+		void BindDummyDescriptorSets(DescriptorCollection& collection);
     };
 
 	inline CommandList& DeviceContext::GetActiveCommandList()
@@ -288,6 +318,17 @@ namespace RenderCore { namespace Metal_Vulkan
 		assert(_commandList.GetUnderlying());
 		return _commandList;
 	}
+
+	inline bool DeviceContext::HasActiveCommandList()
+	{
+		return _commandList.GetUnderlying() != nullptr;
+	}
+
+	template<int Count> 
+		void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count>& renderTargets, const DepthStencilView* depthStencil) {}
+    template<int Count1, int Count2> 
+		void    DeviceContext::Bind(const ResourceList<RenderTargetView, Count1>& renderTargets, const DepthStencilView* depthStencil, const ResourceList<UnorderedAccessView, Count2>& unorderedAccess)
+		{}
 
 }}
 

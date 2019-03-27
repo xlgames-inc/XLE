@@ -558,6 +558,21 @@ namespace RenderCore
 	    }
     }
 
+	const char* AsString(ShaderStage stage)
+	{
+		switch (stage) {
+		case ShaderStage::Vertex: return "Vertex";
+		case ShaderStage::Pixel: return "Pixel";
+		case ShaderStage::Geometry: return "Geometry";
+		case ShaderStage::Hull: return "Hull";
+		case ShaderStage::Domain: return "Domain";
+		case ShaderStage::Compute: return "Compute";
+		case ShaderStage::Null: return "Null";
+		case ShaderStage::Max: return "Max";
+		default: return "<<unknown>>";
+		}
+	}
+
     IDevice::~IDevice() {}
     IThreadContext::~IThreadContext() {}
     IPresentationChain::~IPresentationChain() {}

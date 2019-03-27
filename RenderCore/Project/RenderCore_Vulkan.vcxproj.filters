@@ -23,6 +23,7 @@
     <ClCompile Include="..\Vulkan\Annotator.cpp">
       <Filter>Device</Filter>
     </ClCompile>
+    <ClCompile Include="..\Vulkan\Metal\DescriptorSet.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
@@ -51,6 +52,7 @@
     <ClInclude Include="..\Vulkan\Device.h">
       <Filter>Device</Filter>
     </ClInclude>
+    <ClInclude Include="..\Vulkan\Metal\DescriptorSet.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

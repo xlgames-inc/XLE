@@ -17,6 +17,8 @@
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	static uint64_t s_nextResourceGUID = 1;
+
     static VkDevice ExtractUnderlyingDevice(IDevice& idev)
     {
         auto* vulkanDevice = (RenderCore::IDeviceVulkan*)idev.QueryInterface(typeid(RenderCore::IDeviceVulkan).hash_code());
@@ -247,6 +249,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		const ObjectFactory& factory, const Desc& desc,
 		const std::function<SubResourceInitData(SubResourceId)>& initData)
 	: _desc(desc)
+	, _guid(s_nextResourceGUID++)
 	{
 		// Our resource can either be a linear buffer, or an image
 		// These correspond to the 2 types of Desc
@@ -417,8 +420,6 @@ namespace RenderCore { namespace Metal_Vulkan
 				Throw(VulkanAPIFailure(res, "Failed while binding an image to device memory"));
 		}
 	}
-
-	static uint64_t s_nextResourceGUID = 1;
 
 	Resource::Resource(
 		const ObjectFactory& factory, const Desc& desc,
@@ -825,7 +826,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	ResourceMap::ResourceMap(
 		VkDevice dev, VkDeviceMemory memory,
 		VkDeviceSize offset, VkDeviceSize size)
-		: _dev(dev), _mem(memory)
+	: _dev(dev), _mem(memory)
 	{
 		// There are many restrictions on this call -- see the Vulkan docs.
 		// * we must ensure that the memory was allocated with VK_MEMORY_PROPERTY_HOST_VISIBLE_BIT

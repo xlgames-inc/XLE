@@ -19,8 +19,8 @@ namespace MaterialTool
     public class DiagramDocument : NodeEditorCore.IDiagramDocument, IDocument, ControlsLibraryExt.ISerializableDocument
     {
         #region IDiagramDocument Members
-        public ShaderPatcherLayer.NodeGraphMetaData GraphMetaData { get; set; }
-        public ShaderPatcherLayer.NodeGraphFile NodeGraphFile
+        public GUILayer.NodeGraphMetaData GraphMetaData { get; set; }
+        public GUILayer.NodeGraphFile NodeGraphFile
         {
             get {
                 if ((ViewModel == null) || (_nodeGraphFileRepresentation != null && _nodeGraphFileRepresentationRevisionIndex == ViewModel.RevisionIndex))
@@ -41,7 +41,7 @@ namespace MaterialTool
             // This avoid making any filesystem changes if NodeGraphFile.Serialize() throws an exception
             using (var memoryStream = new System.IO.MemoryStream())
             {
-                NodeGraphFile.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), GraphMetaData);
+                GUILayer.ShaderGeneratorLayer.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(destination.LocalPath), NodeGraphFile, GraphMetaData);
 
                 var fileMode = System.IO.File.Exists(destination.LocalPath) ? System.IO.FileMode.Truncate : System.IO.FileMode.OpenOrCreate;
                 using (var fileStream = new System.IO.FileStream(destination.LocalPath, fileMode))
@@ -53,16 +53,16 @@ namespace MaterialTool
 
         public void Load(Uri source)
         {
-            ShaderPatcherLayer.NodeGraphMetaData graphMetaData;
-            ShaderPatcherLayer.NodeGraphFile.Load(source.LocalPath, out _nodeGraphFileRepresentation, out graphMetaData);
+            GUILayer.NodeGraphMetaData graphMetaData;
+            GUILayer.ShaderGeneratorLayer.LoadNodeGraphFile(source.LocalPath, out _nodeGraphFileRepresentation, out graphMetaData);
             GraphMetaData = graphMetaData;
             _nodeGraphFileRepresentationRevisionIndex = 0;
         }
 
         public void InitializeNew()
         {
-            GraphMetaData = new ShaderPatcherLayer.NodeGraphMetaData();
-            _nodeGraphFileRepresentation = new ShaderPatcherLayer.NodeGraphFile();
+            GraphMetaData = new GUILayer.NodeGraphMetaData();
+            _nodeGraphFileRepresentation = new GUILayer.NodeGraphFile();
             _nodeGraphFileRepresentationRevisionIndex = 0;
         }
         #endregion
@@ -132,7 +132,7 @@ namespace MaterialTool
         {
             using (var memoryStream = new System.IO.MemoryStream())
             {
-                NodeGraphFile.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(Uri.LocalPath), GraphMetaData);
+                GUILayer.ShaderGeneratorLayer.Serialize(memoryStream, System.IO.Path.GetFileNameWithoutExtension(Uri.LocalPath), NodeGraphFile, GraphMetaData);
                 return memoryStream.GetBuffer();
             }
         }
@@ -141,12 +141,12 @@ namespace MaterialTool
         public interface IViewModel
         {
             uint RevisionIndex { get; }
-            ShaderPatcherLayer.NodeGraphFile Rebuild();
+            GUILayer.NodeGraphFile Rebuild();
         }
 
         public IViewModel ViewModel { get; set; }
 
-        private ShaderPatcherLayer.NodeGraphFile _nodeGraphFileRepresentation;
+        private GUILayer.NodeGraphFile _nodeGraphFileRepresentation;
         private uint _nodeGraphFileRepresentationRevisionIndex;
     }
 }

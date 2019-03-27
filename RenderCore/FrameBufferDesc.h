@@ -57,11 +57,12 @@ namespace RenderCore
         {
             enum Enum
             {
-                Multisampled    = 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
-                ShaderResource  = 1<<1,     ///< allow binding as a shader resource after the render pass has finished
-                TransferSource  = 1<<2,     ///< allow binding as a transfer source after the render pass has finished
-                RenderTarget    = 1<<3,
-                DepthStencil    = 1<<4
+                Multisampled		= 1<<0,     ///< use the current multisample settings (otherwise just set to single sampled mode)
+                ShaderResource		= 1<<1,     ///< allow binding as a shader resource after the render pass has finished
+                TransferSource		= 1<<2,     ///< allow binding as a transfer source after the render pass has finished
+                RenderTarget		= 1<<3,
+                DepthStencil		= 1<<4,
+				PresentationSource	= 1<<5
             };
             using BitField = unsigned;
         };
@@ -183,6 +184,7 @@ namespace RenderCore
 	public:
 		virtual IResourcePtr GetResource(AttachmentName resName) const = 0;
 		virtual const AttachmentDesc* GetDesc(AttachmentName resName) const = 0;
+		virtual const FrameBufferProperties& GetFrameBufferProperties() const = 0;
 		virtual ~INamedAttachments();
 	};
 

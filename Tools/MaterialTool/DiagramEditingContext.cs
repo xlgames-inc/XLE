@@ -31,7 +31,7 @@ namespace MaterialTool
         private class ViewModelAdapter : DiagramDocument.IViewModel
         {
             public uint RevisionIndex { get { return ViewModel.GlobalRevisionIndex; } }
-            public ShaderPatcherLayer.NodeGraphFile Rebuild()
+            public GUILayer.NodeGraphFile Rebuild()
             {
                 return ModelConversion.ToShaderPatcherLayer(ViewModel);
             }

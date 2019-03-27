@@ -17,6 +17,7 @@
 #include "../Metal/State.h"
 #include "../Metal/Shader.h"
 #include "../Metal/Resource.h"
+#include "../Metal/TextureView.h"
 
 namespace RenderCore { namespace Techniques
 {

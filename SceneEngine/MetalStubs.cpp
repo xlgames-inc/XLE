@@ -28,24 +28,44 @@ namespace SceneEngine { namespace MetalStubs
 		#if GFXAPI_ACTIVE == GFXAPI_DX11
 			return RenderCore::Metal_DX11::g_defaultStreamOutputInitializers;
 		#else
-			return GeometryShader::StreamOutputInitializers{};
+			return RenderCore::StreamOutputInitializers{};
 		#endif
 	}
 
 	void UnbindSO(RenderCore::Metal::DeviceContext& devContext)
 	{
-        devContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			devContext.GetUnderlying()->SOSetTargets(0, nullptr, nullptr);
+		#endif
 	}
 
 	void UnbindTessellationShaders(RenderCore::Metal::DeviceContext& devContext)
 	{
-		devContext.GetUnderlying()->HSSetShader(nullptr, nullptr, 0);
-		devContext.GetUnderlying()->DSSetShader(nullptr, nullptr, 0);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			devContext.GetUnderlying()->HSSetShader(nullptr, nullptr, 0);
+			devContext.GetUnderlying()->DSSetShader(nullptr, nullptr, 0);
+		#endif
 	}
 
 	void UnbindGeometryShader(RenderCore::Metal::DeviceContext& devContext)
 	{
-		devContext.GetUnderlying()->GSSetShader(nullptr, nullptr, 0);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			devContext.GetUnderlying()->GSSetShader(nullptr, nullptr, 0);
+		#endif
+	}
+
+	void UnbindComputeShader(RenderCore::Metal::DeviceContext& devContext)
+	{
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			devContext.GetUnderlying()->CSSetShader(nullptr, nullptr, 0);
+		#endif
+	}
+
+	void UnbindRenderTargets(RenderCore::Metal::DeviceContext& devContext)
+	{
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			devContext.GetUnderlying()->OMSetRenderTargets(0, nullptr, nullptr);
+		#endif
 	}
 
 	RenderCore::Metal::NumericUniformsInterface& GetGlobalNumericUniforms(RenderCore::Metal::DeviceContext& devContext, RenderCore::ShaderStage stage)
@@ -53,14 +73,12 @@ namespace SceneEngine { namespace MetalStubs
 		return devContext.GetNumericUniforms(stage);
 	}
 
-#if GFXAPI_ACTIVE == GFXAPI_DX11
 	void BindSO(RenderCore::Metal::DeviceContext& metalContext, RenderCore::IResource& res, unsigned offset)
 	{
-		auto* metalResource = (RenderCore::Metal::Resource*)res.QueryInterface(typeid(RenderCore::Metal::Resource).hash_code());
-		ID3D::Buffer* underlying = (ID3D::Buffer*)metalResource->GetUnderlying().get();
-        metalContext.GetUnderlying()->SOSetTargets(1, &underlying, &offset);
+		#if GFXAPI_ACTIVE == GFXAPI_DX11
+			auto* metalResource = (RenderCore::Metal::Resource*)res.QueryInterface(typeid(RenderCore::Metal::Resource).hash_code());
+			ID3D::Buffer* underlying = (ID3D::Buffer*)metalResource->GetUnderlying().get();
+			metalContext.GetUnderlying()->SOSetTargets(1, &underlying, &offset);
+		#endif
 	}
-#else
-	void BindSO(RenderCore::Metal::DeviceContext&, unsigned slot, RenderCore::IResource& res, unsigned offset) {}
-#endif
 }}

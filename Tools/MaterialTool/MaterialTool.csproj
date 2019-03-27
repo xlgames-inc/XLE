@@ -153,10 +153,6 @@
       <Project>{788b1d28-29dd-4f5c-bf04-4a8d5866cde5}</Project>
       <Name>NodeEditorCore</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
-      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
-      <Name>ShaderFragmentArchive</Name>
-    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

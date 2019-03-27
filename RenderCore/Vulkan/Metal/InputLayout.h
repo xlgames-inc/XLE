@@ -27,6 +27,7 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	class ShaderProgram;
 	class DeviceContext;
+	class ComputeShader;
 	class PipelineLayoutConfig
 	{
 	public:
@@ -41,13 +42,24 @@ namespace RenderCore { namespace Metal_Vulkan
 
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const CompiledShaderByteCode& shader);
         BoundInputLayout(IteratorRange<const InputElementDesc*> layout, const ShaderProgram& shader);
-		BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const CompiledShaderByteCode& shader);
-        BoundInputLayout(IteratorRange<const MiniInputElementDesc*> layout, const ShaderProgram& shader);
+		
+		struct SlotBinding
+        {
+            IteratorRange<const MiniInputElementDesc*> _elements;
+            unsigned _instanceStepDataRate;     // set to 0 for per vertex, otherwise a per-instance rate
+        };
+		BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const CompiledShaderByteCode& program);
+        BoundInputLayout(
+            IteratorRange<const SlotBinding*> layouts,
+            const ShaderProgram& shader);
+
         BoundInputLayout();
         ~BoundInputLayout();
 
-		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws;
-		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws;
+		BoundInputLayout(BoundInputLayout&& moveFrom) never_throws = default;
+		BoundInputLayout& operator=(BoundInputLayout&& moveFrom) never_throws = default;
 
         const IteratorRange<const VkVertexInputAttributeDescription*> GetAttributes() const { return MakeIteratorRange(_attributes); }
 		const IteratorRange<const VkVertexInputBindingDescription*> GetVBBindings() const { return MakeIteratorRange(_vbBindingDescriptions); }
@@ -58,6 +70,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
+	class BoundUniformsHelper;
     class BoundUniforms
     {
     public:
@@ -66,11 +79,20 @@ namespace RenderCore { namespace Metal_Vulkan
             unsigned streamIdx,
             const UniformsStream& stream) const;
 
+		void UnbindShaderResources(DeviceContext& context, unsigned streamIdx);
+
 		uint64_t _boundUniformBufferSlots[4];
         uint64_t _boundResourceSlots[4];
 
         BoundUniforms(
             const ShaderProgram& shader,
+            const PipelineLayoutConfig& pipelineLayout,
+            const UniformsStreamInterface& interface0 = {},
+            const UniformsStreamInterface& interface1 = {},
+            const UniformsStreamInterface& interface2 = {},
+            const UniformsStreamInterface& interface3 = {});
+		BoundUniforms(
+            const ComputeShader& shader,
             const PipelineLayoutConfig& pipelineLayout,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
@@ -84,11 +106,22 @@ namespace RenderCore { namespace Metal_Vulkan
         BoundUniforms& operator=(BoundUniforms&&) = default;
 
     private:
-		bool _isComputeShader;
 		static const unsigned s_streamCount = 4;
         std::vector<uint32_t> _cbBindingIndices[s_streamCount];
         std::vector<uint32_t> _srvBindingIndices[s_streamCount];
-		uint64_t _shaderBindingMask[s_streamCount];
+		uint64_t	_descriptorSetBindingMask[s_streamCount];
+		unsigned	_vsPushConstantSlot[s_streamCount];
+		unsigned	_psPushConstantSlot[s_streamCount];
+		bool		_isComputeShader;
+
+		void SetupBindings(
+			BoundUniformsHelper& helper,
+            const UniformsStreamInterface* interfaces[], 
+			size_t interfaceCount);
+
+		#if defined(_DEBUG)
+			std::string _debuggingDescription;
+		#endif
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -109,14 +142,16 @@ namespace RenderCore { namespace Metal_Vulkan
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class ShaderResourceView;
+	class UnorderedAccessView;
 	class SamplerState;
 	class Buffer;
 	using ConstantBuffer = Buffer;
 	class TextureView;
 	class ObjectFactory;
-	class DescriptorPool;
-	class DummyResources;
 	class DescriptorSetSignature;
+	class DescriptorSetVerboseDescription;
+	class GlobalPools;
+	class LegacyRegisterBinding;
 
 	/// <summary>Bind uniforms at numeric binding points</summary>
 	class NumericUniformsInterface
@@ -127,19 +162,23 @@ namespace RenderCore { namespace Metal_Vulkan
         void    BindCB(unsigned startingPoint, IteratorRange<const VkBuffer*> uniformBuffers);
         void    BindSampler(unsigned startingPoint, IteratorRange<const VkSampler*> samplers);
 
-        void    GetDescriptorSets(IteratorRange<VkDescriptorSet*> dst);
-        bool    HasChanges() const;
+        void    GetDescriptorSets(
+			IteratorRange<VkDescriptorSet*> dst
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, IteratorRange<DescriptorSetVerboseDescription**> descriptions));
         void    Reset();
+		bool	HasChanges() const;
 		
 		template<int Count> void Bind(const ResourceList<ShaderResourceView, Count>&);
 		template<int Count> void Bind(const ResourceList<SamplerState, Count>&);
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
+		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
         NumericUniformsInterface(
-            const ObjectFactory& factory, DescriptorPool& descPool, 
-            DummyResources& dummyResources,
+            const ObjectFactory& factory,
+			GlobalPools& globalPools,
             VkDescriptorSetLayout layout,
-            const DescriptorSetSignature& signature);
+            const LegacyRegisterBinding& bindings,
+			unsigned descriptorSetIndex);
 		NumericUniformsInterface();
         ~NumericUniformsInterface();
 
@@ -180,6 +219,15 @@ namespace RenderCore { namespace Metal_Vulkan
 	        BindCB(
 	            constantBuffers._startingPoint,
 	            MakeIteratorRange(buffers));
+	    }
+
+	template<int Count> 
+	    void    NumericUniformsInterface::Bind(const ResourceList<UnorderedAccessView, Count>& uavs)
+	    {
+			auto r = MakeIteratorRange(uavs._buffers);
+	        BindUAV(
+	            uavs._startingPoint,
+	            MakeIteratorRange((const TextureView*const*)r.begin(), (const TextureView*const*)r.end()));
 	    }
 
 }}

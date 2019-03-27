@@ -15,7 +15,7 @@ attributes visualNode3(PreviewGeometry:"sphere", X:"471.000000", Y:"661.000000",
 attributes visualNode4(PreviewGeometry:"sphere", X:"213.000000", Y:"634.000000", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:ProcWood>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
 	<HasTechniqueConfig>true</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays">
 		<d2p1:KeyValueOfstringstring>

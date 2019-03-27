@@ -143,7 +143,7 @@ namespace RenderCore { namespace ImplVulkan
         static VKAPI_ATTR VkBool32 VKAPI_CALL debug_callback( VkFlags msgFlags, VkDebugReportObjectTypeEXT objType, uint64_t srcObject, size_t location, int32_t msgCode, const char *pLayerPrefix, const char *pMsg, void *pUserData )
         {
 	        (void)msgFlags; (void)objType; (void)srcObject; (void)location; (void)pUserData; (void)msgCode;
-            Log(Warning) << pLayerPrefix << ": " << pMsg << std::endl;
+            Log(Verbose) << pLayerPrefix << ": " << pMsg << std::endl;
 	        return false;
         }
     
@@ -612,8 +612,7 @@ namespace RenderCore { namespace ImplVulkan
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
-                *_graphicsPipelineLayout,
-                *_computePipelineLayout,
+                _graphicsPipelineLayout, _computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, frameTracker),
 				Metal_Vulkan::CommandBufferType::Primary,
 				std::move(tempBufferSpace));
@@ -644,9 +643,29 @@ namespace RenderCore { namespace ImplVulkan
         // If the format list includes just one entry of VK_FORMAT_UNDEFINED,
         // the surface has no preferred format.  Otherwise, at least one
         // supported format will be returned.
-        result._fmt = 
-            (fmts.empty() || (fmts.size() == 1 && fmts[0].format == VK_FORMAT_UNDEFINED)) 
-            ? VK_FORMAT_B8G8R8A8_UNORM : fmts[0].format;
+		//
+		// Sometimes we get both an SRGB & non-SRGB format. Let's prefer the
+		// LDR SRGB format, if we can find one.
+        result._fmt = VK_FORMAT_UNDEFINED;
+
+		for (auto f:fmts)
+			if (f.format == VK_FORMAT_B8G8R8A8_SRGB)
+				result._fmt = VK_FORMAT_B8G8R8A8_SRGB;
+
+		if (result._fmt == VK_FORMAT_UNDEFINED) {
+			for (auto f:fmts)
+				if (f.format == VK_FORMAT_B8G8R8_SRGB)
+					result._fmt = VK_FORMAT_B8G8R8_SRGB;
+		}
+
+		if (result._fmt == VK_FORMAT_UNDEFINED) {
+			for (auto f:fmts)
+				if (f.format != VK_FORMAT_UNDEFINED)
+					result._fmt = f.format;
+		}
+
+		if (result._fmt == VK_FORMAT_UNDEFINED)
+			result._fmt = VK_FORMAT_B8G8R8A8_SRGB;
 
         VkSurfaceCapabilitiesKHR surfCapabilities;
         auto res = vkGetPhysicalDeviceSurfaceCapabilitiesKHR(phyDev, surface, &surfCapabilities);
@@ -759,8 +778,7 @@ namespace RenderCore { namespace ImplVulkan
 		return std::make_unique<ThreadContextVulkan>(
             shared_from_this(), 
             nullptr, 
-            *_graphicsPipelineLayout,
-            *_computePipelineLayout,
+            _graphicsPipelineLayout, _computePipelineLayout,
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, nullptr),
             Metal_Vulkan::CommandBufferType::Secondary, nullptr);
     }
@@ -811,12 +829,12 @@ namespace RenderCore { namespace ImplVulkan
         return Device::GetGlobalPools();
     }
 
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareGraphicsPipelineLayout()
+    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::GetGraphicsPipelineLayout()
     {
         return _graphicsPipelineLayout;
     }
 
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::ShareComputePipelineLayout()
+    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::GetComputePipelineLayout()
     {
         return _computePipelineLayout;
     }
@@ -1230,8 +1248,8 @@ namespace RenderCore { namespace ImplVulkan
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
-        Metal_Vulkan::PipelineLayout& computePipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandBufferType cmdBufferType,
 		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
@@ -1250,7 +1268,14 @@ namespace RenderCore { namespace ImplVulkan
 	, _underlyingDevice(device->GetUnderlyingDevice())
     {}
 
-    ThreadContext::~ThreadContext() {}
+    ThreadContext::~ThreadContext() 
+	{
+		_gpuTracker.reset();
+		_destrQueue.reset();
+		_annotator.reset();
+		_metalContext.reset();
+		_tempBufferSpace.reset();
+	}
 
     std::shared_ptr<IDevice> ThreadContext::GetDevice() const
     {
@@ -1276,8 +1301,8 @@ namespace RenderCore { namespace ImplVulkan
     ThreadContextVulkan::ThreadContextVulkan(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        Metal_Vulkan::PipelineLayout& graphicsPipelineLayout,
-        Metal_Vulkan::PipelineLayout& computePipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
+        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandBufferType cmdBufferType,
 		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)

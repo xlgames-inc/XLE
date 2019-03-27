@@ -243,7 +243,7 @@ namespace RenderOverlays
 		}
 
 		auto& res = ConsoleRig::FindCachedBoxDep<TextStyleResources>(TextStyleResources::Desc());
-		renderer.Bind(*res._shaderProgram);
+		res._shaderProgram->Apply(renderer);
 		renderer.Bind(Topology::TriangleList);
 
 		renderer.Bind(Techniques::CommonResources()._dssDisable);

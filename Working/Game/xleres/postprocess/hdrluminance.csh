@@ -9,8 +9,8 @@
 #include "../Colour.h"		// (for LightingScale)
 
 Texture2D_MaybeMS<float4>	InputTexture BIND_NUMERIC_T0;
-RWTexture2D<float>			OutputLuminance UAV_DYNAMIC_0;
-RWTexture2D<float4>			OutputBrightPass UAV_DYNAMIC_1;
+RWTexture2D<float>			OutputLuminance UAV_NUMERIC_IMAGE_0;
+RWTexture2D<float4>			OutputBrightPass UAV_NUMERIC_IMAGE_1;
 
 struct LuminanceBufferStruct
 {
@@ -18,7 +18,7 @@ struct LuminanceBufferStruct
 	float	_prevLuminance;
 };
 
-RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer UAV_DYNAMIC_2;
+RWStructuredBuffer<LuminanceBufferStruct>	OutputLuminanceBuffer UAV_NUMERIC_BUFFER_4;
 
 	//		The "geometric mean" is slightly more expensive,
 	//		but might give a slightly nicer result

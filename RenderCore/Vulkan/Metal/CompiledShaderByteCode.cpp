@@ -7,6 +7,7 @@
 #include "Shader.h"
 #include "DeviceContext.h"
 #include "PipelineLayout.h"
+#include "ShaderReflection.h"		// (for metrics string)
 #include "IncludeVulkan.h"
 #include "../IDeviceVulkan.h"
 #include "../../ShaderService.h"
@@ -371,36 +372,37 @@ namespace RenderCore { namespace Metal_Vulkan
 	    return RGROUP_CBUFFER;
     }
 
-    static DescriptorSetBindingSignature::Type AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
+    static LegacyRegisterBinding::RegisterType AsBindingType(ResourceBinding* srcResBinding, ::ConstantBuffer* srcCBBinding)
     {
-        if (!srcResBinding) {
-            if (srcCBBinding) 
-                return DescriptorSetBindingSignature::Type::ConstantBuffer;
-            return DescriptorSetBindingSignature::Type::Unknown;
-        }
+        if (!srcResBinding)
+            return srcCBBinding ? LegacyRegisterBinding::RegisterType::ConstantBuffer : LegacyRegisterBinding::RegisterType::Unknown;
 
         auto group = ResourceTypeToResourceGroup(srcResBinding->eType);
         switch (group) {
-        case RGROUP_CBUFFER:    return DescriptorSetBindingSignature::Type::ConstantBuffer;
-        case RGROUP_TEXTURE:    
-            if (    srcResBinding->eType == RTYPE_STRUCTURED
-                ||  srcResBinding->eType == RTYPE_BYTEADDRESS)
-                return DescriptorSetBindingSignature::Type::TextureAsBuffer;
-            return DescriptorSetBindingSignature::Type::Texture;
-        case RGROUP_SAMPLER:    return DescriptorSetBindingSignature::Type::Sampler;
-        case RGROUP_UAV:        
-            {
-                if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
-                    ||  srcResBinding->eType == RTYPE_UAV_RWBYTEADDRESS
-                    ||  srcResBinding->eType == RTYPE_UAV_APPEND_STRUCTURED
-                    ||  srcResBinding->eType == RTYPE_UAV_CONSUME_STRUCTURED
-                    ||  srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER)
-                    return DescriptorSetBindingSignature::Type::UnorderedAccessAsBuffer;
-                return DescriptorSetBindingSignature::Type::UnorderedAccess;
-            }
+        case RGROUP_CBUFFER:    return LegacyRegisterBinding::RegisterType::ConstantBuffer;
+        case RGROUP_TEXTURE:    return LegacyRegisterBinding::RegisterType::ShaderResource;
+        case RGROUP_SAMPLER:    return LegacyRegisterBinding::RegisterType::Sampler;
+        case RGROUP_UAV:        return LegacyRegisterBinding::RegisterType::UnorderedAccess;
         }
-        return DescriptorSetBindingSignature::Type::Unknown;
+        return LegacyRegisterBinding::RegisterType::Unknown;
     }
+
+	static LegacyRegisterBinding::RegisterQualifier AsRegisterQualifier(ResourceBinding* srcResBinding)
+	{
+		if (!srcResBinding)
+			return LegacyRegisterBinding::RegisterQualifier::None;
+		if (    srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED
+            ||  srcResBinding->eType == RTYPE_UAV_RWBYTEADDRESS
+            ||  srcResBinding->eType == RTYPE_UAV_APPEND_STRUCTURED
+			||  srcResBinding->eType == RTYPE_STRUCTURED
+			||  srcResBinding->eType == RTYPE_BYTEADDRESS
+            ||  srcResBinding->eType == RTYPE_UAV_CONSUME_STRUCTURED
+            ||  srcResBinding->eType == RTYPE_UAV_RWSTRUCTURED_WITH_COUNTER)
+            return LegacyRegisterBinding::RegisterQualifier::Buffer;
+		if (    srcResBinding->eType == RTYPE_TEXTURE)
+			return LegacyRegisterBinding::RegisterQualifier::Texture;
+		return LegacyRegisterBinding::RegisterQualifier::None;
+	}
 
     uint32_t __cdecl EvaluateBinding(
         void* userData,
@@ -413,18 +415,18 @@ namespace RenderCore { namespace Metal_Vulkan
         // index and set associated with it!
         auto& rootSig = *(RootSignature*)userData;
         auto type = AsBindingType(srcResBinding, srcCBBinding);
-        if (type == DescriptorSetBindingSignature::Type::Unknown) return 0;
+        if (type == LegacyRegisterBinding::RegisterType::Unknown) return 0;
 
         char* name = nullptr;
         if (srcResBinding) name = srcResBinding->Name;
         else if (srcCBBinding) name = srcCBBinding->Name;
 
         // First, check to see if it has been assigned as push constants
-        if (type == DescriptorSetBindingSignature::Type::ConstantBuffer && name) {
+        if (type == LegacyRegisterBinding::RegisterType::ConstantBuffer && name) {
             for (unsigned rangeIndex=0; rangeIndex<(unsigned)rootSig._pushConstantRanges.size(); ++rangeIndex) {
                 if (XlEqString(rootSig._pushConstantRanges[rangeIndex]._name, name)) {
                     assert(srcCBBinding);
-                    assert(srcCBBinding->ui32TotalSizeInBytes == rootSig._pushConstantRanges[rangeIndex]._rangeSize);
+                    assert(srcCBBinding->ui32TotalSizeInBytes == rootSig._pushConstantRanges[rangeIndex]._rangeSize);		// If you hit this, it means there's a mismatch in the amount of PushConstants assigned and the size of this buffer
                     dstBinding->_locationIndex = ~0u;
                     dstBinding->_bindingIndex = ~0u;
                     dstBinding->_setIndex = ~0u;
@@ -434,19 +436,16 @@ namespace RenderCore { namespace Metal_Vulkan
             }
         }
 
-        for (unsigned setIndex=0; setIndex<(unsigned)rootSig._descriptorSets.size(); ++setIndex) {
-            auto& set = rootSig._descriptorSets[setIndex];
-            for (unsigned finalBind=0; finalBind<(unsigned)set._bindings.size(); ++finalBind)
-                if (    set._bindings[finalBind]._hlslBindingIndex == bindPoint
-                    &&  set._bindings[finalBind]._type == type) {
-                    // found it!
-                    dstBinding->_locationIndex = ~0u;
-                    dstBinding->_bindingIndex = finalBind;
-                    dstBinding->_setIndex = setIndex;
-                    dstBinding->_flags = 0;
-                    return 1;
-                }
-        }
+		auto qualifier = AsRegisterQualifier(srcResBinding);
+		for (const auto&e:rootSig._legacyBinding.GetEntries(type, qualifier))
+			if (e._begin <= bindPoint && bindPoint < e._end) {
+				// found it!
+                dstBinding->_locationIndex = ~0u;
+                dstBinding->_bindingIndex = e._targetBegin + bindPoint - e._begin;
+                dstBinding->_setIndex = e._targetDescriptorSet;
+                dstBinding->_flags = 0;
+				return 1;
+			}
 
         return 0;
     }
@@ -523,7 +522,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
     std::string HLSLToSPIRVCompiler::MakeShaderMetricsString(const void* data, size_t dataSize) const
     {
-        return "No metrics for SPIR-V shaders currently";
+		if (dataSize > sizeof(ShaderService::ShaderHeader)) {
+			std::stringstream str;
+			str << SPIRVReflection({PtrAdd(data, sizeof(ShaderService::ShaderHeader)), PtrAdd(data, dataSize - sizeof(ShaderService::ShaderHeader))});
+			return str.str();
+		} else {
+			return "<<error: buffer is too small>>";
+		}
     }
     
     std::weak_ptr<HLSLToSPIRVCompiler> HLSLToSPIRVCompiler::s_instance;
@@ -546,10 +551,7 @@ namespace RenderCore { namespace Metal_Vulkan
     HLSLToSPIRVCompiler::~HLSLToSPIRVCompiler()
     {
 		#if defined(HAS_SPIRV_HEADERS)
-			// it feels like these are intended to be called during DLL detach -- 
-			/*glslang::FreeGlobalPools();
-			glslang::FreePoolIndex();
-			glslang::FinalizeProcess();*/
+			glslang::FinalizeProcess();
 		#endif
     }
 
@@ -565,8 +567,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         result = std::make_shared<HLSLToSPIRVCompiler>(
             hlslCompiler, 
-            vulkanDevice->ShareGraphicsPipelineLayout(),
-            vulkanDevice->ShareComputePipelineLayout());
+            vulkanDevice->GetGraphicsPipelineLayout(),
+            vulkanDevice->GetComputePipelineLayout());
         HLSLToSPIRVCompiler::s_instance = result;
         return std::move(result);
     }

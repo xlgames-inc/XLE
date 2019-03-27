@@ -32,7 +32,7 @@ namespace MaterialTool.Controls
 
         [ImportingConstructor]
         public ShaderFragmentArchiveControl(
-            ControlsLibrary.ShaderFragmentArchiveModel archiveModel)
+            NodeEditorCore.ShaderFragmentArchiveModel archiveModel)
         {
             DoubleBuffered = false;
 
@@ -138,9 +138,9 @@ namespace MaterialTool.Controls
                     var array = (Aga.Controls.Tree.TreeNodeAdv[])e.Item;
                     foreach (var a in array)
                     {
-                        if (a.Tag is ControlsLibrary.ShaderFragmentArchiveModel.ShaderFragmentItem)
+                        if (a.Tag is NodeEditorCore.ShaderFragmentArchiveModel.ShaderFragmentItem)
                         {
-                            var item = (ControlsLibrary.ShaderFragmentArchiveModel.ShaderFragmentItem)a.Tag;
+                            var item = (NodeEditorCore.ShaderFragmentArchiveModel.ShaderFragmentItem)a.Tag;
 
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)

@@ -6,6 +6,7 @@
 
 #include "Shader.h"
 #include "ObjectFactory.h"
+#include "DeviceContext.h"
 #include "../../ShaderService.h"
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
@@ -48,9 +49,11 @@ namespace RenderCore { namespace Metal_Vulkan
     ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& gs,
-									const CompiledShaderByteCode& ps)
+									const CompiledShaderByteCode& ps,
+									StreamOutputInitializers so)
     :   ShaderProgram(factory, vs, ps)
     {
+		assert(!so._outputElements.size() && !so._outputBufferStrides.size());		// todo -- stream output not implemented
 		if (gs.GetStage() != ShaderStage::Null) {
 			assert(gs.GetStage() == ShaderStage::Geometry);
             _modules[(unsigned)ShaderStage::Geometry] = factory.CreateShaderModule(gs.GetByteCode());
@@ -65,8 +68,9 @@ namespace RenderCore { namespace Metal_Vulkan
 									const CompiledShaderByteCode& gs,
 									const CompiledShaderByteCode& ps,
 									const CompiledShaderByteCode& hs,
-									const CompiledShaderByteCode& ds)
-    :   ShaderProgram(factory, vs, gs, ps)
+									const CompiledShaderByteCode& ds,
+									StreamOutputInitializers so)
+    :   ShaderProgram(factory, vs, gs, ps, so)
     {
 		if (hs.GetStage() != ShaderStage::Null) {
 			assert(hs.GetStage() == ShaderStage::Hull);
@@ -88,6 +92,22 @@ namespace RenderCore { namespace Metal_Vulkan
     ShaderProgram::~ShaderProgram() {}
 
     bool ShaderProgram::DynamicLinkingEnabled() const { return false; }
+
+	void        ShaderProgram::Apply(GraphicsPipelineBuilder& pipeline) const
+    {
+        if (pipeline._shaderProgram != this) {
+            pipeline._shaderProgram = this;
+            pipeline._pipelineStale = true;
+        }
+    }
+
+	void        ShaderProgram::Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const
+	{
+		if (pipeline._shaderProgram != this) {
+            pipeline._shaderProgram = this;
+            pipeline._pipelineStale = true;
+        }
+	}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -256,6 +276,35 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto newShaderProgram = std::make_shared<ShaderProgram>(GetObjectFactory(), *vsActual, *gsActual, *psActual, *hsActual, *dsActual);
 			thatFuture.SetAsset(std::move(newShaderProgram), {});
+			return false;
+		});
+	}
+
+	void ComputeShader::ConstructToFuture(
+		::Assets::AssetFuture<ComputeShader>& future,
+		StringSection<::Assets::ResChar> codeName,
+		StringSection<::Assets::ResChar> definesTable)
+	{
+		auto code = MakeByteCodeFuture(ShaderStage::Compute, codeName, definesTable);
+
+		future.SetPollingFunction(
+			[code](::Assets::AssetFuture<ComputeShader>& thatFuture) -> bool {
+
+			auto codeActual = code->TryActualize();
+
+			if (!codeActual) {
+				auto codeState = code->GetAssetState();
+				if (codeState == ::Assets::AssetState::Invalid) {
+					auto depVal = std::make_shared<::Assets::DependencyValidation>();
+					TryRegisterDependency(depVal, code);
+					thatFuture.SetInvalidAsset(depVal, nullptr);
+					return false;
+				}
+				return true;
+			}
+
+			auto newShader = std::make_shared<ComputeShader>(GetObjectFactory(), *codeActual);
+			thatFuture.SetAsset(std::move(newShader), {});
 			return false;
 		});
 	}

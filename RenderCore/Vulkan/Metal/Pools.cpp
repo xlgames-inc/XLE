@@ -526,7 +526,6 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         VkDescriptorPoolSize type_count[] = 
         {
-            {VK_DESCRIPTOR_TYPE_COMBINED_IMAGE_SAMPLER, 256},
             {VK_DESCRIPTOR_TYPE_SAMPLED_IMAGE, 256},
             {VK_DESCRIPTOR_TYPE_STORAGE_IMAGE, 256},
             {VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER, 256},

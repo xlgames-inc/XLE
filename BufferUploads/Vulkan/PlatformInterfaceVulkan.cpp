@@ -92,8 +92,8 @@
 			// So, we must change the layout immediate before and after the transfer.
 			{
 				Metal::LayoutTransition layoutTransitions[] = {
-					{*metalStaging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
-					{*metalFinal, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}};
+					{metalStaging, Metal_Vulkan::ImageLayout::General, Metal_Vulkan::ImageLayout::TransferSrcOptimal},
+					{metalFinal, Metal_Vulkan::ImageLayout::Undefined, Metal_Vulkan::ImageLayout::TransferDstOptimal}};
 				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
 			}
 
@@ -124,7 +124,7 @@
 			// image will soon be used by a shader.
 			{
 				Metal::LayoutTransition layoutTransitions[] = {
-					{*metalFinal, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}};
+					{metalFinal, Metal_Vulkan::ImageLayout::TransferDstOptimal, Metal_Vulkan::ImageLayout::ShaderReadOnlyOptimal}};
 				Metal::SetImageLayouts(*metalContext, MakeIteratorRange(layoutTransitions));
 			}
 

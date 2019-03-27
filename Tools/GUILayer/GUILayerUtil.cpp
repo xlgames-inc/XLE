@@ -7,6 +7,7 @@
 #include "GUILayerUtil.h"
 #include "MarshalString.h"
 #include "ExportedNativeTypes.h"
+#include "../ToolsRig/MaterialVisualisation.h"
 #include "../../SceneEngine/IntersectionTest.h"
 #include "../../RenderCore/Assets/ModelScaffold.h"
 #include "../../RenderCore/Techniques/DrawableDelegates.h"
@@ -15,6 +16,8 @@
 #include "../../Assets/CompileAndAsyncManager.h"
 #include "../../ConsoleRig/IProgress.h"
 #include "../../Utility/MemoryUtils.h"
+#include "../../Utility/Streams/FileSystemMonitor.h"
+#include <msclr/auto_gcroot.h>
 
 namespace GUILayer
 {
@@ -56,6 +59,47 @@ namespace GUILayer
 		auto exts = ::Assets::Services::GetAsyncMan().GetIntermediateCompilers().GetExtensionsForType(
 			RenderCore::Assets::AnimationSetScaffold::CompileProcessType);
 		return ToManaged(MakeIteratorRange(exts));
+	}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	class MessageRelayWrapper_Helper : public Utility::OnChangeCallback
+	{
+	public:
+		virtual void    OnChange()
+		{
+			if (_managed.get() && _managed->OnChangeEvent)
+				_managed->OnChangeEvent(_managed.get(), nullptr);
+		}
+
+		msclr::auto_gcroot<MessageRelayWrapper^> _managed;
+		MessageRelayWrapper_Helper(MessageRelayWrapper^ managed) : _managed(managed) {}
+	};
+
+	System::String^ MessageRelayWrapper::Messages::get()
+	{
+		auto nativeMsgs = _native->GetMessages();
+		return clix::marshalString<clix::E_UTF8>(nativeMsgs);
+	}
+
+	MessageRelayWrapper::MessageRelayWrapper(const std::shared_ptr<ToolsRig::MessageRelay>& techniqueDelegate)
+	{
+		_native = techniqueDelegate;
+		_callbackId = _native->AddCallback(
+			std::shared_ptr<Utility::OnChangeCallback>(new MessageRelayWrapper_Helper(this)));
+	}
+
+	MessageRelayWrapper::MessageRelayWrapper(ToolsRig::MessageRelay* techniqueDelegate)
+	: MessageRelayWrapper(std::shared_ptr<ToolsRig::MessageRelay>(techniqueDelegate))
+	{
+	}
+
+	MessageRelayWrapper::MessageRelayWrapper()
+	: MessageRelayWrapper(std::make_shared<ToolsRig::MessageRelay>())
+	{}
+
+    MessageRelayWrapper::~MessageRelayWrapper()
+	{
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -264,7 +308,10 @@ namespace GUILayer
 		_searchRules = std::make_shared<::Assets::DirectorySearchRules>(searchRules);
 	}
 
-	DirectorySearchRules::~DirectorySearchRules() {}
+	DirectorySearchRules::~DirectorySearchRules() 
+	{
+		_searchRules.reset();
+	}
 
 }
 

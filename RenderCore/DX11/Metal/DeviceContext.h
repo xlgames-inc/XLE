@@ -73,13 +73,13 @@ namespace RenderCore { namespace Metal_DX11
 
         void        Bind(const ShaderProgram& shaderProgram, const BoundClassInterfaces& dynLinkage);
 
-		T1(Type) void   Unbind();
-		void			UnbindVS();
-		void			UnbindPS();
-		void			UnbindGS();
-		void			UnbindHS();
-		void			UnbindDS();
-		void			UnbindInputLayout();
+		void		UnbindVS();
+		void		UnbindPS();
+		void		UnbindGS();
+		void		UnbindHS();
+		void		UnbindDS();
+		void		UnbindCS();
+		void		UnbindInputLayout();
 
         void        Draw(unsigned vertexCount, unsigned startVertexLocation=0);
         void        DrawIndexed(unsigned indexCount, unsigned startIndexLocation=0, unsigned baseVertexLocation=0);
@@ -132,9 +132,6 @@ namespace RenderCore { namespace Metal_DX11
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
-
-    extern template void DeviceContext::Unbind<BoundInputLayout>();
-    extern template void DeviceContext::Unbind<RenderTargetView>();
 
     ObjectFactory& GetObjectFactory(IDevice& device);
 	ObjectFactory& GetObjectFactory(DeviceContext&);

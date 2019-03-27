@@ -168,9 +168,9 @@ extern "C" ParameterStructId ParameterStruct_Register(const void* ctx, struct SS
 {
 	auto* w = (ShaderSourceParser::WorkingInterfaceStructure*)((ShaderTreeWalk_Ctx_struct*)ctx)->_userData;
 	GraphLanguage::UniformBufferSignature result;
-	result._name = w->GetString(paramStruct->_name);
+	auto name = w->GetString(paramStruct->_name);
 	for (unsigned p=paramStruct->_firstParameter; p<=paramStruct->_lastParameter; ++p)
 		result._parameters.push_back(w->_variableTable[p]);
-	w->_signature._uniformBuffers.emplace_back(std::move(result));
+	w->_signature._uniformBuffers.emplace_back(std::make_pair(name, std::move(result)));
 	return (ParameterStructId)(w->_signature._uniformBuffers.size()-1);
 }

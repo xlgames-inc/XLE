@@ -246,6 +246,7 @@ namespace PlatformRig
     OverlappedWindow::~OverlappedWindow()
     {
 		SetOSRunLoop(nullptr);
+		_pimpl->_inputTranslator.reset();
         ::DestroyWindow(_pimpl->_hwnd);
         auto windowClassName = Conversion::Convert<std::string>(CurrentModule::GetInstance().HashId());
         (*Windows::Fn_UnregisterClass)(windowClassName.c_str(), CurrentModule::GetInstance().Handle());

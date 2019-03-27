@@ -17,12 +17,15 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
     class RootSignature;
+	class DescriptorSetSignature;
 
     class PipelineLayout
     {
     public:
-        VkDescriptorSetLayout	GetDescriptorSetLayout(unsigned index);
-        unsigned				GetDescriptorSetCount();
+        VkDescriptorSetLayout			GetDescriptorSetLayout(unsigned index);
+		const DescriptorSetSignature&	GetDescriptorSetSignature(unsigned index);
+		unsigned						GetDescriptorSetCount();
+
         VkPipelineLayout		GetUnderlying();
 
         const std::shared_ptr<RootSignature>& GetRootSignature();
@@ -38,29 +41,47 @@ namespace RenderCore { namespace Metal_Vulkan
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-    class DescriptorSetBindingSignature
+    enum class DescriptorType
     {
-    public:
-        enum class Type 
-        { 
-            Sampler, 
-            Texture,
-            TextureAsBuffer,
-            ConstantBuffer, 
-            UnorderedAccess, 
-            UnorderedAccessAsBuffer, 
-            Unknown 
-        };
-        Type        _type;
-        unsigned    _hlslBindingIndex;  // this is the binding number as it appears in the HLSL code
+        Sampler,
+        Texture,
+        ConstantBuffer,
+        UnorderedAccessTexture,
+        UnorderedAccessBuffer,
+        Unknown
     };
 
     class DescriptorSetSignature
     {
     public:
-        std::string             _name;
-        std::vector<DescriptorSetBindingSignature>    _bindings;
+		enum class Type { Adaptive, Numeric, Unknown };
+        std::string						_name;
+		Type							_type = Type::Unknown;
+		unsigned						_uniformStream;
+        std::vector<DescriptorType>		_bindings;
     };
+
+	class LegacyRegisterBinding
+	{
+	public:
+		enum class RegisterType { Sampler, ShaderResource, ConstantBuffer, UnorderedAccess, Unknown };
+		enum class RegisterQualifier { Texture, Buffer, None };
+
+		struct Entry
+		{
+			unsigned		_begin = 0, _end = 0;
+			unsigned		_targetDescriptorSet = ~0u;
+			unsigned		_targetBegin = 0, _targetEnd = 0;
+		};
+		std::vector<Entry> _samplerRegisters;
+		std::vector<Entry> _constantBufferRegisters;
+		std::vector<Entry> _srvRegisters;
+		std::vector<Entry> _uavRegisters;
+		std::vector<Entry> _srvRegisters_boundToBuffer;
+		std::vector<Entry> _uavRegisters_boundToBuffer;
+
+		IteratorRange<const Entry*>	GetEntries(RegisterType type, RegisterQualifier qualifier) const;
+	};
 
     class PushConstantsRangeSigniture
     {
@@ -76,6 +97,7 @@ namespace RenderCore { namespace Metal_Vulkan
     public:
         std::vector<DescriptorSetSignature> _descriptorSets;
         std::vector<PushConstantsRangeSigniture> _pushConstantRanges;
+		LegacyRegisterBinding _legacyBinding;
 
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
@@ -87,6 +109,8 @@ namespace RenderCore { namespace Metal_Vulkan
         ::Assets::DepValPtr _depVal;
     };
 
-    VkDescriptorType AsDescriptorType(DescriptorSetBindingSignature::Type type);
+    VkDescriptorType AsVkDescriptorType(DescriptorType type);
+	const char* AsString(DescriptorType type);
+	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType);
 }}
 

@@ -6,6 +6,7 @@
     ~Parameters
         ~Geometry
             OUTPUT_WORLD_POSITION=1
+            GEO_PRETRANSFORMED=1
     VertexShader=xleres/deferred/basic.vsh:main
     PixelShader=xleres/Techniques/Graph/Pass_Deferred.graph
 

@@ -275,12 +275,15 @@ namespace RenderCore { namespace Assets
     static uint64 GetTarget(
 		const ILowLevelCompiler::ResId& res, const ::Assets::rstring& definesTable,
         /*out*/ ::Assets::ResChar archiveName[], size_t archiveNameCount,
-        /*out*/ ::Assets::ResChar depName[], size_t depNameCount)
+        /*out*/ ::Assets::ResChar depName[], size_t depNameCount,
+		/*out*/ ::Assets::ResChar entryName[] = nullptr, size_t entryNameCount = 0)
     {
         snprintf(archiveName, archiveNameCount * sizeof(::Assets::ResChar), "%s-%s", res._filename, res._shaderModel);
-        auto archiveId = HashCombine(Hash64(res._entryPoint), Hash64(definesTable));
-        snprintf(depName, depNameCount * sizeof(::Assets::ResChar), "%s-%08x%08x", archiveName, uint32(archiveId>>32ull), uint32(archiveId));
-		return archiveId;
+        auto entryId = HashCombine(HashCombine(Hash64(res._entryPoint), Hash64(definesTable)), Hash64(res._shaderModel));
+        snprintf(depName, depNameCount * sizeof(::Assets::ResChar), "%s-%08x%08x", archiveName, uint32(entryId>>32ull), uint32(entryId));
+		if (entryName)
+			snprintf(entryName, entryNameCount * sizeof(::Assets::ResChar), "%s[%s] (%s)", res._entryPoint, definesTable.c_str(), res._shaderModel);
+		return entryId;
     }
 
     std::shared_ptr<::Assets::IArtifact> LocalCompiledShaderSource::Marker::GetExistingAsset() const
@@ -291,8 +294,8 @@ namespace RenderCore { namespace Assets
 		if (XlEqString(_res._filename, "null"))
 			return std::make_shared<::Assets::BlobArtifact>(nullptr, std::make_shared<::Assets::DependencyValidation>());
 
-        ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
-        auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName));
+        ::Assets::ResChar archiveName[MaxPath], depName[MaxPath], entryName[4096];
+        auto archiveId = GetTarget(_res, _definesTable, archiveName, dimof(archiveName), depName, dimof(depName), entryName, dimof(entryName));
 
         return std::make_shared<ArchivedFileArtifact>(
 			c->_shaderCacheSet->GetArchive(archiveName, *_store), archiveId, 
@@ -370,11 +373,12 @@ namespace RenderCore { namespace Assets
 
                 // before we can finish the "complete" step, we need to commit
                 // to archive output
-            ::Assets::ResChar archiveName[MaxPath], depName[MaxPath];
+            ::Assets::ResChar archiveName[MaxPath], depName[MaxPath], entryName[4096];
             auto archiveId = GetTarget(
                 resId, definesTable,
                 archiveName, dimof(archiveName),
-                depName, dimof(depName));
+                depName, dimof(depName),
+				entryName, dimof(entryName));
             auto archive = c->_shaderCacheSet->GetArchive(archiveName, *store);
 
 			// payload will be empty on compile error, so don't write it out
@@ -389,25 +393,13 @@ namespace RenderCore { namespace Assets
 				auto baseDirAsString = MakeFileNameSplitter(resId._filename).DriveAndPath().AsString();
 				auto depNameAsString = std::string(depName);
 
-				#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-						//  When we have archive attachments enabled, we can write
-						//  some information to help identify this shader object
-						//  We'll start with something to define the object...
-					std::stringstream builder;
-					builder
-						<< "[" << resId._filename
-						<< ":" << resId._entryPoint
-						<< ":" << resId._shaderModel
-						<< "] [" << definesTable << "]";
-					auto archiveCacheAttachment = builder.str();
-				#endif
-
 				archive->Commit(
 					archiveId, payload,
 					#if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-						(archiveCacheAttachment + " [" + metricsString + "]"),
+						entryName,
+						metricsString,
 					#else
-						std::string(),
+						{}, {},
 					#endif
 
 							// on flush, we need to write out the dependencies file
@@ -419,7 +411,6 @@ namespace RenderCore { namespace Assets
 					{ store->WriteDependencies(
 						depNameAsString.c_str(), StringSection<::Assets::ResChar>(baseDirAsString),
 						MakeIteratorRange(depsAsVector), false); });
-				(void)archiveCacheAttachment;
 			}
 
                 // Commit errors to disk if enabled

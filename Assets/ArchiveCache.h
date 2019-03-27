@@ -27,15 +27,18 @@ namespace Assets
     public:
         using BlockAndSize = ::Assets::Blob;
 
-        void            Commit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush);
-        BlockAndSize    TryOpenFromCache(uint64 id);
-        bool            HasItem(uint64 id) const;
+        void            Commit(
+			uint64_t id, const BlockAndSize& data, 
+			const std::string& attachedStringName, const std::string& attachedString, 
+			std::function<void()>&& onFlush);
+        BlockAndSize    TryOpenFromCache(uint64_t id);
+        bool            HasItem(uint64_t id) const;
         void            FlushToDisk();
         
         class BlockMetrics
         {
         public:
-            uint64 _id;
+            uint64_t _id;
             unsigned _offset, _size;
             std::string _attachedString;
         };
@@ -63,17 +66,18 @@ namespace Assets
         class PendingCommit
         {
         public:
-            uint64          _id = 0;
+            uint64_t          _id = 0;
             BlockAndSize    _data;
             unsigned        _pendingCommitPtr = 0;      // (only used during FlushToDisk)
             std::function<void()> _onFlush;
 
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
+				std::string		_attachedStringName;
                 std::string     _attachedString;    // used for appending debugging/profiling information. user defined format
             #endif
 
             PendingCommit() {}
-            PendingCommit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush);
+            PendingCommit(uint64_t id, const BlockAndSize& data, const std::string& attachedStringName, const std::string& attachedString, std::function<void()>&& onFlush);
             PendingCommit(PendingCommit&& moveFrom);
             PendingCommit& operator=(PendingCommit&& moveFrom);
 
@@ -92,8 +96,8 @@ namespace Assets
         class ComparePendingCommit
         {
         public:
-            bool operator()(const PendingCommit& lhs, uint64 rhs) { return lhs._id < rhs; }
-            bool operator()(uint64 lhs, const PendingCommit& rhs) { return lhs < rhs._id; }
+            bool operator()(const PendingCommit& lhs, uint64_t rhs) { return lhs._id < rhs; }
+            bool operator()(uint64_t lhs, const PendingCommit& rhs) { return lhs < rhs._id; }
             bool operator()(const PendingCommit& lhs, const PendingCommit& rhs) { return lhs._id < rhs._id; }
         };
 

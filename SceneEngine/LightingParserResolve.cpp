@@ -242,9 +242,9 @@ namespace SceneEngine
     class LightResolveResourcesRes
     {
     public:
-        unsigned    _skyTextureProjection;
-        bool        _hasDiffuseIBL;
-        bool        _hasSpecularIBL;
+        unsigned    _skyTextureProjection = 0;
+        bool        _hasDiffuseIBL = false;
+        bool        _hasSpecularIBL = false;
     };
 
     LightResolveResourcesRes LightingParser_BindLightResolveResources( 
@@ -256,7 +256,7 @@ namespace SceneEngine
             // these are needed in both deferred and forward shading modes... But they are
             // bound at different times in different modes
 
-        LightResolveResourcesRes result = { 0, false };
+        LightResolveResourcesRes result;
 
         CATCH_ASSETS_BEGIN
             const auto& globalDesc = delegate.GetGlobalLightingDesc();

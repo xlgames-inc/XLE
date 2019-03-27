@@ -10,6 +10,8 @@
 #include "../ConsoleRig/Log.h"
 #include "../Utility/Streams/FileUtils.h"
 #include "../Utility/Streams/PathUtils.h"
+#include "../Utility/Streams/StreamFormatter.h"
+#include "../Utility/Streams/Stream.h"
 #include "../Utility/PtrUtils.h"
 #include "../Utility/HeapUtils.h"
 #include "../Utility/MemoryUtils.h"
@@ -19,13 +21,13 @@
 #pragma GCC diagnostic ignored "-Wmultichar"
 namespace Assets
 {
-    static const uint64 ChunkType_ArchiveDirectory = ConstHash64<'Arch', 'ive', 'Dir'>::Value;
-    static const uint64 ChunkType_ArchiveAttachments = ConstHash64<'Arch', 'ive', 'Attc'>::Value;
+    static const uint64_t ChunkType_ArchiveDirectory = ConstHash64<'Arch', 'ive', 'Dir'>::Value;
+    static const uint64_t ChunkType_ArchiveAttachments = ConstHash64<'Arch', 'ive', 'Attc'>::Value;
 
     class ArchiveDirectoryBlock 
     {
     public:
-        uint64 _id;
+        uint64_t _id;
         unsigned _start, _size;
     };
     
@@ -41,8 +43,8 @@ namespace Assets
         class CompareBlock
         {
         public:
-            bool operator()(const ArchiveDirectoryBlock& lhs, uint64 rhs) { return lhs._id < rhs; }
-            bool operator()(uint64 lhs, const ArchiveDirectoryBlock& rhs) { return lhs < rhs._id; }
+            bool operator()(const ArchiveDirectoryBlock& lhs, uint64_t rhs) { return lhs._id < rhs; }
+            bool operator()(uint64_t lhs, const ArchiveDirectoryBlock& rhs) { return lhs < rhs._id; }
             bool operator()(const ArchiveDirectoryBlock& lhs, const ArchiveDirectoryBlock& rhs) { return lhs._id < rhs._id; }
         };
     };
@@ -53,7 +55,7 @@ namespace Assets
         class Block
         {
         public:
-            uint64 _id;
+            uint64_t _id;
             unsigned _start, _size;
         };
         unsigned _blockCount;
@@ -63,8 +65,8 @@ namespace Assets
         class CompareBlock
         {
         public:
-            bool operator()(const Block& lhs, uint64 rhs) { return lhs._id < rhs; }
-            bool operator()(uint64 lhs, const Block& rhs) { return lhs < rhs._id; }
+            bool operator()(const Block& lhs, uint64_t rhs) { return lhs._id < rhs; }
+            bool operator()(uint64_t lhs, const Block& rhs) { return lhs < rhs._id; }
             bool operator()(const Block& lhs, const Block& rhs) { return lhs._id < rhs._id; }
         };
     };
@@ -77,6 +79,7 @@ namespace Assets
         _data = std::move(moveFrom._data);
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
             _attachedString = std::move(moveFrom._attachedString);
+			_attachedStringName = std::move(moveFrom._attachedStringName);
         #endif
     }
 
@@ -87,22 +90,27 @@ namespace Assets
         _data = std::move(moveFrom._data);
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
             _attachedString = std::move(moveFrom._attachedString);
+			_attachedStringName = std::move(moveFrom._attachedStringName);
         #endif
         _onFlush = std::move(moveFrom._onFlush);
         return *this;
     }
 
-    ArchiveCache::PendingCommit::PendingCommit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush)
+    ArchiveCache::PendingCommit::PendingCommit(uint64_t id, const BlockAndSize& data, const std::string& attachedStringName, const std::string& attachedString, std::function<void()>&& onFlush)
         : _id(id)
         , _onFlush(std::forward<std::function<void()>>(onFlush))
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
             , _attachedString(attachedString)
+			, _attachedStringName(attachedStringName)
         #endif
     {
         _data = std::move(data);
     }
 
-    void ArchiveCache::Commit(uint64 id, const BlockAndSize& data, const std::string& attachedString, std::function<void()>&& onFlush)
+    void ArchiveCache::Commit(
+		uint64_t id, const BlockAndSize& data, 
+		const std::string& attachedStringName, const std::string& attachedString, 
+		std::function<void()>&& onFlush)
     {
             // for for an existing pending commit, and replace it if it exists
         ScopedLock(_pendingBlocksLock);
@@ -111,10 +119,11 @@ namespace Assets
             i->_data = data;
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
                 i->_attachedString = attachedString;
+				i->_attachedStringName = attachedStringName;
             #endif
             i->_onFlush = std::forward<std::function<void()>>(onFlush);
         } else {
-            _pendingBlocks.insert(i, PendingCommit(id, data, attachedString, std::forward<std::function<void()>>(onFlush)));
+            _pendingBlocks.insert(i, PendingCommit(id, data, attachedStringName, attachedString, std::forward<std::function<void()>>(onFlush)));
         }
     }
 
@@ -151,7 +160,7 @@ namespace Assets
         return &_cachedBlockList;
     }
 
-    auto ArchiveCache::TryOpenFromCache(uint64 id) -> BlockAndSize
+    auto ArchiveCache::TryOpenFromCache(uint64_t id) -> BlockAndSize
     {
             // first, check our pending commits
             // if it's not there, we have to lock and open the file
@@ -187,7 +196,7 @@ namespace Assets
         return nullptr;     // this block doesn't exist in the cache
     }
     
-    bool ArchiveCache::HasItem(uint64 id) const
+    bool ArchiveCache::HasItem(uint64_t id) const
     {
         ScopedLock(_pendingBlocksLock);
         auto i = std::lower_bound(_pendingBlocks.begin(), _pendingBlocks.end(), id, ComparePendingCommit());
@@ -203,6 +212,26 @@ namespace Assets
             return false;
         } CATCH_END
     }
+
+	static std::vector<std::pair<std::string, std::string>> TryParseStringTable(IteratorRange<const void*> data)
+	{
+		std::vector<std::pair<std::string, std::string>> result;
+		InputStreamFormatter<char> formatter(data);
+
+		for (;;) {
+			auto next = formatter.PeekNext();
+			if (next == InputStreamFormatter<char>::Blob::AttributeName) {
+				StringSection<> name, value;
+				if (!formatter.TryAttribute(name, value))
+					break;
+				result.push_back({name.AsString(), value.AsString()});
+			} else {
+				break;	// break on any error
+			}
+		}
+
+		return result;
+	}
 
     void ArchiveCache::FlushToDisk()
     {
@@ -373,65 +402,32 @@ namespace Assets
 				XlCopyString(debugFilename, _mainFileName);
 				XlCatString(debugFilename, u(".debug"));
                     
-                std::vector<std::pair<uint64, std::string>> attachedStrings;
-
                 // try to open an existing file -- but if there are any errors, we can just discard the
                 // old contents
-                std::unique_ptr<IFileInterface> debugFile2;
-                if (MainFileSystem::TryOpen(debugFile2, debugFilename, "rb") == MainFileSystem::IOReason::Success) {
-                    auto chunkTable = LoadChunkTable(*debugFile2);
-                    auto chunk = FindChunk(debugFilename, chunkTable, ChunkType_ArchiveAttachments, 0);
-
-                    AttachedStringChunk hdr;
-                    debugFile2->Seek(chunk._fileOffset);
-                    debugFile2->Read(&hdr, sizeof(hdr), 1);
-
-                    std::vector<AttachedStringChunk::Block> attachedBlocks;
-                    attachedStrings.resize(hdr._blockCount);
-                    debugFile2->Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), hdr._blockCount);
-                    auto startPt = debugFile2->TellP();
-                    for (auto b=attachedBlocks.cbegin(); b!=attachedBlocks.cend(); ++b) {
-                        debugFile2->Seek(startPt + b->_start);
-                        std::string t; t.resize(b->_size);
-                        debugFile2->Read(AsPointer(t.begin()), 1, b->_size);
-                        attachedStrings.push_back(std::make_pair(b->_id, t));
-                    }
-                }
+				size_t existingFileSize = 0;
+                auto existingFile = ::Assets::TryLoadFileAsMemoryBlock((const char*)debugFilename, &existingFileSize);
+				auto attachedStrings = TryParseStringTable(MakeIteratorRange(existingFile.get(), PtrAdd(existingFile.get(), existingFileSize)));
 
                         // merge in the new strings
                 for (auto i=_pendingBlocks.begin(); i!=_pendingBlocks.end(); ++i) {
-                    auto c = LowerBound(attachedStrings, i->_id);
-                    if (c!=attachedStrings.end() && c->first == i->_id) {
+                    auto c = LowerBound(attachedStrings, i->_attachedStringName);
+                    if (c!=attachedStrings.end() && c->first == i->_attachedStringName) {
                         c->second = i->_attachedString;
                     } else {
-                        attachedStrings.insert(c, std::make_pair(i->_id, i->_attachedString));
+                        attachedStrings.insert(c, std::make_pair(i->_attachedStringName, i->_attachedString));
                     }
                 }
 
                         // write the new debugging file
                 TRY {
-                    SimpleChunkFileWriter debugFile(
-						MainFileSystem::OpenBasicFile(debugFilename, "wb", 0),
-						1, _buildVersionString, _buildDateString);
-                    debugFile.BeginChunk(ChunkType_ArchiveAttachments, 0, "ArchiveAttachments");
-
-                    AttachedStringChunk hdr;
-                    hdr._blockCount = (unsigned)attachedStrings.size();
-                    debugFile.Write(&hdr, sizeof(AttachedStringChunk), 1);
-
-                    unsigned offset = 0;
-                    for (auto b=attachedStrings.cbegin(); b!=attachedStrings.cend(); ++b) {
-                        AttachedStringChunk::Block block;
-                        block._id = b->first;
-                        block._start = offset;
-                        block._size = (unsigned)b->second.size();
-                        offset += block._size;
-                        debugFile.Write(&block, sizeof(block), 1);
-                    }
-
-                    for (auto b=attachedStrings.cbegin(); b!=attachedStrings.cend(); ++b) {
-                        debugFile.Write(AsPointer(b->second.begin()), sizeof(std::string::value_type), b->second.size());
-                    }
+					auto outputFile = OpenFileOutput((const char*)debugFilename, "wb");
+					if (outputFile) {
+						OutputStreamFormatter formatter(*outputFile);
+						for (const auto&i:attachedStrings)
+							formatter.WriteAttribute(
+								AsPointer(i.first.begin()), AsPointer(i.first.end()), 
+								AsPointer(i.second.begin()), AsPointer(i.second.end()));
+					}
                 } CATCH (...) {
                 } CATCH_END
             }
@@ -469,25 +465,16 @@ namespace Assets
 
         ////////////////////////////////////////////////////////////////////////////////////
         #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-            std::vector<AttachedStringChunk::Block> attachedBlocks;
-            std::unique_ptr<IFileInterface> debugFile;
-            unsigned debugFileStartPoint = 0;
+            std::vector<std::pair<std::string, std::string>> attachedStrings;
             TRY {
                 utf8 debugFilename[MaxPath];
 				XlCopyString(debugFilename, _mainFileName.c_str());
 				XlCatString(debugFilename, u(".debug"));
-                debugFile = MainFileSystem::OpenFileInterface(debugFilename, "rb");
 
-                auto chunkTable = LoadChunkTable(*debugFile);
-                auto chunk = FindChunk(_directoryFileName.c_str(), chunkTable, ChunkType_ArchiveAttachments, 0);
-
-                debugFile->Seek(chunk._fileOffset);
-                AttachedStringChunk dirHdr;
-                debugFile->Read(&dirHdr, sizeof(dirHdr), 1);
-
-                attachedBlocks.resize(dirHdr._blockCount);
-                debugFile->Read(AsPointer(attachedBlocks.begin()), sizeof(AttachedStringChunk::Block), dirHdr._blockCount);
-                debugFileStartPoint = (unsigned)debugFile->TellP();
+                size_t debugFileSize = 0;
+				auto debugFile = ::Assets::TryLoadFileAsMemoryBlock((char*)debugFilename, &debugFileSize);
+				if (debugFile)
+					attachedStrings = TryParseStringTable({debugFile.get(), PtrAdd(debugFile.get(), debugFileSize)});
             } CATCH (...) {
             } CATCH_END
         #endif
@@ -502,18 +489,13 @@ namespace Assets
             metrics._size = b->_size;
 
             #if defined(ARCHIVE_CACHE_ATTACHED_STRINGS)
-                auto s = std::lower_bound(attachedBlocks.cbegin(), attachedBlocks.cend(), 
-                    b->_id, AttachedStringChunk::CompareBlock());
-                if (s != attachedBlocks.cend() && s->_id == b->_id) {
-                    TRY {
-                        std::string t;
-                        t.resize(s->_size);
-                        debugFile->Seek(s->_start + debugFileStartPoint);
-                        debugFile->Read(AsPointer(t.begin()), 1, s->_size);
-                        metrics._attachedString = t;
-                    } CATCH (...) {
-                    } CATCH_END
-                }
+                auto s = std::find_if(
+					attachedStrings.cbegin(), attachedStrings.cend(), 
+					[b](const std::pair<std::string, std::string>& v) {
+						return Hash64(v.first, b->_id);
+					});
+                if (s != attachedStrings.cend())
+                    metrics._attachedString = s->second;
             #endif
 
             blocks.push_back(metrics);

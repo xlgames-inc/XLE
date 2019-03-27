@@ -50,6 +50,10 @@
     #define BIND_NUMERIC_T3 : register(t36)
     #define BIND_NUMERIC_T4 : register(t37)
     #define BIND_NUMERIC_T5 : register(t38)
+    #define BIND_NUMERIC_T6 : register(t39)
+    #define BIND_NUMERIC_T7 : register(t40)
+    #define BIND_NUMERIC_T8 : register(t41)
+    #define BIND_NUMERIC_T9 : register(t42)
 #else
     #define BIND_NUMERIC_T0 : register(t0)
     #define BIND_NUMERIC_T1 : register(t1)
@@ -57,6 +61,10 @@
     #define BIND_NUMERIC_T3 : register(t3)
     #define BIND_NUMERIC_T4 : register(t4)
     #define BIND_NUMERIC_T5 : register(t5)
+    #define BIND_NUMERIC_T6 : register(t6)
+    #define BIND_NUMERIC_T7 : register(t7)
+    #define BIND_NUMERIC_T8 : register(t8)
+    #define BIND_NUMERIC_T9 : register(t9)
 #endif
 
 #define BIND_SEQ_T0 : register(t10)
@@ -104,13 +112,13 @@
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-#define UAV_DYNAMIC_0 : register(u0)
-#define UAV_DYNAMIC_1 : register(u1)
-#define UAV_DYNAMIC_2 : register(u2)
-#define UAV_DYNAMIC_3 : register(u3)
-#define UAV_DYNAMIC_4 : register(u4)
-#define UAV_DYNAMIC_5 : register(u5)
-#define UAV_DYNAMIC_6 : register(u6)
-#define UAV_DYNAMIC_7 : register(u7)
+#define UAV_NUMERIC_IMAGE_0 : register(u0)
+#define UAV_NUMERIC_IMAGE_1 : register(u1)
+#define UAV_NUMERIC_IMAGE_2 : register(u2)
+#define UAV_NUMERIC_IMAGE_3 : register(u3)
+#define UAV_NUMERIC_BUFFER_4 : register(u4)     //For compatibility with Vulkan only use these with RWStructuredBuffer, StructureBuffer, etc, anything that get bound to a buffer type 
+#define UAV_NUMERIC_BUFFER_5 : register(u5)
+#define UAV_NUMERIC_BUFFER_6 : register(u6)
+#define UAV_NUMERIC_BUFFER_7 : register(u7)
 
 #endif

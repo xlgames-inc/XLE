@@ -18,7 +18,7 @@ attributes visualNode4(PreviewGeometry:"plane2d", X:"526.3383", Y:"446.5829", St
 attributes visualNode5(PreviewGeometry:"plane2d", X:"-366", Y:"633", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:ps_main_test>>--(
 <?xml version="1.0" encoding="utf-8"?>
-<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/ShaderPatcherLayer">
+<NodeGraphMetaData xmlns:i="http://www.w3.org/2001/XMLSchema-instance" xmlns="http://schemas.datacontract.org/2004/07/GUILayer">
 	<HasTechniqueConfig>false</HasTechniqueConfig>
 	<ShaderParameters xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />
 	<Variables xmlns:d2p1="http://schemas.microsoft.com/2003/10/Serialization/Arrays" />

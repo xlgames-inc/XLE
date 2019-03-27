@@ -117,8 +117,6 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->ClearUnorderedAccessViewFloat(unorderedAccess.GetUnderlying(), values._values);
     }
 
-    template<> void DeviceContext::Unbind<ComputeShader>()	{ _underlying->CSSetShader(nullptr, nullptr, 0); }
-
     void DeviceContext::UnbindInputLayout()
     {
         _underlying->IASetInputLayout(nullptr);
@@ -128,16 +126,12 @@ namespace RenderCore { namespace Metal_DX11
         _underlying->IASetVertexBuffers(0, 1, &vb, &strides, &offsets);
     }
 
-    template<> void DeviceContext::Unbind<RenderTargetView>()
-    {
-        _underlying->OMSetRenderTargets(0, nullptr, nullptr);
-    }
-
     void DeviceContext::UnbindVS() { _underlying->VSSetShader(nullptr, nullptr, 0); }
     void DeviceContext::UnbindPS() { _underlying->PSSetShader(nullptr, nullptr, 0); }
     void DeviceContext::UnbindGS() { _underlying->GSSetShader(nullptr, nullptr, 0); }
 	void DeviceContext::UnbindHS() { _underlying->HSSetShader(nullptr, nullptr, 0); }
 	void DeviceContext::UnbindDS() { _underlying->DSSetShader(nullptr, nullptr, 0); }
+	void DeviceContext::UnbindCS() { _underlying->CSSetShader(nullptr, nullptr, 0); }
 
     void DeviceContext::Dispatch(unsigned countX, unsigned countY, unsigned countZ)
     {

@@ -90,6 +90,7 @@
     <ClCompile Include="..\Vulkan\DeviceVulkan.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Buffer.cpp" />
     <ClCompile Include="..\Vulkan\Metal\CompiledShaderByteCode.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\DescriptorSet.cpp" />
     <ClCompile Include="..\Vulkan\Metal\DeviceContext.cpp" />
     <ClCompile Include="..\Vulkan\Metal\Format.cpp" />
     <ClCompile Include="..\Vulkan\Metal\FrameBuffer.cpp" />
@@ -109,6 +110,7 @@
     <ClInclude Include="..\Vulkan\Device.h" />
     <ClInclude Include="..\Vulkan\IDeviceVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\Buffer.h" />
+    <ClInclude Include="..\Vulkan\Metal\DescriptorSet.h" />
     <ClInclude Include="..\Vulkan\Metal\DeviceContext.h" />
     <ClInclude Include="..\Vulkan\Metal\DeviceContextImpl.h" />
     <ClInclude Include="..\Vulkan\Metal\Format.h" />

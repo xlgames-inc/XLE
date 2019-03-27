@@ -153,42 +153,13 @@ namespace RenderCore { namespace Metal_DX11
         // For compatibility with Vulkan, it makes sense to unbind render targets here. This is important
         // if the render targets will be used as compute shader outputs in follow up steps. It also prevents
         // rendering outside of render passes. But sometimes it will produce redundant calls to OMSetRenderTargets().
-        context.Unbind<RenderTargetView>();
+		context.GetUnderlying()->OMSetRenderTargets(0, nullptr, nullptr);
     }
 
 	unsigned GetCurrentSubpassIndex(DeviceContext& context)
 	{
 		return s_nextSubpass-1;
-	}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class FrameBufferPool::Pimpl 
-    {
-    public:
-    };
-
-    std::shared_ptr<FrameBuffer> FrameBufferPool::BuildFrameBuffer(
-		ObjectFactory& factory,
-		const FrameBufferDesc& desc,
-        const FrameBufferProperties& props,
-        const INamedAttachments& namedResources,
-        uint64 hashName)
-    {
-        return std::make_shared<FrameBuffer>(factory, desc, namedResources);
-    }
-
-    FrameBufferPool::FrameBufferPool()
-    {
-        _pimpl = std::make_unique<Pimpl>();
-    }
-
-    FrameBufferPool::~FrameBufferPool()
-    {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-	
+	}	
 
 }}
 

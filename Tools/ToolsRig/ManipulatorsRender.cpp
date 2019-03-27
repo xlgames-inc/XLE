@@ -15,6 +15,7 @@
 #include "../../RenderCore/Metal/State.h"
 #include "../../RenderCore/Metal/Shader.h"
 #include "../../RenderCore/Metal/TextureView.h"
+#include "../../RenderCore/Metal/ObjectFactory.h"
 #include "../../RenderCore/Techniques/DeferredShaderResource.h"
 #include "../../RenderCore/Techniques/ParsingContext.h"
 #include "../../RenderCore/Techniques/Techniques.h"
@@ -156,7 +157,7 @@ namespace ToolsRig
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Topology::TriangleStrip);
-            metalContext.GetUnderlying()->IASetInputLayout(nullptr);
+			metalContext.UnbindInputLayout();
 
                 // note --  this will render a full screen quad. we could render cylinder geometry instead,
                 //          because this decal only affects the area within a cylinder. But it's just for
@@ -237,7 +238,9 @@ namespace ToolsRig
             metalContext.Bind(Techniques::CommonResources()._blendAlphaPremultiplied);
             metalContext.Bind(Techniques::CommonResources()._dssDisable);
             metalContext.Bind(Topology::TriangleStrip);
-            metalContext.GetUnderlying()->IASetInputLayout(nullptr);
+			#if GFXAPI_ACTIVE == GFXAPI_DX11
+				metalContext.GetUnderlying()->IASetInputLayout(nullptr);
+			#endif
 
                 // note --  this will render a full screen quad. we could render cylinder geometry instead,
                 //          because this decal only affects the area within a cylinder. But it's just for

@@ -11,7 +11,8 @@
     <AssemblyName>ControlsLibrary</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
-    <TargetFrameworkProfile>Client</TargetFrameworkProfile>
+    <TargetFrameworkProfile>
+    </TargetFrameworkProfile>
   </PropertyGroup>
   <PropertyGroup Condition="'$(Configuration)|$(Platform)' == 'Debug|x64'">
     <DebugSymbols>true</DebugSymbols>
@@ -145,7 +146,6 @@
     <Compile Include="ModifiedAssetsDialog.Designer.cs">
       <DependentUpon>ModifiedAssetsDialog.cs</DependentUpon>
     </Compile>
-    <Compile Include="ShaderTree\ShaderFragmentArchiveModel.cs" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="BasicControls\ExceptionReport.resx">
@@ -178,6 +178,7 @@
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
+      <SubType>Designer</SubType>
     </EmbeddedResource>
     <EmbeddedResource Include="ModifiedAssetsDialog.resx">
       <DependentUpon>ModifiedAssetsDialog.cs</DependentUpon>
@@ -192,31 +193,6 @@
       <Project>{e1e9a4c1-97a8-44b7-8279-d287313c5b6b}</Project>
       <Name>GUILayer</Name>
     </ProjectReference>
-    <ProjectReference Include="..\ShaderFragmentArchive\Project\ShaderFragmentArchive.vcxproj">
-      <Project>{39ea3939-2098-42cf-8f3a-e3d13bdb546b}</Project>
-      <Name>ShaderFragmentArchive</Name>
-    </ProjectReference>
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_circle.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_hexagon.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_oval.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_paper.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_roundedrect.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_square.png" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Include="Resources\icon_triangle.png" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 

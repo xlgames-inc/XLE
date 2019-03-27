@@ -96,6 +96,9 @@ namespace GUILayer
         _renderAssetsServices = ConsoleRig::MakeAttachablePtr<RenderCore::Assets::Services>(_renderDevice);
 		_divAssets = std::make_unique<ToolsRig::DivergentAssetManager>();
         _creationThreadId = System::Threading::Thread::CurrentThread->ManagedThreadId;
+
+		// hack for plugin startup -- need to find the resources for the plugin:
+		::Assets::MainFileSystem::GetMountingTree()->Mount(u("res"), ::Assets::CreateFileSystem_OS(u("C:/code/XLEExt/res")));
 		::ConsoleRig::GlobalServices::GetInstance().LoadDefaultPlugins();
 
 		TimerMessageFilter^ messageFilter = gcnew TimerMessageFilter();

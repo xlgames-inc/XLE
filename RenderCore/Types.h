@@ -282,5 +282,7 @@ namespace RenderCore
         Max
     };
 
+	const char* AsString(ShaderStage);
+
 }
 

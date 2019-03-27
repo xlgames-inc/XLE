@@ -18,6 +18,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class BoundClassInterfaces;
 	class DeviceContext;
+	class GraphicsPipelineBuilder;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -31,22 +32,28 @@ namespace RenderCore { namespace Metal_Vulkan
         ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
-						const CompiledShaderByteCode& ps);
+						const CompiledShaderByteCode& ps,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram(	ObjectFactory& factory, 
 						const CompiledShaderByteCode& vs,
 						const CompiledShaderByteCode& gs,
 						const CompiledShaderByteCode& ps,
 						const CompiledShaderByteCode& hs,
-						const CompiledShaderByteCode& ds);
+						const CompiledShaderByteCode& ds,
+						StreamOutputInitializers so = {});
 
 		ShaderProgram();
         ~ShaderProgram();
 
 		const CompiledShaderByteCode&			GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
 		const VulkanSharedPtr<VkShaderModule>&	GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
+		static const unsigned s_maxShaderStages = 5;
 
         bool DynamicLinkingEnabled() const;
+
+		void Apply(GraphicsPipelineBuilder& pipeline) const;
+		void Apply(GraphicsPipelineBuilder& pipeline, const BoundClassInterfaces&) const;
 
 		const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const { return _validationCallback; }
 
@@ -77,8 +84,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> definesTable);
 
     protected:
-		CompiledShaderByteCode _compiledCode[ShaderStage::Max];
-		VulkanSharedPtr<VkShaderModule> _modules[ShaderStage::Max];
+		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
+		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
 
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
@@ -91,12 +98,19 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
 		const VulkanSharedPtr<VkShaderModule>&	GetModule() const { return _module; }
+		const CompiledShaderByteCode& GetCompiledShaderByteCode() const { return _compiledCode; }
 
         ComputeShader(ObjectFactory& factory, const CompiledShaderByteCode& byteCode);
         ComputeShader();
         ~ComputeShader();
 
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
+
+		// Legacy asset based API --
+		static void ConstructToFuture(
+			::Assets::AssetFuture<ComputeShader>&,
+			StringSection<::Assets::ResChar> codeName,
+			StringSection<::Assets::ResChar> definesTable = {});
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;

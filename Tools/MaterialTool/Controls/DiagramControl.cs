@@ -147,7 +147,8 @@ namespace MaterialTool.Controls
         {
             var p = GetNodePreviewContext(sender);
             var graphContext = ContextAs<DiagramEditingContext>();
-            var shader = graphContext.Document.NodeGraphFile.GeneratePreviewShader(
+            var shader = GUILayer.ShaderGeneratorLayer.GeneratePreviewShader(
+                graphContext.Document.NodeGraphFile,
                 p.SubGraph, p.NodeId, p.PreviewSettings,
                 graphContext.Document.GraphMetaData.Variables);
 
@@ -497,7 +498,7 @@ namespace MaterialTool.Controls
         public class NodePreviewContext
         {
             public uint NodeId { get; set; }
-            public ShaderPatcherLayer.PreviewSettings PreviewSettings { get; set; }
+            public GUILayer.PreviewSettings PreviewSettings { get; set; }
             public string SubGraph { get; set; }
         }
 
@@ -601,7 +602,7 @@ namespace MaterialTool.Controls
                 var result = dialog.ShowDialog();
                 if (result == DialogResult.OK)
                 {
-                    var node = _nodeFactory.CreateCapturesNode(dialog.InputText, Enumerable.Empty<ShaderPatcherLayer.NodeGraphSignature.Parameter>());
+                    var node = _nodeFactory.CreateCapturesNode(dialog.InputText, Enumerable.Empty<GUILayer.NodeGraphSignature.Parameter>());
                     node.SubGraphTag = subgraph.SubGraphTag;
                     ViewModel.AddNode(node);
                 }

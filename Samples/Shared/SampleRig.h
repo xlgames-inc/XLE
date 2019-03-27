@@ -38,5 +38,5 @@ namespace Sample
 		virtual void OnStartup(const SampleGlobals& globals);
 	};
 
-	void ExecuteSample(const std::shared_ptr<ISampleOverlay>& sampleOverlay);
+	void ExecuteSample(std::shared_ptr<ISampleOverlay>&& sampleOverlay);
 }
