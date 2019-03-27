@@ -33,7 +33,7 @@ namespace RenderCore
 
     uint64_t UniformsStreamInterface::GetHash() const
     {
-        if (expect(_hash==0, false)) {
+        if (expect_evaluation(_hash==0, false)) {
             _hash = DefaultSeed64;
             // to prevent some oddities when the same hash value could be in either a CB or SRV
             // we need to include the count of the first array we look through in the hash

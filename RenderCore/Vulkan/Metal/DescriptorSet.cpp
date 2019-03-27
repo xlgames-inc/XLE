@@ -94,7 +94,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		// So sometimes a SRV will end up writing to a VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER
 		// descriptor.
 		bool wroteSomething = false;
-		if (expect(resource, 1)) {
+		if (expect_evaluation(resource, 1)) {
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				std::string description;
 				if (resource->GetResource()) {
@@ -140,7 +140,7 @@ namespace RenderCore { namespace Metal_Vulkan
     void    DescriptorSetBuilder::BindUAV(unsigned descriptorSetBindPoint, const TextureView* resource)
     {
 		bool wroteSomething = false;
-		if (expect(resource, 1)) {
+		if (expect_evaluation(resource, 1)) {
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				std::string description;
 				if (resource->GetResource()) {
