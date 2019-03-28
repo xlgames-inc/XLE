@@ -53,26 +53,9 @@
   </ImportGroup>
   <PropertyGroup Label="UserMacros" />
   <PropertyGroup />
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Antlr3TreeParser>
-      <LibDir>$(ProjectDir)..\Grammar\Tokens</LibDir>
-    </Antlr3TreeParser>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
-    <Antlr3TreeParser>
-      <OutputDirectory>$(ProjectDir)..\Grammar</OutputDirectory>
-    </Antlr3TreeParser>
-    <ClCompile />
-  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
-    </ClCompile>
-  </ItemDefinitionGroup>
-  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
-    <ClCompile />
-    <ClCompile>
-      <RuntimeLibrary>MultiThreadedDLL</RuntimeLibrary>
     </ClCompile>
   </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|x64'">
@@ -85,6 +68,16 @@
       <TreatWarningAsError>false</TreatWarningAsError>
     </ClCompile>
   </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">
+    <ClCompile>
+      <TreatWarningAsError>false</TreatWarningAsError>
+    </ClCompile>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Profile|Win32'">
+    <ClCompile>
+      <TreatWarningAsError>false</TreatWarningAsError>
+    </ClCompile>
+  </ItemDefinitionGroup>
   <ItemDefinitionGroup Condition="'$(Configuration)|$(Platform)'=='Release|Win32'">
     <ClCompile>
       <TreatWarningAsError>false</TreatWarningAsError>
@@ -92,8 +85,6 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <Antlr3ParserLexer Include="..\Grammar\Shader.g">
-      <LibDir Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">./</LibDir>
-      <OutputDirectory Condition="'$(Configuration)|$(Platform)'=='Debug|Win32'">../Grammar/</OutputDirectory>
       <FileType>Document</FileType>
     </Antlr3ParserLexer>
   </ItemGroup>

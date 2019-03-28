@@ -118,7 +118,7 @@ std::string template_t::render_tags(const std::string& tmplate,
             {
                 repl.assign(ctx.get(key)[0][key]);
             }
-            catch(int i) { repl.assign(""); }
+			catch (int i) { repl.assign(""); (void)i; }
         }
         // this is a comment
         else if (modifier == "!")
@@ -138,7 +138,7 @@ std::string template_t::render_tags(const std::string& tmplate,
             {
                 repl.assign(template_t::html_escape(ctx.get(key)[0][key]));
             }
-            catch(int i) { repl.assign(""); }
+			catch (int i) { repl.assign(""); (void)i; }
         }
 
         // replace

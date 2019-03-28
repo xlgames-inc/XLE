@@ -1,5 +1,8 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(SolutionDir)/defines.props" />
+  </ImportGroup>
   <PropertyGroup
     Condition="'$(Antlr3ParserLexerBeforeTargets)' == '' and '$(Antlr3ParserLexerAfterTargets)' == '' and '$(ConfigurationType)' != 'Makefile'">
     <Antlr3ParserLexerBeforeTargets>Midl</Antlr3ParserLexerBeforeTargets>
@@ -33,7 +36,7 @@
       <Outputs>%(OutputDirectory)%(Filename)Parser.c</Outputs>
       <ExecutionDescription>Translating to parser/lexer combination</ExecutionDescription>
       <ShowOnlyRuleProperties>false</ShowOnlyRuleProperties>
-	  <ANTLR3Jar>$(SolutionDir)/../Foreign/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
+	  <ANTLR3Jar>$(ForeignDir)/Antlr-3.4/antlr-3.4-complete.jar</ANTLR3Jar>
     </Antlr3ParserLexer>
   </ItemDefinitionGroup>
 </Project>

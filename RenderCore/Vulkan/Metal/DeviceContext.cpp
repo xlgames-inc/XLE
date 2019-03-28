@@ -544,6 +544,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				for (unsigned c=0; c<dimof(shaders); ++c)
 					shaders[c] = &GetBoundShaderProgram()->GetCompiledCode((ShaderStage)c);
 
+				#pragma warning(disable:4239) // HACK -- workaround -- nonstandard extension used : 'argument' : conversion from '_Ostr' to 'std::ostream &'
 				for (unsigned c=0; c<_graphicsDescriptors._pipelineLayout->GetDescriptorSetCount(); ++c) {
 					WriteDescriptorSet(
 						Log(Verbose),
