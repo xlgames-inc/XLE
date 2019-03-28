@@ -82,6 +82,7 @@ namespace ShaderSourceParser
 		// StructureDescription(std::cout, ast);
 
 		auto* strTree = ast->toStringTree(ast);
+		(void)strTree;
 
 		AntlrPtr<struct ANTLR3_COMMON_TREE_NODE_STREAM_struct> nodes = antlr3CommonTreeNodeStreamNewTree(ast, ANTLR3_SIZE_HINT);
 		AntlrPtr<struct ShaderTreeWalk_Ctx_struct> evalTree = ShaderTreeWalkNew(nodes);

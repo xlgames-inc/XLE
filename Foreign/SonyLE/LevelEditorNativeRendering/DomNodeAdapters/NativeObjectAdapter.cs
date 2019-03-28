@@ -264,7 +264,7 @@ namespace RenderingInterop
         {
             var length = str.Length;
             properties.Add(GameEngine.CreateInitializer(
-                propId, stream.PositionPointer,
+                propId, stream.PositionPointer, stream.PositionPointer + sizeof(char) * length,
                 typeof(char), (uint)length, true));
 
                 // copy in string data with no string formatting or changes to encoding
@@ -277,12 +277,12 @@ namespace RenderingInterop
         }
 
         unsafe private static void SetBasicProperty<T>(
-            uint propId, T obj,
+            uint propId, T obj, uint size,
             IList<PropertyInitializer> properties,
             System.IO.UnmanagedMemoryStream stream)
         {
             properties.Add(GameEngine.CreateInitializer(
-                propId, stream.PositionPointer, 
+                propId, stream.PositionPointer, stream.PositionPointer + size,
                 typeof(T), 1, false));
         }
 
@@ -326,7 +326,7 @@ namespace RenderingInterop
                     var localToWorld = trans.LocalToWorld;
                     properties.Add(
                         GameEngine.CreateInitializer(
-                            _localToWorldAttribute.PropertyId, stream.PositionPointer,
+                            _localToWorldAttribute.PropertyId, stream.PositionPointer, stream.PositionPointer + sizeof(float) * 16,
                             typeof(float), 16, false));
                     for (int c=0; c<16; ++c)
                         ((float*)stream.PositionPointer)[c] = localToWorld[c];
@@ -340,7 +340,7 @@ namespace RenderingInterop
                 if (visible != null)
                 {
                     uint d = Convert.ToUInt32(visible.Visible);
-                    SetBasicProperty(_visibleHierarchyAttribute.PropertyId, d, properties, stream);
+                    SetBasicProperty(_visibleHierarchyAttribute.PropertyId, d, sizeof(uint), properties, stream);
                     *(uint*)stream.PositionPointer = d;
                     stream.Position += sizeof(uint);
                 }
@@ -361,7 +361,7 @@ namespace RenderingInterop
                 {
                     var count = Math.Min(arrayLength, ((float[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
-                        propertyId, stream.PositionPointer,
+                        propertyId, stream.PositionPointer, stream.PositionPointer + sizeof(float)*count,
                         elmentType, (uint)count, false));
 
                     fixed (float* d = (float[])data)
@@ -373,7 +373,7 @@ namespace RenderingInterop
                 {
                     var count = Math.Min(arrayLength, ((int[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
-                        propertyId, stream.PositionPointer,
+                        propertyId, stream.PositionPointer, stream.PositionPointer + sizeof(int) * count,
                         elmentType, (uint)count, false));
 
                     fixed (int* d = (int[])data)
@@ -386,13 +386,13 @@ namespace RenderingInterop
                 {
                     var count = Math.Min(arrayLength, ((uint[])data).Length);
                     properties.Add(GameEngine.CreateInitializer(
-                        propertyId, stream.PositionPointer,
+                        propertyId, stream.PositionPointer, stream.PositionPointer + sizeof(uint) * count,
                         elmentType, (uint)count, false));
 
                     fixed (uint* d = (uint[])data)
                         for (uint c = 0; c < count; ++c)
                             ((uint*)stream.PositionPointer)[c] = d[c];
-                    stream.Position += sizeof(int) * count;
+                    stream.Position += sizeof(uint) * count;
                 }
                 else
                 {
@@ -407,67 +407,67 @@ namespace RenderingInterop
 
                 else if (clrType == typeof(bool))   {
                     uint d = Convert.ToUInt32((bool)data);
-                    SetBasicProperty(propertyId, d, properties, stream);
+                    SetBasicProperty(propertyId, d, sizeof(uint), properties, stream);
                     *(uint*)stream.PositionPointer = d;
                     stream.Position += sizeof(uint);
                 }
 
                 else if (clrType == typeof(byte))   {
-                    SetBasicProperty(propertyId, (byte)data, properties, stream);
+                    SetBasicProperty(propertyId, (byte)data, sizeof(byte), properties, stream);
                     *(byte*)stream.PositionPointer = (byte)data;
                     stream.Position += sizeof(byte);
                 }
 
                 else if (clrType == typeof(sbyte))  {
-                    SetBasicProperty(propertyId, (sbyte)data, properties, stream);
+                    SetBasicProperty(propertyId, (sbyte)data, sizeof(sbyte), properties, stream);
                     *(sbyte*)stream.PositionPointer = (sbyte)data;
                     stream.Position += sizeof(sbyte);
                 }
 
                 else if (clrType == typeof(short))  {
-                    SetBasicProperty(propertyId, (short)data, properties, stream);
+                    SetBasicProperty(propertyId, (short)data, sizeof(short), properties, stream);
                     *(short*)stream.PositionPointer = (short)data;
                     stream.Position += sizeof(short);
                 }
 
                 else if (clrType == typeof(ushort)) {
-                    SetBasicProperty(propertyId, (ushort)data, properties, stream);
+                    SetBasicProperty(propertyId, (ushort)data, sizeof(ushort), properties, stream);
                     *(ushort*)stream.PositionPointer = (ushort)data;
                     stream.Position += sizeof(ushort);
                 }
 
                 else if (clrType == typeof(int)) {
-                    SetBasicProperty(propertyId, (int)data, properties, stream);
+                    SetBasicProperty(propertyId, (int)data, sizeof(int), properties, stream);
                     *(int*)stream.PositionPointer = (int)data;
                     stream.Position += sizeof(int);
                 }
 
                 else if (clrType == typeof(uint)) {
-                    SetBasicProperty(propertyId, (uint)data, properties, stream);
+                    SetBasicProperty(propertyId, (uint)data, sizeof(uint), properties, stream);
                     *(uint*)stream.PositionPointer = (uint)data;
                     stream.Position += sizeof(uint);
                 }
 
                 else if (clrType == typeof(long)) {
-                    SetBasicProperty(propertyId, (long)data, properties, stream);
+                    SetBasicProperty(propertyId, (long)data, sizeof(long), properties, stream);
                     *(long*)stream.PositionPointer = (long)data;
                     stream.Position += sizeof(long);
                 }
 
                 else if (clrType == typeof(ulong)) {
-                    SetBasicProperty(propertyId, (ulong)data, properties, stream);
+                    SetBasicProperty(propertyId, (ulong)data, sizeof(ulong), properties, stream);
                     *(ulong*)stream.PositionPointer = (ulong)data;
                     stream.Position += sizeof(ulong);
                 }
 
                 else if (clrType == typeof(float)) {
-                    SetBasicProperty(propertyId, (float)data, properties, stream);
+                    SetBasicProperty(propertyId, (float)data, sizeof(float), properties, stream);
                     *(float*)stream.PositionPointer = (float)data;
                     stream.Position += sizeof(float);
                 }
 
                 else if (clrType == typeof(double)) {
-                    SetBasicProperty(propertyId, (double)data, properties, stream);
+                    SetBasicProperty(propertyId, (double)data, sizeof(double), properties, stream);
                     *(double*)stream.PositionPointer = (double)data;
                     stream.Position += sizeof(double);
                 }
@@ -487,7 +487,7 @@ namespace RenderingInterop
                     NativeObjectAdapter nativeGob = refNode.As<NativeObjectAdapter>();
                     if(nativeGob != null)
                     {
-                        SetBasicProperty(propertyId, (ulong)nativeGob.InstanceId, properties, stream);
+                        SetBasicProperty(propertyId, (ulong)nativeGob.InstanceId, sizeof(ulong), properties, stream);
                         *(ulong*)stream.PositionPointer = (ulong)nativeGob.InstanceId;
                         stream.Position += sizeof(ulong);
                     }

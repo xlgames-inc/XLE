@@ -7,8 +7,8 @@
 #include "NodeGraph.h"
 #include "NodeGraphSignature.h"
 #include "../Utility/StringUtils.h"
+#include "../Utility/Optional.h"
 #include <unordered_map>
-#include <optional>
 
 namespace GraphLanguage
 {
