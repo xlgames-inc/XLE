@@ -7,6 +7,9 @@
 #if (__cplusplus >= 201703L) || (defined(_MSVC_LANG) && _MSVC_LANG >= 201703L)
 	#include <optional>
 #elif __has_include(<experimental/optional>)
+    #if defined(_LIBCPP_WARN_ON_DEPRECATED_EXPERIMENTAL_HEADER)
+        #undef _LIBCPP_WARN_ON_DEPRECATED_EXPERIMENTAL_HEADER
+    #endif
     #include <experimental/optional>
     namespace std
     {
