@@ -519,7 +519,7 @@ namespace RenderCore { namespace ImplVulkan
 		// to be tracking rendering command progress -- not compute shaders!
 		// Is ALL_COMMANDS fine?
 		if (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid)
-			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 	}
 
 	void EventBasedTracker::IncrementProducerFrame()
