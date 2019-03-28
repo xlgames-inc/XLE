@@ -70,6 +70,8 @@ namespace GUILayer
         GraphLanguage::NodeGraph    ConvertToNative(ConversionContext& context);
 		static NodeGraph^			ConvertFromNative(const GraphLanguage::NodeGraph& input, const ConversionContext& context);
 
+		String^ Print(NodeGraphSignature^ signature, String^ name);
+
     private:
         List<Node^>^                        _nodes;
         List<Connection^>^					_connections;
@@ -113,6 +115,8 @@ namespace GUILayer
 
 		GraphLanguage::NodeGraphSignature	ConvertToNative(ConversionContext& context);
 		static NodeGraphSignature^			ConvertFromNative(const GraphLanguage::NodeGraphSignature& input, const ConversionContext& context);
+
+		String^ Print(String^ name);
 
 	private:
 		List<Parameter^>^				_parameters = gcnew List<Parameter^>();

@@ -98,7 +98,7 @@ namespace GUILayer
         return GraphLanguage::Node{
             CompressImportedName(clix::marshalString<clix::E_UTF8>(node->FragmentArchiveName), context), 
 			node->NodeId, ConvertToNative(node->NodeType),
-			clix::marshalString<clix::E_UTF8>(node->AttributeTableName)};
+			!String::IsNullOrEmpty(node->AttributeTableName) ? clix::marshalString<clix::E_UTF8>(node->AttributeTableName) : std::string{} };
     }
     
     static GraphLanguage::Connection        ConvertToNative(Connection^ connection)
@@ -142,7 +142,7 @@ namespace GUILayer
 		result->FragmentArchiveName = clix::marshalString<clix::E_UTF8>(ExpandImportedName(node.ArchiveName(), context));
 		result->NodeId = node.NodeId();
 		result->NodeType = ConvertFromNative(node.GetType());
-		result->AttributeTableName = clix::marshalString<clix::E_UTF8>(node.AttributeTableName());
+		result->AttributeTableName = node.AttributeTableName().empty() ? String::Empty : clix::marshalString<clix::E_UTF8>(node.AttributeTableName());
 		return result;
     }
     
@@ -165,6 +165,19 @@ namespace GUILayer
 		for (const auto& c:input.GetConnections())
 			result->AddConnection(GUILayer::ConvertFromNative(c));
 		return result;
+	}
+
+	String^ NodeGraph::Print(NodeGraphSignature^ signature, String^ name)
+	{
+		ConversionContext context;
+		auto sigNative = signature->ConvertToNative(context);
+		auto native = ConvertToNative(context);
+
+		auto nativeResult = GraphLanguage::GenerateGraphSyntax(
+			native,
+			sigNative,
+			clix::marshalString<clix::E_UTF8>(name));
+		return clix::marshalString<clix::E_UTF8>(nativeResult);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -262,6 +275,17 @@ namespace GUILayer
 		}
 		result->Implements = clix::marshalString<clix::E_UTF8>(ExpandImportedName(input.GetImplements(), context));
 		return result;
+	}
+
+	String^ NodeGraphSignature::Print(String^ name)
+	{
+		ConversionContext context;
+		auto native = ConvertToNative(context);
+
+		auto nativeResult = GraphLanguage::GenerateSignature(
+			native,
+			clix::marshalString<clix::E_UTF8>(name));
+		return clix::marshalString<clix::E_UTF8>(nativeResult);
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
