@@ -68,7 +68,7 @@ namespace RenderCore { namespace Assets
             const DeviceDesc& devDesc);
         ~LocalCompiledShaderSource();
     protected:
-        std::unique_ptr<ShaderCacheSet> _shaderCacheSet;
+        std::shared_ptr<ShaderCacheSet> _shaderCacheSet;
         std::shared_ptr<ILowLevelCompiler> _compiler;
         std::shared_ptr<ISourceCodePreprocessor> _preprocessor;
         bool _writeErrorLogFiles = false;
