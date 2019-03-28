@@ -38,18 +38,30 @@ namespace EntityInterface
         return nullptr;
     }
 
-    bool RetainedEntities::RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange)
+    unsigned RetainedEntities::RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange)
     {
         auto type = GetObjectType(typeId);
-        if (!type) return false;
-        type->_onChange.push_back(std::move(onChange));
-        return true;
+        if (!type) return ~0u;
+        type->_onChange.push_back(std::make_pair(_nextCallbackId, std::move(onChange)));
+        return _nextCallbackId++;
+    }
+
+    void RetainedEntities::DeregisterCallback(unsigned callbackId)
+    {
+        for (auto&type:_registeredObjectTypes)
+            for (auto i=type.second._onChange.begin(); i!=type.second._onChange.end();) {
+                if (i->first == callbackId) {
+                    i=type.second._onChange.erase(i);
+                } else {
+                    ++i;
+                }
+            }
     }
 
     void RetainedEntities::InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj, ChangeType changeType) const
     {
         for (auto i=type._onChange.begin(); i!=type._onChange.end(); ++i) {
-            (*i)(*this, Identifier(obj._doc, obj._id, obj._type), changeType);
+            (i->second)(*this, Identifier(obj._doc, obj._id, obj._type), changeType);
         }
 
         if ((   changeType == ChangeType::SetProperty || changeType == ChangeType::ChildSetProperty 
@@ -181,6 +193,7 @@ namespace EntityInterface
     {
         _nextObjectTypeId = 1;
         _nextObjectId = 1;
+        _nextCallbackId = 0;
     }
 
     RetainedEntities::~RetainedEntities() {}

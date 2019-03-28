@@ -75,7 +75,7 @@ namespace EntityInterface
         if (prop._prop == Property_UberSurfaceDir) {
 
             ::Assets::ResChar buffer[MaxPath];
-            ucs2_2_utf8((const ucs2*)prop._src, prop._arrayCount, (utf8*)buffer, dimof(buffer));
+            ucs2_2_utf8((const ucs2*)prop._src.begin(), prop._arrayCount, (utf8*)buffer, dimof(buffer));
             _uberSurfaceDir = buffer;
 
             if (!_uberSurfaceDir.empty())
@@ -83,7 +83,8 @@ namespace EntityInterface
             return true;
 
         } else if (prop._prop == Property_Offset) {
-            _terrainManager->SetWorldSpaceOrigin(*(const Float3*)prop._src);
+			assert(prop._src.size() >= sizeof(Float3));
+            _terrainManager->SetWorldSpaceOrigin(*(const Float3*)prop._src.begin());
             return true;
         }
 

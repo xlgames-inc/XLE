@@ -78,7 +78,8 @@ namespace EntityInterface
             std::function<
                 void(const RetainedEntities& flexSys, const Identifier&, ChangeType)
             >;
-        bool RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange);
+        unsigned RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange);
+        void DeregisterCallback(unsigned callbackId);
 
         ObjectTypeId    GetTypeId(const utf8 name[]) const;
 		PropertyId      GetPropertyId(ObjectTypeId typeId, const utf8 name[]) const;
@@ -101,13 +102,14 @@ namespace EntityInterface
             std::vector<std::basic_string<utf8>> _properties;
             std::vector<std::basic_string<utf8>> _childLists;
 
-            std::vector<OnChangeDelegate> _onChange;
+            std::vector<std::pair<unsigned, OnChangeDelegate>> _onChange;
 
             RegisteredObjectType(const std::basic_string<utf8>& name) : _name(name) {}
         };
         mutable std::vector<std::pair<ObjectTypeId, RegisteredObjectType>> _registeredObjectTypes;
 
         mutable ObjectTypeId _nextObjectTypeId;
+        unsigned _nextCallbackId;
 
         RegisteredObjectType* GetObjectType(ObjectTypeId id) const;
         void InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj, ChangeType changeType) const;

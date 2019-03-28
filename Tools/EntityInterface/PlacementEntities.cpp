@@ -63,8 +63,9 @@ namespace EntityInterface
 	{
 		VisibilityChange visChange = None;
 		for (unsigned c = 0; c < initializerCount; ++c) {
-			if (initializers[c]._prop == Property_Visible && initializers[c]._src) {
-				bool flagValue = (*(const uint8*)initializers[c]._src) != 0;
+			if (initializers[c]._prop == Property_Visible && !initializers[c]._src.empty()) {
+				assert(!initializers[c]._src.empty());
+				bool flagValue = (*(const uint8*)initializers[c]._src.begin()) != 0;
 				visChange = flagValue ? MakeVisible : MakeHidden;
 			}
 		}
@@ -79,14 +80,15 @@ namespace EntityInterface
 			// note -- putting in a transpose here, because the level editor matrix
 			//          math uses a transposed form
 			if (prop._elementType == (unsigned)ImpliedTyping::TypeCat::Float && prop._arrayCount >= 16) {
-				obj._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)prop._src));
+				assert(prop._src.size() >= sizeof(Float4x4));
+				obj._localToWorld = AsFloat3x4(Transpose(*(const Float4x4*)prop._src.begin()));
 				return true;
 			}
 		}
 		else if (prop._prop == Property_Model || prop._prop == Property_Material || prop._prop == Property_Supplements) {
 			Assets::ResChar buffer[MaxPath];
 			ucs2_2_utf8(
-				(const ucs2*)prop._src, prop._arrayCount,
+				(const ucs2*)prop._src.begin(), prop._arrayCount,
 				(utf8*)buffer, dimof(buffer));
 
 			if (prop._prop == Property_Model) {

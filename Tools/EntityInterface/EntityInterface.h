@@ -98,7 +98,7 @@ namespace EntityInterface
         virtual PropertyId GetPropertyId(ObjectTypeId type, const char name[]) const = 0;
         virtual ChildListId GetChildListId(ObjectTypeId type, const char name[]) const = 0;
 
-		virtual void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const = 0;
+		virtual void PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
         virtual ~IEntityInterface();
     };

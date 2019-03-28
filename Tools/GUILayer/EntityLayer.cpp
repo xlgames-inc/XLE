@@ -28,7 +28,7 @@ namespace GUILayer
             for each(auto i in initializers) {
                 PropertyInitializer n;
                 n._prop = i._prop;
-                n._src = i._src;
+				n._src = { i._srcBegin, i._srcEnd };
                 n._elementType = i._elementType;
                 n._arrayCount = i._arrayCount;
                 n._isString = i._isString;

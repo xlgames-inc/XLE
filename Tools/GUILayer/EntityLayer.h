@@ -32,13 +32,13 @@ namespace GUILayer
         value struct PropertyInitializer
         {
             PropertyId _prop;
-            const void* _src;
+            const void* _srcBegin, *_srcEnd;
             unsigned _elementType;
             unsigned _arrayCount;
             bool _isString;
 
-            PropertyInitializer(PropertyId prop, const void* src, unsigned elementType, unsigned arrayCount, bool isString)
-                : _prop(prop), _src(src), _elementType(elementType), _arrayCount(arrayCount), _isString(isString) {}
+            PropertyInitializer(PropertyId prop, const void* srcBegin, const void* srcEnd, unsigned elementType, unsigned arrayCount, bool isString)
+                : _prop(prop), _srcBegin(srcBegin), _srcEnd(srcEnd), _elementType(elementType), _arrayCount(arrayCount), _isString(isString) {}
         };
 
         ObjectId AssignObjectId(DocumentId doc, ObjectTypeId type);

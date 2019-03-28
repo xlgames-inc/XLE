@@ -11,6 +11,8 @@ namespace EntityInterface
 {
     IEntityInterface::~IEntityInterface() {}
 
+	void IEntityInterface::PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const {}
+
     IEntityInterface* Switch::GetInterface(
         Identifier& translatedId, 
         const Identifier& inputId) const
