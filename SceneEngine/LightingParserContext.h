@@ -33,8 +33,8 @@ namespace SceneEngine
     {
     public:
 		std::vector<std::pair<uint64_t, unsigned>> _namedTargetsMapping;
-		UInt2 _dimensions;
-		unsigned _samplingCount;
+		UInt2 _dimensions = UInt2{0,0};
+		unsigned _samplingCount = 0;
 
         using SRV = RenderCore::Metal::ShaderResourceView;
         SRV      GetSRV(RenderCore::Techniques::ParsingContext& context, uint64_t semantic, const RenderCore::TextureViewDesc& window = {}) const;

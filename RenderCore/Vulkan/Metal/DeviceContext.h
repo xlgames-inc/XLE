@@ -249,7 +249,6 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		InvalidateCachedState() {}
 		static void PrepareForDestruction(IDevice*, IPresentationChain*);
 
-        enum class PipelineType { Graphics, Compute };
 		void			BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
         DescriptorSet	AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex);
 		void			PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);

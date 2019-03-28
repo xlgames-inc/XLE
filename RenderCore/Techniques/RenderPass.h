@@ -7,6 +7,7 @@
 #pragma once
 
 #include "../ResourceDesc.h"        // needed for TextureViewDesc constructor
+#include "../Types.h"
 #include "../FrameBufferDesc.h"
 #include "../IThreadContext_Forward.h"
 #include "../Metal/Forward.h"
@@ -52,6 +53,7 @@ namespace RenderCore { namespace Techniques
         };
         std::vector<Attachment>     _attachments;
         std::vector<SubpassDesc>    _subpasses;
+		PipelineType				_pipelineType = PipelineType::Graphics;
     };
 
     FrameBufferDesc BuildFrameBufferDesc(
@@ -167,12 +169,15 @@ namespace RenderCore { namespace Techniques
             FrameBufferPool& frameBufferPool,
             AttachmentPool& attachmentPool,
             const RenderPassBeginDesc& beginInfo = RenderPassBeginDesc());
+		RenderPassInstance(
+			const FrameBufferDesc& layout,
+			AttachmentPool& attachmentPool);
 
         ~RenderPassInstance();
 
         RenderPassInstance();
-        RenderPassInstance(RenderPassInstance&& moveFrom);
-        RenderPassInstance& operator=(RenderPassInstance&& moveFrom);
+        RenderPassInstance(RenderPassInstance&& moveFrom) never_throws;
+        RenderPassInstance& operator=(RenderPassInstance&& moveFrom) never_throws;
 
     private:
         std::shared_ptr<Metal::FrameBuffer> _frameBuffer;

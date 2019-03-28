@@ -405,7 +405,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void			DeviceContext::PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data)
 	{
 		GetActiveCommandList().PushConstants(
-            GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
+            GetPipelineLayout(PipelineType::Graphics)->GetUnderlying(),
             stageFlags, 0, (uint32_t)data.size(), data.begin());
 	}
 
@@ -666,12 +666,10 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		for (auto& s:_graphicsDescriptors._descriptorSets) s = {};
         _graphicsDescriptors._hasSetsAwaitingFlush = false;
-        _graphicsDescriptors._numericBindings.Reset();
         _graphicsDescriptors._pipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
 
 		for (auto& s:_computeDescriptors._descriptorSets) s = {};
         _computeDescriptors._hasSetsAwaitingFlush = false;
-        _computeDescriptors._numericBindings.Reset();
         _computeDescriptors._pipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
 
 		// We must our descriptor sets with something, based on the root signature

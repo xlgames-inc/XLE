@@ -494,9 +494,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			// inputs and already used earlier this frame...? But that may not be worth it. It seems like it will
 			// make more sense to just create and set a full descriptor set for every call to this function.
 
-			auto pipelineType = _isComputeShader 
-				? DeviceContext::PipelineType::Compute 
-				: DeviceContext::PipelineType::Graphics;
+			auto pipelineType = _isComputeShader ? PipelineType::Compute : PipelineType::Graphics;
 
 			auto descriptorSet = context.AllocateDescriptorSet(pipelineType, streamIdx);
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)

@@ -165,59 +165,108 @@ namespace SceneEngine
 		if (renderSettings._lightingModel != RenderSceneSettings::LightingModel::Direct) {
 			if (renderSettings._lightingModel == RenderSceneSettings::LightingModel::Deferred)
 				renderSteps.push_back(std::make_shared<RenderStep_LightingResolve>(precisionTargets));
-			renderSteps.push_back(std::make_shared<RenderStep_ResolveHDR>());
+			auto resolveHDR = std::make_shared<RenderStep_ResolveHDR>();
+			renderSteps.push_back(std::make_shared<RenderStep_SampleLuminance>(resolveHDR));
+			renderSteps.push_back(resolveHDR);
 		}
 
-		std::vector<Techniques::FrameBufferDescFragment> fragments;
-		for (unsigned c=0; c<renderSteps.size(); ++c)
-			fragments.push_back(renderSteps[c]->GetInterface());
-		
-		parsingContext.GetNamedResources().Bind(RenderCore::Techniques::AttachmentSemantics::ColorLDR, renderTarget);
+		std::vector<std::pair<uint64_t, RenderCore::IResourcePtr>> workingAttachments = {
+			{ Techniques::AttachmentSemantics::ColorLDR, renderTarget }
+		};
+
 		parsingContext.GetNamedResources().Bind(
 			RenderCore::FrameBufferProperties {
 				targetTextureDesc._width, targetTextureDesc._height, 
 				TextureSamples::Create((uint8_t)renderSettings._samplingCount, (uint8_t)renderSettings._samplingQuality) } );
 
-		Techniques::PreregisteredAttachment preregistered[] = {
-			Techniques::PreregisteredAttachment {
-				Techniques::AttachmentSemantics::ColorLDR,
-				AsAttachmentDesc(renderTarget->GetDesc())
+		auto renderStepIterator = renderSteps.begin();
+		while (renderStepIterator != renderSteps.end()) {
+			std::vector<Techniques::FrameBufferDescFragment> fragments;
+			auto renderStepEnd = renderStepIterator;
+			auto& firstInterface = (*renderStepEnd)->GetInterface();
+			auto pipelineType = firstInterface._pipelineType;
+			fragments.push_back(firstInterface);
+			++renderStepEnd;
+			for (; renderStepEnd != renderSteps.end(); ++renderStepEnd) {
+				auto& interf = (*renderStepEnd)->GetInterface();
+				if (interf._pipelineType != pipelineType) break;
+				fragments.push_back(interf);
 			}
-		};
 		
-		auto merged = Techniques::MergeFragments(
-			MakeIteratorRange(preregistered),
-			MakeIteratorRange(fragments),
-			UInt2(targetTextureDesc._width, targetTextureDesc._height));
+			std::vector<Techniques::PreregisteredAttachment> preregistered;
+			preregistered.reserve(workingAttachments.size());
+			for (const auto&w:workingAttachments)	// todo -- set "initialized / uninitialized" flags correctly
+				preregistered.push_back({w.first, AsAttachmentDesc(w.second->GetDesc()), RenderCore::Techniques::PreregisteredAttachment::State::Initialized});
+			auto merged = Techniques::MergeFragments(
+				MakeIteratorRange(preregistered),
+				MakeIteratorRange(fragments),
+				UInt2(targetTextureDesc._width, targetTextureDesc._height));
+			auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
 
-		auto fbDesc = Techniques::BuildFrameBufferDesc(std::move(merged._mergedFragment));
-		Techniques::RenderPassInstance rpi(threadContext, fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources());
-		metalContext.Bind(Metal::ViewportDesc{0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height)});
+			for (const auto&w:workingAttachments)
+				parsingContext.GetNamedResources().Bind(w.first, w.second);
 
-		lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
-		lightingParserContext._mainTargets._samplingCount = 1;
-		for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c) {
-			// Remap the name via the rpi, to get the appropriate resource inside the AttachmentPool
-			auto remappedName = rpi.RemapAttachmentName(c);
-			if (remappedName != ~0u)
-				lightingParserContext._mainTargets._namedTargetsMapping.push_back(
-					{merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), remappedName});
+			Techniques::RenderPassInstance rpi;
+			if (pipelineType == PipelineType::Graphics) {
+				rpi = Techniques::RenderPassInstance { threadContext, fbDesc, parsingContext.GetFrameBufferPool(), parsingContext.GetNamedResources() };
+				metalContext.Bind(Metal::ViewportDesc { 0.f, 0.f, float(targetTextureDesc._width), float(targetTextureDesc._height) });
+			} else {
+				// construct a "non-metal" render pass instance. This just handles attachment remapping logic, but doesn't create an renderpass
+				// in the underlying graphics API
+				rpi = Techniques::RenderPassInstance { fbDesc, parsingContext.GetNamedResources() };
+			}
 
-			// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
-			if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)
-				parsingContext.GetNamedResources().Bind(
-					RenderCore::Techniques::AttachmentSemantics::MultisampleDepth,
-					rpi.GetResource(c));
+			if (0) {
+				// Legacy "MainTargets" behaviour
+				lightingParserContext._mainTargets._dimensions = UInt2{targetTextureDesc._width, targetTextureDesc._height};
+				lightingParserContext._mainTargets._samplingCount = 1;
+				for (unsigned c=0; c<merged._mergedFragment._attachments.size(); ++c) {
+					// Remap the name via the rpi, to get the appropriate resource inside the AttachmentPool
+					auto remappedName = rpi.RemapAttachmentName(c);
+					if (remappedName != ~0u)
+						lightingParserContext._mainTargets._namedTargetsMapping.push_back(
+							{merged._mergedFragment._attachments[c].GetOutputSemanticBinding(), remappedName});
+				}
+			}
+
+			for (unsigned c=0; c<std::distance(renderStepIterator, renderStepEnd); ++c) {
+				CATCH_ASSETS_BEGIN
+					Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
+					IViewDelegate* viewDelegate = nullptr;
+					if (c==0 && renderStepIterator == renderSteps.begin()) viewDelegate = executeContext.GetViewDelegates()[0].get();
+					renderStepIterator[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
+				CATCH_ASSETS_END(parsingContext)
+			}
+
+			// todo -- erase resources that are "exhausted" by this render pass -- ie, input but not output
+			/*for (const auto&w:workingAttachments)
+				parsingContext.GetNamedResources().Unbind(*w.second);*/
+
+			// workingAttachments.clear();
+			workingAttachments.reserve(merged._outputAttachments.size());
+			for (const auto&o:merged._outputAttachments) {
+				auto i = std::find_if(
+					workingAttachments.begin(), workingAttachments.end(),
+					[&o](const std::pair<uint64_t, RenderCore::IResourcePtr>& p) { return p.first == o.first; });
+				if (i != workingAttachments.end()) {
+					i->second = rpi.GetResource(o.second);
+				} else {
+					workingAttachments.push_back(std::make_pair(o.first, rpi.GetResource(o.second)));
+				}
+			}
+
+			renderStepIterator = renderStepEnd;
 		}
 
-		for (unsigned c=0; c<renderSteps.size(); ++c) {
-			CATCH_ASSETS_BEGIN
-				Techniques::RenderPassFragment rpf(rpi, merged._remapping[c]);
-				IViewDelegate* viewDelegate = nullptr;
-				if (c==0) viewDelegate = executeContext.GetViewDelegates()[0].get();
-				renderSteps[c]->Execute(threadContext, parsingContext, lightingParserContext, rpf, viewDelegate);
-			CATCH_ASSETS_END(parsingContext)
-		}
+		// Bind the final outputs
+		for (const auto&w:workingAttachments)
+			parsingContext.GetNamedResources().Bind(w.first, w.second);
+
+		// Bind depth to NamedResources(), so we can find it later with RenderPassToPresentationTargetWithDepthStencil()
+		/*if (merged._mergedFragment._attachments[c].GetOutputSemanticBinding() == Techniques::AttachmentSemantics::MultisampleDepth)
+			parsingContext.GetNamedResources().Bind(
+				RenderCore::Techniques::AttachmentSemantics::MultisampleDepth,
+				rpi.GetResource(c));*/
 
 		return lightingParserContext;
     }

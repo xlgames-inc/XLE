@@ -16,7 +16,8 @@
 	#include "../../xleres_cry/postprocess/crytonemap.h"
 #endif
 
-Texture2D	InputTexture;
+Texture2D	InputTexture BIND_MAT_T0;
+Texture2D	BloomMap BIND_MAT_T1;
 
 struct LuminanceBufferStruct
 {
@@ -24,8 +25,7 @@ struct LuminanceBufferStruct
 	float	_prevLuminance;
 };
 
-StructuredBuffer<LuminanceBufferStruct>	LuminanceBuffer;
-Texture2D	BloomMap;
+StructuredBuffer<LuminanceBufferStruct>	LuminanceBuffer BIND_MAT_T4;
 
 float4 Uncharted2Tonemap(float4 x)
 {
@@ -43,7 +43,7 @@ float4 Uncharted2Tonemap(float4 x)
 
 float3 ApplyToneMap(float3 colour)
 {
-	const float imageLuminance = LuminanceBuffer[0]._currentLuminance;
+	const float imageLuminance = max(1e-4, LuminanceBuffer[0]._currentLuminance);
 	float scale = SceneKey / imageLuminance;
 
 	const uint toneMapOperator = OPERATOR;

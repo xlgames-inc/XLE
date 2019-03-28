@@ -6,6 +6,7 @@
 
 #include "SceneParser.h"
 #include "LightDesc.h"
+#include "Tonemap.h"		// (for LuminanceResult)
 #include "../RenderCore/Techniques/Drawables.h"
 #include "../RenderCore/Techniques/RenderPass.h"
 #include <memory>
@@ -172,10 +173,31 @@ namespace SceneEngine
 			RenderCore::Techniques::RenderPassFragment& rpi,
 			IViewDelegate* viewDelegate);
 
+		void SetLuminanceResult(LuminanceResult&&);
+
 		RenderStep_ResolveHDR();
 		~RenderStep_ResolveHDR();
 	private:
 		RenderCore::Techniques::FrameBufferDescFragment _fragment;
+		LuminanceResult _luminanceResult;
+	};
+
+	class RenderStep_SampleLuminance : public IRenderStep
+	{
+	public:
+		const RenderCore::Techniques::FrameBufferDescFragment& GetInterface() const { return _fragment; }
+		void Execute(
+			RenderCore::IThreadContext& threadContext,
+			RenderCore::Techniques::ParsingContext& parsingContext,
+			LightingParserContext& lightingParserContext,
+			RenderCore::Techniques::RenderPassFragment& rpi,
+			IViewDelegate* viewDelegate);
+
+		RenderStep_SampleLuminance(const std::shared_ptr<RenderStep_ResolveHDR>& downstream);
+		~RenderStep_SampleLuminance();
+	private:
+		RenderCore::Techniques::FrameBufferDescFragment _fragment;
+		std::shared_ptr<RenderStep_ResolveHDR> _downstream;
 	};
 
 

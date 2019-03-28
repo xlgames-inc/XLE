@@ -284,5 +284,7 @@ namespace RenderCore
 
 	const char* AsString(ShaderStage);
 
+	enum class PipelineType { Graphics, Compute };
+
 }
 
