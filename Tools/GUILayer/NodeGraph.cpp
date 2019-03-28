@@ -3,7 +3,7 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "NodeGraph.h"
-#include "GUILayerUtil.h"
+#include "AssetsLayer.h"
 #include "MarshalString.h"
 #include "../../Utility/Streams/PathUtils.h"
 #include <msclr/auto_gcroot.h>

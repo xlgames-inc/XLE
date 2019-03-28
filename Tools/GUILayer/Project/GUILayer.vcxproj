@@ -153,6 +153,7 @@
   </ItemDefinitionGroup>
   <ItemGroup>
     <ClCompile Include="..\AssemblyInfo.cpp" />
+    <ClCompile Include="..\AssetsLayer.cpp" />
     <ClCompile Include="..\CustomDataGridEditor.cpp" />
     <ClCompile Include="..\DelayedDeleteQueue.cpp" />
     <ClCompile Include="..\DivergentAssetList.cpp" />
@@ -183,6 +184,7 @@
     <ClCompile Include="..\WindowRig.cpp" />
   </ItemGroup>
   <ItemGroup>
+    <ClInclude Include="..\AssetsLayer.h" />
     <ClInclude Include="..\CLIXAutoPtr.h" />
     <ClInclude Include="..\DelayedDeleteQueue.h" />
     <ClInclude Include="..\DivergentAssetList.h" />

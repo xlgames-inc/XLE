@@ -72,6 +72,7 @@
     <ClCompile Include="..\ShaderFragment.cpp">
       <Filter>GraphLanguage</Filter>
     </ClCompile>
+    <ClCompile Include="..\AssetsLayer.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\EngineDevice.h" />
@@ -145,6 +146,7 @@
     <ClInclude Include="..\NodeGraph.h">
       <Filter>GraphLanguage</Filter>
     </ClInclude>
+    <ClInclude Include="..\AssetsLayer.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="BasicControls">

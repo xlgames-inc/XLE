@@ -21,7 +21,6 @@ namespace SceneEngine
 }
 
 namespace ConsoleRig { class IProgress; }
-namespace Assets { class DirectorySearchRules; }
 namespace ToolsRig { class MessageRelay; }
 
 namespace GUILayer
@@ -132,21 +131,5 @@ namespace GUILayer
         typedef std::unique_ptr<ConsoleRig::IProgress, std::function<void(ConsoleRig::IProgress*)>> ProgressPtr;
         static ProgressPtr CreateNative(IProgress^ managed);
         static void DeleteNative(ConsoleRig::IProgress* native);
-    };
-
-	public ref class DirectorySearchRules
-    {
-    public:
-        clix::shared_ptr<::Assets::DirectorySearchRules> _searchRules;
-
-		System::String^ ResolveFile(System::String^ baseName);
-		void AddSearchDirectory(System::String^ dirName);
-
-		const ::Assets::DirectorySearchRules& GetNative();
-
-        DirectorySearchRules(std::shared_ptr<::Assets::DirectorySearchRules> searchRules);
-		DirectorySearchRules(const ::Assets::DirectorySearchRules& searchRules);
-		DirectorySearchRules();
-        ~DirectorySearchRules();
     };
 }
