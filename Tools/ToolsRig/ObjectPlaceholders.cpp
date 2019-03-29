@@ -350,7 +350,7 @@ namespace ToolsRig
 
         auto vbData = std::make_unique<Float3[]>(chld.size());
         for (size_t c=0; c<chld.size(); ++c) {
-            const auto* e = objs.GetEntity(obj._doc, chld[c]);
+            const auto* e = objs.GetEntity(obj._doc, chld[c].second);
             if (e) {
                 vbData[c] = ExtractTranslation(GetTransform(*e));
             } else {

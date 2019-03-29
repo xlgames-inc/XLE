@@ -325,11 +325,12 @@ namespace RenderingInterop
         public static void SetObjectParent(
             ulong documentId, ulong childInstanceId, uint childTypeId,
             ulong parentInstanceId, uint parentTypeId,
-            int insertionPosition)
+            uint childListId, int insertionPosition)
         {
             s_entityInterface.SetObjectParent(documentId, 
                 childInstanceId, childTypeId,
-                parentInstanceId, parentTypeId, insertionPosition);
+                parentInstanceId, parentTypeId,
+                childListId, insertionPosition);
         }
 
         private static GCHandle s_savedBoundingBoxHandle;

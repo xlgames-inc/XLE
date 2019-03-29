@@ -88,7 +88,9 @@ namespace GUILayer
     bool EntityLayer::SetObjectParent(
         DocumentId doc, 
         ObjectId childId, ObjectTypeId childTypeId, 
-        ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition)
+        ObjectId parentId, ObjectTypeId parentTypeId, 
+		ChildListId childList,
+		int insertionPosition)
     {
         Identifier child, parent;
         auto intrfChild = _switch->GetInterface(
@@ -97,7 +99,7 @@ namespace GUILayer
             parent, Identifier(doc, parentId, parentTypeId));
 
         if (intrfChild && intrfChild == intrfParent)
-            return intrfChild->SetParent(child, parent, insertionPosition);
+            return intrfChild->SetParent(child, parent, childList, insertionPosition);
         return false;
     }
 

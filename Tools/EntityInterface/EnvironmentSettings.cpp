@@ -86,7 +86,7 @@ namespace EntityInterface
         EnvironmentSettings result;
         result._globalLightingDesc = DefaultGlobalLightingDesc();
         for (const auto& cid : obj._children) {
-            const auto* child = flexGobInterface.GetEntity(obj._doc, cid);
+            const auto* child = flexGobInterface.GetEntity(obj._doc, cid.second);
             if (!child) continue;
 
             if (child->_type == typeAmbient) {
@@ -108,7 +108,7 @@ namespace EntityInterface
                     auto fsRef = props.GetString<char>(Attribute::Name);
                     if (!fsRef.empty()) {
                         for (const auto& cid2 : obj._children) {
-                            const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2);
+                            const auto* fsSetObj = flexGobInterface.GetEntity(obj._doc, cid2.second);
                             if (!fsSetObj || fsSetObj->_type != typeShadowFrustumSettings) continue;
                             
                             auto attachedLight = fsSetObj->_properties.GetString<char>(Attribute::AttachedLight);
@@ -159,7 +159,7 @@ namespace EntityInterface
         obj._properties.Serialize<CharType>(formatter);
 
         for (auto c=obj._children.cbegin(); c!=obj._children.cend(); ++c) {
-            const auto* child = entities.GetEntity(obj._doc, *c);
+            const auto* child = entities.GetEntity(obj._doc, c->second);
             if (child)
                 Serialize<CharType>(formatter, *child, entities);
         }
@@ -340,7 +340,7 @@ namespace EntityInterface
 
         auto vbData = std::make_unique<Float3[]>(chld.size());
         for (size_t c=0; c<chld.size(); ++c) {
-            const auto* e = sys.GetEntity(obj._doc, chld[c]);
+            const auto* e = sys.GetEntity(obj._doc, chld[c].second);
             if (e) {
                 vbData[c] = ExtractTranslation(GetTransform(*e));
             } else {

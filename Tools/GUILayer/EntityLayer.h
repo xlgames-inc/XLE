@@ -49,7 +49,9 @@ namespace GUILayer
 
         bool SetObjectParent(DocumentId doc, 
             ObjectId childId, ObjectTypeId childTypeId, 
-            ObjectId parentId, ObjectTypeId parentTypeId, int insertionPosition);
+            ObjectId parentId, ObjectTypeId parentTypeId,
+			ChildListId childList,
+			int insertionPosition);
 
         ObjectTypeId GetTypeId(System::String^ name);
         DocumentTypeId GetDocumentTypeId(System::String^ name);

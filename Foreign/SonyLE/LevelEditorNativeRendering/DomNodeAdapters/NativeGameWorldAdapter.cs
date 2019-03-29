@@ -27,12 +27,21 @@ namespace RenderingInterop
 
                     var parentObject = subnode.Parent.As<XLEBridgeUtils.INativeObjectAdapter>();
                     if (parentObject != null)
-                        childObject.OnSetParent(parentObject, -1);
+                    {
+                        childObject.OnSetParent(parentObject, GetChildListId(childObject.As<DomNode>().ChildInfo), -1);
+                    }
                 }
             }
             
             node.ChildInserted += node_ChildInserted;
             node.ChildRemoved += node_ChildRemoved;
+        }
+
+        private uint GetChildListId(ChildInfo cinfo)
+        {
+            if (cinfo == null) return 0u;
+            object childListTag = cinfo.GetTag(NativeAnnotations.NativeElement);
+            return (childListTag != null) ? (uint)childListTag : 0u;
         }
 
         public void OnDocumentRemoved()
@@ -60,10 +69,10 @@ namespace RenderingInterop
 
         void node_ChildInserted(object sender, ChildEventArgs e)
         {
-            node_ChildInserted_Internal(e.Child, e.Parent, e.Index);
+            node_ChildInserted_Internal(e.Child, e.Parent, e.ChildInfo, e.Index);
         }
 
-        private void node_ChildInserted_Internal(object child, object parent, int insertionPoint)
+        private void node_ChildInserted_Internal(object child, object parent, ChildInfo childInfo, int insertionPoint)
         {
             var childObject = child.As<XLEBridgeUtils.INativeObjectAdapter>();
             if (childObject != null)
@@ -73,18 +82,18 @@ namespace RenderingInterop
                 var parentObject = parent.As<XLEBridgeUtils.INativeObjectAdapter>();
                 if (parentObject != null)
                 {
-                    childObject.OnSetParent(parentObject, insertionPoint);
+                    childObject.OnSetParent(parentObject, GetChildListId(childInfo), insertionPoint);
                 }
                 else
                 {
-                    childObject.OnSetParent(null, -1);
+                    childObject.OnSetParent(null, GetChildListId(childInfo), -1);
                 }
             }
 
             var children = child.As<DomNode>().Children;
             int index = 0;
             foreach (var c in children) {
-                node_ChildInserted_Internal(c, child, index);
+                node_ChildInserted_Internal(c, child, c.ChildInfo, index);
                 ++index;
             }
         }
@@ -101,7 +110,7 @@ namespace RenderingInterop
                 var nativeObject = subnode.AsAll<XLEBridgeUtils.INativeObjectAdapter>();
                 foreach (var n in nativeObject)
                 {
-                    n.OnSetParent(null, -1);
+                    n.OnSetParent(null, 0u, -1);
                     n.OnRemoveFromDocument(this);
                 }
             }

@@ -32,7 +32,7 @@ namespace XLEBridgeUtils
 	public:
 		void OnAddToDocument(INativeDocumentAdapter^ doc);
 		void OnRemoveFromDocument(INativeDocumentAdapter^ doc);
-		void OnSetParent(INativeObjectAdapter^ newParent, int insertionPosition);
+		void OnSetParent(INativeObjectAdapter^ newParent, uint childListId, int insertionPosition);
 	};
 
     GUILayer::CameraDescWrapper^ Utils::AsCameraDesc(Sce::Atf::Rendering::Camera^ camera)

@@ -99,7 +99,7 @@ namespace EntityInterface
 		return false;
 	}
 
-    bool TerrainEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition)
+    bool TerrainEntities::SetParent(const Identifier& child, const Identifier& parent, ChildListId childList, int insertionPosition)
     {
         return false;
     }
@@ -180,7 +180,7 @@ namespace EntityInterface
             asset._gradFlagMaterials.clear();
             auto matType = sys.GetTypeId((const utf8*)"TerrainGradFlagMaterial");
             for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
-                auto* mat = sys.GetEntity(obj._doc, *c);
+                auto* mat = sys.GetEntity(obj._doc, c->second);
                 if (!mat || mat->_type != matType) continue;
 
                 asset._gradFlagMaterials.emplace_back(
@@ -192,7 +192,7 @@ namespace EntityInterface
             asset._procTextures.clear();
             auto matType = sys.GetTypeId((const utf8*)"TerrainProcTexture");
             for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
-                auto* mat = sys.GetEntity(obj._doc, *c);
+                auto* mat = sys.GetEntity(obj._doc, c->second);
                 if (!mat || mat->_type != matType) continue;
 
                 asset._procTextures.emplace_back(

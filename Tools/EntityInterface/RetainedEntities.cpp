@@ -26,19 +26,20 @@ namespace EntityInterface
         const auto& propertyName = type._properties[prop._prop-1];
 		ImpliedTyping::TypeDesc typeDesc((ImpliedTyping::TypeCat)prop._elementType, (uint16)prop._arrayCount, typeHint);
         dest._properties.SetParameter(
-            MakeStringSection(propertyName), prop._src, 
+            MakeStringSection(propertyName).Cast<utf8>(), prop._src, 
             typeDesc);
         return true;
     }
 
     auto RetainedEntities::GetObjectType(ObjectTypeId id) const -> RegisteredObjectType*
     {
-        for (auto i=_registeredObjectTypes.begin(); i!=_registeredObjectTypes.end(); ++i)
-            if (i->first == id) return &i->second;
+		auto i = LowerBound(_registeredObjectTypes, id);
+        if (i != _registeredObjectTypes.end() && i->first == id)
+			return &i->second;
         return nullptr;
     }
 
-    unsigned RetainedEntities::RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange)
+    unsigned RetainedEntities::RegisterCallback(ObjectTypeId typeId, OnChangeDelegate&& onChange)
     {
         auto type = GetObjectType(typeId);
         if (!type) return ~0u;
@@ -119,7 +120,7 @@ namespace EntityInterface
         return std::move(result);
     }
 
-    ObjectTypeId RetainedEntities::GetTypeId(const utf8 name[]) const
+    ObjectTypeId RetainedEntities::GetTypeId(const char name[]) const
     {
         for (auto i=_registeredObjectTypes.cbegin(); i!=_registeredObjectTypes.cend(); ++i)
             if (!XlCompareStringI(i->second._name.c_str(), name))
@@ -130,7 +131,7 @@ namespace EntityInterface
         return _nextObjectTypeId++;
     }
 
-	PropertyId RetainedEntities::GetPropertyId(ObjectTypeId typeId, const utf8 name[]) const
+	PropertyId RetainedEntities::GetPropertyId(ObjectTypeId typeId, const char name[]) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return 0;
@@ -143,41 +144,64 @@ namespace EntityInterface
         return (PropertyId)type->_properties.size();
     }
 
-	ChildListId RetainedEntities::GetChildListId(ObjectTypeId typeId, const utf8 name[]) const
+	ChildListId RetainedEntities::GetChildListId(ObjectTypeId typeId, const char name[]) const
     {
         auto type = GetObjectType(typeId);
         if (!type) return 0;
 
         for (auto i=type->_childLists.cbegin(); i!=type->_childLists.cend(); ++i)
             if (!XlCompareStringI(i->c_str(), name)) 
-                return (PropertyId)std::distance(type->_childLists.cbegin(), i);
+                return (ChildListId)(1+std::distance(type->_childLists.cbegin(), i));
         
         type->_childLists.push_back(name);
-        return (PropertyId)(type->_childLists.size()-1);
+        return (ChildListId)type->_childLists.size();
     }
 
-    std::basic_string<utf8> RetainedEntities::GetTypeName(ObjectTypeId id) const
+    std::string RetainedEntities::GetTypeName(ObjectTypeId typeId) const
     {
-        auto i = LowerBound(_registeredObjectTypes, id);
-        if (i != _registeredObjectTypes.end() && i->first == id) {
+        auto i = LowerBound(_registeredObjectTypes, typeId);
+        if (i != _registeredObjectTypes.end() && i->first == typeId)
             return i->second._name;
-        }
-        return std::basic_string<utf8>();
+		return {};
     }
 
-	void RetainedEntities::PrintEntity(std::ostream& stream, const RetainedEntity& entity, unsigned indent) const
+	std::string RetainedEntities::GetPropertyName(ObjectTypeId typeId, PropertyId propertyId) const
 	{
-		stream << StreamIndent(indent) << "[" << entity._id << "] type: " << Conversion::Convert<std::string>(GetTypeName(entity._type)) << std::endl;
+		if (propertyId == 0) return {};
+		auto i = LowerBound(_registeredObjectTypes, typeId);
+		if (i != _registeredObjectTypes.end() && i->first == typeId)
+			if (propertyId <= (unsigned)i->second._properties.size())
+				return i->second._properties[propertyId-1];
+		return {};
+	}
+
+	std::string RetainedEntities::GetChildListName(ObjectTypeId typeId, ChildListId childListId) const
+	{
+		if (childListId == 0) return {};
+		auto i = LowerBound(_registeredObjectTypes, typeId);
+		if (i != _registeredObjectTypes.end() && i->first == typeId)
+			if (childListId <= (unsigned)i->second._childLists.size())
+				return i->second._childLists[childListId-1];
+		return {};
+	}
+
+	void RetainedEntities::PrintEntity(std::ostream& stream, const RetainedEntity& entity, StringSection<> childListName, unsigned indent) const
+	{
+		stream << StreamIndent(indent) << "[" << entity._id << "] type: " << GetTypeName(entity._type);
+		if (!childListName.IsEmpty())
+			stream << ", childList: " << childListName;
+		stream << std::endl;
 		for (auto p : entity._properties)
 			stream << StreamIndent(indent + 2) << p.Name().Cast<char>() << " = " << p.ValueAsString() << std::endl;
 
 		for (auto c : entity._children) {
-			auto child = GetEntity(entity._doc, c);
+			auto child = GetEntity(entity._doc, c.second);
 			if (!child) {
-				stream << StreamIndent(indent + 2) << "<<Could not find child for id " << c << ">>" << std::endl;
+				stream << StreamIndent(indent + 2) << "<<Could not find child for id " << c.second << ">>" << std::endl;
 				continue;
 			}
-			PrintEntity(stream, *child, indent + 2);
+			stream << "";
+			PrintEntity(stream, *child, GetChildListName(entity._type, c.first), indent + 2);
 		}
 	}
 
@@ -186,7 +210,7 @@ namespace EntityInterface
 		// Find the root entities in this document, and print them (and their children)
 		for (const auto&o : _objects)
 			if (o._doc == doc && o._parent == 0)
-				PrintEntity(stream, o, indent);
+				PrintEntity(stream, o, {}, indent);
 	}
 
     RetainedEntities::RetainedEntities()
@@ -197,33 +221,6 @@ namespace EntityInterface
     }
 
     RetainedEntities::~RetainedEntities() {}
-
-///////////////////////////////////////////////////////////////////////////////////////////////////
-
-    RetainedEntity::RetainedEntity() {}
-
-    RetainedEntity::RetainedEntity(RetainedEntity&& moveFrom) never_throws
-    : _properties(std::move(moveFrom._properties))
-    , _children(std::move(moveFrom._children))
-    {
-        _id = moveFrom._id;
-        _doc = moveFrom._doc;
-        _type = moveFrom._type;
-        _parent = moveFrom._parent;
-    }
-
-    RetainedEntity& RetainedEntity::operator=(RetainedEntity&& moveFrom) never_throws
-    {
-        _properties = std::move(moveFrom._properties);
-        _children = std::move(moveFrom._children);
-        _id = moveFrom._id;
-        _doc = moveFrom._doc;
-        _type = moveFrom._type;
-        _parent = moveFrom._parent;
-        return *this;
-    }
-
-    RetainedEntity::~RetainedEntity() {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -314,7 +311,8 @@ namespace EntityInterface
     }
 
     bool RetainedEntityInterface::SetParent(
-        const Identifier& child, const Identifier& parent, int insertionPosition)
+        const Identifier& child, const Identifier& parent,
+		ChildListId childList, int insertionPosition)
     {
         if (child.Document() != parent.Document())
             return false;
@@ -329,7 +327,9 @@ namespace EntityInterface
         if (childObj->_parent != 0) {
             auto* oldParent = _scene->GetEntityInt(child.Document(), childObj->_parent);
             if (oldParent) {
-                auto i = std::find(oldParent->_children.begin(), oldParent->_children.end(), child.Object());
+                auto i = std::find_if(
+					oldParent->_children.begin(), oldParent->_children.end(), 
+					[child](const std::pair<ChildListId, ObjectId>& p) { return p.second == child.Object(); });
                 oldParent->_children.erase(i);
 
                 auto oldParentType = _scene->GetObjectType(parent.ObjectType());
@@ -356,11 +356,11 @@ namespace EntityInterface
         }
 
         if (insertionPosition < 0 || insertionPosition >= (int)parentObj->_children.size()) {
-            parentObj->_children.push_back(child.Object());
+			parentObj->_children.push_back({ childList, child.Object() });
         } else {
             parentObj->_children.insert(
                 parentObj->_children.begin() + insertionPosition,
-                child.Object());
+				{ childList, child.Object() });
         }
         childObj->_parent = parentObj->_id;
 
@@ -375,17 +375,17 @@ namespace EntityInterface
 
 	ObjectTypeId    RetainedEntityInterface::GetTypeId(const char name[]) const
     {
-        return _scene->GetTypeId((const utf8*)name);
+        return _scene->GetTypeId(name);
     }
 
 	PropertyId      RetainedEntityInterface::GetPropertyId(ObjectTypeId typeId, const char name[]) const
     {
-        return _scene->GetPropertyId(typeId, (const utf8*)name);
+        return _scene->GetPropertyId(typeId, name);
     }
 
 	ChildListId     RetainedEntityInterface::GetChildListId(ObjectTypeId typeId, const char name[]) const
     {
-        return _scene->GetPropertyId(typeId, (const utf8*)name);
+        return _scene->GetChildListId(typeId, name);
     }
 
     DocumentId RetainedEntityInterface::CreateDocument(DocumentTypeId docType, const char initializer[])
@@ -506,7 +506,7 @@ namespace EntityInterface
                         Throw(FormatException("Error while creating object in entity deserialisation", beginLoc));
 
                     for (const auto&c:children)
-                        interf.SetParent(c, identifier, -1);
+                        interf.SetParent(c, identifier, 0, -1);
 
                     typeId = ~ObjectTypeId(0x0);
                     initsBuffer.clear();

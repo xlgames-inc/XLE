@@ -313,7 +313,7 @@ namespace EntityInterface
         return false;
     }
 
-    bool PlacementEntities::SetParent(const Identifier& child, const Identifier& parent, int insertionPosition)
+    bool PlacementEntities::SetParent(const Identifier& child, const Identifier& parent, ChildListId childList, int insertionPosition)
     {
         return false;
     }

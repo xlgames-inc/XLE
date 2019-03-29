@@ -64,7 +64,7 @@ namespace RenderingInterop
             CreateNativeObject();
         }
 
-        public void OnSetParent(XLEBridgeUtils.INativeObjectAdapter newParent, int insertionPosition)
+        public void OnSetParent(XLEBridgeUtils.INativeObjectAdapter newParent, uint childListId, int insertionPosition)
         {
             var p = newParent as NativeObjectAdapter;
             if (p != null)
@@ -72,14 +72,14 @@ namespace RenderingInterop
                 GameEngine.SetObjectParent(
                     m_documentId,
                     InstanceId, TypeId,
-                    p.InstanceId, p.TypeId, insertionPosition);
+                    p.InstanceId, p.TypeId, childListId, insertionPosition);
             }
             else
             {
                 GameEngine.SetObjectParent(
                     m_documentId,
                     InstanceId, TypeId,
-                    0, 0, insertionPosition);
+                    0, 0, childListId, insertionPosition);
             }
 
             UpdateLocalToWorld();

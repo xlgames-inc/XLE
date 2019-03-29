@@ -226,7 +226,7 @@ namespace LevelEditorXLE.Terrain
             //          terrain. The unload won't succeed in that case.
             if (m_isLoaded) Unload();
         }
-        public void OnSetParent(XLEBridgeUtils.INativeObjectAdapter newParent, int insertionPosition) { }
+        public void OnSetParent(XLEBridgeUtils.INativeObjectAdapter newParent, uint childListId, int insertionPosition) { }
         #endregion
 
         #region IExportable

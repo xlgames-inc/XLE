@@ -91,7 +91,7 @@ namespace EntityInterface
         virtual bool DeleteObject(const Identifier& id) = 0;
         virtual bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount) = 0;
         virtual bool GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const = 0;
-        virtual bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition) = 0;
+        virtual bool SetParent(const Identifier& child, const Identifier& parent, ChildListId childList, int insertionPosition) = 0;
 
         virtual ObjectTypeId GetTypeId(const char name[]) const = 0;
         virtual DocumentTypeId GetDocumentTypeId(const char name[]) const = 0;

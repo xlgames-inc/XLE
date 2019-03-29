@@ -20,18 +20,13 @@ namespace EntityInterface
     class RetainedEntity
     {
     public:
-        ObjectId _id;
-        DocumentId _doc;
-        ObjectTypeId _type;
+        ObjectId _id = 0;
+        DocumentId _doc = 0;
+        ObjectTypeId _type = 0;
 
         ParameterBox _properties;
-        std::vector<ObjectId> _children;
-        ObjectId _parent;
-
-        RetainedEntity();
-        RetainedEntity(RetainedEntity&& moveFrom) never_throws;
-        RetainedEntity& operator=(RetainedEntity&& moveFrom) never_throws;
-        ~RetainedEntity();
+        std::vector<std::pair<ChildListId, ObjectId>> _children;
+        ObjectId _parent = 0;
     };
 
     /// <summary>Stores entity data generically</summary>
@@ -78,14 +73,16 @@ namespace EntityInterface
             std::function<
                 void(const RetainedEntities& flexSys, const Identifier&, ChangeType)
             >;
-        unsigned RegisterCallback(ObjectTypeId typeId, OnChangeDelegate onChange);
+        unsigned RegisterCallback(ObjectTypeId typeId, OnChangeDelegate&& onChange);
         void DeregisterCallback(unsigned callbackId);
 
-        ObjectTypeId    GetTypeId(const utf8 name[]) const;
-		PropertyId      GetPropertyId(ObjectTypeId typeId, const utf8 name[]) const;
-		ChildListId     GetChildListId(ObjectTypeId typeId, const utf8 name[]) const;
+        ObjectTypeId    GetTypeId(const char name[]) const;
+		PropertyId      GetPropertyId(ObjectTypeId typeId, const char name[]) const;
+		ChildListId     GetChildListId(ObjectTypeId typeId, const char name[]) const;
 
-        std::basic_string<utf8> GetTypeName(ObjectTypeId id) const;
+        std::string GetTypeName(ObjectTypeId id) const;
+		std::string GetPropertyName(ObjectTypeId typeId, PropertyId id) const;
+		std::string GetChildListName(ObjectTypeId typeId, ChildListId id) const;
 
 		void			PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
 
@@ -98,13 +95,13 @@ namespace EntityInterface
         class RegisteredObjectType
         {
         public:
-            std::basic_string<utf8> _name;
-            std::vector<std::basic_string<utf8>> _properties;
-            std::vector<std::basic_string<utf8>> _childLists;
+            std::string _name;
+            std::vector<std::string> _properties;
+            std::vector<std::string> _childLists;
 
             std::vector<std::pair<unsigned, OnChangeDelegate>> _onChange;
 
-            RegisteredObjectType(const std::basic_string<utf8>& name) : _name(name) {}
+            RegisteredObjectType(const std::string& name) : _name(name) {}
         };
         mutable std::vector<std::pair<ObjectTypeId, RegisteredObjectType>> _registeredObjectTypes;
 
@@ -115,7 +112,7 @@ namespace EntityInterface
         void InvokeOnChange(RegisteredObjectType& type, RetainedEntity& obj, ChangeType changeType) const;
         RetainedEntity* GetEntityInt(DocumentId doc, ObjectId obj) const;
         bool SetSingleProperties(RetainedEntity& dest, const RegisteredObjectType& type, const PropertyInitializer& initializer) const;
-		void PrintEntity(std::ostream& stream, const RetainedEntity& entity, unsigned indent) const;
+		void PrintEntity(std::ostream& stream, const RetainedEntity& entity, StringSection<> childListName, unsigned indent) const;
 
         friend class RetainedEntityInterface;
     };
@@ -134,7 +131,7 @@ namespace EntityInterface
 		bool DeleteObject(const Identifier& id);
 		bool SetProperty(const Identifier& id, const PropertyInitializer initializers[], size_t initializerCount);
 		bool GetProperty(const Identifier& id, PropertyId prop, void* dest, unsigned* destSize) const;
-        bool SetParent(const Identifier& child, const Identifier& parent, int insertionPosition);
+        bool SetParent(const Identifier& child, const Identifier& parent, ChildListId childList, int insertionPosition);
 
 		ObjectTypeId    GetTypeId(const char name[]) const;
 		DocumentTypeId  GetDocumentTypeId(const char name[]) const;
