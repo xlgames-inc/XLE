@@ -88,7 +88,7 @@ namespace MaterialTool
                 m_contextRegistry.ActiveContextChanged += delegate
                     {
                         var editingContext = m_contextRegistry.GetActiveContext<DiagramEditingContext>();
-                        var viewContext = m_contextRegistry.GetActiveContext<Controls.ViewingContext>();
+                        var viewContext = m_contextRegistry.GetActiveContext<HyperGraphAdapter.ViewingContext>();
                         IHistoryContext hist = m_contextRegistry.GetActiveContext<IHistoryContext>();
                         m_scriptingService.SetVariable("editingContext", editingContext);
                         m_scriptingService.SetVariable("view", viewContext);
@@ -194,7 +194,7 @@ namespace MaterialTool
         {
             AdaptableControl adaptableControl = (AdaptableControl)control;
 
-            var context = adaptableControl.ContextAs<Controls.AdaptableSet>();
+            var context = adaptableControl.ContextAs<HyperGraphAdapter.AdaptableSet>();
             if (context != null)
             {
                 m_contextRegistry.ActiveContext = context;

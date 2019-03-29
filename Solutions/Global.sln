@@ -136,7 +136,13 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Previewer", "..\Tools\Previ
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0}"
 EndProject
+Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "HyperGraphAdapter", "..\Tools\HyperGraphAdapter\HyperGraphAdapter.shproj", "{E4905621-8390-42E4-B1DC-B3B5E3F7BB00}"
+EndProject
 Global
+	GlobalSection(SharedMSBuildProjectFiles) = preSolution
+		..\Tools\HyperGraphAdapter\HyperGraphAdapter.projitems*{e4905621-8390-42e4-b1dc-b3b5e3f7bb00}*SharedItemsImports = 13
+		..\Tools\HyperGraphAdapter\HyperGraphAdapter.projitems*{ffa59dbc-fd8a-4738-b693-cd384478d73f}*SharedItemsImports = 4
+	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug-DX11|Win32 = Debug-DX11|Win32
 		Debug-DX11|x64 = Debug-DX11|x64
@@ -983,6 +989,7 @@ Global
 		{591F95DE-0196-4223-997E-B47EE796BE4F} = {18FDF4B2-37E2-4DFF-B22B-566674160D0B}
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
 		{7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0} = {E7DC652E-A855-4E12-9C04-6F36B489FF74}
+		{E4905621-8390-42E4-B1DC-B3B5E3F7BB00} = {7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0}
 	EndGlobalSection
 	GlobalSection(ExtensibilityGlobals) = postSolution
 		SolutionGuid = {E4188857-D548-409C-BFE2-EA2791107CCD}

@@ -80,7 +80,9 @@
     <Compile Include="Controls\ActualizationMessagesWindow.cs">
       <SubType>Component</SubType>
     </Compile>
-    <Compile Include="Controls\DiagramControl.cs" />
+    <Compile Include="Controls\DiagramControl.cs">
+      <SubType>Component</SubType>
+    </Compile>
     <Compile Include="Controls\DiagramLister.cs" />
     <Compile Include="DiagramCommands.cs" />
     <Compile Include="DiagramControlRegistry.cs" />
@@ -154,6 +156,7 @@
       <Name>NodeEditorCore</Name>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="..\HyperGraphAdapter\HyperGraphAdapter.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.
