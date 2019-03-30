@@ -80,11 +80,48 @@ namespace EntityInterface
 		PropertyId      GetPropertyId(ObjectTypeId typeId, const char name[]) const;
 		ChildListId     GetChildListId(ObjectTypeId typeId, const char name[]) const;
 
-        std::string GetTypeName(ObjectTypeId id) const;
-		std::string GetPropertyName(ObjectTypeId typeId, PropertyId id) const;
-		std::string GetChildListName(ObjectTypeId typeId, ChildListId id) const;
+        std::string		GetTypeName(ObjectTypeId id) const;
+		std::string		GetPropertyName(ObjectTypeId typeId, PropertyId id) const;
+		std::string		GetChildListName(ObjectTypeId typeId, ChildListId id) const;
 
 		void			PrintDocument(std::ostream& stream, DocumentId doc, unsigned indent) const;
+
+		class ChildConstIterator
+		{
+		public:
+			bool operator==(const ChildConstIterator&);
+			bool operator!=(const ChildConstIterator&);
+			void operator++();
+			void operator--();
+			friend bool operator<(const ChildConstIterator& lhs, const ChildConstIterator& rhs);
+			friend ChildConstIterator operator+(const ChildConstIterator& lhs, ptrdiff_t advance);
+
+			using difference_type = size_t;
+			using value_type = RetainedEntity;
+			using pointer = const RetainedEntity*;
+			using reference = const RetainedEntity&;
+			using iterator_category = std::bidirectional_iterator_tag;
+
+			reference operator*() const;
+			reference operator->() const;
+			reference operator[](size_t idx) const;
+
+			using UnderlyingIterator = std::vector<std::pair<ChildListId, ObjectId>>::const_iterator;
+
+			ChildConstIterator(
+				const RetainedEntities& entitySystem,
+				const RetainedEntity& parent, UnderlyingIterator i, ChildListId childList);
+			ChildConstIterator();
+			ChildConstIterator(nullptr_t);
+		protected:
+			const RetainedEntities* _entitySystem; 
+			const RetainedEntity* _parentObject;
+			ChildListId _childListId;
+			ptrdiff_t _childIdx;
+		};
+
+		IteratorRange<ChildConstIterator> GetChildren(DocumentId doc, ObjectId parentObj, ChildListId childList) const;
+		IteratorRange<ChildConstIterator> GetChildren(const RetainedEntity& parent, ChildListId childList) const;
 
         RetainedEntities();
         ~RetainedEntities();

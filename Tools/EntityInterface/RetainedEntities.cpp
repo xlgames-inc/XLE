@@ -213,6 +213,23 @@ namespace EntityInterface
 				PrintEntity(stream, o, {}, indent);
 	}
 
+	IteratorRange<RetainedEntities::ChildConstIterator> RetainedEntities::GetChildren(DocumentId doc, ObjectId parentObj, ChildListId childList) const
+	{
+		auto parent = GetEntity(doc, parentObj);
+		if (!parent) return {};
+		return GetChildren(*parent, childList);
+	}
+
+	IteratorRange<RetainedEntities::ChildConstIterator> RetainedEntities::GetChildren(const RetainedEntity& parent, ChildListId childList) const
+	{
+		auto i = std::find_if(
+			parent._children.begin(), parent._children.end(),
+			[childList](const std::pair<ChildListId, ObjectId>& p) { return p.first == childList; });
+		return IteratorRange<RetainedEntities::ChildConstIterator>(
+			ChildConstIterator{ *this, parent, i, childList },
+			ChildConstIterator{ *this, parent, parent._children.end(), childList });
+	}
+
     RetainedEntities::RetainedEntities()
     {
         _nextObjectTypeId = 1;
@@ -221,6 +238,130 @@ namespace EntityInterface
     }
 
     RetainedEntities::~RetainedEntities() {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	bool RetainedEntities::ChildConstIterator::operator==(const ChildConstIterator& other)
+	{
+		return	_parentObject == other._parentObject
+			&&	_childIdx == other._childIdx;
+	}
+
+	bool RetainedEntities::ChildConstIterator::operator!=(const ChildConstIterator& other)
+	{
+		return	_parentObject != other._parentObject
+			||	_childIdx != other._childIdx;
+	}
+
+	void RetainedEntities::ChildConstIterator::operator++()
+	{
+		assert(_childListId != 0);
+
+		auto nextChildIdx = _childIdx + 1;
+		while (nextChildIdx < (ptrdiff_t)_parentObject->_children.size()) {
+			if (_parentObject->_children[nextChildIdx].first == _childListId) {
+				_childIdx = nextChildIdx;
+				return;
+			}
+		}
+
+		// We can off the end of the array while looking for the next child with the given
+		// child index. We will now point just off the end of the array, and become an "end"
+		// iterator
+		_childIdx = _parentObject->_children.size();
+	}
+
+	void RetainedEntities::ChildConstIterator::operator--()
+	{
+		assert(_childListId != 0);
+		assert(_childIdx > 0);
+
+		auto nextChildIdx = _childIdx - 1;
+		while (nextChildIdx >= 0) {
+			if (_parentObject->_children[nextChildIdx].first == _childListId) {
+				_childIdx = nextChildIdx;
+				return;
+			}
+		}
+
+		// We can off the end of the array while looking for the next child with the given
+		// child index.
+		// We must end up pointing to the element before the first
+		_childIdx = -1;
+	}
+
+	bool operator<(const RetainedEntities::ChildConstIterator& lhs, const RetainedEntities::ChildConstIterator& rhs)
+	{
+		return lhs._childIdx < rhs._childIdx;
+	}
+
+	RetainedEntities::ChildConstIterator operator+(const RetainedEntities::ChildConstIterator& lhs, ptrdiff_t advance)
+	{
+		if (advance == 0)
+			return lhs;
+		assert(advance > 0);	// advancing backwards not implemented
+
+		RetainedEntities::ChildConstIterator result = lhs;
+		auto nextChildIdx = result._childIdx + 1;
+		while (nextChildIdx < (ptrdiff_t)result._parentObject->_children.size()) {
+			if (result._parentObject->_children[nextChildIdx].first == result._childListId) {
+				--advance;
+				if (!advance) {
+					result._childIdx = nextChildIdx;
+					return result;
+				}
+			}
+		}
+
+		// Hit the end -- become an "end" iterator
+		result._childIdx = result._parentObject->_children.size();
+		return result;
+	}
+
+	auto RetainedEntities::ChildConstIterator::operator*() const -> reference
+	{
+		assert(_parentObject && _entitySystem);
+		// If you hit the following assert, you're probably deferencing an "end" iterator,
+		// or you just ran off the end of the array of children
+		assert(_childIdx < (ptrdiff_t)_parentObject->_children.size());
+		const auto* obj = _entitySystem->GetEntity(_parentObject->_doc, _parentObject->_children[_childIdx].second);
+		assert(obj);
+		return *obj;
+	}
+
+	auto RetainedEntities::ChildConstIterator::operator->() const -> reference
+	{
+		return operator*();
+	}
+
+	auto RetainedEntities::ChildConstIterator::operator[](size_t idx) const -> reference
+	{
+		return *(*this + idx);
+	}
+
+	RetainedEntities::ChildConstIterator::ChildConstIterator(
+		const RetainedEntities& entitySystem,
+		const RetainedEntity& parent, UnderlyingIterator i, ChildListId childList)
+	: _entitySystem(&entitySystem), _parentObject(&parent), _childListId(childList)
+	{
+		_childIdx = std::distance(parent._children.begin(), i);
+	}
+
+	RetainedEntities::ChildConstIterator::ChildConstIterator()
+	{
+		_entitySystem = nullptr;
+		_parentObject = nullptr;
+		_childListId = 0;
+		_childIdx = 0;
+	}
+
+	RetainedEntities::ChildConstIterator::ChildConstIterator(nullptr_t)
+	{
+		_entitySystem = nullptr;
+		_parentObject = nullptr;
+		_childListId = 0;
+		_childIdx = 0;
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
