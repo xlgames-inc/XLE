@@ -980,7 +980,7 @@ namespace Utility
     }
 
     template<typename Type>
-        std::pair<bool, Type> ParameterBox::GetParameter(ParameterName name) const
+        std::optional<Type> ParameterBox::GetParameter(ParameterName name) const
     {
         auto i = std::lower_bound(_hashNames.cbegin(), _hashNames.cend(), name._hash);
         if (i!=_hashNames.cend() && *i == name._hash) {
@@ -988,18 +988,18 @@ namespace Utility
             auto offset = _offsets[index];
 
             if (_types[index] == ImpliedTyping::TypeOf<Type>()) {
-                return std::make_pair(true, *(Type*)&_values[offset._valueBegin]);
+                return *(Type*)&_values[offset._valueBegin];
             } else {
                 Type result;
                 if (ImpliedTyping::Cast(
                     AsOpaqueIteratorRange(result), ImpliedTyping::TypeOf<Type>(),
                     { ValueTableOffset(_values, offset._valueBegin), ValueTableOffset(_values, offset._valueBegin+offset._valueSize) },
                     _types[index])) {
-                    return std::make_pair(true, result);
+					return result;
                 }
             }
         }
-        return std::make_pair(false, Type());
+		return {};
     }
     
     bool ParameterBox::GetParameter(ParameterName name, void* dest, const ImpliedTyping::TypeDesc& destType) const
@@ -1102,65 +1102,65 @@ namespace Utility
     }
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, uint32 value);
-    template std::pair<bool, uint32> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<uint32> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, int32 value);
-    template std::pair<bool, int32> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<int32> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, uint64 value);
-    template std::pair<bool, uint64> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<uint64> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, int64 value);
-    template std::pair<bool, int64> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<int64> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, bool value);
-    template std::pair<bool, bool> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<bool> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, float value);
-    template std::pair<bool, float> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<float> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, double value);
-    template std::pair<bool, double> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<double> ParameterBox::GetParameter(ParameterName name) const;
 
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, Float2 value);
-    template std::pair<bool, Float2> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Float2> ParameterBox::GetParameter(ParameterName name) const;
     
     template void ParameterBox::SetParameter(StringSection<utf8> name, Float3 value);
-    template std::pair<bool, Float3> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Float3> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, Float4 value);
-    template std::pair<bool, Float4> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Float4> ParameterBox::GetParameter(ParameterName name) const;
 
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, Float3x3 value);
-    template std::pair<bool, Float3x3> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Float3x3> ParameterBox::GetParameter(ParameterName name) const;
     
     template void ParameterBox::SetParameter(StringSection<utf8> name, Float3x4 value);
-    template std::pair<bool, Float3x4> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Float3x4> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, Float4x4 value);
-    template std::pair<bool, Float4x4> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Float4x4> ParameterBox::GetParameter(ParameterName name) const;
 
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, UInt2 value);
-    template std::pair<bool, UInt2> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<UInt2> ParameterBox::GetParameter(ParameterName name) const;
     
     template void ParameterBox::SetParameter(StringSection<utf8> name, UInt3 value);
-    template std::pair<bool, UInt3> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<UInt3> ParameterBox::GetParameter(ParameterName name) const;
 
     template void ParameterBox::SetParameter(StringSection<utf8> name, UInt4 value);
-    template std::pair<bool, UInt4> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<UInt4> ParameterBox::GetParameter(ParameterName name) const;
     
     
     template void ParameterBox::SetParameter(StringSection<utf8> name, Int2 value);
-    template std::pair<bool, Int2> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Int2> ParameterBox::GetParameter(ParameterName name) const;
     
     template void ParameterBox::SetParameter(StringSection<utf8> name, Int3 value);
-    template std::pair<bool, Int3> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Int3> ParameterBox::GetParameter(ParameterName name) const;
     
     template void ParameterBox::SetParameter(StringSection<utf8> name, Int4 value);
-    template std::pair<bool, Int4> ParameterBox::GetParameter(ParameterName name) const;
+    template std::optional<Int4> ParameterBox::GetParameter(ParameterName name) const;
     
     
     template std::basic_string<char> ParameterBox::GetString(ParameterName name) const;

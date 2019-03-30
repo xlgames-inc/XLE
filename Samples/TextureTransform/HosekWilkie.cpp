@@ -49,7 +49,7 @@ namespace TextureTransform
             //      T > 50 represent dense fog
 
         auto defaultSunDirection = Normalize(Float3(1.f, 1.f, 0.33f));
-        Float3 sunDirection = parameters.GetParameter<Float3>(ParameterBox::ParameterNameHash("SunDirection"), defaultSunDirection);
+        Float3 sunDirection = parameters.GetParameter<Float3>(ParameterBox::ParameterNameHash("SunDirection"), defaultSunDirection).value();
         sunDirection = Normalize(sunDirection);
 
         auto turbidity = (double)parameters.GetParameter(ParameterBox::ParameterNameHash("turbidity"), 3.f);

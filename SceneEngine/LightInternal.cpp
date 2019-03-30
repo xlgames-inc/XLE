@@ -271,9 +271,9 @@ namespace SceneEngine
         _atmosBlurEnd = std::max(_atmosBlurStart, props.GetParameter(atmosBlurEndHash, _atmosBlurEnd));
 
         auto flags = props.GetParameter<unsigned>(flagsHash);
-        if (flags.first) {
-            _doAtmosphereBlur = !!(flags.second & (1<<0));
-            _doRangeFog = !!(flags.second & (1<<1));
+        if (flags.has_value()) {
+            _doAtmosphereBlur = !!(flags.value() & (1<<0));
+            _doRangeFog = !!(flags.value() & (1<<1));
         }
 
         props.GetString(skyTextureHash, _skyTexture, dimof(_skyTexture));

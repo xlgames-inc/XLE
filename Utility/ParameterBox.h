@@ -9,6 +9,7 @@
 #include "UTFUtils.h"
 #include "StringUtils.h"
 #include "IteratorUtils.h"
+#include "Optional.h"
 #include "Streams/Serialization.h"
 #include "../Core/Types.h"
 #include <string>
@@ -136,7 +137,7 @@ namespace Utility
             //      G E T                                                   //
         ////////////////////////////////////////////////////////////////////////////////////////
 
-        T1(Type) std::pair<bool, Type>  GetParameter(ParameterName name) const;
+        T1(Type) std::optional<Type>  GetParameter(ParameterName name) const;
         T1(Type) Type   GetParameter(ParameterName name, const Type& def) const;
         bool            GetParameter(ParameterName name, void* dest, const TypeDesc& destType) const;
         bool            HasParameter(ParameterName name) const;
@@ -264,7 +265,7 @@ namespace Utility
         Type ParameterBox::GetParameter(ParameterName name, const Type& def) const
     {
         auto q = GetParameter<Type>(name);
-        if (q.first) return q.second;
+        if (q.has_value()) return q.value();
         return def;
     }
 

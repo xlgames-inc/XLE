@@ -892,8 +892,8 @@ namespace SceneEngine
 
         auto otColor = params.GetParameter<unsigned>(OpticalThicknessReciprocalColor);
         auto otScalar = params.GetParameter<float>(OpticalThicknessReciprocalScalar);
-        if (otColor.first && otScalar.first) {
-            Float3 temp = AsFloat3Color(otColor.second) * otScalar.second;
+        if (otColor.has_value() && otScalar.has_value()) {
+            Float3 temp = AsFloat3Color(otColor.value()) * otScalar.value();
             _opticalThickness = Float3(
                 1.0f / std::max(1e-5f, temp[0]),
                 1.0f / std::max(1e-5f, temp[1]),

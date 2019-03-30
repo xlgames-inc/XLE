@@ -174,7 +174,7 @@ namespace TextureTransform
         }
 
         auto dimsParam = parameters.GetParameter<UInt2>(ParameterBox::MakeParameterNameHash("Dims"));
-        if (dimsParam.first) viewDims = dimsParam.second;
+        if (dimsParam.has_value()) viewDims = dimsParam.value();
 
         auto formatParam = parameters.GetString<char>(ParameterBox::MakeParameterNameHash("Format"));
         if (!formatParam.empty())

@@ -442,8 +442,8 @@ namespace EntityInterface
         for (auto i=_scene->_objects.begin(); i!=_scene->_objects.end(); ++i)
             if (i->_doc == id.Document() && i->_id == id.Object()) {
                 auto res = i->_properties.GetParameter<unsigned>(MakeStringSection(propertyName));
-                if (res.first) {
-                    *(unsigned*)dest = res.second;
+                if (res.has_value()) {
+					*(unsigned*)dest = res.value();
                 }
                 return true;
             }

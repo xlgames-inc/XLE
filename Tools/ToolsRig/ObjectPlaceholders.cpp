@@ -220,11 +220,11 @@ namespace ToolsRig
     static Float4x4 GetTransform(const RetainedEntity& obj)
     {
         auto xform = obj._properties.GetParameter<Float4x4>(Parameters::Transform);
-        if (xform.first) return Transpose(xform.second);
+        if (xform.has_value()) return Transpose(xform.value());
 
         auto transl = obj._properties.GetParameter<Float3>(Parameters::Translation);
-        if (transl.first) {
-            return AsFloat4x4(transl.second);
+        if (transl.has_value()) {
+            return AsFloat4x4(transl.value());
         }
         return Identity<Float4x4>();
     }
