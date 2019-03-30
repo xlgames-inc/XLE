@@ -178,7 +178,7 @@ namespace EntityInterface
 
         {
             asset._gradFlagMaterials.clear();
-            auto matType = sys.GetTypeId((const utf8*)"TerrainGradFlagMaterial");
+            auto matType = sys.GetTypeId("TerrainGradFlagMaterial");
             for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
                 auto* mat = sys.GetEntity(obj._doc, c->second);
                 if (!mat || mat->_type != matType) continue;
@@ -190,7 +190,7 @@ namespace EntityInterface
 
         {
             asset._procTextures.clear();
-            auto matType = sys.GetTypeId((const utf8*)"TerrainProcTexture");
+            auto matType = sys.GetTypeId("TerrainProcTexture");
             for (auto c=obj._children.cbegin(); c!=obj._children.end(); ++c) {
                 auto* mat = sys.GetEntity(obj._doc, c->second);
                 if (!mat || mat->_type != matType) continue;
@@ -214,7 +214,7 @@ namespace EntityInterface
     {
         std::weak_ptr<SceneEngine::TerrainManager> weakPtrTerrainMan = terrainMan;
         flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"),
+            flexSys.GetTypeId("TerrainBaseTexture"),
             [weakPtrTerrainMan](const RetainedEntities& flexSys, const Identifier& obj, RetainedEntities::ChangeType changeType)
             {
                 auto l = weakPtrTerrainMan.lock();
@@ -232,7 +232,7 @@ namespace EntityInterface
 
     void ReloadTerrainFlexObjects(RetainedEntities& flexSys, SceneEngine::TerrainManager& terrainMan)
     {
-        auto objs = flexSys.FindEntitiesOfType(flexSys.GetTypeId((const utf8*)"TerrainBaseTexture"));
+        auto objs = flexSys.FindEntitiesOfType(flexSys.GetTypeId("TerrainBaseTexture"));
         for (auto i=objs.cbegin(); i!=objs.cend(); ++i)
             UpdateTerrainBaseTexture(flexSys, **i, terrainMan);
     }

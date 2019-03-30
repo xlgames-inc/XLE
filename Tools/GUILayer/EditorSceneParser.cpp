@@ -163,10 +163,10 @@ namespace GUILayer
         using namespace EntityInterface;
         const auto& objs = *_editorScene->_flexObjects;
         const RetainedEntity* settings = nullptr;
-        const auto typeSettings = objs.GetTypeId((const utf8*)"EnvSettings");
+        const auto typeSettings = objs.GetTypeId("EnvSettings");
 
         {
-            static const auto nameHash = ParameterBox::MakeParameterNameHash((const utf8*)"Name");
+            static const auto nameHash = ParameterBox::MakeParameterNameHash("Name");
             auto allSettings = objs.FindEntitiesOfType(typeSettings);
             for (const auto& s : allSettings)
                 if (!XlCompareStringI(s->_properties.GetString<char>(nameHash).c_str(), envSettings)) {

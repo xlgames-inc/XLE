@@ -367,7 +367,7 @@ namespace EntityInterface
     {
         std::weak_ptr<SceneEngine::DynamicImposters> weakPtrToManager = imposters;
         flexSys.RegisterCallback(
-            flexSys.GetTypeId((const utf8*)"DynamicImpostersConfig"),
+            flexSys.GetTypeId("DynamicImpostersConfig"),
             [weakPtrToManager](
                 const RetainedEntities& flexSys, const Identifier& obj,
                 RetainedEntities::ChangeType changeType)

@@ -13,7 +13,7 @@ namespace EntityInterface
 {
     namespace EntityTypeName
     {
-        static const auto* GameObjectFolder = (const utf8*)"GameObjectFolder";
+        static const auto* GameObjectFolder = "GameObjectFolder";
     }
 
     template<typename CharType>
