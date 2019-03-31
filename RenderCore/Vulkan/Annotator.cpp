@@ -39,22 +39,22 @@ namespace RenderCore { namespace ImplVulkan
 		struct EventInFlight
 		{
 			const char* _name;
-			Metal::QueryPool::QueryId _queryIndex;
+			Metal::TimeStampQueryPool::QueryId _queryIndex;
 			EventTypes::Flags _type;
 			unsigned _queryFrameId;
 		};
 
 		struct QueryFrame
 		{
-			Metal::QueryPool::FrameId _queryFrameId;
+			Metal::TimeStampQueryPool::FrameId _queryFrameId;
 			unsigned _renderFrameId;
 		};
 
 		std::deque<EventInFlight> _eventsInFlight;
 		std::deque<QueryFrame> _framesInFlight;
 
-		Metal::QueryPool _queryPool;
-		Metal::QueryPool::FrameId _currentQueryFrameId;
+		Metal::TimeStampQueryPool _queryPool;
+		Metal::TimeStampQueryPool::FrameId _currentQueryFrameId;
 
 		unsigned _currentRenderFrameId;
 		signed _frameRecursionDepth;
@@ -77,7 +77,7 @@ namespace RenderCore { namespace ImplVulkan
 		if (!(types & (EventTypes::ProfileBegin|EventTypes::ProfileEnd)))
 			return;
 
-        if (_currentQueryFrameId == Metal::QueryPool::FrameId_Invalid)
+        if (_currentQueryFrameId == Metal::TimeStampQueryPool::FrameId_Invalid)
             return;
 
 		auto metalContext = Metal::DeviceContext::Get(context);
@@ -92,8 +92,8 @@ namespace RenderCore { namespace ImplVulkan
 	void    AnnotatorImpl::Frame_Begin(IThreadContext&context, unsigned frameId)
 	{
 		++_frameRecursionDepth;
-		if (_currentQueryFrameId != Metal::QueryPool::FrameId_Invalid || (_frameRecursionDepth>1)) {
-			assert(_currentQueryFrameId != Metal::QueryPool::FrameId_Invalid && (_frameRecursionDepth>1));
+		if (_currentQueryFrameId != Metal::TimeStampQueryPool::FrameId_Invalid || (_frameRecursionDepth>1)) {
+			assert(_currentQueryFrameId != Metal::TimeStampQueryPool::FrameId_Invalid && (_frameRecursionDepth>1));
 			return;
 		}
 
@@ -108,14 +108,14 @@ namespace RenderCore { namespace ImplVulkan
 
 		--_frameRecursionDepth;
 		if (_frameRecursionDepth == 0) {
-			if (_currentQueryFrameId != Metal::QueryPool::FrameId_Invalid) {
+			if (_currentQueryFrameId != Metal::TimeStampQueryPool::FrameId_Invalid) {
 				QueryFrame frameInFlight;
 				frameInFlight._queryFrameId = _currentQueryFrameId;
 				frameInFlight._renderFrameId = _currentRenderFrameId;
 				_framesInFlight.push_back(frameInFlight);
 				_queryPool.EndFrame(*metalContext, _currentQueryFrameId);
 
-				_currentQueryFrameId = Metal::QueryPool::FrameId_Invalid;
+				_currentQueryFrameId = Metal::TimeStampQueryPool::FrameId_Invalid;
 				_currentRenderFrameId = ~unsigned(0);
 			}
 		}
@@ -257,7 +257,7 @@ namespace RenderCore { namespace ImplVulkan
 	{
 		_currentRenderFrameId = ~unsigned(0);
 		_frameRecursionDepth = 0;
-		_currentQueryFrameId = Metal::QueryPool::FrameId_Invalid;
+		_currentQueryFrameId = Metal::TimeStampQueryPool::FrameId_Invalid;
 		_nextListenerId = 0;
 	}
 

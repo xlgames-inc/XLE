@@ -81,7 +81,7 @@ namespace RenderCore { namespace Metal_DX11
 		return result;
 	}
 
-	auto QueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId
+	auto TimeStampQueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId
 	{
 		if (_nextAllocation == _nextFree && _allocatedCount != 0)
 			return QueryId_Invalid;		// (we could also look for any buffers that are pending free)
@@ -92,7 +92,7 @@ namespace RenderCore { namespace Metal_DX11
 		return query;
 	}
 
-	auto QueryPool::BeginFrame(DeviceContext& context) -> FrameId
+	auto TimeStampQueryPool::BeginFrame(DeviceContext& context) -> FrameId
 	{
 		auto& b = _buffers[_activeBuffer];
 		if (b._pendingReadback) {
@@ -123,7 +123,7 @@ namespace RenderCore { namespace Metal_DX11
 		return b._frameId;
 	}
 
-	void QueryPool::EndFrame(DeviceContext& context, FrameId frame)
+	void TimeStampQueryPool::EndFrame(DeviceContext& context, FrameId frame)
 	{
 		auto& b = _buffers[_activeBuffer];
 		b._pendingReadback = true;
@@ -133,7 +133,7 @@ namespace RenderCore { namespace Metal_DX11
 		_activeBuffer = (_activeBuffer + 1) % s_bufferCount;
 	}
 
-	auto QueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
+	auto TimeStampQueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
 	{
 		for (unsigned c = 0; c < s_bufferCount; ++c) {
 			auto& b = _buffers[c];
@@ -184,7 +184,7 @@ namespace RenderCore { namespace Metal_DX11
 		return FrameResults{ false };
 	}
 
-	QueryPool::QueryPool(ObjectFactory& factory)
+	TimeStampQueryPool::TimeStampQueryPool(ObjectFactory& factory)
 	{
 		_queryCount = 96;
 		_activeBuffer = 0;
@@ -201,6 +201,76 @@ namespace RenderCore { namespace Metal_DX11
 			_buffers[c]._pendingReset = false;
 			_buffers[c]._queryStart = _buffers[c]._queryEnd = ~0u;
 			_buffers[c]._disjointQuery = CreateQuery(factory, true);
+		}
+	}
+
+	TimeStampQueryPool::~TimeStampQueryPool() {}
+
+/////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
+	auto QueryPool::Begin(DeviceContext& context) -> QueryId
+	{
+		assert(_nextAllocation != (unsigned)_queries.size());
+		if (_queries[_nextAllocation]._state != QueryState::Reset)
+			return ~0u;
+
+		auto allocation = _nextAllocation;
+		_nextAllocation = unsigned((_nextAllocation+1)%_queries.size());
+		BeginQuery(context, *_queries[allocation]._underlying);
+		_queries[allocation]._state = QueryState::Inflight;
+		return allocation;
+	}
+
+	void QueryPool::End(DeviceContext& context, QueryId queryId)
+	{
+		assert(queryId != ~0u);
+		assert(_queries[queryId]._state == QueryState::Inflight);
+		EndQuery(context, *_queries[queryId]._underlying);
+		_queries[queryId]._state = QueryState::Ended;
+	}
+
+	bool QueryPool::GetResults_Stall(
+		DeviceContext& context,
+		QueryId queryId, IteratorRange<void*> dst)
+	{
+		assert(queryId != ~0u);
+		assert(_queries[queryId]._state == QueryState::Ended);
+
+		D3D11_QUERY_DATA_SO_STATISTICS result;
+
+		for (;;) {
+			auto hresult = context.GetUnderlying()->GetData(
+				_queries[queryId]._underlying.get(), &result, sizeof(result), 0);
+			if (hresult == S_OK)
+				break;
+		}
+
+		_queries[queryId]._state = QueryState::Reset;
+
+		if (dst.size() >= sizeof(QueryResult_StreamOutput)) {
+			((QueryResult_StreamOutput*)dst.begin())->_primitivesWritten = (unsigned)result.NumPrimitivesWritten;
+			((QueryResult_StreamOutput*)dst.begin())->_primitivesNeeded = (unsigned)result.PrimitivesStorageNeeded;
+		}
+		return true;
+	}
+
+	static D3D11_QUERY AsUnderlyingQueryType(QueryPool::QueryType type)
+	{
+		assert(type == QueryPool::QueryType::StreamOutput_Stream0);
+		return D3D11_QUERY_SO_STATISTICS_STREAM0;
+	}
+
+	QueryPool::QueryPool(ObjectFactory& factory, QueryType type, unsigned count)
+	: _type(type)
+	{
+		_queries.reserve(count);
+		for (unsigned c=0; c<count; ++c) {
+			D3D11_QUERY_DESC queryDesc;
+			queryDesc.Query      = AsUnderlyingQueryType(type);
+			queryDesc.MiscFlags  = 0;
+			_queries.push_back({
+				QueryState::Reset,
+				factory.CreateQuery(&queryDesc)});
 		}
 	}
 
