@@ -10,6 +10,7 @@
 #include "Format.h"
 #include "ObjectFactory.h"
 #include "TextureView.h"
+#include "../IDeviceDX11.h"
 
 #pragma warning(disable:4505) // 'RenderCore::Metal_DX11::GetSubResourceIndex': unreferenced local function has been removed
 
@@ -109,6 +110,67 @@ namespace RenderCore { namespace Metal_DX11
 	Resource::Resource() : _guid(s_nextResourceGUID++) {}
 	Resource::Resource(const UnderlyingResourcePtr& underlying) : _underlying(underlying), _guid(s_nextResourceGUID++) {}
 	Resource::Resource(UnderlyingResourcePtr&& underlying) : _underlying(std::move(underlying)), _guid(s_nextResourceGUID++) {}
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	ResourceMap::ResourceMap(
+		IDevice& dev, Resource& resource,
+        SubResourceId subResource)
+	{
+		assert(subResource._mip == 0 && subResource._arrayLayer == 0);
+
+		_devContext = ((RenderCore::IDeviceDX11*)dev.QueryInterface(typeid(RenderCore::IDeviceDX11).hash_code()))->GetImmediateDeviceContext();
+		_underlyingResource = resource.GetUnderlying();
+		_map = {};
+
+		D3D11_MAPPED_SUBRESOURCE result;
+        HRESULT hresult = _devContext->Map(_underlyingResource.get(), 0, D3D11_MAP_READ, 0, &result);
+        if (SUCCEEDED(hresult) && result.pData) {
+			_map = result;
+		} else {
+			_devContext.reset();
+			_underlyingResource.reset();
+		}
+	}
+
+	ResourceMap::ResourceMap()
+	{
+		_map = {};
+	}
+
+	ResourceMap::~ResourceMap()
+	{
+		TryUnmap();
+	}
+
+	ResourceMap::ResourceMap(ResourceMap&& moveFrom) never_throws
+	: _underlyingResource(std::move(moveFrom._underlyingResource))
+	, _devContext(std::move(moveFrom._devContext))
+	{
+		_map = moveFrom._map;
+		moveFrom._map = {};
+	}
+
+	ResourceMap& ResourceMap::operator=(ResourceMap&& moveFrom) never_throws
+	{
+		TryUnmap();
+
+		_underlyingResource = std::move(moveFrom._underlyingResource);
+		_devContext = std::move(moveFrom._devContext);
+		_map = moveFrom._map;
+		moveFrom._map = {};
+
+		return *this;
+	}
+
+	void ResourceMap::TryUnmap()
+	{
+		if (_underlyingResource && _devContext)
+			_devContext->Unmap(_underlyingResource.get(), 0);
+		_underlyingResource.reset();
+		_devContext.reset();
+		_map = {};
+	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 

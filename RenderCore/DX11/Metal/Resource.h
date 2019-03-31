@@ -12,6 +12,8 @@
 #include "../../../Utility/IntrusivePtr.h"
 #include "../../../Utility/IteratorUtils.h"
 
+#include "IncludeDX11.h"
+
 namespace RenderCore { class IResource; }
 namespace RenderCore { namespace Metal_DX11
 {
@@ -54,6 +56,44 @@ namespace RenderCore { namespace Metal_DX11
 
 	private:
 		uint64_t _guid;
+	};
+
+///////////////////////////////////////////////////////////////////////////////////////////////////
+        //      M E M O R Y   M A P       //
+///////////////////////////////////////////////////////////////////////////////////////////////////
+
+    /// <summary>Locks a resource's memory for access from the CPU</summary>
+    /// This is a low level mapping operation that happens immediately. The GPU must not
+    /// be using the resource at the same time. If the GPU attempts to read while the CPU
+    /// is written, the results will be undefined.
+    /// A resource cannot be mapped more than once at the same time. However, multiple 
+    /// subresources can be mapped in a single mapping operation.
+    /// The caller is responsible for ensuring that the map is safe.
+	class ResourceMap
+	{
+	public:
+		void*           GetData()               { return _map.pData; }
+        const void*     GetData() const         { return _map.pData; }
+        size_t          GetDataSize() const     { return _map.DepthPitch; }
+		TexturePitches  GetPitches() const      { return { _map.RowPitch, _map.DepthPitch }; }
+
+		ResourceMap(
+			IDevice& dev, Resource& resource,
+            SubResourceId subResource);
+		ResourceMap();
+		~ResourceMap();
+
+		ResourceMap(const ResourceMap&) = delete;
+		ResourceMap& operator=(const ResourceMap&) = delete;
+		ResourceMap(ResourceMap&&) never_throws;
+		ResourceMap& operator=(ResourceMap&&) never_throws;
+
+	private:
+		D3D11_MAPPED_SUBRESOURCE _map;
+		intrusive_ptr<ID3D::Resource> _underlyingResource;
+		intrusive_ptr<ID3D::DeviceContext> _devContext;
+
+		void TryUnmap();
 	};
 
     class DeviceContext;

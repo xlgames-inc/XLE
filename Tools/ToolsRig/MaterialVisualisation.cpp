@@ -312,15 +312,10 @@ namespace ToolsRig
 						if (state == ::Assets::AssetState::Invalid) {
 							auto artifacts = pendingCompile->GetArtifacts();
 							if (!artifacts.empty()) {
-								auto* logArtifact = artifacts[0].second.get();
-								for (const auto& e:artifacts)
-									if (e.first == "log") {
-										logArtifact = e.second.get();
-										break;
-									}
-								thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob());
+								auto blog = ::Assets::GetErrorMessage(*pendingCompile);
+								thatFuture.SetInvalidAsset(artifacts[0].second->GetDependencyValidation(), blog);
 								if (logMessages)
-									logMessages->AddMessage(std::string("Got error during shader compile:\n") + ::Assets::AsString(logArtifact->GetBlob()) + "\n");
+									logMessages->AddMessage(std::string("Got error during shader compile:\n") + ::Assets::AsString(blog) + "\n");
 							} else {
 								thatFuture.SetInvalidAsset(nullptr, nullptr);
 							}

@@ -54,6 +54,8 @@ namespace Assets
 		std::vector<NameAndArtifact> _artifacts;
     };
 
+	Blob GetErrorMessage(const ArtifactFuture& artifactList);
+
 	/// <summary>Returned from a IAssetCompiler on response to a compile request</summary>
 	/// After receiving a compile marker, the caller can choose to either retrieve an existing
 	/// artifact from a previous compile, or begin a new asynchronous compile operation.

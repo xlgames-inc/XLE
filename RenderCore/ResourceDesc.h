@@ -223,8 +223,8 @@ namespace RenderCore
     class SubResourceId 
     { 
     public:
-        unsigned _mip;
-        unsigned _arrayLayer;
+        unsigned _mip = 0;
+        unsigned _arrayLayer = 0;
     };
 
     class PresentationChainDesc

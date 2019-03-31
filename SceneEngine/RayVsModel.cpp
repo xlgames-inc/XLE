@@ -118,13 +118,13 @@ namespace SceneEngine
         lbDesc._sizeInBytes = desc._elementSize * desc._elementCount;
 
         auto bufferDesc = CreateDesc(
-            BindFlag::StreamOutput | BindFlag::TransferDst, 0, GPUAccess::Read | GPUAccess::Write,
+            BindFlag::StreamOutput | BindFlag::TransferSrc, 0, GPUAccess::Read | GPUAccess::Write,
             lbDesc, "ModelIntersectionBuffer");
         
         _streamOutputBuffer = device.CreateResource(bufferDesc);
 
         _cpuAccessBuffer = device.CreateResource(
-            CreateDesc(0, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"));
+            CreateDesc(BindFlag::TransferDst, CPUAccess::Read, 0, lbDesc, "ModelIntersectionCopyBuffer"));
 
 		_streamOutputQueryPool = std::make_unique<RenderCore::Metal::QueryPool>(
 			Metal::GetObjectFactory(device), 
@@ -135,7 +135,7 @@ namespace SceneEngine
     }
 	
 #if GFXAPI_TARGET == GFXAPI_VULKAN
-	static void BufferBarrier0(Metal::DeviceContext& context, Metal::Resource& buffer)
+	void BufferBarrier0(Metal::DeviceContext& context, Metal::Resource& buffer)
 	{
 		VkBufferMemoryBarrier globalBarrier =
 			{
@@ -156,7 +156,7 @@ namespace SceneEngine
 			0, nullptr);
 	}
 
-	static void BufferBarrier1(Metal::DeviceContext& context, Metal::Resource& buffer)
+	void BufferBarrier1(Metal::DeviceContext& context, Metal::Resource& buffer)
 	{
 		VkBufferMemoryBarrier globalBarrier =
 			{
