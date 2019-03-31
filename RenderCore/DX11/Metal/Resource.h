@@ -72,14 +72,16 @@ namespace RenderCore { namespace Metal_DX11
 	class ResourceMap
 	{
 	public:
-		void*           GetData()               { return _map.pData; }
-        const void*     GetData() const         { return _map.pData; }
-        size_t          GetDataSize() const     { return _map.DepthPitch; }
-		TexturePitches  GetPitches() const      { return { _map.RowPitch, _map.DepthPitch }; }
+		IteratorRange<void*>        GetData()               { return { _map.pData, PtrAdd(_map.pData, _map.RowPitch) }; }
+        IteratorRange<const void*>  GetData() const         { return { _map.pData, PtrAdd(_map.pData, _map.RowPitch) }; }
+		TexturePitches				GetPitches() const      { return { _map.RowPitch, _map.DepthPitch }; }
+
+		enum class Mode { Read, WriteDiscardPrevious };
 
 		ResourceMap(
-			IDevice& dev, Resource& resource,
-            SubResourceId subResource);
+			DeviceContext& context, Resource& resource,
+			Mode mapMode,
+			SubResourceId subResource = {});
 		ResourceMap();
 		~ResourceMap();
 

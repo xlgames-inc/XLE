@@ -20,6 +20,7 @@
 #include "../UniformsStream.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
+#include "../Metal/Resource.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IFileSystem.h"
@@ -292,8 +293,15 @@ namespace RenderCore { namespace Assets
 	void SimpleModelRenderer::GenerateDeformBuffer(IThreadContext& context)
 	{
 		if (!_dynVB) return;
+
 		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
-		auto dst = ((Metal::Buffer*)_dynVB.get())->Map(metalContext);
+
+		auto* res = (Metal::Resource*)_dynVB->QueryInterface(typeid(Metal::Resource).hash_code());
+		assert(res);
+
+		Metal::ResourceMap map(metalContext, *res, Metal::ResourceMap::Mode::WriteDiscardPrevious);
+		auto dst = map.GetData();
+
 		for (const auto&d:_deformOps) {
 			auto partRange = MakeIteratorRange(PtrAdd(dst.begin(), d._dynVBBegin), PtrAdd(dst.begin(), d._dynVBEnd));
 			assert(partRange.begin() < partRange.end() && PtrDiff(partRange.end(), dst.begin()) <= ptrdiff_t(dst.size()));
@@ -311,7 +319,6 @@ namespace RenderCore { namespace Assets
 			// Execute the actual deform op
 			d._deformOp->Execute(MakeIteratorRange(elementRanges, &elementRanges[d._elements.size()]));
 		}
-		((Metal::Buffer*)_dynVB.get())->Unmap(metalContext);
 	}
 
 	unsigned SimpleModelRenderer::DeformOperationCount() const { return (unsigned)_deformOps.size(); }

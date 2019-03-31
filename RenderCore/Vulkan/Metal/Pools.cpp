@@ -277,7 +277,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		ResourceMap map(
 			device, buffer.GetMemory(),
 			startPt, data.size());
-		std::memcpy(map.GetData(), data.begin(), data.size());
+		std::memcpy(map.GetData().begin(), data.begin(), data.size());
 	}
 
 	VkDescriptorBufferInfo	TemporaryBufferSpace::AllocateBuffer(IteratorRange<const void*> data)

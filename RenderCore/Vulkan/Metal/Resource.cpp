@@ -391,7 +391,7 @@ namespace RenderCore { namespace Metal_Vulkan
                     auto subResData = initData({0, 0});
 				    if (subResData._data.size()) {
 					    ResourceMap map(factory.GetDevice().get(), _mem.get());
-					    std::memcpy(map.GetData(), subResData._data.begin(), std::min(subResData._data.size(), (size_t)mem_reqs.size));
+					    std::memcpy(map.GetData().begin(), subResData._data.begin(), std::min(subResData._data.size(), (size_t)mem_reqs.size));
 				    }
                 } else {
                     // This is the staging texture path. Rather that getting the arrangement of subresources from
@@ -796,7 +796,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				if (!layout.size) continue;	// couldn't find this subresource?
 
                 CopyMipLevel(
-                    PtrAdd(map.GetData(), layout.offset), size_t(layout.size),
+                    PtrAdd(map.GetData().begin(), layout.offset), size_t(layout.size),
                     TexturePitches{unsigned(layout.rowPitch), unsigned(layout.depthPitch), unsigned(layout.arrayPitch)},
                     mipDesc, subResData);
 			}
@@ -847,11 +847,12 @@ namespace RenderCore { namespace Metal_Vulkan
 	}
 
 	ResourceMap::ResourceMap(
-		IDevice& idev, Resource& resource,
+		DeviceContext& context, Resource& resource,
+		Mode mapMode,
         SubResourceId subResource,
 		VkDeviceSize offset, VkDeviceSize size)
 	{
-        auto dev = ExtractUnderlyingDevice(idev);
+        auto dev = context.GetUnderlyingDevice();
 
         VkDeviceSize finalOffset = offset, finalSize = size;
         _pitches = TexturePitches { unsigned(size), unsigned(size) };

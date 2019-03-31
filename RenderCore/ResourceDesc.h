@@ -367,6 +367,10 @@ namespace RenderCore
 	public:
 		IteratorRange<const void*>  _data;
 		TexturePitches              _pitches = {};
+
+		SubResourceInitData() {}
+		SubResourceInitData(IteratorRange<const void*> data) : _data(data) {}
+		SubResourceInitData(IteratorRange<const void*> data, TexturePitches pitches) : _data(data), _pitches(pitches) {}
 	};
 
     class Box2D

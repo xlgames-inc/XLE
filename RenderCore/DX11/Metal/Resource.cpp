@@ -114,17 +114,20 @@ namespace RenderCore { namespace Metal_DX11
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
 	ResourceMap::ResourceMap(
-		IDevice& dev, Resource& resource,
+		DeviceContext& context, Resource& resource,
+		Mode mapMode,
         SubResourceId subResource)
 	{
 		assert(subResource._mip == 0 && subResource._arrayLayer == 0);
 
-		_devContext = ((RenderCore::IDeviceDX11*)dev.QueryInterface(typeid(RenderCore::IDeviceDX11).hash_code()))->GetImmediateDeviceContext();
+		_devContext = context.GetUnderlying();
 		_underlyingResource = resource.GetUnderlying();
 		_map = {};
 
+		auto underlyingMapMap = (mapMode == Mode::Read) ? D3D11_MAP_READ : D3D11_MAP_WRITE_DISCARD;
+
 		D3D11_MAPPED_SUBRESOURCE result;
-        HRESULT hresult = _devContext->Map(_underlyingResource.get(), 0, D3D11_MAP_READ, 0, &result);
+        HRESULT hresult = _devContext->Map(_underlyingResource.get(), 0, underlyingMapMap, 0, &result);
         if (SUCCEEDED(hresult) && result.pData) {
 			_map = result;
 		} else {
