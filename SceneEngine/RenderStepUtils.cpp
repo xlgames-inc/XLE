@@ -76,6 +76,9 @@ namespace SceneEngine
 		auto& techUSI = RenderCore::Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
 		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
 			_sequencerTechnique._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<RenderCore::Techniques::GlobalCBDelegate>(c)));
+
+		for (const auto& d:parserContext.GetUniformDelegates())
+			_sequencerTechnique._sequencerUniforms.push_back({d.first, d.second});
 	}
 
 	ExecuteDrawablesContext::~ExecuteDrawablesContext() {}

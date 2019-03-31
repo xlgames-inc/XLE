@@ -115,6 +115,34 @@ namespace RenderCore { namespace Techniques
         return std::move(oldDelegate);
 	}
 
+	void ParsingContext::AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>& dele)
+	{
+		for (auto&d:_uniformDelegates)
+			if (d.first == binding) {
+				d.second = dele;
+				return;
+			}
+		_uniformDelegates.push_back(std::make_pair(binding, dele));
+	}
+
+	void ParsingContext::RemoveUniformDelegate(uint64_t binding)
+	{
+		_uniformDelegates.erase(
+			std::remove_if(
+				_uniformDelegates.begin(), _uniformDelegates.end(),
+				[binding](const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>& p) { return p.first == binding; }),
+			_uniformDelegates.end());
+	}
+
+	void ParsingContext::RemoveUniformDelegate(IUniformBufferDelegate& dele)
+	{
+		_uniformDelegates.erase(
+			std::remove_if(
+				_uniformDelegates.begin(), _uniformDelegates.end(),
+				[&dele](const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>& p) { return p.second.get() == &dele; }),
+			_uniformDelegates.end());
+	}
+
     ParsingContext::ParsingContext(const TechniqueContext& techniqueContext, AttachmentPool* namedResources, FrameBufferPool* frameBufferPool)
     {
         _techniqueContext = std::make_unique<TechniqueContext>(techniqueContext);

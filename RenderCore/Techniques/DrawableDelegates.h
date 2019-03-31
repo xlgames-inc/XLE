@@ -21,7 +21,7 @@ namespace RenderCore { namespace Techniques
     {
     public:
         virtual ConstantBufferView WriteBuffer(ParsingContext& context, const void* objectContext) = 0;
-        virtual IteratorRange<const ConstantBufferElementDesc*> GetLayout() const = 0;
+        virtual IteratorRange<const ConstantBufferElementDesc*> GetLayout() const;
         virtual ~IUniformBufferDelegate();
     };
 

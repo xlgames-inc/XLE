@@ -26,6 +26,7 @@ namespace RenderCore { namespace Techniques
     class IRenderStateDelegate;
 	class ITechniqueDelegate;
 	class IMaterialDelegate;
+	class IUniformBufferDelegate;
     class AttachmentPool;
 	class FrameBufferPool;
     
@@ -60,6 +61,11 @@ namespace RenderCore { namespace Techniques
 
 		std::shared_ptr<IMaterialDelegate> SetMaterialDelegate(const std::shared_ptr<IMaterialDelegate>& materialDelegate);
         const std::shared_ptr<IMaterialDelegate>& GetMaterialDelegate()            { return _materialDelegate; }
+
+		void AddUniformDelegate(uint64_t binding, const std::shared_ptr<IUniformBufferDelegate>&);
+		void RemoveUniformDelegate(uint64_t binding);
+		void RemoveUniformDelegate(IUniformBufferDelegate&);
+		IteratorRange<const std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>*> GetUniformDelegates() { return MakeIteratorRange(_uniformDelegates); }
 
         AttachmentPool& GetNamedResources() { assert(_namedResources); return *_namedResources; }
 		FrameBufferPool& GetFrameBufferPool() { assert(_frameBufferPool); return *_frameBufferPool; }
@@ -114,6 +120,8 @@ namespace RenderCore { namespace Techniques
 
         AttachmentPool*     _namedResources;
 		FrameBufferPool*	_frameBufferPool;
+
+		std::vector<std::pair<uint64_t, std::shared_ptr<IUniformBufferDelegate>>> _uniformDelegates;
     };
 
     /// <summary>Utility macros for catching asset exceptions</summary>
