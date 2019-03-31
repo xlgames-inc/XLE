@@ -12,6 +12,8 @@ namespace RenderCore
 {
 	const AttachmentViewDesc SubpassDesc::Unused = AttachmentViewDesc{};
 
+	FrameBufferDesc FrameBufferDesc::s_empty { {}, {SubpassDesc{}} };
+
 	FrameBufferDesc::FrameBufferDesc(
         std::vector<Attachment>&& attachments,
         std::vector<SubpassDesc>&& subpasses)

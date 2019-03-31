@@ -43,6 +43,9 @@ namespace RenderCore { namespace Metal_Vulkan
         if (bindFlags & BindFlag::TransferDst) result |= VK_BUFFER_USAGE_TRANSFER_DST_BIT;
         if (bindFlags & BindFlag::StructuredBuffer) result |= VK_BUFFER_USAGE_STORAGE_BUFFER_BIT;
 
+		// from VK_EXT_transform_feedback
+		if (bindFlags & BindFlag::StreamOutput) result |= VK_BUFFER_USAGE_TRANSFORM_FEEDBACK_BUFFER_BIT_EXT;
+
 		// Other Vulkan flags:
 		// VK_BUFFER_USAGE_UNIFORM_TEXEL_BUFFER_BIT
 		// VK_BUFFER_USAGE_STORAGE_TEXEL_BUFFER_BIT

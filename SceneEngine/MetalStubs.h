@@ -7,6 +7,7 @@
 #include "../RenderCore/Types.h"
 #include "../RenderCore/ResourceList.h"
 #include "../RenderCore/Metal/DeviceContext.h"
+#include "../RenderCore/Metal/QueryPool.h"
 
 namespace SceneEngine { namespace MetalStubs
 {

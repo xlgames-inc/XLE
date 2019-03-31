@@ -109,7 +109,7 @@ namespace BufferUploads
 
                     commandList->_commitStep.CommitToImmediate_PreCommandList(commitTo);
                     if (commandList->_deviceCommandList) {
-                        immContext->CommitCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
+                        immContext->ExecuteCommandList(*commandList->_deviceCommandList.get(), preserveRenderState);
                     }
                     commandList->_commitStep.CommitToImmediate_PostCommandList(commitTo);
                     _commandListIDCommittedToImmediate   = std::max(_commandListIDCommittedToImmediate, commandList->_id);

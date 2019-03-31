@@ -26,24 +26,23 @@ namespace RenderCore { namespace Metal_Vulkan
 									const CompiledShaderByteCode& vs,
 									const CompiledShaderByteCode& ps)
     {
+		_validationCallback = std::make_shared<Assets::DependencyValidation>();
+
 		if (vs.GetStage() != ShaderStage::Null) {
 			assert(vs.GetStage() == ShaderStage::Vertex);
             _modules[(unsigned)ShaderStage::Vertex] = factory.CreateShaderModule(vs.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Vertex] = vs;
+			assert(_modules[(unsigned)ShaderStage::Vertex]);
+			Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
 		}
 
 		if (ps.GetStage() != ShaderStage::Null) {
 			assert(ps.GetStage() == ShaderStage::Pixel);
             _modules[(unsigned)ShaderStage::Pixel] = factory.CreateShaderModule(ps.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Pixel] = ps;
+			assert(_modules[(unsigned)ShaderStage::Pixel]);
+			Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
 		}
-
-		assert(_modules[(unsigned)ShaderStage::Vertex]);
-		assert(_modules[(unsigned)ShaderStage::Pixel]);
-
-        _validationCallback = std::make_shared<Assets::DependencyValidation>();
-        Assets::RegisterAssetDependency(_validationCallback, vs.GetDependencyValidation());
-        Assets::RegisterAssetDependency(_validationCallback, ps.GetDependencyValidation());
     }
     
     ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
@@ -53,14 +52,13 @@ namespace RenderCore { namespace Metal_Vulkan
 									StreamOutputInitializers so)
     :   ShaderProgram(factory, vs, ps)
     {
-		assert(!so._outputElements.size() && !so._outputBufferStrides.size());		// todo -- stream output not implemented
 		if (gs.GetStage() != ShaderStage::Null) {
 			assert(gs.GetStage() == ShaderStage::Geometry);
             _modules[(unsigned)ShaderStage::Geometry] = factory.CreateShaderModule(gs.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Geometry] = gs;
+			assert(_modules[(unsigned)ShaderStage::Geometry]);
+			Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
 		}
-
-        Assets::RegisterAssetDependency(_validationCallback, gs.GetDependencyValidation());
     }
 
     ShaderProgram::ShaderProgram(   ObjectFactory& factory, 
@@ -76,16 +74,17 @@ namespace RenderCore { namespace Metal_Vulkan
 			assert(hs.GetStage() == ShaderStage::Hull);
             _modules[(unsigned)ShaderStage::Hull] = factory.CreateShaderModule(hs.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Hull] = hs;
+			assert(_modules[(unsigned)ShaderStage::Hull]);
+			Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
 		}
 
 		if (ds.GetStage() != ShaderStage::Null) {
 			assert(ds.GetStage() == ShaderStage::Domain);
             _modules[(unsigned)ShaderStage::Domain] = factory.CreateShaderModule(ds.GetByteCode());
 			_compiledCode[(unsigned)ShaderStage::Domain] = ds;
+			assert(_modules[(unsigned)ShaderStage::Domain]);
+			Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
 		}
-
-        Assets::RegisterAssetDependency(_validationCallback, hs.GetDependencyValidation());
-		Assets::RegisterAssetDependency(_validationCallback, ds.GetDependencyValidation());
     }
 
 	ShaderProgram::ShaderProgram() {}

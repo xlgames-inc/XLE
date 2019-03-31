@@ -84,14 +84,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
 				const auto& binding = _pimpl->_srvRegisters_boundToBuffer[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 				_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
 			} else {
 				const auto& binding = _pimpl->_srvRegisters[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 				_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
@@ -110,7 +110,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 				const auto& binding = _pimpl->_uavRegisters_boundToBuffer[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 
@@ -118,7 +118,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			} else {
 				const auto& binding = _pimpl->_uavRegisters[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 
@@ -134,7 +134,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			const auto& binding = _pimpl->_constantBufferRegisters[startingPoint + c];
 			if (binding._descriptorSetBindIndex == ~0u) {
-				Log(Warning) << "Uniform buffer numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				Log(Debug) << "Uniform buffer numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 
@@ -149,7 +149,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			const auto& binding = _pimpl->_samplerRegisters[startingPoint + c];
 			if (binding._descriptorSetBindIndex == ~0u) {
-				Log(Warning) << "Sampler numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				Log(Debug) << "Sampler numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 

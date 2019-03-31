@@ -186,6 +186,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		void WriteTimestamp(
 			VkPipelineStageFlagBits pipelineStage, 
 			VkQueryPool queryPool, uint32_t query);
+		void BeginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags = 0);
+		void EndQuery(VkQueryPool queryPool, uint32_t query);
 		void ResetQueryPool(
 			VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount);
 		void SetEvent(VkEvent evnt, VkPipelineStageFlags stageMask);
@@ -239,7 +241,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
 		void		BeginCommandList();
 		void		BeginCommandList(const VulkanSharedPtr<VkCommandBuffer>& cmdList);
-		void		CommitCommandList(CommandList&, bool);
+		void		ExecuteCommandList(CommandList&, bool);
+
+		struct QueueCommandListFlags
+		{
+			enum Bits { Stall = 1 << 0 };
+			using BitField = unsigned;
+		};
+		void		QueueCommandList(IDevice& device, QueueCommandListFlags::BitField flags = 0);
 		auto        ResolveCommandList() -> CommandListPtr;
 		bool		IsImmediate() { return false; }
 
@@ -304,6 +313,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		CommandBufferType					_cmdBufferType;
 
 		TemporaryBufferSpace*				_tempBufferSpace;
+
+		VulkanUniquePtr<VkFence>			_utilityFence;
 
         bool BindGraphicsPipeline();
         bool BindComputePipeline();

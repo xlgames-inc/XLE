@@ -874,7 +874,7 @@ namespace PlatformRig { namespace Overlays
             //          earlier than main context is executable -- and insert some synchronization
             //          tests to ensure that it is ready by the time we get to this point.
             //      we can keep a list of "tributary" command lists in the main device context...?
-            metalContext->CommitCommandList(
+            metalContext->ExecuteCommandList(
                 *forkedContext->ResolveCommandList(),
                 true);
         }

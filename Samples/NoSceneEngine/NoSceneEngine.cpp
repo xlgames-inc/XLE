@@ -777,7 +777,7 @@ namespace Sample
 				metalContext->BeginCommandList();
 				VulkanTest::init_image2(*renderDevice, *initContext.get(), texObj);
 				auto cmdList = metalContext->ResolveCommandList();
-				Metal::DeviceContext::Get(*context)->CommitCommandList(*cmdList, false);
+				Metal::DeviceContext::Get(*context)->ExecuteCommandList(*cmdList, false);
 				// VulkanTest::init_image2(*renderDevice, *context, texObj);
 				initTex = true;
 			}

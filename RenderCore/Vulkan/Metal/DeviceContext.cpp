@@ -15,8 +15,8 @@
 #include "Pools.h"
 #include "PipelineLayout.h"
 #include "ShaderReflection.h"
-#include "../../Format.h"
 #include "../IDeviceVulkan.h"
+#include "../../Format.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
@@ -137,7 +137,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkRenderPass renderPass, unsigned subpass, 
         TextureSamples samples)
     {
-        if (!_shaderProgram || !renderPass) return nullptr;
+		assert(_shaderProgram && renderPass);
 
         VkPipelineShaderStageCreateInfo shaderStages[3];
         uint32_t shaderStageCount = 0;
@@ -213,7 +213,7 @@ namespace RenderCore { namespace Metal_Vulkan
         pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
         pipeline.pVertexInputState = &vi;
         pipeline.pInputAssemblyState = &ia;
-        pipeline.pRasterizationState = &_rasterizerState;
+		pipeline.pRasterizationState = &_rasterizerState;
         pipeline.pColorBlendState = &_blendState;
         pipeline.pTessellationState = nullptr;
         pipeline.pMultisampleState = &ms;
@@ -436,8 +436,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			#endif
         }
 
-		// GetTemporaryBufferSpace().WriteBarrier(*this);
-
         if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
 
 		if (!_renderPass) {
@@ -450,27 +448,23 @@ namespace RenderCore { namespace Metal_Vulkan
             _globalPools->_mainPipelineCache.get(),
             _graphicsDescriptors._pipelineLayout->GetUnderlying(),
             _renderPass, _renderPassSubpass, _renderPassSamples);
-        if (_currentGraphicsPipeline) {
-			LogGraphicsPipeline();
+        assert(_currentGraphicsPipeline);
+		LogGraphicsPipeline();
 
-			#if defined(_DEBUG)
-				// check for unbound descriptor sets
-				for (unsigned c=0; c<_graphicsDescriptors._descriptorSets.size(); ++c)
-					if (!_graphicsDescriptors._descriptorSets[c]) {
-						Log(Warning) << "Graphics descriptor set index [" << c << "] (" << _graphicsDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
-					}
-			#endif
+		#if defined(_DEBUG)
+			// check for unbound descriptor sets
+			for (unsigned c=0; c<_graphicsDescriptors._descriptorSets.size(); ++c)
+				if (!_graphicsDescriptors._descriptorSets[c]) {
+					Log(Warning) << "Graphics descriptor set index [" << c << "] (" << _graphicsDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
+				}
+		#endif
 
-            vkCmdBindPipeline(
-			    _commandList.GetUnderlying().get(),
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _currentGraphicsPipeline.get());
-            Bind(_boundViewport);
-            return true;
-        }
-
-        assert(0);
-        return false;
+        vkCmdBindPipeline(
+			_commandList.GetUnderlying().get(),
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            _currentGraphicsPipeline.get());
+        Bind(_boundViewport);
+        return true;
     }
 
     bool DeviceContext::BindComputePipeline()
@@ -499,33 +493,29 @@ namespace RenderCore { namespace Metal_Vulkan
             *_factory,
             _globalPools->_mainPipelineCache.get(),
             _computeDescriptors._pipelineLayout->GetUnderlying());
-        if (_currentComputePipeline) {
-			LogComputePipeline();
+        assert(_currentComputePipeline);
+		LogComputePipeline();
 
-			#if defined(_DEBUG)
-				// check for unbound descriptor sets
-				for (unsigned c=0; c<_computeDescriptors._descriptorSets.size(); ++c)
-					if (!_computeDescriptors._descriptorSets[c]) {
-						Log(Warning) << "Compute descriptor set index [" << c << "] (" << _computeDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
-					}
-			#endif
+		#if defined(_DEBUG)
+			// check for unbound descriptor sets
+			for (unsigned c=0; c<_computeDescriptors._descriptorSets.size(); ++c)
+				if (!_computeDescriptors._descriptorSets[c]) {
+					Log(Warning) << "Compute descriptor set index [" << c << "] (" << _computeDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
+				}
+		#endif
 
-            vkCmdBindPipeline(
-			    _commandList.GetUnderlying().get(),
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                _currentComputePipeline.get());
+        vkCmdBindPipeline(
+			_commandList.GetUnderlying().get(),
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            _currentComputePipeline.get());
 
-            // note -- currently crashing the GPU if we don't rebind here...?
-            _commandList.BindDescriptorSets(
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                _computeDescriptors._pipelineLayout->GetUnderlying(), 
-                0, (uint32_t)_computeDescriptors._descriptorSets.size(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
-                0, nullptr);
-            return true;
-        }
-
-        assert(0);
-        return false;
+        // note -- currently crashing the GPU if we don't rebind here...?
+        /*_commandList.BindDescriptorSets(
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            _computeDescriptors._pipelineLayout->GetUnderlying(), 
+            0, (uint32_t)_computeDescriptors._descriptorSets.size(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
+            0, nullptr);*/
+        return true;
     }
 
 	void DeviceContext::LogGraphicsPipeline()
@@ -704,7 +694,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
 	}
 
-	void		DeviceContext::CommitCommandList(CommandList& cmdList, bool preserveState)
+	void		DeviceContext::ExecuteCommandList(CommandList& cmdList, bool preserveState)
 	{
 		assert(_commandList.GetUnderlying());
 		(void)preserveState;		// we can't handle this properly in Vulkan
@@ -713,6 +703,52 @@ namespace RenderCore { namespace Metal_Vulkan
         vkCmdExecuteCommands(
 			_commandList.GetUnderlying().get(),
 			dimof(buffers), buffers);
+	}
+
+	void		DeviceContext::QueueCommandList(IDevice& device, QueueCommandListFlags::BitField flags)
+	{
+		IDeviceVulkan* deviceVulkan = (IDeviceVulkan*)device.QueryInterface(typeid(IDeviceVulkan).hash_code());
+		if (!deviceVulkan) {
+			assert(0);
+			return;
+		}
+
+		assert(deviceVulkan->GetUnderlyingDevice() == GetUnderlyingDevice());
+
+		auto cmdList = ResolveCommandList();
+		auto renderingQueue = deviceVulkan->GetRenderingQueue();
+
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+
+		VkCommandBuffer rawCmdBuffers[] = { cmdList->GetUnderlying().get() };
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = 0;
+		submitInfo.commandBufferCount = dimof(rawCmdBuffers);
+		submitInfo.pCommandBuffers = rawCmdBuffers;
+
+		// Use a fence to stall this method until the execute of the command list is complete
+		VkFence f = VK_NULL_HANDLE;
+		if (flags & QueueCommandListFlags::Stall) {
+			f = _utilityFence.get();
+			auto res = vkResetFences(deviceVulkan->GetUnderlyingDevice(), 1, &f);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while resetting utility fence"));
+		}
+		
+		auto res = vkQueueSubmit(renderingQueue, 1, &submitInfo, f);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing command list"));
+
+		if (flags & QueueCommandListFlags::Stall) {
+			res = vkWaitForFences(deviceVulkan->GetUnderlyingDevice(), 1, &f, true, UINT64_MAX);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while waiting for command list fence"));
+		}
 	}
 
 	auto        DeviceContext::ResolveCommandList() -> CommandListPtr
@@ -831,6 +867,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _computeDescriptors(factory, globalPools, computePipelineLayout)
 	, _tempBufferSpace(&tempBufferSpace)
     {
+		_utilityFence = _factory->CreateFence(0);
     }
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
@@ -942,6 +979,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		VkQueryPool queryPool, uint32_t query)
 	{
 		vkCmdWriteTimestamp(_underlying.get(), pipelineStage, queryPool, query);
+	}
+
+	void CommandList::BeginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags)
+	{
+		vkCmdBeginQuery(_underlying.get(), queryPool, query, flags);
+	}
+
+	void CommandList::EndQuery(VkQueryPool queryPool, uint32_t query)
+	{
+		vkCmdEndQuery(_underlying.get(), queryPool, query);
 	}
 
 	void CommandList::ResetQueryPool(

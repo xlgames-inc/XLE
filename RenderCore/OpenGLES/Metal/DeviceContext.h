@@ -115,7 +115,7 @@ namespace RenderCore { namespace Metal_OpenGLES
     public:
         void            BeginCommandList();
         CommandListPtr  ResolveCommandList();
-        void            CommitCommandList(CommandList& commandList);
+        void            ExecuteCommandList(CommandList& commandList);
 
         static void PrepareForDestruction(IDevice* device);
 

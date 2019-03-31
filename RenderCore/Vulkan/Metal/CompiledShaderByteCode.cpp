@@ -16,6 +16,7 @@
 #include "../../../Assets/AssetUtils.h"
 #include "../../../Utility/StringUtils.h"
 #include "../../../Utility/StringFormat.h"
+#include "../../../Utility/Conversion.h"
 
 #include <sstream>
 
@@ -404,16 +405,68 @@ namespace RenderCore { namespace Metal_Vulkan
 		return LegacyRegisterBinding::RegisterQualifier::None;
 	}
 
+	struct EvaluateBindingData
+	{
+		RootSignature* _rootSig;
+		std::vector<std::pair<uint64_t, unsigned>> _soOffsets;
+
+		EvaluateBindingData(StringSection<> defines);
+	};
+
+	EvaluateBindingData::EvaluateBindingData(StringSection<> defines)
+	{
+		auto starter = MakeStringSection("SO_OFFSETS=");
+		auto offsets = XlFindString(defines, starter);
+		if (offsets && offsets != defines.end()) {
+			offsets += starter.size();
+			auto i = offsets;
+			while (i!=defines.end()) {
+				auto i2 = i+1;
+				while (*i2 != ',' && i2!=defines.end()) i2++;
+				if (i2 == defines.end()) break;
+				auto i3 = i2+1;
+				while (*i3 != ',' && i3!=defines.end()) i3++;
+
+				auto h = Conversion::Convert<uint64>(MakeStringSection(i, i2));
+				auto o = Conversion::Convert<unsigned>(MakeStringSection(i2+1, i3));
+				_soOffsets.push_back({h, o});
+
+				i = i3;
+				if (i == defines.end()) break;
+				++i;
+			}
+		}
+		std::sort(_soOffsets.begin(), _soOffsets.end(), CompareFirst<uint64_t, unsigned>());
+	}
+
     uint32_t __cdecl EvaluateBinding(
-        void* userData,
+        void* rawUserData,
         GLSLResourceBinding* dstBinding, 
         ResourceBinding* srcResBinding,
         ::ConstantBuffer* srcCBBinding,
+		char* semantic,
         uint32_t bindPoint, uint32_t shaderStage)
     {
+		auto* userData = (const EvaluateBindingData*)rawUserData;
+		if (semantic) {
+			auto semanticRange = MakeStringSection(semantic);
+			auto indexStart = semanticRange.end();
+			while (indexStart != semanticRange.begin() && *(indexStart-1) >= '0' && *(indexStart-1) <= '9') --indexStart;
+			auto hash = Hash64(MakeStringSection(semanticRange.begin(), indexStart)) + XlAtoI32(indexStart);
+
+			auto i = LowerBound(userData->_soOffsets, hash);
+			if (i!=userData->_soOffsets.end() && i->first == hash) {
+				dstBinding->_locationIndex = 0;
+				dstBinding->_bindingIndex = i->second;
+				dstBinding->_setIndex = ~0u;
+				dstBinding->_flags = GLSL_BINDING_TYPE_TRANSFORMFEEDBACK;
+				return 1;
+			}
+		}
+
         // Attempt to find this binding in our root signature, and return the binding
         // index and set associated with it!
-        auto& rootSig = *(RootSignature*)userData;
+        auto& rootSig = *userData->_rootSig;
         auto type = AsBindingType(srcResBinding, srcCBBinding);
         if (type == LegacyRegisterBinding::RegisterType::Unknown) return 0;
 
@@ -497,11 +550,13 @@ namespace RenderCore { namespace Metal_Vulkan
             hlslccFlags &= ~HLSLCC_FLAG_INOUT_SEMANTIC_NAMES;
 
         auto* bytecodeStart = (const char*)PtrAdd(AsPointer(hlslBytecode->begin()), sizeof(ShaderService::ShaderHeader));
+		EvaluateBindingData bd { definesTable };
+		bd._rootSig = rootSig.get();
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             hlslccFlags,
             LANG_440, &ext, &depData, 
-            &EvaluateBinding, rootSig.get(),
+            &EvaluateBinding, &bd,
             &glslShader);
         if (!translateResult) return false;
 

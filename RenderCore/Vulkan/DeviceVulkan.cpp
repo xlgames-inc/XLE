@@ -56,6 +56,7 @@ namespace RenderCore { namespace ImplVulkan
 	static const char* s_deviceExtensions[] =
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		, VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME
 	};
 
     #if defined(ENABLE_DEBUG_EXTENSIONS)
@@ -345,6 +346,11 @@ namespace RenderCore { namespace ImplVulkan
 		queue_info.pQueuePriorities = queue_priorities;
 		queue_info.queueFamilyIndex = physDev._renderingQueueFamily;
 
+		VkPhysicalDeviceFeatures physicalDeviceFeatures = {};
+		physicalDeviceFeatures.independentBlend = true;
+		physicalDeviceFeatures.geometryShader = true;
+		physicalDeviceFeatures.samplerAnisotropy = true;
+
 		VkDeviceCreateInfo device_info = {};
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
 		device_info.pNext = nullptr;
@@ -352,7 +358,7 @@ namespace RenderCore { namespace ImplVulkan
 		device_info.pQueueCreateInfos = &queue_info;
 		device_info.enabledExtensionCount = (uint32_t)dimof(s_deviceExtensions);
 		device_info.ppEnabledExtensionNames = s_deviceExtensions;
-		device_info.pEnabledFeatures = nullptr;
+		device_info.pEnabledFeatures = &physicalDeviceFeatures;
 
         #if defined(ENABLE_DEBUG_EXTENSIONS)
             auto availableLayers = EnumerateLayers();
@@ -401,8 +407,10 @@ namespace RenderCore { namespace ImplVulkan
     Device::~Device()
     {
         Metal_Vulkan::SetDefaultObjectFactory(nullptr);
+		/*
+			While exiting post a vulkan failure (eg, device lost), we will can end up in an infinite loop if we stall here
 		if (_underlying.get())
-			vkDeviceWaitIdle(_underlying.get());
+			vkDeviceWaitIdle(_underlying.get());*/
     }
 
     static std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkPhysicalDevice physDev, VkSurfaceKHR surface)

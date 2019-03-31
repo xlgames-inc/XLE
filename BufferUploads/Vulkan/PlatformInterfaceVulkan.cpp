@@ -10,6 +10,7 @@
 #if GFXAPI_ACTIVE == GFXAPI_VULKAN
 
     #include "../PlatformInterface.h"
+	#include "../ResourceLocator.h"
     #include "../DataPacket.h"
 	#include "../../RenderCore/IThreadContext.h"
     #include "../../RenderCore/Metal/Resource.h"
@@ -183,9 +184,58 @@
             metalContext->BeginCommandList();
         }
 
+		class RawDataPacket_ReadBack : public DataPacket
+		{
+		public:
+			void*           GetData(SubResourceId subRes);
+			size_t          GetDataSize(SubResourceId subRes) const;
+			TexturePitches  GetPitches(SubResourceId subRes) const;
+
+			std::shared_ptr<Marker> BeginBackgroundLoad() { return nullptr; }
+
+			RawDataPacket_ReadBack(
+				IDevice& dev,
+				Metal::Resource& resource, 
+				SubResourceId subResource);
+			~RawDataPacket_ReadBack();
+		protected:
+			Metal::ResourceMap _resourceMap;
+			SubResourceId _mappedSubResource;
+		};
+
+		void*           RawDataPacket_ReadBack::GetData(SubResourceId subRes)
+		{
+			assert(_mappedSubResource._mip == subRes._mip && _mappedSubResource._arrayLayer == subRes._arrayLayer);
+			return _resourceMap.GetData();
+		}
+
+		size_t          RawDataPacket_ReadBack::GetDataSize(SubResourceId subRes) const
+		{
+			assert(_mappedSubResource._mip == subRes._mip && _mappedSubResource._arrayLayer == subRes._arrayLayer);
+			return _resourceMap.GetDataSize();
+		}
+
+		TexturePitches  RawDataPacket_ReadBack::GetPitches(SubResourceId subRes) const
+		{
+			assert(_mappedSubResource._mip == subRes._mip && _mappedSubResource._arrayLayer == subRes._arrayLayer);
+			return TexturePitches { (unsigned)_resourceMap.GetDataSize(), (unsigned)_resourceMap.GetDataSize(), (unsigned)_resourceMap.GetDataSize() };
+		}
+
+		RawDataPacket_ReadBack::RawDataPacket_ReadBack(
+			IDevice& dev, Metal::Resource& resource, SubResourceId subResource)
+		: _resourceMap(dev, resource, subResource)
+		, _mappedSubResource(subResource)
+		{
+		}
+
+		RawDataPacket_ReadBack::~RawDataPacket_ReadBack()
+		{}
+
         intrusive_ptr<DataPacket> UnderlyingDeviceContext::Readback(const ResourceLocator& locator)
         {
-            return nullptr;
+			auto* res = (Metal::Resource*)locator.GetUnderlying()->QueryInterface(typeid(Metal::Resource).hash_code());
+			assert(res);
+			return make_intrusive<RawDataPacket_ReadBack>(std::ref(*_renderCoreContext->GetDevice()), std::ref(*res), SubResourceId{0,0});
         }
 
         // UnderlyingDeviceContext::MappedBuffer UnderlyingDeviceContext::Map(UnderlyingResource& resource, MapType::Enum mapType, unsigned subResource)
