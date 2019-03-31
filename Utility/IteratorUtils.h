@@ -217,6 +217,12 @@ namespace Utility
 		}
 
 	template<typename Type>
+		IteratorRange<void*> AsOpaqueIteratorRange(Type& object)
+		{
+			return MakeIteratorRange(&object, PtrAdd(&object, sizeof(Type)));
+		}
+		
+	template<typename Type>
 		IteratorRange<const void*> AsOpaqueIteratorRange(const Type& object)
 		{
 			return MakeIteratorRange(&object, PtrAdd(&object, sizeof(Type)));

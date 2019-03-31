@@ -32,6 +32,8 @@ namespace Assets
 	Blob AsBlob(const std::exception& e);
 	Blob AsBlob(IteratorRange<const void*> copyFrom);
 	Blob AsBlob(const std::string& str);
+	Blob AsBlob(StringSection<char> str);
+	Blob AsBlob(const char* str);
 	std::string AsString(const Blob& blob);
 
     /// <summary>Exceptions related to rendering</summary>
