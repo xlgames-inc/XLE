@@ -203,7 +203,7 @@ namespace RenderCore { namespace Techniques
         class Entry
         {
         public:
-            uint64_t _hash = 0;
+            uint64_t _hash = ~0ull;
             unsigned _tickId = 0;
             std::shared_ptr<Metal::FrameBuffer> _fb;
             std::vector<AttachmentName> _poolAttachmentsRemapping;
@@ -221,7 +221,7 @@ namespace RenderCore { namespace Techniques
         for (auto&e:_entries)
             if ((e._tickId + evictionRange) < _currentTickId) {
                 e._fb.reset();
-				e._hash = 0;
+				e._hash = ~0ull;
 			}
         ++_currentTickId;
     }
@@ -237,7 +237,7 @@ namespace RenderCore { namespace Techniques
         uint64_t hashValue = desc.GetHash();
         for (const auto&a:poolAttachments)
             hashValue = HashCombine(attachmentPool.GetResource(a)->GetGUID(), hashValue);
-        assert(hashValue != 0);     // using 0 has a sentinel, so this will cause some problems
+        assert(hashValue != ~0ull);     // using ~0ull has a sentinel, so this will cause some problems
 
         unsigned earliestEntry = 0;
         unsigned tickIdOfEarliestEntry = ~0u;
@@ -404,6 +404,10 @@ namespace RenderCore { namespace Techniques
 
     RenderPassInstance& RenderPassInstance::operator=(RenderPassInstance&& moveFrom) never_throws
     {
+		if (_attachedContext) {
+			End();
+		}
+
         _frameBuffer = std::move(moveFrom._frameBuffer);
         _attachedContext = moveFrom._attachedContext;
         _attachmentPool = moveFrom._attachmentPool;
