@@ -331,6 +331,7 @@ typedef struct TextureSamplerInfo_TAG
 typedef enum GLSL_BINDING_FLAGS
 {
     GLSL_BINDING_TYPE_PUSHCONSTANTS = 1<<0,
+	GLSL_BINDING_TYPE_TRANSFORMFEEDBACK = 1<<1,
 } GLSL_BINDING_FLAGS;
 
 typedef struct GLSLResourceBinding_TAG {
@@ -345,6 +346,7 @@ typedef uint32_t (*EvaluateBindingFn)(
     GLSLResourceBinding* dstBinding, 
     ResourceBinding* srcResBinding,
     ConstantBuffer* srcCBBinding,
+	char* semantic,
     uint32_t bindPoint, uint32_t shaderStage);
 
 typedef struct ShaderInfo_TAG
