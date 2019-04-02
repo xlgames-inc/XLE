@@ -378,7 +378,7 @@ namespace HyperGraph
                 }
                 else
                 {
-                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + 2, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
+                    PointF[] positions = new PointF[] { new PointF(position.X - size.InputPartWidth, position.Y), new PointF(position.X + GraphConstants.HorizontalSpacing, position.Y), new PointF(position.X + size.BaseSize.Width, position.Y) };
                     float[] widths = new float[] { size.InputPartWidth, size.BaseSize.Width - 4, size.OutputPartWidth };
 
                     for (uint side = 0; side < 3; ++side)
@@ -702,7 +702,7 @@ namespace HyperGraph
 
                 LayoutItemsHorizontally(
                     graphics, node.TopItems,
-                    minX, maxX, minY,
+                    minX, maxX, minY + 8,
                     HorizontalItemLayoutSide.BelowAnchor);
             }
 

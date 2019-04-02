@@ -44,7 +44,7 @@ namespace HyperGraph
         public const int ConnectorCornerSize    = 12;
 		public const int ConnectorWidth			= 128;
         public const int ConnectorWidthCollapsed= 8;
-		public const int HorizontalSpacing		= 8;
+		public const int HorizontalSpacing		= 2;
         public const int NodeExtraWidth         = GraphConstants.HorizontalSpacing * 2;
         public const float ConnectionWidth      = 1.5f;
 
