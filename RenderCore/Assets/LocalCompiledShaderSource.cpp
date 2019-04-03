@@ -148,6 +148,7 @@ namespace RenderCore { namespace Assets
             float wasted = 0.f;
             if (totalAllocationSpace) { wasted = 1.f - (float(metrics._usedSpace) / float(metrics._allocatedFileSize)); }
 			Log(Verbose) << " <<< Archive --- " << buffer << " (" << totalShaderSize / 1024 << "k, " << unsigned(100.f * wasted) << "% wasted) >>>" << std::endl;
+            (void)wasted; // make static analyzer happy
 
             for (auto b = metrics._blocks.cbegin(); b!=metrics._blocks.cend(); ++b) {
                 

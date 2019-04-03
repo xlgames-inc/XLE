@@ -167,8 +167,8 @@ namespace SceneEngine
             //  but minimize the number of straddling objects. We can just do a brute
             //  force test of various potential dividing lines near the median points
 
-        float bestDividingLineX = LinearInterpolate(newNode._boundary.first[axis0], newNode._boundary.second[axis0], 0.5f);
-        float bestDividingLineY = LinearInterpolate(newNode._boundary.first[axis1], newNode._boundary.second[axis1], 0.5f);
+        float bestDividingLineX = 0.0f; // LinearInterpolate(newNode._boundary.first[axis0], newNode._boundary.second[axis0], 0.5f);
+        float bestDividingLineY = 0.0f; // LinearInterpolate(newNode._boundary.first[axis1], newNode._boundary.second[axis1], 0.5f);
 
         {
             std::vector<WorkingObject> sortedObjects = workingObjects;
