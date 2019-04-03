@@ -292,7 +292,7 @@ namespace Utility
         static_assert(s_bufferCount > 1, "Expecting at least 2 buffers");
 
         _frameMarkers[_frameMarkerNext] = GetPerformanceCounter();
-        _frameMarkerCount = std::min(_frameMarkerNext+1, (unsigned)dimof(_frameMarkers));
+        _frameMarkerCount = std::min(_frameMarkerCount+1, (unsigned)dimof(_frameMarkers));
         _frameMarkerNext = (_frameMarkerNext+1) % (unsigned)dimof(_frameMarkers);
 
         std::swap(_events[0], _events[1]);  // (actually only the first 2 would be used)
