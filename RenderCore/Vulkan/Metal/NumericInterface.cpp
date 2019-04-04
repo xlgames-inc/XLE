@@ -4,6 +4,7 @@
 
 #include "InputLayout.h"
 #include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"
 #include "TextureView.h"
 #include "ObjectFactory.h"
 #include "Pools.h"
@@ -70,7 +71,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				#endif
 
 				// bind dummies in every slot
-				_builder.BindDummyDescriptors(*_signature, uint64_t(_signature->_bindings.size())-1);
+				_builder.BindDummyDescriptors(*_signature, (1ull<<uint64_t(_signature->_bindings.size()))-1ull);
 			}
 		};
 		DescSet _descSet;
@@ -267,32 +268,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			for (unsigned b=e._begin; b!=e._end; ++b)
 				_pimpl->_uavRegisters_boundToBuffer[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
 		}
-
-        // Create the default resources binding sets by binding "blank" default resources to all
-		// descriptor set slots
-		/*const auto& defResources = globalPools._dummyResources;
-		const TextureView* blankSRVImage = &defResources._blankSrv;
-		const TextureView* blankUAVImage = &defResources._blankUavImage;
-		const TextureView* blankUAVBuffer = &defResources._blankUavBuffer;
-		VkSampler blankSampler = defResources._blankSampler->GetUnderlying();
-		VkBuffer blankBuffer = defResources._blankBuffer.GetUnderlying();
-
-		for (unsigned c=0; c<Pimpl::s_maxBindings; ++c) {
-			if (_pimpl->_samplerRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindSampler(c, MakeIteratorRange(&blankSampler, &blankSampler+1));
-			if (_pimpl->_constantBufferRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindCB(c, MakeIteratorRange(&blankBuffer, &blankBuffer+1));
-
-			if (_pimpl->_srvRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindSRV(c, MakeIteratorRange(&blankSRVImage, &blankSRVImage+1));
-			if (_pimpl->_srvRegisters_boundToBuffer[c]._descriptorSetBindIndex != ~0u)
-				BindSRV(c, MakeIteratorRange(&blankUAVBuffer, &blankUAVBuffer+1));
-
-			if (_pimpl->_uavRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindUAV(c, MakeIteratorRange(&blankUAVImage, &blankUAVImage+1));
-			if (_pimpl->_uavRegisters_boundToBuffer[c]._descriptorSetBindIndex != ~0u)
-				BindUAV(c, MakeIteratorRange(&blankUAVBuffer, &blankUAVBuffer+1));
-		}*/
     }
 
 	NumericUniformsInterface::NumericUniformsInterface() 

@@ -24,6 +24,7 @@
       <Filter>Device</Filter>
     </ClCompile>
     <ClCompile Include="..\Vulkan\Metal\DescriptorSet.cpp" />
+    <ClCompile Include="..\Vulkan\Metal\PipelineLayoutSignatureFile.cpp" />
   </ItemGroup>
   <ItemGroup>
     <ClInclude Include="..\Vulkan\Metal\ShaderReflection.h" />
@@ -53,6 +54,7 @@
     <ClInclude Include="..\Vulkan\DeviceVulkan.h">
       <Filter>Device</Filter>
     </ClInclude>
+    <ClInclude Include="..\Vulkan\Metal\PipelineLayoutSignatureFile.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

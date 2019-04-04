@@ -10,6 +10,7 @@
 #include "State.h"
 #include "FrameBuffer.h"        // for AttachmentPool
 #include "InputLayout.h"		// for NumericUniformsInterface
+#include "PipelineLayout.h"		// for PipelineLayoutBuilder
 #include "DescriptorSet.h"
 #include "VulkanCore.h"
 #include "../../ResourceList.h"
@@ -36,32 +37,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TemporaryBufferSpace;
 	class Resource;
 	class PipelineLayoutShaderConfig;
-
-	class PipelineLayoutBuilder
-	{
-	public:
-		struct FixedDescriptorSetLayout
-		{
-			VulkanSharedPtr<VkDescriptorSetLayout>		_descriptorSet;
-			unsigned									_bindingIndex = ~0u;
-		};
-		static const unsigned s_maxDescriptorSetCount = 4;
-		FixedDescriptorSetLayout _fixedDescriptorSetLayout[s_maxDescriptorSetCount];
-
-		VkPipelineLayout	GetPipelineLayout() const { return _pipelineLayout; }
-		unsigned			GetDescriptorSetCount() const { return _descriptorSetCount; }
-		void				SetShaderBasedDescriptorSets(const PipelineLayoutShaderConfig&);
-
-		unsigned			_shaderStageMask = 0u;
-		ObjectFactory*		_factory = nullptr;
-
-		PipelineLayoutBuilder();
-		~PipelineLayoutBuilder();
-	private:
-		VkPipelineLayout	_pipelineLayout;
-		unsigned			_descriptorSetCount = 0u;
-		unsigned			_pipelineLayoutId = 1u;
-	};
 
     class GraphicsPipelineBuilder
     {
@@ -131,15 +106,6 @@ namespace RenderCore { namespace Metal_Vulkan
         const ComputeShader*    _shader;
         bool                    _pipelineStale;
     };
-
-	class DescriptorSet
-	{
-	public:
-		VulkanUniquePtr<VkDescriptorSet>		_underlying;
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			DescriptorSetVerboseDescription		_description;
-		#endif		
-	};
 
     class DescriptorCollection
     {
@@ -301,10 +267,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		static void		PrepareForDestruction(IDevice*, IPresentationChain*);
 
 		void			BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
-        // DescriptorSet	AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex);
 		void			PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
-
-		// PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
@@ -327,8 +290,6 @@ namespace RenderCore { namespace Metal_Vulkan
         DeviceContext(
             ObjectFactory& factory, 
             GlobalPools& globalPools,
-            // const std::shared_ptr<PipelineLayout>& globalPipelineLayout,
-            // const std::shared_ptr<PipelineLayout>& computePipelineLayout,
 			CommandPool& cmdPool, 
 			CommandBufferType cmdBufferType,
 			TemporaryBufferSpace& tempBufferSpace);
@@ -362,9 +323,9 @@ namespace RenderCore { namespace Metal_Vulkan
         bool BindComputePipeline();
 		void LogGraphicsPipeline();
 		void LogComputePipeline();
-		// void BindDummyDescriptorSets(DescriptorCollection& collection);
 
 		void RebindNumericDescriptorSet(PipelineType pipelineType);
+		void SetupPipelineBuilders();
     };
 
 	inline CommandList& DeviceContext::GetActiveCommandList()

@@ -19,38 +19,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ObjectFactory;
 	class BoundClassInterfaces;
 	class GraphicsPipelineBuilder;
-	class DescriptorSetSignatureFile;
-	class BoundPipelineLayout;
-	class LegacyRegisterBinding;
-
-	class PipelineLayoutShaderConfig
-	{
-	public:
-		class DescriptorSet
-		{
-		public:
-			BoundPipelineLayout::DescriptorSet			_bound;
-			std::shared_ptr<DescriptorSetSignature>		_signature;
-			unsigned									_pipelineLayoutBindingIndex;
-			RootSignature::DescriptorSetType			_type;
-			unsigned									_uniformStream;
-			std::string									_name;
-		};
-		std::vector<DescriptorSet>					_descriptorSets;
-		std::vector<PushConstantsRangeSigniture>	_pushConstants;
-		std::shared_ptr<LegacyRegisterBinding>		_legacyRegisterBinding;
-
-		mutable VulkanUniquePtr<VkPipelineLayout>	_cachedPipelineLayout;
-		mutable unsigned							_cachedPipelineLayoutId = 0;
-		mutable unsigned							_cachedDescriptorSetCount = 0;
-
-		PipelineLayoutShaderConfig();
-		PipelineLayoutShaderConfig(ObjectFactory& factory, const DescriptorSetSignatureFile& signatureFile, VkShaderStageFlags stageFlags);
-		~PipelineLayoutShaderConfig();
-
-		PipelineLayoutShaderConfig& operator=(PipelineLayoutShaderConfig&& moveFrom) = default;
-		PipelineLayoutShaderConfig(PipelineLayoutShaderConfig&& moveFrom) = default;
-	};
+	class PipelineLayoutSignatureFile;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -115,12 +84,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> dsName,
 			StringSection<::Assets::ResChar> definesTable);
 
-		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutHelper;
+		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
 
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
 		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
-		std::shared_ptr<DescriptorSetSignatureFile> _descriptorSetSignatureFile;
+		std::shared_ptr<PipelineLayoutSignatureFile> _descriptorSetSignatureFile;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
@@ -149,13 +118,13 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> codeName,
 			StringSection<::Assets::ResChar> definesTable = {});
 
-		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutHelper;
+		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
 
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
-		std::shared_ptr<DescriptorSetSignatureFile>			_descriptorSetSignatureFile;
+		std::shared_ptr<PipelineLayoutSignatureFile>			_descriptorSetSignatureFile;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

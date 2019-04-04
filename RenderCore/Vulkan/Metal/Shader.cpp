@@ -8,6 +8,7 @@
 #include "ObjectFactory.h"
 #include "DeviceContext.h"
 #include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"		// (just to get depval)
 #include "../../ShaderService.h"
 #include "../../Types.h"
 #include "../../../Assets/Assets.h"
@@ -48,10 +49,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 
 		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
-		_descriptorSetSignatureFile = globals._graphicsRootSignatureFile;
-		Assets::RegisterAssetDependency(_validationCallback, _descriptorSetSignatureFile->GetDependencyValidation());
-		
-		_pipelineLayoutHelper = std::make_shared<PipelineLayoutShaderConfig>(factory, *_descriptorSetSignatureFile, VK_SHADER_STAGE_ALL_GRAPHICS);
+		Assets::RegisterAssetDependency(_validationCallback, globals._graphicsRootSignatureFile->GetDependencyValidation());
+		_pipelineLayoutConfig = std::make_shared<PipelineLayoutShaderConfig>(factory, *globals._graphicsRootSignatureFile, globals.s_mainSignature, PipelineType::Graphics);
     }
     
     ShaderProgram::ShaderProgram(   ObjectFactory& factory,
@@ -105,7 +104,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         if (pipeline._shaderProgram != this) {
             pipeline._shaderProgram = this;
-			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutHelper);
+			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
             pipeline._pipelineStale = true;
         }
     }
@@ -114,7 +113,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		if (pipeline._shaderProgram != this) {
             pipeline._shaderProgram = this;
-			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutHelper);
+			pipeline._pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*_pipelineLayoutConfig);
             pipeline._pipelineStale = true;
         }
 	}
@@ -133,48 +132,12 @@ namespace RenderCore { namespace Metal_Vulkan
         Assets::RegisterAssetDependency(_validationCallback, compiledShader.GetDependencyValidation());
 
 		VulkanGlobalsTemp& globals = VulkanGlobalsTemp::GetInstance();
-		_descriptorSetSignatureFile = globals._computeRootSignatureFile;
-		Assets::RegisterAssetDependency(_validationCallback, _descriptorSetSignatureFile->GetDependencyValidation());
-
-		_pipelineLayoutHelper = std::make_shared<PipelineLayoutShaderConfig>(factory, *_descriptorSetSignatureFile, VK_SHADER_STAGE_ALL_GRAPHICS);
+		Assets::RegisterAssetDependency(_validationCallback, globals._computeRootSignatureFile->GetDependencyValidation());
+		_pipelineLayoutConfig = std::make_shared<PipelineLayoutShaderConfig>(factory, *globals._computeRootSignatureFile, globals.s_mainSignature, PipelineType::Compute);
     }
 
     ComputeShader::ComputeShader() {}
     ComputeShader::~ComputeShader() {}
-
-        ////////////////////////////////////////////////////////////////////////////////////////////////
-
-	PipelineLayoutShaderConfig::PipelineLayoutShaderConfig() {}
-
-	PipelineLayoutShaderConfig::PipelineLayoutShaderConfig(ObjectFactory& factory, const DescriptorSetSignatureFile& signatureFile, VkShaderStageFlags stageFlags)
-	{
-		auto& globals = VulkanGlobalsTemp::GetInstance();
-		const auto& root = *signatureFile.GetRootSignature(Hash64(signatureFile._mainRootSignature));
-		const auto& bound = *globals.GetBoundPipelineLayout(factory, signatureFile, stageFlags);
-		_descriptorSets.reserve(root._descriptorSets.size());
-		for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
-			const auto&d = root._descriptorSets[c];
-			if (d._type == RootSignature::DescriptorSetType::Numeric)
-				continue;
-			_descriptorSets.emplace_back(
-				DescriptorSet {
-					*bound.GetDescriptorSetLayout(d._hashName),
-					signatureFile.GetDescriptorSet(d._hashName),
-					c,
-					d._type,
-					d._uniformStream,
-					d._name
-				});
-		}
-
-		for (unsigned c=0; c<root._pushConstants.size(); ++c) {
-			_pushConstants.push_back(*signatureFile.GetPushConstantsRangeSigniture(Hash64(root._pushConstants[c])));
-		}
-
-		_legacyRegisterBinding = signatureFile.GetLegacyRegisterBinding(Hash64(root._legacyBindings));
-	}
-
-	PipelineLayoutShaderConfig::~PipelineLayoutShaderConfig() {}
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 

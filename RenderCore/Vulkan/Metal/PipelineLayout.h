@@ -1,5 +1,3 @@
-// Copyright 2016 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -9,6 +7,7 @@
 #include "VulkanForward.h"
 #include "VulkanCore.h"
 #include "DescriptorSet.h"		// (for DescriptorSetVerboseDescription)
+#include "../../Types.h"
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Assets/AssetUtils.h"
 #include <memory>
@@ -22,8 +21,11 @@ namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
 	class DescriptorSetSignature;
-    class DescriptorSetSignatureFile;
+    class PipelineLayoutSignatureFile;
 	class RootSignature;
+	class BoundPipelineLayout;
+	class LegacyRegisterBinding;
+	class PushConstantsRangeSigniture;
 
 	enum class DescriptorType
     {
@@ -35,41 +37,85 @@ namespace RenderCore { namespace Metal_Vulkan
         Unknown
     };
 
-	class BoundPipelineLayout
-	{
-	public:
-		// VulkanSharedPtr<VkPipelineLayout>		_pipelineLayout;
-
-		struct DescriptorSet
-		{
-			VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
-			std::vector<DescriptorType>				_bindings;
-
-			VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(DescriptorSetVerboseDescription _blankBindingsDescription);
-			
-			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(std::string _name);
-		};
-		std::vector<DescriptorSet> _descriptorSets;
-		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(std::string _name);
-	};
-
     class BoundSignatureFile
     {
     public:
-        const BoundPipelineLayout::DescriptorSet*		GetDescriptorSetLayout(uint64_t hashName) const;
-		// const std::shared_ptr<BoundPipelineLayout>&	GetPipelineLayout(uint64_t hashName) const;
+		struct DescriptorSet
+		{
+			VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
+			VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
+			
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				DescriptorSetVerboseDescription _blankBindingsDescription;
+				std::string _name;
+			#endif
+		};
 
-        BoundSignatureFile(
-            ObjectFactory& objectFactory,
-			GlobalPools& globalPools,
-            const DescriptorSetSignatureFile& signatureFile,
-            VkShaderStageFlags stageFlags);
+        const DescriptorSet*	GetDescriptorSet(uint64_t signatureFile, uint64_t hashName) const;
+		void					RegisterSignatureFile(uint64_t hashName, const PipelineLayoutSignatureFile& signatureFile);
+
+        BoundSignatureFile(ObjectFactory& objectFactory, GlobalPools& globalPools, VkShaderStageFlags stageFlags);
         ~BoundSignatureFile();
     private:
         class Pimpl;
         std::unique_ptr<Pimpl> _pimpl;
     };
+
+	class PipelineLayoutShaderConfig
+	{
+	public:
+		class DescriptorSet
+		{
+		public:
+			BoundSignatureFile::DescriptorSet			_bound;
+			std::shared_ptr<DescriptorSetSignature>		_signature;
+			unsigned									_pipelineLayoutBindingIndex;
+			// RootSignature::DescriptorSetType			_type;
+			unsigned _type;
+			unsigned									_uniformStream;
+			std::string									_name;
+		};
+		std::vector<DescriptorSet>					_descriptorSets;
+		std::vector<PushConstantsRangeSigniture>	_pushConstants;
+		std::shared_ptr<LegacyRegisterBinding>		_legacyRegisterBinding;
+
+		mutable VulkanUniquePtr<VkPipelineLayout>	_cachedPipelineLayout;
+		mutable unsigned							_cachedPipelineLayoutId = 0;
+		mutable unsigned							_cachedDescriptorSetCount = 0;
+
+		PipelineLayoutShaderConfig();
+		PipelineLayoutShaderConfig(ObjectFactory& factory, const PipelineLayoutSignatureFile& signatureFile, uint64_t boundId, PipelineType pipelineType);
+		~PipelineLayoutShaderConfig();
+
+		PipelineLayoutShaderConfig& operator=(PipelineLayoutShaderConfig&& moveFrom) = default;
+		PipelineLayoutShaderConfig(PipelineLayoutShaderConfig&& moveFrom) = default;
+	};
+
+	class PipelineLayoutBuilder
+	{
+	public:
+		struct FixedDescriptorSetLayout
+		{
+			VulkanSharedPtr<VkDescriptorSetLayout>		_descriptorSet;
+			unsigned									_bindingIndex = ~0u;
+		};
+		static const unsigned s_maxDescriptorSetCount = 4;
+		FixedDescriptorSetLayout _fixedDescriptorSetLayout[s_maxDescriptorSetCount];
+
+		VkPipelineLayout	GetPipelineLayout() const { return _pipelineLayout; }
+		unsigned			GetDescriptorSetCount() const { return _descriptorSetCount; }
+		void				SetShaderBasedDescriptorSets(const PipelineLayoutShaderConfig&);
+
+		unsigned			_shaderStageMask = 0u;
+		ObjectFactory*		_factory = nullptr;
+
+		PipelineLayoutBuilder();
+		~PipelineLayoutBuilder();
+	private:
+		VkPipelineLayout	_pipelineLayout;
+		unsigned			_descriptorSetCount = 0u;
+		unsigned			_pipelineLayoutId = 1u;
+	};
 
 	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
         const ObjectFactory& factory, 
@@ -88,117 +134,33 @@ namespace RenderCore { namespace Metal_Vulkan
 			unsigned descriptorSetIndex, bool isBound);
 	#endif
 
-///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
-
-    class DescriptorSetSignature
-    {
-    public:
-		std::string						_name;
-		uint64_t						_hashName = 0;
-        std::vector<DescriptorType>		_bindings;
-    };
-
-	class LegacyRegisterBinding
-	{
-	public:
-		enum class RegisterType { Sampler, ShaderResource, ConstantBuffer, UnorderedAccess, Unknown };
-		enum class RegisterQualifier { Texture, Buffer, None };
-
-		std::string		_name;
-		uint64_t		_hashName = 0;
-		struct Entry
-		{
-			unsigned		_begin = 0, _end = 0;
-			unsigned		_targetDescriptorSet = ~0u;
-			unsigned		_targetBegin = 0, _targetEnd = 0;
-		};
-		std::vector<Entry> _samplerRegisters;
-		std::vector<Entry> _constantBufferRegisters;
-		std::vector<Entry> _srvRegisters;
-		std::vector<Entry> _uavRegisters;
-		std::vector<Entry> _srvRegisters_boundToBuffer;
-		std::vector<Entry> _uavRegisters_boundToBuffer;
-
-		IteratorRange<const Entry*>	GetEntries(RegisterType type, RegisterQualifier qualifier) const;
-	};
-
-    class PushConstantsRangeSigniture
-    {
-    public:
-        std::string     _name;
-		uint64_t		_hashName = 0;
-        unsigned        _rangeStart = 0u;
-        unsigned        _rangeSize = 0u;
-        unsigned        _stages = 0u;
-    };
-
-	class RootSignature
-	{
-	public:
-		enum class DescriptorSetType { Adaptive, Numeric, Unknown };
-
-		struct DescriptorSetReference
-		{
-	        DescriptorSetType	_type = DescriptorSetType::Unknown;
-			unsigned			_uniformStream;
-			std::string			_name;
-			uint64_t			_hashName;
-		};
-		using PushConstantsReference = std::string;
-		using LegacyBindingReference = std::string;
-
-		std::string		_name;
-		uint64_t		_hashName = 0;
-		std::vector<DescriptorSetReference> _descriptorSets;
-		std::vector<PushConstantsReference> _pushConstants;
-		LegacyBindingReference _legacyBindings;
-	};
-        
-    class DescriptorSetSignatureFile
-    {
-    public:
-        std::vector<std::shared_ptr<DescriptorSetSignature>>	_descriptorSets;
-        std::vector<PushConstantsRangeSigniture>				_pushConstantRanges;
-		std::vector<std::shared_ptr<LegacyRegisterBinding>>		_legacyRegisterBindingSettings;
-		std::vector<RootSignature>					_rootSignatures;
-		std::string									_mainRootSignature;
-
-		const RootSignature*								GetRootSignature(uint64_t name) const;
-		const std::shared_ptr<LegacyRegisterBinding>&		GetLegacyRegisterBinding(uint64_t) const;
-		const PushConstantsRangeSigniture*					GetPushConstantsRangeSigniture(uint64_t) const;
-		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSet(uint64_t) const;
-
-        const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
-        const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
-
-        DescriptorSetSignatureFile(StringSection<> filename);
-        ~DescriptorSetSignatureFile();
-    private:
-        ::Assets::DependentFileState _dependentFileState;
-        ::Assets::DepValPtr _depVal;
-    };
-
-    VkDescriptorType AsVkDescriptorType(DescriptorType type);
+	VkDescriptorType AsVkDescriptorType(DescriptorType type);
 	const char* AsString(DescriptorType type);
-	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType);
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class VulkanGlobalsTemp
 	{
 	public:
-		std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
-		std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
+		std::shared_ptr<PipelineLayoutSignatureFile> _graphicsRootSignatureFile;
+		std::shared_ptr<PipelineLayoutSignatureFile> _computeRootSignatureFile;
 
 		GlobalPools* _globalPools;
 
 		static VulkanGlobalsTemp& GetInstance();
 
-		const std::shared_ptr<BoundSignatureFile>& GetBoundPipelineLayout(ObjectFactory& objectFactory, const DescriptorSetSignatureFile&, VkShaderStageFlags stageFlags);
+		std::shared_ptr<BoundSignatureFile> _boundGraphicsSignatures;
+		std::shared_ptr<BoundSignatureFile> _boundComputeSignatures;
+
+		static const unsigned s_mainSignature = 1;
+
+		// const std::shared_ptr<BoundSignatureFile>& GetBoundPipelineLayout(ObjectFactory& objectFactory, const PipelineLayoutSignatureFile&, VkShaderStageFlags stageFlags);
 
 		VulkanGlobalsTemp();
 		~VulkanGlobalsTemp();
 
 	private:
-		std::unordered_map<const DescriptorSetSignatureFile*, std::shared_ptr<BoundSignatureFile>> _boundFiles;
+		// std::unordered_map<const PipelineLayoutSignatureFile*, std::shared_ptr<BoundSignatureFile>> _boundFiles;
 	};
 
 }}

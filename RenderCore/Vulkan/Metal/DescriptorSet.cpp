@@ -6,6 +6,7 @@
 #include "TextureView.h"
 #include "Pools.h"
 #include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"
 #include "ShaderReflection.h"
 #include "../../ShaderService.h"
 #include "../../../ConsoleRig/Log.h"
@@ -235,12 +236,21 @@ namespace RenderCore { namespace Metal_Vulkan
 			VkDescriptorImageInfo {
 				_globalPools->_dummyResources._blankSampler->GetUnderlying(),
 				_globalPools->_dummyResources._blankSrv.GetImageView(),
-				VK_IMAGE_LAYOUT_SHADER_READ_ONLY_OPTIMAL });
+				VK_IMAGE_LAYOUT_GENERAL });
 		auto& blankSampler = AllocateInfo(
 			VkDescriptorImageInfo {
 				_globalPools->_dummyResources._blankSampler->GetUnderlying(),
 				nullptr,
 				VK_IMAGE_LAYOUT_UNDEFINED });
+		auto& blankStorageImage = AllocateInfo(
+			VkDescriptorImageInfo {
+				_globalPools->_dummyResources._blankSampler->GetUnderlying(),
+				_globalPools->_dummyResources._blankUavImage.GetImageView(),
+				VK_IMAGE_LAYOUT_GENERAL });
+		auto& blankStorageBuffer = AllocateInfo(
+			VkDescriptorBufferInfo {
+				_globalPools->_dummyResources._blankUavBuffer.GetResource()->GetBuffer(),
+				0, VK_WHOLE_SIZE });
 
         unsigned minBit = xl_ctz8(dummyDescWriteMask);
         unsigned maxBit = std::min(64u - xl_clz8(dummyDescWriteMask), (unsigned)sig._bindings.size()-1);
@@ -267,8 +277,20 @@ namespace RenderCore { namespace Metal_Vulkan
 					VK_DESCRIPTOR_TYPE_SAMPLER,
 					blankSampler, false
 					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, s_dummyDescriptorString));
+			} else if (b == DescriptorType::UnorderedAccessTexture) {
+				WriteBinding(
+					bIndex,
+					VK_DESCRIPTOR_TYPE_STORAGE_IMAGE,
+					blankStorageImage, false
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, s_dummyDescriptorString));
+			} else if (b == DescriptorType::UnorderedAccessBuffer) {
+				WriteBinding(
+					bIndex,
+					VK_DESCRIPTOR_TYPE_STORAGE_BUFFER,
+					blankStorageBuffer, false
+					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, s_dummyDescriptorString));
 			} else {
-                assert(0);      // (other types, such as UAVs and structured buffers not supported)
+                assert(0);
 				continue;
             }
 			bindingsWrittenTo |= 1ull << uint64(bIndex);

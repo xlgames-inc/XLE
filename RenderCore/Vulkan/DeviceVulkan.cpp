@@ -617,11 +617,6 @@ namespace RenderCore { namespace ImplVulkan
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
 			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, frameTracker);
-
-			auto& globals = Metal_Vulkan::VulkanGlobalsTemp::GetInstance();
-            globals._graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::DescriptorSetSignatureFile>("xleres/System/RootSignature.cfg");
-            globals._computeRootSignatureFile = std::make_shared<Metal_Vulkan::DescriptorSetSignatureFile>("xleres/System/RootSignatureCS.cfg");
-
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),

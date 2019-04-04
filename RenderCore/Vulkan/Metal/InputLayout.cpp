@@ -9,6 +9,7 @@
 #include "Shader.h"
 #include "Format.h"
 #include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"
 #include "DeviceContext.h"
 #include "Pools.h"
 #include "../../Format.h"
@@ -290,9 +291,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned c=0; c<s_streamCount; c++) {
 			_descriptorSetBindingMask[c] = 0;
 			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
+			_descriptorSetBindingPoint[c] = ~0u;
 		}
 
-		SetupDescriptorSets(*shader._pipelineLayoutHelper);
+		SetupDescriptorSets(*shader._pipelineLayoutConfig);
 
 		BoundUniformsHelper helper(shader);
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -312,9 +314,10 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned c=0; c<s_streamCount; c++) {
 			_descriptorSetBindingMask[c] = 0;
 			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
+			_descriptorSetBindingPoint[c] = ~0u;
 		}
 
-		SetupDescriptorSets(*shader._pipelineLayoutHelper);
+		SetupDescriptorSets(*shader._pipelineLayoutConfig);
 
 		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -402,7 +405,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	void BoundUniforms::SetupDescriptorSets(const PipelineLayoutShaderConfig& pipelineLayoutHelper)
 	{
 		for (const auto&desc:pipelineLayoutHelper._descriptorSets) {
-			if (desc._type != RootSignature::DescriptorSetType::Adaptive)
+			if (desc._type != (unsigned)RootSignature::DescriptorSetType::Adaptive)
 				continue;
 
 			if (desc._uniformStream >= s_streamCount)
@@ -518,10 +521,11 @@ namespace RenderCore { namespace Metal_Vulkan
 			auto pipelineType = _isComputeShader ? PipelineType::Compute : PipelineType::Graphics;
 
 			auto& globalPools = context.GetGlobalPools();
-			DescriptorSet descriptorSet { globalPools._mainDescriptorPool.Allocate(_underlyingLayouts[streamIdx].get()) };
+			auto descriptorSet = globalPools._mainDescriptorPool.Allocate(_underlyingLayouts[streamIdx].get());
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				assert(streamIdx < dimof(s_boundUniformsNames));
-				descriptorSet._description._descriptorSetInfo = s_boundUniformsNames[streamIdx];
+				DescriptorSetVerboseDescription verboseDescription;
+				verboseDescription._descriptorSetInfo = s_boundUniformsNames[streamIdx];
 			#endif
 
 			bool requiresTemporaryBufferBarrier = false;
@@ -568,12 +572,12 @@ namespace RenderCore { namespace Metal_Vulkan
 					builder.ValidatePendingWrites(sig);
 				#endif
 
-				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet._underlying.get(), nullptr, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, descriptorSet._description));
+				builder.FlushChanges(context.GetUnderlyingDevice(), descriptorSet.get(), nullptr, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, verboseDescription));
 			}
         
 			context.BindDescriptorSet(
-				pipelineType, streamIdx, descriptorSet._underlying.get()
-				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, std::move(descriptorSet._description)));
+				pipelineType, _descriptorSetBindingPoint[streamIdx], descriptorSet.get()
+				VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, std::move(verboseDescription)));
 
 			if (requiresTemporaryBufferBarrier)
 				context.GetTemporaryBufferSpace().WriteBarrier(context);
@@ -597,6 +601,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		for (unsigned c=0; c<s_streamCount; c++) {
 			_descriptorSetBindingMask[c] = 0;
 			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
+			_descriptorSetBindingPoint[c] = ~0u;
 		}
 	}
 	BoundUniforms::~BoundUniforms() {}
