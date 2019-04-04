@@ -132,6 +132,7 @@ namespace MaterialTool
                 typeof(NodeEditorCore.ModelConversion),
                 typeof(NodeEditorCore.ShaderFragmentNodeCreator),
                 typeof(NodeEditorCore.Archive),
+                typeof(NodeEditorCore.PreviewsNodeAmender),
                 typeof(DiagramDocument),
                 typeof(DiagramEditingContext),
 

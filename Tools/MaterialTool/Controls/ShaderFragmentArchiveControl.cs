@@ -145,8 +145,9 @@ namespace MaterialTool.Controls
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
                             {
+                                var dataBlocks = new object[] { new GUILayer.PreviewSettings() };
                                 this.DoDragDrop(
-                                    _nodeCreator.CreateProcedureNode(null, archiveName),
+                                    _nodeCreator.CreateProcedureNode(null, archiveName, NodeEditorCore.ProcedureNodeType.Normal, dataBlocks),
                                     DragDropEffects.Copy);
                             }
                         }

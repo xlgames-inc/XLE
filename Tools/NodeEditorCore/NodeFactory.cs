@@ -33,9 +33,14 @@ namespace NodeEditorCore
         IDiagramDocument Document { get; }
     }
 
+    public interface INodeAmender
+    {
+        void AmendNode(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets);
+    }
+
     public interface INodeFactory
     {
-        Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, GUILayer.PreviewSettings previewSettings = null);
+        Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, String archiveName, ProcedureNodeType type = ProcedureNodeType.Normal, IEnumerable<object> dataPackets = null);
         void SetProcedureNodeType(GUILayer.NodeGraphFile diagramContext, Node node, ProcedureNodeType type);
         ProcedureNodeType GetProcedureNodeType(Node node);
         void UpdateProcedureNode(GUILayer.NodeGraphFile context, Node node);        // update a node after -- for example -- the shader file changes on disk
@@ -53,6 +58,42 @@ namespace NodeEditorCore
         // Utilities, etc
         Node FindNodeFromId(HyperGraph.IGraphModel graph, UInt64 id);
         bool IsInstantiationConnector(HyperGraph.NodeConnector connector);
+    }
+
+    internal static class Utils
+    {
+        internal static T AsEnumValue<T>(String input, IDictionary<Enum, string> table) where T : struct, IComparable, IConvertible, IFormattable
+        {
+            Type enumType = typeof(T);
+            if (!enumType.IsEnum)
+                throw new InvalidOperationException("Expecting enum type as parameter to AsEnumValue.");
+
+            foreach (KeyValuePair<Enum, string> kvp in table)
+                if (kvp.Value == input)
+                    return (T)(object)kvp.Key;
+            return default(T);
+        }
+
+        internal static Tuple<List<String>, int> AsEnumList(Enum value, IDictionary<Enum, string> table)
+        {
+            int selectedIndex = 0;
+            List<String> typeNames = new List<String>();
+            foreach (KeyValuePair<Enum, string> kvp in table)
+            {
+                if (kvp.Key.Equals(value))
+                    selectedIndex = typeNames.Count;
+                typeNames.Add(kvp.Value);
+            }
+            return Tuple.Create(typeNames, selectedIndex);
+        }
+
+        internal static String AsString(Enum e, IDictionary<Enum, string> table)
+        {
+            foreach (KeyValuePair<Enum, string> kvp in table)
+                if (kvp.Key == e)
+                    return kvp.Value;
+            throw new InvalidOperationException(String.Format("Could not convert enum to string value {0}.", e));
+        }
     }
 
     #region Node Items
@@ -331,6 +372,99 @@ namespace NodeEditorCore
         private System.Drawing.Bitmap _cachedBitmap;
     }
 
+    [Export(typeof(INodeAmender))]
+    [PartCreationPolicy(CreationPolicy.Shared)]
+    public class PreviewsNodeAmender : INodeAmender, IDisposable
+    {
+        public void AmendNode(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
+        {
+            if (type != ProcedureNodeType.Normal || dataPackets == null)
+                return;
+
+            foreach (var o in dataPackets)
+            {
+                GUILayer.PreviewSettings previewSettings = o as GUILayer.PreviewSettings;
+                if (previewSettings == null) continue;
+
+                var previewItem = new ShaderFragmentPreviewItem();
+                if (previewSettings != null)
+                {
+                    previewItem.PreviewSettings = previewSettings;
+                    if (previewSettings.Geometry == GUILayer.PreviewGeometry.Sphere)
+                        node.Layout = Node.LayoutType.Circular;
+                }
+
+                // use composition to access some exported types --
+                previewItem._previewManager = _previewManager;
+                node.AddItem(previewItem, Node.Dock.Center);
+
+                // Drop-down selection box for "preview mode"
+                var enumList = Utils.AsEnumList(previewItem.Geometry, PreviewGeoNames);
+                var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
+                node.AddItem(previewModeSelection, Node.Dock.Bottom);
+                previewModeSelection.SelectionChanged +=
+                    (object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args) =>
+                    {
+                        if (sender is HyperGraph.Items.NodeDropDownItem)
+                        {
+                            var item = (HyperGraph.Items.NodeDropDownItem)sender;
+                            previewItem.Geometry = Utils.AsEnumValue<GUILayer.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
+                            node.Layout = previewItem.Geometry == GUILayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
+                        }
+                    };
+
+                // Text item box for output visualization string
+                // note --  should could potentially become a more complex editing control
+                //          it might be useful to have some preset defaults and helpers rather than just
+                //          requiring the user to construct the raw string
+                var outputToVisualize = new HyperGraph.Items.NodeTextBoxItem(previewItem.OutputToVisualize);
+                node.AddItem(outputToVisualize, Node.Dock.Bottom);
+                outputToVisualize.TextChanged +=
+                    (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
+            }
+        }
+
+        internal static IDictionary<Enum, string> PreviewGeoNames;
+
+        static PreviewsNodeAmender()
+        {
+            PreviewGeoNames = new Dictionary<Enum, string>
+            {
+                { GUILayer.PreviewGeometry.Chart, "Chart" },
+                { GUILayer.PreviewGeometry.Plane2D, "2D" },
+                { GUILayer.PreviewGeometry.Box, "Box" },
+                { GUILayer.PreviewGeometry.Sphere, "Sphere" },
+                { GUILayer.PreviewGeometry.Model, "Model" }
+            };
+        }
+
+        public PreviewsNodeAmender()
+        {
+            _previewManager = new GUILayer.PreviewBuilder();
+        }
+
+        ~PreviewsNodeAmender()
+        {
+            Dispose(false);
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (_previewManager != null)
+            {
+                _previewManager.Dispose();
+                _previewManager = null;
+            }
+        }
+
+        private GUILayer.PreviewBuilder _previewManager;
+    }
+
         //
     /////////////////////////////////////////////////////////////////////////////////////
         //
@@ -484,60 +618,17 @@ namespace NodeEditorCore
 
     [Export(typeof(INodeFactory))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ShaderFragmentNodeCreator : INodeFactory, IDisposable
+    public class ShaderFragmentNodeCreator : INodeFactory
     {
-        internal static IDictionary<Enum, string> PreviewGeoNames;
         internal static IDictionary<Enum, string> ParamSourceTypeNames;
         
         static ShaderFragmentNodeCreator()
         {
-            PreviewGeoNames = new Dictionary<Enum, string>
-            {
-                { GUILayer.PreviewGeometry.Chart, "Chart" },
-                { GUILayer.PreviewGeometry.Plane2D, "2D" },
-                { GUILayer.PreviewGeometry.Box, "Box" },
-                { GUILayer.PreviewGeometry.Sphere, "Sphere" },
-                { GUILayer.PreviewGeometry.Model, "Model" }
-            };
-
             ParamSourceTypeNames = new Dictionary<Enum, string>
             {
                 { ParamSourceType.System, "Input" },
                 { ParamSourceType.Output, "Output" }
             };
-        }
-
-        internal static String AsString(Enum e, IDictionary<Enum, string> table)
-        {
-            foreach (KeyValuePair<Enum, string> kvp in table)
-                if (kvp.Key == e)
-                    return kvp.Value;
-            throw new InvalidOperationException(String.Format("Could not convert enum to string value {0}.", e));
-        }
-
-        internal static T AsEnumValue<T>(String input, IDictionary<Enum, string> table) where T : struct, IComparable, IConvertible, IFormattable
-        {
-            Type enumType = typeof(T);
-            if (!enumType.IsEnum)
-                throw new InvalidOperationException("Expecting enum type as parameter to AsEnumValue.");
-
-            foreach (KeyValuePair<Enum, string> kvp in table)
-                if (kvp.Value == input)
-                    return (T)(object)kvp.Key;
-            return default(T);
-        }
-
-        internal static Tuple<List<String>, int> AsEnumList(Enum value, IDictionary<Enum, string> table)
-        {
-            int selectedIndex = 0;
-            List<String> typeNames = new List<String>();
-            foreach (KeyValuePair<Enum, string> kvp in table)
-            {
-                if (kvp.Key.Equals(value))
-                    selectedIndex = typeNames.Count;
-                typeNames.Add(kvp.Value);
-            }
-            return Tuple.Create(typeNames, selectedIndex);
         }
 
         private static System.Text.RegularExpressions.Regex s_templatedNameMatch = new System.Text.RegularExpressions.Regex(@"(.*)<(.+)>");
@@ -567,69 +658,31 @@ namespace NodeEditorCore
             return _shaderFragments.GetFunction(name, (documentContext != null) ? documentContext.GetSearchRules() : null);
         }
 
-        public Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, string archiveName, ProcedureNodeType type, GUILayer.PreviewSettings previewSettings)
+        public Node CreateProcedureNode(GUILayer.NodeGraphFile diagramContext, string archiveName, ProcedureNodeType type, IEnumerable<object> dataPackets)
         {
             var node = new Node { Title = VisibleName(archiveName) };
             node.Tag = new ShaderProcedureNodeTag(archiveName) { Type = type };
             node.Layout = Node.LayoutType.Rectangular;
 
-            SetProcedureNodeType_Internal(node, type, previewSettings);
+            SetProcedureNodeType_Internal(node, type, dataPackets);
             UpdateProcedureNode(diagramContext, node);
             return node;
         }
 
-        private void SetProcedureNodeType_Internal(Node node, ProcedureNodeType type, GUILayer.PreviewSettings previewSettings)
+        private void SetProcedureNodeType_Internal(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets)
         {
             ShaderProcedureNodeTag tag = node.Tag as ShaderProcedureNodeTag;
             if (tag == null) return;
 
-            if (type == ProcedureNodeType.Normal)
-            {
-                var previewItem = new ShaderFragmentPreviewItem();
-                if (previewSettings != null)
-                {
-                    previewItem.PreviewSettings = previewSettings;
-                    if (previewSettings.Geometry == GUILayer.PreviewGeometry.Sphere)
-                        node.Layout = Node.LayoutType.Circular;
-                }
-
-                // use composition to access some exported types --
-                previewItem._previewManager = _previewManager;
-                node.AddItem(previewItem, Node.Dock.Center);
-
-                // Drop-down selection box for "preview mode"
-                var enumList = AsEnumList(previewItem.Geometry, PreviewGeoNames);
-                var previewModeSelection = new HyperGraph.Items.NodeDropDownItem(enumList.Item1.ToArray(), enumList.Item2);
-                node.AddItem(previewModeSelection, Node.Dock.Bottom);
-                previewModeSelection.SelectionChanged +=
-                    (object sender, HyperGraph.Items.AcceptNodeSelectionChangedEventArgs args) =>
-                    {
-                        if (sender is HyperGraph.Items.NodeDropDownItem)
-                        {
-                            var item = (HyperGraph.Items.NodeDropDownItem)sender;
-                            previewItem.Geometry = AsEnumValue<GUILayer.PreviewGeometry>(item.Items[args.Index], PreviewGeoNames);
-                            node.Layout = previewItem.Geometry == GUILayer.PreviewGeometry.Sphere ? Node.LayoutType.Circular : Node.LayoutType.Rectangular;
-                        }
-                    };
-
-                    // Text item box for output visualization string
-                    // note --  should could potentially become a more complex editing control
-                    //          it might be useful to have some preset defaults and helpers rather than just
-                    //          requiring the user to construct the raw string
-                var outputToVisualize = new HyperGraph.Items.NodeTextBoxItem(previewItem.OutputToVisualize);
-                node.AddItem(outputToVisualize, Node.Dock.Bottom);
-                outputToVisualize.TextChanged +=
-                    (object sender, HyperGraph.Items.AcceptNodeTextChangedEventArgs args) => { previewItem.OutputToVisualize = args.Text; };
-            }
-            else if (type == ProcedureNodeType.Instantiation)
-            {
-                // we should remove all items from the center except the title
-                foreach (var item in node.CenterItems.ToList())
-                    if (item != node.TitleItem)
-                        node.RemoveItem(item);
-                foreach (var item in node.BottomItems.ToList())
+            // we should remove all items from the center except the title
+            foreach (var item in node.CenterItems.ToList())
+                if (item != node.TitleItem)
                     node.RemoveItem(item);
-            }
+            foreach (var item in node.BottomItems.ToList())
+                node.RemoveItem(item);
+
+            foreach (var amender in Amenders)
+                amender.AmendNode(node, type, dataPackets);
 
             tag.Type = type;
         }
@@ -867,7 +920,7 @@ namespace NodeEditorCore
             {
                 var item = (HyperGraph.Items.NodeDropDownItem)sender;
                 var node = item.Node;
-                var newType = AsEnumValue<ParamSourceType>(item.Items[args.Index], ParamSourceTypeNames);
+                var newType = Utils.AsEnumValue<ParamSourceType>(item.Items[args.Index], ParamSourceTypeNames);
 
                     //  We might have to change the input/output settings on this node
                 bool isInput = newType != ParamSourceType.Output;
@@ -1046,34 +1099,11 @@ namespace NodeEditorCore
             return new ShaderFragmentNodeCompatibility();
         }
 
-        public ShaderFragmentNodeCreator()
-        {
-            _previewManager = new GUILayer.PreviewBuilder();
-        }
-
-        ~ShaderFragmentNodeCreator()
-        {
-            Dispose(false);
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (_previewManager != null)
-            {
-                _previewManager.Dispose();
-                _previewManager = null;
-            }
-        }
-
         [Import]
         NodeEditorCore.Archive _shaderFragments;
 
-        private GUILayer.PreviewBuilder _previewManager;
+        [ImportMany]
+        IEnumerable<INodeAmender> Amenders;
     }
 
     #endregion

@@ -441,7 +441,7 @@ namespace NodeEditorCore
                             {
                                 nodeType = ProcedureNodeType.TemplateParameter;
                             }
-                            newNode = _nodeCreator.CreateProcedureNode(graphFile, n.FragmentArchiveName, nodeType, MakePreviewSettingsFromAttributeTable(attributeTable));
+                            newNode = _nodeCreator.CreateProcedureNode(graphFile, n.FragmentArchiveName, nodeType, new object[] { MakePreviewSettingsFromAttributeTable(attributeTable) });
                         }
                         else
                         {
