@@ -1,5 +1,3 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
@@ -138,8 +136,6 @@ namespace RenderCore { namespace ImplVulkan
         ThreadContext(
             std::shared_ptr<Device> device, 
 			VkQueue queue,
-            const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
-            const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
 			Metal_Vulkan::CommandBufferType cmdBufferType,
 			std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace);
@@ -170,8 +166,6 @@ namespace RenderCore { namespace ImplVulkan
 		ThreadContextVulkan(
 			std::shared_ptr<Device> device,
 			VkQueue queue,
-            const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
-            const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
             Metal_Vulkan::CommandPool&& cmdPool,
 			Metal_Vulkan::CommandBufferType cmdBufferType,
 			std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace);
@@ -212,8 +206,6 @@ namespace RenderCore { namespace ImplVulkan
 		Metal_Vulkan::ObjectFactory		    _objectFactory;
         Metal_Vulkan::GlobalPools           _pools;
 
-        std::shared_ptr<Metal_Vulkan::PipelineLayout> _graphicsPipelineLayout;
-        std::shared_ptr<Metal_Vulkan::PipelineLayout> _computePipelineLayout;
 		std::shared_ptr<ThreadContextVulkan>	_foregroundPrimaryContext;
 
         void DoSecondStageInit(VkSurfaceKHR surface = nullptr);
@@ -227,8 +219,6 @@ namespace RenderCore { namespace ImplVulkan
 		VkDevice	    GetUnderlyingDevice();
         VkQueue         GetRenderingQueue();
         Metal_Vulkan::GlobalPools& GetGlobalPools();
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& GetGraphicsPipelineLayout();
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& GetComputePipelineLayout();
         
         DeviceVulkan();
         ~DeviceVulkan();

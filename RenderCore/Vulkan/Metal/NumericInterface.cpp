@@ -44,13 +44,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			DescriptorSetBuilder				_builder;
 			VulkanUniquePtr<VkDescriptorSet>    _activeDescSet;
 			uint64_t							_slotsFilled = 0;
-			VkDescriptorSetLayout				_layout;
+			VulkanUniquePtr<VkDescriptorSetLayout>	_layout;
 
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				DescriptorSetVerboseDescription _description;
 			#endif
 
-			DescSet(VkDescriptorSetLayout layout, GlobalPools& globalPools) : _builder(globalPools), _layout(layout)
+			std::shared_ptr<DescriptorSetSignature> _signature;
+
+			DescSet(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _builder(globalPools), _layout(std::move(layout))
 			{
 				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 					_description._descriptorSetInfo = "NumericUniformsInterface";
@@ -66,11 +68,14 @@ namespace RenderCore { namespace Metal_Vulkan
 					_description = DescriptorSetVerboseDescription{};
 					_description._descriptorSetInfo = "NumericUniformsInterface";
 				#endif
+
+				// bind dummies in every slot
+				_builder.BindDummyDescriptors(*_signature, uint64_t(_signature->_bindings.size())-1);
 			}
 		};
 		DescSet _descSet;
 
-		Pimpl(VkDescriptorSetLayout layout, GlobalPools& globalPools) : _descSet(layout, globalPools) {}
+		Pimpl(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _descSet(std::move(layout), globalPools) {}
     };
 
     void    NumericUniformsInterface::BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
@@ -169,7 +174,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // slow. We should try a different approach.
         if (_pimpl->_descSet._builder.HasChanges()) {
             VulkanUniquePtr<VkDescriptorSet> newSets[1];
-			VkDescriptorSetLayout layouts[1] = { _pimpl->_descSet._layout };
+			VkDescriptorSetLayout layouts[1] = { _pimpl->_descSet._layout.get() };
             _pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(layouts));
 
 			auto written = _pimpl->_descSet._builder.FlushChanges(
@@ -201,15 +206,23 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _pimpl->_descSet._builder.HasChanges();
 	}
 
+	const DescriptorSetSignature& NumericUniformsInterface::GetSignature() const
+	{
+		return *_pimpl->_descSet._signature;
+	}
+
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
         GlobalPools& globalPools, 
-        VkDescriptorSetLayout layout,
+		const std::shared_ptr<DescriptorSetSignature>& signature,
         const LegacyRegisterBinding& bindings,
+		VkShaderStageFlags stageFlags,
 		unsigned descriptorSetIndex)
     {
-        _pimpl = std::make_unique<Pimpl>(layout, globalPools);
+		auto layout = CreateDescriptorSetLayout(factory, *signature, stageFlags);
+        _pimpl = std::make_unique<Pimpl>(std::move(layout), globalPools);
         _pimpl->_descriptorPool = &globalPools._mainDescriptorPool;
+		_pimpl->_descSet._signature = signature;
         
         Reset();
 
@@ -257,7 +270,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // Create the default resources binding sets by binding "blank" default resources to all
 		// descriptor set slots
-		const auto& defResources = globalPools._dummyResources;
+		/*const auto& defResources = globalPools._dummyResources;
 		const TextureView* blankSRVImage = &defResources._blankSrv;
 		const TextureView* blankUAVImage = &defResources._blankUavImage;
 		const TextureView* blankUAVBuffer = &defResources._blankUavBuffer;
@@ -279,7 +292,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				BindUAV(c, MakeIteratorRange(&blankUAVImage, &blankUAVImage+1));
 			if (_pimpl->_uavRegisters_boundToBuffer[c]._descriptorSetBindIndex != ~0u)
 				BindUAV(c, MakeIteratorRange(&blankUAVBuffer, &blankUAVBuffer+1));
-		}
+		}*/
     }
 
 	NumericUniformsInterface::NumericUniformsInterface() 

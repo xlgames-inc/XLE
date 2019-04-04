@@ -107,7 +107,7 @@
     <ClCompile Include="..\Vulkan\Metal\State.cpp" />
   </ItemGroup>
   <ItemGroup>
-    <ClInclude Include="..\Vulkan\Device.h" />
+    <ClInclude Include="..\Vulkan\DeviceVulkan.h" />
     <ClInclude Include="..\Vulkan\IDeviceVulkan.h" />
     <ClInclude Include="..\Vulkan\Metal\Buffer.h" />
     <ClInclude Include="..\Vulkan\Metal\DescriptorSet.h" />

@@ -49,10 +49,10 @@
     <ClInclude Include="..\Vulkan\IDeviceVulkan.h">
       <Filter>Device</Filter>
     </ClInclude>
-    <ClInclude Include="..\Vulkan\Device.h">
+    <ClInclude Include="..\Vulkan\Metal\DescriptorSet.h" />
+    <ClInclude Include="..\Vulkan\DeviceVulkan.h">
       <Filter>Device</Filter>
     </ClInclude>
-    <ClInclude Include="..\Vulkan\Metal\DescriptorSet.h" />
   </ItemGroup>
   <ItemGroup>
     <Filter Include="Device">

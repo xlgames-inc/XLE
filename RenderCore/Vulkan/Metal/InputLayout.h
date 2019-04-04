@@ -28,10 +28,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ShaderProgram;
 	class DeviceContext;
 	class ComputeShader;
-	class PipelineLayoutConfig
-	{
-	public:
-	};
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -71,6 +67,15 @@ namespace RenderCore { namespace Metal_Vulkan
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
 	class BoundUniformsHelper;
+	class DescriptorSetSignature;
+	class PipelineLayoutShaderConfig;
+	class BoundPipelineLayout;
+
+	class PipelineLayoutConfig
+	{
+	public:
+	};
+
     class BoundUniforms
     {
     public:
@@ -86,14 +91,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
         BoundUniforms(
             const ShaderProgram& shader,
-            const PipelineLayoutConfig& pipelineLayout,
+			const PipelineLayoutConfig& pipelineLayoutConfig,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
             const UniformsStreamInterface& interface2 = {},
             const UniformsStreamInterface& interface3 = {});
 		BoundUniforms(
             const ComputeShader& shader,
-            const PipelineLayoutConfig& pipelineLayout,
+			const PipelineLayoutConfig& pipelineLayoutConfig,
             const UniformsStreamInterface& interface0 = {},
             const UniformsStreamInterface& interface1 = {},
             const UniformsStreamInterface& interface2 = {},
@@ -114,6 +119,9 @@ namespace RenderCore { namespace Metal_Vulkan
 		unsigned	_psPushConstantSlot[s_streamCount];
 		bool		_isComputeShader;
 
+		VulkanSharedPtr<VkDescriptorSetLayout> _underlyingLayouts[s_streamCount];
+		std::shared_ptr<DescriptorSetSignature> _descriptorSetSig[s_streamCount];
+		unsigned _descriptorSetBindingPoint[s_streamCount];				// (binding of the descriptor set in the pipeline layout)
 		void SetupBindings(
 			BoundUniformsHelper& helper,
             const UniformsStreamInterface* interfaces[], 
@@ -122,6 +130,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		#if defined(_DEBUG)
 			std::string _debuggingDescription;
 		#endif
+
+		void SetupDescriptorSets(const PipelineLayoutShaderConfig& pipelineLayoutHelper);
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -173,11 +183,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<int Count> void Bind(const ResourceList<ConstantBuffer, Count>&);
 		template<int Count> void Bind(const ResourceList<UnorderedAccessView, Count>&);
 
+		const DescriptorSetSignature& GetSignature() const;
+
         NumericUniformsInterface(
             const ObjectFactory& factory,
 			GlobalPools& globalPools,
-            VkDescriptorSetLayout layout,
+            const std::shared_ptr<DescriptorSetSignature>& signature,
             const LegacyRegisterBinding& bindings,
+			VkShaderStageFlags stageFlags,
 			unsigned descriptorSetIndex);
 		NumericUniformsInterface();
         ~NumericUniformsInterface();

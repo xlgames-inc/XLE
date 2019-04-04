@@ -7,41 +7,25 @@
 #pragma once
 
 #include "VulkanForward.h"
+#include "VulkanCore.h"
+#include "DescriptorSet.h"		// (for DescriptorSetVerboseDescription)
 #include "../../../Assets/AssetsCore.h"
 #include "../../../Assets/AssetUtils.h"
 #include <memory>
 #include <vector>
 #include <string>
+#include <unordered_map>
+
+namespace RenderCore { class CompiledShaderByteCode; }
 
 namespace RenderCore { namespace Metal_Vulkan
 {
     class ObjectFactory;
-    class RootSignature;
 	class DescriptorSetSignature;
+    class DescriptorSetSignatureFile;
+	class RootSignature;
 
-    class PipelineLayout
-    {
-    public:
-        VkDescriptorSetLayout			GetDescriptorSetLayout(unsigned index);
-		const DescriptorSetSignature&	GetDescriptorSetSignature(unsigned index);
-		unsigned						GetDescriptorSetCount();
-
-        VkPipelineLayout		GetUnderlying();
-
-        const std::shared_ptr<RootSignature>& GetRootSignature();
-        void RebuildLayout(const ObjectFactory& objectFactory);
-
-        PipelineLayout(
-            const ObjectFactory& objectFactory,
-            StringSection<::Assets::ResChar> rootSignatureCfg,
-            VkShaderStageFlags stageFlags);
-        ~PipelineLayout();
-    private:
-        class Pimpl;
-        std::unique_ptr<Pimpl> _pimpl;
-    };
-
-    enum class DescriptorType
+	enum class DescriptorType
     {
         Sampler,
         Texture,
@@ -51,13 +35,66 @@ namespace RenderCore { namespace Metal_Vulkan
         Unknown
     };
 
+	class BoundPipelineLayout
+	{
+	public:
+		// VulkanSharedPtr<VkPipelineLayout>		_pipelineLayout;
+
+		struct DescriptorSet
+		{
+			VulkanSharedPtr<VkDescriptorSetLayout>	_layout;
+			std::vector<DescriptorType>				_bindings;
+
+			VulkanSharedPtr<VkDescriptorSet>		_blankBindings;
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(DescriptorSetVerboseDescription _blankBindingsDescription);
+			
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(std::string _name);
+		};
+		std::vector<DescriptorSet> _descriptorSets;
+		VULKAN_VERBOSE_DESCRIPTIONS_ONLY(std::string _name);
+	};
+
+    class BoundSignatureFile
+    {
+    public:
+        const BoundPipelineLayout::DescriptorSet*		GetDescriptorSetLayout(uint64_t hashName) const;
+		// const std::shared_ptr<BoundPipelineLayout>&	GetPipelineLayout(uint64_t hashName) const;
+
+        BoundSignatureFile(
+            ObjectFactory& objectFactory,
+			GlobalPools& globalPools,
+            const DescriptorSetSignatureFile& signatureFile,
+            VkShaderStageFlags stageFlags);
+        ~BoundSignatureFile();
+    private:
+        class Pimpl;
+        std::unique_ptr<Pimpl> _pimpl;
+    };
+
+	VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
+        const ObjectFactory& factory, 
+        const DescriptorSetSignature& srcLayout,
+        VkShaderStageFlags stageFlags);
+
+	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+		class LegacyRegisterBinding;
+		class DescriptorSetVerboseDescription;
+		std::ostream& WriteDescriptorSet(
+			std::ostream& stream,
+			const DescriptorSetVerboseDescription& bindingDescription,
+			const DescriptorSetSignature& signature,
+			const LegacyRegisterBinding& legacyRegisterBinding,
+			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
+			unsigned descriptorSetIndex, bool isBound);
+	#endif
+
+///////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
     class DescriptorSetSignature
     {
     public:
-		enum class Type { Adaptive, Numeric, Unknown };
-        std::string						_name;
-		Type							_type = Type::Unknown;
-		unsigned						_uniformStream;
+		std::string						_name;
+		uint64_t						_hashName = 0;
         std::vector<DescriptorType>		_bindings;
     };
 
@@ -67,6 +104,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		enum class RegisterType { Sampler, ShaderResource, ConstantBuffer, UnorderedAccess, Unknown };
 		enum class RegisterQualifier { Texture, Buffer, None };
 
+		std::string		_name;
+		uint64_t		_hashName = 0;
 		struct Entry
 		{
 			unsigned		_begin = 0, _end = 0;
@@ -87,23 +126,53 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         std::string     _name;
-        unsigned        _rangeStart;
-        unsigned        _rangeSize;
-        unsigned        _stages;
+		uint64_t		_hashName = 0;
+        unsigned        _rangeStart = 0u;
+        unsigned        _rangeSize = 0u;
+        unsigned        _stages = 0u;
     };
+
+	class RootSignature
+	{
+	public:
+		enum class DescriptorSetType { Adaptive, Numeric, Unknown };
+
+		struct DescriptorSetReference
+		{
+	        DescriptorSetType	_type = DescriptorSetType::Unknown;
+			unsigned			_uniformStream;
+			std::string			_name;
+			uint64_t			_hashName;
+		};
+		using PushConstantsReference = std::string;
+		using LegacyBindingReference = std::string;
+
+		std::string		_name;
+		uint64_t		_hashName = 0;
+		std::vector<DescriptorSetReference> _descriptorSets;
+		std::vector<PushConstantsReference> _pushConstants;
+		LegacyBindingReference _legacyBindings;
+	};
         
-    class RootSignature
+    class DescriptorSetSignatureFile
     {
     public:
-        std::vector<DescriptorSetSignature> _descriptorSets;
-        std::vector<PushConstantsRangeSigniture> _pushConstantRanges;
-		LegacyRegisterBinding _legacyBinding;
+        std::vector<std::shared_ptr<DescriptorSetSignature>>	_descriptorSets;
+        std::vector<PushConstantsRangeSigniture>				_pushConstantRanges;
+		std::vector<std::shared_ptr<LegacyRegisterBinding>>		_legacyRegisterBindingSettings;
+		std::vector<RootSignature>					_rootSignatures;
+		std::string									_mainRootSignature;
+
+		const RootSignature*								GetRootSignature(uint64_t name) const;
+		const std::shared_ptr<LegacyRegisterBinding>&		GetLegacyRegisterBinding(uint64_t) const;
+		const PushConstantsRangeSigniture*					GetPushConstantsRangeSigniture(uint64_t) const;
+		const std::shared_ptr<DescriptorSetSignature>&		GetDescriptorSet(uint64_t) const;
 
         const ::Assets::DependentFileState& GetDependentFileState() const { return _dependentFileState; };
         const ::Assets::DepValPtr& GetDependencyValidation() const { return _depVal; }
 
-        RootSignature(StringSection<::Assets::ResChar> filename);
-        ~RootSignature();
+        DescriptorSetSignatureFile(StringSection<> filename);
+        ~DescriptorSetSignatureFile();
     private:
         ::Assets::DependentFileState _dependentFileState;
         ::Assets::DepValPtr _depVal;
@@ -112,5 +181,25 @@ namespace RenderCore { namespace Metal_Vulkan
     VkDescriptorType AsVkDescriptorType(DescriptorType type);
 	const char* AsString(DescriptorType type);
 	char GetRegisterPrefix(LegacyRegisterBinding::RegisterType regType);
+
+	class VulkanGlobalsTemp
+	{
+	public:
+		std::shared_ptr<DescriptorSetSignatureFile> _graphicsRootSignatureFile;
+		std::shared_ptr<DescriptorSetSignatureFile> _computeRootSignatureFile;
+
+		GlobalPools* _globalPools;
+
+		static VulkanGlobalsTemp& GetInstance();
+
+		const std::shared_ptr<BoundSignatureFile>& GetBoundPipelineLayout(ObjectFactory& objectFactory, const DescriptorSetSignatureFile&, VkShaderStageFlags stageFlags);
+
+		VulkanGlobalsTemp();
+		~VulkanGlobalsTemp();
+
+	private:
+		std::unordered_map<const DescriptorSetSignatureFile*, std::shared_ptr<BoundSignatureFile>> _boundFiles;
+	};
+
 }}
 

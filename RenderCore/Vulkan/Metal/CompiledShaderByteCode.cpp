@@ -75,14 +75,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
         HLSLToSPIRVCompiler(
             std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
-            const std::shared_ptr<PipelineLayout>& graphicsPipelineLayout,
-            const std::shared_ptr<PipelineLayout>& computePipelineLayout);
+            const std::shared_ptr<DescriptorSetSignatureFile>& graphicsPipelineLayout,
+			const std::shared_ptr<DescriptorSetSignatureFile>& computePipelineLayout);
         ~HLSLToSPIRVCompiler();
 
     private:
-        std::shared_ptr<ILowLevelCompiler>		_hlslCompiler;
-        std::shared_ptr<PipelineLayout>         _graphicsPipelineLayout;
-        std::shared_ptr<PipelineLayout>         _computePipelineLayout;
+        std::shared_ptr<ILowLevelCompiler>				_hlslCompiler;
+        std::shared_ptr<DescriptorSetSignatureFile>		_graphicsPipelineLayout;
+        std::shared_ptr<DescriptorSetSignatureFile>		_computePipelineLayout;
 
         static std::weak_ptr<HLSLToSPIRVCompiler> s_instance;
         friend std::shared_ptr<ILowLevelCompiler> CreateLowLevelShaderCompiler(IDevice& device);
@@ -407,7 +407,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	struct EvaluateBindingData
 	{
-		RootSignature* _rootSig;
+		const PushConstantsRangeSigniture* _pushConstantRanges = nullptr;
+		const LegacyRegisterBinding* _legacyRegisterBindings = nullptr;
 		std::vector<std::pair<uint64_t, unsigned>> _soOffsets;
 
 		EvaluateBindingData(StringSection<> defines);
@@ -466,7 +467,6 @@ namespace RenderCore { namespace Metal_Vulkan
 
         // Attempt to find this binding in our root signature, and return the binding
         // index and set associated with it!
-        auto& rootSig = *userData->_rootSig;
         auto type = AsBindingType(srcResBinding, srcCBBinding);
         if (type == LegacyRegisterBinding::RegisterType::Unknown) return 0;
 
@@ -475,11 +475,12 @@ namespace RenderCore { namespace Metal_Vulkan
         else if (srcCBBinding) name = srcCBBinding->Name;
 
         // First, check to see if it has been assigned as push constants
-        if (type == LegacyRegisterBinding::RegisterType::ConstantBuffer && name) {
-            for (unsigned rangeIndex=0; rangeIndex<(unsigned)rootSig._pushConstantRanges.size(); ++rangeIndex) {
-                if (XlEqString(rootSig._pushConstantRanges[rangeIndex]._name, name)) {
+        if (type == LegacyRegisterBinding::RegisterType::ConstantBuffer && name && userData->_pushConstantRanges) {
+			IteratorRange<const PushConstantsRangeSigniture *const*> pushConstantRanges { &userData->_pushConstantRanges, &userData->_pushConstantRanges+1 };
+            for (unsigned rangeIndex=0; rangeIndex<(unsigned)pushConstantRanges.size(); ++rangeIndex) {
+                if (XlEqString(pushConstantRanges[rangeIndex]->_name, name)) {
                     assert(srcCBBinding);
-                    assert(srcCBBinding->ui32TotalSizeInBytes == rootSig._pushConstantRanges[rangeIndex]._rangeSize);		// If you hit this, it means there's a mismatch in the amount of PushConstants assigned and the size of this buffer
+                    assert(srcCBBinding->ui32TotalSizeInBytes == pushConstantRanges[rangeIndex]->_rangeSize);		// If you hit this, it means there's a mismatch in the amount of PushConstants assigned and the size of this buffer
                     dstBinding->_locationIndex = ~0u;
                     dstBinding->_bindingIndex = ~0u;
                     dstBinding->_setIndex = ~0u;
@@ -490,7 +491,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
 
 		auto qualifier = AsRegisterQualifier(srcResBinding);
-		for (const auto&e:rootSig._legacyBinding.GetEntries(type, qualifier))
+		for (const auto&e:userData->_legacyRegisterBindings->GetEntries(type, qualifier))
 			if (e._begin <= bindPoint && bindPoint < e._end) {
 				// found it!
                 dstBinding->_locationIndex = ~0u;
@@ -527,11 +528,11 @@ namespace RenderCore { namespace Metal_Vulkan
         if (!hlslGood) return false;
 
         // We need to load the root signature and add it as a dependency
-        std::shared_ptr<RootSignature> rootSig;
+        std::shared_ptr<DescriptorSetSignatureFile> rootSig;
         if (shaderPath._shaderModel[0] == 'c' || shaderPath._shaderModel[0] == 'C') {
-            rootSig = _computePipelineLayout->GetRootSignature();
+            rootSig = _computePipelineLayout;
         } else {
-            rootSig = _graphicsPipelineLayout->GetRootSignature();
+            rootSig = _graphicsPipelineLayout;
         }
         dependencies.push_back(rootSig->GetDependentFileState());
 
@@ -551,7 +552,11 @@ namespace RenderCore { namespace Metal_Vulkan
 
         auto* bytecodeStart = (const char*)PtrAdd(AsPointer(hlslBytecode->begin()), sizeof(ShaderService::ShaderHeader));
 		EvaluateBindingData bd { definesTable };
-		bd._rootSig = rootSig.get();
+		auto* root = rootSig->GetRootSignature(Hash64(rootSig->_mainRootSignature));
+		assert(root && root->_pushConstants.size() <= 1);
+		bd._legacyRegisterBindings = rootSig->GetLegacyRegisterBinding(Hash64(root->_legacyBindings)).get();
+		if (root->_pushConstants.size() == 1)
+			bd._pushConstantRanges = rootSig->GetPushConstantsRangeSigniture(Hash64(root->_pushConstants[0]));
         auto translateResult = TranslateHLSLFromMem(
             bytecodeStart,
             hlslccFlags,
@@ -590,12 +595,14 @@ namespace RenderCore { namespace Metal_Vulkan
 
     HLSLToSPIRVCompiler::HLSLToSPIRVCompiler(
         std::shared_ptr<ILowLevelCompiler> hlslCompiler, 
-        const std::shared_ptr<PipelineLayout>& graphicsPipelineLayout,
-        const std::shared_ptr<PipelineLayout>& computePipelineLayout) 
+        const std::shared_ptr<DescriptorSetSignatureFile>& graphicsPipelineLayout,
+        const std::shared_ptr<DescriptorSetSignatureFile>& computePipelineLayout) 
     : _hlslCompiler(std::move(hlslCompiler))
     , _graphicsPipelineLayout(graphicsPipelineLayout)
     , _computePipelineLayout(computePipelineLayout)
     {
+		assert(_graphicsPipelineLayout);
+		assert(_computePipelineLayout);
 		#if defined(HAS_SPIRV_HEADERS)
 			bool initResult = glslang::InitializeProcess();
 			if (!initResult)
@@ -622,8 +629,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
         result = std::make_shared<HLSLToSPIRVCompiler>(
             hlslCompiler, 
-            vulkanDevice->GetGraphicsPipelineLayout(),
-            vulkanDevice->GetComputePipelineLayout());
+            VulkanGlobalsTemp::GetInstance()._graphicsRootSignatureFile,
+            VulkanGlobalsTemp::GetInstance()._computeRootSignatureFile);
         HLSLToSPIRVCompiler::s_instance = result;
         return std::move(result);
     }

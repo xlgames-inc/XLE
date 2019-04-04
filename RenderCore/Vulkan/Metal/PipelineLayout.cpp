@@ -5,7 +5,9 @@
 // http://www.opensource.org/licenses/mit-license.php)
 
 #include "PipelineLayout.h"
+#include "DescriptorSet.h"
 #include "ObjectFactory.h"
+#include "Pools.h"
 #include "IncludeVulkan.h"
 #include "../../../Assets/DepVal.h"
 #include "../../../Assets/IntermediateAssets.h"		// (for GetDependentFileState)
@@ -14,46 +16,10 @@
 #include "../../../Utility/Streams/StreamFormatter.h"
 #include "../../../Utility/Streams/FileUtils.h"
 #include "../../../Utility/Threading/Mutex.h"
+#include "../../../Utility/MemoryUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
-
-    class PipelineLayout::Pimpl
-    {
-    public:
-        std::vector<VulkanUniquePtr<VkDescriptorSetLayout>> _descriptorSetLayout;
-        VulkanUniquePtr<VkPipelineLayout>                   _pipelineLayout;
-
-        std::shared_ptr<RootSignature>      _rootSignature;
-        ::Assets::rstring                   _rootSignatureFilename;
-        Threading::Mutex                    _rootSignatureLock;
-
-        VkShaderStageFlags  _stageFlags;
-
-        bool _pendingLayoutRebuild;
-    };
-
-    VkDescriptorSetLayout PipelineLayout::GetDescriptorSetLayout(unsigned index)
-    {
-        assert(index < (unsigned)_pimpl->_descriptorSetLayout.size());
-        return _pimpl->_descriptorSetLayout[index].get();
-    }
-
-	const DescriptorSetSignature&	PipelineLayout::GetDescriptorSetSignature(unsigned index)
-	{
-		assert(index < (unsigned)_pimpl->_rootSignature->_descriptorSets.size());
-		return _pimpl->_rootSignature->_descriptorSets[index];
-	}
-
-    unsigned                    PipelineLayout::GetDescriptorSetCount()
-    {
-        return (unsigned)_pimpl->_descriptorSetLayout.size();
-    }
-
-    VkPipelineLayout            PipelineLayout::GetUnderlying()
-    {
-        return _pimpl->_pipelineLayout.get();
-    }
 
     VkDescriptorType AsVkDescriptorType(DescriptorType type)
     {
@@ -63,46 +29,11 @@ namespace RenderCore { namespace Metal_Vulkan
         case DescriptorType::ConstantBuffer:			return VK_DESCRIPTOR_TYPE_UNIFORM_BUFFER;
         case DescriptorType::UnorderedAccessTexture:	return VK_DESCRIPTOR_TYPE_STORAGE_IMAGE;
         case DescriptorType::UnorderedAccessBuffer:		return VK_DESCRIPTOR_TYPE_STORAGE_BUFFER;
-        default: return VK_DESCRIPTOR_TYPE_SAMPLER;
+        default:										return VK_DESCRIPTOR_TYPE_SAMPLER;
         }
     }
 
-	static const char* s_descriptorTypeNames[] = {
-		"Sampler",
-		"Texture",
-		"ConstantBuffer",
-		"UnorderedAccessTexture",
-		"UnorderedAccessBuffer"
-	};
-
-	static const char* s_descriptorSetTypeNames[] = {
-		"Adaptive", "Numeric", "Unknown"
-	};
-
-	const char* AsString(DescriptorType type)
-	{
-		if (unsigned(type) < dimof(s_descriptorTypeNames))
-			return s_descriptorTypeNames[unsigned(type)];
-        return "<<unknown>>";
-	}
-
-	DescriptorType AsDescriptorType(StringSection<> type)
-	{
-		for (unsigned c=0; c<dimof(s_descriptorTypeNames); ++c)
-			if (XlEqString(type, s_descriptorTypeNames[c]))
-				return (DescriptorType)c;
-		return DescriptorType::Unknown;
-	}
-
-	DescriptorSetSignature::Type AsDescriptorSetType(StringSection<> type)
-	{
-		for (unsigned c=0; c<dimof(s_descriptorSetTypeNames); ++c)
-			if (XlEqString(type, s_descriptorSetTypeNames[c]))
-				return (DescriptorSetSignature::Type)c;
-		return DescriptorSetSignature::Type::Unknown;
-	}
-
-    static VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
+    VulkanUniquePtr<VkDescriptorSetLayout> CreateDescriptorSetLayout(
         const ObjectFactory& factory, 
         const DescriptorSetSignature& srcLayout,
         VkShaderStageFlags stageFlags)
@@ -174,7 +105,9 @@ namespace RenderCore { namespace Metal_Vulkan
             return result;
         }
 
-        static void ValidateRootSignature(VkPhysicalDevice physDev, const RootSignature& sig)
+        static void ValidateRootSignature(
+			VkPhysicalDevice physDev,
+			const DescriptorSetSignatureFile& signatureFile)
         {
             // Validate the root signature against the physical device, and throw an exception
             // if there are problems.
@@ -187,13 +120,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			vkGetPhysicalDeviceProperties(physDev, &props);
             const auto& limits = props.limits;
 
-            if (sig._descriptorSets.size() > limits.maxBoundDescriptorSets)
-                Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound descriptor sets supported by device"));
+			for (const auto& rootSig:signatureFile._rootSignatures) {
+				if (rootSig._descriptorSets.size() > limits.maxBoundDescriptorSets)
+					Throw(::Exceptions::BasicLabel("Root signature exceeds the maximum number of bound descriptor sets supported by device"));
+			}
 
             // Here, we are assuming all descriptors apply equally to all stages.
             DescSetLimits totalLimits = {};
-            for (const auto& s:sig._descriptorSets) {
-                auto ds = BuildLimits(s);
+            for (const auto& s:signatureFile._descriptorSets) {
+                auto ds = BuildLimits(*s);
                 // not really clear how these ones work...?
                 if (    ds._sampledImageCount > limits.maxDescriptorSetSampledImages
                     ||  ds._samplerCount > limits.maxPerStageDescriptorSamplers
@@ -215,72 +150,167 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     #endif
 
-    void PipelineLayout::RebuildLayout(const ObjectFactory& factory)
+	class BoundSignatureFile::Pimpl
     {
-        // Rebuild the pipeline layout, but only if something has changed
-        if (_pimpl->_pipelineLayout && !_pimpl->_pendingLayoutRebuild)
-            return;
+    public:
+        std::vector<std::pair<uint64_t, BoundPipelineLayout::DescriptorSet>> _descriptorSetLayouts;
+		// std::vector<std::pair<uint64_t, std::shared_ptr<BoundPipelineLayout>>> _pipelineLayouts;
+
+        VkShaderStageFlags		_stageFlags;
+    };
+
+	const BoundPipelineLayout::DescriptorSet*			BoundSignatureFile::GetDescriptorSetLayout(uint64_t hashName) const
+	{
+		auto i = LowerBound(_pimpl->_descriptorSetLayouts, hashName);
+		if (i != _pimpl->_descriptorSetLayouts.end() && i->first == hashName)
+			return &i->second;
+		return nullptr;
+	}
+
+	/*const std::shared_ptr<BoundPipelineLayout>&		BoundSignatureFile::GetPipelineLayout(uint64_t hashName) const
+	{
+		auto i = LowerBound(_pimpl->_pipelineLayouts, hashName);
+		if (i != _pimpl->_pipelineLayouts.end() && i->first == hashName)
+			return i->second;
+
+		static std::shared_ptr<BoundPipelineLayout> s_dummy;
+		return s_dummy;
+	}*/
+
+	BoundSignatureFile::BoundSignatureFile(
+        ObjectFactory& objectFactory,
+		GlobalPools& globalPools,
+        const DescriptorSetSignatureFile& signatureFile,
+        VkShaderStageFlags stageFlags)
+    {
+        _pimpl = std::make_unique<Pimpl>();
+        _pimpl->_stageFlags = stageFlags;
 
         // Each descriptor set layout is initialized from the root signature
         // This allows us to create a single global setting that can be used broadly across
         // many "pipelines"
 
-        _pimpl->_descriptorSetLayout.clear();
-        _pimpl->_pipelineLayout.reset();
-        auto rootSig = GetRootSignature();
-
         #if defined(_DEBUG)
-            ValidateRootSignature(factory.GetPhysicalDevice(), *rootSig);
+            ValidateRootSignature(objectFactory.GetPhysicalDevice(), signatureFile);
         #endif
 
-        std::vector<VkDescriptorSetLayout> rawDescriptorSetLayouts;
-        _pimpl->_descriptorSetLayout.reserve(rootSig->_descriptorSets.size());
-        rawDescriptorSetLayouts.reserve(rootSig->_descriptorSets.size());
+        _pimpl->_descriptorSetLayouts.reserve(signatureFile._descriptorSets.size());
 
-        for (const auto& s:rootSig->_descriptorSets) {
-            auto layout = CreateDescriptorSetLayout(factory, s, _pimpl->_stageFlags);
-            rawDescriptorSetLayouts.push_back(layout.get());
-            _pimpl->_descriptorSetLayout.emplace_back(std::move(layout));
+        for (const auto& s:signatureFile._descriptorSets) {
+			BoundPipelineLayout::DescriptorSet ds;
+			ds._layout = CreateDescriptorSetLayout(objectFactory, *s, _pimpl->_stageFlags);
+			ds._bindings = s->_bindings;
+			
+			{
+				DescriptorSetBuilder builder(globalPools);
+				builder.BindDummyDescriptors(*s, uint64_t(s->_bindings.size())-1);
+				auto*l = ds._layout.get();
+				VulkanUniquePtr<VkDescriptorSet> newDescSet;
+				globalPools._mainDescriptorPool.Allocate(
+					MakeIteratorRange(&newDescSet, &newDescSet+1),
+					MakeIteratorRange(&l, &l+1));
+				ds._blankBindings = std::move(newDescSet);
+				builder.FlushChanges(
+					objectFactory.GetDevice().get(),
+					ds._blankBindings.get(),
+					0, 0 VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, ds._blankBindingsDescription));
+			}
+
+			VULKAN_VERBOSE_DESCRIPTIONS_ONLY(ds._name = s->_name);
+			_pimpl->_descriptorSetLayouts.emplace_back(std::make_pair(s->_hashName, std::move(ds)));
         }
+		std::sort(
+			_pimpl->_descriptorSetLayouts.begin(),
+			_pimpl->_descriptorSetLayouts.end(),
+			CompareFirst<uint64_t, BoundPipelineLayout::DescriptorSet>());
 
-        std::vector<VkPushConstantRange> rawPushConstantRanges;
-        rawPushConstantRanges.reserve(rootSig->_pushConstantRanges.size());
-        for (const auto& r:rootSig->_pushConstantRanges)
-            rawPushConstantRanges.push_back(VkPushConstantRange{r._stages, r._rangeStart, r._rangeSize});
+#if 0
+		for (const auto& rootSig:signatureFile._rootSignatures) {
+			std::vector<VkDescriptorSetLayout> rawDescriptorSetLayouts;
+			rawDescriptorSetLayouts.reserve(rootSig._descriptorSets.size());
 
-        _pimpl->_pipelineLayout = factory.CreatePipelineLayout(
-            MakeIteratorRange(rawDescriptorSetLayouts),
-            MakeIteratorRange(rawPushConstantRanges));
-        _pimpl->_pendingLayoutRebuild = false;
+			auto boundPipelineLayout = std::make_shared<BoundPipelineLayout>();
+			boundPipelineLayout->_descriptorSets.reserve(rootSig._descriptorSets.size());
+
+			for (auto& desc:rootSig._descriptorSets) {
+				auto i = LowerBound(_pimpl->_descriptorSetLayouts, desc._hashName);
+				if (i == _pimpl->_descriptorSetLayouts.end() || i->first != desc._hashName)
+					Throw(::Exceptions::BasicLabel("Could not construct BoundSignatureFile for root signature (%s) because descriptor set (%s) is missing", rootSig._name.c_str(), desc._name.c_str()));
+
+				rawDescriptorSetLayouts.push_back(i->second._layout.get());
+				boundPipelineLayout->_descriptorSets.push_back(i->second);
+			}
+
+			std::vector<VkPushConstantRange> rawPushConstantRanges;
+			rawPushConstantRanges.reserve(rootSig._pushConstants.size());
+			for (const auto& s:rootSig._pushConstants) {
+				auto i = std::find_if(
+					signatureFile._pushConstantRanges.begin(), signatureFile._pushConstantRanges.end(),
+					[&s](const PushConstantsRangeSigniture&sig) { return sig._name == s; });
+				if (i == signatureFile._pushConstantRanges.end())
+					Throw(::Exceptions::BasicLabel("Could not construct BoundSignatureFile for root signature (%s) because push constant range (%s) is missing", rootSig._name.c_str(), s.c_str()));
+
+				// Only need to care if there's an overlap with the stage flags we're building for
+				if (i->_stages & stageFlags)
+					rawPushConstantRanges.push_back(VkPushConstantRange{i->_stages, i->_rangeStart, i->_rangeSize});
+			}
+
+			boundPipelineLayout->_pipelineLayout = objectFactory.CreatePipelineLayout(
+				MakeIteratorRange(rawDescriptorSetLayouts),
+				MakeIteratorRange(rawPushConstantRanges));
+
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				boundPipelineLayout->_name = rootSig._name;
+			#endif
+
+			_pimpl->_pipelineLayouts.emplace_back(std::make_pair(rootSig._hashName, std::move(boundPipelineLayout)));
+		}
+		std::sort(
+			_pimpl->_pipelineLayouts.begin(),
+			_pimpl->_pipelineLayouts.end(),
+			CompareFirst<uint64_t, std::shared_ptr<BoundPipelineLayout>>());
+#endif
     }
 
-    const std::shared_ptr<RootSignature>& PipelineLayout::GetRootSignature()
-    {
-        // this method can be called simulateously from multiple threads
-        ScopedLock(_pimpl->_rootSignatureLock);
-        if (!_pimpl->_rootSignature || _pimpl->_rootSignature->GetDependencyValidation()->GetValidationIndex() != 0) {
-            _pimpl->_rootSignature = std::make_shared<RootSignature>(_pimpl->_rootSignatureFilename.c_str());
-            _pimpl->_pendingLayoutRebuild = true;
-        }
-        return _pimpl->_rootSignature;
-    }
-
-    PipelineLayout::PipelineLayout(
-        const ObjectFactory& objectFactory,
-        StringSection<::Assets::ResChar> rootSignatureCfg,
-        VkShaderStageFlags stageFlags)
-    {
-        _pimpl = std::make_unique<Pimpl>();
-        _pimpl->_pendingLayoutRebuild = true;
-        _pimpl->_rootSignatureFilename = rootSignatureCfg.AsString();
-        _pimpl->_stageFlags = stageFlags;
-        RebuildLayout(objectFactory);
-    }
-
-    PipelineLayout::~PipelineLayout()
+    BoundSignatureFile::~BoundSignatureFile()
     {}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
+
+	static const char* s_descriptorTypeNames[] = {
+		"Sampler",
+		"Texture",
+		"ConstantBuffer",
+		"UnorderedAccessTexture",
+		"UnorderedAccessBuffer"
+	};
+
+	static const char* s_descriptorSetTypeNames[] = {
+		"Adaptive", "Numeric", "Unknown"
+	};
+
+	const char* AsString(DescriptorType type)
+	{
+		if (unsigned(type) < dimof(s_descriptorTypeNames))
+			return s_descriptorTypeNames[unsigned(type)];
+        return "<<unknown>>";
+	}
+
+	DescriptorType AsDescriptorType(StringSection<> type)
+	{
+		for (unsigned c=0; c<dimof(s_descriptorTypeNames); ++c)
+			if (XlEqString(type, s_descriptorTypeNames[c]))
+				return (DescriptorType)c;
+		return DescriptorType::Unknown;
+	}
+
+	RootSignature::DescriptorSetType AsDescriptorSetType(StringSection<> type)
+	{
+		for (unsigned c=0; c<dimof(s_descriptorSetTypeNames); ++c)
+			if (XlEqString(type, s_descriptorSetTypeNames[c]))
+				return (RootSignature::DescriptorSetType)c;
+		return RootSignature::DescriptorSetType::Unknown;
+	}
 
     static LegacyRegisterBinding::RegisterQualifier AsQualifier(StringSection<char> str)
     {
@@ -349,7 +379,7 @@ namespace RenderCore { namespace Metal_Vulkan
         }
     }
 
-    static DescriptorSetSignature ReadDescriptorSet(DocElementHelper<InputStreamFormatter<char>>& element)
+    static std::shared_ptr<DescriptorSetSignature> ReadDescriptorSet(DocElementHelper<InputStreamFormatter<char>>& element)
     {
         // Create a DescriptorSetLayout from the given document element
         // The element should be a series of attributes of the form
@@ -360,50 +390,47 @@ namespace RenderCore { namespace Metal_Vulkan
         // A single character represents the type. It should be followed by 
         // either a single number or an (inclusive) range.
         // SM5.1 adds a "space" parameter to allow for overlaps. But we don't support this currently.
-        DescriptorSetSignature result;
-
-		result._name = element.Attribute("name").Value().AsString();
-		result._type = AsDescriptorSetType(element.Attribute("type").Value());
-		result._uniformStream = element.Attribute("uniformStream", ~0u);
-
-		if (result._name.empty() || result._type == DescriptorSetSignature::Type::Unknown)
-			Throw(::Exceptions::BasicLabel("Error while reading DescriptorSetSignature (%s)", result._name.c_str()));
+        auto result = std::make_shared<DescriptorSetSignature>();
+		result->_name = element.Attribute("name").Value().AsString();
+		result->_hashName = Hash64(result->_name);
 
 		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
 			if (!XlEqString(e.Name(), "Descriptors"))
-				Throw(::Exceptions::BasicLabel("Unexpected element while reading DescriptorSetSignature (%s)", result._name.c_str()));
+				Throw(::Exceptions::BasicLabel("Unexpected element while reading DescriptorSetSignature (%s)", result->_name.c_str()));
 
 			auto type = AsDescriptorType(e.Attribute("type").Value());
 			auto slots = AsRegisterRange(e.Attribute("slots").Value());
 
 			if (type == DescriptorType::Unknown)
-				Throw(::Exceptions::BasicLabel("Descriptor type unrecognized (%s), while reading DescriptorSetSignature (%s)", e.Attribute("type").Value().AsString().c_str(), result._name.c_str()));
+				Throw(::Exceptions::BasicLabel("Descriptor type unrecognized (%s), while reading DescriptorSetSignature (%s)", e.Attribute("type").Value().AsString().c_str(), result->_name.c_str()));
 
 			if (slots._end <= slots._begin)
-				Throw(::Exceptions::BasicLabel("Slots attribute not property specified for descriptors in DescriptorSetSignature (%s)", result._name.c_str()));
+				Throw(::Exceptions::BasicLabel("Slots attribute not property specified for descriptors in DescriptorSetSignature (%s)", result->_name.c_str()));
 
             // Add bindings between the start and end (exclusive of end)
-			if (result._bindings.size() < slots._end)
-				result._bindings.resize(slots._end, DescriptorType::Unknown);
+			if (result->_bindings.size() < slots._end)
+				result->_bindings.resize(slots._end, DescriptorType::Unknown);
             for (auto i=slots._begin; i<slots._end; ++i) {
-				if (result._bindings[i] != DescriptorType::Unknown)
-					Throw(::Exceptions::BasicLabel("Some descriptor slots overlap while reading DescriptorSetSignature (%s)", result._name.c_str()));
-                result._bindings[i] = type;
+				if (result->_bindings[i] != DescriptorType::Unknown)
+					Throw(::Exceptions::BasicLabel("Some descriptor slots overlap while reading DescriptorSetSignature (%s)", result->_name.c_str()));
+                result->_bindings[i] = type;
 			}
         }
 
-		for (const auto&t:result._bindings)
+		for (const auto&t:result->_bindings)
 			if (t == DescriptorType::Unknown)
-				Throw(::Exceptions::BasicLabel("Gap between descriptor slots while reading DescriptorSetSignature (%s)", result._name.c_str()));
+				Throw(::Exceptions::BasicLabel("Gap between descriptor slots while reading DescriptorSetSignature (%s)", result->_name.c_str()));
 
         return result;
     }
 
-	static LegacyRegisterBinding ReadLegacyRegisterBinding(
+	static std::shared_ptr<LegacyRegisterBinding> ReadLegacyRegisterBinding(
 		DocElementHelper<InputStreamFormatter<char>>& element,
 		IteratorRange<const StringSection<>*> descriptorSetNames)
 	{
-		LegacyRegisterBinding result;
+		auto result = std::make_shared<LegacyRegisterBinding>();
+		result->_name = element.Attribute("name").Value().AsString();
+		result->_hashName = Hash64(result->_name);
 
 		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
 			auto name = e.Name();
@@ -434,13 +461,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			std::vector<LegacyRegisterBinding::Entry>* dest =  nullptr;
 			switch (regType) {
-			case LegacyRegisterBinding::RegisterType::Sampler: dest = &result._samplerRegisters; break;
+			case LegacyRegisterBinding::RegisterType::Sampler: dest = &result->_samplerRegisters; break;
 			case LegacyRegisterBinding::RegisterType::ShaderResource:
-				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result._srvRegisters_boundToBuffer : &result._srvRegisters;
+				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result->_srvRegisters_boundToBuffer : &result->_srvRegisters;
 				break;
-			case LegacyRegisterBinding::RegisterType::ConstantBuffer: dest = &result._constantBufferRegisters; break;
+			case LegacyRegisterBinding::RegisterType::ConstantBuffer: dest = &result->_constantBufferRegisters; break;
 			case LegacyRegisterBinding::RegisterType::UnorderedAccess:
-				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result._uavRegisters_boundToBuffer : &result._uavRegisters; 
+				dest = (legacyRegisters._qualifier == LegacyRegisterBinding::RegisterQualifier::Buffer) ? &result->_uavRegisters_boundToBuffer : &result->_uavRegisters; 
 				break;
 			default: assert(0);
 			}
@@ -462,12 +489,13 @@ namespace RenderCore { namespace Metal_Vulkan
 
     static PushConstantsRangeSigniture ReadPushConstRange(DocElementHelper<InputStreamFormatter<char>>& element)
     {
-        PushConstantsRangeSigniture result = {std::string(), 0u, 0u, 0u};
+        PushConstantsRangeSigniture result;
         for (auto a=element.FirstAttribute(); a; a=a.Next()) {
             if (a.Name().IsEmpty()) continue;
 
             if (XlEqStringI(a.Name(), "name")) {
                 result._name = a.Value().AsString();
+				result._hashName = Hash64(result._name);
                 continue;
             }
 
@@ -485,6 +513,31 @@ namespace RenderCore { namespace Metal_Vulkan
         }
         return result;
     }
+
+	static RootSignature ReadRootSignature(DocElementHelper<InputStreamFormatter<char>>& element)
+    {
+		RootSignature result;
+		result._name = element.Attribute("name").Value().AsString();
+		result._hashName = Hash64(result._name);
+		result._legacyBindings = element.Attribute("legacyBindings").Value().AsString();
+
+		for (auto e=element.FirstChild(); e; e=e.NextSibling()) {
+			if (XlEqString(e.Name(), "Set")) {
+				RootSignature::DescriptorSetReference ref;
+				ref._type = AsDescriptorSetType(e.Attribute("type").Value());
+				ref._uniformStream = e.Attribute("uniformStream", ~0u);
+				ref._name = e.Attribute("name").Value().AsString();
+				ref._hashName = Hash64(ref._name);
+				result._descriptorSets.emplace_back(std::move(ref));
+			} else if (XlEqString(e.Name(), "PushConstants")) {
+				result._pushConstants.emplace_back(e.Attribute("name").Value().AsString());
+			} else {
+				Throw(::Exceptions::BasicLabel("Unexpected element (%s) while reading root signature (%s)", e.Name().AsString().c_str(), result._name.c_str()));
+			}
+		}
+
+		return result;
+	}
 
 	IteratorRange<const LegacyRegisterBinding::Entry*>	LegacyRegisterBinding::GetEntries(RegisterType type, RegisterQualifier qualifier) const
 	{
@@ -509,7 +562,49 @@ namespace RenderCore { namespace Metal_Vulkan
 		return ' ';
 	}
 
-    RootSignature::RootSignature(StringSection<::Assets::ResChar> filename)
+	const RootSignature*								DescriptorSetSignatureFile::GetRootSignature(uint64_t name) const
+	{
+		for (const auto&r:_rootSignatures)
+			if (r._hashName == name)
+				return &r;
+		return nullptr;
+	}
+
+	const std::shared_ptr<LegacyRegisterBinding>&		DescriptorSetSignatureFile::GetLegacyRegisterBinding(uint64_t name) const
+	{
+		static std::shared_ptr<LegacyRegisterBinding> dummy;
+		// auto* rootSig = GetRootSignature(name);
+		// if (!rootSig) return dummy;
+
+		// auto h = Hash64(rootSig->_legacyBindings);
+		for (const auto&r:_legacyRegisterBindingSettings)
+			if (r->_hashName == name)
+				return r;
+		return dummy;
+	}
+
+	const PushConstantsRangeSigniture*					DescriptorSetSignatureFile::GetPushConstantsRangeSigniture(uint64_t name) const
+	{
+		// auto* rootSig = GetRootSignature(name);
+		// if (!rootSig) return nullptr;
+
+		// auto h = Hash64(rootSig->_pushConstants[0]);
+		for (const auto&r:_pushConstantRanges)
+			if (r._hashName == name)
+				return &r;
+		return nullptr;
+	}
+
+	const std::shared_ptr<DescriptorSetSignature>&		DescriptorSetSignatureFile::GetDescriptorSet(uint64_t name) const
+	{
+		static std::shared_ptr<DescriptorSetSignature> dummy;
+		for (const auto&d:_descriptorSets)
+			if (d->_hashName == name)
+				return d;
+		return dummy;
+	}
+
+    DescriptorSetSignatureFile::DescriptorSetSignatureFile(StringSection<> filename)
     {
 		_depVal = std::make_shared<::Assets::DependencyValidation>();
 		::Assets::RegisterFileDependency(_depVal, filename);
@@ -519,7 +614,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			size_t fileSize = 0;
 			auto block = ::Assets::TryLoadFileAsMemoryBlock(filename, &fileSize);
 			if (!block || !fileSize)
-				Throw(::Exceptions::BasicLabel("Failure while attempting to load root signature (%s)", filename.AsString().c_str()));
+				Throw(::Exceptions::BasicLabel("Failure while attempting to load descriptor set signature file (%s)", filename.AsString().c_str()));
 
 			_dependentFileState = Assets::IntermediateAssets::Store::GetDependentFileState(filename);
         
@@ -528,38 +623,24 @@ namespace RenderCore { namespace Metal_Vulkan
 				MemoryMappedInputStream(block.get(), PtrAdd(block.get(), fileSize)));
 			Document<InputStreamFormatter<char>> doc(formatter);
 
-			auto mainRootSignature = doc.Attribute("MainRootSignature").Value();
-			if (mainRootSignature.IsEmpty())
+			_mainRootSignature = doc.Attribute("MainRootSignature").Value().AsString();
+			if (_mainRootSignature.empty())
 				Throw(::Exceptions::BasicLabel("Main root root signature not specified while loading file (%s)", filename.AsString().c_str()));
-
-			std::vector<DescriptorSetSignature> descriptorSets;
 
 			for (auto a=doc.FirstChild(); a; a=a.NextSibling()) {
 				if (XlEqString(a.Name(), "DescriptorSet")) {
-					descriptorSets.emplace_back(ReadDescriptorSet(a));
-				} else if (XlEqString(a.Name(), "RootSignature") && XlEqString(a.Attribute("name").Value(), mainRootSignature)) {
-					
-					for (auto b=a.FirstAttribute(); b; b=b.Next()) {
-						if (XlEqString(b.Name(), "set")) {
-							auto i = std::find_if(
-								descriptorSets.begin(), descriptorSets.end(),
-								[b](const DescriptorSetSignature& d) { return XlEqString(b.Value(), d._name); });
-							if (i == descriptorSets.end())
-								Throw(::Exceptions::BasicLabel("Could not find descriptor set with name (%s) loading file (%s)", b.Value().AsString().c_str(), filename.AsString().c_str()));
-							_descriptorSets.push_back(*i);
-						}
-					}
-
-					for (auto b=a.FirstChild(); b; b=b.NextSibling()) {
-						if (XlEqString(b.Name(), "PushConstants")) {
-							_pushConstantRanges.emplace_back(ReadPushConstRange(b));
-						} else if (XlEqString(b.Name(), "LegacyBinding")) {
-							std::vector<StringSection<>> descriptorSetNames;
-							descriptorSetNames.reserve(_descriptorSets.size());
-							for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d._name);
-							_legacyBinding = ReadLegacyRegisterBinding(b, MakeIteratorRange(descriptorSetNames));
-						}
-					}
+					_descriptorSets.emplace_back(ReadDescriptorSet(a));
+				} else if (XlEqString(a.Name(), "LegacyBinding")) {
+					std::vector<StringSection<>> descriptorSetNames;
+					descriptorSetNames.reserve(_descriptorSets.size());
+					for (const auto&d:_descriptorSets) descriptorSetNames.push_back(d->_name);
+					_legacyRegisterBindingSettings.emplace_back(ReadLegacyRegisterBinding(a, MakeIteratorRange(descriptorSetNames)));
+				} else if (XlEqString(a.Name(), "PushConstants")) {
+					_pushConstantRanges.emplace_back(ReadPushConstRange(a));
+				} else if (XlEqString(a.Name(), "RootSignature")) {
+					_rootSignatures.emplace_back(ReadRootSignature(a));
+				} else {
+					Throw(::Exceptions::BasicLabel("Unexpected element type (%s) while loading descriptor set signature file", a.Name().AsString().c_str(), filename.AsString().c_str()));
 				}
 			}
 		} CATCH(const ::Assets::Exceptions::ConstructionError& e) {
@@ -569,6 +650,27 @@ namespace RenderCore { namespace Metal_Vulkan
 		} CATCH_END
     }
 
-    RootSignature::~RootSignature() {}
+    DescriptorSetSignatureFile::~DescriptorSetSignatureFile() {}
+
+
+	const std::shared_ptr<BoundSignatureFile>& VulkanGlobalsTemp::GetBoundPipelineLayout(ObjectFactory& objectFactory, const DescriptorSetSignatureFile& input, VkShaderStageFlags stageFlags)
+	{
+		auto i = _boundFiles.find(&input);
+		if (i != _boundFiles.end())
+			return i->second;
+
+		auto n = std::make_shared<BoundSignatureFile>(objectFactory, *_globalPools, input, stageFlags);
+		i = _boundFiles.insert(std::make_pair(&input, n)).first;
+		return i->second;
+	}
+
+	VulkanGlobalsTemp& VulkanGlobalsTemp::GetInstance()
+	{
+		static VulkanGlobalsTemp s_instance;
+		return s_instance;
+	}
+
+	VulkanGlobalsTemp::VulkanGlobalsTemp() {}
+	VulkanGlobalsTemp::~VulkanGlobalsTemp() {}
 }}
 

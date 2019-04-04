@@ -281,7 +281,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	BoundUniforms::BoundUniforms(
         const ShaderProgram& shader,
-        const PipelineLayoutConfig& pipelineLayout,
+		const PipelineLayoutConfig& pipelineLayoutConfig,
         const UniformsStreamInterface& interface0,
         const UniformsStreamInterface& interface1,
         const UniformsStreamInterface& interface2,
@@ -291,6 +291,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindingMask[c] = 0;
 			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
 		}
+
+		SetupDescriptorSets(*shader._pipelineLayoutHelper);
 
 		BoundUniformsHelper helper(shader);
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -301,7 +303,7 @@ namespace RenderCore { namespace Metal_Vulkan
 
 	BoundUniforms::BoundUniforms(
         const ComputeShader& shader,
-        const PipelineLayoutConfig& pipelineLayout,
+		const PipelineLayoutConfig& pipelineLayoutConfig,
         const UniformsStreamInterface& interface0,
         const UniformsStreamInterface& interface1,
         const UniformsStreamInterface& interface2,
@@ -311,6 +313,8 @@ namespace RenderCore { namespace Metal_Vulkan
 			_descriptorSetBindingMask[c] = 0;
 			_vsPushConstantSlot[c] = _psPushConstantSlot[c] = ~0u;
 		}
+
+		SetupDescriptorSets(*shader._pipelineLayoutHelper);
 
 		BoundUniformsHelper helper(shader.GetCompiledShaderByteCode());
 		const UniformsStreamInterface* interfaces[] = { &interface0, &interface1, &interface2, &interface3 };
@@ -393,6 +397,21 @@ namespace RenderCore { namespace Metal_Vulkan
 				_debuggingDescription = str.str();
 			}
 		#endif
+	}
+
+	void BoundUniforms::SetupDescriptorSets(const PipelineLayoutShaderConfig& pipelineLayoutHelper)
+	{
+		for (const auto&desc:pipelineLayoutHelper._descriptorSets) {
+			if (desc._type != RootSignature::DescriptorSetType::Adaptive)
+				continue;
+
+			if (desc._uniformStream >= s_streamCount)
+				continue;
+
+			_descriptorSetSig[desc._uniformStream] = desc._signature;
+			_underlyingLayouts[desc._uniformStream] = desc._bound._layout;
+			_descriptorSetBindingPoint[desc._uniformStream] = desc._pipelineLayoutBindingIndex;
+		}
 	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
@@ -480,7 +499,9 @@ namespace RenderCore { namespace Metal_Vulkan
         const UniformsStream& stream) const
     {
 		assert(streamIdx < s_streamCount);
-		if (_descriptorSetBindingMask[streamIdx]) {
+		if (_descriptorSetBindingMask[streamIdx] && _underlyingLayouts[streamIdx]) {
+			assert(_descriptorSetSig[streamIdx]);
+
 			// Descriptor sets can't be written to again after they've been bound to a command buffer (unless we're
 			// sure that all of the commands have already been completed).
 			//
@@ -496,7 +517,8 @@ namespace RenderCore { namespace Metal_Vulkan
 
 			auto pipelineType = _isComputeShader ? PipelineType::Compute : PipelineType::Graphics;
 
-			auto descriptorSet = context.AllocateDescriptorSet(pipelineType, streamIdx);
+			auto& globalPools = context.GetGlobalPools();
+			DescriptorSet descriptorSet { globalPools._mainDescriptorPool.Allocate(_underlyingLayouts[streamIdx].get()) };
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				assert(streamIdx < dimof(s_boundUniformsNames));
 				descriptorSet._description._descriptorSetInfo = s_boundUniformsNames[streamIdx];
@@ -521,9 +543,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				MakeIteratorRange(_srvBindingIndices[streamIdx]),
 				_descriptorSetBindingMask[streamIdx]);		
 
-			auto& pipelineLayout = *context.GetPipelineLayout(pipelineType);
-			auto& rootSig = *pipelineLayout.GetRootSignature();
-			const auto& sig = rootSig._descriptorSets[streamIdx];
+			const auto& sig = *_descriptorSetSig[streamIdx];
 
 			// Any locations referenced by the descriptor layout, by not written by the values in
 			// the streams must now be filled in with the defaults.

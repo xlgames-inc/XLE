@@ -35,6 +35,33 @@ namespace RenderCore { namespace Metal_Vulkan
 	enum class CommandBufferType;
 	class TemporaryBufferSpace;
 	class Resource;
+	class PipelineLayoutShaderConfig;
+
+	class PipelineLayoutBuilder
+	{
+	public:
+		struct FixedDescriptorSetLayout
+		{
+			VulkanSharedPtr<VkDescriptorSetLayout>		_descriptorSet;
+			unsigned									_bindingIndex = ~0u;
+		};
+		static const unsigned s_maxDescriptorSetCount = 4;
+		FixedDescriptorSetLayout _fixedDescriptorSetLayout[s_maxDescriptorSetCount];
+
+		VkPipelineLayout	GetPipelineLayout() const { return _pipelineLayout; }
+		unsigned			GetDescriptorSetCount() const { return _descriptorSetCount; }
+		void				SetShaderBasedDescriptorSets(const PipelineLayoutShaderConfig&);
+
+		unsigned			_shaderStageMask = 0u;
+		ObjectFactory*		_factory = nullptr;
+
+		PipelineLayoutBuilder();
+		~PipelineLayoutBuilder();
+	private:
+		VkPipelineLayout	_pipelineLayout;
+		unsigned			_descriptorSetCount = 0u;
+		unsigned			_pipelineLayoutId = 1u;
+	};
 
     class GraphicsPipelineBuilder
     {
@@ -51,14 +78,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		void		UnbindInputLayout();
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(
-            const ObjectFactory& factory,
-            VkPipelineCache pipelineCache,
-            VkPipelineLayout layout, 
+            ObjectFactory& factory, VkPipelineCache pipelineCache,
             VkRenderPass renderPass, unsigned subpass, 
             TextureSamples samples);
         bool IsPipelineStale() const { return _pipelineStale; }
 
 		const ShaderProgram* GetBoundShaderProgram() const { return _shaderProgram; }
+
+		PipelineLayoutBuilder _pipelineLayoutBuilder;
 
         GraphicsPipelineBuilder();
         ~GraphicsPipelineBuilder();
@@ -87,12 +114,12 @@ namespace RenderCore { namespace Metal_Vulkan
         void        Bind(const ComputeShader& shader);
 
         VulkanUniquePtr<VkPipeline> CreatePipeline(
-            const ObjectFactory& factory,
-            VkPipelineCache pipelineCache,
-            VkPipelineLayout layout);
+            ObjectFactory& factory, VkPipelineCache pipelineCache);
         bool IsPipelineStale() const { return _pipelineStale; }
 
 		const ComputeShader* GetBoundComputeShader() const { return _shader; }
+
+		PipelineLayoutBuilder _pipelineLayoutBuilder;
 
         ComputePipelineBuilder();
         ~ComputePipelineBuilder();
@@ -118,21 +145,36 @@ namespace RenderCore { namespace Metal_Vulkan
     {
     public:
         NumericUniformsInterface			_numericBindings;
-        unsigned                            _numericBindingsSlot;
+        unsigned                            _numericBindingsSlot = ~0u;
 
         std::vector<VkDescriptorSet>		_descriptorSets;			// (can't use a smart pointer here because it's often bound to the descriptor set in NumericUniformsInterface, which we must share)
-        bool                                _hasSetsAwaitingFlush;
+        bool                                _hasSetsAwaitingFlush = false;
 
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			std::vector<DescriptorSetVerboseDescription> _descriptorSetBindings;
-		#endif
+		struct DescInfo 
+		{
+			VulkanSharedPtr<VkDescriptorSet>	_dummy;
 
-        std::shared_ptr<PipelineLayout>		_pipelineLayout;
+			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
+				DescriptorSetVerboseDescription _currentlyBoundDescription;
+				DescriptorSetVerboseDescription _dummyDescription;
+			#endif
+		};
+		std::vector<DescInfo> _descInfo;
+
+		void BindNumericUniforms(
+			const std::shared_ptr<DescriptorSetSignature>& signature,
+			const LegacyRegisterBinding& bindings,
+			VkShaderStageFlags stageFlags,
+			unsigned descriptorSetIndex);
 
         DescriptorCollection(
             const ObjectFactory&    factory, 
             GlobalPools&            globalPools,
-            const std::shared_ptr<PipelineLayout>& pipelineLayout);
+			unsigned				descriptorSetCount);
+
+	private:
+		const ObjectFactory*    _factory;
+        GlobalPools*			_globalPools;
     };
 
 	class CommandList
@@ -255,14 +297,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		CommandList& GetActiveCommandList();
 		bool HasActiveCommandList();
 		
-		void		InvalidateCachedState() {}
-		static void PrepareForDestruction(IDevice*, IPresentationChain*);
+		void			InvalidateCachedState() {}
+		static void		PrepareForDestruction(IDevice*, IPresentationChain*);
 
 		void			BindDescriptorSet(PipelineType pipelineType, unsigned index, VkDescriptorSet set VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, DescriptorSetVerboseDescription&& description));
-        DescriptorSet	AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex);
+        // DescriptorSet	AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex);
 		void			PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data);
 
-		PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
+		// PipelineLayout* GetPipelineLayout(PipelineType pipelineType);
 
         GlobalPools&    GetGlobalPools();
         VkDevice        GetUnderlyingDevice();
@@ -285,8 +327,8 @@ namespace RenderCore { namespace Metal_Vulkan
         DeviceContext(
             ObjectFactory& factory, 
             GlobalPools& globalPools,
-            const std::shared_ptr<PipelineLayout>& globalPipelineLayout,
-            const std::shared_ptr<PipelineLayout>& computePipelineLayout,
+            // const std::shared_ptr<PipelineLayout>& globalPipelineLayout,
+            // const std::shared_ptr<PipelineLayout>& computePipelineLayout,
 			CommandPool& cmdPool, 
 			CommandBufferType cmdBufferType,
 			TemporaryBufferSpace& tempBufferSpace);
@@ -320,7 +362,9 @@ namespace RenderCore { namespace Metal_Vulkan
         bool BindComputePipeline();
 		void LogGraphicsPipeline();
 		void LogComputePipeline();
-		void BindDummyDescriptorSets(DescriptorCollection& collection);
+		// void BindDummyDescriptorSets(DescriptorCollection& collection);
+
+		void RebindNumericDescriptorSet(PipelineType pipelineType);
     };
 
 	inline CommandList& DeviceContext::GetActiveCommandList()

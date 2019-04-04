@@ -391,15 +391,14 @@ namespace RenderCore { namespace Metal_Vulkan
 		std::ostream& WriteDescriptorSet(
 			std::ostream& stream,
 			const DescriptorSetVerboseDescription& bindingDescription,
-			const RootSignature& rootSignature,
+			const DescriptorSetSignature& signature,
+			const LegacyRegisterBinding& legacyBinding,
 			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
 			unsigned descriptorSetIndex, bool isBound)
 		{
 			std::vector<std::string> signatureColumn;
 			std::vector<std::string> shaderColumns[(unsigned)ShaderStage::Max];
 			std::vector<std::string> legacyBindingColumn;
-
-			auto& signature = rootSignature._descriptorSets[descriptorSetIndex];
 
 			size_t signatureColumnMax = 0, bindingColumnMax = 0, legacyBindingColumnMax = 0;
 			size_t shaderColumnMax[(unsigned)ShaderStage::Max] = {};
@@ -442,7 +441,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			legacyBindingColumn.resize(rowCount);
 			for (unsigned regType=0; regType<(unsigned)LegacyRegisterBinding::RegisterType::Unknown; ++regType) {
 				auto prefix = GetRegisterPrefix((LegacyRegisterBinding::RegisterType)regType);
-				auto entries = rootSignature._legacyBinding.GetEntries((LegacyRegisterBinding::RegisterType)regType, LegacyRegisterBinding::RegisterQualifier::None);
+				auto entries = legacyBinding.GetEntries((LegacyRegisterBinding::RegisterType)regType, LegacyRegisterBinding::RegisterQualifier::None);
 				for (const auto&e:entries)
 					if (e._targetDescriptorSet == descriptorSetIndex && e._targetBegin < rowCount)
 						for (unsigned t=e._targetBegin; t<std::min(e._targetEnd, rowCount); ++t) {
