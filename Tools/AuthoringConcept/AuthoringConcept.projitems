@@ -1,0 +1,25 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <MSBuildAllProjects>$(MSBuildAllProjects);$(MSBuildThisFileFullPath)</MSBuildAllProjects>
+    <HasSharedItems>true</HasSharedItems>
+    <SharedGUID>5a5e22e4-9584-4b48-b095-a125471b05da</SharedGUID>
+  </PropertyGroup>
+  <PropertyGroup Label="Configuration">
+    <Import_RootNamespace>AuthoringConcept</Import_RootNamespace>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)AdaptiveEditing\EditorFrame.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)AdaptiveEditing\Interfaces.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)AdaptiveEditing\VanillaStorage.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GraphInteraction\DiagramEditingContext.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GraphInteraction\DiagramLister.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GraphInteraction\GraphStructureDomNodeAdapter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)GraphInteraction\ModelConversion.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImmediateGUI\Arbiter.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImmediateGUI\Frame.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImmediateGUI\ImbuedGraphics.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImmediateGUI\Style.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)ImmediateGUI\Utils.cs" />
+  </ItemGroup>
+</Project>
