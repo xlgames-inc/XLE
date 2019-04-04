@@ -4,6 +4,7 @@
 
 #include "InputLayout.h"
 #include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"
 #include "TextureView.h"
 #include "ObjectFactory.h"
 #include "Pools.h"
@@ -44,13 +45,15 @@ namespace RenderCore { namespace Metal_Vulkan
 			DescriptorSetBuilder				_builder;
 			VulkanUniquePtr<VkDescriptorSet>    _activeDescSet;
 			uint64_t							_slotsFilled = 0;
-			VkDescriptorSetLayout				_layout;
+			VulkanUniquePtr<VkDescriptorSetLayout>	_layout;
 
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				DescriptorSetVerboseDescription _description;
 			#endif
 
-			DescSet(VkDescriptorSetLayout layout, GlobalPools& globalPools) : _builder(globalPools), _layout(layout)
+			std::shared_ptr<DescriptorSetSignature> _signature;
+
+			DescSet(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _builder(globalPools), _layout(std::move(layout))
 			{
 				#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 					_description._descriptorSetInfo = "NumericUniformsInterface";
@@ -66,29 +69,35 @@ namespace RenderCore { namespace Metal_Vulkan
 					_description = DescriptorSetVerboseDescription{};
 					_description._descriptorSetInfo = "NumericUniformsInterface";
 				#endif
+
+				// bind dummies in every slot
+				_builder.BindDummyDescriptors(*_signature, (1ull<<uint64_t(_signature->_bindings.size()))-1ull);
 			}
 		};
 		DescSet _descSet;
 
-		Pimpl(VkDescriptorSetLayout layout, GlobalPools& globalPools) : _descSet(layout, globalPools) {}
+		Pimpl(VulkanUniquePtr<VkDescriptorSetLayout>&& layout, GlobalPools& globalPools) : _descSet(std::move(layout), globalPools) {}
     };
 
     void    NumericUniformsInterface::BindSRV(unsigned startingPoint, IteratorRange<const TextureView*const*> resources)
     {
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
             assert((startingPoint + c) < Pimpl::s_maxBindings);
+			if  (!resources[c]) continue;
 
 			if (!resources[c]->GetImageView()) {
-				const auto& binding = _pimpl->_uavRegisters_boundToBuffer[startingPoint + c];
+				if (!resources[c]->GetResource()) continue;
+
+				const auto& binding = _pimpl->_srvRegisters_boundToBuffer[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 				_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
 			} else {
 				const auto& binding = _pimpl->_srvRegisters[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "SRV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 				_pimpl->_descSet._builder.BindSRV(binding._descriptorSetBindIndex, resources[c]);
@@ -100,11 +109,14 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         for (unsigned c=0; c<unsigned(resources.size()); ++c) {
 			assert((startingPoint + c) < Pimpl::s_maxBindings);
+			if  (!resources[c]) continue;
             
 			if (!resources[c]->GetImageView()) {
+				if (!resources[c]->GetResource()) continue;
+
 				const auto& binding = _pimpl->_uavRegisters_boundToBuffer[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 
@@ -112,7 +124,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			} else {
 				const auto& binding = _pimpl->_uavRegisters[startingPoint + c];
 				if (binding._descriptorSetBindIndex == ~0u) {
-					Log(Warning) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+					Log(Debug) << "UAV numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 					continue;
 				}
 
@@ -125,9 +137,10 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         for (unsigned c=0; c<unsigned(uniformBuffers.size()); ++c) {
             if (!uniformBuffers[c]) continue;
+
 			const auto& binding = _pimpl->_constantBufferRegisters[startingPoint + c];
 			if (binding._descriptorSetBindIndex == ~0u) {
-				Log(Warning) << "Uniform buffer numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				Log(Debug) << "Uniform buffer numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 
@@ -139,9 +152,10 @@ namespace RenderCore { namespace Metal_Vulkan
     {
         for (unsigned c=0; c<unsigned(samplers.size()); ++c) {
             if (!samplers[c]) continue;
+
 			const auto& binding = _pimpl->_samplerRegisters[startingPoint + c];
 			if (binding._descriptorSetBindIndex == ~0u) {
-				Log(Warning) << "Sampler numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
+				Log(Debug) << "Sampler numeric binding (" << (startingPoint + c) << ") is off root signature" << std::endl;
 				continue;
 			}
 
@@ -161,7 +175,7 @@ namespace RenderCore { namespace Metal_Vulkan
         // slow. We should try a different approach.
         if (_pimpl->_descSet._builder.HasChanges()) {
             VulkanUniquePtr<VkDescriptorSet> newSets[1];
-			VkDescriptorSetLayout layouts[1] = { _pimpl->_descSet._layout };
+			VkDescriptorSetLayout layouts[1] = { _pimpl->_descSet._layout.get() };
             _pimpl->_descriptorPool->Allocate(MakeIteratorRange(newSets), MakeIteratorRange(layouts));
 
 			auto written = _pimpl->_descSet._builder.FlushChanges(
@@ -193,15 +207,23 @@ namespace RenderCore { namespace Metal_Vulkan
 		return _pimpl->_descSet._builder.HasChanges();
 	}
 
+	const DescriptorSetSignature& NumericUniformsInterface::GetSignature() const
+	{
+		return *_pimpl->_descSet._signature;
+	}
+
     NumericUniformsInterface::NumericUniformsInterface(
         const ObjectFactory& factory,
         GlobalPools& globalPools, 
-        VkDescriptorSetLayout layout,
+		const std::shared_ptr<DescriptorSetSignature>& signature,
         const LegacyRegisterBinding& bindings,
+		VkShaderStageFlags stageFlags,
 		unsigned descriptorSetIndex)
     {
-        _pimpl = std::make_unique<Pimpl>(layout, globalPools);
+		auto layout = CreateDescriptorSetLayout(factory, *signature, stageFlags);
+        _pimpl = std::make_unique<Pimpl>(std::move(layout), globalPools);
         _pimpl->_descriptorPool = &globalPools._mainDescriptorPool;
+		_pimpl->_descSet._signature = signature;
         
         Reset();
 
@@ -245,32 +267,6 @@ namespace RenderCore { namespace Metal_Vulkan
 			assert(e._end <= Pimpl::s_maxBindings);
 			for (unsigned b=e._begin; b!=e._end; ++b)
 				_pimpl->_uavRegisters_boundToBuffer[b]._descriptorSetBindIndex = b-e._begin+e._targetBegin;
-		}
-
-        // Create the default resources binding sets by binding "blank" default resources to all
-		// descriptor set slots
-		const auto& defResources = globalPools._dummyResources;
-		const TextureView* blankSRVImage = &defResources._blankSrv;
-		const TextureView* blankUAVImage = &defResources._blankUavImage;
-		const TextureView* blankUAVBuffer = &defResources._blankUavBuffer;
-		VkSampler blankSampler = defResources._blankSampler->GetUnderlying();
-		VkBuffer blankBuffer = defResources._blankBuffer.GetUnderlying();
-
-		for (unsigned c=0; c<Pimpl::s_maxBindings; ++c) {
-			if (_pimpl->_samplerRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindSampler(c, MakeIteratorRange(&blankSampler, &blankSampler+1));
-			if (_pimpl->_constantBufferRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindCB(c, MakeIteratorRange(&blankBuffer, &blankBuffer+1));
-
-			if (_pimpl->_srvRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindSRV(c, MakeIteratorRange(&blankSRVImage, &blankSRVImage+1));
-			if (_pimpl->_srvRegisters_boundToBuffer[c]._descriptorSetBindIndex != ~0u)
-				BindSRV(c, MakeIteratorRange(&blankUAVBuffer, &blankUAVBuffer+1));
-
-			if (_pimpl->_uavRegisters[c]._descriptorSetBindIndex != ~0u)
-				BindUAV(c, MakeIteratorRange(&blankUAVImage, &blankUAVImage+1));
-			if (_pimpl->_srvRegisters_boundToBuffer[c]._descriptorSetBindIndex != ~0u)
-				BindUAV(c, MakeIteratorRange(&blankUAVBuffer, &blankUAVBuffer+1));
 		}
     }
 

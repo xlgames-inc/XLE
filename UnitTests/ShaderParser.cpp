@@ -6,7 +6,8 @@
 
 #include "UnitTestHelper.h"
 #include "../Assets/IFileSystem.h"
-#include "../ShaderParser/InterfaceSignature.h"
+#include "../ShaderParser/ShaderSignatureParser.h"
+#include "../ShaderParser/NodeGraphSignature.h"
 #include "../Utility/Streams/FileUtils.h"
 #include <CppUnitTest.h>
 

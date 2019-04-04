@@ -330,13 +330,6 @@ namespace RenderCore { namespace Metal_DX11
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-    ::Assets::Blob MakeBlob(StringSection<char> stringSection)
-    {
-        auto result = std::make_shared<std::vector<uint8>>((const uint8*)stringSection.begin(), (const uint8*)stringSection.end());
-        result->push_back(0);
-        return std::move(result);
-    }
-
     static void CreatePayloadFromBlobs(
         /*out*/ ::Assets::Blob& payload,
         /*out*/ ::Assets::Blob& errors,
@@ -356,9 +349,11 @@ namespace RenderCore { namespace Metal_DX11
 
         errors.reset();
         if (errorsBlob && errorsBlob->GetBufferPointer() && errorsBlob->GetBufferSize()) {
-            errors = MakeBlob(MakeStringSection(
+			auto str = MakeStringSection(
                 (char*)errorsBlob->GetBufferPointer(), 
-                PtrAdd((char*)errorsBlob->GetBufferPointer(), errorsBlob->GetBufferSize())));
+                PtrAdd((char*)errorsBlob->GetBufferPointer(), errorsBlob->GetBufferSize()));
+			while (!str.IsEmpty() && *(str.end()-1) == '\0') str._end--;	// strip off trailing zeroes, because we don't need them in the blob
+            errors = Assets::AsBlob(str);
         }
     }
 
@@ -694,7 +689,7 @@ namespace RenderCore { namespace Metal_DX11
         auto hresult = compiler->D3DCreateLinker_Wrapper(&linkerRaw);
         intrusive_ptr<ID3D11Linker> linker = moveptr(linkerRaw);
         if (!SUCCEEDED(hresult)) {
-            errors = MakeBlob("Could not create D3D shader linker object");
+            errors = ::Assets::AsBlob("Could not create D3D shader linker object");
             return false;
         }
 
@@ -706,7 +701,7 @@ namespace RenderCore { namespace Metal_DX11
         if (!SUCCEEDED(hresult)) {
             StringMeld<1024> meld;
             meld << "Failure while creating a module instance from the function linking graph (" << (const char*)errorsBlob0->GetBufferPointer() << ")";
-            errors = MakeBlob(meld.get());
+            errors = ::Assets::AsBlob(meld.AsStringSection());
             return false;
         }
 
@@ -717,7 +712,7 @@ namespace RenderCore { namespace Metal_DX11
             hresult = i2.second.GetUnderlying()->CreateInstance("", &rawInstance);
             intrusive_ptr<ID3D11ModuleInstance> instance = moveptr(rawInstance);
             if (!SUCCEEDED(hresult)) {
-                errors = MakeBlob("Failure while creating a module instance from a module while linking");
+                errors = ::Assets::AsBlob("Failure while creating a module instance from a module while linking");
                 return false;
             }
 
@@ -775,7 +770,7 @@ namespace RenderCore { namespace Metal_DX11
         if (!SUCCEEDED(hresult)) {
             StringMeld<1024> meld;
             meld << "Failure during final linking process for dynamic shader (" << (const char*)errorsBlob1->GetBufferPointer() << ")";
-            errors = MakeBlob(meld.get());
+            errors = ::Assets::AsBlob(meld.AsStringSection());
             return false;
         }
 

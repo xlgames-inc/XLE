@@ -8,7 +8,7 @@
 #include "../TextureAlgorithm.h"
 
 Texture2D_MaybeMS<float4>	InputTexture BIND_NUMERIC_T0;
-RWTexture2D<float4>			OutputTexture UAV_NUMERIC_IMAGE_0;
+RWTexture2D<float4>			OutputTexture BIND_NUMERIC_U0;
 
 cbuffer Constants BIND_MAT_B0
 {

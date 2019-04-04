@@ -136,6 +136,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Previewer", "..\Tools\Previ
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Libraries", "Libraries", "{7EDD83F4-DB03-4D7E-81AC-DC3D711ACDB0}"
 EndProject
+Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "UnitTestsMetal", "..\UnitTests\Project\UnitTestsMetal.vcxproj", "{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}"
 Project("{D954291E-2A0B-460D-934E-DC6B0785DB48}") = "HyperGraphAdapter", "..\Tools\HyperGraphAdapter\HyperGraphAdapter.shproj", "{E4905621-8390-42E4-B1DC-B3B5E3F7BB00}"
 EndProject
 Global
@@ -938,6 +939,22 @@ Global
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8}.Release-Vulkan|Win32.Build.0 = Release|x86
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8}.Release-Vulkan|x64.ActiveCfg = Release|x64
 		{88EC769E-BEF7-4F3B-A2FF-38BB6AE6C5C8}.Release-Vulkan|x64.Build.0 = Release|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|Win32.ActiveCfg = Debug-DX11|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|Win32.Build.0 = Debug-DX11|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|x64.ActiveCfg = Debug-DX11|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-DX11|x64.Build.0 = Debug-DX11|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-Vulkan|Win32.ActiveCfg = Debug-Vulkan|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-Vulkan|Win32.Build.0 = Debug-Vulkan|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-Vulkan|x64.ActiveCfg = Debug-Vulkan|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Debug-Vulkan|x64.Build.0 = Debug-Vulkan|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-DX11|Win32.ActiveCfg = Release-DX11|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-DX11|Win32.Build.0 = Release-DX11|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-DX11|x64.ActiveCfg = Release-DX11|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-DX11|x64.Build.0 = Release-DX11|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-Vulkan|Win32.ActiveCfg = Release-Vulkan|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-Vulkan|Win32.Build.0 = Release-Vulkan|Win32
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-Vulkan|x64.ActiveCfg = Release-Vulkan|x64
+		{CDD52A7F-4A25-4BA0-A35E-5725EC73546D}.Release-Vulkan|x64.Build.0 = Release-Vulkan|x64
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

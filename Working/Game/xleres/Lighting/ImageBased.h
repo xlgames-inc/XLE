@@ -18,10 +18,10 @@
 #include "../Utility/Misc.h"        // for DitherPatternInt
 #include "../Transform.h"           // for GlobalSamplingPassCount, GlobalSamplingPassIndex
 
-TextureCube DiffuseIBL  : register(t19);
-TextureCube SpecularIBL : register(t20);
-Texture2D<float2> GlossLUT : register(t21);        // this is the look up table used in the split-sum IBL glossy reflections
-Texture2DArray<float> GlossTransLUT : register(t22);
+TextureCube DiffuseIBL BIND_NUMERIC_T7;
+TextureCube SpecularIBL BIND_NUMERIC_T8;
+Texture2D<float2> GlossLUT BIND_NUMERIC_T9;        // this is the look up table used in the split-sum IBL glossy reflections
+Texture2DArray<float> GlossTransLUT : register(t10);
 
 #if MAT_SEPARATE_REFRACTION_MAP
     TextureCube SpecularTransIBL : register(t30);

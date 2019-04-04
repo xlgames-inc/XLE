@@ -20,7 +20,7 @@
 #include "../UniformsStream.h"
 #include "../Metal/DeviceContext.h"
 #include "../Metal/InputLayout.h"
-#include "../Metal/Buffer.h"
+#include "../Metal/Resource.h"
 #include "../../Assets/Assets.h"
 #include "../../Assets/AssetFuture.h"
 #include "../../Assets/IFileSystem.h"
@@ -293,28 +293,32 @@ namespace RenderCore { namespace Assets
 	void SimpleModelRenderer::GenerateDeformBuffer(IThreadContext& context)
 	{
 		if (!_dynVB) return;
-		#if GFXAPI_TARGET == GFXAPI_DX11
-			auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
-			auto dst = ((Metal::Buffer*)_dynVB.get())->Map(metalContext);
-			for (const auto&d:_deformOps) {
-				auto partRange = MakeIteratorRange(PtrAdd(dst.begin(), d._dynVBBegin), PtrAdd(dst.begin(), d._dynVBEnd));
-				assert(partRange.begin() < partRange.end() && PtrDiff(partRange.end(), dst.begin()) <= ptrdiff_t(dst.size()));
 
-				IDeformOperation::VertexElementRange elementRanges[16];
-				assert(d._elements.size() <= dimof(elementRanges));
-				unsigned elementOffsetIterator = 0;
-				for (unsigned c=0; c<d._elements.size(); ++c) {
-					elementRanges[c] = MakeVertexIteratorRangeConst(
-						MakeIteratorRange(PtrAdd(partRange.begin(), elementOffsetIterator), partRange.end()),
-						d._stride, d._elements[c]._nativeFormat);
-					elementOffsetIterator += BitsPerPixel(d._elements[c]._nativeFormat) / 8;
-				}
+		auto& metalContext = *RenderCore::Metal::DeviceContext::Get(context);
 
-				// Execute the actual deform op
-				d._deformOp->Execute(MakeIteratorRange(elementRanges, &elementRanges[d._elements.size()]));
+		auto* res = (Metal::Resource*)_dynVB->QueryInterface(typeid(Metal::Resource).hash_code());
+		assert(res);
+
+		Metal::ResourceMap map(metalContext, *res, Metal::ResourceMap::Mode::WriteDiscardPrevious);
+		auto dst = map.GetData();
+
+		for (const auto&d:_deformOps) {
+			auto partRange = MakeIteratorRange(PtrAdd(dst.begin(), d._dynVBBegin), PtrAdd(dst.begin(), d._dynVBEnd));
+			assert(partRange.begin() < partRange.end() && PtrDiff(partRange.end(), dst.begin()) <= ptrdiff_t(dst.size()));
+
+			IDeformOperation::VertexElementRange elementRanges[16];
+			assert(d._elements.size() <= dimof(elementRanges));
+			unsigned elementOffsetIterator = 0;
+			for (unsigned c=0; c<d._elements.size(); ++c) {
+				elementRanges[c] = MakeVertexIteratorRangeConst(
+					MakeIteratorRange(PtrAdd(partRange.begin(), elementOffsetIterator), partRange.end()),
+					d._stride, d._elements[c]._nativeFormat);
+				elementOffsetIterator += BitsPerPixel(d._elements[c]._nativeFormat) / 8;
 			}
-			((Metal::Buffer*)_dynVB.get())->Unmap(metalContext);
-		#endif
+
+			// Execute the actual deform op
+			d._deformOp->Execute(MakeIteratorRange(elementRanges, &elementRanges[d._elements.size()]));
+		}
 	}
 
 	unsigned SimpleModelRenderer::DeformOperationCount() const { return (unsigned)_deformOps.size(); }

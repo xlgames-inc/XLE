@@ -94,7 +94,7 @@ namespace RenderCore { namespace Metal_DX11
 
         void        BeginCommandList();
         auto        ResolveCommandList() -> CommandListPtr;
-        void        CommitCommandList(CommandList& commandList, bool preserveRenderState);
+        void        ExecuteCommandList(CommandList& commandList, bool preserveRenderState);
 
 		NumericUniformsInterface& GetNumericUniforms(ShaderStage stage);
 

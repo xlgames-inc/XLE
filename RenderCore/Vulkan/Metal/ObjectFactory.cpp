@@ -309,7 +309,7 @@ namespace RenderCore { namespace Metal_Vulkan
         VkFenceCreateInfo createInfo = {};
         createInfo.sType = VK_STRUCTURE_TYPE_FENCE_CREATE_INFO;
         createInfo.pNext = nullptr;
-        createInfo.flags = flags;
+        createInfo.flags = flags;		// can onlt be 0 or VK_FENCE_CREATE_SIGNALED_BIT
 
         auto d = _destruction.get();
         VkFence rawFence = nullptr;

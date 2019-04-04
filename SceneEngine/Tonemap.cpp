@@ -304,7 +304,7 @@ namespace SceneEngine
         float initialData[] = { 1.f, 1.f };
         _propertiesBuffer = GestaltTypes::UAVSRV(
             BufferUploads::LinearBufferDesc::Create(8, 8),
-            "LumianceProperties", 
+            "LuminanceProperties", 
             BufferUploads::CreateBasicPacket(sizeof(initialData), &initialData).get(),
             BufferUploads::BindFlag::StructuredBuffer);
 

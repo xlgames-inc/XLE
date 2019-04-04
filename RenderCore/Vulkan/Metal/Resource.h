@@ -99,17 +99,19 @@ namespace RenderCore { namespace Metal_Vulkan
 	class ResourceMap
 	{
 	public:
-		void*           GetData()               { return _data; }
-        const void*     GetData() const         { return _data; }
-        size_t          GetDataSize() const     { return _dataSize; }
-        TexturePitches  GetPitches() const      { return _pitches; }
+		IteratorRange<void*>        GetData()               { return { _data, PtrAdd(_data, _dataSize) }; }
+        IteratorRange<const void*>  GetData() const         { return { _data, PtrAdd(_data, _dataSize) }; }
+        TexturePitches				GetPitches() const      { return _pitches; }
+
+		enum class Mode { Read, WriteDiscardPrevious };
 
 		ResourceMap(
 			VkDevice dev, VkDeviceMemory memory,
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap(
-			IDevice& dev, Resource& resource,
-            SubResourceId subResource,
+			DeviceContext& context, Resource& resource,
+            Mode mapMode,
+			SubResourceId subResource = {},
 			VkDeviceSize offset = 0, VkDeviceSize size = ~0ull);
 		ResourceMap();
 		~ResourceMap();

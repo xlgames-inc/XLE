@@ -41,8 +41,6 @@
 #include "../Math/Transformations.h"
 #include "../Utility/StringFormat.h"
 
-#include "../RenderCore/DX11/Metal/IncludeDX11.h"   // for unbind depth below
-
 namespace SceneEngine
 {
     using namespace RenderCore;
@@ -263,19 +261,19 @@ namespace SceneEngine
             result._skyTextureProjection = SkyTextureParts(globalDesc).BindPS_G(context, 11);
 
             if (globalDesc._diffuseIBL[0]) {
-                MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(19, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._diffuseIBL)->Actualize()->GetShaderResource()));
+                MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(7, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._diffuseIBL)->Actualize()->GetShaderResource()));
                 result._hasDiffuseIBL = true;
             }
 
             if (globalDesc._specularIBL[0]) {
-                MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(20, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._specularIBL)->Actualize()->GetShaderResource()));
+                MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(8, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._specularIBL)->Actualize()->GetShaderResource()));
                 result._hasSpecularIBL = true;
                 DEBUG_ONLY(CheckSpecularIBLMipMapCount(::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>(globalDesc._specularIBL)->Actualize()->GetShaderResource()));
             }
 
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(10, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/balanced_noise.dds:LT")->Actualize()->GetShaderResource()));
             MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(16, ::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/GGXTable.dds:LT")->Actualize()->GetShaderResource()));
-            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(21, 
+            MetalStubs::GetGlobalNumericUniforms(context, ShaderStage::Pixel).Bind(MakeResourceList(9, 
 				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosslut.dds:LT")->Actualize()->GetShaderResource(),
 				::Assets::MakeAsset<RenderCore::Techniques::DeferredShaderResource>("xleres/DefaultResources/glosstranslut.dds:LT")->Actualize()->GetShaderResource()));
 
@@ -296,7 +294,7 @@ namespace SceneEngine
 		const bool lightResolveDebugging = Tweakable("LightResolveDebugging", false);
 
         LightingResolveContext lightingResolveContext(lightingParserContext);
-        const unsigned samplingCount = lightingParserContext.GetMainTargets().GetSamplingCount();
+        const unsigned samplingCount = parsingContext.GetNamedResources().GetFrameBufferProperties()._samples._sampleCount;
         const bool useMsaaSamplers = lightingResolveContext.UseMsaaSamplers();
 
         bool precisionTargets = Tweakable("PrecisionTargets", false);

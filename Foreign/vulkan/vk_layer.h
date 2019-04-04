@@ -35,9 +35,6 @@
 #define VK_LAYER_EXPORT
 #endif
 
-// Definition for VkLayerDispatchTable and VkLayerInstanceDispatchTable now appear in externally generated header
-#include "vk_layer_dispatch_table.h"
-
 #define MAX_NUM_UNKNOWN_EXTS 250
 
  // Loader-Layer version negotiation API.  Versions add the following features:
@@ -49,6 +46,9 @@
 #define MIN_SUPPORTED_LOADER_LAYER_INTERFACE_VERSION 1
 
 #define VK_CURRENT_CHAIN_VERSION 1
+
+// Typedef for use in the interfaces below
+typedef PFN_vkVoidFunction (VKAPI_PTR *PFN_GetPhysicalDeviceProcAddr)(VkInstance instance, const char* pName);
 
 // Version negotiation values
 typedef enum VkNegotiateLayerStructType {
@@ -144,6 +144,7 @@ typedef enum VkChainType {
     VK_CHAIN_TYPE_UNKNOWN = 0,
     VK_CHAIN_TYPE_ENUMERATE_INSTANCE_EXTENSION_PROPERTIES = 1,
     VK_CHAIN_TYPE_ENUMERATE_INSTANCE_LAYER_PROPERTIES = 2,
+    VK_CHAIN_TYPE_ENUMERATE_INSTANCE_VERSION = 3,
 } VkChainType;
 
 typedef struct VkChainHeader {
@@ -176,6 +177,18 @@ typedef struct VkEnumerateInstanceLayerPropertiesChain {
     }
 #endif
 } VkEnumerateInstanceLayerPropertiesChain;
+
+typedef struct VkEnumerateInstanceVersionChain {
+    VkChainHeader header;
+    VkResult(VKAPI_PTR *pfnNextLayer)(const struct VkEnumerateInstanceVersionChain *, uint32_t *);
+    const struct VkEnumerateInstanceVersionChain *pNextLink;
+
+#if defined(__cplusplus)
+    inline VkResult CallDown(uint32_t *pApiVersion) const {
+        return pfnNextLayer(pNextLink, pApiVersion);
+    }
+#endif
+} VkEnumerateInstanceVersionChain;
 
 #ifdef __cplusplus
 }

@@ -153,6 +153,8 @@ namespace RenderCore
 		FrameBufferDesc();
 		~FrameBufferDesc();
 
+		static FrameBufferDesc s_empty;
+
 	private:
         std::vector<Attachment>         _attachments;
         std::vector<SubpassDesc>        _subpasses;

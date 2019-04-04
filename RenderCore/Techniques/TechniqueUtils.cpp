@@ -197,6 +197,8 @@ namespace RenderCore { namespace Techniques
         return det > 0.0f;
     }
 
+	IteratorRange<const ConstantBufferElementDesc*> IUniformBufferDelegate::GetLayout() const { return {}; }
+
 	IUniformBufferDelegate::~IUniformBufferDelegate() {}
 	IShaderResourceDelegate::~IShaderResourceDelegate() {}
 	IMaterialDelegate::~IMaterialDelegate() {}

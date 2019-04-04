@@ -7,6 +7,7 @@
 #pragma once
 
 #include "VulkanCore.h"
+#include "PipelineLayout.h"
 #include "../../Types.h"
 #include "../../ShaderService.h"
 #include "../../../Assets/AssetsCore.h"
@@ -17,8 +18,8 @@ namespace RenderCore { namespace Metal_Vulkan
 {
 	class ObjectFactory;
 	class BoundClassInterfaces;
-	class DeviceContext;
 	class GraphicsPipelineBuilder;
+	class PipelineLayoutSignatureFile;
 
         ////////////////////////////////////////////////////////////////////////////////////////////////
 
@@ -46,8 +47,8 @@ namespace RenderCore { namespace Metal_Vulkan
 		ShaderProgram();
         ~ShaderProgram();
 
-		const CompiledShaderByteCode&			GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
-		const VulkanSharedPtr<VkShaderModule>&	GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
+		const CompiledShaderByteCode&				GetCompiledCode(ShaderStage stage) const	{ assert(unsigned(stage) < dimof(_compiledCode)); return _compiledCode[(unsigned)stage]; }
+		const VulkanSharedPtr<VkShaderModule>&		GetModule(ShaderStage stage) const			{ assert(unsigned(stage) < dimof(_modules)); return _modules[(unsigned)stage]; }
 		static const unsigned s_maxShaderStages = 5;
 
         bool DynamicLinkingEnabled() const;
@@ -83,10 +84,12 @@ namespace RenderCore { namespace Metal_Vulkan
 			StringSection<::Assets::ResChar> dsName,
 			StringSection<::Assets::ResChar> definesTable);
 
+		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
+
     protected:
 		CompiledShaderByteCode _compiledCode[s_maxShaderStages];
 		VulkanSharedPtr<VkShaderModule> _modules[s_maxShaderStages];
-
+		std::shared_ptr<PipelineLayoutSignatureFile> _descriptorSetSignatureFile;
         std::shared_ptr<::Assets::DependencyValidation>   _validationCallback;
     };
 
@@ -104,6 +107,9 @@ namespace RenderCore { namespace Metal_Vulkan
         ComputeShader();
         ~ComputeShader();
 
+		ComputeShader& operator=(ComputeShader&& moveFrom) = default;
+		ComputeShader(ComputeShader&& moveFrom) = default;
+
         const std::shared_ptr<::Assets::DependencyValidation>& GetDependencyValidation() const     { return _validationCallback; }
 
 		// Legacy asset based API --
@@ -111,10 +117,14 @@ namespace RenderCore { namespace Metal_Vulkan
 			::Assets::AssetFuture<ComputeShader>&,
 			StringSection<::Assets::ResChar> codeName,
 			StringSection<::Assets::ResChar> definesTable = {});
+
+		std::shared_ptr<PipelineLayoutShaderConfig> _pipelineLayoutConfig;
+
     private:
         std::shared_ptr<::Assets::DependencyValidation>		_validationCallback;
 		VulkanSharedPtr<VkShaderModule>						_module;
 		CompiledShaderByteCode								_compiledCode;
+		std::shared_ptr<PipelineLayoutSignatureFile>			_descriptorSetSignatureFile;
     };
 
         ////////////////////////////////////////////////////////////////////////////////////////////////

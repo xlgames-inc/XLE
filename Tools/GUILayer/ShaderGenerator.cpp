@@ -156,18 +156,9 @@ namespace GUILayer
 		auto future = shaderSource.CompileFromMemory(sourceCode, entryPoint, shaderModel, definesTable);
 		auto state = future->GetAssetState();
 		auto artifacts = future->GetArtifacts();
-		if (state == ::Assets::AssetState::Invalid || artifacts.empty()) {
-			// try to find an artifact named "log". If it doesn't exist, just drop back to the first one
-			::Assets::IArtifact* logArtifact = nullptr;
-			for (const auto& e:artifacts)
-				if (e.first == "log") {
-					logArtifact = e.second.get();
-					break;
-				}
-			if (!logArtifact && !artifacts.empty())
-				logArtifact = artifacts[0].second.get();
-			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), logArtifact->GetBlob()));
-		}
+		assert(!artifacts.empty());
+		if (state == ::Assets::AssetState::Invalid)
+			Throw(::Assets::Exceptions::InvalidAsset(entryPoint, artifacts[0].second->GetDependencyValidation(), ::Assets::GetErrorMessage(*future)));
 
 		return RenderCore::CompiledShaderByteCode{
 			artifacts[0].second->GetBlob(), artifacts[0].second->GetDependencyValidation(), artifacts[0].second->GetRequestParameters()};

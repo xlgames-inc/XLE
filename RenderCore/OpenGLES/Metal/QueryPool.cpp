@@ -8,6 +8,27 @@
 
 namespace RenderCore { namespace Metal_OpenGLES
 {
+    auto TimeStampQueryPool::SetTimeStampQuery(DeviceContext& context) -> QueryId 
+    { 
+        return QueryId_Invalid; 
+    }
+
+    auto TimeStampQueryPool::BeginFrame(DeviceContext& context) -> FrameId
+    { 
+        return FrameId_Invalid;
+    }
+
+    void TimeStampQueryPool::EndFrame(DeviceContext& context, FrameId frame)
+    {}
+
+    auto TimeStampQueryPool::GetFrameResults(DeviceContext& context, FrameId id) -> FrameResults
+    {
+        return FrameResults { false, false, nullptr, nullptr, 0ull };
+    }
+
+    TimeStampQueryPool::TimeStampQueryPool(ObjectFactory& factory) {}
+    TimeStampQueryPool::~TimeStampQueryPool() {}
+
     #if defined(GPUANNOTATIONS_ENABLE)
 
         void GPUAnnotation::Begin(DeviceContext& context, const char annotationName[])

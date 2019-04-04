@@ -36,6 +36,16 @@ namespace Assets
 		return AsBlob(MakeIteratorRange(str));
 	}
 
+	Blob AsBlob(StringSection<char> str)
+	{
+		return AsBlob(MakeIteratorRange(str.begin(), str.end()));
+	}
+
+	Blob AsBlob(const char* str)
+	{
+		return AsBlob(MakeStringSection(str));
+	}
+
 	std::string AsString(const Blob& blob)
 	{
 		assert(blob);

@@ -13,6 +13,7 @@
 #include "AssetServices.h"
 #include "CompileAndAsyncManager.h"
 #include "IntermediateAssets.h"		// (used in BeginCompileOperation)
+#include "IArtifact.h"
 #include "../ConsoleRig/Log.h"
 #include "../Utility/StringUtils.h"
 #include "../Utility/StringFormat.h"
@@ -687,6 +688,30 @@ namespace Assets
 		for (const auto& i : deps)
 			::Assets::RegisterFileDependency(result, MakeStringSection(i._filename));
 		return result;
+	}
+
+	Blob GetErrorMessage(const ArtifactFuture& artifactList)
+	{
+		// Try to find an artifact named "log". Otherwise, look for one called "exception". If neither exists, just drop back to the first one
+		auto artifacts = artifactList.GetArtifacts();
+		IArtifact* logArtifact = nullptr;
+		for (const auto& e:artifacts)
+			if (e.first == "log") {
+				logArtifact = e.second.get();
+				break;
+			}
+		if (!logArtifact) {
+			for (const auto& e:artifacts)
+				if (e.first == "exception") {
+					logArtifact = e.second.get();
+					break;
+				}
+			if (!logArtifact)
+				logArtifact = artifacts[0].second.get();
+		}
+		if (logArtifact)
+			return logArtifact->GetBlob();
+		return {};
 	}
 
 	ICompileOperation::~ICompileOperation() {}

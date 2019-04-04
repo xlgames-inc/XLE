@@ -14,15 +14,18 @@
 #include "FrameBuffer.h"
 #include "Pools.h"
 #include "PipelineLayout.h"
+#include "PipelineLayoutSignatureFile.h"
 #include "ShaderReflection.h"
-#include "../../Format.h"
 #include "../IDeviceVulkan.h"
+#include "../../Format.h"
 #include "../../ConsoleRig/Log.h"
 #include "../../Utility/MemoryUtils.h"
 #include "../../Utility/ArithmeticUtils.h"
 
 namespace RenderCore { namespace Metal_Vulkan
 {
+	
+///////////////////////////////////////////////////////////////////////////////////////////////////
 
     void        GraphicsPipelineBuilder::Bind(const RasterizerState& rasterizer)
     {
@@ -131,13 +134,12 @@ namespace RenderCore { namespace Metal_Vulkan
     }
 
     VulkanUniquePtr<VkPipeline> GraphicsPipelineBuilder::CreatePipeline(
-        const ObjectFactory& factory,
+        ObjectFactory& factory,
         VkPipelineCache pipelineCache,
-        VkPipelineLayout layout, 
         VkRenderPass renderPass, unsigned subpass, 
         TextureSamples samples)
     {
-        if (!_shaderProgram || !renderPass) return nullptr;
+		assert(_shaderProgram && renderPass);
 
         VkPipelineShaderStageCreateInfo shaderStages[3];
         uint32_t shaderStageCount = 0;
@@ -207,13 +209,13 @@ namespace RenderCore { namespace Metal_Vulkan
         VkGraphicsPipelineCreateInfo pipeline = {};
         pipeline.sType = VK_STRUCTURE_TYPE_GRAPHICS_PIPELINE_CREATE_INFO;
         pipeline.pNext = nullptr;
-        pipeline.layout = layout;
+		pipeline.layout = _pipelineLayoutBuilder.GetPipelineLayout();
         pipeline.basePipelineHandle = VK_NULL_HANDLE;
         pipeline.basePipelineIndex = 0;
         pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
         pipeline.pVertexInputState = &vi;
         pipeline.pInputAssemblyState = &ia;
-        pipeline.pRasterizationState = &_rasterizerState;
+		pipeline.pRasterizationState = &_rasterizerState;
         pipeline.pColorBlendState = &_blendState;
         pipeline.pTessellationState = nullptr;
         pipeline.pMultisampleState = &ms;
@@ -264,19 +266,19 @@ namespace RenderCore { namespace Metal_Vulkan
     void        ComputePipelineBuilder::Bind(const ComputeShader& shader)
     {
         _shader = &shader;
+		_pipelineLayoutBuilder.SetShaderBasedDescriptorSets(*shader._pipelineLayoutConfig);
         _pipelineStale = true;
     }
 
     VulkanUniquePtr<VkPipeline> ComputePipelineBuilder::CreatePipeline(
-        const ObjectFactory& factory,
-        VkPipelineCache pipelineCache,
-        VkPipelineLayout layout)
+        ObjectFactory& factory,
+        VkPipelineCache pipelineCache)
     {
         VkComputePipelineCreateInfo pipeline = {};
         pipeline.sType = VK_STRUCTURE_TYPE_COMPUTE_PIPELINE_CREATE_INFO;
         pipeline.pNext = nullptr;
         pipeline.flags = 0; // VK_PIPELINE_CREATE_DISABLE_OPTIMIZATION_BIT;
-        pipeline.layout = layout;
+		pipeline.layout = _pipelineLayoutBuilder.GetPipelineLayout();
         pipeline.basePipelineHandle = VK_NULL_HANDLE;
         pipeline.basePipelineIndex = 0;
 
@@ -347,82 +349,48 @@ namespace RenderCore { namespace Metal_Vulkan
         if (index < (unsigned)collection._descriptorSets.size() && collection._descriptorSets[index] != set) {
             collection._descriptorSets[index] = set;
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				collection._descriptorSetBindings[index] = std::move(description);
+				collection._descInfo[index]._currentlyBoundDescription = std::move(description);
 			#endif
 
             if (_renderPass || pipelineType == PipelineType::Compute) {
-                _commandList.BindDescriptorSets(
-                    (pipelineType == PipelineType::Compute) ? VK_PIPELINE_BIND_POINT_COMPUTE : VK_PIPELINE_BIND_POINT_GRAPHICS,
-                    collection._pipelineLayout->GetUnderlying(), 
-                    index, 1, &collection._descriptorSets[index], 
-                    0, nullptr);
-            } else {
-                collection._hasSetsAwaitingFlush = true;    // (will be bound when the render pass begins)
+				if (pipelineType == PipelineType::Compute) {
+					if (GetBoundComputeShader()) {
+						assert(index < ComputePipelineBuilder::_pipelineLayoutBuilder.GetDescriptorSetCount());
+						_commandList.BindDescriptorSets(
+							VK_PIPELINE_BIND_POINT_COMPUTE,
+							ComputePipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
+							index, 1, &collection._descriptorSets[index], 
+							0, nullptr);
+						return;
+					}
+				} else {
+					if (GetBoundShaderProgram()) {
+						assert(index < GraphicsPipelineBuilder::_pipelineLayoutBuilder.GetDescriptorSetCount());
+						_commandList.BindDescriptorSets(
+							VK_PIPELINE_BIND_POINT_GRAPHICS,
+							GraphicsPipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
+							index, 1, &collection._descriptorSets[index], 
+							0, nullptr);
+						return;
+					}
+				}
             }
+
+            collection._hasSetsAwaitingFlush = true;    // (will be bound when the render pass begins)
         }
     }
 
-	DescriptorSet	DeviceContext::AllocateDescriptorSet(PipelineType pipelineType, unsigned descriptorSetIndex)
-	{
-		auto* pipelineLayout = (pipelineType == PipelineType::Compute) 
-            ? _computeDescriptors._pipelineLayout.get()
-            : _graphicsDescriptors._pipelineLayout.get();
-		auto& globalPools = GetGlobalPools();
-		return DescriptorSet {
-			globalPools._mainDescriptorPool.Allocate(pipelineLayout->GetDescriptorSetLayout(descriptorSetIndex))
-		};
-	}
-
-	void			DeviceContext::BindDummyDescriptorSets(DescriptorCollection& collection)
-	{
-		auto& globalPools = GetGlobalPools();
-		for (unsigned descriptorSetIndex=0; descriptorSetIndex<collection._descriptorSets.size(); ++descriptorSetIndex) {
-			if (collection._descriptorSets[descriptorSetIndex]) continue;
-			auto& pipelineLayout = *collection._pipelineLayout;
-			auto& sig = pipelineLayout.GetDescriptorSetSignature(descriptorSetIndex);
-			DescriptorSet set {
-				globalPools._mainDescriptorPool.Allocate(pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex))
-			};
-
-			{
-				DescriptorSetBuilder builder { GetGlobalPools() };
-				builder.BindDummyDescriptors(sig, uint64_t(sig._bindings.size())-1);
-				builder.FlushChanges(
-					GetUnderlyingDevice(),
-					set._underlying.get(),
-					nullptr, 0
-					VULKAN_VERBOSE_DESCRIPTIONS_ONLY(, set._description));
-			}
-
-			collection._descriptorSets[descriptorSetIndex] = set._underlying.get();
-			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-				collection._descriptorSetBindings[descriptorSetIndex] = std::move(set._description);
-			#endif
-			collection._hasSetsAwaitingFlush = true;
-		}
-	}
-
 	void			DeviceContext::PushConstants(VkShaderStageFlags stageFlags, IteratorRange<const void*> data)
 	{
+		assert(!(stageFlags & VK_SHADER_STAGE_COMPUTE_BIT));
 		GetActiveCommandList().PushConstants(
-            GetPipelineLayout(DeviceContext::PipelineType::Graphics)->GetUnderlying(),
+			GraphicsPipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
             stageFlags, 0, (uint32_t)data.size(), data.begin());
 	}
 
-    PipelineLayout* DeviceContext::GetPipelineLayout(PipelineType pipelineType)
-    {
-        return (pipelineType == PipelineType::Compute) 
-            ? _computeDescriptors._pipelineLayout.get()
-            : _graphicsDescriptors._pipelineLayout.get();
-    }
-
-    bool        DeviceContext::BindGraphicsPipeline()
-    {
-		assert(_commandList.GetUnderlying());
-
-        // If we've been using the pipeline layout builder directly, then we
-        // must flush those changes down to the GraphicsPipelineBuilder
-        if (_graphicsDescriptors._numericBindings.HasChanges()) {
+	void		DeviceContext::RebindNumericDescriptorSet(PipelineType pipelineType)
+	{
+		if (pipelineType == PipelineType::Graphics) {
 			VkDescriptorSet descSets[1];
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				DescriptorSetVerboseDescription* descriptions[1];
@@ -434,52 +402,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				_graphicsDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
 				BindDescriptorSet(PipelineType::Graphics, _graphicsDescriptors._numericBindingsSlot, descSets[0]);
 			#endif
-        }
-
-		// GetTemporaryBufferSpace().WriteBarrier(*this);
-
-        if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
-
-		if (!_renderPass) {
-			Log(Warning) << "Attempting to bind graphics pipeline without a render pass" << std::endl;
-			return false;
-		}
-
-        _currentGraphicsPipeline = GraphicsPipelineBuilder::CreatePipeline(
-            *_factory,
-            _globalPools->_mainPipelineCache.get(),
-            _graphicsDescriptors._pipelineLayout->GetUnderlying(),
-            _renderPass, _renderPassSubpass, _renderPassSamples);
-        if (_currentGraphicsPipeline) {
-			LogGraphicsPipeline();
-
-			#if defined(_DEBUG)
-				// check for unbound descriptor sets
-				for (unsigned c=0; c<_graphicsDescriptors._descriptorSets.size(); ++c)
-					if (!_graphicsDescriptors._descriptorSets[c]) {
-						Log(Warning) << "Graphics descriptor set index [" << c << "] (" << _graphicsDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
-					}
-			#endif
-
-            vkCmdBindPipeline(
-			    _commandList.GetUnderlying().get(),
-                VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _currentGraphicsPipeline.get());
-            Bind(_boundViewport);
-            return true;
-        }
-
-        assert(0);
-        return false;
-    }
-
-    bool DeviceContext::BindComputePipeline()
-    {
-        assert(_commandList.GetUnderlying());
-
-        // If we've been using the pipeline layout builder directly, then we
-        // must flush those changes down to the ComputePipelineBuilder
-        if (_computeDescriptors._numericBindings.HasChanges()) {
+		} else {
 			VkDescriptorSet descSets[1];
 			#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 				DescriptorSetVerboseDescription* descriptions[1];
@@ -491,41 +414,96 @@ namespace RenderCore { namespace Metal_Vulkan
 				_computeDescriptors._numericBindings.GetDescriptorSets(MakeIteratorRange(descSets));
 				BindDescriptorSet(PipelineType::Compute, _computeDescriptors._numericBindingsSlot, descSets[0]);
 			#endif
+		}
+	}
+
+    bool        DeviceContext::BindGraphicsPipeline()
+    {
+		assert(_commandList.GetUnderlying());
+
+        // If we've been using the pipeline layout builder directly, then we
+        // must flush those changes down to the GraphicsPipelineBuilder
+        if (_graphicsDescriptors._numericBindings.HasChanges()) {
+			RebindNumericDescriptorSet(PipelineType::Graphics);
+        }
+
+        if (_currentGraphicsPipeline && !GraphicsPipelineBuilder::IsPipelineStale()) return true;
+
+		if (!_renderPass) {
+			Log(Warning) << "Attempting to bind graphics pipeline without a render pass" << std::endl;
+			return false;
+		}
+
+		_currentGraphicsPipeline = GraphicsPipelineBuilder::CreatePipeline(
+            *_factory, _globalPools->_mainPipelineCache.get(),
+            _renderPass, _renderPassSubpass, _renderPassSamples);
+        assert(_currentGraphicsPipeline);
+		LogGraphicsPipeline();
+
+		#if defined(_DEBUG)
+			// check for unbound descriptor sets
+			const auto& sig = *GetBoundShaderProgram()->_pipelineLayoutConfig;
+			for (unsigned c=0; c<sig._descriptorSets.size(); ++c)
+				if (c >= _graphicsDescriptors._descriptorSets.size() || !_graphicsDescriptors._descriptorSets[c]) {
+					Log(Warning) << "Graphics descriptor set index [" << c << "] (" << sig._descriptorSets[c]._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
+				}
+		#endif
+
+        vkCmdBindPipeline(
+			_commandList.GetUnderlying().get(),
+            VK_PIPELINE_BIND_POINT_GRAPHICS,
+            _currentGraphicsPipeline.get());
+        Bind(_boundViewport);
+        return true;
+    }
+
+    bool DeviceContext::BindComputePipeline()
+    {
+        assert(_commandList.GetUnderlying());
+
+        // If we've been using the pipeline layout builder directly, then we
+        // must flush those changes down to the ComputePipelineBuilder
+        if (_computeDescriptors._numericBindings.HasChanges()) {
+			RebindNumericDescriptorSet(PipelineType::Compute);
+        }
+
+		if (_computeDescriptors._hasSetsAwaitingFlush) {
+            _commandList.BindDescriptorSets(
+                VK_PIPELINE_BIND_POINT_COMPUTE,
+				ComputePipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
+                0, ComputePipelineBuilder::_pipelineLayoutBuilder.GetDescriptorSetCount(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
+                0, nullptr);
+            _computeDescriptors._hasSetsAwaitingFlush = false;
         }
 
         if (_currentComputePipeline && !ComputePipelineBuilder::IsPipelineStale()) return true;
 
         _currentComputePipeline = ComputePipelineBuilder::CreatePipeline(
-            *_factory,
-            _globalPools->_mainPipelineCache.get(),
-            _computeDescriptors._pipelineLayout->GetUnderlying());
-        if (_currentComputePipeline) {
-			LogComputePipeline();
+            *_factory, _globalPools->_mainPipelineCache.get());
+        assert(_currentComputePipeline);
+		LogComputePipeline();
 
-			#if defined(_DEBUG)
-				// check for unbound descriptor sets
-				for (unsigned c=0; c<_computeDescriptors._descriptorSets.size(); ++c)
-					if (!_computeDescriptors._descriptorSets[c]) {
-						Log(Warning) << "Compute descriptor set index [" << c << "] (" << _computeDescriptors._pipelineLayout->GetDescriptorSetSignature(c)._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
-					}
-			#endif
+		#if defined(_DEBUG)
+			// check for unbound descriptor sets
+			const auto& sig = *GetBoundShaderProgram()->_pipelineLayoutConfig;
+			for (unsigned c=0; c<sig._descriptorSets.size(); ++c)
+				if (c >= _computeDescriptors._descriptorSets.size() || !_computeDescriptors._descriptorSets[c]) {
+					Log(Warning) << "Compute descriptor set index [" << c << "] (" << sig._descriptorSets[c]._name << ") is unbound when creating pipeline. This will probably result in a crash." << std::endl;
+				}
+		#endif
 
-            vkCmdBindPipeline(
-			    _commandList.GetUnderlying().get(),
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                _currentComputePipeline.get());
+        vkCmdBindPipeline(
+			_commandList.GetUnderlying().get(),
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            _currentComputePipeline.get());
 
-            // note -- currently crashing the GPU if we don't rebind here...?
-            _commandList.BindDescriptorSets(
-                VK_PIPELINE_BIND_POINT_COMPUTE,
-                _computeDescriptors._pipelineLayout->GetUnderlying(), 
-                0, (uint32_t)_computeDescriptors._descriptorSets.size(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
-                0, nullptr);
-            return true;
-        }
-
-        assert(0);
-        return false;
+        // note -- currently crashing the GPU if we don't rebind here...?
+        /*_commandList.BindDescriptorSets(
+            VK_PIPELINE_BIND_POINT_COMPUTE,
+            _computeDescriptors._pipelineLayout->GetUnderlying(), 
+            0, (uint32_t)_computeDescriptors._descriptorSets.size(), AsPointer(_computeDescriptors._descriptorSets.begin()), 
+            0, nullptr);*/
+        return true;
     }
 
 	void DeviceContext::LogGraphicsPipeline()
@@ -544,14 +522,16 @@ namespace RenderCore { namespace Metal_Vulkan
 				for (unsigned c=0; c<dimof(shaders); ++c)
 					shaders[c] = &GetBoundShaderProgram()->GetCompiledCode((ShaderStage)c);
 
-				#pragma warning(disable:4239) // HACK -- workaround -- nonstandard extension used : 'argument' : conversion from '_Ostr' to 'std::ostream &'
-				for (unsigned c=0; c<_graphicsDescriptors._pipelineLayout->GetDescriptorSetCount(); ++c) {
+				auto& pipelineLayoutHelper = *GetBoundShaderProgram()->_pipelineLayoutConfig;
+				for (unsigned c=0; c<(unsigned)pipelineLayoutHelper._descriptorSets.size(); ++c) {
+					auto descSetIdx = pipelineLayoutHelper._descriptorSets[c]._pipelineLayoutBindingIndex;
 					WriteDescriptorSet(
 						Log(Verbose),
-						_graphicsDescriptors._descriptorSetBindings[c],
-						*_graphicsDescriptors._pipelineLayout->GetRootSignature(),
+						_graphicsDescriptors._descInfo[descSetIdx]._currentlyBoundDescription,
+						*pipelineLayoutHelper._descriptorSets[c]._signature,
+						*pipelineLayoutHelper._legacyRegisterBinding,
 						MakeIteratorRange(shaders),
-						c, _graphicsDescriptors._descriptorSets[c] != nullptr);
+						descSetIdx, descSetIdx < _graphicsDescriptors._descriptorSets.size() && _graphicsDescriptors._descriptorSets[descSetIdx] != nullptr);
 				}
 			#endif
 		#endif
@@ -570,13 +550,16 @@ namespace RenderCore { namespace Metal_Vulkan
 				const CompiledShaderByteCode* shaders[(unsigned)ShaderStage::Max] = {};
 				shaders[(unsigned)ShaderStage::Compute] = &GetBoundComputeShader()->GetCompiledShaderByteCode();
 
-				for (unsigned c=0; c<_computeDescriptors._pipelineLayout->GetDescriptorSetCount(); ++c) {
+				auto& pipelineLayoutHelper = *GetBoundComputeShader()->_pipelineLayoutConfig;
+				for (unsigned c=0; c<(unsigned)pipelineLayoutHelper._descriptorSets.size(); ++c) {
+					auto descSetIdx = pipelineLayoutHelper._descriptorSets[c]._pipelineLayoutBindingIndex;
 					WriteDescriptorSet(
 						Log(Verbose),
-						_computeDescriptors._descriptorSetBindings[c],
-						*_computeDescriptors._pipelineLayout->GetRootSignature(),
+						_computeDescriptors._descInfo[descSetIdx]._currentlyBoundDescription,
+						*pipelineLayoutHelper._descriptorSets[c]._signature,
+						*pipelineLayoutHelper._legacyRegisterBinding,
 						MakeIteratorRange(shaders),
-						c, _computeDescriptors._descriptorSets[c] != nullptr);
+						descSetIdx, descSetIdx < _computeDescriptors._descriptorSets.size() && _computeDescriptors._descriptorSets[descSetIdx] != nullptr);
 				}
 			#endif
 		#endif
@@ -598,6 +581,7 @@ namespace RenderCore { namespace Metal_Vulkan
     {
 		assert(_commandList.GetUnderlying());
 		if (BindGraphicsPipeline()) {
+			assert(indexCount);
 		    vkCmdDrawIndexed(
 			    _commandList.GetUnderlying().get(),
 			    indexCount, 1,
@@ -646,8 +630,6 @@ namespace RenderCore { namespace Metal_Vulkan
 	{
 		return std::make_shared<DeviceContext>(
 			*_factory, *_globalPools,
-			_graphicsDescriptors._pipelineLayout,
-			_computeDescriptors._pipelineLayout,
 			*_cmdPool, _cmdBufferType, *_tempBufferSpace);
 	}
 
@@ -664,23 +646,23 @@ namespace RenderCore { namespace Metal_Vulkan
         *(ComputePipelineBuilder*)this = ComputePipelineBuilder();
         _currentGraphicsPipeline.reset();
         _currentComputePipeline.reset();
+		SetupPipelineBuilders();
 
-		for (auto& s:_graphicsDescriptors._descriptorSets) s = {};
-        _graphicsDescriptors._hasSetsAwaitingFlush = false;
-        _graphicsDescriptors._numericBindings.Reset();
-        _graphicsDescriptors._pipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
+		for (unsigned c=0; c<_graphicsDescriptors._descriptorSets.size(); ++c) {
+			_graphicsDescriptors._descriptorSets[c] = _graphicsDescriptors._descInfo[c]._dummy.get();
+			_graphicsDescriptors._descInfo[c]._currentlyBoundDescription = _graphicsDescriptors._descInfo[c]._dummyDescription;
+		}
+		_graphicsDescriptors._numericBindings.Reset();
+		RebindNumericDescriptorSet(PipelineType::Graphics);
+        _graphicsDescriptors._hasSetsAwaitingFlush = true;
 
-		for (auto& s:_computeDescriptors._descriptorSets) s = {};
-        _computeDescriptors._hasSetsAwaitingFlush = false;
-        _computeDescriptors._numericBindings.Reset();
-        _computeDescriptors._pipelineLayout->RebuildLayout(*_factory); // (rebuild if necessary)
-
-		// We must our descriptor sets with something, based on the root signature
-		// Rendering or dispatching without a descriptor set bound in a used slot will
-		// crash either the driver or the GPU, so to avoid it, let's just make sure we bind
-		// something
-		BindDummyDescriptorSets(_graphicsDescriptors);
-		BindDummyDescriptorSets(_computeDescriptors);
+		for (unsigned c=0; c<_computeDescriptors._descriptorSets.size(); ++c) {
+			_computeDescriptors._descriptorSets[c] = _computeDescriptors._descInfo[c]._dummy.get();
+			_computeDescriptors._descInfo[c]._currentlyBoundDescription = _computeDescriptors._descInfo[c]._dummyDescription;
+		}
+		_computeDescriptors._numericBindings.Reset();
+		RebindNumericDescriptorSet(PipelineType::Compute);
+        _computeDescriptors._hasSetsAwaitingFlush = true;
 
         _boundViewport = ViewportDesc();
 
@@ -707,7 +689,7 @@ namespace RenderCore { namespace Metal_Vulkan
 			Throw(VulkanAPIFailure(res, "Failure while beginning command buffer"));
 	}
 
-	void		DeviceContext::CommitCommandList(CommandList& cmdList, bool preserveState)
+	void		DeviceContext::ExecuteCommandList(CommandList& cmdList, bool preserveState)
 	{
 		assert(_commandList.GetUnderlying());
 		(void)preserveState;		// we can't handle this properly in Vulkan
@@ -716,6 +698,52 @@ namespace RenderCore { namespace Metal_Vulkan
         vkCmdExecuteCommands(
 			_commandList.GetUnderlying().get(),
 			dimof(buffers), buffers);
+	}
+
+	void		DeviceContext::QueueCommandList(IDevice& device, QueueCommandListFlags::BitField flags)
+	{
+		IDeviceVulkan* deviceVulkan = (IDeviceVulkan*)device.QueryInterface(typeid(IDeviceVulkan).hash_code());
+		if (!deviceVulkan) {
+			assert(0);
+			return;
+		}
+
+		assert(deviceVulkan->GetUnderlyingDevice() == GetUnderlyingDevice());
+
+		auto cmdList = ResolveCommandList();
+		auto renderingQueue = deviceVulkan->GetRenderingQueue();
+
+		VkSubmitInfo submitInfo;
+		submitInfo.sType = VK_STRUCTURE_TYPE_SUBMIT_INFO;
+		submitInfo.pNext = nullptr;
+
+		VkCommandBuffer rawCmdBuffers[] = { cmdList->GetUnderlying().get() };
+		submitInfo.waitSemaphoreCount = 0;
+		submitInfo.pWaitSemaphores = nullptr;
+		submitInfo.signalSemaphoreCount = 0;
+		submitInfo.pSignalSemaphores = nullptr;
+		submitInfo.pWaitDstStageMask = 0;
+		submitInfo.commandBufferCount = dimof(rawCmdBuffers);
+		submitInfo.pCommandBuffers = rawCmdBuffers;
+
+		// Use a fence to stall this method until the execute of the command list is complete
+		VkFence f = VK_NULL_HANDLE;
+		if (flags & QueueCommandListFlags::Stall) {
+			f = _utilityFence.get();
+			auto res = vkResetFences(deviceVulkan->GetUnderlyingDevice(), 1, &f);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while resetting utility fence"));
+		}
+		
+		auto res = vkQueueSubmit(renderingQueue, 1, &submitInfo, f);
+		if (res != VK_SUCCESS)
+			Throw(VulkanAPIFailure(res, "Failure while queuing command list"));
+
+		if (flags & QueueCommandListFlags::Stall) {
+			res = vkWaitForFences(deviceVulkan->GetUnderlyingDevice(), 1, &f, true, UINT64_MAX);
+			if (res != VK_SUCCESS)
+				Throw(VulkanAPIFailure(res, "Failure while waiting for command list fence"));
+		}
 	}
 
 	auto        DeviceContext::ResolveCommandList() -> CommandListPtr
@@ -772,8 +800,8 @@ namespace RenderCore { namespace Metal_Vulkan
         if (_graphicsDescriptors._hasSetsAwaitingFlush) {
             _commandList.BindDescriptorSets(
                 VK_PIPELINE_BIND_POINT_GRAPHICS,
-                _graphicsDescriptors._pipelineLayout->GetUnderlying(), 
-                0, (uint32_t)_graphicsDescriptors._descriptorSets.size(), AsPointer(_graphicsDescriptors._descriptorSets.begin()), 
+				GraphicsPipelineBuilder::_pipelineLayoutBuilder.GetPipelineLayout(),
+                0, GraphicsPipelineBuilder::_pipelineLayoutBuilder.GetDescriptorSetCount(), AsPointer(_graphicsDescriptors._descriptorSets.begin()), 
                 0, nullptr);
             _graphicsDescriptors._hasSetsAwaitingFlush = false;
         }
@@ -816,11 +844,81 @@ namespace RenderCore { namespace Metal_Vulkan
 		}
 	}
 
+	static std::shared_ptr<DescriptorSetSignature> GetNumericBindingsDescriptorSet(const PipelineLayoutSignatureFile& source)
+	{
+		for (const auto&d:source._descriptorSets)
+			if (d->_name == "Numeric") return d;
+		return nullptr;
+	}
+
+	void DeviceContext::SetupPipelineBuilders()
+	{
+		auto& globals = VulkanGlobalsTemp::GetInstance();
+
+		{
+			GraphicsPipelineBuilder::_pipelineLayoutBuilder._shaderStageMask = VK_SHADER_STAGE_ALL_GRAPHICS;
+			GraphicsPipelineBuilder::_pipelineLayoutBuilder._factory = _factory;
+
+			const auto& root = *globals._graphicsRootSignatureFile->GetRootSignature(Hash64(globals._graphicsRootSignatureFile->_mainRootSignature));
+			unsigned q=0;
+			for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
+				const auto&d = root._descriptorSets[c];
+				if (d._type == RootSignature::DescriptorSetType::Numeric) {
+					GraphicsPipelineBuilder::_pipelineLayoutBuilder._fixedDescriptorSetLayout[q]._bindingIndex = c;
+					GraphicsPipelineBuilder::_pipelineLayoutBuilder._fixedDescriptorSetLayout[q]._descriptorSet =
+						globals._boundGraphicsSignatures->GetDescriptorSet(VulkanGlobalsTemp::s_mainSignature, d._hashName)->_layout;
+					++q;
+				}
+			}
+
+			PipelineLayoutShaderConfig helper { *_factory, *globals._graphicsRootSignatureFile, VulkanGlobalsTemp::s_mainSignature, PipelineType::Graphics };
+			GraphicsPipelineBuilder::_pipelineLayoutBuilder.SetShaderBasedDescriptorSets(helper);
+
+			for (const auto&d:helper._descriptorSets) {
+				_graphicsDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummy = d._bound._blankBindings;
+				_graphicsDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummyDescription = d._bound._blankBindingsDescription;
+			}
+		}
+
+		_graphicsDescriptors.BindNumericUniforms(
+			GetNumericBindingsDescriptorSet(*globals._graphicsRootSignatureFile),
+			*globals._graphicsRootSignatureFile->_legacyRegisterBindingSettings[0],	// hack -- just selecting first
+			VK_SHADER_STAGE_ALL_GRAPHICS, 3);
+
+		{
+			ComputePipelineBuilder::_pipelineLayoutBuilder._shaderStageMask = VK_SHADER_STAGE_COMPUTE_BIT;
+			ComputePipelineBuilder::_pipelineLayoutBuilder._factory = _factory;
+
+			const auto& root = *globals._computeRootSignatureFile->GetRootSignature(Hash64(globals._computeRootSignatureFile->_mainRootSignature));
+			unsigned q=0;
+			for (unsigned c=0; c<root._descriptorSets.size(); ++c) {
+				const auto&d = root._descriptorSets[c];
+				if (d._type == RootSignature::DescriptorSetType::Numeric) {
+					ComputePipelineBuilder::_pipelineLayoutBuilder._fixedDescriptorSetLayout[q]._bindingIndex = c;
+					ComputePipelineBuilder::_pipelineLayoutBuilder._fixedDescriptorSetLayout[q]._descriptorSet =
+						globals._boundComputeSignatures->GetDescriptorSet(VulkanGlobalsTemp::s_mainSignature, d._hashName)->_layout;
+					++q;
+				}
+			}
+
+			PipelineLayoutShaderConfig helper { *_factory, *globals._computeRootSignatureFile, VulkanGlobalsTemp::s_mainSignature, PipelineType::Compute };
+			ComputePipelineBuilder::_pipelineLayoutBuilder.SetShaderBasedDescriptorSets(helper);
+
+			for (const auto&d:helper._descriptorSets) {
+				_computeDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummy = d._bound._blankBindings;
+				_computeDescriptors._descInfo[d._pipelineLayoutBindingIndex]._dummyDescription = d._bound._blankBindingsDescription;
+			}
+		}
+
+		_computeDescriptors.BindNumericUniforms(
+			GetNumericBindingsDescriptorSet(*globals._computeRootSignatureFile),
+			*globals._computeRootSignatureFile->_legacyRegisterBindingSettings[0],	// hack -- just selecting first
+			VK_SHADER_STAGE_COMPUTE_BIT, 2);
+	}
+
 	DeviceContext::DeviceContext(
         ObjectFactory&			factory, 
         GlobalPools&            globalPools,
-        const std::shared_ptr<PipelineLayout>& globalPipelineLayout,
-        const std::shared_ptr<PipelineLayout>& computePipelineLayout,
 		CommandPool&            cmdPool, 
 		CommandBufferType		cmdBufferType,
 		TemporaryBufferSpace&	tempBufferSpace)
@@ -830,10 +928,24 @@ namespace RenderCore { namespace Metal_Vulkan
     , _renderPass(nullptr)
     , _renderPassSubpass(0u)
     , _renderPassSamples(TextureSamples::Create())
-    , _graphicsDescriptors(factory, globalPools, globalPipelineLayout)
-    , _computeDescriptors(factory, globalPools, computePipelineLayout)
+    , _graphicsDescriptors(factory, globalPools, 4)
+    , _computeDescriptors(factory, globalPools, 4)
 	, _tempBufferSpace(&tempBufferSpace)
     {
+		_utilityFence = _factory->CreateFence(0);
+
+		auto& globals = VulkanGlobalsTemp::GetInstance();
+		globals._globalPools = &globalPools;
+
+        globals._graphicsRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>("xleres/System/RootSignature.cfg");
+        globals._computeRootSignatureFile = std::make_shared<Metal_Vulkan::PipelineLayoutSignatureFile>("xleres/System/RootSignatureCS.cfg");
+
+		globals._boundGraphicsSignatures = std::make_shared<BoundSignatureFile>(*_factory, *_globalPools, VK_SHADER_STAGE_ALL_GRAPHICS);
+		globals._boundGraphicsSignatures->RegisterSignatureFile(VulkanGlobalsTemp::s_mainSignature, *globals._graphicsRootSignatureFile);
+		globals._boundComputeSignatures = std::make_shared<BoundSignatureFile>(*_factory, *_globalPools, VK_SHADER_STAGE_COMPUTE_BIT);
+		globals._boundComputeSignatures->RegisterSignatureFile(VulkanGlobalsTemp::s_mainSignature, *globals._computeRootSignatureFile);
+
+		SetupPipelineBuilders();
     }
 
 	void DeviceContext::PrepareForDestruction(IDevice*, IPresentationChain*) {}
@@ -947,6 +1059,16 @@ namespace RenderCore { namespace Metal_Vulkan
 		vkCmdWriteTimestamp(_underlying.get(), pipelineStage, queryPool, query);
 	}
 
+	void CommandList::BeginQuery(VkQueryPool queryPool, uint32_t query, VkQueryControlFlags flags)
+	{
+		vkCmdBeginQuery(_underlying.get(), queryPool, query, flags);
+	}
+
+	void CommandList::EndQuery(VkQueryPool queryPool, uint32_t query)
+	{
+		vkCmdEndQuery(_underlying.get(), queryPool, query);
+	}
+
 	void CommandList::ResetQueryPool(
 		VkQueryPool queryPool, uint32_t firstQuery, uint32_t queryCount)
 	{
@@ -977,44 +1099,27 @@ namespace RenderCore { namespace Metal_Vulkan
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static std::pair<NumericUniformsInterface, unsigned> MakeDescriptorSetBuilder(
-		const ObjectFactory& factory, GlobalPools& globalPools, 
-		PipelineLayout& pipelineLayout, StringSection<> name)
+	void DescriptorCollection::BindNumericUniforms(
+		const std::shared_ptr<DescriptorSetSignature>& signature,
+		const LegacyRegisterBinding& bindings,
+		VkShaderStageFlags stageFlags,
+		unsigned descriptorSetIndex)
 	{
-		auto& rootSig = *pipelineLayout.GetRootSignature();
-		auto i = std::find_if(rootSig._descriptorSets.begin(), rootSig._descriptorSets.end(),
-			[name](const DescriptorSetSignature& sig) {
-				return XlEqString(MakeStringSection(sig._name), name);
-			});
-		if (i != rootSig._descriptorSets.end()) {
-			unsigned descriptorSetIndex = (unsigned)std::distance(rootSig._descriptorSets.begin(), i);
-			return {
-				NumericUniformsInterface(
-					factory, globalPools, 
-					pipelineLayout.GetDescriptorSetLayout(descriptorSetIndex),
-					pipelineLayout.GetRootSignature()->_legacyBinding,
-					descriptorSetIndex),
-				descriptorSetIndex
-			};
-		}
-		return {NumericUniformsInterface{}, ~0u};
+		_numericBindings = NumericUniformsInterface {
+			*_factory, *_globalPools,
+			signature, bindings, stageFlags, descriptorSetIndex };
+		_numericBindingsSlot = descriptorSetIndex;
 	}
 
     DescriptorCollection::DescriptorCollection(
         const ObjectFactory&    factory, 
         GlobalPools&            globalPools,
-        const std::shared_ptr<PipelineLayout>&         pipelineLayout)
-    : _pipelineLayout(pipelineLayout)
+		unsigned				descriptorSetCount)
+	: _factory(&factory), _globalPools(&globalPools)
     {
-		std::tie(_numericBindings, _numericBindingsSlot) =
-			MakeDescriptorSetBuilder(factory, globalPools, *_pipelineLayout, "Numeric");
-
-        _descriptorSets.resize(_pipelineLayout->GetDescriptorSetCount(), nullptr);
-        _hasSetsAwaitingFlush = false;
-
-		#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-			_descriptorSetBindings.resize(_pipelineLayout->GetDescriptorSetCount());
-		#endif
+        _descriptorSets.resize(descriptorSetCount, nullptr);
+        _descInfo.resize(descriptorSetCount);
+		_hasSetsAwaitingFlush = false;
     }
 
 }}

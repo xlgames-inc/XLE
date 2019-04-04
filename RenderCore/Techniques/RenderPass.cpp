@@ -157,56 +157,6 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
-    void RenderPassInstance::NextSubpass()
-    {
-		assert(_attachedContext && _frameBuffer);
-        Metal::EndSubpass(*_attachedContext, *_frameBuffer);
-        Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
-    }
-
-    void RenderPassInstance::End()
-    {
-		assert(_attachedContext && _frameBuffer);
-        Metal::EndSubpass(*_attachedContext, *_frameBuffer);
-        Metal::EndRenderPass(*_attachedContext);
-    }
-    
-    unsigned RenderPassInstance::GetCurrentSubpassIndex() const
-    {
-        return Metal::GetCurrentSubpassIndex(*_attachedContext);
-    }
-
-    auto RenderPassInstance::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
-    {
-        assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
-        return nullptr;
-    }
-
-    auto RenderPassInstance::GetResource(AttachmentName resName) const -> IResourcePtr
-    {
-        assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
-        return nullptr;
-    }
-
-    auto RenderPassInstance::GetSRV(AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
-    {
-        assert(_attachmentPool);
-        if (resName < _attachmentPoolRemapping.size())
-            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
-        return nullptr;
-    }
-
-	AttachmentName RenderPassInstance::RemapAttachmentName(AttachmentName resName) const
-	{
-		if (resName < _attachmentPoolRemapping.size())
-			return _attachmentPoolRemapping[resName];
-		return ~0u;
-	}
-
     class NamedAttachmentsWrapper : public INamedAttachments
     {
     public:
@@ -255,7 +205,7 @@ namespace RenderCore { namespace Techniques
         class Entry
         {
         public:
-            uint64_t _hash = 0;
+            uint64_t _hash = ~0ull;
             unsigned _tickId = 0;
             std::shared_ptr<Metal::FrameBuffer> _fb;
             std::vector<AttachmentName> _poolAttachmentsRemapping;
@@ -273,7 +223,7 @@ namespace RenderCore { namespace Techniques
         for (auto&e:_entries)
             if ((e._tickId + evictionRange) < _currentTickId) {
                 e._fb.reset();
-				e._hash = 0;
+				e._hash = ~0ull;
 			}
         ++_currentTickId;
     }
@@ -289,7 +239,7 @@ namespace RenderCore { namespace Techniques
         uint64_t hashValue = desc.GetHash();
         for (const auto&a:poolAttachments)
             hashValue = HashCombine(attachmentPool.GetResource(a)->GetGUID(), hashValue);
-        assert(hashValue != 0);     // using 0 has a sentinel, so this will cause some problems
+        assert(hashValue != ~0ull);     // using ~0ull has a sentinel, so this will cause some problems
 
         unsigned earliestEntry = 0;
         unsigned tickIdOfEarliestEntry = ~0u;
@@ -347,6 +297,63 @@ namespace RenderCore { namespace Techniques
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////
 
+	void RenderPassInstance::NextSubpass()
+    {
+		if (_attachedContext) {
+			assert(_frameBuffer);
+			Metal::EndSubpass(*_attachedContext, *_frameBuffer);
+			Metal::BeginNextSubpass(*_attachedContext, *_frameBuffer);
+		}
+    }
+
+    void RenderPassInstance::End()
+    {
+		if (_attachedContext) {
+			Metal::EndSubpass(*_attachedContext, *_frameBuffer);
+			Metal::EndRenderPass(*_attachedContext);
+		}
+    }
+    
+    unsigned RenderPassInstance::GetCurrentSubpassIndex() const
+    {
+		if (_attachedContext) {
+			return Metal::GetCurrentSubpassIndex(*_attachedContext);
+		} else {
+			return 0;
+		}
+    }
+
+    auto RenderPassInstance::GetDesc(AttachmentName resName) const -> const AttachmentDesc*
+    {
+        assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetDesc(_attachmentPoolRemapping[resName]);
+        return nullptr;
+    }
+
+    auto RenderPassInstance::GetResource(AttachmentName resName) const -> IResourcePtr
+    {
+        assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetResource(_attachmentPoolRemapping[resName]);
+        return nullptr;
+    }
+
+    auto RenderPassInstance::GetSRV(AttachmentName resName, const TextureViewDesc& window) const -> Metal::ShaderResourceView*
+    {
+        assert(_attachmentPool);
+        if (resName < _attachmentPoolRemapping.size())
+            return _attachmentPool->GetSRV(_attachmentPoolRemapping[resName], window);
+        return nullptr;
+    }
+
+	AttachmentName RenderPassInstance::RemapAttachmentName(AttachmentName resName) const
+	{
+		if (resName < _attachmentPoolRemapping.size())
+			return _attachmentPoolRemapping[resName];
+		return ~0u;
+	}
+
     RenderPassInstance::RenderPassInstance(
         IThreadContext& context,
         const FrameBufferDesc& layout,
@@ -364,6 +371,21 @@ namespace RenderCore { namespace Techniques
         _attachmentPool = &attachmentPool;
         Metal::BeginRenderPass(*_attachedContext, *_frameBuffer, layout, attachmentPool.GetFrameBufferProperties(), beginInfo._clearValues);
     }
+
+	RenderPassInstance::RenderPassInstance(
+        const FrameBufferDesc& layout,
+        AttachmentPool& attachmentPool)
+    {
+		// This constructs a kind of "non-metal" RenderPassInstance
+		// It allows us to use the RenderPassInstance infrastructure (for example, for remapping attachment requests)
+		// without actually constructing a underlying metal renderpass.
+		// This is used with compute pipelines sometimes -- since in Vulkan, those have some similarities with
+		// graphics pipelines, but are incompatible with the vulkan render passes
+		_attachedContext = nullptr;
+		_attachmentPoolRemapping = attachmentPool.Request(layout.GetAttachments());
+		assert(_attachmentPoolRemapping.size() == layout.GetAttachments().size());
+		_attachmentPool = &attachmentPool;
+	}
     
     RenderPassInstance::~RenderPassInstance() 
     {
@@ -372,7 +394,7 @@ namespace RenderCore { namespace Techniques
 		}
     }
 
-    RenderPassInstance::RenderPassInstance(RenderPassInstance&& moveFrom)
+    RenderPassInstance::RenderPassInstance(RenderPassInstance&& moveFrom) never_throws
     : _frameBuffer(std::move(moveFrom._frameBuffer))
     , _attachedContext(moveFrom._attachedContext)
     , _attachmentPool(moveFrom._attachmentPool)
@@ -382,8 +404,12 @@ namespace RenderCore { namespace Techniques
         moveFrom._attachmentPool = nullptr;
     }
 
-    RenderPassInstance& RenderPassInstance::operator=(RenderPassInstance&& moveFrom)
+    RenderPassInstance& RenderPassInstance::operator=(RenderPassInstance&& moveFrom) never_throws
     {
+		if (_attachedContext) {
+			End();
+		}
+
         _frameBuffer = std::move(moveFrom._frameBuffer);
         _attachedContext = moveFrom._attachedContext;
         _attachmentPool = moveFrom._attachmentPool;

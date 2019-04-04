@@ -17,6 +17,7 @@ namespace RenderCore { namespace Techniques
     class TechniqueContext; class CameraDesc;
 	class ParsingContext;
 	class ITechniqueDelegate;
+	class SequencerTechnique;
 }}
 
 namespace SceneEngine
@@ -29,8 +30,8 @@ namespace SceneEngine
         struct ResultEntry
         {
         public:
-            union { unsigned _depthAsInt; float _intersectionDepth; };
             Float4 _pt[3];
+			union { unsigned _depthAsInt; float _intersectionDepth; };
             unsigned _drawCallIndex;
             uint64 _materialGuid;
 
@@ -41,6 +42,8 @@ namespace SceneEngine
         std::vector<ResultEntry> GetResults();
         void SetRay(const std::pair<Float3, Float3> worldSpaceRay);
         void SetFrustum(const Float4x4& frustum);
+
+		RenderCore::Techniques::SequencerTechnique MakeRayTestSequencerTechnique();
 
         enum TestType { RayTest = 0, FrustumTest = 1 };
 

@@ -1,10 +1,8 @@
-// Copyright 2015 XLGAMES Inc.
-//
 // Distributed under the MIT License (See
 // accompanying file "LICENSE" or the website
 // http://www.opensource.org/licenses/mit-license.php)
 
-#include "Device.h"
+#include "DeviceVulkan.h"
 #include "../IAnnotator.h"
 #include "../Format.h"
 #include "../Init.h"
@@ -51,11 +49,13 @@ namespace RenderCore { namespace ImplVulkan
         #if defined(ENABLE_DEBUG_EXTENSIONS)
             , VK_EXT_DEBUG_REPORT_EXTENSION_NAME
         #endif
+		, VK_KHR_GET_PHYSICAL_DEVICE_PROPERTIES_2_EXTENSION_NAME		// (this extension now rolled into Vulkan 1.1, so technically deprecated)
 	};
 
 	static const char* s_deviceExtensions[] =
 	{
 		VK_KHR_SWAPCHAIN_EXTENSION_NAME
+		, VK_EXT_TRANSFORM_FEEDBACK_EXTENSION_NAME
 	};
 
     #if defined(ENABLE_DEBUG_EXTENSIONS)
@@ -345,14 +345,29 @@ namespace RenderCore { namespace ImplVulkan
 		queue_info.pQueuePriorities = queue_priorities;
 		queue_info.queueFamilyIndex = physDev._renderingQueueFamily;
 
+		VkPhysicalDeviceFeatures physicalDeviceFeatures = {};
+		physicalDeviceFeatures.geometryShader = true;
+		physicalDeviceFeatures.samplerAnisotropy = true;
+		// physicalDeviceFeatures.independentBlend = true;
+		// physicalDeviceFeatures.robustBufferAccess = true;
+
+		VkPhysicalDeviceTransformFeedbackFeaturesEXT transformFeedbackFeatures = {};
+		transformFeedbackFeatures.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_TRANSFORM_FEEDBACK_FEATURES_EXT;
+		transformFeedbackFeatures.geometryStreams = true;
+		transformFeedbackFeatures.transformFeedback = true;
+
+		VkPhysicalDeviceFeatures2KHR enabledFeatures2 = {};
+		enabledFeatures2.sType = VK_STRUCTURE_TYPE_PHYSICAL_DEVICE_FEATURES_2_KHR;
+		enabledFeatures2.pNext = &transformFeedbackFeatures;
+		enabledFeatures2.features = physicalDeviceFeatures;
+
 		VkDeviceCreateInfo device_info = {};
 		device_info.sType = VK_STRUCTURE_TYPE_DEVICE_CREATE_INFO;
-		device_info.pNext = nullptr;
+		device_info.pNext = &enabledFeatures2;
 		device_info.queueCreateInfoCount = 1;
 		device_info.pQueueCreateInfos = &queue_info;
 		device_info.enabledExtensionCount = (uint32_t)dimof(s_deviceExtensions);
 		device_info.ppEnabledExtensionNames = s_deviceExtensions;
-		device_info.pEnabledFeatures = nullptr;
 
         #if defined(ENABLE_DEBUG_EXTENSIONS)
             auto availableLayers = EnumerateLayers();
@@ -401,8 +416,10 @@ namespace RenderCore { namespace ImplVulkan
     Device::~Device()
     {
         Metal_Vulkan::SetDefaultObjectFactory(nullptr);
+		/*
+			While exiting post a vulkan failure (eg, device lost), we will can end up in an infinite loop if we stall here
 		if (_underlying.get())
-			vkDeviceWaitIdle(_underlying.get());
+			vkDeviceWaitIdle(_underlying.get());*/
     }
 
     static std::vector<VkSurfaceFormatKHR> GetSurfaceFormats(VkPhysicalDevice physDev, VkSurfaceKHR surface)
@@ -519,7 +536,7 @@ namespace RenderCore { namespace ImplVulkan
 		// to be tracking rendering command progress -- not compute shaders!
 		// Is ALL_COMMANDS fine?
 		if (_trackers[_producerBufferIndex]._frameMarker != Marker_Invalid)
-			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_ALL_COMMANDS_BIT);
+			context.GetActiveCommandList().SetEvent(_trackers[_producerBufferIndex]._event.get(), VK_PIPELINE_STAGE_BOTTOM_OF_PIPE_BIT);
 	}
 
 	void EventBasedTracker::IncrementProducerFrame()
@@ -600,19 +617,9 @@ namespace RenderCore { namespace ImplVulkan
             _pools._dummyResources = Metal_Vulkan::DummyResources(_objectFactory);
 
 			auto tempBufferSpace = std::make_unique<Metal_Vulkan::TemporaryBufferSpace>(_objectFactory, frameTracker);
-
-            _graphicsPipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
-                _objectFactory, "xleres/System/RootSignature.cfg",
-                VK_SHADER_STAGE_ALL_GRAPHICS);
-
-            _computePipelineLayout = std::make_shared<Metal_Vulkan::PipelineLayout>(
-                _objectFactory, "xleres/System/RootSignatureCS.cfg",
-                VK_SHADER_STAGE_COMPUTE_BIT);
-
             _foregroundPrimaryContext = std::make_shared<ThreadContextVulkan>(
 				shared_from_this(), 
 				GetQueue(_underlying.get(), _physDev._renderingQueueFamily),
-                _graphicsPipelineLayout, _computePipelineLayout,
                 Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, frameTracker),
 				Metal_Vulkan::CommandBufferType::Primary,
 				std::move(tempBufferSpace));
@@ -778,7 +785,6 @@ namespace RenderCore { namespace ImplVulkan
 		return std::make_unique<ThreadContextVulkan>(
             shared_from_this(), 
             nullptr, 
-            _graphicsPipelineLayout, _computePipelineLayout,
             Metal_Vulkan::CommandPool(_objectFactory, _physDev._renderingQueueFamily, false, nullptr),
             Metal_Vulkan::CommandBufferType::Secondary, nullptr);
     }
@@ -827,16 +833,6 @@ namespace RenderCore { namespace ImplVulkan
     Metal_Vulkan::GlobalPools&      DeviceVulkan::GetGlobalPools()
     {
         return Device::GetGlobalPools();
-    }
-
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::GetGraphicsPipelineLayout()
-    {
-        return _graphicsPipelineLayout;
-    }
-
-    const std::shared_ptr<Metal_Vulkan::PipelineLayout>& DeviceVulkan::GetComputePipelineLayout()
-    {
-        return _computePipelineLayout;
     }
 
 	DeviceVulkan::DeviceVulkan() { }
@@ -1248,8 +1244,6 @@ namespace RenderCore { namespace ImplVulkan
     ThreadContext::ThreadContext(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandBufferType cmdBufferType,
 		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
@@ -1260,7 +1254,6 @@ namespace RenderCore { namespace ImplVulkan
 	, _metalContext(
 		std::make_shared<Metal_Vulkan::DeviceContext>(
 			device->GetObjectFactory(), device->GetGlobalPools(), 
-            graphicsPipelineLayout, computePipelineLayout,
             _renderingCommandPool, cmdBufferType, *_tempBufferSpace))
 	, _factory(&device->GetObjectFactory())
 	, _globalPools(&device->GetGlobalPools())
@@ -1301,14 +1294,11 @@ namespace RenderCore { namespace ImplVulkan
     ThreadContextVulkan::ThreadContextVulkan(
 		std::shared_ptr<Device> device,
 		VkQueue queue,
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& graphicsPipelineLayout,
-        const std::shared_ptr<Metal_Vulkan::PipelineLayout>& computePipelineLayout,
         Metal_Vulkan::CommandPool&& cmdPool,
 		Metal_Vulkan::CommandBufferType cmdBufferType,
 		std::unique_ptr<Metal_Vulkan::TemporaryBufferSpace>&& tempBufferSpace)
     : ThreadContext(
         std::move(device), queue, 
-        graphicsPipelineLayout, computePipelineLayout, 
         std::move(cmdPool), cmdBufferType,
 		std::move(tempBufferSpace))
     {}

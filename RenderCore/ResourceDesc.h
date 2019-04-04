@@ -223,8 +223,8 @@ namespace RenderCore
     class SubResourceId 
     { 
     public:
-        unsigned _mip;
-        unsigned _arrayLayer;
+        unsigned _mip = 0;
+        unsigned _arrayLayer = 0;
     };
 
     class PresentationChainDesc
@@ -367,6 +367,10 @@ namespace RenderCore
 	public:
 		IteratorRange<const void*>  _data;
 		TexturePitches              _pitches = {};
+
+		SubResourceInitData() {}
+		SubResourceInitData(IteratorRange<const void*> data) : _data(data) {}
+		SubResourceInitData(IteratorRange<const void*> data, TexturePitches pitches) : _data(data), _pitches(pitches) {}
 	};
 
     class Box2D

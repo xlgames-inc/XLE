@@ -277,7 +277,7 @@ namespace RenderCore { namespace Metal_Vulkan
 		ResourceMap map(
 			device, buffer.GetMemory(),
 			startPt, data.size());
-		std::memcpy(map.GetData(), data.begin(), data.size());
+		std::memcpy(map.GetData().begin(), data.begin(), data.size());
 	}
 
 	VkDescriptorBufferInfo	TemporaryBufferSpace::AllocateBuffer(IteratorRange<const void*> data)
@@ -620,7 +620,7 @@ namespace RenderCore { namespace Metal_Vulkan
     , _blankSrv(factory, _blankTexture)
     , _blankUavImage(factory, _blankUAVImageRes)
     , _blankUavBuffer(factory, _blankUAVBufferRes)
-    , _blankSampler(std::make_unique<SamplerState>())
+    , _blankSampler(std::make_unique<SamplerState>(FilterMode::Point, AddressMode::Clamp, AddressMode::Clamp, AddressMode::Clamp))
     {
         uint8 blankData[4096];
         std::memset(blankData, 0, sizeof(blankData));

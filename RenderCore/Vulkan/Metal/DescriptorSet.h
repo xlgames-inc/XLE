@@ -20,7 +20,7 @@ namespace RenderCore { namespace Metal_Vulkan
 	class TextureView;
 	class GlobalPools;
 	class DescriptorSetSignature;
-	class RootSignature;
+	class PipelineLayoutSignatureFile;
 
 	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
 		class DescriptorSetVerboseDescription
@@ -88,15 +88,4 @@ namespace RenderCore { namespace Metal_Vulkan
 		template<typename BindingInfo>
 			BindingInfo& AllocateInfo(const BindingInfo& init);
 	};
-
-	#if defined(VULKAN_VERBOSE_DESCRIPTIONS)
-		std::ostream& WriteDescriptorSet(
-			std::ostream& stream,
-			const DescriptorSetVerboseDescription& bindingDescription,
-			const RootSignature& rootSignature,
-			IteratorRange<const CompiledShaderByteCode**> compiledShaderByteCode,
-			unsigned descriptorSetIndex, bool isBound);
-	#endif
 }}
-
-

@@ -35,6 +35,8 @@
 #include "../../Utility/TimeUtils.h"
 #include "../../Utility/FunctionUtils.h"
 
+#pragma warning(disable:4505) // unreferenced local function has been removed
+
 namespace ToolsRig
 {
     RenderCore::Techniques::CameraDesc AsCameraDesc(const VisCameraSettings& camSettings)
@@ -612,19 +614,6 @@ namespace ToolsRig
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
 
-	static RenderCore::Techniques::SequencerTechnique MakeRayTestSequencerTechnique()
-	{
-		using namespace RenderCore;
-		Techniques::SequencerTechnique sequencer;
-		sequencer._techniqueDelegate = SceneEngine::CreateRayTestTechniqueDelegate();
-		sequencer._materialDelegate = std::make_shared<Techniques::MaterialDelegate_Basic>();
-
-		auto& techUSI = Techniques::TechniqueContext::GetGlobalUniformsStreamInterface();
-		for (unsigned c=0; c<techUSI._cbBindings.size(); ++c)
-			sequencer._sequencerUniforms.emplace_back(std::make_pair(techUSI._cbBindings[c]._hashName, std::make_shared<Techniques::GlobalCBDelegate>(c)));
-		return sequencer;
-	}
-
 	static SceneEngine::IIntersectionTester::Result FirstRayIntersection(
 		RenderCore::IThreadContext& threadContext,
 		const RenderCore::Techniques::TechniqueContext& techniqueContext,
@@ -635,19 +624,21 @@ namespace ToolsRig
 
 		Techniques::ParsingContext parserContext { techniqueContext };
 		
-		CATCH_ASSETS_BEGIN
-		
-        SceneEngine::ModelIntersectionStateContext stateContext {
+		SceneEngine::ModelIntersectionStateContext stateContext {
             SceneEngine::ModelIntersectionStateContext::RayTest,
             threadContext, parserContext };
         stateContext.SetRay(worldSpaceRay);
+		
+		CATCH_ASSETS_BEGIN
+		
+			SceneEngine::ExecuteSceneRaw(
+				threadContext, parserContext, 
+				stateContext.MakeRayTestSequencerTechnique(),
+				Techniques::TechniqueIndex::DepthOnly,
+				{RenderCore::Techniques::ProjectionDesc{}, SceneEngine::SceneView::Type::Other},
+				scene);
 
-		SceneEngine::ExecuteSceneRaw(
-			threadContext, parserContext, 
-			MakeRayTestSequencerTechnique(),
-			Techniques::TechniqueIndex::DepthOnly,
-			{RenderCore::Techniques::ProjectionDesc{}, SceneEngine::SceneView::Type::Other},
-			scene);
+		CATCH_ASSETS_END(parserContext)	// we can get pending/invalid assets here, which we can suppress
 
         auto results = stateContext.GetResults();
         if (!results.empty()) {
@@ -673,7 +664,7 @@ namespace ToolsRig
             return result;
         }
 
-		CATCH_ASSETS_END(parserContext)	// we can get pending/invalid assets here, which we can suppress
+		
 
 		return {};
     }

@@ -6,8 +6,9 @@
 
 #include "UnitTestHelper.h"
 #include "../RenderCore/Metal/Shader.h"		// for CreateCompileAndAsyncManager
-#include "../RenderCore/Assets/ModelRunTime.h"
+#include "../FixedFunctionModel/ModelRunTime.h"
 #include "../RenderCore/Assets/ModelImmutableData.h"
+#include "../RenderCore/Assets/ModelScaffold.h"
 #include "../RenderCore/Assets/Services.h"
 #include "../Assets/IntermediateAssets.h"
 #include "../Assets/Assets.h"
@@ -142,7 +143,7 @@ namespace UnitTests
                 // const char sampleAsset[] = "game/model/Towns/BarrackHouseA/BarrackHouseA.dae";
 
                 WIN32_FILE_ATTRIBUTE_DATA fileAttrib;
-                GetFileAttributesEx(
+                GetFileAttributesExW(
                     (const wchar_t*)Conversion::Convert<std::basic_string<utf16>>(std::string(sampleAsset)).c_str(), 
                     GetFileExInfoStandard, &fileAttrib);
                 uint64 bytes = uint64(fileAttrib.nFileSizeHigh)<<32 | fileAttrib.nFileSizeLow;

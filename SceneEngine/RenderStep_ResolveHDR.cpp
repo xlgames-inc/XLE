@@ -21,6 +21,48 @@ namespace SceneEngine
 {
 	using namespace RenderCore;
 
+	const uint64_t Semantic_LuminanceResult = ConstHash64<'Lumi', 'nanc', 'eRes'>::Value;
+	const uint64_t Semantic_BloomBuffer = ConstHash64<'Bloo', 'mBuf', 'fer'>::Value;
+
+	void RenderStep_SampleLuminance::Execute(
+		RenderCore::IThreadContext& threadContext,
+		RenderCore::Techniques::ParsingContext& parsingContext,
+		LightingParserContext& lightingParserContext,
+		RenderCore::Techniques::RenderPassFragment& rpi,
+		IViewDelegate* viewDelegate)
+	{
+		auto* postLightingResolveInput = rpi.GetInputAttachmentSRV(0);
+		assert(postLightingResolveInput);
+
+		auto toneMapSettings = lightingParserContext._delegate->GetToneMapSettings();
+        LuminanceResult luminanceResult;
+        if (toneMapSettings._flags & ToneMapSettings::Flags::EnableToneMap) {
+                //  (must resolve luminance early, because we use it during the MSAA resolve)
+            luminanceResult = ToneMap_SampleLuminance(
+                threadContext, parsingContext, toneMapSettings,
+				*postLightingResolveInput);
+        }
+
+		_downstream->SetLuminanceResult(std::move(luminanceResult));
+	}
+
+	RenderStep_SampleLuminance::RenderStep_SampleLuminance(const std::shared_ptr<RenderStep_ResolveHDR>& downstream)
+	: _downstream(downstream)
+	{
+		auto hdrInput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
+
+		SubpassDesc subpass;
+		subpass.AppendInput(hdrInput);
+		_fragment.AddSubpass(std::move(subpass));
+		_fragment._pipelineType = PipelineType::Compute;
+	}
+
+	RenderStep_SampleLuminance::~RenderStep_SampleLuminance()
+	{
+	}
+
+//////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
+
 	RenderStep_ResolveHDR::RenderStep_ResolveHDR()
 	{
 		auto hdrInput = _fragment.DefineAttachment(Techniques::AttachmentSemantics::ColorHDR);
@@ -53,6 +95,11 @@ namespace SceneEngine
 		#endif
     }
 #endif
+
+	void RenderStep_ResolveHDR::SetLuminanceResult(LuminanceResult&& luminanceResult)
+	{
+		_luminanceResult = std::move(luminanceResult);
+	}
 
 	void RenderStep_ResolveHDR::Execute(
 		IThreadContext& threadContext,
@@ -93,14 +140,7 @@ namespace SceneEngine
         LightingParser_PostProcess(metalContext, parserContext);
 #endif
 
-        auto toneMapSettings = lightingParserContext._delegate->GetToneMapSettings();
-        LuminanceResult luminanceResult;
-        if (toneMapSettings._flags & ToneMapSettings::Flags::EnableToneMap) {
-                //  (must resolve luminance early, because we use it during the MSAA resolve)
-            luminanceResult = ToneMap_SampleLuminance(
-                threadContext, parsingContext, toneMapSettings,
-				*postLightingResolveInput);
-        }
+        
 
             //  Write final colour to output texture
             //  We have to be careful about whether "SRGB" is enabled
@@ -115,8 +155,9 @@ namespace SceneEngine
 		// or not (ie, the hardware is writing out SRGB, rather than linear colors).
 		// We're always writing to SRGB enabled output view currently
 		bool hardwareSRGBEnabled = true;
-        ToneMap_Execute(
-            threadContext, parsingContext, luminanceResult, toneMapSettings, 
+        auto toneMapSettings = lightingParserContext._delegate->GetToneMapSettings();
+		ToneMap_Execute(
+            threadContext, parsingContext, _luminanceResult, toneMapSettings, 
 			hardwareSRGBEnabled,
             *postLightingResolveInput);
 	}
