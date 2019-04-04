@@ -84,6 +84,7 @@ namespace ConsoleRig
     {
     public:
         static const std::shared_ptr<LogCentral>& GetInstance();
+        static void DestroyInstance();
 
         void Register(MessageTarget<>& target, StringSection<> id);
         void Deregister(MessageTarget<>& target);

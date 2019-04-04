@@ -87,6 +87,8 @@ namespace Utility
             {
                 return AsString(&type, sizeof(Type), TypeOf<Type>(), strongTyping);
             }
+        
+        void Cleanup();
     }
 
     class OutputStreamFormatter;

@@ -68,8 +68,6 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (*i == '\n') ++result;
         return result;
     }
-    
-    static std::regex s_appleStyle(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--");
 
     struct ErrorMessage
     {
@@ -97,7 +95,7 @@ namespace RenderCore { namespace Metal_OpenGLES
             if (line.IsEmpty()) break;
 
             std::cmatch match;
-            bool a = std::regex_match(line.begin(), line.end(), match, s_appleStyle);
+            bool a = std::regex_match(line.begin(), line.end(), match, std::regex(R"--((\w*)\s*:\s*(\d*)\s*:\s*(\d*)\s*:\s*(.*))--"));
             if (a && match.size() >= 5) {
                 std::stringstream str;
                 str << match[1].str() << ": " << match[4].str();

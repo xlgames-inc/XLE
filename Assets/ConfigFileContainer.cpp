@@ -121,7 +121,20 @@ namespace Assets
 
     static bool IsWhitespace(char chr) { return chr == ' ' || chr == '\t'; }
 
-    static std::regex s_chunkHeader(R"--(<<Chunk:(\w+):(\w+)>>(\S+)\()--");
+    static std::unique_ptr<std::regex> s_chunkHeader;
+    
+    static const std::regex& GetChunkHeaderRegex()
+    {
+        if (!s_chunkHeader) {
+            s_chunkHeader = std::make_unique<std::regex>(R"--(<<Chunk:(\w+):(\w+)>>(\S+)\()--");
+        }
+        return *s_chunkHeader;
+    }
+
+    void CleanupConfigFileGlobals()
+    {
+        s_chunkHeader.reset();
+    }
 
     template<typename CharType>
         std::vector<TextChunk<CharType>> ReadCompoundTextDocument(StringSection<CharType> doc)
@@ -161,7 +174,7 @@ namespace Assets
 
         // If we get here, then the result is a compound document that we can read
         // scan through to find the chunks.
-        std::regex_iterator<const CharType*> ri(i, doc.end(), s_chunkHeader);
+        std::regex_iterator<const CharType*> ri(i, doc.end(), GetChunkHeaderRegex());
         while (ri != std::regex_iterator<const CharType*>()) {
             const auto& match = *ri;
             if (!match.empty() && match.size() >= 4) {
