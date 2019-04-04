@@ -522,6 +522,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				for (unsigned c=0; c<dimof(shaders); ++c)
 					shaders[c] = &GetBoundShaderProgram()->GetCompiledCode((ShaderStage)c);
 
+				#pragma warning(disable:4239) // HACK -- workaround -- nonstandard extension used: 'argument': conversion from '_Ostr' to 'std::ostream &')
 				auto& pipelineLayoutHelper = *GetBoundShaderProgram()->_pipelineLayoutConfig;
 				for (unsigned c=0; c<(unsigned)pipelineLayoutHelper._descriptorSets.size(); ++c) {
 					auto descSetIdx = pipelineLayoutHelper._descriptorSets[c]._pipelineLayoutBindingIndex;
@@ -550,6 +551,7 @@ namespace RenderCore { namespace Metal_Vulkan
 				const CompiledShaderByteCode* shaders[(unsigned)ShaderStage::Max] = {};
 				shaders[(unsigned)ShaderStage::Compute] = &GetBoundComputeShader()->GetCompiledShaderByteCode();
 
+				#pragma warning(disable:4239) // HACK -- workaround -- nonstandard extension used: 'argument': conversion from '_Ostr' to 'std::ostream &')
 				auto& pipelineLayoutHelper = *GetBoundComputeShader()->_pipelineLayoutConfig;
 				for (unsigned c=0; c<(unsigned)pipelineLayoutHelper._descriptorSets.size(); ++c) {
 					auto descSetIdx = pipelineLayoutHelper._descriptorSets[c]._pipelineLayoutBindingIndex;
