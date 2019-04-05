@@ -243,6 +243,31 @@ namespace GUILayer
 		return gcnew TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
 	}
 
+	static std::shared_ptr<RenderCore::Assets::RawMaterial> RawMaterialFromRestriction(
+		IEnumerable<KeyValuePair<String^, String^>>^ restrictions)
+	{
+		auto previewMat = std::make_shared<RenderCore::Assets::RawMaterial>();
+
+		auto e = restrictions->GetEnumerator();
+		while (e->MoveNext())
+		{
+			auto kv = e->Current;
+
+			// We sometimes encode special formatting in these values (such as referencing a function).
+			// In those cases, the will always be a colon present. So we can check for that to see if this
+			// value is some just a constant, or something more complicated
+			if (kv.Value->IndexOf(':') == -1)
+			{
+				auto nativeName = clix::marshalString<clix::E_UTF8>(kv.Key);
+				previewMat->_constants.SetParameter(
+					MakeStringSection(nativeName).Cast<utf8>(),
+					MakeStringSection(clix::marshalString<clix::E_UTF8>(kv.Value)));
+			}
+		}
+
+		return previewMat;
+	}
+
 	MaterialDelegateWrapper^ ShaderGeneratorLayer::MakeMaterialDelegate(
 		NodeGraphPreviewConfiguration^ nodeGraphFile,
 		RawMaterial^ materialOverrides)
@@ -256,23 +281,10 @@ namespace GUILayer
 
 		for (const auto&cb : previewShader._constantBuffers) {
 			if (XlEqString(cb._name, "BasicMaterialConstants")) {
-				auto underlyingRawMaterial = materialOverrides->GetUnderlyingPtr();
+				auto previewMat = RawMaterialFromRestriction(nodeGraphFile->_variableRestrictions);
+				materialOverrides->GetUnderlyingPtr()->MergeInto(*previewMat);
 
-				auto e = nodeGraphFile->_variableRestrictions->GetEnumerator();
-				while (e->MoveNext())
-				{
-					auto kv = e->Current;
-					if (kv.Value->Length >= 1 && Char::IsDigit(kv.Value[0]))
-					{
-						auto nativeName = clix::marshalString<clix::E_UTF8>(kv.Key);
-						if (!underlyingRawMaterial->_constants.HasParameter(MakeStringSection(nativeName))) {
-							underlyingRawMaterial->_constants.SetParameter(
-								MakeStringSection(nativeName).Cast<utf8>(),
-								MakeStringSection(clix::marshalString<clix::E_UTF8>(kv.Value)));
-						}
-					}
-				}
-				auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(underlyingRawMaterial, cb._layout);
+				auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(previewMat, cb._layout);
 				return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
 			}
 		}
