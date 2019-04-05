@@ -56,6 +56,13 @@ namespace GUILayer
     InvalidatePropertyGrid::InvalidatePropertyGrid(System::Windows::Forms::PropertyGrid^ linked) : _linked(linked) {}
     InvalidatePropertyGrid::~InvalidatePropertyGrid() {}
 
+	VisCameraSettings::VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached)
+	{
+		_object = std::move(attached);
+	}
+	VisCameraSettings::VisCameraSettings() { _object = std::make_shared<ToolsRig::VisCameraSettings>(); }
+	VisCameraSettings::~VisCameraSettings() { _object.reset(); }
+
     ModelVisSettings^ ModelVisSettings::CreateDefault()
     {
         auto attached = std::make_shared<ToolsRig::ModelVisSettings>();
@@ -580,6 +587,15 @@ namespace GUILayer
         assert(0); // not implemented!
     }
 
+	void RawMaterial::MergeInto(RawMaterial^ destination)
+	{
+		auto transaction = destination->_underlying->Transaction_Begin("Merge Into");
+		if (transaction) {
+			_underlying->GetWorkingAsset()->MergeInto(transaction->GetAsset());
+			destination->_transId = transaction->Commit();
+		}
+	}
+
     System::String^ RawMaterial::Filename::get()
     { 
         auto native = MakeFileNameSplitter(clix::marshalString<clix::E_UTF8>(_initializer)).AllExceptParameters();
@@ -591,6 +607,11 @@ namespace GUILayer
     { 
         return (!!_underlying) ? _underlying->GetWorkingAsset().get() : nullptr; 
     }
+
+	std::shared_ptr<RenderCore::Assets::RawMaterial> RawMaterial::GetUnderlyingPtr()
+	{
+		return (!!_underlying) ? _underlying->GetWorkingAsset() : nullptr;
+	}
 
     String^ RawMaterial::TechniqueConfig::get() { return clix::marshalString<clix::E_UTF8>(_underlying->GetWorkingAsset()->_techniqueConfig); }
 

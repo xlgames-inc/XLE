@@ -9,8 +9,9 @@ using Sce.Atf.Applications;
 namespace MaterialTool
 {
     [Export(typeof(ControlsLibraryExt.Material.ActiveMaterialContext))]
+    [Export(typeof(NodeEditorCore.IPreviewMaterialContext))]
     [PartCreationPolicy(CreationPolicy.Shared)]
-    public class ActiveMaterialContext : ControlsLibraryExt.Material.ActiveMaterialContext
+    public class ActiveMaterialContext : ControlsLibraryExt.Material.ActiveMaterialContext, NodeEditorCore.IPreviewMaterialContext
     {
         public override IEnumerable<string> AssignableTechniqueConfigs 
         {
@@ -34,6 +35,11 @@ namespace MaterialTool
                 }
             } 
         }
+
+        string NodeEditorCore.IPreviewMaterialContext.ActivePreviewMaterialNames {
+            get { return MaterialName; }
+        }
+         
 
         [Import] IDocumentRegistry _documentRegistry;
     }

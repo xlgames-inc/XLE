@@ -13,6 +13,7 @@
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/IManipulator.h"
 #include "../ToolsRig/BasicManipulators.h"
+#include "../ToolsRig/MaterialOverridesDelegate.h"
 #include "../../PlatformRig/InputTranslator.h"
 #include "../../PlatformRig/FrameRig.h"
 #include "../../PlatformRig/OverlaySystem.h"
@@ -126,7 +127,7 @@ namespace GUILayer
 	{
 		::Assets::DirectorySearchRules searchRules;		// todo -- include model directory in search path
 		auto nativeMaterial = ResolveNativeMaterial(_boundRawMaterials, searchRules);
-		_pimpl->_modelLayer->SetOverrides(ToolsRig::MakeOverrideDelegate(nativeMaterial));
+		_pimpl->_modelLayer->SetOverrides(ToolsRig::MakeMaterialOverrideDelegate(nativeMaterial));
 	}
 
 	void VisLayerController::SetMaterialOverrides(

@@ -11,7 +11,7 @@
 namespace GUILayer { class NativeEngineDevice; class RenderTargetWrapper; }
 namespace ToolsRig { class IManipulator; class VisCameraSettings; }
 namespace SceneEngine { class LightingParserContext; class IntersectionTestScene; class PlacementsEditor; }
-namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; class ParsingContext; class ITechniqueDelegate; } }
+namespace RenderCore { namespace Techniques { class ProjectionDesc; class CameraDesc; class ParsingContext; class ITechniqueDelegate; class IMaterialDelegate; } }
 namespace PlatformRig { class InputSnapshot; }
 namespace Assets { class DirectorySearchRules; }
 namespace ConsoleRig { class IProgress; class GlobalServices; }

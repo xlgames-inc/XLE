@@ -33,6 +33,11 @@ namespace NodeEditorCore
         IDiagramDocument Document { get; }
     }
 
+    public interface IPreviewMaterialContext
+    {
+        string ActivePreviewMaterialNames { get; }
+    }
+
     public interface INodeAmender
     {
         void AmendNode(Node node, ProcedureNodeType type, IEnumerable<object> dataPackets);
@@ -290,8 +295,7 @@ namespace NodeEditorCore
                     }
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
-                        matVisSettings, 
-                        string.Empty,
+                        matVisSettings, _previewMaterialContext?.ActivePreviewMaterialNames,
                         techniqueDelegate,
                         idealSize);
                     _shaderStructureHash = currentHash;
@@ -366,6 +370,7 @@ namespace NodeEditorCore
         private GUILayer.PreviewGeometry _previewGeometry;
         private string _outputToVisualize;
         public GUILayer.PreviewBuilder _previewManager;
+        public IPreviewMaterialContext _previewMaterialContext;
 
         // bitmap cache --
         private uint _shaderStructureHash;
@@ -396,6 +401,7 @@ namespace NodeEditorCore
 
                 // use composition to access some exported types --
                 previewItem._previewManager = _previewManager;
+                previewItem._previewMaterialContext = _previewMaterialContext;
                 node.AddItem(previewItem, Node.Dock.Center);
 
                 // Drop-down selection box for "preview mode"
@@ -463,6 +469,9 @@ namespace NodeEditorCore
         }
 
         private GUILayer.PreviewBuilder _previewManager;
+
+        [Import]
+        private IPreviewMaterialContext _previewMaterialContext;
     }
 
         //

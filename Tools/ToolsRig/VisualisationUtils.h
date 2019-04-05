@@ -156,9 +156,6 @@ namespace ToolsRig
         std::unique_ptr<Pimpl> _pimpl;
     };
 
-	std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>
-		MakeOverrideDelegate(const RenderCore::Assets::MaterialScaffoldMaterial& material);
-
 	class VisualisationOverlay : public PlatformRig::IOverlaySystem
     {
     public:

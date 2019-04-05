@@ -56,6 +56,7 @@ namespace GUILayer
             GUILayer::MaterialVisSettings^ visSettings,
 			String^ materialNames,
 			GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+			GUILayer::MaterialDelegateWrapper^ materialDelegate,
 			System::Drawing::Size^ size);
 
         PreviewBuilder();
@@ -103,6 +104,7 @@ namespace GUILayer
 		GUILayer::MaterialVisSettings^ visSettings,
 		String^ materialNames,
 		GUILayer::TechniqueDelegateWrapper^ techniqueDelegate,
+		GUILayer::MaterialDelegateWrapper^ materialDelegate,
 		System::Drawing::Size^ size)
     {
         using namespace RenderCore;
@@ -186,10 +188,13 @@ namespace GUILayer
 
 		ToolsRig::VisEnvSettings envSettings;
 		envSettings._lightingType = ToolsRig::VisEnvSettings::LightingType::Direct;
-		// envSettings->_activeSetting._toneMapSettings._flags = 0;		// (disable tonemap, because it doesn't work on small targets)
 
 		Techniques::ParsingContext parserContext { *_pimpl->_globalTechniqueContext, &attachmentPool, &frameBufferPool };
-		parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());
+
+		if (techniqueDelegate)
+			parserContext.SetTechniqueDelegate(techniqueDelegate->_techniqueDelegate.GetNativePtr());
+		if (materialDelegate)
+			parserContext.SetMaterialDelegate(materialDelegate->_materialDelegate.GetNativePtr());
 
 		// Can no longer render to multiple output targets using this path. We only get to input the single "presentation target"
 		// to the lighting parser.

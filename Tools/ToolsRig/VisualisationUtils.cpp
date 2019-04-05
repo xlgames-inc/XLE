@@ -229,49 +229,6 @@ namespace ToolsRig
 		_pimpl->_sceneFuture = scene;
 	}
 
-	class MaterialOverrideDelegate : public RenderCore::Techniques::MaterialDelegate_Basic
-	{
-	public:
-		virtual RenderCore::UniformsStreamInterface GetInterface(const void* objectContext) const
-		{
-			return MaterialDelegate_Basic::GetInterface(&_material);
-		}
-
-        virtual uint64_t GetInterfaceHash(const void* objectContext) const
-		{
-			return MaterialDelegate_Basic::GetInterfaceHash(&_material);
-		}
-
-		virtual const ParameterBox* GetShaderSelectors(const void* objectContext) const
-		{
-			return MaterialDelegate_Basic::GetShaderSelectors(&_material);
-		}
-
-        virtual void ApplyUniforms(
-            RenderCore::Techniques::ParsingContext& context,
-            RenderCore::Metal::DeviceContext& devContext,
-            const RenderCore::Metal::BoundUniforms& boundUniforms,
-            unsigned streamIdx,
-            const void* objectContext) const
-		{
-			MaterialDelegate_Basic::ApplyUniforms(
-				context, devContext, boundUniforms,
-				streamIdx, &_material);
-		}
-
-		MaterialOverrideDelegate(const RenderCore::Assets::MaterialScaffoldMaterial& material)
-		: _material(material) {}
-		~MaterialOverrideDelegate() {}
-	private:
-		RenderCore::Assets::MaterialScaffoldMaterial _material;
-	};
-
-	std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>
-		MakeOverrideDelegate(const RenderCore::Assets::MaterialScaffoldMaterial& material)
-	{
-		return std::make_shared<MaterialOverrideDelegate>(material);
-	}
-
 	void ModelVisLayer::SetOverrides(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& delegate)
 	{
 		_pimpl->_materialDelegate = delegate;

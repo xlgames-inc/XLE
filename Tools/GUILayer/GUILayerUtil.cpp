@@ -127,6 +127,20 @@ namespace GUILayer
 		_techniqueDelegate.reset();
 	}
 
+	MaterialDelegateWrapper::MaterialDelegateWrapper(const std::shared_ptr<RenderCore::Techniques::IMaterialDelegate>& materialDelegate)
+		: _materialDelegate(materialDelegate)
+	{}
+
+	MaterialDelegateWrapper::MaterialDelegateWrapper(RenderCore::Techniques::IMaterialDelegate* materialDelegate)
+	: _materialDelegate(materialDelegate)
+	{
+	}
+
+	MaterialDelegateWrapper::~MaterialDelegateWrapper()
+	{
+		_materialDelegate.reset();
+	}
+
 	IntersectionTestSceneWrapper::IntersectionTestSceneWrapper(const std::shared_ptr<SceneEngine::IntersectionTestScene>& scene)
 	{
 		_scene = std::move(scene);

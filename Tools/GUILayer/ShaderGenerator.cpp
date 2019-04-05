@@ -5,8 +5,10 @@
 #include "ShaderGenerator.h"
 #include "NodeGraph.h"
 #include "GUILayerUtil.h"
+#include "UITypesBinding.h"
 #include "MarshalString.h"
 #include "../ToolsRig/MaterialVisualisation.h"
+#include "../ToolsRig/MaterialOverridesDelegate.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
@@ -238,6 +240,13 @@ namespace GUILayer
 	{
 		auto nativeSubgraph = clix::marshalString<clix::E_UTF8>(subGraphName);
 		return gcnew TechniqueDelegateWrapper(ToolsRig::MakeNodeGraphPreviewDelegate(nodeGraph->MakeNodeGraphProvider(), nativeSubgraph, logMessages->_native.GetNativePtr()).release());
+	}
+
+	MaterialDelegateWrapper^ ShaderGeneratorLayer::MakeMaterialDelegate(
+		RawMaterial^ materialOverrides)
+	{
+		auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(materialOverrides->GetUnderlyingPtr());
+		return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////

@@ -66,12 +66,9 @@ namespace GUILayer
         const std::shared_ptr<ToolsRig::VisCameraSettings>& GetUnderlying() { return _object.GetNativePtr(); }
         ToolsRig::VisCameraSettings* GetUnderlyingRaw() { return _object.get(); }
 
-        VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached)
-        {
-            _object = std::move(attached);
-        }
-        VisCameraSettings()     { _object = std::make_shared<ToolsRig::VisCameraSettings>(); }
-        ~VisCameraSettings()    { _object.reset(); }
+		VisCameraSettings(std::shared_ptr<ToolsRig::VisCameraSettings> attached);
+		VisCameraSettings();
+		~VisCameraSettings();
     protected:
         clix::shared_ptr<ToolsRig::VisCameraSettings> _object;
     };
@@ -383,10 +380,13 @@ namespace GUILayer
         property System::String^ TechniqueConfig { System::String^ get(); void set(System::String^); }
 
         const RenderCore::Assets::RawMaterial* GetUnderlying();
+		std::shared_ptr<RenderCore::Assets::RawMaterial> GetUnderlyingPtr();
 
         System::String^ BuildInheritanceList();
         void AddInheritted(System::String^);
         void RemoveInheritted(System::String^);
+
+		void MergeInto(RawMaterial^ destination);
 
         property System::String^ Filename { System::String^ get(); }
         property System::String^ Initializer { System::String^ get(); }
