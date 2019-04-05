@@ -30,6 +30,8 @@ namespace GUILayer
         property Type          NodeType;
 		property String^	   AttributeTableName;
 
+		property Object^		MaterialProperties;
+
 		static const UInt32 NodeId_Interface = (UInt32)-1;
 		static const UInt32 NodeId_Constant = (UInt32)-2;
     };

@@ -77,6 +77,8 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="ActiveMaterialContext.cs" />
+    <Compile Include="AdaptiveNodes\RawMaterialStorage.cs" />
+    <Compile Include="AdaptiveNodes\SchemaCaptureEditor.cs" />
     <Compile Include="AdaptiveNodes\SchemaSource.cs" />
     <Compile Include="Controls\ActualizationMessagesWindow.cs">
       <SubType>Component</SubType>

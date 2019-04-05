@@ -161,6 +161,11 @@ namespace NodeEditorCore
                                     throw new InvalidOperationException("Cannot create program because two template parameters with the same name disagree on restriction (parameter: " + templateParam.Name + " is restricted to both " + templateParam.Restriction + " and " + existing.Restriction);
                             }
                         }
+
+                        if (((ShaderProcedureNodeTag)nTag).MaterialProperties != null)
+                        {
+                            resultNode.MaterialProperties = ((ShaderProcedureNodeTag)nTag).MaterialProperties();
+                        }
                     }
                     else
                     {

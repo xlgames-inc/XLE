@@ -128,8 +128,9 @@ namespace MaterialTool
                 typeof(Controls.DiagramLister),
                 typeof(Controls.ActualizationMessagesWindow),
                 typeof(Controls.SchemaSourceArchiveControl),
-                typeof(PythonAdaptiveSchemaSource),
-                typeof(AdaptiveSchemaSourceArchiveModel),
+                typeof(AdaptiveNodes.PythonAdaptiveSchemaSource),
+                typeof(AdaptiveNodes.AdaptiveSchemaSourceArchiveModel),
+                typeof(AdaptiveNodes.PreviewsNodeAmender),
 
                 typeof(NodeEditorCore.ShaderFragmentArchiveModel),
                 typeof(NodeEditorCore.ModelConversion),

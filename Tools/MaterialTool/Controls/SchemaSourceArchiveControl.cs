@@ -31,7 +31,7 @@ namespace MaterialTool.Controls
 
         [ImportingConstructor]
         public SchemaSourceArchiveControl(
-            AdaptiveSchemaSourceArchiveModel archiveModel)
+            AdaptiveNodes.AdaptiveSchemaSourceArchiveModel archiveModel)
         {
             DoubleBuffered = false;
 
@@ -137,9 +137,9 @@ namespace MaterialTool.Controls
                     var array = (Aga.Controls.Tree.TreeNodeAdv[])e.Item;
                     foreach (var a in array)
                     {
-                        if (a.Tag is AdaptiveSchemaSourceArchiveModel.DataBlockItem)
+                        if (a.Tag is AdaptiveNodes.AdaptiveSchemaSourceArchiveModel.DataBlockItem)
                         {
-                            var item = (AdaptiveSchemaSourceArchiveModel.DataBlockItem)a.Tag;
+                            var item = (AdaptiveNodes.AdaptiveSchemaSourceArchiveModel.DataBlockItem)a.Tag;
 
                             var archiveName = item.ArchiveName;
                             if (archiveName != null && archiveName.Length > 0)
@@ -164,6 +164,6 @@ namespace MaterialTool.Controls
         IControlHostService _controlHostService;
 
         [Import]
-        PythonAdaptiveSchemaSource _schemaSource;
+        AdaptiveNodes.PythonAdaptiveSchemaSource _schemaSource;
     }
 }

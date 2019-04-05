@@ -13,8 +13,6 @@ namespace AuthoringConcept.AdaptiveEditing
         void SetInt(string label, int newValue);
         float GetFloat(string label);
         void SetFloat(string label, float newValue);
-        double GetDouble(string label);
-        void SetDouble(string label, double newValue);
         bool GetBool(string label);
         void SetBool(string label, bool newValue);
 
@@ -90,6 +88,22 @@ namespace AuthoringConcept.AdaptiveEditing
             var member = new Member<Vec4F> { Default = def };
             Float4s.Add(name, member);
             return member;
+        }
+
+        public void SetAllDefaults(IDataBlock dataBlock)
+        {
+            foreach (var b in Bools)
+                dataBlock.SetBool(b.Key, b.Value.Default);
+            foreach (var b in Ints)
+                dataBlock.SetInt(b.Key, b.Value.Default);
+            foreach (var b in Floats)
+                dataBlock.SetFloat(b.Key, b.Value.Default);
+            foreach (var b in Float2s)
+                dataBlock.SetFloat2(b.Key, b.Value.Default);
+            foreach (var b in Float3s)
+                dataBlock.SetFloat3(b.Key, b.Value.Default);
+            foreach (var b in Float4s)
+                dataBlock.SetFloat4(b.Key, b.Value.Default);
         }
     }
 

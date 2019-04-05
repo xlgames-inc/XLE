@@ -283,6 +283,28 @@ namespace NodeEditorCore
                             _variableRestrictions = editingContext.Document.GraphMetaData.Variables
                         });
 
+                    GUILayer.RawMaterial rawMaterial = null;
+                    {
+                        if (editingContext.Document.NodeGraphFile.SubGraphs.TryGetValue(Node.SubGraphTag as string, out GUILayer.NodeGraphFile.SubGraph sg))
+                        {
+                            foreach(var n in sg.Graph.Nodes)
+                            {
+                                var mat = n.MaterialProperties as GUILayer.RawMaterial;
+                                if (mat != null)
+                                {
+                                    if (rawMaterial == null)
+                                        rawMaterial = GUILayer.RawMaterial.CreateUntitled();
+                                    mat.MergeInto(rawMaterial);
+                                }
+                            }
+                        }
+                    }
+                    GUILayer.MaterialDelegateWrapper materialDelegate = null;
+                    if (rawMaterial != null)
+                    {
+                        materialDelegate = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(rawMaterial);
+                    }
+
                     var matVisSettings = new GUILayer.MaterialVisSettings();
                     switch (Geometry)
                     {
@@ -296,8 +318,7 @@ namespace NodeEditorCore
 
                     _cachedBitmap = _previewManager.BuildPreviewImage(
                         matVisSettings, _previewMaterialContext?.ActivePreviewMaterialNames,
-                        techniqueDelegate,
-                        idealSize);
+                        techniqueDelegate, materialDelegate, idealSize);
                     _shaderStructureHash = currentHash;
                 }
 
@@ -613,6 +634,9 @@ namespace NodeEditorCore
     {
         public ProcedureNodeType Type { get; set; }
         public ShaderProcedureNodeTag(string archiveName) : base(archiveName) { Type = ProcedureNodeType.Normal; }
+
+        public delegate object MaterialPropertiesQueryDelegate();
+        public MaterialPropertiesQueryDelegate MaterialProperties = null;
     }
 
     public class ShaderCapturesNodeTag : ShaderFragmentNodeTag

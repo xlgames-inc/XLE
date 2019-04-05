@@ -9,7 +9,7 @@ using System.Drawing;
 using System.IO;
 using System.ComponentModel;
 
-namespace MaterialTool
+namespace MaterialTool.AdaptiveNodes
 {
     [Export(typeof(PythonAdaptiveSchemaSource))]
     [PartCreationPolicy(CreationPolicy.Shared)]
@@ -72,7 +72,7 @@ namespace MaterialTool
             public void RegisterBlock(string name, dynamic dataType)      // (note that this must be public to allow the IronPython script to call it)
             {
                 var helper = new DataBlockDeclarationHelper();
-                dataType.Declare(helper);       // run the "Declare" method on the 
+                dataType.Declare(helper);
 
                 var decl = new PythonDataBlockDeclaration
                 {
@@ -102,7 +102,9 @@ namespace MaterialTool
 
                 public IDataBlock CreateStorage(DomDocument document, DomNode parent)
                 {
-                    return new VanillaStorage();
+                    var result = new RawMaterialStorage();
+                    Type.SetAllDefaults(result);
+                    return result;
                 }
             }
 
