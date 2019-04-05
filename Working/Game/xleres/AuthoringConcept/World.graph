@@ -1,41 +1,41 @@
 // CompoundDocument:1
 import basic = "game/xleres/nodes/basic.sh"
-import utils = "game/xleres/authoringconcept/utils.h"
 import noise = "game/xleres/nodes/noise.sh"
+import utils = "game/xleres/authoringconcept/utils.h"
 import perlinnoise = "game/xleres/utility/perlinnoise.h"
 
 void CloudShadows(float2 UV, out float clouds)
 {
-	node node_0 = [[visualNode1]]utils::GetSceneTime();
-	captures Uniforms = [[visualNode2]](float hgrid, float UVFreq, float UVFreq2);
-	node node_1 = [[visualNode3]]basic::Multiply1(lhs:Uniforms.hgrid, rhs:".05");
-	node node_2 = [[visualNode4]]basic::Separate4(input:[[visualNode5]]basic::Multiply4Scalar(lhs:[[visualNode6]]basic::Absolute4(input:[[visualNode7]]basic::Subtract4(lhs:[[visualNode8]]basic::Fract4(input:[[visualNode9]]basic::Add4(rhs:[[visualNode10]]basic::Add4(lhs:[[visualNode11]]noise::FBMNormalMap(hgrid:Uniforms.hgrid, tightness:node_1.result, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5", position:[[visualNode12]]basic::AddMany2(second:[[visualNode13]]basic::Multiply2Scalar(rhs:node_0.result, lhs:"float2(-0.005, -0.0)").result, third:"float2(0.00, 0.04)", first:[[visualNode14]]basic::Multiply2Scalar(rhs:Uniforms.UVFreq, lhs:UV).result).result).result, rhs:[[visualNode15]]noise::FBMNormalMap(hgrid:Uniforms.hgrid, tightness:node_1.result, position:[[visualNode16]]basic::AddMany2(second:[[visualNode17]]basic::Multiply2Scalar(rhs:node_0.result, lhs:"float2(-0.0, -0.0)").result, third:"float2(0.00, 0.04)", first:[[visualNode18]]basic::Multiply2Scalar(rhs:Uniforms.UVFreq2, lhs:UV).result).result, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5").result).result, lhs:[[visualNode19]]basic::Multiply4Scalar(rhs:[[visualNode20]]basic::Multiply1(lhs:node_0.result, rhs:".3").result, lhs:"float4(0.1, 0.2, 0.3, 0.4)").result).result).result, rhs:"float4(0.5, 0.5, 0.5, 0.5)").result).result, rhs:"2.0").result);
-	node node_3 = [[visualNode21]]noise::FBMNormalMap(hgrid:Uniforms.hgrid, tightness:node_1.result, position:UV, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5");
+	node node_0 = [[visualNode3]]utils::GetSceneTime();
+	captures Uniforms = [[visualNode4]](float hgrid, float UVFreq, float UVFreq2);
+	node node_1 = [[visualNode0]]basic::Multiply1(lhs:Uniforms.hgrid, rhs:"0.01");
+	node node_2 = [[visualNode5]]basic::Separate4(input:[[visualNode6]]basic::Multiply4Scalar(lhs:[[visualNode7]]basic::Absolute4(input:[[visualNode8]]basic::Subtract4(lhs:[[visualNode9]]basic::Fract4(input:[[visualNode10]]basic::Add4(rhs:[[visualNode11]]basic::Add4(lhs:[[visualNode12]]noise::FBMNormalMap(tightness:node_1.result, hgrid:Uniforms.hgrid, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5", position:[[visualNode13]]basic::AddMany2(second:[[visualNode14]]basic::Multiply2Scalar(rhs:node_0.result, lhs:"float2(-0.005, -0.0)").result, third:"float2(0.00, 0.04)", first:[[visualNode15]]basic::Multiply2Scalar(rhs:Uniforms.UVFreq, lhs:UV).result).result).result, rhs:[[visualNode16]]noise::FBMNormalMap(tightness:node_1.result, hgrid:Uniforms.hgrid, position:[[visualNode17]]basic::AddMany2(second:[[visualNode18]]basic::Multiply2Scalar(rhs:node_0.result, lhs:"float2(-0.0, -0.0)").result, third:"float2(0.00, 0.04)", first:[[visualNode19]]basic::Multiply2Scalar(rhs:Uniforms.UVFreq2, lhs:UV).result).result, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"5").result).result, lhs:[[visualNode20]]basic::Multiply4Scalar(rhs:[[visualNode21]]basic::Multiply1(lhs:node_0.result, rhs:".3").result, lhs:"float4(0.1, 0.2, 0.3, 0.4)").result).result).result, rhs:"float4(0.5, 0.5, 0.5, 0.5)").result).result, rhs:"2.0").result);
+	node node_3 = [[visualNode1]]noise::FBMNormalMap(tightness:node_1.result, hgrid:Uniforms.hgrid, position:UV, gain:".65", lacunarity:"2.1042", octaves:"4", slopeScale:"3");
 	node node_4 = [[visualNode22]]perlinnoise::fbmNoise2D(hgrid:Uniforms.hgrid, position:UV, gain:".65", lacunarity:"2.1042", octaves:"4");
-	clouds = [[visualNode23]]basic::Multiply1(lhs:[[visualNode0]]basic::AddMany1(first:node_2.r, second:node_2.g, third:node_2.b).result, rhs:"1.0/3.0").result;
+	clouds = [[visualNode23]]basic::Multiply1(lhs:[[visualNode2]]basic::AddMany1(first:node_2.r, second:node_2.g, third:node_2.b).result, rhs:"1.0/3.0").result;
 }
-attributes visualNode8(PreviewGeometry:"plane2d", X:"382", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode0(PreviewGeometry:"plane2d", X:"1126", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode1(PreviewGeometry:"chart", X:"-726", Y:"198", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode2(X:"-911", Y:"-119", State:"Normal");
-attributes visualNode3(PreviewGeometry:"plane2d", X:"-903", Y:"557", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode4(PreviewGeometry:"plane2d", X:"980", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode5(PreviewGeometry:"plane2d", X:"822", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode6(PreviewGeometry:"plane2d", X:"684", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode7(PreviewGeometry:"plane2d", X:"538", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode9(PreviewGeometry:"plane2d", X:"224", Y:"84", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode10(PreviewGeometry:"plane2d", X:"56", Y:"150", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode11(PreviewGeometry:"plane2d", X:"48", Y:"397", State:"Normal", OutputToVisualize:"");
-attributes visualNode12(PreviewGeometry:"chart", X:"-308", Y:"66", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode13(PreviewGeometry:"chart", X:"-535", Y:"143", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode14(PreviewGeometry:"chart", X:"-535", Y:"-3", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode15(PreviewGeometry:"plane2d", X:"-55", Y:"831", State:"Normal", OutputToVisualize:"");
-attributes visualNode16(PreviewGeometry:"chart", X:"-308", Y:"188", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode17(PreviewGeometry:"chart", X:"-535", Y:"247", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode18(PreviewGeometry:"chart", X:"-535", Y:"51", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode19(PreviewGeometry:"chart", X:"37", Y:"28", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode20(PreviewGeometry:"chart", X:"-128", Y:"9", State:"Collapsed", OutputToVisualize:"");
-attributes visualNode21(PreviewGeometry:"plane2d", X:"-678", Y:"417", State:"Normal", OutputToVisualize:"");
+attributes visualNode8(PreviewGeometry:"plane2d", X:"538", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode0(PreviewGeometry:"plane2d", X:"-903", Y:"557", State:"Normal", OutputToVisualize:"");
+attributes visualNode1(PreviewGeometry:"plane2d", X:"-678", Y:"417", State:"Normal", OutputToVisualize:"");
+attributes visualNode2(PreviewGeometry:"plane2d", X:"1126", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode3(PreviewGeometry:"chart", X:"-726", Y:"198", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode4(X:"-911", Y:"-119", State:"Normal");
+attributes visualNode5(PreviewGeometry:"plane2d", X:"980", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode6(PreviewGeometry:"plane2d", X:"822", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode7(PreviewGeometry:"plane2d", X:"684", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode9(PreviewGeometry:"plane2d", X:"382", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode10(PreviewGeometry:"plane2d", X:"224", Y:"84", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode11(PreviewGeometry:"plane2d", X:"56", Y:"150", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode12(PreviewGeometry:"plane2d", X:"48", Y:"397", State:"Normal", OutputToVisualize:"");
+attributes visualNode13(PreviewGeometry:"chart", X:"-308", Y:"66", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode14(PreviewGeometry:"chart", X:"-535", Y:"143", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode15(PreviewGeometry:"chart", X:"-535", Y:"-3", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode16(PreviewGeometry:"plane2d", X:"-55", Y:"831", State:"Normal", OutputToVisualize:"");
+attributes visualNode17(PreviewGeometry:"chart", X:"-308", Y:"188", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode18(PreviewGeometry:"chart", X:"-535", Y:"247", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode19(PreviewGeometry:"chart", X:"-535", Y:"51", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode20(PreviewGeometry:"chart", X:"37", Y:"28", State:"Collapsed", OutputToVisualize:"");
+attributes visualNode21(PreviewGeometry:"chart", X:"-128", Y:"9", State:"Collapsed", OutputToVisualize:"");
 attributes visualNode22(PreviewGeometry:"plane2d", X:"-690", Y:"669", State:"Normal", OutputToVisualize:"");
 attributes visualNode23(PreviewGeometry:"plane2d", X:"1268", Y:"86", State:"Collapsed", OutputToVisualize:"");
 /* <<Chunk:NodeGraphMetaData:World>>--(

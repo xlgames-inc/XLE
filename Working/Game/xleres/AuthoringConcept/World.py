@@ -9,7 +9,7 @@ class CloudShadows(object):
 	def Declare(b):
 		b.Float("UVFreq", 1)
 		b.Float("UVFreq2", 1)
-		b.Float("NoiseHGrid", 1)
+		b.Float("hgrid", 1)
 
 	@staticmethod
 	def Layout(gui, storage):
@@ -25,7 +25,7 @@ class CloudShadows(object):
 
 		gui.BoundedFloat(
 			"Noisiness", 0, 2,
-			lambda:storage.GetFloat("NoiseHGrid"),
-			lambda x:storage.SetFloat("NoiseHGrid", x))
+			lambda:storage.GetFloat("hgrid"),
+			lambda x:storage.SetFloat("hgrid", x))
 
 schemaService.RegisterBlock("CloudShadows", CloudShadows)
