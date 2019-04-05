@@ -26,6 +26,7 @@ using System.Linq;
 using System.Text;
 using System.Windows.Forms;
 using System.Drawing;
+using System.Drawing.Drawing2D;
 
 namespace HyperGraph
 {
@@ -47,6 +48,24 @@ namespace HyperGraph
 		public const int HorizontalSpacing		= 2;
         public const int NodeExtraWidth         = GraphConstants.HorizontalSpacing * 2;
         public const float ConnectionWidth      = 1.5f;
+
+        internal static Pen BorderPen = new Pen(Color.FromArgb(96, 96, 96));
+        internal static Pen ConnectionBorderPen = new Pen(Color.FromArgb(96, 96, 96)) { Width = 0.5f };
+
+        internal static Brush DraggingBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
+                                                            Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
+        internal static Brush HoverBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
+                                                            Color.FromArgb(80, 80, 80), Color.FromArgb(96, 96, 96));
+        internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
+                                                            Color.FromArgb(120, 120, 120),  Color.FromArgb(96, 96, 96));
+        internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
+        internal static Brush NullAreaBrush = new HatchBrush(HatchStyle.ForwardDiagonal, Color.FromArgb(128, 192, 192, 192), Color.FromArgb(0, 96, 96, 96));
+
+        internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
+        internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
+        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(128, 128, 128)) { DashStyle = DashStyle.Dash, Width = 1 };
+
+        internal static Pen SubGraphOutline = new Pen(Color.FromArgb(164, 164, 164)) { Width = 6 };
 
         public const TextFormatFlags TitleTextFlags =       TextFormatFlags.ExternalLeading |
 															TextFormatFlags.GlyphOverhangPadding |

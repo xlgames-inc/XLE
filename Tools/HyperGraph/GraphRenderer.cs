@@ -139,24 +139,6 @@ namespace HyperGraph
             }
 		}
 
-		internal static Pen BorderPen = new Pen(Color.FromArgb(96, 96, 96));
-        internal static Pen ConnectionBorderPen = new Pen(Color.FromArgb(96, 96, 96)) { Width = 0.5f };
-
-        internal static Brush DraggingBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
-                                                            Color.FromArgb(140, 120, 120),  Color.FromArgb(96, 96, 96));
-        internal static Brush HoverBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
-                                                            Color.FromArgb(80, 80, 80), Color.FromArgb(96, 96, 96));
-        internal static Brush NormalBrush = new HatchBrush(HatchStyle.LightDownwardDiagonal,
-                                                            Color.FromArgb(120, 120, 120),  Color.FromArgb(96, 96, 96));
-        internal static Brush TitleAreaBrush = new SolidBrush(Color.FromArgb(96, 96, 96));
-        internal static Brush NullAreaBrush = new HatchBrush(HatchStyle.ForwardDiagonal, Color.FromArgb(128, 192, 192, 192), Color.FromArgb(0, 96, 96, 96));
-
-        internal static Pen FocusPen = new Pen(Color.FromArgb(255, 255, 255), 3.0f);
-        internal static Pen DottedPen = new Pen(Color.FromArgb(200, 200, 200)) { DashStyle = DashStyle.Dash, Width = 4 };
-        internal static Pen ThinDottedPen = new Pen(Color.FromArgb(128, 128, 128)) { DashStyle = DashStyle.Dash, Width = 1 };
-
-        internal static Pen SubGraphOutline = new Pen(Color.FromArgb(164, 164, 164)) { Width = 6 };
-
         enum ConnectorType { Input, Output };
 
         static GraphicsPath MakePathForConnector(RectangleF bounds, RenderState state, ConnectorType type, out Rectangle statusRect, out RectangleF clientRect)
@@ -207,8 +189,8 @@ namespace HyperGraph
                 RectangleF clientRect;
                 using (var path = MakePathForConnector(bounds, state, type, out statusRect, out clientRect))
                 {
-                    graphics.FillPath(((state & RenderState.Hover)!=0) ? HoverBrush : NormalBrush , path);
-                    graphics.DrawPath(ConnectionBorderPen, path);
+                    graphics.FillPath(((state & RenderState.Hover)!=0) ? GraphConstants.HoverBrush : GraphConstants.NormalBrush, path);
+                    graphics.DrawPath(GraphConstants.ConnectionBorderPen, path);
                     graphics.FillEllipse(brush, statusRect);
 
                     if (connector!=null)
@@ -300,7 +282,7 @@ namespace HyperGraph
                     }
                 }
 
-                graphics.FillRegion(NullAreaBrush, myRegion);
+                graphics.FillRegion(GraphConstants.NullAreaBrush, myRegion);
             }
 
             foreach (var node in model.SubGraphs.Reverse<Node>())
@@ -509,17 +491,17 @@ namespace HyperGraph
                     //          we need to look for connections now.
                     var inputConnector = item as NodeConnector;
                     if (inputConnector != null && !inputConnector.bounds.IsEmpty)
-                        graphics.DrawPath(DottedPen, MakePathForConnector(inputConnector.bounds, inputConnector.state, ConnectorType.Input, out statusRect, out clientRect));
+                        graphics.DrawPath(GraphConstants.DottedPen, MakePathForConnector(inputConnector.bounds, inputConnector.state, ConnectorType.Input, out statusRect, out clientRect));
                 }
 
                 foreach (var item in node.ItemsForDock(Node.Dock.Output))
                 {
                     var outputConnector = item as NodeConnector;
                     if (outputConnector != null && !outputConnector.bounds.IsEmpty)
-                        graphics.DrawPath(DottedPen, MakePathForConnector(outputConnector.bounds, outputConnector.state, ConnectorType.Output, out statusRect, out clientRect));
+                        graphics.DrawPath(GraphConstants.DottedPen, MakePathForConnector(outputConnector.bounds, outputConnector.state, ConnectorType.Output, out statusRect, out clientRect));
                 }
 
-                graphics.DrawRectangle(DottedPen, Rectangle.Round(node.bounds));
+                graphics.DrawRectangle(GraphConstants.DottedPen, Rectangle.Round(node.bounds));
             }
         }
 
@@ -527,9 +509,9 @@ namespace HyperGraph
         static void Render(Graphics graphics, Node node, object context)
 		{
             Brush brush;
-            if ((node.state & RenderState.Dragging) != 0)       { brush = DraggingBrush; }
+            if ((node.state & RenderState.Dragging) != 0)       { brush = GraphConstants.DraggingBrush; }
             // else if ((node.state & RenderState.Hover) != 0)     { brush = HoverBrush; }
-            else                                                { brush = NormalBrush; }
+            else                                                { brush = GraphConstants.NormalBrush; }
 
             if (node.SubGraphTag == null)
             {
@@ -542,7 +524,7 @@ namespace HyperGraph
             var rect = node.bounds;
             if (node.Collapsed)
             {
-                graphics.FillRectangle(TitleAreaBrush, rect);
+                graphics.FillRectangle(GraphConstants.TitleAreaBrush, rect);
             }
             else
             {
@@ -555,14 +537,14 @@ namespace HyperGraph
                 DrawShadow(graphics, Rectangle.Round(rect));
                 graphics.FillRectangle(brush, backgroundRect);
                 if (titleHeight != 0)
-                    graphics.FillRectangle(TitleAreaBrush, titleRect);
-                graphics.DrawRectangle(BorderPen, Rectangle.Round(rect));
+                    graphics.FillRectangle(GraphConstants.TitleAreaBrush, titleRect);
+                graphics.DrawRectangle(GraphConstants.BorderPen, Rectangle.Round(rect));
             }
 
             var isFocused = (node.state & RenderState.Focus) != 0;
             if (!node.Collapsed || isFocused)
             {
-                var outlinePen = isFocused ? FocusPen : ThinDottedPen;
+                var outlinePen = isFocused ? GraphConstants.FocusPen : GraphConstants.ThinDottedPen;
 
                 // We're going to draw a outline around the edge of the entire node
                 // This should be a thick line, with some bright color
@@ -633,7 +615,7 @@ namespace HyperGraph
                 path.AddArc(left, bottom - cornerSize, cornerSize, cornerSize, 90, 90);
                 path.CloseFigure();
 
-                graphics.DrawPath(SubGraphOutline, path);
+                graphics.DrawPath(GraphConstants.SubGraphOutline, path);
             }
 
             foreach (var item in node.ItemsForDock(Node.Dock.Input))
@@ -751,7 +733,7 @@ namespace HyperGraph
                             using (var brush = new SolidBrush(GetArrowLineColor(connection.state | RenderState.Connected)))
                             {
                                 graphics.FillPath(brush, path);
-                                graphics.DrawPath(ConnectionBorderPen, path);
+                                graphics.DrawPath(GraphConstants.ConnectionBorderPen, path);
                             }
                             connection.bounds = path.GetBounds();
                         }
@@ -1053,7 +1035,7 @@ namespace HyperGraph
 				using (var brush = new SolidBrush(GetArrowLineColor(state)))
 				{
 					graphics.FillPath(brush, path);
-                    graphics.DrawPath(ConnectionBorderPen, path);
+                    graphics.DrawPath(GraphConstants.ConnectionBorderPen, path);
 				}
 			}
 		}
