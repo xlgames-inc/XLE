@@ -6,18 +6,27 @@
 
 #pragma once
 
+#include "NodeGraphSignature.h"
 #include "../Utility/IteratorUtils.h"
 #include "../Utility/StringUtils.h"
 #include "../Core/Types.h"
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <iosfwd>
 
 namespace GraphLanguage { class NodeGraph; class NodeGraphSignature; }
+namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
 
 namespace ShaderSourceParser
 {
-	std::string GenerateMaterialCBuffer(const GraphLanguage::NodeGraphSignature& interf);
+	std::string GenerateCapturesCBuffer(
+		StringSection<> name,
+		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures);
+
+	std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> MakePredefinedCBLayout(
+		IteratorRange<const GraphLanguage::NodeGraphSignature::Parameter*> captures,
+		std::ostream& warningStream);
 
     struct PreviewOptions
     {
@@ -34,7 +43,9 @@ namespace ShaderSourceParser
         const GraphLanguage::NodeGraphSignature& interf, 
         const PreviewOptions& previewOptions = { PreviewOptions::Type::Object, std::string(), PreviewOptions::VariableRestrictions() });
 
-	std::string GenerateStructureForTechniqueConfig(const GraphLanguage::NodeGraphSignature& interf, StringSection<char> graphName);
+	std::string GenerateStructureForTechniqueConfig(
+		const GraphLanguage::NodeGraphSignature& interf, 
+		StringSection<char> graphName);
 
 	std::string GenerateScaffoldFunction(
 		const GraphLanguage::NodeGraphSignature& outputSignature, 

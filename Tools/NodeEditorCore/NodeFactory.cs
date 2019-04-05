@@ -272,18 +272,18 @@ namespace NodeEditorCore
 
                 if (_cachedBitmap == null)
                 {
-                    var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(
-                        editingContext.Document.GraphMetaData,
-                        new GUILayer.NodeGraphPreviewConfiguration
-                        {
-                            _nodeGraph = editingContext.Document.NodeGraphFile,
-                            _subGraphName = Node.SubGraphTag as string,
-                            _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
-                            _settings = PreviewSettings,
-                            _variableRestrictions = editingContext.Document.GraphMetaData.Variables
-                        });
+                    var config = new GUILayer.NodeGraphPreviewConfiguration
+                    {
+                        _nodeGraph = editingContext.Document.NodeGraphFile,
+                        _subGraphName = Node.SubGraphTag as string,
+                        _previewNodeId = ((ShaderFragmentNodeTag)Node.Tag).Id,
+                        _settings = PreviewSettings,
+                        _variableRestrictions = editingContext.Document.GraphMetaData.Variables
+                    };
 
-                    GUILayer.RawMaterial rawMaterial = null;
+                    var techniqueDelegate = GUILayer.ShaderGeneratorLayer.MakeTechniqueDelegate(editingContext.Document.GraphMetaData, config);
+
+                    GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
                     {
                         if (editingContext.Document.NodeGraphFile.SubGraphs.TryGetValue(Node.SubGraphTag as string, out GUILayer.NodeGraphFile.SubGraph sg))
                         {
@@ -302,7 +302,7 @@ namespace NodeEditorCore
                     GUILayer.MaterialDelegateWrapper materialDelegate = null;
                     if (rawMaterial != null)
                     {
-                        materialDelegate = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(rawMaterial);
+                        materialDelegate = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);
                     }
 
                     var matVisSettings = new GUILayer.MaterialVisSettings();

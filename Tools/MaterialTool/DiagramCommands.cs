@@ -82,6 +82,42 @@ namespace MaterialTool
                                             context.Document.NodeGraphFile.SubGraphs.First().Key,
                                             actualizationMsgs);
 
+                                    {
+                                        var config = new GUILayer.NodeGraphPreviewConfiguration
+                                        {
+                                            _nodeGraph = context.Document.NodeGraphFile,
+                                            _subGraphName = context.Document.NodeGraphFile.SubGraphs.First().Key as string,
+                                            _previewNodeId = ~0u,
+                                            _settings = null,
+                                            _variableRestrictions = context.Document.GraphMetaData.Variables
+                                        };
+
+                                        GUILayer.RawMaterial rawMaterial = GUILayer.RawMaterial.CreateUntitled();
+                                        {
+                                            if (context.Document.NodeGraphFile.SubGraphs.TryGetValue(config._subGraphName as string, out GUILayer.NodeGraphFile.SubGraph sg))
+                                            {
+                                                foreach (var n in sg.Graph.Nodes)
+                                                {
+                                                    var mat = n.MaterialProperties as GUILayer.RawMaterial;
+                                                    if (mat != null)
+                                                    {
+                                                        if (rawMaterial == null)
+                                                            rawMaterial = GUILayer.RawMaterial.CreateUntitled();
+                                                        mat.MergeInto(rawMaterial);
+                                                    }
+                                                }
+                                            }
+                                        }
+                                        if (rawMaterial != null)
+                                        {
+                                            previewerContext.MaterialOverrides = GUILayer.ShaderGeneratorLayer.MakeMaterialDelegate(config, rawMaterial);
+                                        }
+                                        else
+                                        {
+                                            previewerContext.MaterialOverrides = null;
+                                        }
+                                    }
+
                                     if (msgsWindow!=null)
                                         msgsWindow.SetContext(actualizationMsgs);
                                 }

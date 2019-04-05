@@ -67,7 +67,7 @@ namespace GUILayer
 	public ref class ShaderGeneratorLayer
 	{
 	public:
-		static Tuple<String^, String^>^ GeneratePreviewShader(
+		static String^ GeneratePreviewShader(
 			NodeGraphFile^ nodeGraphFile,
 			String^ subGraphName, UInt32 previewNodeId,
 			PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions);
@@ -85,6 +85,7 @@ namespace GUILayer
 			MessageRelayWrapper^ logMessages);
 
 		static MaterialDelegateWrapper^ MakeMaterialDelegate(
+			NodeGraphPreviewConfiguration^ nodeGraphFile,
 			RawMaterial^ materialOverrides);
 	};
 

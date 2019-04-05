@@ -126,7 +126,7 @@ namespace MaterialTool.Controls
                 graphContext.Document.GraphMetaData.Variables);
 
             ControlsLibrary.BasicControls.TextWindow.Show(
-                System.Text.RegularExpressions.Regex.Replace(shader.Item1, @"\r\n|\n\r|\n|\r", System.Environment.NewLine));        // (make sure we to convert the line endings into windows form)
+                System.Text.RegularExpressions.Regex.Replace(shader, @"\r\n|\n\r|\n|\r", System.Environment.NewLine));        // (make sure we to convert the line endings into windows form)
         }
 
         private void EndHover(object sender, EventArgs args)

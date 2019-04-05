@@ -9,6 +9,8 @@
 #include <vector>
 #include <string>
 
+namespace RenderCore { namespace Techniques { class PredefinedCBLayout; } }
+
 namespace ShaderSourceParser
 {
 	class InstantiationParameters
@@ -52,6 +54,13 @@ namespace ShaderSourceParser
 		std::vector<std::string> _sourceFragments;
 		GraphLanguage::NodeGraphSignature _entryPointSignature;
 		DependencyTable _dependencies;
+
+		struct ConstantBuffer
+		{
+			std::string _name;
+			std::shared_ptr<RenderCore::Techniques::PredefinedCBLayout> _layout;
+		};
+		std::vector<ConstantBuffer> _constantBuffers;
 	};
 
 	InstantiatedShader InstantiateShader(

@@ -9,6 +9,7 @@
 #include "MarshalString.h"
 #include "../ToolsRig/MaterialVisualisation.h"
 #include "../ToolsRig/MaterialOverridesDelegate.h"
+#include "../../RenderCore/Assets/RawMaterial.h"
 #include "../../ShaderParser/ShaderPatcher.h"
 #include "../../ShaderParser/GraphSyntax.h"
 #include "../../ShaderParser/NodeGraphProvider.h"
@@ -59,8 +60,7 @@ namespace GUILayer
 		return PreviewGeometry::Plane2D;
 	}
 
-
-	static Tuple<String^, String^>^ 
+	static ShaderSourceParser::InstantiatedShader
 		GeneratePreviewShader(
 			NodeGraph^ graph,
 			UInt32 previewNodeId, 
@@ -69,62 +69,44 @@ namespace GUILayer
 			PreviewSettings^ settings,
 			IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
 	{
-		try
-		{
-			ConversionContext context;
-            auto nativeGraph = graph->ConvertToNative(context);
-			if (previewNodeId != ~0u) {
-				nativeGraph.Trim(previewNodeId);
-			}
+		ConversionContext context;
+        auto nativeGraph = graph->ConvertToNative(context);
+		if (previewNodeId != ~0u) {
+			nativeGraph.Trim(previewNodeId);
+		}
 
-			ShaderSourceParser::InstantiationParameters instantiationParams {};
-			if (previewNodeId != ~0u)
-				instantiationParams._generateDanglingOutputs = previewNodeId;
-			instantiationParams._generateDanglingInputs = true;
+		ShaderSourceParser::InstantiationParameters instantiationParams {};
+		if (previewNodeId != ~0u)
+			instantiationParams._generateDanglingOutputs = previewNodeId;
+		instantiationParams._generateDanglingInputs = true;
 
-			auto mainInstantiation = ShaderSourceParser::InstantiateShader(
-				GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), graphProvider },
-				false,
-				instantiationParams);
+		auto mainInstantiation = ShaderSourceParser::InstantiateShader(
+			GraphLanguage::INodeGraphProvider::NodeGraph { "preview_graph", nativeGraph, signature->ConvertToNative(context), graphProvider },
+			false,
+			instantiationParams);
 
-			ShaderSourceParser::PreviewOptions options {
-				(settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object,
-				String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : clix::marshalString<clix::E_UTF8>(settings->OutputToVisualize),
-				ShaderSourceParser::PreviewOptions::VariableRestrictions() };
+		ShaderSourceParser::PreviewOptions options { ShaderSourceParser::PreviewOptions::Type::Object, std::string{} };
+		if (settings) {
+			options._type = (settings->Geometry == PreviewGeometry::Chart) ? ShaderSourceParser::PreviewOptions::Type::Chart : ShaderSourceParser::PreviewOptions::Type::Object;
+			options._outputToVisualize = String::IsNullOrEmpty(settings->OutputToVisualize) ? std::string() : clix::marshalString<clix::E_UTF8>(settings->OutputToVisualize);
+		}
 
-			if (variableRestrictions)
-				for each(auto v in variableRestrictions)
-					options._variableRestrictions.push_back(
-						std::make_pair(
-							clix::marshalString<clix::E_UTF8>(v.Key),
-							clix::marshalString<clix::E_UTF8>(v.Value)));
+		if (variableRestrictions)
+			for each(auto v in variableRestrictions)
+				options._variableRestrictions.push_back(
+					std::make_pair(
+						clix::marshalString<clix::E_UTF8>(v.Key),
+						clix::marshalString<clix::E_UTF8>(v.Value)));
 
-			auto structureForPreview = GenerateStructureForPreview(
-				"preview_graph", mainInstantiation._entryPointSignature, options);
-
-			mainInstantiation._sourceFragments.insert(mainInstantiation._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
-
-			mainInstantiation._sourceFragments.push_back(structureForPreview);
-
-			std::stringstream str;
-			for (const auto&f:mainInstantiation._sourceFragments) str << f;
-
-            return gcnew Tuple<String^,String^>(
-                clix::marshalString<clix::E_UTF8>(str.str()),
-                clix::marshalString<clix::E_UTF8>(ShaderSourceParser::GenerateMaterialCBuffer(mainInstantiation._entryPointSignature)));
-        } catch (const std::exception& e) {
-            return gcnew Tuple<String^,String^>(
-                "Exception while generating shader: " + clix::marshalString<clix::E_UTF8>(e.what()),
-                String::Empty);
-        } catch (...) {
-            return gcnew Tuple<String^,String^>(
-                "Unknown exception while generating shader",
-                String::Empty);
-        }
+		auto structureForPreview = GenerateStructureForPreview(
+			"preview_graph", mainInstantiation._entryPointSignature, options);
+		mainInstantiation._sourceFragments.insert(mainInstantiation._sourceFragments.begin(), "#include \"xleres/System/Prefix.h\"\n");
+		mainInstantiation._sourceFragments.push_back(structureForPreview);
+		return mainInstantiation;
 	}
 
-	Tuple<String^, String^>^ 
-		ShaderGeneratorLayer::GeneratePreviewShader(
+	static ShaderSourceParser::InstantiatedShader
+		GeneratePreviewShader(
 			NodeGraphFile^ nodeGraphFile,
 			String^ subGraphName,
 			UInt32 previewNodeId, 
@@ -134,7 +116,21 @@ namespace GUILayer
 		NodeGraphFile::SubGraph^ subGraph = nullptr;
 		if (nodeGraphFile->SubGraphs->TryGetValue(subGraphName, subGraph))
 			return GUILayer::GeneratePreviewShader(subGraph->Graph, previewNodeId, subGraph->Signature, nodeGraphFile->MakeNodeGraphProvider(), settings, variableRestrictions);
-		return gcnew Tuple<String^, String^>(String::Empty, String::Empty);
+		return {};
+	}
+
+	String^ ShaderGeneratorLayer::GeneratePreviewShader(
+		NodeGraphFile^ nodeGraphFile,
+		String^ subGraphName, UInt32 previewNodeId,
+		PreviewSettings^ settings, IEnumerable<KeyValuePair<String^, String^>>^ variableRestrictions)
+	{
+		auto inst = GUILayer::GeneratePreviewShader(nodeGraphFile, subGraphName, previewNodeId, settings, variableRestrictions);
+
+		std::stringstream str;
+		for (const auto&s : inst._sourceFragments)
+			str << s;
+
+		return clix::marshalString<clix::E_UTF8>(str.str());
 	}
 
 	static RenderCore::CompiledShaderByteCode MakeCompiledShaderByteCode(
@@ -175,15 +171,7 @@ namespace GUILayer
 			const ParameterBox* shaderSelectors[],
 			unsigned techniqueIndex)
 		{
-			auto previewShader = ShaderGeneratorLayer::GeneratePreviewShader(
-				_config->_nodeGraph,
-				_config->_subGraphName,
-				_config->_previewNodeId,
-				_config->_settings,
-				_config->_variableRestrictions);
-
-			auto shaderCode = clix::marshalString<clix::E_UTF8>(previewShader->Item1);
-			std::string definesTable;
+			std::string definesTable, shaderCode;
 
 			{
 				std::vector<std::pair<const utf8*, std::string>> defines;
@@ -199,6 +187,12 @@ namespace GUILayer
 				if (_pretransformedFlag) str << "GEO_PRETRANSFORMED=1;";
 				definesTable = str.str();
 			}
+			{
+				std::stringstream str;
+				for (const auto&s : _previewShader._sourceFragments)
+					str << s;
+				shaderCode = str.str();
+			}
 
 			auto vsCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Vertex);
 			auto psCode = MakeCompiledShaderByteCode(*_shaderSource, MakeStringSection(shaderCode), MakeStringSection(definesTable), RenderCore::ShaderStage::Pixel);
@@ -210,9 +204,9 @@ namespace GUILayer
 		}
 
 		TechniqueDelegate(
-			NodeGraphPreviewConfiguration^ config,
+			ShaderSourceParser::InstantiatedShader&& previewShader,
 			bool pretransformedFlag)
-		: _config(config)
+		: _previewShader(std::move(previewShader))
 		, _pretransformedFlag(pretransformedFlag)
 		{
 			_shaderSource = std::make_shared<RenderCore::MinimalShaderSource>(
@@ -220,8 +214,8 @@ namespace GUILayer
 		}
 				
 	private:
+		ShaderSourceParser::InstantiatedShader _previewShader;
 		std::shared_ptr<RenderCore::ShaderService::IShaderSource> _shaderSource;
-		msclr::auto_gcroot<NodeGraphPreviewConfiguration^> _config;
 		bool _pretransformedFlag;
 	};
 
@@ -229,8 +223,15 @@ namespace GUILayer
 		NodeGraphMetaData^ doc, 
 		NodeGraphPreviewConfiguration^ nodeGraphFile)
 	{
+		auto previewShader = GUILayer::GeneratePreviewShader(
+			nodeGraphFile->_nodeGraph,
+			nodeGraphFile->_subGraphName,
+			nodeGraphFile->_previewNodeId,
+			nodeGraphFile->_settings,
+			nodeGraphFile->_variableRestrictions);
+
 		bool pretransformed = false;
-		return gcnew TechniqueDelegateWrapper(new TechniqueDelegate(nodeGraphFile, pretransformed));
+		return gcnew TechniqueDelegateWrapper(new TechniqueDelegate(std::move(previewShader), pretransformed));
 	}
 
 	GUILayer::TechniqueDelegateWrapper^ ShaderGeneratorLayer::MakeTechniqueDelegate(
@@ -243,10 +244,39 @@ namespace GUILayer
 	}
 
 	MaterialDelegateWrapper^ ShaderGeneratorLayer::MakeMaterialDelegate(
+		NodeGraphPreviewConfiguration^ nodeGraphFile,
 		RawMaterial^ materialOverrides)
 	{
-		auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(materialOverrides->GetUnderlyingPtr());
-		return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
+		auto previewShader = GUILayer::GeneratePreviewShader(
+			nodeGraphFile->_nodeGraph,
+			nodeGraphFile->_subGraphName,
+			nodeGraphFile->_previewNodeId,
+			nodeGraphFile->_settings,
+			nodeGraphFile->_variableRestrictions);
+
+		for (const auto&cb : previewShader._constantBuffers) {
+			if (XlEqString(cb._name, "BasicMaterialConstants")) {
+				auto underlyingRawMaterial = materialOverrides->GetUnderlyingPtr();
+
+				auto e = nodeGraphFile->_variableRestrictions->GetEnumerator();
+				while (e->MoveNext())
+				{
+					auto kv = e->Current;
+					if (kv.Value->Length >= 1 && Char::IsDigit(kv.Value[0]))
+					{
+						auto nativeName = clix::marshalString<clix::E_UTF8>(kv.Key);
+						if (!underlyingRawMaterial->_constants.HasParameter(MakeStringSection(nativeName))) {
+							underlyingRawMaterial->_constants.SetParameter(
+								MakeStringSection(nativeName).Cast<utf8>(),
+								MakeStringSection(clix::marshalString<clix::E_UTF8>(kv.Value)));
+						}
+					}
+				}
+				auto nativeDelegate = ToolsRig::MakeMaterialMergeDelegate(underlyingRawMaterial, cb._layout);
+				return gcnew MaterialDelegateWrapper(std::move(nativeDelegate));
+			}
+		}
+		return nullptr;
 	}
 
 ///////////////////////////////////////////////////////////////////////////////////////////////////
@@ -431,16 +461,6 @@ namespace GUILayer
 				WriteTechniqueConfigSection(sw, "StochasticTransparency", "stochastic_main", context->ShaderParameters);
 				WriteTechniqueConfigSection(sw, "DepthOnly", "depthonly_main", context->ShaderParameters);
                 
-				sw->Write(")--*/"); sw->WriteLine();
-				sw->WriteLine();
-				sw->Flush();
-			}
-
-				// write out a cb layout, as well (sometimes required even if it's not a technique config)
-			auto cbLayout = ShaderSourceParser::GenerateMaterialCBuffer(interf);
-			if (!cbLayout.empty()) {
-				sw->Write("/* <<Chunk:CBLayout:main>>--("); sw->WriteLine();
-				sw->Write(clix::marshalString<clix::E_UTF8>(cbLayout)); sw->WriteLine();
 				sw->Write(")--*/"); sw->WriteLine();
 				sw->WriteLine();
 				sw->Flush();
